@@ -83,12 +83,15 @@ Pulumi.CustomTimeouts.Update.get -> System.TimeSpan?
 Pulumi.CustomTimeouts.Update.set -> void
 Pulumi.DictionaryResourceArgs
 Pulumi.DictionaryResourceArgs.DictionaryResourceArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
+Pulumi.DictionaryInvokeArgs
+Pulumi.DictionaryInvokeArgs.DictionaryInvokeArgs(System.Collections.Immutable.ImmutableDictionary<string, object> dictionary) -> void
 Pulumi.Deployment
 Pulumi.DeploymentInstance
 Pulumi.DeploymentInstance.Call(string token, Pulumi.CallArgs args, Pulumi.Resource self = null, Pulumi.CallOptions options = null) -> void
 Pulumi.DeploymentInstance.Call<T>(string token, Pulumi.CallArgs args, Pulumi.Resource self = null, Pulumi.CallOptions options = null) -> Pulumi.Output<T>
 Pulumi.DeploymentInstance.InvokeAsync(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task
 Pulumi.DeploymentInstance.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
+Pulumi.DeploymentInstance.InvokeSingleAsync<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> System.Threading.Tasks.Task<T>
 Pulumi.DeploymentInstance.IsDryRun.get -> bool
 Pulumi.DeploymentInstance.ProjectName.get -> string
 Pulumi.DeploymentInstance.StackName.get -> string
@@ -200,6 +203,8 @@ Pulumi.ResourceOptions.PluginDownloadURL.get -> string
 Pulumi.ResourceOptions.PluginDownloadURL.set -> void
 Pulumi.ResourceOptions.RetainOnDelete.get -> bool?
 Pulumi.ResourceOptions.RetainOnDelete.set -> void
+Pulumi.ResourceOptions.DeletedWith.get -> Pulumi.Resource
+Pulumi.ResourceOptions.DeletedWith.set -> void
 Pulumi.ResourceTransformation
 Pulumi.ResourceTransformationArgs
 Pulumi.ResourceTransformationArgs.Args.get -> Pulumi.ResourceArgs
@@ -349,6 +354,7 @@ static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<Sy
 static Pulumi.Output.All<T>(params Pulumi.Output<T>[] outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.Create<T>(T value) -> Pulumi.Output<T>
+static Pulumi.Output.CreateSecret<T>(Pulumi.Output<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>
 static Pulumi.Output.CreateSecret<T>(T value) -> Pulumi.Output<T>
 static Pulumi.Output.Format(System.FormattableString formattableString) -> Pulumi.Output<string>
@@ -391,3 +397,4 @@ static readonly Pulumi.CallArgs.Empty -> Pulumi.CallArgs
 static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
 Pulumi.DeploymentInstance.Invoke<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> Pulumi.Output<T>
+Pulumi.DeploymentInstance.InvokeSingle<T>(string token, Pulumi.InvokeArgs args, Pulumi.InvokeOptions options = null) -> Pulumi.Output<T>

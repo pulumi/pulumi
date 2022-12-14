@@ -2,7 +2,8 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs } from "./types";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
 import * as utilities from "./utilities";
 
 /**
@@ -10,11 +11,8 @@ import * as utilities from "./utilities";
  * API Version: 2020-11-01.
  */
 export function getBastionShareableLink(args: GetBastionShareableLinkArgs, opts?: pulumi.InvokeOptions): Promise<GetBastionShareableLinkResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::getBastionShareableLink", {
         "bastionHostName": args.bastionHostName,
         "resourceGroupName": args.resourceGroupName,
@@ -46,9 +44,12 @@ export interface GetBastionShareableLinkResult {
      */
     readonly nextLink?: string;
 }
-
+/**
+ * Response for all the Bastion Shareable Link endpoints.
+ * API Version: 2020-11-01.
+ */
 export function getBastionShareableLinkOutput(args: GetBastionShareableLinkOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetBastionShareableLinkResult> {
-    return pulumi.output(args).apply(a => getBastionShareableLink(a, opts))
+    return pulumi.output(args).apply((a: any) => getBastionShareableLink(a, opts))
 }
 
 export interface GetBastionShareableLinkOutputArgs {

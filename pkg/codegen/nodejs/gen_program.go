@@ -36,6 +36,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+const PulumiToken = "pulumi"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -48,6 +50,7 @@ type generator struct {
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
@@ -70,7 +73,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	var index bytes.Buffer
-	g.genPreamble(&index, program, preambleHelperMethods)
+	err = g.genPreamble(&index, program, preambleHelperMethods)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, n := range nodes {
 		if g.asyncMain {
 			break
@@ -170,11 +176,18 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == PulumiToken {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return err
 		}
 
 		packageName := "@pulumi/" + p.Name
+		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		if err != nil {
+			return err
+		}
 		if langInfo, found := p.Language["nodejs"]; found {
 			nodeInfo, ok := langInfo.(NodePackageInfo)
 			if ok && nodeInfo.PackageName != "" {
@@ -271,21 +284,30 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) error {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
 	// Accumulate other imports for the various providers and packages. Don't emit them yet, as we need to sort them
 	// later on.
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
+	npmToPuPkgName := make(map[string]string)
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
+			if pkg == PulumiToken {
+				continue
+			}
 			pkgName := "@pulumi/" + pkg
-			if r.Schema != nil && r.Schema.Package != nil {
-				if info, ok := r.Schema.Package.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+			if r.Schema != nil && r.Schema.PackageReference != nil {
+				def, err := r.Schema.PackageReference.Definition()
+				if err != nil {
+					return err
+				}
+				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
 				}
+				npmToPuPkgName[pkgName] = pkg
 			}
 			importSet.Add(pkgName)
 		}
@@ -310,7 +332,12 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
-		as := makeValidIdentifier(path.Base(pkg))
+		var as string
+		if puPkg, ok := npmToPuPkgName[pkg]; ok {
+			as = makeValidIdentifier(puPkg)
+		} else {
+			as = makeValidIdentifier(path.Base(pkg))
+		}
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
 	sort.Strings(imports)
@@ -325,6 +352,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
+	return nil
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -360,22 +388,24 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
+	pcl.FixupPulumiPackageTokens(r)
 	pkg, module, member, diagnostics := r.DecomposeToken()
-	if pkg == "pulumi" && module == "providers" {
-		pkg, module, member = member, "", "Provider"
-	}
 
 	if r.Schema != nil {
-		module = moduleName(module, r.Schema.Package)
+		module = moduleName(module, r.Schema.PackageReference)
 	}
 
 	return makeValidIdentifier(pkg), module, title(member), diagnostics
 }
 
-func moduleName(module string, pkg *schema.Package) string {
+func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
-		if lang, ok := pkg.Language["nodejs"]; ok {
+		def, err := pkg.Definition()
+		contract.AssertNoError(err)
+		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
+		contract.AssertNoError(err)
+		if lang, ok := def.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
 				module = m
@@ -505,7 +535,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			g.Fgenf(w, "%sconst %s: %s[];\n", g.Indent, variableName, qualifiedMemberName)
+			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -559,7 +589,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "require"
 	}
 
-	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[2]s\")", g.Indent, v.Name(), getOrRequire, getType)
+	name := makeValidIdentifier(v.Name())
+	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[5]s\")",
+		g.Indent, name, getOrRequire, getType, v.LogicalName())
 	if v.DefaultValue != nil {
 		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
 	}

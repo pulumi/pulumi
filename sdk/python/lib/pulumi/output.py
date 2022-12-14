@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import contextlib
 from functools import reduce
 from inspect import isawaitable
 from typing import (
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
+T3 = TypeVar("T3")
 T_co = TypeVar("T_co", covariant=True)
 U = TypeVar("U")
 
@@ -145,8 +147,8 @@ class Output(Generic[T_co]):
         'func' can return other Outputs.  This can be handy if you have a Output<SomeVal>
         and you want to get a transitive dependency of it.
 
-        This function will be called during execution of a 'pulumi up' request.  It may not run
-        during 'pulumi preview' (as the values of resources are of course may not be known then).
+        This function will be called during execution of a `pulumi up` request.  It may not run
+        during `pulumi preview` (as the values of resources are of course may not be known then).
 
         :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
@@ -219,16 +221,14 @@ class Output(Generic[T_co]):
                 result_is_secret.set_result(is_secret)
                 return cast(U, transformed)
             finally:
-                # Always resolve the future if it hasn't been done already.
-                if not result_is_known.done():
-                    # Try and set the result. This might fail if we're shutting down,
-                    # so swallow that error if that occurs.
-                    try:
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(False)
-                    except RuntimeError:
-                        pass
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_resources.set_result(resources)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_known.set_result(False)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_secret.set_result(False)
 
         run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
@@ -499,11 +499,48 @@ class Output(Generic[T_co]):
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
         return Output.all(*transformed_items).apply("".join)  # type: ignore
 
+    @staticmethod
+    def format(
+        format_string: Input[str], *args: Input[object], **kwargs: Input[object]
+    ) -> "Output[str]":
+        """
+        Perform a string formatting operation.
+
+        This has the same semantics as `str.format` except it handles Input types.
+
+        :param Input[str] format_string: A formatting string
+        :param Input[object] args: Positional arguments for the format string
+        :param Input[object] kwargs: Keyword arguments for the format string
+        :return: A formatted output string.
+        :rtype: Output[str]
+        """
+
+        if args and kwargs:
+            return _map3_output(
+                Output.from_input(format_string),
+                Output.all(*args),
+                Output.all(**kwargs),
+                lambda str, args, kwargs: str.format(*args, **kwargs),
+            )
+        if args:
+            return _map2_output(
+                Output.from_input(format_string),
+                Output.all(*args),
+                lambda str, args: str.format(*args),
+            )
+        if kwargs:
+            return _map2_output(
+                Output.from_input(format_string),
+                Output.all(**kwargs),
+                lambda str, kwargs: str.format(**kwargs),
+            )
+        return Output.from_input(format_string).apply(lambda str: str.format())
+
     def __str__(self) -> str:
-        return """Calling [str] on an [Output<T>] is not supported.
+        return """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi."""
@@ -576,6 +613,38 @@ def _map2_output(
         future=asyncio.ensure_future(fut()),
         is_known=o1.is_known() and o2.is_known(),
         is_secret=o2.is_secret() or o2.is_secret(),
+    )
+
+
+def _map3_output(
+    o1: Output[T1], o2: Output[T2], o3: Output[T3], transform: Callable[[T1, T2, T3], U]
+) -> Output[U]:
+    """
+    Joins three outputs and transforms their result with a pure function.
+    Similar to `all` but does not deeply await.
+    """
+
+    async def fut() -> U:
+        v1 = await o1.future()
+        v2 = await o2.future()
+        v3 = await o3.future()
+        return (
+            transform(v1, v2, v3)
+            if (v1 is not None) and (v2 is not None) and (v3 is not None)
+            else cast(U, UNKNOWN)
+        )
+
+    async def res() -> Set["Resource"]:
+        r1 = await o1.resources()
+        r2 = await o2.resources()
+        r3 = await o3.resources()
+        return r1 | r2 | r3
+
+    return Output(
+        resources=asyncio.ensure_future(res()),
+        future=asyncio.ensure_future(fut()),
+        is_known=o1.is_known() and o2.is_known() and o3.is_known(),
+        is_secret=o2.is_secret() or o2.is_secret() or o3.is_secret(),
     )
 
 

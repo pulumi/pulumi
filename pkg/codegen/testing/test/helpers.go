@@ -30,6 +30,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -57,9 +58,12 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	pkg, err := schema.ImportSpec(pkgSpec, nil)
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
 	if err != nil {
 		return nil, err
+	} else if diags.HasErrors() {
+		return nil, diags
 	}
 
 	return genPackageFunc("test", pkg, nil)
@@ -132,6 +136,7 @@ func (cm *codegenManifest) save(dir string) error {
 	sort.Strings(cm.EmittedFiles)
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(cm)
 	if err != nil {

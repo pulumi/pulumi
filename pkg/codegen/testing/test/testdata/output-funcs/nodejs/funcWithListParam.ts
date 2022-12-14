@@ -9,11 +9,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithListParam(args?: FuncWithListParamArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithListParamResult> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithListParam", {
         "a": args.a,
         "b": args.b,
@@ -28,9 +25,11 @@ export interface FuncWithListParamArgs {
 export interface FuncWithListParamResult {
     readonly r: string;
 }
-
+/**
+ * Check codegen of functions with a List parameter.
+ */
 export function funcWithListParamOutput(args?: FuncWithListParamOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithListParamResult> {
-    return pulumi.output(args).apply(a => funcWithListParam(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithListParam(a, opts))
 }
 
 export interface FuncWithListParamOutputArgs {

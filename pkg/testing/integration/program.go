@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	cryptorand "crypto/rand"
+	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -35,6 +36,8 @@ import (
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"golang.org/x/mod/modfile"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -46,7 +49,6 @@ import (
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
@@ -205,6 +207,8 @@ type ProgramTestOptions struct {
 	DestroyOnCleanup bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
+	// RequireService indicates that the test must be run against the Pulumi Service
+	RequireService bool
 	// PreviewCommandlineFlags specifies flags to add to the `pulumi preview` command line (e.g. "--color=raw")
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
@@ -261,9 +265,9 @@ type ProgramTestOptions struct {
 	// Verbose may be set to true to print messages as they occur, rather than buffering and showing upon failure.
 	Verbose bool
 
-	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`.  This is
-	// equivalent to `--logtostderr -v=N`, where N is the value of DebugLogLevel.  This may also be enabled by setting
-	// the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
+	// DebugLogging may be set to anything >0 to enable excessively verbose debug logging from `pulumi`. This
+	// is equivalent to `--logflow --logtostderr -v=N`, where N is the value of DebugLogLevel. This may also
+	// be enabled by setting the environment variable PULUMI_TEST_DEBUG_LOG_LEVEL.
 	DebugLogLevel int
 	// DebugUpdates may be set to true to enable debug logging from `pulumi preview`, `pulumi up`, and
 	// `pulumi destroy`.  This may also be enabled by setting the environment variable PULUMI_TEST_DEBUG_UPDATES.
@@ -290,6 +294,12 @@ type ProgramTestOptions struct {
 	UseAutomaticVirtualEnv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
+	// Use a shared virtual environment for tests based on the contents of the requirements file. Defaults to false.
+	UseSharedVirtualEnv *bool
+	// Shared venv path when UseSharedVirtualEnv is true. Defaults to $HOME/.pulumi-test-venvs.
+	SharedVirtualEnvPath string
+	// Refers to the shared venv directory when UseSharedVirtualEnv is true. Otherwise defaults to venv
+	virtualEnvDir string
 
 	// If set, this hook is called after the `pulumi preview` command has completed.
 	PreviewCompletedHook func(dir string) error
@@ -307,6 +317,21 @@ type ProgramTestOptions struct {
 	// preparation logic by dispatching on whether the project
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
+
+	// Array of provider plugin dependencies which come from local packages.
+	LocalProviders []LocalDependency
+}
+
+func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
+	if opts.UseSharedVirtualEnv != nil {
+		return *opts.UseSharedVirtualEnv
+	}
+	return false
+}
+
+type LocalDependency struct {
+	Package string
+	Path    string
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -365,10 +390,40 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 	return tokens.QName(opts.StackName)
 }
 
+// Returns the md5 hash of the file at the given path as a string
+func hashFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	buf := make([]byte, 32*1024)
+	hash := sha256.New()
+	for {
+		n, err := file.Read(buf)
+		if n > 0 {
+			_, err := hash.Write(buf[:n])
+			if err != nil {
+				return "", err
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	sum := string(hash.Sum(nil))
+	return sum, nil
+}
+
 // GetStackNameWithOwner gets the name of the stack prepended with an owner, if PULUMI_TEST_OWNER is set.
 // We use this in CI to create test stacks in an organization that all developers have access to, for debugging.
 func (opts *ProgramTestOptions) GetStackNameWithOwner() tokens.QName {
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
+	owner := os.Getenv("PULUMI_TEST_OWNER")
+
+	if opts.RequireService && owner != "" {
 		return tokens.QName(fmt.Sprintf("%s/%s", owner, opts.GetStackName()))
 	}
 
@@ -454,6 +509,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Quick {
 		opts.Quick = overrides.Quick
 	}
+	if overrides.RequireService {
+		opts.RequireService = overrides.RequireService
+	}
 	if overrides.PreviewCommandlineFlags != nil {
 		opts.PreviewCommandlineFlags = append(opts.PreviewCommandlineFlags, overrides.PreviewCommandlineFlags...)
 	}
@@ -520,14 +578,38 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.PipenvBin != "" {
 		opts.PipenvBin = overrides.PipenvBin
 	}
+	if overrides.DotNetBin != "" {
+		opts.DotNetBin = overrides.DotNetBin
+	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.UseAutomaticVirtualEnv {
+		opts.UseAutomaticVirtualEnv = overrides.UseAutomaticVirtualEnv
 	}
 	if overrides.UsePipenv {
 		opts.UsePipenv = overrides.UsePipenv
 	}
+	if overrides.UseSharedVirtualEnv != nil {
+		opts.UseSharedVirtualEnv = overrides.UseSharedVirtualEnv
+	}
+	if overrides.SharedVirtualEnvPath != "" {
+		opts.SharedVirtualEnvPath = overrides.SharedVirtualEnvPath
+	}
+	if overrides.PreviewCompletedHook != nil {
+		opts.PreviewCompletedHook = overrides.PreviewCompletedHook
+	}
+	if overrides.JSONOutput {
+		opts.JSONOutput = overrides.JSONOutput
+	}
+	if overrides.ExportStateValidator != nil {
+		opts.ExportStateValidator = overrides.ExportStateValidator
+	}
 	if overrides.PrepareProject != nil {
 		opts.PrepareProject = overrides.PrepareProject
+	}
+	if overrides.LocalProviders != nil {
+		opts.LocalProviders = append(opts.LocalProviders, overrides.LocalProviders...)
 	}
 	return opts
 }
@@ -573,7 +655,10 @@ func GetLogs(
 	stackInfo RuntimeValidationStackInfo,
 	query operations.LogQuery) *[]operations.LogEntry {
 
-	snap, err := stack.DeserializeDeploymentV3(*stackInfo.Deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeDeploymentV3(
+		context.Background(),
+		*stackInfo.Deployment,
+		stack.DefaultSecretsProvider)
 	assert.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
@@ -608,17 +693,24 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
 	// backups of test stacks.
-	if err := os.Setenv(filestate.DisableCheckpointBackupsEnvVar, "1"); err != nil {
-		t.Errorf("error setting env var '%s': %v", filestate.DisableCheckpointBackupsEnvVar, err)
-	}
+	opts.Env = append(opts.Env, fmt.Sprintf("%s=1", filestate.DisableCheckpointBackupsEnvVar))
 
 	// We want tests to default into being ran in parallel, hence the odd double negative.
 	if !opts.NoParallel && !opts.DestroyOnCleanup {
 		t.Parallel()
 	}
 
-	if ciutil.IsCI() && os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
-		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	if os.Getenv("PULUMI_TEST_USE_SERVICE") == "true" {
+		opts.RequireService = true
+	}
+	if opts.RequireService {
+		// This token is set in CI jobs, so this escape hatch is here to enable a smooth local dev
+		// experience, i.e.: running "make" and not seeing many failures due to a missing token.
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+	} else if opts.CloudURL == "" {
+		opts.CloudURL = MakeTempBackend(t)
 	}
 
 	// If the test panics, recover and log instead of letting the panic escape the test. Even though *this* test will
@@ -656,30 +748,54 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
 		}
 	}
+
+	if opts.UseSharedVirtualEnv == nil {
+		if sharedVenv := os.Getenv("PULUMI_TEST_PYTHON_SHARED_VENV"); sharedVenv != "" {
+			useSharedVenvBool := sharedVenv == "true"
+			opts.UseSharedVirtualEnv = &useSharedVenvBool
+		}
+	}
+
+	if opts.virtualEnvDir == "" && !opts.GetUseSharedVirtualEnv() {
+		opts.virtualEnvDir = "venv"
+	}
+
+	if opts.SharedVirtualEnvPath == "" {
+		opts.SharedVirtualEnvPath = filepath.Join(os.Getenv("HOME"), ".pulumi-test-venvs")
+		if sharedVenvPath := os.Getenv("PULUMI_TEST_PYTHON_SHARED_VENV_PATH"); sharedVenvPath != "" {
+			opts.SharedVirtualEnvPath = sharedVenvPath
+		}
+	}
+
+	if opts.Quick {
+		opts.SkipPreview = true
+		opts.SkipExportImport = true
+		opts.SkipEmptyPreviewUpdate = true
+	}
 }
 
 // ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
 // binaries available on PATH.  It essentially executes the following workflow:
 //
-//   yarn install
-//   yarn link <each opts.Depencies>
-//   (+) yarn run build
-//   pulumi init
-//   (*) pulumi login
-//   pulumi stack init integrationtesting
-//   pulumi config set <each opts.Config>
-//   pulumi config set --secret <each opts.Secrets>
-//   pulumi preview
-//   pulumi up
-//   pulumi stack export --file stack.json
-//   pulumi stack import --file stack.json
-//   pulumi preview (expected to be empty)
-//   pulumi up (expected to be empty)
-//   pulumi destroy --yes
-//   pulumi stack rm --yes integrationtesting
+//	yarn install
+//	yarn link <each opts.Depencies>
+//	(+) yarn run build
+//	pulumi init
+//	(*) pulumi login
+//	pulumi stack init integrationtesting
+//	pulumi config set <each opts.Config>
+//	pulumi config set --secret <each opts.Secrets>
+//	pulumi preview
+//	pulumi up
+//	pulumi stack export --file stack.json
+//	pulumi stack import --file stack.json
+//	pulumi preview (expected to be empty)
+//	pulumi up (expected to be empty)
+//	pulumi destroy --yes
+//	pulumi stack rm --yes integrationtesting
 //
-//   (*) Only if PULUMI_ACCESS_TOKEN is set.
-//   (+) Only if `opts.RunBuild` is true.
+//	(*) Only if PULUMI_ACCESS_TOKEN is set.
+//	(+) Only if `opts.RunBuild` is true.
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
@@ -719,17 +835,18 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	if opts.RetryFailedSteps {
 		maxStepTries = 3
 	}
-	if opts.Quick {
-		opts.SkipPreview = true
-		opts.SkipExportImport = true
-		opts.SkipEmptyPreviewUpdate = true
-	}
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
 		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
 	}
+}
+
+// MakeTempBackend creates a temporary backend directory which will clean up on test exit.
+func MakeTempBackend(t *testing.T) string {
+	tempDir := t.TempDir()
+	return fmt.Sprintf("file://%s", filepath.ToSlash(tempDir))
 }
 
 func (pt *ProgramTester) getBin() (string, error) {
@@ -790,7 +907,7 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	}
 	cmd := []string{bin}
 	if du := pt.opts.GetDebugLogLevel(); du > 0 {
-		cmd = append(cmd, "--logtostderr", "-v="+strconv.Itoa(du))
+		cmd = append(cmd, "--logflow", "--logtostderr", "-v="+strconv.Itoa(du))
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
@@ -903,6 +1020,12 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 }
 
 func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
+	// Yarn will time out if multiple processes are trying to install packages at the same time.
+	pulumi_testing.YarnInstallMutex.Lock()
+	defer pulumi_testing.YarnInstallMutex.Unlock()
+	pt.t.Log("acquired yarn install lock")
+	defer pt.t.Log("released yarn install lock")
+
 	cmd, err := pt.yarnCmd(args)
 	if err != nil {
 		return err
@@ -965,7 +1088,7 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 		}()
 	}
 
-	virtualenvBinPath, err := getVirtualenvBinPath(wd, args[0])
+	virtualenvBinPath, err := getVirtualenvBinPath(wd, args[0], pt)
 	if err != nil {
 		return err
 	}
@@ -1098,7 +1221,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		}
 
 		if err = pt.TestPreviewUpdateAndEdits(); err != nil {
-			return fmt.Errorf("running test preview, update, and edits: %w", err)
+			return fmt.Errorf("running test preview, update, and edits (updateTest): %w", err)
 		}
 	}
 
@@ -1181,16 +1304,17 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		return err
 	}
 
-	for key, value := range pt.opts.Config {
-		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", key, value}, dir, false); err != nil {
-			return err
-		}
-	}
+	if len(pt.opts.Config)+len(pt.opts.Secrets) > 0 {
+		setAllArgs := []string{"config", "set-all"}
 
-	for key, value := range pt.opts.Secrets {
-		if err := pt.runPulumiCommand("pulumi-config",
-			[]string{"config", "set", "--secret", key, value}, dir, false); err != nil {
+		for key, value := range pt.opts.Config {
+			setAllArgs = append(setAllArgs, "--plaintext", fmt.Sprintf("%s=%s", key, value))
+		}
+		for key, value := range pt.opts.Secrets {
+			setAllArgs = append(setAllArgs, "--secret", fmt.Sprintf("%s=%s", key, value))
+		}
+
+		if err := pt.runPulumiCommand("pulumi-config", setAllArgs, dir, false); err != nil {
 			return err
 		}
 	}
@@ -1248,7 +1372,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
 	if initErr != nil {
-		return initErr
+		return fmt.Errorf("initial failure: %w", initErr)
 	}
 
 	// Perform an empty preview and update; nothing is expected to happen here.
@@ -1256,7 +1380,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		pt.t.Log("Roundtripping checkpoint via stack export and stack import")
 
 		if err := pt.exportImport(dir); err != nil {
-			return err
+			return fmt.Errorf("empty preview + update: %w", err)
 		}
 	}
 
@@ -1266,10 +1390,10 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 			msg = "(no changes expected)"
 		}
 		pt.t.Logf("Performing empty preview and update%s", msg)
-		if err := pt.PreviewAndUpdate(
-			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
+		if err := pt.PreviewAndUpdate(dir, "empty", pt.opts.ExpectFailure,
+			!pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
-			return err
+			return fmt.Errorf("empty preview: %w", err)
 		}
 	}
 
@@ -1685,7 +1809,66 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
 	}
-	projinfo.Root = projdir
+	// Reload the projinfo before making mutating changes (workspace.LoadProject caches the in-memory Project by path)
+	projinfo, err = pt.getProjinfo(projdir)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Add dynamic plugin paths from ProgramTester
+	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
+		projinfo.Proj.Plugins = &workspace.Plugins{
+			Providers: make([]workspace.PluginOptions, 0),
+		}
+	}
+
+	if pt.opts.LocalProviders != nil {
+		for _, provider := range pt.opts.LocalProviders {
+			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
+				Name: provider.Package,
+				Path: provider.Path,
+			})
+		}
+	}
+
+	if projinfo.Proj.Plugins != nil {
+		for i, provider := range projinfo.Proj.Plugins.Providers {
+			if !filepath.IsAbs(provider.Path) {
+				path, err := filepath.Abs(provider.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
+				}
+				projinfo.Proj.Plugins.Providers[i].Path = path
+			}
+		}
+		for i, language := range projinfo.Proj.Plugins.Languages {
+			if !filepath.IsAbs(language.Path) {
+				path, err := filepath.Abs(language.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", language.Path, err)
+				}
+				projinfo.Proj.Plugins.Languages[i].Path = path
+			}
+		}
+		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
+			if !filepath.IsAbs(analyzer.Path) {
+				path, err := filepath.Abs(analyzer.Path)
+				if err != nil {
+					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", analyzer.Path, err)
+				}
+				projinfo.Proj.Plugins.Analyzers[i].Path = path
+			}
+		}
+	}
+	projfile := filepath.Join(projdir, workspace.ProjectFile+".yaml")
+	bytes, err := yaml.Marshal(projinfo.Proj)
+	if err != nil {
+		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
+	}
+
+	if err := ioutil.WriteFile(projfile, bytes, 0600); err != nil {
+		return "", "", fmt.Errorf("error writing project: %w", err)
+	}
 
 	err = pt.prepareProject(projinfo)
 	if err != nil {
@@ -1714,10 +1897,10 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
-		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
 			return "", "", err
 		}
-		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
 			return "", "", err
 		}
 	}
@@ -1847,6 +2030,7 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	defer contract.IgnoreClose(f)
 
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
 
 	return fmt.Errorf("writing package.json: %w", encoder.Encode(metadata))
@@ -1864,11 +2048,21 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 	} else {
-		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
+		venvPath := "venv"
+		if pt.opts.GetUseSharedVirtualEnv() {
+			requirementsPath := filepath.Join(cwd, "requirements.txt")
+			requirementsmd5, err := hashFile(requirementsPath)
+			if err != nil {
+				return err
+			}
+			pt.opts.virtualEnvDir = fmt.Sprintf("pulumi-venv-%x", requirementsmd5)
+			venvPath = filepath.Join(pt.opts.SharedVirtualEnvPath, pt.opts.virtualEnvDir)
+		}
+		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", venvPath}, cwd); err != nil {
 			return err
 		}
 
-		projinfo.Proj.Runtime.SetOption("virtualenv", "venv")
+		projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
 		projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
 		if err = projinfo.Proj.Save(projfile); err != nil {
 			return fmt.Errorf("saving project: %w", err)
@@ -1956,10 +2150,14 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 	return nil
 }
 
-func getVirtualenvBinPath(cwd, bin string) (string, error) {
-	virtualenvBinPath := filepath.Join(cwd, "venv", "bin", bin)
+func getVirtualenvBinPath(cwd, bin string, pt *ProgramTester) (string, error) {
+	virtualEnvBasePath := filepath.Join(cwd, pt.opts.virtualEnvDir)
+	if pt.opts.GetUseSharedVirtualEnv() {
+		virtualEnvBasePath = filepath.Join(pt.opts.SharedVirtualEnvPath, pt.opts.virtualEnvDir)
+	}
+	virtualenvBinPath := filepath.Join(virtualEnvBasePath, "bin", bin)
 	if runtime.GOOS == windowsOS {
-		virtualenvBinPath = filepath.Join(cwd, "venv", "Scripts", fmt.Sprintf("%s.exe", bin))
+		virtualenvBinPath = filepath.Join(virtualEnvBasePath, "Scripts", fmt.Sprintf("%s.exe", bin))
 	}
 	if info, err := os.Stat(virtualenvBinPath); err != nil || info.IsDir() {
 		return "", fmt.Errorf("Expected %s to exist in virtual environment at %q", bin, virtualenvBinPath)
@@ -2045,18 +2243,18 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	// link local dependencies
-	for _, pkg := range pt.opts.Dependencies {
-
-		dep := getRewritePath(pkg, gopath, depRoot)
-
-		editStr := fmt.Sprintf("%s=%s", pkg, dep)
+	for _, dep := range pt.opts.Dependencies {
+		editStr, err := getEditStr(dep, gopath, depRoot)
+		if err != nil {
+			return fmt.Errorf("error generating go mod replacement for dep %q: %w", dep, err)
+		}
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
 			return err
 		}
 	}
 
-	// tidy to resolve all transitive dependencies including from local dependencies above
+	// tidy to resolve all transitive dependencies including from local dependencies above.
 	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
 	if err != nil {
 		return err
@@ -2079,6 +2277,62 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	}
 
 	return nil
+}
+
+func getEditStr(dep string, gopath string, depRoot string) (string, error) {
+	checkModName := true
+	var err error
+	var modName string
+	var modDir string
+	if strings.ContainsRune(dep, '=') {
+		parts := strings.Split(dep, "=")
+		modName = parts[0]
+		modDir = parts[1]
+	} else if !modfile.IsDirectoryPath(dep) {
+		modName = dep
+		modDir = getRewritePath(dep, gopath, depRoot)
+	} else {
+		modDir = dep
+		modName, err = getModName(modDir)
+		if err != nil {
+			return "", err
+		}
+		// We've read the package name from the go.mod file, skip redundant check below.
+		checkModName = false
+	}
+
+	modDir, err = filepath.Abs(modDir)
+	if err != nil {
+		return "", err
+	}
+
+	if checkModName {
+		actualModName, err := getModName(modDir)
+		if err != nil {
+			return "", fmt.Errorf("no go.mod at directory, set the path to the module explicitly or place "+
+				"the dependency in the path specified by PULUMI_GO_DEP_ROOT or the default GOPATH: %w", err)
+		}
+		if actualModName != modName {
+			return "", fmt.Errorf("found module %s, expected %s", actualModName, modName)
+		}
+	}
+
+	editStr := fmt.Sprintf("%s=%s", modName, modDir)
+	return editStr, nil
+}
+
+func getModName(dir string) (string, error) {
+	pkgModPath := filepath.Join(dir, "go.mod")
+	pkgModData, err := os.ReadFile(pkgModPath)
+	if err != nil {
+		return "", fmt.Errorf("error reading go.mod at %s: %w", dir, err)
+	}
+	pkgMod, err := modfile.Parse(pkgModPath, pkgModData, nil)
+	if err != nil {
+		return "", fmt.Errorf("error parsing go.mod at %s: %w", dir, err)
+	}
+
+	return pkgMod.Module.Mod.Path, nil
 }
 
 // prepareDotNetProject runs setup necessary to get a .NET project ready for `pulumi` commands.

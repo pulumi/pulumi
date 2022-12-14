@@ -87,17 +87,22 @@ func (u *update) GetTarget() *deploy.Target {
 	return u.target
 }
 
-func (b *localBackend) newQuery(ctx context.Context,
+func (b *localBackend) newQuery(
+	ctx context.Context,
 	op backend.QueryOperation) (engine.QueryInfo, error) {
 
 	return &localQuery{root: op.Root, proj: op.Proj}, nil
 }
 
-func (b *localBackend) newUpdate(stackName tokens.Name, op backend.UpdateOperation) (*update, error) {
+func (b *localBackend) newUpdate(
+	ctx context.Context,
+	stackName tokens.Name,
+	op backend.UpdateOperation) (*update, error) {
 	contract.Require(stackName != "", "stackName")
 
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+	target, err := b.getTarget(ctx, stackName,
+		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -111,20 +116,27 @@ func (b *localBackend) newUpdate(stackName tokens.Name, op backend.UpdateOperati
 	}, nil
 }
 
-func (b *localBackend) getTarget(stackName tokens.Name, cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
-	snapshot, _, err := b.getStack(stackName)
+func (b *localBackend) getTarget(
+	ctx context.Context,
+	stackName tokens.Name,
+	cfg config.Map,
+	dec config.Decrypter) (*deploy.Target, error) {
+	snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
 	return &deploy.Target{
-		Name:      stackName,
-		Config:    cfg,
-		Decrypter: dec,
-		Snapshot:  snapshot,
+		Name:         stackName,
+		Organization: "", // filestate has no organizations
+		Config:       cfg,
+		Decrypter:    dec,
+		Snapshot:     snapshot,
 	}, nil
 }
 
-func (b *localBackend) getStack(name tokens.Name) (*deploy.Snapshot, string, error) {
+func (b *localBackend) getStack(
+	ctx context.Context,
+	name tokens.Name) (*deploy.Snapshot, string, error) {
 	if name == "" {
 		return nil, "", errors.New("invalid empty stack name")
 	}
@@ -137,7 +149,7 @@ func (b *localBackend) getStack(name tokens.Name) (*deploy.Snapshot, string, err
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(chk)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, chk)
 	if err != nil {
 		return nil, "", err
 	}
@@ -346,7 +358,7 @@ func (b *localBackend) stackPath(stack tokens.Name) string {
 	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
-	plainPath := filepath.Join(path, fsutil.NamePath(stack)) + ".json"
+	plainPath := filepath.ToSlash(filepath.Join(path, fsutil.NamePath(stack)) + ".json")
 	gzipedPath := plainPath + ".gz"
 
 	bucketIter := b.bucket.List(&blob.ListOptions{

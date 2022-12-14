@@ -26,6 +26,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const pulumiSDKVersion = "v3"
@@ -98,7 +99,9 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
 func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
-	d.packages = generatePackageContextMap(tool, pkg, goInfo)
+	var err error
+	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
+	contract.AssertNoError(err)
 }
 
 // GetPropertyName returns the property name specific to Go.

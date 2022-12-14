@@ -20,6 +20,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/rivo/uniseg"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -133,59 +135,111 @@ func writeDirective(w io.StringWriter, c Colorization, directive Color) {
 	}
 }
 
-func colorizeText(s string, c Colorization, maxLen int) string {
+type iterator struct {
+	input string
+}
+
+func (it *iterator) next(text, directive *string) bool {
+	if len(it.input) == 0 {
+		return false
+	}
+
+	// Do we have another directive to process?
+	nextDirectiveStart := strings.Index(it.input, colorLeft)
+	if nextDirectiveStart == -1 {
+		*text, *directive, it.input = it.input, "", ""
+		return true
+	}
+
+	// Copy the text up to but not including the delimiter into the buffer.
+	*text = it.input[:nextDirectiveStart]
+
+	// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
+	// output. Make sure we look for the for end delimiter _after_ the start delimiter.
+	nextDirectiveEnd := strings.Index(it.input[nextDirectiveStart:], colorRight)
+	if nextDirectiveEnd != -1 {
+		// Correct the index given we searched starting from nextDirectiveStart
+		nextDirectiveEnd += nextDirectiveStart
+
+		*directive = it.input[nextDirectiveStart : nextDirectiveEnd+len(colorRight)]
+
+		it.input = it.input[nextDirectiveEnd+len(colorRight):]
+	} else {
+		*directive, it.input = "", ""
+	}
+	return true
+}
+
+func colorizeText(s string, c Colorization, maxWidth int) string {
 	var buf bytes.Buffer
+	width, reset := 0, false
 
-	textLen, reset := 0, false
-	for input := s; len(input) > 0; {
-		// Do we have another directive to process?
-		nextDirectiveStart := strings.Index(input, colorLeft)
-		if nextDirectiveStart == -1 {
-			// If there are no more directives and we still have the entire original string, return it as-is: there
-			// must not have been any directives.
-			if len(input) == len(s) {
-				if maxLen >= 0 && len(input) > maxLen {
-					return input[:maxLen]
+	i := iterator{s}
+	var text, directive string
+	for i.next(&text, &directive) {
+		// If the text is the entire original string, return it as-is.
+		if len(text) == len(s) {
+			if maxWidth >= 0 {
+				return clampString(text, maxWidth)
+			}
+			return text
+		}
+
+		if buf.Cap() < len(text) {
+			buf.Grow(len(text))
+		}
+
+		if maxWidth >= 0 {
+			graphemes := uniseg.NewGraphemes(text)
+			for graphemes.Next() {
+				if width == maxWidth {
+					if reset {
+						writeDirective(&buf, c, Reset)
+					}
+					return buf.String()
 				}
-				return input
+				start, end := graphemes.Positions()
+				_, err := buf.WriteString(text[start:end])
+				contract.IgnoreError(err)
+				width++
 			}
-
-			// Otherwise, set the start of the next directive to the end of the string and continue.
-			nextDirectiveStart = len(input)
-		}
-		if buf.Cap() < len(input) {
-			buf.Grow(len(input))
-		}
-
-		// Copy the text up to but not including the delimiter into the buffer.
-		text := input[:nextDirectiveStart]
-		if maxLen >= 0 && textLen+len(text) > maxLen {
-			_, err := buf.WriteString(text[:maxLen-textLen])
+		} else {
+			_, err := buf.WriteString(text)
 			contract.IgnoreError(err)
-			if reset {
-				writeDirective(&buf, c, Reset)
-			}
-			break
-		}
-		_, err := buf.WriteString(text)
-		contract.IgnoreError(err)
-		textLen += len(text)
-
-		// If we have a start delimiter but no end delimiter, terminate. The partial command will not be present in the
-		// output.
-		nextDirectiveEnd := strings.Index(input, colorRight)
-		if nextDirectiveEnd == -1 {
-			break
 		}
 
-		directive := command(input[nextDirectiveStart+len(colorLeft) : nextDirectiveEnd])
-		writeDirective(&buf, c, directive)
-		input = input[nextDirectiveEnd+len(colorRight):]
+		if directive != "" {
+			writeDirective(&buf, c, directive)
+		}
 
 		reset = directive != Reset
 	}
 
 	return buf.String()
+}
+
+func measureText(s string) int {
+	width := 0
+
+	i := iterator{s}
+	var text, directive string
+	for i.next(&text, &directive) {
+		width += uniseg.GraphemeClusterCount(text)
+	}
+
+	return width
+}
+
+func clampString(s string, maxWidth int) string {
+	width, end := 0, 0
+
+	graphemes := uniseg.NewGraphemes(s)
+	for width < maxWidth && graphemes.Next() {
+		_, end = graphemes.Positions()
+		width++
+	}
+
+	return s[:end]
 }
 
 // Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with

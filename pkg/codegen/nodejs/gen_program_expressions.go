@@ -30,11 +30,15 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 		expr = g.awaitInvokes(expr)
 	}
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), !g.asyncMain)
 	if typ != nil {
-		expr = pcl.RewriteConversions(expr, typ)
+		var convertDiags hcl.Diagnostics
+		expr, convertDiags = pcl.RewriteConversions(expr, typ)
+		diags = diags.Extend(convertDiags)
 	}
-	expr, _ = g.lowerProxyApplies(expr)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	diags = diags.Extend(lowerProxyDiags)
+	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr
 }
 
@@ -305,11 +309,15 @@ func enumName(enum *model.EnumType) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("Could not get associated enum")
 	}
-	if name := e.(*schema.EnumType).Package.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
+	def, err := e.(*schema.EnumType).PackageReference.Definition()
+	if err != nil {
+		return "", err
+	}
+	if name := def.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
 		pkg = name
 	}
 	if mod := components[1]; mod != "" && mod != "index" {
-		if pkg := e.(*schema.EnumType).Package; pkg != nil {
+		if pkg := e.(*schema.EnumType).PackageReference; pkg != nil {
 			mod = moduleName(mod, pkg)
 		}
 		pkg += "." + mod
@@ -332,13 +340,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				if isOutput {
 					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
 				} else {
-					pcl.GenEnum(to, from, func(member *schema.Enum) {
+					diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
 						memberTag, err := enumMemberName(tokenToName(to.Token), member)
 						contract.AssertNoErrorf(err, "Failed to get member name on enum '%s'", enum)
 						g.Fgenf(w, "%s.%s", enum, memberTag)
 					}, func(from model.Expression) {
 						g.Fgenf(w, "%s[%.v]", enum, from)
 					})
+					if diag != nil {
+						g.diagnostics = append(g.diagnostics, diag)
+					}
 				}
 			} else {
 				g.Fgenf(w, "%v", from)
@@ -369,11 +380,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.genRange(w, call, true)
 				return
 			}
-			g.Fgenf(w, "%.20v.map((k, v)", expr.Args[0])
+			// Mapping over a list with a tuple receiver accepts (value, index).
+			g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
 		case *model.MapType, *model.ObjectType:
 			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
 		}
-		g.Fgenf(w, " => {key: k, value: v})")
+		g.Fgenf(w, " => ({key: k, value: v}))")
 	case "fileArchive":
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -424,13 +436,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readFile":
 		g.Fgenf(w, "fs.readFileSync(%v)", expr.Args[0])
 	case "readDir":
-		g.Fgenf(w, "fs.readDirSync(%v)", expr.Args[0])
+		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "Buffer.from(%v).toString(\"base64\")", expr.Args[0])
+	case "fromBase64":
+		g.Fgenf(w, "Buffer.from(%v, \"base64\").toString(\"utf8\")", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	case "sha1":
@@ -587,8 +601,20 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			contract.Failf("unexpected traversal part of type %T (%v)", part, part.SourceRange())
 		}
 
+		var indexPrefix string
 		if model.IsOptionalType(model.GetTraversableType(parts[i])) {
 			g.Fgen(w, "?")
+			// `expr?[expr]` is not valid typescript, since it looks like a ternary
+			// operator.
+			//
+			// Typescript solves this by inserting a `.` in before the `[`: `expr?.[expr]`
+			//
+			// We need to do the same when generating index based expressions.
+			indexPrefix = "."
+		}
+
+		genIndex := func(inner string, value interface{}) {
+			g.Fgenf(w, "%s["+inner+"]", indexPrefix, value)
 		}
 
 		switch key.Type() {
@@ -597,13 +623,13 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 			if isLegalIdentifier(keyVal) {
 				g.Fgenf(w, ".%s", keyVal)
 			} else {
-				g.Fgenf(w, "[%q]", keyVal)
+				genIndex("%q", keyVal)
 			}
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
-			g.Fgenf(w, "[%d]", idx)
+			genIndex("%d", idx)
 		default:
-			g.Fgenf(w, "[%q]", key.AsString())
+			genIndex("%q", key.AsString())
 		}
 	}
 }

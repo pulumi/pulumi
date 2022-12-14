@@ -35,6 +35,12 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, pulumiSDKP
 		[]string{ex, "new", "console"}, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to create C# project")
 
+	// Remove Program.cs again generated from "dotnet new console"
+	// because the generated C# program already has an entry point
+	if err = os.Remove(programFile); !os.IsNotExist(err) {
+		require.NoError(t, err)
+	}
+
 	// Add dependencies
 	pkgs := dotnetDependencies(dependencies)
 	if len(pkgs) != 0 {
@@ -95,9 +101,9 @@ func (pkg dep) install(t *testing.T, ex, dir string) {
 // Converts from the hcl2 dependency format to the dotnet format.
 //
 // Example:
-// 	"aws" => {"Pulumi.Aws", 4.21.1}
-// 	"azure" => {"Pulumi.Azure", 4.21.1}
 //
+//	"aws" => {"Pulumi.Aws", 4.21.1}
+//	"azure" => {"Pulumi.Azure", 4.21.1}
 func dotnetDependencies(deps codegen.StringSet) []dep {
 	result := make([]dep, len(deps))
 	for i, d := range deps.SortedValues() {
@@ -107,7 +113,9 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 		case "azure-native":
 			result[i] = dep{"Pulumi.AzureNative", test.AzureNativeSchema}
 		case "azure":
-			result[i] = dep{"Pulumi.Azure", test.AzureSchema}
+			// TODO: update constant in test.AzureSchema to v5.x
+			// because it has output-versioned function invokes
+			result[i] = dep{"Pulumi.Azure", "5.12.0"}
 		case "kubernetes":
 			result[i] = dep{"Pulumi.Kubernetes", test.KubernetesSchema}
 		case "random":
@@ -117,4 +125,19 @@ func dotnetDependencies(deps codegen.StringSet) []dep {
 		}
 	}
 	return result
+}
+
+func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "dotnet",
+			Extension:  "cs",
+			OutputFile: "Program.cs",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, "../../../../../../../sdk/dotnet/Pulumi")
+			},
+			GenProgram: GenerateProgram,
+			TestCases:  testCases,
+		},
+	)
 }

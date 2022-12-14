@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -130,11 +130,11 @@ namespace Pulumi.Automation
                 {
                     try
                     {
-                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (StackAlreadyExistsException)
-                    {
                         await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackNotFoundException)
+                    {
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
                     }
                 }),
                 _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
@@ -217,6 +217,8 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
                 if (options.Program != null)
@@ -224,12 +226,6 @@ namespace Pulumi.Automation
 
                 if (options.Logger != null)
                     logger = options.Logger;
-
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
 
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
@@ -252,47 +248,10 @@ namespace Pulumi.Automation
                     }
                 }
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.PolicyPacks?.Any() == true)
-                {
-                    foreach (var item in options.PolicyPacks)
-                    {
-                        args.Add("--policy-pack");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.PolicyPackConfigs?.Any() == true)
-                {
-                    foreach (var item in options.PolicyPackConfigs)
-                    {
-                        args.Add("--policy-pack-configs");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -332,7 +291,10 @@ namespace Pulumi.Automation
                 }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
-                var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+                // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+                // load the project file.
+                var showSecrets = Remote ? false : options?.ShowSecrets;
+                var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -364,6 +326,8 @@ namespace Pulumi.Automation
             var logger = this.Workspace.Logger;
             var args = new List<string>() { "preview" };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
                 if (options.Program != null)
@@ -371,12 +335,6 @@ namespace Pulumi.Automation
 
                 if (options.Logger != null)
                     logger = options.Logger;
-
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
 
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
@@ -399,47 +357,11 @@ namespace Pulumi.Automation
                     }
                 }
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.PolicyPacks?.Any() == true)
-                {
-                    foreach (var item in options.PolicyPacks)
-                    {
-                        args.Add("--policy-pack");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.PolicyPackConfigs?.Any() == true)
-                {
-                    foreach (var item in options.PolicyPackConfigs)
-                    {
-                        args.Add("--policy-pack-configs");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
 
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -528,37 +450,14 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -566,7 +465,10 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+            // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+            // load the project file.
+            var showSecrets = Remote ? false : options?.ShowSecrets;
+            var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -589,37 +491,14 @@ namespace Pulumi.Automation
                 "--skip-preview",
             };
 
+            args.AddRange(GetRemoteArgs());
+
             if (options != null)
             {
-                if (!string.IsNullOrWhiteSpace(options.Message))
-                {
-                    args.Add("--message");
-                    args.Add(options.Message);
-                }
-
-                if (options.Target?.Any() == true)
-                {
-                    foreach (var item in options.Target)
-                    {
-                        args.Add("--target");
-                        args.Add(item);
-                    }
-                }
-
                 if (options.TargetDependents is true)
                     args.Add("--target-dependents");
 
-                if (options.Parallel.HasValue)
-                {
-                    args.Add("--parallel");
-                    args.Add(options.Parallel.Value.ToString());
-                }
-
-                if (!string.IsNullOrWhiteSpace(options.Color))
-                {
-                    args.Add("--color");
-                    args.Add(options.Color);
-                }
+                ApplyUpdateOptions(options, args);
             }
 
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
@@ -627,7 +506,10 @@ namespace Pulumi.Automation
             args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-            var summary = await this.GetInfoAsync(cancellationToken, options?.ShowSecrets).ConfigureAwait(false);
+            // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+            // load the project file.
+            var showSecrets = Remote ? false : options?.ShowSecrets;
+            var summary = await this.GetInfoAsync(cancellationToken, showSecrets).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
                 result.StandardError,
@@ -778,7 +660,7 @@ namespace Pulumi.Automation
                         webBuilder
                             .ConfigureKestrel(kestrelOptions =>
                             {
-                                kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
+                                kestrelOptions.Listen(IPAddress.Loopback, 0, listenOptions =>
                                 {
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });
@@ -861,5 +743,91 @@ namespace Pulumi.Automation
                 this._host.Dispose();
             }
         }
+
+        static void ApplyUpdateOptions(UpdateOptions options, List<string> args)
+        {
+            if (options.Parallel.HasValue)
+            {
+                args.Add("--parallel");
+                args.Add(options.Parallel.Value.ToString());
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Message))
+            {
+                args.Add("--message");
+                args.Add(options.Message);
+            }
+
+            if (options.Target?.Any() == true)
+            {
+                foreach (var item in options.Target)
+                {
+                    args.Add("--target");
+                    args.Add(item);
+                }
+            }
+
+            if (options.PolicyPacks?.Any() == true)
+            {
+                foreach (var item in options.PolicyPacks)
+                {
+                    args.Add("--policy-pack");
+                    args.Add(item);
+                }
+            }
+
+            if (options.PolicyPackConfigs?.Any() == true)
+            {
+                foreach (var item in options.PolicyPackConfigs)
+                {
+                    args.Add("--policy-pack-configs");
+                    args.Add(item);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Color))
+            {
+                args.Add("--color");
+                args.Add(options.Color);
+            }
+
+            if (options.LogFlow is true)
+            {
+                args.Add("--logflow");
+            }
+
+            if (options.LogVerbosity.HasValue)
+            {
+                args.Add("--verbose");
+                args.Add(options.LogVerbosity.Value.ToString());
+            }
+
+            if (options.LogToStdErr is true)
+            {
+                args.Add("--logtostderr");
+            }
+
+            if (!string.IsNullOrWhiteSpace(options.Tracing))
+            {
+                args.Add("--tracing");
+                args.Add(options.Tracing);
+            }
+
+            if (options.Debug is true)
+            {
+                args.Add("--debug");
+            }
+
+            if (options.Json is true)
+            {
+                args.Add("--json");
+            }
+        }
+
+        private bool Remote
+            => Workspace is LocalWorkspace localWorkspace && localWorkspace.Remote;
+
+        private IReadOnlyList<string> GetRemoteArgs()
+            => Workspace is LocalWorkspace localWorkspace ? localWorkspace.GetRemoteArgs() : Array.Empty<string>();
     }
 }

@@ -38,7 +38,12 @@ func newPluginLsCmd() *cobra.Command {
 			var plugins []workspace.PluginInfo
 			var err error
 			if projectOnly {
-				if plugins, err = getProjectPlugins(); err != nil {
+				var pluginSpecs []workspace.PluginSpec
+				if pluginSpecs, err = getProjectPlugins(); err != nil {
+					return fmt.Errorf("loading project plugins: %w", err)
+				}
+				plugins, err = resolvePlugins(pluginSpecs)
+				if err != nil {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
@@ -95,10 +100,14 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 
 	jsonPluginInfo := make([]pluginInfoJSON, len(plugins))
 	for idx, plugin := range plugins {
+		var version string
+		if plugin.Version != nil {
+			version = plugin.Version.String()
+		}
 		jsonPluginInfo[idx] = pluginInfoJSON{
 			Name:    plugin.Name,
 			Kind:    string(plugin.Kind),
-			Version: plugin.Version.String(),
+			Version: version,
 			Size:    int(plugin.Size),
 		}
 

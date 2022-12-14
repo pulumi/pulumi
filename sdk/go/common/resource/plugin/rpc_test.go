@@ -1656,7 +1656,7 @@ func walkValueSelfWithDescendants(
 	visit func(path string, v *structpb.Value) error) error {
 
 	if v == nil {
-		return fmt.Errorf("Bad *structpb.Value nil at %s", path)
+		return fmt.Errorf("bad *structpb.Value nil at %s", path)
 	}
 	err := visit(path, v)
 	if err != nil {
@@ -1688,7 +1688,7 @@ func walkValueSelfWithDescendants(
 	case *structpb.Value_NullValue:
 		return nil
 	default:
-		return fmt.Errorf("Bad *structpb.Value of unknown type at %s: %v", path, v)
+		return fmt.Errorf("bad *structpb.Value of unknown type at %s: %v", path, v)
 	}
 	return nil
 }

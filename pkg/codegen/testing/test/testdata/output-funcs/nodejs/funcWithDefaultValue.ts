@@ -8,11 +8,8 @@ import * as utilities from "./utilities";
  * Check codegen of functions with default values.
  */
 export function funcWithDefaultValue(args: FuncWithDefaultValueArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithDefaultValueResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithDefaultValue", {
         "a": args.a,
         "b": args.b,
@@ -27,9 +24,11 @@ export interface FuncWithDefaultValueArgs {
 export interface FuncWithDefaultValueResult {
     readonly r: string;
 }
-
+/**
+ * Check codegen of functions with default values.
+ */
 export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithDefaultValueResult> {
-    return pulumi.output(args).apply(a => funcWithDefaultValue(a, opts))
+    return pulumi.output(args).apply((a: any) => funcWithDefaultValue(a, opts))
 }
 
 export interface FuncWithDefaultValueOutputArgs {

@@ -1,6 +1,5 @@
 resource bar "kubernetes:core/v1:Pod" {
     apiVersion = "v1"
-    kind = "Pod"
     metadata = {
         namespace = "foo"
         name = "bar"
@@ -10,6 +9,7 @@ resource bar "kubernetes:core/v1:Pod" {
             {
                 name = "nginx"
                 image = "nginx:1.14-alpine"
+                ports = [{ containerPort = 80 }]
                 resources = {
                     limits = {
                         memory = "20Mi"
@@ -20,3 +20,6 @@ resource bar "kubernetes:core/v1:Pod" {
         ]
     }
 }
+
+// Test that we can assign from a constant without type errors
+kind = bar.kind

@@ -1,4 +1,4 @@
-// source: status.proto
+// source: google/protobuf/status.proto
 /**
  * @fileoverview
  * @enhanceable

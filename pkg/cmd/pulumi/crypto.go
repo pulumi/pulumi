@@ -16,12 +16,10 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -47,30 +45,33 @@ func getStackDecrypter(s backend.Stack) (config.Decrypter, error) {
 }
 
 func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
-	ps, err := loadProjectStack(s)
+	project, _, err := readProject()
+
+	if err != nil {
+		return nil, err
+	}
+
+	ps, err := loadProjectStack(project, s)
 	if err != nil {
 		return nil, err
 	}
 
 	sm, err := func() (secrets.Manager, error) {
+		configFile, err := getProjectStackPath(s)
+		if err != nil {
+			return nil, err
+		}
+
+		// nolint: goconst
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), stackConfigFile, ps.SecretsProvider)
+			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider)
 		}
 
 		if ps.EncryptionSalt != "" {
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
+			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
 		}
 
-		switch s.(type) {
-		case filestate.Stack:
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
-				false /* rotatePassphraseSecretsProvider */)
-		case httpstate.Stack:
-			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
-		}
-
-		return nil, fmt.Errorf("unknown stack type %s", reflect.TypeOf(s))
+		return s.DefaultSecretManager(configFile)
 	}()
 	if err != nil {
 		return nil, err

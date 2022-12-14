@@ -10,7 +10,7 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace Pulumi.Automation.Serialization
 {
-    internal class LocalSerializer
+    public class LocalSerializer
     {
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly IDeserializer _yamlDeserializer;

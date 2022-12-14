@@ -18,48 +18,26 @@ package display
 import (
 	"bytes"
 	"fmt"
-	"math"
+	"io"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
-	"unicode/utf8"
 
-	"github.com/moby/term"
-	"golang.org/x/crypto/ssh/terminal"
-
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-// Progress describes a message we want to show in the display.  There are two types of messages,
-// simple 'Messages' which just get printed out as a single uninterpreted line, and 'Actions' which
-// are placed and updated in the progress-grid based on their ID.  Messages do not need an ID, while
-// Actions must have an ID.
-type Progress struct {
-	ID      string
-	Message string
-	Action  string
-}
-
-func makeMessageProgress(message string) Progress {
-	return Progress{Message: message}
-}
-
-func makeActionProgress(id string, action string) Progress {
-	contract.Assertf(id != "", "id must be non empty for action %s", action)
-	contract.Assertf(action != "", "action must be non empty")
-
-	return Progress{ID: id, Action: action}
-}
 
 // DiagInfo contains the bundle of diagnostic information for a single resource.
 type DiagInfo struct {
@@ -84,10 +62,21 @@ type DiagInfo struct {
 	StreamIDToDiagPayloads map[int32][]engine.DiagEventPayload
 }
 
+type progressRenderer interface {
+	io.Closer
+
+	tick(display *ProgressDisplay)
+	rowUpdated(display *ProgressDisplay, row Row)
+	systemMessage(display *ProgressDisplay, payload engine.StdoutEventPayload)
+	done(display *ProgressDisplay)
+	println(display *ProgressDisplay, line string)
+}
+
 // ProgressDisplay organizes all the information needed for a dynamically updated "progress" view of an update.
 type ProgressDisplay struct {
-	opts           Options
-	progressOutput chan<- Progress
+	opts Options
+
+	renderer progressRenderer
 
 	// action is the kind of action (preview, update, refresh, etc) being performed.
 	action apitype.UpdateKind
@@ -125,10 +114,6 @@ type ProgressDisplay struct {
 	// a status message to help indicate that things are still working.
 	currentTick int
 
-	// A spinner to use to show that we're still doing work even when no output has been
-	// printed to the console in a while.
-	nonInteractiveSpinner cmdutil.Spinner
-
 	headerRow    Row
 	resourceRows []ResourceRow
 
@@ -139,10 +124,6 @@ type ProgressDisplay struct {
 	// For example, we'll go back and update previous status messages to make sure things
 	// align.  We don't need to do that in non-terminal situations.
 	isTerminal bool
-
-	// The width and height of the terminal.  Used so we can trim resource messages that are too long.
-	terminalWidth  int
-	terminalHeight int
 
 	// If all progress messages are done and we can print out the final display.
 	done bool
@@ -156,13 +137,20 @@ type ProgressDisplay struct {
 	// Maps used so we can generate short IDs for resource urns.
 	urnToID map[resource.URN]string
 
-	// Cache of colorized to uncolorized text.  We go between the two a lot, so caching helps
-	// prevent lots of recomputation
-	colorizedToUncolorized map[string]string
+	// Structure that tracks the time taken to perform an action on a resource.
+	opStopwatch opStopwatch
+}
 
-	// Cache of lines we've already printed.  We don't print a progress message again if it hasn't
-	// changed between the last time we printed and now.
-	printedProgressCache map[string]Progress
+type opStopwatch struct {
+	start map[resource.URN]time.Time
+	end   map[resource.URN]time.Time
+}
+
+func newOpStopwatch() opStopwatch {
+	return opStopwatch{
+		start: map[resource.URN]time.Time{},
+		end:   map[resource.URN]time.Time{},
+	}
 }
 
 var (
@@ -229,49 +217,14 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 	}
 }
 
-// Converts the colorization tags in a progress message and then actually writes the progress
-// message to the output stream.  This should be the only place in this file where we actually
-// process colorization tags.
-func (display *ProgressDisplay) colorizeAndWriteProgress(progress Progress) {
-	if progress.Message != "" {
-		progress.Message = display.opts.Color.Colorize(progress.Message)
-	}
-
-	if progress.Action != "" {
-		progress.Action = display.opts.Color.Colorize(progress.Action)
-	}
-
-	if progress.ID != "" {
-		// don't repeat the same output if there is no difference between the last time we
-		// printed it and now.
-		lastProgress, has := display.printedProgressCache[progress.ID]
-		if has && lastProgress.Message == progress.Message && lastProgress.Action == progress.Action {
-			return
-		}
-
-		display.printedProgressCache[progress.ID] = progress
-	}
-
-	if !display.isTerminal {
-		// We're about to display something.  Reset our spinner so that it will go on the next line.
-		display.nonInteractiveSpinner.Reset()
-	}
-
-	display.progressOutput <- progress
-}
-
-func (display *ProgressDisplay) writeSimpleMessage(msg string) {
-	display.colorizeAndWriteProgress(makeMessageProgress(msg))
-}
-
-func (display *ProgressDisplay) writeBlankLine() {
-	display.writeSimpleMessage(" ")
-}
-
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
 
+	stdin := opts.Stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -281,185 +234,56 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 		stderr = os.Stderr
 	}
 
-	// Create a ticker that will update all our status messages once a second.  Any
-	// in-flight resources will get a varying .  ..  ... ticker appended to them to
-	// let the user know what is still being worked on.
-	var spinner cmdutil.Spinner
-	var ticker *time.Ticker
-	if stdout == os.Stdout && stderr == os.Stderr {
-		spinner, ticker = cmdutil.NewSpinnerAndTicker(
-			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-			nil, opts.Color, 1 /*timesPerSecond*/)
-	} else {
-		spinner = &nopSpinner{}
-		ticker = time.NewTicker(math.MaxInt64)
-	}
-
-	// The channel we push progress messages into, and which ShowProgressOutput pulls
-	// from to display to the console.
-	progressOutput := make(chan Progress)
-
-	display := &ProgressDisplay{
-		action:                 action,
-		isPreview:              isPreview,
-		opts:                   opts,
-		stack:                  stack,
-		proj:                   proj,
-		progressOutput:         progressOutput,
-		eventUrnToResourceRow:  make(map[resource.URN]ResourceRow),
-		suffixColumn:           int(statusColumn),
-		suffixesArray:          []string{"", ".", "..", "..."},
-		urnToID:                make(map[resource.URN]string),
-		colorizedToUncolorized: make(map[string]string),
-		printedProgressCache:   make(map[string]Progress),
-		displayOrderCounter:    1,
-		nonInteractiveSpinner:  spinner,
-	}
-
-	// Assume we are not displaying in a terminal by default.
-	display.isTerminal = false
-	if stdout == os.Stdout {
-		terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
-		if err == nil {
-			// If the terminal has a size, use it.
-			display.isTerminal = opts.IsInteractive
-			display.terminalWidth = terminalWidth
-			display.terminalHeight = terminalHeight
-
-			// Don't bother attempting to treat this display as a terminal if it has no width/height.
-			if display.isTerminal && (display.terminalWidth == 0 || display.terminalHeight == 0) {
-				display.isTerminal = false
-				_, err = fmt.Fprintln(stderr, "Treating display as non-terminal due to 0 width/height.")
-				contract.IgnoreError(err)
-			}
-
-			// Fetch the canonical stdout stream, configured appropriately.
-			_, stdout, _ = term.StdStreams()
+	isInteractive, term := opts.IsInteractive, opts.term
+	if isInteractive && term == nil {
+		raw := runtime.GOOS != "windows"
+		t, err := terminal.Open(stdin, stdout, raw)
+		if err != nil {
+			_, err = fmt.Fprintln(stderr, "Failed to open terminal; treating display as non-interactive (%w)", err)
+			contract.IgnoreError(err)
+			isInteractive = false
+		} else {
+			term = t
 		}
 	}
 
-	go func() {
-		display.processEvents(ticker, events)
+	var renderer progressRenderer
+	if isInteractive {
+		renderer = newInteractiveRenderer(term, opts)
+	} else {
+		renderer = newNonInteractiveRenderer(stdout, op, opts)
+	}
 
-		// no more progress events from this point on.  By closing the pipe, this will then cause
-		// DisplayJSONMessagesToStream to finish once it processes the last message is receives from
-		// pipeReader, causing DisplayEvents to finally complete.
-		close(progressOutput)
-	}()
+	display := &ProgressDisplay{
+		action:                action,
+		isPreview:             isPreview,
+		isTerminal:            isInteractive,
+		opts:                  opts,
+		renderer:              renderer,
+		stack:                 stack,
+		proj:                  proj,
+		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
+		suffixColumn:          int(statusColumn),
+		suffixesArray:         []string{"", ".", "..", "..."},
+		urnToID:               make(map[resource.URN]string),
+		displayOrderCounter:   1,
+		opStopwatch:           newOpStopwatch(),
+	}
 
-	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
-
+	ticker := time.NewTicker(1 * time.Second)
+	if opts.deterministicOutput {
+		ticker.Stop()
+	}
+	display.processEvents(ticker, events)
+	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
 
 	// let our caller know we're done.
 	close(done)
 }
 
-// Gets the padding necessary to prepend to a message in order to keep it aligned in the
-// terminal.
-func (display *ProgressDisplay) getMessagePadding(
-	uncolorizedColumns []string, columnIndex int, maxColumnLengths []int) string {
-
-	extraWhitespace := " "
-	if columnIndex >= 0 && display.isTerminal {
-		column := uncolorizedColumns[columnIndex]
-		maxLength := maxColumnLengths[columnIndex]
-		extraWhitespace = messagePadding(column, maxLength, 2)
-	}
-
-	return extraWhitespace
-}
-
-// Gets the fully padded message to be shown.  The message will always include the ID of the
-// status, then some amount of optional padding, then some amount of msgWithColors, then the
-// suffix.  Importantly, if there isn't enough room to display all of that on the terminal, then
-// the msg will be truncated to try to make it fit.
-func (display *ProgressDisplay) getPaddedMessage(
-	colorizedColumns, uncolorizedColumns []string, maxColumnLengths []int) string {
-
-	colorizedMessage := ""
-
-	for i := 0; i < len(colorizedColumns); i++ {
-		padding := display.getMessagePadding(uncolorizedColumns, i-1, maxColumnLengths)
-		colorizedMessage += padding + colorizedColumns[i]
-	}
-
-	if display.isTerminal {
-		// Ensure we don't go past the end of the terminal.  Note: this is made complex due to
-		// msgWithColors having the color code information embedded with it.  So we need to get
-		// the right substring of it, assuming that embedded colors are just markup and do not
-		// actually contribute to the length
-		maxMsgLength := display.terminalWidth - 1
-		if maxMsgLength < 0 {
-			maxMsgLength = 0
-		}
-
-		colorizedMessage = colors.TrimColorizedString(colorizedMessage, maxMsgLength)
-	}
-
-	return colorizedMessage
-}
-
-func (display *ProgressDisplay) uncolorizeString(v string) string {
-	uncolorized, has := display.colorizedToUncolorized[v]
-	if !has {
-		uncolorized = colors.Never.Colorize(v)
-		display.colorizedToUncolorized[v] = uncolorized
-	}
-
-	return uncolorized
-}
-
-func (display *ProgressDisplay) uncolorizeColumns(columns []string) []string {
-	uncolorizedColumns := make([]string, len(columns))
-
-	for i, v := range columns {
-		uncolorizedColumns[i] = display.uncolorizeString(v)
-	}
-
-	return uncolorizedColumns
-}
-
-func (display *ProgressDisplay) refreshSingleRow(id string, row Row, maxColumnLengths []int) {
-	colorizedColumns := row.ColorizedColumns()
-	colorizedColumns[display.suffixColumn] += row.ColorizedSuffix()
-	display.refreshColumns(id, colorizedColumns, maxColumnLengths)
-}
-
-func (display *ProgressDisplay) refreshColumns(
-	id string, colorizedColumns []string, maxColumnLengths []int) {
-
-	uncolorizedColumns := display.uncolorizeColumns(colorizedColumns)
-
-	msg := display.getPaddedMessage(colorizedColumns, uncolorizedColumns, maxColumnLengths)
-
-	// getPaddedmessage trims our message and potentially trims it to "" which will trigger
-	// asserts in later display functions if we try to show it
-	if msg != "" {
-		if display.isTerminal {
-			display.colorizeAndWriteProgress(makeActionProgress(id, msg))
-		} else {
-			display.writeSimpleMessage(msg)
-		}
-	}
-}
-
-// Ensure our stored dimension info is up to date.
-func (display *ProgressDisplay) updateTerminalDimensions() {
-	// don't do any refreshing if we're not in a terminal
-	if display.isTerminal {
-		currentTerminalWidth, currentTerminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
-		contract.IgnoreError(err)
-
-		if currentTerminalWidth != display.terminalWidth ||
-			currentTerminalHeight != display.terminalHeight {
-			display.terminalWidth = currentTerminalWidth
-			display.terminalHeight = currentTerminalHeight
-
-			// also clear our display cache as we want to reprint all lines.
-			display.printedProgressCache = make(map[string]Progress)
-		}
-	}
+func (display *ProgressDisplay) println(line string) {
+	display.renderer.println(display, line)
 }
 
 type treeNode struct {
@@ -532,7 +356,6 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 }
 
 func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bool, indentation string) {
-
 	childIndentation := indentation + "│  "
 	lastChildIndentation := indentation + "   "
 
@@ -566,10 +389,9 @@ func (display *ProgressDisplay) convertNodesToRows(
 		}
 
 		colorizedColumns := make([]string, len(node.colorizedColumns))
-		uncolorisedColumns := display.uncolorizeColumns(node.colorizedColumns)
 
 		for i, colorizedColumn := range node.colorizedColumns {
-			columnWidth := utf8.RuneCountInString(uncolorisedColumns[i])
+			columnWidth := colors.MeasureColorizedString(colorizedColumn)
 
 			if i == display.suffixColumn {
 				columnWidth += maxSuffixLength
@@ -631,66 +453,6 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 	return result
 }
 
-func (display *ProgressDisplay) refreshAllRowsIfInTerminal() {
-	if display.isTerminal && display.headerRow != nil {
-		// make sure our stored dimension info is up to date
-		display.updateTerminalDimensions()
-
-		rootNodes := display.generateTreeNodes()
-		rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
-		sortNodes(rootNodes)
-		display.addIndentations(rootNodes, true /*isRoot*/, "")
-
-		maxSuffixLength := 0
-		for _, v := range display.suffixesArray {
-			runeCount := utf8.RuneCountInString(v)
-			if runeCount > maxSuffixLength {
-				maxSuffixLength = runeCount
-			}
-		}
-
-		var rows [][]string
-		var maxColumnLengths []int
-		display.convertNodesToRows(rootNodes, maxSuffixLength, &rows, &maxColumnLengths)
-
-		removeInfoColumnIfUnneeded(rows)
-
-		for i, row := range rows {
-			display.refreshColumns(fmt.Sprintf("%v", i), row, maxColumnLengths)
-		}
-
-		systemID := len(rows)
-
-		printedHeader := false
-		for _, payload := range display.systemEventPayloads {
-			msg := payload.Color.Colorize(payload.Message)
-			lines := splitIntoDisplayableLines(msg)
-
-			if len(lines) == 0 {
-				continue
-			}
-
-			if !printedHeader {
-				printedHeader = true
-				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), " "))
-				systemID++
-
-				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID),
-					colors.Yellow+"System Messages"+colors.Reset))
-				systemID++
-			}
-
-			for _, line := range lines {
-				display.colorizeAndWriteProgress(makeActionProgress(
-					fmt.Sprintf("%v", systemID), fmt.Sprintf("  %s", line)))
-				systemID++
-			}
-		}
-	}
-}
-
 func removeInfoColumnIfUnneeded(rows [][]string) {
 	// If there have been no info messages, then don't print out the info column header.
 	for i := 1; i < len(rows); i++ {
@@ -709,11 +471,12 @@ func removeInfoColumnIfUnneeded(rows [][]string) {
 // print out all final diagnostics. and finally will print out the summary.
 func (display *ProgressDisplay) processEndSteps() {
 	// Figure out the rows that are currently in progress.
-	inProgressRows := []ResourceRow{}
-
-	for _, v := range display.eventUrnToResourceRow {
-		if !v.IsDone() {
-			inProgressRows = append(inProgressRows, v)
+	var inProgressRows []ResourceRow
+	if !display.isTerminal {
+		for _, v := range display.eventUrnToResourceRow {
+			if !v.IsDone() {
+				inProgressRows = append(inProgressRows, v)
+			}
 		}
 	}
 
@@ -725,7 +488,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	// since the display was marked 'done'.
 	if !display.isTerminal {
 		for _, v := range inProgressRows {
-			display.refreshSingleRow("", v, nil)
+			display.renderer.rowUpdated(display, v)
 		}
 	}
 
@@ -733,10 +496,10 @@ func (display *ProgressDisplay) processEndSteps() {
 	// messages from a status message (since we're going to print them all) below.  Note, this will
 	// only do something in a terminal.  This is what we want, because if we're not in a terminal we
 	// don't really want to reprint any finished items we've already printed.
-	display.refreshAllRowsIfInTerminal()
+	display.renderer.done(display)
 
 	// Render several "sections" of output based on available data as applicable.
-	display.writeBlankLine()
+	display.println("")
 	wroteDiagnosticHeader := display.printDiagnostics()
 	wrotePolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
@@ -787,28 +550,26 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				// If we haven't printed the Diagnostics header, do so now.
 				if !wroteDiagnosticHeader {
 					wroteDiagnosticHeader = true
-					display.writeSimpleMessage(
-						display.opts.Color.Colorize(colors.SpecHeadline + "Diagnostics:" + colors.Reset))
+					display.println(colors.SpecHeadline + "Diagnostics:" + colors.Reset)
 				}
 				// If we haven't printed the header for the resource, do so now.
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.writeSimpleMessage("  " +
-						display.opts.Color.Colorize(
-							colors.BrightBlue+columns[typeColumn]+" ("+columns[nameColumn]+"):"+colors.Reset))
+					display.println(
+						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
 				}
 
 				for _, line := range lines {
 					line = strings.TrimRightFunc(line, unicode.IsSpace)
-					display.writeSimpleMessage("    " + line)
+					display.println("    " + line)
 				}
 
 				wrote = true
 			}
 
 			if wrote {
-				display.writeBlankLine()
+				display.println("")
 			}
 		}
 
@@ -862,7 +623,7 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 	})
 
 	// Print every policy violation, printing a new header when necessary.
-	display.writeSimpleMessage(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
+	display.println(display.opts.Color.Colorize(colors.SpecHeadline + "Policy Violations:" + colors.Reset))
 
 	for _, policyEvent := range policyEvents {
 		// Print the individual policy event.
@@ -878,12 +639,12 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			policyEvent.PolicyName,
 			policyEvent.ResourceURN.Type(),
 			policyEvent.ResourceURN.Name())
-		display.writeSimpleMessage(policyNameLine)
+		display.println(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.
 		message := strings.ReplaceAll(policyEvent.Message, "\n", "\n    ")
 		messageLine := fmt.Sprintf("    %s", message)
-		display.writeSimpleMessage(messageLine)
+		display.println(messageLine)
 	}
 	return true
 }
@@ -905,8 +666,8 @@ func (display *ProgressDisplay) printOutputs() {
 		stackStep, 1, display.isPreview, display.opts.Debug,
 		false /* refresh */, display.opts.ShowSameResources)
 	if props != "" {
-		display.writeSimpleMessage(colors.SpecHeadline + "Outputs:" + colors.Reset)
-		display.writeSimpleMessage(props)
+		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
+		display.println(props)
 	}
 }
 
@@ -918,7 +679,7 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 	}
 
 	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
-	display.writeSimpleMessage(msg)
+	display.println(msg)
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
@@ -965,12 +726,7 @@ func (display *ProgressDisplay) processTick() {
 	// often timeout a process if output is not seen in a while.
 	display.currentTick++
 
-	if display.isTerminal {
-		display.refreshAllRowsIfInTerminal()
-	} else {
-		// Update the spinner to let the user know that that work is still happening.
-		display.nonInteractiveSpinner.Tick()
-	}
+	display.renderer.tick(display)
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
@@ -1031,7 +787,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 				Message:   preludeEventString,
 			}))
 		} else {
-			display.writeSimpleMessage(preludeEventString)
+			display.println(preludeEventString)
 		}
 		return
 	case engine.SummaryEvent:
@@ -1101,10 +857,22 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 
 	if event.Type == engine.ResourcePreEvent {
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
+
+		// Register the resource update start time to calculate duration
+		// and time elapsed.
+		display.opStopwatch.start[step.URN] = time.Now()
+
+		// Clear out potential event end timings for prior operations on the same resource.
+		delete(display.opStopwatch.end, step.URN)
+
 		row.SetStep(step)
 	} else if event.Type == engine.ResourceOutputsEvent {
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
+
+		// Register the resource update end time to calculate duration
+		// to display.
+		display.opStopwatch.end[step.URN] = time.Now()
 
 		// Is this the stack outputs event? If so, we'll need to print it out at the end of the plan.
 		if step.URN == display.stackUrn {
@@ -1133,13 +901,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
-	if display.isTerminal {
-		// if we're in a terminal, then refresh everything so that all our columns line up
-		display.refreshAllRowsIfInTerminal()
-	} else {
-		// otherwise, just print out this single row.
-		display.refreshSingleRow("", row, nil)
-	}
+	display.renderer.rowUpdated(display, row)
 }
 
 func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayload) {
@@ -1148,14 +910,7 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
 
-	if display.isTerminal {
-		// if we're in a terminal, then refresh everything.  The system events will come after
-		// all the normal rows
-		display.refreshAllRowsIfInTerminal()
-	} else {
-		// otherwise, in a non-terminal, just print out the actual event.
-		display.writeSimpleMessage(renderStdoutColorEvent(payload, display.opts))
-	}
+	display.renderer.systemMessage(display, payload)
 }
 
 func (display *ProgressDisplay) ensureHeaderAndStackRows() {
@@ -1231,74 +986,99 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 	if display.isPreview {
 		// During a preview, when we transition to done, we'll print out summary text describing the step instead of a
 		// past-tense verb describing the step that was performed.
-		return op.Color() + display.getPreviewDoneText(step) + colors.Reset
+		return deploy.Color(op) + display.getPreviewDoneText(step) + colors.Reset
 	}
 
 	getDescription := func() string {
+		opText := ""
 		if failed {
 			switch op {
 			case deploy.OpSame:
-				return "failed"
+				opText = "failed"
 			case deploy.OpCreate, deploy.OpCreateReplacement:
-				return "creating failed"
+				opText = "creating failed"
 			case deploy.OpUpdate:
-				return "updating failed"
+				opText = "updating failed"
 			case deploy.OpDelete, deploy.OpDeleteReplaced:
-				return "deleting failed"
+				opText = "deleting failed"
 			case deploy.OpReplace:
-				return "replacing failed"
+				opText = "replacing failed"
 			case deploy.OpRead, deploy.OpReadReplacement:
-				return "reading failed"
+				opText = "reading failed"
 			case deploy.OpRefresh:
-				return "refreshing failed"
+				opText = "refreshing failed"
 			case deploy.OpReadDiscard, deploy.OpDiscardReplaced:
-				return "discarding failed"
+				opText = "discarding failed"
 			case deploy.OpImport, deploy.OpImportReplacement:
-				return "importing failed"
+				opText = "importing failed"
+			default:
+				contract.Failf("Unrecognized resource step op: %v", op)
+				return ""
 			}
 		} else {
 			switch op {
 			case deploy.OpSame:
-				return ""
+				opText = ""
 			case deploy.OpCreate:
-				return "created"
+				opText = "created"
 			case deploy.OpUpdate:
-				return "updated"
+				opText = "updated"
 			case deploy.OpDelete:
-				return "deleted"
+				opText = "deleted"
 			case deploy.OpReplace:
-				return "replaced"
+				opText = "replaced"
 			case deploy.OpCreateReplacement:
-				return "created replacement"
+				opText = "created replacement"
 			case deploy.OpDeleteReplaced:
-				return "deleted original"
+				opText = "deleted original"
 			case deploy.OpRead:
 				// nolint: goconst
-				return "read"
+				opText = "read"
 			case deploy.OpReadReplacement:
-				return "read for replacement"
+				opText = "read for replacement"
 			case deploy.OpRefresh:
-				return "refresh"
+				opText = "refresh"
 			case deploy.OpReadDiscard:
-				return "discarded"
+				opText = "discarded"
 			case deploy.OpDiscardReplaced:
-				return "discarded original"
+				opText = "discarded original"
 			case deploy.OpImport:
-				return "imported"
+				opText = "imported"
 			case deploy.OpImportReplacement:
-				return "imported replacement"
+				opText = "imported replacement"
+			default:
+				contract.Failf("Unrecognized resource step op: %v", op)
+				return ""
 			}
 		}
+		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
+			return opText
+		}
 
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+		start, ok := display.opStopwatch.start[step.URN]
+		if !ok {
+			return opText
+		}
+
+		end, ok := display.opStopwatch.end[step.URN]
+		if !ok {
+			return opText
+		}
+
+		opDuration := end.Sub(start).Seconds()
+		if opDuration < 1 {
+			// Display a more fine-grain duration as the operation
+			// has completed.
+			return fmt.Sprintf("%s (%.2fs)", opText, opDuration)
+		}
+		return fmt.Sprintf("%s (%ds)", opText, int(opDuration))
 	}
 
 	if failed {
 		return makeError(getDescription())
 	}
 
-	return op.Color() + getDescription() + colors.Reset
+	return deploy.Color(op) + getDescription() + colors.Reset
 }
 
 func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) string {
@@ -1368,7 +1148,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 	return ""
 }
 
-func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.StepOp {
+func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display.StepOp {
 	op := step.Op
 
 	// We will commonly hear about replacements as an actual series of steps.  i.e. 'create
@@ -1394,7 +1174,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) deploy.
 }
 
 func (display *ProgressDisplay) getStepOpLabel(step engine.StepEventMetadata, done bool) string {
-	return display.getStepOp(step).Prefix(done) + colors.Reset
+	return deploy.Prefix(display.getStepOp(step), done) + colors.Reset
 }
 
 func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEventMetadata) string {
@@ -1411,39 +1191,54 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
+		opText := ""
 		switch op {
 		case deploy.OpSame:
-			return ""
+			opText = ""
 		case deploy.OpCreate:
-			return "creating"
+			opText = "creating"
 		case deploy.OpUpdate:
-			return "updating"
+			opText = "updating"
 		case deploy.OpDelete:
-			return "deleting"
+			opText = "deleting"
 		case deploy.OpReplace:
-			return "replacing"
+			opText = "replacing"
 		case deploy.OpCreateReplacement:
-			return "creating replacement"
+			opText = "creating replacement"
 		case deploy.OpDeleteReplaced:
-			return "deleting original"
+			opText = "deleting original"
 		case deploy.OpRead:
-			return "reading"
+			opText = "reading"
 		case deploy.OpReadReplacement:
-			return "reading for replacement"
+			opText = "reading for replacement"
 		case deploy.OpRefresh:
-			return "refreshing"
+			opText = "refreshing"
 		case deploy.OpReadDiscard:
-			return "discarding"
+			opText = "discarding"
 		case deploy.OpDiscardReplaced:
-			return "discarding original"
+			opText = "discarding original"
 		case deploy.OpImport:
-			return "importing"
+			opText = "importing"
 		case deploy.OpImportReplacement:
-			return "importing replacement"
+			opText = "importing replacement"
+		default:
+			contract.Failf("Unrecognized resource step op: %v", op)
+			return ""
 		}
 
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+		if op == deploy.OpSame || display.opts.deterministicOutput || display.opts.SuppressTimings {
+			return opText
+		}
+
+		// Calculate operation time elapsed.
+		start, ok := display.opStopwatch.start[step.URN]
+		if !ok {
+			return opText
+		}
+
+		secondsElapsed := time.Now().Sub(start).Seconds()
+		return fmt.Sprintf("%s (%ds)", opText, int(secondsElapsed))
+
 	}
-	return op.ColorProgress() + getDescription() + colors.Reset
+	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }

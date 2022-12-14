@@ -1,5 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
-// +build nodejs all
+//go:build (nodejs || all) && !smoke
 
 package ints
 
@@ -16,7 +16,7 @@ func TestQuery(t *testing.T) {
 		Dir:          "step1",
 		StackName:    "query-stack-781a480a-fcac-4e5a-ab08-a73bc8cbcdd2",
 		Dependencies: []string{"@pulumi/pulumi"},
-		CloudURL:     "file://~", // Required; we hard-code the stack name
+		CloudURL:     integration.MakeTempBackend(t), // Required; we hard-code the stack name
 		EditDirs: []integration.EditDir{
 			// Try to create resources during `pulumi query`. This should fail.
 			{

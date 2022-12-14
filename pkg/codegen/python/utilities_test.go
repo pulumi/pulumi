@@ -1,16 +1,20 @@
 package python
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
+
+var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()
@@ -98,6 +102,23 @@ func TestMakePyPiVersion(t *testing.T) {
 			if tt.expected != actual {
 				t.Errorf("expected %q != actual %q", tt.expected, actual)
 			}
+		})
+	}
+}
+
+func TestPythonCase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct{ input, expected string }{
+		{"FOOBarInput", "FOOBarInput"},
+		{"foo-bar", "FooBar"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, pythonCase(tt.input))
 		})
 	}
 }

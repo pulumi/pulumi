@@ -1,6 +1,8 @@
 {
   "emittedFiles": [
     "_index.md",
+    "config/_index.md",
+    "funcwithalloptionalinputs/_index.md",
     "provider/_index.md"
   ]
 }

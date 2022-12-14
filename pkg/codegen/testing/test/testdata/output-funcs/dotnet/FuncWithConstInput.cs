@@ -15,11 +15,11 @@ namespace Pulumi.Mypkg
         /// Codegen demo with const inputs
         /// </summary>
         public static Task InvokeAsync(FuncWithConstInputArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("mypkg::funcWithConstInput", args ?? new FuncWithConstInputArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync("mypkg::funcWithConstInput", args ?? new FuncWithConstInputArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithConstInputArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithConstInputArgs : global::Pulumi.InvokeArgs
     {
         [Input("plainInput")]
         public string? PlainInput { get; set; }
@@ -27,5 +27,6 @@ namespace Pulumi.Mypkg
         public FuncWithConstInputArgs()
         {
         }
+        public static new FuncWithConstInputArgs Empty => new FuncWithConstInputArgs();
     }
 }

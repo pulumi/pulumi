@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -30,8 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 func newStateCmd() *cobra.Command {
@@ -75,8 +77,6 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
@@ -97,14 +97,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		optionMap[message] = ambiguousResource
 	}
 
-	cmdutil.EndKeypadTransmitMode()
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
-		PageSize: len(options),
-	}, &option, nil); err != nil {
+		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return nil, errors.New("no resource selected")
 	}
 
@@ -112,8 +110,10 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(stackName string, showPrompt bool, urn resource.URN, operation edit.OperationFunc) result.Result {
-	return runTotalStateEdit(stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+func runStateEdit(
+	ctx context.Context, stackName string, showPrompt bool,
+	urn resource.URN, operation edit.OperationFunc) result.Result {
+	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
 			return err
@@ -126,31 +126,35 @@ func runStateEdit(stackName string, showPrompt bool, urn resource.URN, operation
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	stackName string, showPrompt bool,
+	ctx context.Context, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
+	s, err := requireStack(ctx, stackName, true, opts, false /*setCurrent*/)
 	if err != nil {
 		return result.FromError(err)
 	}
-	snap, err := s.Snapshot(commandContext())
+	return totalStateEdit(ctx, s, showPrompt, opts, operation)
+}
+
+func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
+	snap, err := s.Snapshot(ctx)
 	if err != nil {
 		return result.FromError(err)
+	} else if snap == nil {
+		return nil
 	}
 
 	if showPrompt && cmdutil.Interactive() {
 		confirm := false
 		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
 		prompt += "This command will edit your stack's state directly. Confirm?"
-		cmdutil.EndKeypadTransmitMode()
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
-		}, &confirm, nil); err != nil || !confirm {
+		}, &confirm, surveyIcons(opts.Color)); err != nil || !confirm {
 			fmt.Println("confirmation declined")
 			return result.Bail()
 		}
@@ -183,5 +187,5 @@ func runTotalStateEdit(
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return result.WrapIfNonNil(s.ImportDeployment(commandContext(), &dep))
+	return result.WrapIfNonNil(s.ImportDeployment(ctx, &dep))
 }

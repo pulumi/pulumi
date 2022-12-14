@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -53,7 +54,8 @@ func newStackLsCmd() *cobra.Command {
 			"the tag name as well as the tag value, separated by an equals sign. For example\n" +
 			"'environment=production' or just 'gcp:project'.",
 		Args: cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(_ *cobra.Command, _ []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, _ []string) error {
+			ctx := commandContext()
 			cmdArgs := stackLSArgs{
 				jsonOut:    jsonOut,
 				allStacks:  allStacks,
@@ -61,7 +63,7 @@ func newStackLsCmd() *cobra.Command {
 				projFilter: projFilter,
 				tagFilter:  tagFilter,
 			}
-			return runStackLS(cmdArgs)
+			return runStackLS(ctx, cmdArgs)
 		}),
 	}
 	cmd.PersistentFlags().BoolVarP(
@@ -88,7 +90,7 @@ type stackLSArgs struct {
 	tagFilter  string
 }
 
-func runStackLS(args stackLSArgs) error {
+func runStackLS(ctx context.Context, args stackLSArgs) error {
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
 	strPtrIfSet := func(s string) *string {
@@ -126,14 +128,14 @@ func runStackLS(args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}
 
 	// Get the current stack so we can print a '*' next to it.
 	var current string
-	if s, _ := state.CurrentStack(commandContext(), b); s != nil {
+	if s, _ := state.CurrentStack(ctx, b); s != nil {
 		// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
 		current = s.Ref().String()
 	}
@@ -150,7 +152,7 @@ func runStackLS(args stackLSArgs) error {
 		inContToken       backend.ContinuationToken
 	)
 	for {
-		summaries, outContToken, err := b.ListStacks(commandContext(), filter, inContToken)
+		summaries, outContToken, err := b.ListStacks(ctx, filter, inContToken)
 		if err != nil {
 			return err
 		}

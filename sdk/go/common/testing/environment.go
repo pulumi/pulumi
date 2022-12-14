@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
@@ -106,9 +107,15 @@ func (e *Environment) SetBackend(backend string) {
 	e.Backend = backend
 }
 
-// SetBackend sets the backend to use for commands in this environment.
-func (e *Environment) SetEnvVars(env []string) {
-	e.Env = env
+// SetEnvVars appends to the list of environment variables.
+// According to https://pkg.go.dev/os/exec#Cmd.Env:
+//
+//	If Env contains duplicate environment keys, only the last
+//	value in the slice for each duplicate key is used.
+//
+// So later values take precedence.
+func (e *Environment) SetEnvVars(env ...string) {
+	e.Env = append(e.Env, env...)
 }
 
 // ImportDirectory copies a folder into the test environment.
@@ -148,15 +155,22 @@ func (e *Environment) PathExists(p string) bool {
 	return err == nil
 }
 
+var YarnInstallMutex sync.Mutex
+
 // RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
+	// We don't want to time out on yarn installs.
+	if cmd == "yarn" {
+		YarnInstallMutex.Lock()
+		defer YarnInstallMutex.Unlock()
+	}
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
-		e.Errorf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
 		e.Logf("Run Error: %v", err)
 		e.Logf("STDOUT: %v", stdout)
 		e.Logf("STDERR: %v", stderr)
+		e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
 	}
 	return stdout, stderr
 }
@@ -231,7 +245,7 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
 	}
 
-	if err := ioutil.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
+	if err := os.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
 		e.T.Fatalf("writing test file (%v): %v", filename, err)
 	}
 }

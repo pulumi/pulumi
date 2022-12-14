@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint: lll
+// nolint: lll
 package pulumi
 
 import (
@@ -1714,4 +1714,25 @@ func TestConstructResult(t *testing.T) {
 		"foo":       resource.NewStringProperty("hi"),
 		"someValue": resource.NewStringProperty("something"),
 	}, resolvedProps)
+}
+
+type MyComponentWithResource struct {
+	ResourceState
+
+	// This is not realistic, but it replicates what you get when you send a `nil` pointer
+	// over RPC for a resource.
+	Component Resource `pulumi:"component"`
+}
+
+func TestSerdeNilNestedResource(t *testing.T) {
+	t.Parallel()
+
+	component := &MyComponentWithResource{
+		Component: (*MyComponent)(nil),
+	}
+	_, state, err := newConstructResult(component)
+	assert.NoError(t, err)
+
+	_, _, _, err = marshalInputs(state)
+	assert.NoError(t, err)
 }

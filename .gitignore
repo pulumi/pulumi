@@ -12,10 +12,11 @@ coverage.cov
 **/obj/
 coverage/
 venv/
+.envrc
 
 **/.idea/
 *.iml
-
+.yarn
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 
@@ -74,3 +75,7 @@ __pycache__
 
 # File targets for make
 *.phony
+
+# Temporary files
+*.tmp
+test-results/

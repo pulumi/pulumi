@@ -1,6 +1,18 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
-//go:build python || all
-// +build python all
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build (python || all) && !smoke
 
 package ints
 
@@ -8,7 +20,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,17 +33,25 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
-// TestEmptyPython simply tests that we can run an empty Python project.
-func TestEmptyPython(t *testing.T) {
+// This checks that error logs are not being emitted twice
+func TestMissingMainDoesNotEmitStackTrace(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("empty", "python"),
+		Dir: filepath.Join("python", "missing-main"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure `  error: ` is only being shown once by the program
+			assert.NotContains(t, stdout.String()+stderr.String(), "Traceback")
+		},
 	})
 }
 
@@ -241,41 +260,7 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 	})
 }
 
-func TestStackReferencePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	opts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 func TestMultiStackReferencePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
 		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
 	}
@@ -283,6 +268,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -297,6 +284,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 	integration.ProgramTest(t, exporterOpts)
 
 	importerOpts := &integration.ProgramTestOptions{
+		RequireService: true,
+
 		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -382,27 +371,6 @@ func TestPython3NotInstalled(t *testing.T) {
 	})
 }
 
-// Tests dynamic provider in Python.
-func TestDynamicPython(t *testing.T) {
-	var randomVal string
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			randomVal = stack.Outputs["random_val"].(string)
-		},
-		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
-			Additive: true,
-			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
-			},
-		}},
-	})
-}
-
 // Tests custom resource type name of dynamic provider in Python.
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -420,9 +388,6 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 }
 
 func TestPartialValuesPython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
@@ -528,100 +493,62 @@ func TestPythonResourceArgs(t *testing.T) {
 	})
 }
 
-// Test remote component construction in Python.
-func TestConstructPython(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		componentDir          string
-		expectedResourceCount int
-		env                   []string
-	}{
-		{
-			componentDir:          "testcomponent",
-			expectedResourceCount: 9,
-			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
-			// the Node.js dynamic provider plugin to load.
-			// When the underlying issue has been fixed, the use of this environment variable inside the integration
-			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
-		},
-		{
-			componentDir:          "testcomponent-python",
-			expectedResourceCount: 9,
-		},
-		{
-			componentDir:          "testcomponent-go",
-			expectedResourceCount: 8, // One less because no dynamic provider.
-		},
+// Test to ensure that internal stacks are hidden
+func TestPythonStackTruncate(t *testing.T) {
+	cases := []string{
+		"normal",
+		"main_specified",
+		"main_dir_specified",
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
-			integration.ProgramTest(t,
-				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
-		})
-	}
-}
+	for _, name := range cases {
+		// Test the program.
+		t.Run(name, func(t *testing.T) {
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir: filepath.Join("python", "stack_truncate", name),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick: true,
+				// This test should fail because it raises an exception
+				ExpectFailure: true,
+				// We need to validate that the failure has a truncated stack trace
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					// Ensure that we have a non-empty list of events.
+					assert.NotEmpty(t, stackInfo.Events)
 
-func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
-	return &integration.ProgramTestOptions{
-		Env: env,
-		Dir: filepath.Join("construct_component", "python"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Secrets: map[string]string{
-			"secret": "this super secret is encrypted",
-		},
-		Quick: true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
+					const stacktraceLinePrefix = "  File "
 
-				// Check that dependencies flow correctly between the originating program and the remote component
-				// plugin.
-				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
-
-					urns[string(res.URN.Name())] = res.URN
-					switch res.URN.Name() {
-					case "child-a":
-						for _, deps := range res.PropertyDependencies {
-							assert.Empty(t, deps)
+					// get last DiagnosticEvent containing python stack trace
+					stackTraceMessage := ""
+					for _, e := range stackInfo.Events {
+						if e.DiagnosticEvent == nil {
+							continue
 						}
-					case "child-b":
-						expected := []resource.URN{urns["a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "child-c":
-						expected := []resource.URN{urns["a"], urns["child-a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
-						assert.Truef(t, ok, "secret output was not serialized as a secret")
-						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
+						msg := e.DiagnosticEvent.Message
+						if !strings.Contains(msg, "Traceback") {
+							continue
+						}
+						if !strings.Contains(msg, stacktraceLinePrefix) {
+							continue
+						}
+						stackTraceMessage = msg
 					}
-				}
-			}
-		},
+					assert.NotEqual(t, "", stackTraceMessage)
+
+					// make sure that the stack trace contains 2 frames as per the
+					// program we're running
+					numStackTraces := strings.Count(stackTraceMessage, stacktraceLinePrefix)
+					assert.Equal(t, 2, numStackTraces)
+				},
+			})
+		})
 	}
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowPython(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
+	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -631,13 +558,17 @@ func TestConstructSlowPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts := &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "python"),
+		Env: []string{testYarnLinkPulumiEnv},
+		Dir: filepath.Join(testDir, "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -654,6 +585,10 @@ func TestConstructSlowPython(t *testing.T) {
 // Test remote component construction with prompt inputs.
 func TestConstructPlainPython(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -683,16 +618,18 @@ func TestConstructPlainPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t,
-				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainPython(t, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
+func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
 	env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
@@ -700,7 +637,8 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		LocalProviders: localProviders,
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -716,6 +654,10 @@ func TestConstructUnknownPython(t *testing.T) {
 // Test methods on remote components.
 func TestConstructMethodsPython(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -732,14 +674,16 @@ func TestConstructMethodsPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
-				Dir: filepath.Join("construct_component_methods", "python"),
+				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
-				Quick: true,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -762,7 +706,10 @@ func TestConstructMethodsErrorsPython(t *testing.T) {
 
 func TestConstructProviderPython(t *testing.T) {
 	t.Parallel()
+
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -779,14 +726,16 @@ func TestConstructProviderPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
 				Dir: filepath.Join(testDir, "python"),
 				Dependencies: []string{
 					filepath.Join("..", "..", "sdk", "python", "env", "src"),
 				},
-				Quick: true,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -796,91 +745,12 @@ func TestConstructProviderPython(t *testing.T) {
 }
 
 func TestGetResourcePython(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		AllowEmptyPreviewChanges: true,
-	})
-}
-
-// Regresses https://github.com/pulumi/pulumi/issues/6471
-func TestAutomaticVenvCreation(t *testing.T) {
-	t.Parallel()
-
-	// Do not use integration.ProgramTest to avoid automatic venv
-	// handling by test harness; we actually are testing venv
-	// handling by the pulumi CLI itself.
-
-	check := func(t *testing.T, venvPathTemplate string, dir string) {
-		t.Parallel()
-
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
-			}
-		}()
-
-		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
-		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
-
-		e.ImportDirectory(dir)
-
-		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
-		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
-
-		oldYaml, err := ioutil.ReadFile(pulumiYaml)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
-			"virtualenv: venv",
-			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
-
-		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
-			t.Error(err)
-			return
-		}
-
-		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
-
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-		e.RunCommand("pulumi", "stack", "init", "teststack")
-		e.RunCommand("pulumi", "preview")
-
-		var absVenvPath string
-		if filepath.IsAbs(venvPath) {
-			absVenvPath = venvPath
-		} else {
-			absVenvPath = filepath.Join(e.RootPath, venvPath)
-		}
-
-		if !python.IsVirtualEnv(absVenvPath) {
-			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
-				absVenvPath)
-		}
-	}
-
-	t.Run("RelativePath", func(t *testing.T) {
-		check(t, "venv", filepath.Join("python", "venv"))
-	})
-
-	t.Run("AbsolutePath", func(t *testing.T) {
-		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
-	})
-
-	t.Run("RelativePathWithMain", func(t *testing.T) {
-		check(t, "venv", filepath.Join("python", "venv-with-main"))
-	})
-
-	t.Run("AbsolutePathWithMain", func(t *testing.T) {
-		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 }
 

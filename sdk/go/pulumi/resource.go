@@ -311,6 +311,9 @@ type resourceOptions struct {
 	PluginDownloadURL string
 	// If set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete bool
+	// If set, the providers Delete method will not be called for this resource
+	// if specified resource is being deleted as well.
+	DeletedWith URN
 }
 
 type invokeOptions struct {
@@ -425,11 +428,11 @@ func DependsOn(o []Resource) ResourceOption {
 // Declares explicit dependencies on other resources. Similar to
 // `DependsOn`, but also admits resource inputs and outputs:
 //
-//     var r Resource
-//     var ri ResourceInput
-//     var ro ResourceOutput
-//     allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
-//     DependsOnInputs(allDeps)
+//	var r Resource
+//	var ri ResourceInput
+//	var ro ResourceOutput
+//	allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
+//	DependsOnInputs(allDeps)
 func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
@@ -549,7 +552,7 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-//nolint: revive
+// nolint: revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o
@@ -588,5 +591,13 @@ func PluginDownloadURL(o string) ResourceOrInvokeOption {
 func RetainOnDelete(b bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.RetainOnDelete = b
+	})
+}
+
+// If set, the providers Delete method will not be called for this resource
+// if specified resource is being deleted as well.
+func DeletedWith(dw URN) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DeletedWith = dw
 	})
 }

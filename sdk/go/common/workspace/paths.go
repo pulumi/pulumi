@@ -85,6 +85,7 @@ func DetectProjectPath() (string, error) {
 	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return "", err
+
 	}
 
 	return path, nil
@@ -92,42 +93,39 @@ func DetectProjectPath() (string, error) {
 
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
 // specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
-func DetectProjectStackPath(stackName tokens.QName) (string, error) {
+func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 	proj, projPath, err := DetectProjectAndPath()
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
 
-	// Back compat: StackConfigDir used to be called Config.
-	configValue, hasConfigValue := proj.Config.(string)
-	hasConfigValue = hasConfigValue && configValue != ""
-
 	if proj.StackConfigDir != "" {
-		// If config and stackConfigDir are both set return an error
-		if hasConfigValue {
-			return "", fmt.Errorf("can not set `config` and `stackConfigDir`, remove the `config` entry")
-		}
-
-		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
 	}
 
-	// Back compat: If StackConfigDir is not present and Config is given and it's a non-empty string use it
-	// for the stacks directory.
-	if hasConfigValue {
-		return filepath.Join(filepath.Dir(projPath), configValue, fileName), nil
-	}
-
-	return filepath.Join(filepath.Dir(projPath), fileName), nil
+	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
 }
+
+var ErrProjectNotFound = errors.New("no project file found")
 
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, an empty path is returned.
-func DetectProjectPathFrom(path string) (string, error) {
-	return fsutil.WalkUp(path, isProject, func(s string) bool {
+func DetectProjectPathFrom(dir string) (string, error) {
+	path, err := fsutil.WalkUp(dir, isProject, func(s string) bool {
 		return true
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to locate Pulumi.yaml project file: %w", err)
+	}
+	if path == "" {
+		// Embed/wrap ErrProjectNotFound
+		return "", fmt.Errorf(
+			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+				"created a project yet, use `pulumi new` to do so: %w", dir, ErrProjectNotFound)
+	}
+	return path, nil
 }
 
 // DetectPolicyPackPathFrom locates the closest Pulumi policy project from the given path,
@@ -146,12 +144,12 @@ func DetectProject() (*Project, error) {
 }
 
 func DetectProjectStack(stackName tokens.QName) (*ProjectStack, error) {
-	path, err := DetectProjectStackPath(stackName)
+	project, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return nil, err
 	}
 
-	return LoadProjectStack(path)
+	return LoadProjectStack(project, path)
 }
 
 // DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
@@ -180,7 +178,7 @@ func SaveProject(proj *Project) error {
 }
 
 func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
-	path, err := DetectProjectStackPath(stackName)
+	_, path, err := DetectProjectStackPath(stackName)
 	if err != nil {
 		return err
 	}

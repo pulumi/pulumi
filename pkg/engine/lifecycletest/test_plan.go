@@ -4,6 +4,7 @@ package lifecycletest
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
@@ -14,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -41,13 +43,13 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 
 func ImportOp(imports []deploy.Import) TestOp {
 	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
-		dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
+		dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
 		return Import(info, ctx, opts, imports, dryRun)
 	})
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, ResourceChanges, result.Result)
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (*deploy.Plan, display.ResourceChanges, result.Result)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
@@ -104,15 +106,20 @@ func (op TestOp) runWithContext(
 	}
 
 	// Begin draining events.
+	var wg sync.WaitGroup
 	var firedEvents []Event
+	wg.Add(1)
 	go func() {
 		for e := range events {
 			firedEvents = append(firedEvents, e)
 		}
+		wg.Done()
 	}()
 
 	// Run the step and its validator.
 	plan, _, res := op(info, ctx, opts, dryRun)
+	close(events)
+	wg.Wait()
 	contract.IgnoreClose(journal)
 
 	if validate != nil {
@@ -162,7 +169,7 @@ type TestPlan struct {
 	Steps          []TestStep
 }
 
-//nolint: goconst
+// nolint: goconst
 func (p *TestPlan) getNames() (stack tokens.Name, project tokens.PackageName, runtime string) {
 	project = tokens.PackageName(p.Project)
 	if project == "" {

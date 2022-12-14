@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@
 import * as grpc from "@grpc/grpc-js";
 import { isGrpcError, ResourceError, RunError } from "../errors";
 import * as log from "../log";
-import * as runtime from "../runtime";
+import * as settings from "../runtime/settings";
+import * as stack from "../runtime/stack";
+import * as runtimeConfig from "../runtime/config";
+import * as debuggable from "../runtime/debuggable";
 
 const langproto = require("../proto/language_pb.js");
 const plugproto = require("../proto/plugin_pb.js");
@@ -40,19 +43,17 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
         // set a bit in runtime settings to indicate that we're running in inline mode.
         // this allows us to detect and fail fast for side by side pulumi scenarios.
-        runtime.setInline();
+        settings.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
         // check for leaks once the CLI exits but skip if the program otherwise errored to keep error output clean
         if (!hasError) {
-            const [leaks, leakMessage] = runtime.leakedPromises();
+            const [leaks, leakMessage] = debuggable.leakedPromises();
             if (leaks.size !== 0) {
                 throw new Error(leakMessage);
             }
         }
-        // these are globals and we need to clean up after ourselves
-        runtime.resetOptions("", "", -1, "", "", false);
     }
 
     getRequiredPlugins(call: any, callback: any): void {
@@ -73,14 +74,16 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             const args = req.getArgsList();
             const engineAddr = args && args.length > 0 ? args[0] : "";
 
-            runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                req.getMonitorAddress(), req.getDryrun());
+            settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
+                req.getMonitorAddress(), req.getDryrun(), req.getOrganization());
 
             const config: {[key: string]: string} = {};
             for (const [k, v] of req.getConfigMap()?.entries() || []) {
                 config[<string>k] = <string>v;
             }
-            runtime.setAllConfig(config, req.getConfigsecretkeysList() || []);
+            runtimeConfig.setAllConfig(config, req.getConfigsecretkeysList() || []);
+
+            process.setMaxListeners(settings.getMaximumListeners());
 
             process.on("uncaughtException", uncaughtHandler);
             // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
@@ -88,12 +91,12 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             process.on("unhandledRejection", uncaughtHandler);
 
             try {
-                await runtime.runInPulumiStack(this.program);
-                await runtime.disconnect();
+                await stack.runInPulumiStack(this.program);
+                await settings.disconnect();
                 process.off("uncaughtException", uncaughtHandler);
                 process.off("unhandledRejection", uncaughtHandler);
             } catch (e) {
-                await runtime.disconnect();
+                await settings.disconnect();
                 process.off("uncaughtException", uncaughtHandler);
                 process.off("unhandledRejection", uncaughtHandler);
 

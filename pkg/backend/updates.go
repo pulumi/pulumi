@@ -15,8 +15,8 @@
 package backend
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
@@ -90,6 +90,10 @@ const (
 	ExecutionKind = "exec.kind"
 	// ExecutionAgent indicates the user agent of the updater for automated scenarios (GHA, Kubernetes Operator).
 	ExecutionAgent = "exec.agent"
+
+	// UpdatePlan ("true", "false") indicates if an explicit update plan was used for the update (either
+	// saving one, or constraining to one).
+	UpdatePlan = "updatePlan"
 )
 
 // UpdateInfo describes a previous update.
@@ -109,8 +113,8 @@ type UpdateInfo struct {
 	Config config.Map `json:"config"`
 
 	// Information obtained from an update completing.
-	Version         int                    `json:"version"`
-	Result          UpdateResult           `json:"result"`
-	EndTime         int64                  `json:"endTime"`
-	ResourceChanges engine.ResourceChanges `json:"resourceChanges,omitempty"`
+	Version         int                     `json:"version"`
+	Result          UpdateResult            `json:"result"`
+	EndTime         int64                   `json:"endTime"`
+	ResourceChanges display.ResourceChanges `json:"resourceChanges,omitempty"`
 }

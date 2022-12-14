@@ -18,11 +18,12 @@ https://github.com/pulumi/pulumi/issues/6981
 
 """
 
-from typing import Any, Optional, Sequence, Dict
+import contextlib
+from typing import Dict
 import pytest
 import uuid
 
-from pulumi import Input, Output, ResourceOptions
+from pulumi import Input, Output
 from pulumi.runtime import settings, mocks
 import pulumi
 import pulumi.dynamic as dyn
@@ -79,7 +80,7 @@ class X(dyn.Resource):
 
 
 @raises(AssertionError)
-@pytest.mark.timeout(1)
+@pytest.mark.timeout(10)
 @pulumi.runtime.test
 def test_pulumi_broken_dynamic_provider(my_mocks):
     x = X(name='my_x', args=XInputs({'my_key_1': 'my_value_1'}))

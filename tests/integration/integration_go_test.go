@@ -1,10 +1,23 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
-//go:build go || all
-// +build go all
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build (go || all) && !smoke
 
 package ints
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,14 +33,86 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
-// TestEmptyGo simply tests that we can build and run an empty Go project.
-func TestEmptyGo(t *testing.T) {
+// This checks that the buildTarget option for Pulumi Go programs does build a binary.
+func TestBuildTarget(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(filepath.Join("go", "go-build-target"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "go-build-target-test-stack")
+	e.RunCommand("pulumi", "stack", "select", "go-build-target-test-stack")
+	e.RunCommand("pulumi", "preview")
+	_, err := os.Stat(filepath.Join(e.RootPath, "a.out"))
+	assert.NoError(t, err)
+}
+
+// This checks that the Exit Status artifact from Go Run is not being produced
+func TestNoEmitExitStatus(t *testing.T) {
+	stderr := &bytes.Buffer{}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("empty", "go"),
+		Dir: filepath.Join("go", "go-exit-5"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		Quick: true,
+		Stderr:        stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		SkipRefresh:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure exit status is not emitted by the program
+			assert.NotContains(t, stderr.String(), "exit status")
+		},
+	})
+}
+
+// This checks that error logs are not being emitted twice
+func TestNoLogError(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "go-exit-error"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stdout:        stdout,
+		Stderr:        stderr,
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			errorCount := strings.Count(stderr.String()+stdout.String(), "  error: ")
+
+			// ensure `  error: ` is only being shown once by the program
+			assert.Equal(t, 1, errorCount)
+		},
+	})
+}
+
+// This checks that the PULUMI_GO_USE_RUN=true flag is triggering go run by checking the `exit status`
+// string is being emitted. This is a temporary fallback measure in case it breaks users and should
+// not be assumed to be stable.
+func TestGoRunEnvFlag(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Env: []string{"PULUMI_GO_USE_RUN=true"},
+		Dir: filepath.Join("go", "go-exit-5"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stderr:        stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		SkipRefresh:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// ensure exit status IS emitted by the program as it indicates `go run` was used
+			assert.Contains(t, stderr.String(), "exit status")
+		},
 	})
 }
 
@@ -376,38 +461,6 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 	})
 }
 
-// Tests that stack references work in Go.
-func TestStackReferenceGo(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
-	}
-	if owner := os.Getenv("PULUMI_TEST_OWNER"); owner == "" {
-		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
-	}
-
-	opts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Quick: true,
-		Config: map[string]string{
-			"org": os.Getenv("PULUMI_TEST_OWNER"),
-		},
-		EditDirs: []integration.EditDir{
-			{
-				Dir:      "step1",
-				Additive: true,
-			},
-			{
-				Dir:      "step2",
-				Additive: true,
-			},
-		},
-	}
-	integration.ProgramTest(t, opts)
-}
-
 // Tests a resource with a large (>4mb) string prop in Go
 func TestLargeResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -418,100 +471,9 @@ func TestLargeResourceGo(t *testing.T) {
 	})
 }
 
-// Test remote component construction in Go.
-func TestConstructGo(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		componentDir          string
-		expectedResourceCount int
-		env                   []string
-	}{
-		{
-			componentDir:          "testcomponent",
-			expectedResourceCount: 9,
-			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
-			// the Node.js dynamic provider plugin to load.
-			// When the underlying issue has been fixed, the use of this environment variable inside the integration
-			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
-		},
-		{
-			componentDir:          "testcomponent-python",
-			expectedResourceCount: 9,
-		},
-		{
-			componentDir:          "testcomponent-go",
-			expectedResourceCount: 8, // One less because no dynamic provider.
-		},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component", test.componentDir))
-			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
-		})
-	}
-}
-
-func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
-	return &integration.ProgramTestOptions{
-		Env: env,
-		Dir: filepath.Join("construct_component", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Secrets: map[string]string{
-			"secret": "this super secret is encrypted",
-		},
-		Quick: true,
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-
-				// Check that dependencies flow correctly between the originating program and the remote component
-				// plugin.
-				urns := make(map[string]resource.URN)
-				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
-
-					urns[string(res.URN.Name())] = res.URN
-					switch res.URN.Name() {
-					case "child-a":
-						for _, deps := range res.PropertyDependencies {
-							assert.Empty(t, deps)
-						}
-					case "child-b":
-						expected := []resource.URN{urns["a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "child-c":
-						expected := []resource.URN{urns["a"], urns["child-a"]}
-						assert.ElementsMatch(t, expected, res.Dependencies)
-						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
-					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
-						assert.Truef(t, ok, "secret output was not serialized as a secret")
-						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
-					}
-				}
-			}
-		},
-	}
-}
-
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
-	pathEnv := testComponentSlowPathEnv(t)
+	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -521,13 +483,17 @@ func TestConstructSlowGo(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
+	testDir := "construct_component_slow"
+	runComponentSetup(t, testDir)
+
 	opts := &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component_slow", "go"),
+		Env: []string{testYarnLinkPulumiEnv},
+		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		Quick: true,
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
@@ -545,6 +511,9 @@ func TestConstructSlowGo(t *testing.T) {
 func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
 
+	testDir := "construct_component_plain"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir          string
 		expectedResourceCount int
@@ -574,23 +543,26 @@ func TestConstructPlainGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t,
-				filepath.Join("..", "testprovider"),
-				filepath.Join("construct_component_plain", test.componentDir))
+			localProviders :=
+				[]integration.LocalDependency{
+					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+				}
 			integration.ProgramTest(t,
-				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+				optsForConstructPlainGo(t, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
 }
 
-func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency, env ...string) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		Quick: true,
+		LocalProviders: localProviders,
+		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
@@ -605,6 +577,9 @@ func TestConstructUnknownGo(t *testing.T) {
 
 func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
+
+	testDir := "construct_component_methods"
+	runComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -623,14 +598,17 @@ func TestConstructMethodsGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: append(test.env, pathEnv),
-				Dir: filepath.Join("construct_component_methods", "go"),
+				Env: test.env,
+				Dir: filepath.Join(testDir, "go"),
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
-				Quick: true,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
 				},
@@ -655,6 +633,8 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
+	runComponentSetup(t, testDir)
+
 	tests := []struct {
 		componentDir string
 	}{
@@ -671,14 +651,16 @@ func TestConstructProviderGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: []string{pathEnv},
 				Dir: filepath.Join(testDir, "go"),
 				Dependencies: []string{
 					"github.com/pulumi/pulumi/sdk/v3",
 				},
-				Quick: true,
+				LocalProviders: []integration.LocalDependency{localProvider},
+				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
@@ -694,14 +676,28 @@ func TestGetResourceGo(t *testing.T) {
 		},
 		Dir:                      filepath.Join("get_resource", "go"),
 		AllowEmptyPreviewChanges: true,
+		Secrets: map[string]string{
+			"bar": "this super secret is encrypted",
+		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
+
+			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
 		},
 	})
 }
 
 func TestComponentProviderSchemaGo(t *testing.T) {
+	// We no longer build the go-component in component_setup.sh so there's no native binary for the
+	// testComponentProviderSchema to just exec. It _ought_ to be rewritten to use the plugin host framework
+	// so that it starts the component up the same as all the other tests are doing (via shimless).
+	t.Skip("testComponentProviderSchema needs to be updated to use a plugin host to deal with non-native-binary providers")
+
 	path := filepath.Join("component_provider_schema", "testcomponent-go", "pulumi-resource-testcomponent")
 	if runtime.GOOS == WindowsOS {
 		path += ".exe"
@@ -711,60 +707,59 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 
 // TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
 func TestTracePropagationGo(t *testing.T) {
-
-	// Detect a special trace coming from Go language plugin.
-	isGoListTrace := func(t *appdash.Trace) bool {
-		m := t.Span.Annotations.StringMap()
-
-		isGoCmd := strings.HasSuffix(m["command"], "go") ||
-			strings.HasSuffix(m["command"], "go.exe")
-
-		if m["component"] == "exec.Command" &&
-			m["args"] == "[list -m -json -mod=mod all]" &&
-			isGoCmd {
-			return true
-		}
-
-		return false
-	}
-
-	var foundTrace *appdash.Trace
-
-	// Look for trace mathching `isGoListTrace` in the trace file
-	// and store to `foundTrace`.
-	searchForGoListTrace := func(dir string) error {
-
-		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
-		if err != nil {
-			return err
-		}
-
-		foundTrace, err = FindTrace(store, isGoListTrace)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
+	dir := t.TempDir()
 
 	opts := &integration.ProgramTestOptions{
 		Dir:                    filepath.Join("empty", "go"),
 		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
 		SkipRefresh:            true,
-		SkipPreview:            false,
-		SkipUpdate:             true,
+		SkipPreview:            true,
+		SkipUpdate:             false,
 		SkipExportImport:       true,
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
-		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
-		PreviewCompletedHook:   searchForGoListTrace,
+		Tracing:                fmt.Sprintf("file:%s", filepath.Join(dir, "{command}.trace")),
+		RequireService:         true,
 	}
 
 	integration.ProgramTest(t, opts)
 
-	if foundTrace == nil {
-		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
-	}
+	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
+	assert.NoError(t, err)
+	assert.NotNil(t, store)
+
+	t.Run("traced `go list -m -json -mod=mod all`", func(t *testing.T) {
+		isGoListTrace := func(t *appdash.Trace) bool {
+			m := t.Span.Annotations.StringMap()
+
+			isGoCmd := strings.HasSuffix(m["command"], "go") ||
+				strings.HasSuffix(m["command"], "go.exe")
+
+			if m["component"] == "exec.Command" &&
+				m["args"] == "[list -m -json -mod=mod all]" &&
+				isGoCmd {
+				return true
+			}
+
+			return false
+		}
+		tr, err := FindTrace(store, isGoListTrace)
+		assert.NoError(t, err)
+		assert.NotNil(t, tr)
+	})
+
+	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
+		exportStackCounter := 0
+		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
+			name := tr.Span.Name()
+			if name == "api/exportStack" {
+				exportStackCounter++
+			}
+			return nil
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, exportStackCounter)
+	})
 }
 
 // Test that the about command works as expected. Because about parses the
@@ -789,9 +784,33 @@ func TestAboutGo(t *testing.T) {
 	stdout, _ := e.RunCommand("pulumi", "about", "-t")
 
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
+	assert.Contains(t, stdout, "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructOutputValuesGo(t *testing.T) {
 	testConstructOutputValues(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+// TestProjectMainGo tests out the ability to override the main entrypoint.
+func TestProjectMainGo(t *testing.T) {
+	test := integration.ProgramTestOptions{
+		Dir:          "project_main/go",
+		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Simple runtime validation that just ensures the checkpoint was written and read.
+			assert.NotNil(t, stackInfo.Deployment)
+		},
+	}
+	integration.ProgramTest(t, &test)
+}
+
+// TestRefreshGo simply tests that we can build and run an empty Go project with the `refresh` option set.
+func TestRefreshGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("refresh", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick: true,
+	})
 }

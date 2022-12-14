@@ -16,6 +16,8 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -24,7 +26,7 @@ import (
 
 type ProgramFunc func(runInfo plugin.RunInfo, monitor *ResourceMonitor) error
 
-func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginInfo) plugin.LanguageRuntime {
+func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.PluginSpec) plugin.LanguageRuntime {
 	return &languageRuntime{
 		requiredPlugins: requiredPlugins,
 		program:         program,
@@ -32,7 +34,7 @@ func NewLanguageRuntime(program ProgramFunc, requiredPlugins ...workspace.Plugin
 }
 
 type languageRuntime struct {
-	requiredPlugins []workspace.PluginInfo
+	requiredPlugins []workspace.PluginSpec
 	program         ProgramFunc
 }
 
@@ -40,7 +42,7 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginInfo, error) {
+func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
 	return p.requiredPlugins, nil
 }
 
@@ -68,4 +70,17 @@ func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
 
 func (p *languageRuntime) InstallDependencies(directory string) error {
 	return nil
+}
+
+func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+	return plugin.AboutInfo{}, nil
+}
+
+func (p *languageRuntime) GetProgramDependencies(
+	info plugin.ProgInfo, transitiveDependencies bool) ([]plugin.DependencyInfo, error) {
+	return nil, nil
+}
+
+func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
 }

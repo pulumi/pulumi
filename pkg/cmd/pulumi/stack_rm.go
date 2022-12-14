@@ -46,6 +46,7 @@ func newStackRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the stack will no longer be available for updates.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
@@ -59,7 +60,7 @@ func newStackRmCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -71,18 +72,21 @@ func newStackRmCmd() *cobra.Command {
 				return result.Bail()
 			}
 
-			hasResources, err := s.Remove(commandContext(), force)
+			hasResources, err := s.Remove(ctx, force)
 			if err != nil {
 				if hasResources {
 					return result.Errorf(
-						"'%s' still has resources; removal rejected; pass --force to override", s.Ref())
+						"'%s' still has resources; removal rejected. Possible actions:\n"+
+							"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
+							"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`\n"+
+							"- Run `pulumi stack rm --force` to override this error", s.Ref())
 				}
 				return result.FromError(err)
 			}
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
+				if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
 					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 						return result.FromError(err)
 					}

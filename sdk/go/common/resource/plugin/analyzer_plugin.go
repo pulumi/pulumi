@@ -27,6 +27,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -54,15 +56,18 @@ var _ Analyzer = (*analyzer)(nil)
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
-	_, path, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1), nil)
+	path, err := workspace.GetPluginPath(
+		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1),
+		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	}
 	contract.Assert(path != "")
 
+	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
+
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		[]string{host.ServerAddr(), ctx.Pwd}, nil /*env*/)
+		workspace.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil /*env*/, dialOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +99,8 @@ func NewPolicyAnalyzer(
 	}
 
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-	_, pluginPath, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, policyAnalyzerName, nil)
+	pluginPath, err := workspace.GetPluginPath(
+		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	} else if pluginPath == "" {
@@ -125,7 +130,8 @@ func NewPolicyAnalyzer(
 		}
 	}
 
-	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name), args, env)
+	plug, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		workspace.AnalyzerPlugin, args, env, analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)))
 	if err != nil {
 		// The original error might have been wrapped before being returned from newPlugin. So we look for
 		// the root cause of the error. This won't work if we switch to Go 1.13's new approach to wrapping.
@@ -221,7 +227,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 				continue
 			}
 
-			pdeps := []string{}
+			pdeps := make([]string, 0, 1)
 			for _, d := range pd {
 				pdeps = append(pdeps, string(d))
 			}
@@ -413,6 +419,27 @@ func (a *analyzer) Close() error {
 	return a.plug.Close()
 }
 
+func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "analyzer",
+		}
+		if name != "" {
+			metadata["name"] = name
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
 func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
 	secs := make([]string, len(opts.AdditionalSecretOutputs))
 	for idx := range opts.AdditionalSecretOutputs {
@@ -430,7 +457,7 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		AdditionalSecretOutputs:    secs,
-		Aliases:                    convertURNs(opts.Aliases),
+		Aliases:                    convertAliases(opts.Aliases, opts.AliasURNs),
 		CustomTimeouts: &pulumirpc.AnalyzerResourceOptions_CustomTimeouts{
 			Create: opts.CustomTimeouts.Create,
 			Update: opts.CustomTimeouts.Update,
@@ -578,6 +605,21 @@ func convertURNs(urns []resource.URN) []string {
 	return result
 }
 
+func convertAlias(alias resource.Alias) string {
+	return string(alias.GetURN())
+}
+
+func convertAliases(aliases []resource.Alias, aliasURNs []resource.URN) []string {
+	result := make([]string, len(aliases)+len(aliasURNs))
+	for idx, alias := range aliases {
+		result[idx] = convertAlias(alias)
+	}
+	for idx, aliasURN := range aliasURNs {
+		result[idx+len(aliases)] = convertAlias(resource.Alias{URN: aliasURN})
+	}
+	return result
+}
+
 func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.EnforcementLevel, error) {
 	switch el {
 	case pulumirpc.EnforcementLevel_ADVISORY:
@@ -588,7 +630,7 @@ func convertEnforcementLevel(el pulumirpc.EnforcementLevel) (apitype.Enforcement
 		return apitype.Disabled, nil
 
 	default:
-		return "", fmt.Errorf("Invalid enforcement level %d", el)
+		return "", fmt.Errorf("invalid enforcement level %d", el)
 	}
 }
 
@@ -664,11 +706,13 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) ([]string, error)
 		// using the more general PULUMI_* variants for all languages to avoid special casing
 		// like this, and setting the PULUMI_* variants for Node.js is the first step.
 		if runtime == "nodejs" {
+			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
 			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
 			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
 			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))
 		}
 
+		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", fmt.Sprintf("%v", opts.DryRun))

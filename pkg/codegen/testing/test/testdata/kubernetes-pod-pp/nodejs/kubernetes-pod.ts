@@ -3,7 +3,6 @@ import * as kubernetes from "@pulumi/kubernetes";
 
 const bar = new kubernetes.core.v1.Pod("bar", {
     apiVersion: "v1",
-    kind: "Pod",
     metadata: {
         namespace: "foo",
         name: "bar",
@@ -12,6 +11,9 @@ const bar = new kubernetes.core.v1.Pod("bar", {
         containers: [{
             name: "nginx",
             image: "nginx:1.14-alpine",
+            ports: [{
+                containerPort: 80,
+            }],
             resources: {
                 limits: {
                     memory: "20Mi",
@@ -21,3 +23,4 @@ const bar = new kubernetes.core.v1.Pod("bar", {
         }],
     },
 });
+const kind = bar.kind;

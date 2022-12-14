@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Foo")]
-    public partial class Foo : Pulumi.ComponentResource
+    public partial class Foo : global::Pulumi.ComponentResource
     {
         /// <summary>
         /// Create a Foo resource with the given unique name, arguments, and options.
@@ -36,21 +36,22 @@ namespace Pulumi.Example
             return merged;
         }
 
-        public Pulumi.Output<string> GetKubeconfig(FooGetKubeconfigArgs? args = null)
-            => Pulumi.Deployment.Instance.Call<FooGetKubeconfigResult>("example::Foo/getKubeconfig", args ?? new FooGetKubeconfigArgs(), this).Apply(v => v.Kubeconfig);
+        public global::Pulumi.Output<string> GetKubeconfig(FooGetKubeconfigArgs? args = null)
+            => global::Pulumi.Deployment.Instance.Call<FooGetKubeconfigResult>("example::Foo/getKubeconfig", args ?? new FooGetKubeconfigArgs(), this).Apply(v => v.Kubeconfig);
     }
 
-    public sealed class FooArgs : Pulumi.ResourceArgs
+    public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 
     /// <summary>
     /// The set of arguments for the <see cref="Foo.GetKubeconfig"/> method.
     /// </summary>
-    public sealed class FooGetKubeconfigArgs : Pulumi.CallArgs
+    public sealed class FooGetKubeconfigArgs : global::Pulumi.CallArgs
     {
         [Input("profileName")]
         public Input<string>? ProfileName { get; set; }
@@ -61,6 +62,7 @@ namespace Pulumi.Example
         public FooGetKubeconfigArgs()
         {
         }
+        public static new FooGetKubeconfigArgs Empty => new FooGetKubeconfigArgs();
     }
 
     /// <summary>

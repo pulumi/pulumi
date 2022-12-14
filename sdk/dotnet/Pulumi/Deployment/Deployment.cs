@@ -83,6 +83,7 @@ namespace Pulumi
             Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES") == "1" ||
             string.Equals(Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES"), "TRUE", StringComparison.OrdinalIgnoreCase);
 
+        private readonly string _organizationName;
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
@@ -101,12 +102,13 @@ namespace Pulumi
             set => _stack = (value ?? throw new ArgumentNullException(nameof(value)));
         }
 
-        private Deployment()
+        private Deployment(RunnerOptions? runnerOptions = null)
         {
             // ReSharper disable UnusedVariable
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
             var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
             var project = Environment.GetEnvironmentVariable("PULUMI_PROJECT");
+            var organization = Environment.GetEnvironmentVariable("PULUMI_ORGANIZATION");
             var stack = Environment.GetEnvironmentVariable("PULUMI_STACK");
             var pwd = Environment.GetEnvironmentVariable("PULUMI_PWD");
             var dryRun = Environment.GetEnvironmentVariable("PULUMI_DRY_RUN");
@@ -129,6 +131,7 @@ namespace Pulumi
             _isDryRun = dryRunValue;
             _stackName = stack;
             _projectName = project;
+            _organizationName = organization ?? "organization";
 
             var deploymentLogger = CreateDefaultLogger();
 
@@ -140,7 +143,7 @@ namespace Pulumi
             this.Monitor = new GrpcMonitor(monitor);
             deploymentLogger.LogDebug("Created deployment monitor");
 
-            _runner = new Runner(this, deploymentLogger);
+            _runner = new Runner(this, deploymentLogger, runnerOptions);
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
@@ -157,12 +160,14 @@ namespace Pulumi
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
+            _organizationName = options?.OrganizationName ?? "organization";
             this.Engine = engine;
             this.Monitor = monitor;
             _runner = new Runner(this, deploymentLogger);
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
+        string IDeployment.OrganizationName => _organizationName;
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
@@ -212,12 +217,9 @@ namespace Pulumi
             return MonitorSupportsFeature("outputValues");
         }
 
-        /// <summary>
-        /// Check if the monitor supports the "aliasSpecs" feature.
-        /// </summary>
-        internal Task<bool> MonitorSupportsAliasSpecs()
+        internal Task<bool> MonitorSupportsDeletedWith()
         {
-            return MonitorSupportsFeature("aliasSpecs");
+            return MonitorSupportsFeature("deletedWith");
         }
 
         // Because the secrets feature predates the Pulumi .NET SDK, we assume

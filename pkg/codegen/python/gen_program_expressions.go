@@ -1,4 +1,4 @@
-//nolint: goconst
+// nolint: goconst
 package python
 
 import (
@@ -29,10 +29,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), false)
-	expr, _ = g.lowerProxyApplies(expr)
-	expr = pcl.RewriteConversions(expr, typ)
-	expr, quotes, _ := g.rewriteQuotes(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	diags = diags.Extend(lowerProxyDiags)
+	diags = diags.Extend(convertDiags)
+	diags = diags.Extend(quoteDiags)
+
+	g.diagnostics = g.diagnostics.Extend(diags)
 
 	return expr, quotes
 }
@@ -194,6 +200,7 @@ var functionImports = map[string][]string{
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
 	"toBase64":         {"base64"},
+	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
 	"sha1":             {"hashlib"},
 	"stack":            {"pulumi"},
@@ -230,9 +237,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%.v", expr.Args[0])
 				return
 			}
-			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
+			var moduleNameOverrides map[string]string
+			if pkg, err := enum.(*schema.EnumType).PackageReference.Definition(); err == nil {
+				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
+			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
 				pkg += "." + m
 			}
 			enumName := tokenToName(to.Token)
@@ -240,7 +250,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
-				pcl.GenEnum(to, from, func(member *schema.Enum) {
+				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
 					tag := member.Name
 					if tag == "" {
 						tag = fmt.Sprintf("%v", member.Value)
@@ -251,6 +261,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}, func(from model.Expression) {
 					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
 				})
+				if diag != nil {
+					g.diagnostics = append(g.diagnostics, diag)
+				}
 			}
 		default:
 			switch arg := from.(type) {
@@ -311,29 +324,36 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
-			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				indenter := func(f func()) { f() }
-				if len(obj.Items) > 1 {
-					indenter = g.Indented
-				}
-				indenter(func() {
-					for i, item := range obj.Items {
-						// Ignore non-literal keys
-						key, ok := item.Key.(*model.LiteralValueExpression)
-						if !ok || !key.Value.Type().Equals(cty.String) {
-							continue
-						}
-
-						keyVal := PyName(key.Value.AsString())
-						if i == 0 {
-							g.Fgenf(w, "%s=%.v", keyVal, item.Value)
-						} else {
-							g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
-						}
-					}
-				})
+		genFuncArgs := func(objectExpr *model.ObjectConsExpression) {
+			indenter := func(f func()) { f() }
+			if len(objectExpr.Items) > 1 {
+				indenter = g.Indented
 			}
+			indenter(func() {
+				for i, item := range objectExpr.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+					keyVal := PyName(key.Value.AsString())
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		switch arg := expr.Args[1].(type) {
+		case *model.FunctionCallExpression:
+			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+				genFuncArgs(argsObject)
+			}
+
+		case *model.ObjectConsExpression:
+			genFuncArgs(arg)
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -362,11 +382,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readDir":
 		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
 	case "secret":
-		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
+	case "fromBase64":
+		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	case "sha1":

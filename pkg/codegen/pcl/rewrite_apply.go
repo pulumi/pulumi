@@ -610,36 +610,36 @@ func (ctx *inspectContext) PostVisit(expr model.Expression) (model.Expression, h
 //
 // As an example, assuming that resource.id is an output, this transforms the following expression:
 //
-//     toJSON({
-//         Version = "2012-10-17"
-//         Statement = [{
-//             Effect = "Allow"
-//             Principal = "*"
-//             Action = [ "s3:GetObject" ]
-//             Resource = [ "arn:aws:s3:::${resource.id}/*" ]
-//         }]
-//     })
+//	toJSON({
+//	    Version = "2012-10-17"
+//	    Statement = [{
+//	        Effect = "Allow"
+//	        Principal = "*"
+//	        Action = [ "s3:GetObject" ]
+//	        Resource = [ "arn:aws:s3:::${resource.id}/*" ]
+//	    }]
+//	})
 //
 // into this expression:
 //
-//     __apply(resource.id, eval(id, toJSON({
-//         Version = "2012-10-17"
-//         Statement = [{
-//             Effect = "Allow"
-//             Principal = "*"
-//             Action = [ "s3:GetObject" ]
-//             Resource = [ "arn:aws:s3:::${id}/*" ]
-//         }]
-//     })))
+//	__apply(resource.id, eval(id, toJSON({
+//	    Version = "2012-10-17"
+//	    Statement = [{
+//	        Effect = "Allow"
+//	        Principal = "*"
+//	        Action = [ "s3:GetObject" ]
+//	        Resource = [ "arn:aws:s3:::${id}/*" ]
+//	    }]
+//	})))
 //
 // Here is a more advanced example, assuming that resource is an object whose properties are all outputs, this
 // expression:
 //
-//     "v: ${resource[resource.id]}"
+//	"v: ${resource[resource.id]}"
 //
 // is transformed into this expression:
 //
-//     __apply(__apply(resource.id,eval(id, resource[id])),eval(id, "v: ${id}"))
+//	__apply(__apply(resource.id,eval(id, resource[id])),eval(id, "v: ${id}"))
 //
 // This form is amenable to code generation for targets that require that outputs are resolved before their values are
 // accessible (e.g. Pulumi's JS/TS libraries).

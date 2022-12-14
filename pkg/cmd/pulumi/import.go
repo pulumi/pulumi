@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
@@ -58,12 +60,19 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 		return "", "", fmt.Errorf("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], spec[equals+1:]
+	name, urn := spec[:equals], resource.URN(spec[equals+1:])
 	if name == "" || urn == "" {
 		return "", "", fmt.Errorf("spec must be of the form name=URN")
 	}
 
-	return name, resource.URN(urn), nil
+	if !urn.IsValid() {
+		if ref, err := providers.ParseReference(string(urn)); err == nil {
+			return "", "", fmt.Errorf("expected a URN but got a Provider Reference, use '%s' instead", ref.URN())
+		}
+		return "", "", fmt.Errorf("expected a URN but got '%s'", urn)
+	}
+
+	return name, urn, nil
 }
 
 func makeImportFile(
@@ -72,7 +81,7 @@ func makeImportFile(
 	parentSpec, providerSpec, version string) (importFile, error) {
 
 	nameTable := map[string]resource.URN{}
-	resource := importSpec{
+	res := importSpec{
 		Type:       tokens.Type(typ),
 		Name:       tokens.QName(name),
 		ID:         resource.ID(id),
@@ -83,24 +92,32 @@ func makeImportFile(
 	if parentSpec != "" {
 		parentName, parentURN, err := parseResourceSpec(parentSpec)
 		if err != nil {
-			return importFile{}, fmt.Errorf("could not parse parent spec '%v': %w", parentSpec, err)
+			parentName = "parent"
+			parentURN = resource.URN(parentSpec)
+			if !parentURN.IsValid() {
+				return importFile{}, fmt.Errorf("invalid parent URN: '%s'", parentURN)
+			}
 		}
 		nameTable[parentName] = parentURN
-		resource.Parent = parentName
+		res.Parent = parentName
 	}
 
 	if providerSpec != "" {
 		providerName, providerURN, err := parseResourceSpec(providerSpec)
 		if err != nil {
-			return importFile{}, fmt.Errorf("could not parse provider spec '%v': %w", providerSpec, err)
+			providerName = "provider"
+			providerURN = resource.URN(providerSpec)
+		}
+		if _, exists := nameTable[providerName]; exists {
+			return importFile{}, fmt.Errorf("provider and parent must have distinct names, both were '%s'", providerName)
 		}
 		nameTable[providerName] = providerURN
-		resource.Provider = providerName
+		res.Provider = providerName
 	}
 
 	return importFile{
 		NameTable: nameTable,
-		Resources: []importSpec{resource},
+		Resources: []importSpec{res},
 	}, nil
 }
 
@@ -183,12 +200,14 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	return imports, names, nil
 }
 
-func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
-	deployment, err := s.ExportDeployment(context.Background())
+func getCurrentDeploymentForStack(
+	ctx context.Context,
+	s backend.Stack) (*deploy.Snapshot, error) {
+	deployment, err := s.ExportDeployment(ctx)
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
@@ -315,12 +334,25 @@ func newImportCmd() *cobra.Command {
 			"by default.\n" +
 			"\n" +
 			"Should you want to import your resource(s) without protection, you can pass\n" +
-			"`--protect=false` as an argument to the command. This will leave all resources unprotected." +
-			"\n" +
+			"`--protect=false` as an argument to the command. This will leave all resources unprotected.\n" +
 			"\n" +
 			"A single resource may be specified in the command line arguments or a set of\n" +
-			"resources may be specified by a JSON file. This file must contain an object\n" +
-			"of the following form:\n" +
+			"resources may be specified by a JSON file.\n" +
+			"\n" +
+			"If using the command line args directly, the type, name, id and optional flags\n" +
+			"must be provided.  For example:\n" +
+			"\n" +
+			"    pulumi import 'aws:iam/user:User' name id\n" +
+			"\n" +
+			"Or to fully specify parent and/or provider, subsitute the <urn> for each into the following:\n" +
+			"\n" +
+			"     pulumi import 'aws:iam/user:User' name id --parent 'parent=<urn>' --provider 'admin=<urn>'\n" +
+			"\n" +
+			"If using the JSON file format to define the imported resource(s), use this instead:\n" +
+			"\n" +
+			"     pulumi import -f import.json\n" +
+			"\n" +
+			"Where import.json is a file that matches the following JSON format:\n" +
 			"\n" +
 			"    {\n" +
 			"        \"nameTable\": {\n" +
@@ -357,10 +389,14 @@ func newImportCmd() *cobra.Command {
 			"specify a provider, it will be imported using the default provider for its type. A\n" +
 			"resource that does specify a provider may specify the version of the provider\n" +
 			"that will be used for its import.\n" +
+			"\n" +
 			"Each resource may specify which input properties to import with;\n" +
+			"\n" +
 			"If a resource does not specify any properties the default behaviour is to\n" +
 			"import using all required properties.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
+
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
@@ -402,10 +438,11 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			yes = yes || skipConfirmations()
+			yes = yes || skipPreview || skipConfirmations()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return result.FromError(errors.New("--yes must be passed in to proceed when running in non-interactive mode"))
+				return result.FromError(
+					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
@@ -455,11 +492,11 @@ func newImportCmd() *cobra.Command {
 
 			var programGenerator programGeneratorFunc
 			switch proj.Runtime.Name() {
-			case "dotnet":
+			case "dotnet": // nolint: goconst
 				programGenerator = dotnet.GenerateProgram
 			case "go":
 				programGenerator = gogen.GenerateProgram
-			case "nodejs":
+			case "nodejs": // nolint: goconst
 				programGenerator = nodejs.GenerateProgram
 			case "python":
 				programGenerator = python.GenerateProgram
@@ -472,12 +509,12 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -487,18 +524,30 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, proj, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			decrypter, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			}
+
+			stackName := s.Ref().Name().String()
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			if configErr != nil {
+				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
 
 			opts.Engine = engine.UpdateOptions{
 				Parallel:      parallel,
 				Debug:         debug,
 				UseLegacyDiff: useLegacyDiff(),
+				Experimental:  hasExperimentalCommands(),
 			}
 
-			_, res := s.Import(commandContext(), backend.UpdateOperation{
+			_, res := s.Import(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -509,7 +558,7 @@ func newImportCmd() *cobra.Command {
 			}, imports)
 
 			if generateCode {
-				deployment, err := getCurrentDeploymentForStack(s)
+				deployment, err := getCurrentDeploymentForStack(ctx, s)
 				if err != nil {
 					return result.FromError(err)
 				}
@@ -592,7 +641,7 @@ func newImportCmd() *cobra.Command {
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
 	cmd.PersistentFlags().BoolVar(
 		&skipPreview, "skip-preview", false,
-		"Do not perform a preview before performing the refresh")
+		"Do not calculate a preview before performing the import")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
@@ -602,7 +651,7 @@ func newImportCmd() *cobra.Command {
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
-		"Automatically approve and perform the refresh after previewing it")
+		"Automatically approve and perform the import after previewing it")
 	cmd.PersistentFlags().BoolVarP(
 		&protectResources, "protect", "", true,
 		"Allow resources to be imported with protection from deletion enabled")

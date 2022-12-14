@@ -2,7 +2,9 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs, enums } from "./types";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
+import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
 export class Provider extends pulumi.ProviderResource {
@@ -33,6 +35,7 @@ export class Provider extends pulumi.ProviderResource {
         opts = opts || {};
         {
             resourceInputs["favoriteColor"] = (args ? args.favoriteColor : undefined) ?? <any>utilities.getEnv("FAVE_COLOR");
+            resourceInputs["secretSandwiches"] = pulumi.output(args?.secretSandwiches ? pulumi.secret(args.secretSandwiches) : undefined).apply(JSON.stringify);
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Provider.__pulumiType, name, resourceInputs, opts);
@@ -47,4 +50,8 @@ export interface ProviderArgs {
      * this is a relaxed string enum which can also be set via env var
      */
     favoriteColor?: pulumi.Input<string | enums.Color>;
+    /**
+     * Super duper secret sandwiches.
+     */
+    secretSandwiches?: pulumi.Input<pulumi.Input<inputs.config.SandwichArgs>[]>;
 }

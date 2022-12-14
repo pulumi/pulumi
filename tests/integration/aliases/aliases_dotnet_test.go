@@ -1,6 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-//go:build dotnet || all
-// +build dotnet all
+//go:build (dotnet || all) && !smoke
 
 package ints
 
@@ -17,6 +16,7 @@ var dirs = []string{
 	"rename_component_and_child",
 	"retype_component",
 	"rename_component",
+	"retype_parents",
 }
 
 func TestDotNetAliases(t *testing.T) {
@@ -26,9 +26,10 @@ func TestDotNetAliases(t *testing.T) {
 		d := filepath.Join("dotnet", dir)
 		t.Run(d, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:          filepath.Join(d, "step1"),
-				Dependencies: []string{"Pulumi"},
-				Quick:        true,
+				DebugLogLevel: 9,
+				Dir:           filepath.Join(d, "step1"),
+				Dependencies:  []string{"Pulumi"},
+				Quick:         true,
 				EditDirs: []integration.EditDir{
 					{
 						Dir:             filepath.Join(d, "step2"),

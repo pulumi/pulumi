@@ -106,22 +106,24 @@ func main() {
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancelChannel,
+		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(dotnetExec, engineAddress, tracing, binary)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// And finally wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
 }
@@ -129,10 +131,11 @@ func main() {
 // dotnetLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type dotnetLanguageHost struct {
-	exec          string
-	engineAddress string
-	tracing       string
-	binary        string
+	exec                 string
+	engineAddress        string
+	tracing              string
+	binary               string
+	dotnetBuildSucceeded bool
 }
 
 func newLanguageHost(exec, engineAddress, tracing string, binary string) pulumirpc.LanguageRuntimeServer {
@@ -371,7 +374,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 	case os.IsNotExist(err):
 		break
 	case err != nil:
-		return nil, fmt.Errorf("Failed to read version file: %w", err)
+		return nil, fmt.Errorf("failed to read version file: %w", err)
 	}
 
 	defaultName := strings.ToLower(strings.TrimPrefix(packageName, "Pulumi."))
@@ -402,7 +405,7 @@ func DeterminePluginDependency(packageDir, packageName, packageVersion string) (
 
 	_, err = semver.ParseTolerant(version)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid package version: %w", err)
+		return nil, fmt.Errorf("invalid package version: %w", err)
 	}
 
 	result := &pulumirpc.PluginDependency{
@@ -433,6 +436,7 @@ func (host *dotnetLanguageHost) DotnetBuild(
 		return err
 	}
 
+	host.dotnetBuildSucceeded = true
 	return nil
 }
 
@@ -543,7 +547,7 @@ func (w *logWriter) LogToUser(val string) (int, error) {
 	return len(val), nil
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	config, err := host.constructConfig(req)
 	if err != nil {
@@ -569,6 +573,13 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	default:
 		// Run from source.
 		args = append(args, "run")
+
+		// If we are certain the project has been built,
+		// passing a --no-build flag to dotnet run results in
+		// up to 1s time savings.
+		if host.dotnetBuildSucceeded {
+			args = append(args, "--no-build")
+		}
 
 		if req.GetProgram() != "" {
 			args = append(args, req.GetProgram())
@@ -625,6 +636,7 @@ func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config, 
 
 	maybeAppendEnv("monitor", req.GetMonitorAddress())
 	maybeAppendEnv("engine", host.engineAddress)
+	maybeAppendEnv("organization", req.GetOrganization())
 	maybeAppendEnv("project", req.GetProject())
 	maybeAppendEnv("stack", req.GetStack())
 	maybeAppendEnv("pwd", req.GetPwd())
@@ -678,7 +690,7 @@ func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.
 func (host *dotnetLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
@@ -708,4 +720,95 @@ func (host *dotnetLanguageHost) InstallDependencies(
 	}
 
 	return nil
+}
+
+func (host *dotnetLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	getResponse := func(execString string, args ...string) (string, string, error) {
+		ex, err := executable.FindExecutable(execString)
+		if err != nil {
+			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return ex, strings.TrimSpace(string(out)), nil
+	}
+
+	dotnet, version, err := getResponse("dotnet", "--version")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.AboutResponse{
+		Executable: dotnet,
+		Version:    version,
+	}, nil
+}
+
+func (host *dotnetLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	// dotnet list package
+
+	var err error
+	if host.binary != "" {
+		return nil, errors.New("Could not get dependencies because pulumi specifies a binary")
+	}
+	var ex string
+	var out []byte
+	ex, err = executable.FindExecutable("dotnet")
+	if err != nil {
+		return nil, err
+	}
+	cmdArgs := []string{"list", "package"}
+	if req.TransitiveDependencies {
+		cmdArgs = append(cmdArgs, "--include-transitive")
+	}
+	cmd := exec.Command(ex, cmdArgs...)
+	if out, err = cmd.Output(); err != nil {
+		return nil, fmt.Errorf("failed to call \"%s\": %w", ex, err)
+	}
+	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
+	var packages []*pulumirpc.DependencyInfo
+
+	for _, p := range lines {
+		p := strings.TrimSpace(p)
+		if strings.HasPrefix(p, ">") {
+			p = strings.TrimPrefix(p, "> ")
+			segments := strings.Split(p, " ")
+			var nameRequiredVersion []string
+			for _, s := range segments {
+				if s != "" {
+					nameRequiredVersion = append(nameRequiredVersion, s)
+				}
+			}
+			var version int
+			if len(nameRequiredVersion) == 3 {
+				// Top level package => name required version
+				version = 2
+			} else if len(nameRequiredVersion) == 2 {
+				// Transitive package => name version
+				version = 1
+			} else {
+				return nil, fmt.Errorf("failed to parse \"%s\"", p)
+			}
+			packages = append(packages, &pulumirpc.DependencyInfo{
+				Name:    nameRequiredVersion[0],
+				Version: nameRequiredVersion[version],
+			})
+		}
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: packages,
+	}, nil
+}
+
+func (host *dotnetLanguageHost) RunPlugin(
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	return errors.New("not supported")
 }

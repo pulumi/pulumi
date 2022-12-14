@@ -446,11 +446,11 @@ func (b *expressionBinder) bindFunctionCallExpression(
 
 // bindIndexExpression binds an index expression. The value being indexed must be an list, map, or object.
 //
-// - If the value is an list, the result type is the type of the list's elements, and the index must be assignable to
-//   number (TODO(pdg): require integer indices?)
-// - If the value is a map, the result type is the type of the map's values, and the index must be assignable to
-//   string
-// - If the value is an object, the result type is any, and the index must be assignable to a string
+//   - If the value is an list, the result type is the type of the list's elements, and the index must be assignable to
+//     number (TODO(pdg): require integer indices?)
+//   - If the value is a map, the result type is the type of the map's values, and the index must be assignable to
+//     string
+//   - If the value is an object, the result type is any, and the index must be assignable to a string
 //
 // If either the value being indexed or the index is eventual, result is eventual.
 func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, hcl.Diagnostics) {
@@ -607,10 +607,9 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 			parts[i] = DynamicType
 		}
 
-		if !b.options.allowMissingVariables {
-			diagnostics = hcl.Diagnostics{
-				undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange()),
-			}
+		diagnostics = hcl.Diagnostics{
+			undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange(),
+				b.options.allowMissingVariables),
 		}
 		return &ScopeTraversalExpression{
 			Syntax:    syntax,

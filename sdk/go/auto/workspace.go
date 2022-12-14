@@ -92,6 +92,8 @@ type Workspace interface {
 	ListStacks(context.Context) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
+	// InstallPluginFromServer acquires the plugin matching the specified name and version.
+	InstallPluginFromServer(context.Context, string, string, string) error
 	// RemovePlugin deletes the plugin matching the specified name and version.
 	RemovePlugin(context.Context, string, string) error
 	// ListPlugins lists all installed plugins.
@@ -107,7 +109,7 @@ type Workspace interface {
 	// ImportStack imports the specified deployment state into a pre-existing stack.
 	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
-	// Outputs get the current set of Stack outputs from the last Stack.Up().
+	// StackOutputs gets the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
 }
 

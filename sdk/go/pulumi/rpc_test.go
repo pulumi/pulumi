@@ -238,7 +238,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	if assert.Nil(t, err) {
 		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
 		assert.Equal(t, 10, len(deps))
-		assert.Equal(t, 10, len(pdeps))
+		assert.Equal(t, 25, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
@@ -586,7 +586,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		const resourceFields = 10
 		assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
 		assert.Equal(t, 0, len(deps))
-		assert.Equal(t, 0, len(pdeps))
+		assert.Equal(t, 15, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
 		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
@@ -873,12 +873,12 @@ func TestDependsOnComponent(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
-	registerResource := func(name string, res Resource, options ...ResourceOption) (Resource, []string) {
+	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
 		opts := merge(options...)
 		state := ctx.makeResourceState("", "", res, nil, nil, "", "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
 
-		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)
+		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false, custom)
 		require.NoError(t, err)
 
 		return res, inputs.deps
@@ -886,12 +886,12 @@ func TestDependsOnComponent(t *testing.T) {
 
 	newResource := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res testResource
-		return registerResource(name, &res, options...)
+		return registerResource(name, &res, true, options...)
 	}
 
 	newComponent := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res simpleComponentResource
-		return registerResource(name, &res, options...)
+		return registerResource(name, &res, false, options...)
 	}
 
 	resA, _ := newResource("resA", nil)
@@ -1756,4 +1756,21 @@ func TestOutputValueMarshallingEnums(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 	}
+}
+
+func TestMarshalInputsPropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	pmap, pdeps, deps, err := marshalInputs(testInputs{
+		S: String("a string"),
+		A: Bool(true),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"s": resource.NewStringProperty("a string"),
+		"a": resource.NewBoolProperty(true),
+	}, pmap)
+	assert.Equal(t, []URN{}, deps)
+	// Expect a non-empty property deps map, even when there aren't any deps.
+	assert.Equal(t, map[string][]URN{"s": {}, "a": {}}, pdeps)
 }

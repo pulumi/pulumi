@@ -17,12 +17,12 @@ class RandomProvider extends pulumi.ProviderResource {
 }
 
 const r = new Random("default", 10, {
-  pluginDownloadURL: "get.com",
+  pluginDownloadURL: "get.example.test",
 });
 export const defaultProvider = r.result;
 
 const provider = new RandomProvider("explicit", {
-  pluginDownloadURL: "get.pulumi/test/providers",
+  pluginDownloadURL: "get.pulumi.test/providers",
 });
 
 new Random("explicit", 8, { provider: provider });

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,9 +18,29 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
-func TestGeneratePackage(t *testing.T) {
+// For better CI test to job distribution, we split the test cases into three tests.
+
+var genPkgBatchSize = len(test.PulumiPulumiSDKTests) / 3
+
+func TestGeneratePackageOne(t *testing.T) {
 	t.Parallel()
 
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[0:genPkgBatchSize])
+}
+
+func TestGeneratePackageTwo(t *testing.T) {
+	t.Parallel()
+
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[genPkgBatchSize:2*genPkgBatchSize])
+}
+
+func TestGeneratePackageThree(t *testing.T) {
+	t.Parallel()
+
+	testGeneratePackageBatch(t, test.PulumiPulumiSDKTests[2*genPkgBatchSize:])
+}
+
+func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language:   "nodejs",
 		GenPackage: GeneratePackage,
@@ -29,7 +50,7 @@ func TestGeneratePackage(t *testing.T) {
 			},
 			"nodejs/test": testGeneratedPackage,
 		},
-		TestCases: test.PulumiPulumiSDKTests,
+		TestCases: testCases,
 	})
 }
 
@@ -141,7 +162,18 @@ func TestGenerateTypeNames(t *testing.T) {
 		root, ok := modules[""]
 		require.True(t, ok)
 
+		// Parallel tests will use the TypeNameGeneratorFunc
+		// from multiple goroutines, but root.typeString is
+		// not safe. Mutex is needed to avoid panics on
+		// concurrent map write.
+		//
+		// Note this problem is test-only since prod code
+		// works on a single goroutine.
+
+		var mutex sync.Mutex
 		return func(t schema.Type) string {
+			mutex.Lock()
+			defer mutex.Unlock()
 			return root.typeString(t, false, nil)
 		}
 	})

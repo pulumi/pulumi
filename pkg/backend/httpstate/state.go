@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
@@ -34,80 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
-
-type tokenRequest chan<- tokenResponse
-
-type tokenResponse struct {
-	token string
-	err   error
-}
-
-// tokenSource is a helper type that manages the renewal of the lease token for a managed update.
-type tokenSource struct {
-	requests chan tokenRequest
-	done     chan bool
-}
-
-func newTokenSource(ctx context.Context, token string, backend *cloudBackend, update client.UpdateIdentifier,
-	duration time.Duration) (*tokenSource, error) {
-
-	// Perform an initial lease renewal.
-	newToken, err := backend.client.RenewUpdateLease(ctx, update, token, duration)
-	if err != nil {
-		return nil, err
-	}
-
-	requests, done := make(chan tokenRequest), make(chan bool)
-	go func() {
-		// We will renew the lease after 50% of the duration has elapsed to allow more time for retries.
-		ticker := time.NewTicker(duration / 2)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
-				// If we get an error from the backend, leave `err` set and surface it during
-				// the next request for a lease token.
-				if err != nil {
-					logging.V(3).Infof("error renewing lease: %v", err)
-					err = fmt.Errorf("renewing lease: %w", err)
-
-					ticker.Stop()
-				} else {
-					token = newToken
-				}
-
-			case c, ok := <-requests:
-				if !ok {
-					close(done)
-					return
-				}
-
-				// err will be non-nil if the last call to RenewUpdateLease failed.
-				resp := tokenResponse{err: err}
-				if err == nil {
-					resp.token = token
-				}
-				c <- resp
-			}
-		}
-	}()
-
-	return &tokenSource{requests: requests, done: done}, nil
-}
-
-func (ts *tokenSource) Close() {
-	close(ts.requests)
-	<-ts.done
-}
-
-func (ts *tokenSource) GetToken() (string, error) {
-	ch := make(chan tokenResponse)
-	ts.requests <- ch
-	resp := <-ch
-	return resp.token, resp.err
-}
 
 type cloudQuery struct {
 	root string
@@ -241,7 +168,28 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	// Create a token source for this update if necessary.
 	var tokenSource *tokenSource
 	if token != "" {
-		ts, err := newTokenSource(ctx, token, b, update, 5*time.Minute)
+
+		// TODO[pulumi/pulumi#10482] instead of assuming
+		// expiration, consider expiration times returned by
+		// the backend, if any.
+		duration := 5 * time.Minute
+		assumedExpires := func() time.Time {
+			return time.Now().Add(duration)
+		}
+
+		renewLease := func(
+			ctx context.Context,
+			duration time.Duration,
+			currentToken string) (string, time.Time, error) {
+			tok, err := b.Client().RenewUpdateLease(
+				ctx, update, currentToken, duration)
+			if err != nil {
+				return "", time.Time{}, err
+			}
+			return tok, assumedExpires(), err
+		}
+
+		ts, err := newTokenSource(ctx, token, assumedExpires(), duration, renewLease)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +220,7 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeUntypedDeployment(untypedDeployment, stack.DefaultSecretsProvider)
+	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -282,6 +230,10 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 
 func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return nil, err
+	}
 
 	snapshot, err := b.getSnapshot(ctx, stackRef)
 	if err != nil {
@@ -298,10 +250,11 @@ func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	return &deploy.Target{
-		Name:      stackRef.Name(),
-		Config:    cfg,
-		Decrypter: dec,
-		Snapshot:  snapshot,
+		Name:         tokens.Name(stackID.Stack),
+		Organization: tokens.Name(stackID.Owner),
+		Config:       cfg,
+		Decrypter:    dec,
+		Snapshot:     snapshot,
 	}, nil
 }
 

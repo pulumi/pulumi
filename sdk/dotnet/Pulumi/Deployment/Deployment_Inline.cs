@@ -15,6 +15,7 @@ namespace Pulumi
             if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
 
+            _organizationName = settings.Organization ?? "organization";
             _projectName = settings.Project;
             _stackName = settings.Stack;
             _isDryRun = settings.IsDryRun;
@@ -38,7 +39,11 @@ namespace Pulumi
             Monitor = new GrpcMonitor(settings.MonitorAddr);
             deploymentLogger.LogDebug("Created deployment monitor");
 
-            _runner = new Runner(this, deploymentLogger);
+            // Tell the runner that we are running inside an inline automation program
+            // in which case it shall not set/pollute the global process exit code
+            // when encountering unhandles exceptions
+            var runnerOptions = new RunnerOptions { IsInlineAutomationProgram = true };
+            _runner = new Runner(this, deploymentLogger, runnerOptions);
             _logger = new EngineLogger(this, deploymentLogger, Engine);
         }
 

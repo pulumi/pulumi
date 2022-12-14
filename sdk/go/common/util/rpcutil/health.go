@@ -30,6 +30,7 @@ func Healthcheck(context context.Context, addr string, duration time.Duration, c
 		addr,
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(OpenTracingClientInterceptor()),
+		grpc.WithStreamInterceptor(OpenTracingStreamClientInterceptor()),
 		GrpcChannelOptions(),
 	)
 	if err != nil {

@@ -15,17 +15,17 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with default values.
         /// </summary>
         public static Task<FuncWithDefaultValueResult> InvokeAsync(FuncWithDefaultValueArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with default values.
         /// </summary>
         public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithDefaultValueResult>("mypkg::funcWithDefaultValue", args ?? new FuncWithDefaultValueInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithDefaultValueArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDefaultValueArgs : global::Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
         public string A { get; set; } = null!;
@@ -37,9 +37,10 @@ namespace Pulumi.Mypkg
         {
             B = "b-default";
         }
+        public static new FuncWithDefaultValueArgs Empty => new FuncWithDefaultValueArgs();
     }
 
-    public sealed class FuncWithDefaultValueInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDefaultValueInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
         public Input<string> A { get; set; } = null!;
@@ -51,6 +52,7 @@ namespace Pulumi.Mypkg
         {
             B = "b-default";
         }
+        public static new FuncWithDefaultValueInvokeArgs Empty => new FuncWithDefaultValueInvokeArgs();
     }
 
 

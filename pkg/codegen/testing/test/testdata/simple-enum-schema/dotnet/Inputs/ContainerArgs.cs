@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Plant.Inputs
 {
 
-    public sealed class ContainerArgs : Pulumi.ResourceArgs
+    public sealed class ContainerArgs : global::Pulumi.ResourceArgs
     {
         [Input("brightness")]
         public Input<Pulumi.Plant.ContainerBrightness>? Brightness { get; set; }
@@ -28,5 +28,6 @@ namespace Pulumi.Plant.Inputs
         {
             Brightness = Pulumi.Plant.ContainerBrightness.One;
         }
+        public static new ContainerArgs Empty => new ContainerArgs();
     }
 }

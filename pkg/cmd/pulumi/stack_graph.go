@@ -40,6 +40,9 @@ var dependencyEdgeColor string
 // The color of parent edges in the graph. Defaults to #AA6639, an orange.
 var parentEdgeColor string
 
+// Whether or not to return resource name as the node label for each node of the graph.
+var shortNodeName bool
+
 func newStackGraphCmd() *cobra.Command {
 	var stackName string
 
@@ -53,15 +56,16 @@ func newStackGraphCmd() *cobra.Command {
 			"emitted when it was run. This graph is output in the DOT format. This command operates\n" +
 			"on your stack's most recent deployment.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx)
 			if err != nil {
 				return err
 			}
@@ -97,6 +101,8 @@ func newStackGraphCmd() *cobra.Command {
 		"Sets the color of dependency edges in the graph")
 	cmd.PersistentFlags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
 		"Sets the color of parent edges in the graph")
+	cmd.PersistentFlags().BoolVar(&shortNodeName, "short-node-name", false,
+		"Sets the resource name as the node label for each node of the graph")
 	return cmd
 }
 
@@ -177,6 +183,9 @@ func (vertex *dependencyVertex) Data() interface{} {
 }
 
 func (vertex *dependencyVertex) Label() string {
+	if shortNodeName {
+		return string(vertex.resource.URN.Name())
+	}
 	return string(vertex.resource.URN)
 }
 

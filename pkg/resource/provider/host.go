@@ -44,6 +44,7 @@ func NewHostClient(addr string) (*HostClient, error) {
 		addr,
 		grpc.WithInsecure(),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {

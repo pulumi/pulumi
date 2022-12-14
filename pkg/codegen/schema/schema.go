@@ -53,7 +53,7 @@ const (
 	jsonType    primitiveType = 8
 )
 
-//nolint: goconst
+// nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
 	case boolType:
@@ -417,18 +417,19 @@ type Resource struct {
 // For example, if you have the following resource struct:
 //
 // Resource A {
-// Properties: {
-// 	 Object B {
-// 	   Object D: {
-// 	     ReplaceOnChanges: true
-// 	     }
-// 	   Object F: {}
-//     }
-// 	 Object C {
-// 	   ReplaceOnChanges: true
-// 	   }
-//   }
-// }
+//
+//	Properties: {
+//		 Object B {
+//		   Object D: {
+//		     ReplaceOnChanges: true
+//		     }
+//		   Object F: {}
+//	    }
+//		 Object C {
+//		   ReplaceOnChanges: true
+//		   }
+//	  }
+//	}
 //
 // A.ReplaceOnChanges() == [[B, D], [C]]
 func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
@@ -529,8 +530,11 @@ type Method struct {
 
 // Function describes a Pulumi function.
 type Function struct {
-	// Package is the package that defines the function.
+	// Package is the package that defines the function. Package will not be accurate for
+	// types loaded by reference. In that case, use PackageReference instead.
 	Package *Package
+	// PackageReference is the PackageReference that defines the function.
+	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
@@ -557,7 +561,7 @@ func (fun *Function) NeedsOutputVersion() bool {
 	// support them and return `Task`, but there are no such
 	// functions in `pulumi-azure-native` or `pulumi-aws` so we
 	// omit to simplify.
-	if fun.Outputs == nil {
+	if fun.Outputs == nil || len(fun.Outputs.Properties) == 0 {
 		return false
 	}
 
@@ -609,6 +613,8 @@ type Package struct {
 	PluginDownloadURL string
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -891,7 +897,7 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 }
 
-func (pkg *Package) TokenToRuntimeModule(tok string) string {
+func TokenToRuntimeModule(tok string) string {
 	// token := pkg ":" module ":" member
 
 	components := strings.Split(tok, ":")
@@ -899,6 +905,10 @@ func (pkg *Package) TokenToRuntimeModule(tok string) string {
 		return ""
 	}
 	return components[1]
+}
+
+func (pkg *Package) TokenToRuntimeModule(tok string) string {
+	return TokenToRuntimeModule(tok)
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
@@ -937,21 +947,30 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	spec = &PackageSpec{
-		Name:              pkg.Name,
-		Version:           version,
-		Description:       pkg.Description,
-		Keywords:          pkg.Keywords,
-		Homepage:          pkg.Homepage,
-		License:           pkg.License,
-		Attribution:       pkg.Attribution,
-		Repository:        pkg.Repository,
-		LogoURL:           pkg.LogoURL,
-		PluginDownloadURL: pkg.PluginDownloadURL,
-		Meta:              metadata,
-		Types:             map[string]ComplexTypeSpec{},
-		Resources:         map[string]ResourceSpec{},
-		Functions:         map[string]FunctionSpec{},
+		Name:                pkg.Name,
+		Version:             version,
+		DisplayName:         pkg.DisplayName,
+		Publisher:           pkg.Publisher,
+		Description:         pkg.Description,
+		Keywords:            pkg.Keywords,
+		Homepage:            pkg.Homepage,
+		License:             pkg.License,
+		Attribution:         pkg.Attribution,
+		Repository:          pkg.Repository,
+		LogoURL:             pkg.LogoURL,
+		PluginDownloadURL:   pkg.PluginDownloadURL,
+		Meta:                metadata,
+		Types:               map[string]ComplexTypeSpec{},
+		Resources:           map[string]ResourceSpec{},
+		Functions:           map[string]FunctionSpec{},
+		AllowedPackageNames: pkg.AllowedPackageNames,
 	}
+
+	lang, err := marshalLanguage(pkg.Language)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package language: %w", err)
+	}
+	spec.Language = lang
 
 	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
 	if err != nil {
@@ -1134,7 +1153,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	if f.Outputs != nil {
 		outs, err := pkg.marshalObject(f.Outputs, true)
 		if err != nil {
-			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+			return FunctionSpec{}, fmt.Errorf("marshaling outputs: %w", err)
 		}
 		outputs = &outs.ObjectTypeSpec
 	}
@@ -1623,12 +1642,12 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
-	Config ConfigSpec `json:"config" yaml:"config"`
+	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider" yaml:"provider"`
+	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.

@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//go:build !all
+// +build !all
 
 // A provider with resources for use in tests.
 package main
@@ -53,7 +55,7 @@ func providerForURN(urn string) (resourceProvider, string, bool) {
 	return provider, ty, ok
 }
 
-//nolint: unused,deadcode
+// nolint: unused,deadcode
 func main() {
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
@@ -194,4 +196,8 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 // hard-closing any gRPC connection.
 func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
+}
+
+func (k *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+	return &rpc.GetMappingResponse{}, nil
 }

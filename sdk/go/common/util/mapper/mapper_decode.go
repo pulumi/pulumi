@@ -88,13 +88,20 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 	if v, has := obj[key]; has {
 		// The field exists; okay, try to map it to the right type.
 		vsrc := reflect.ValueOf(v)
+
+		// If the source is a ptr, dereference it as necessary to get the underlying
+		// value.
+		for vsrc.IsValid() && vsrc.Type().Kind() == reflect.Ptr && !vsrc.IsNil() {
+			vsrc = vsrc.Elem()
+		}
+
 		// Ensure the source is valid; this is false if the value reflects the zero value.
 		if vsrc.IsValid() {
 			vdstType := vdst.Type().Elem()
 
 			// So long as the target element is a pointer, we have a pointer to pointer; dig through until we bottom out
 			// on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a pointer")
+			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a null pointer")
 			for vdstType.Kind() == reflect.Ptr {
 				vdst = vdst.Elem()
 				vdstType = vdstType.Elem()
@@ -144,16 +151,19 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			// A simple conversion exists to make this right.
 			val = val.Convert(to)
 		} else if to.Kind() == reflect.Ptr && val.Type().AssignableTo(to.Elem()) {
-			// If the target is a pointer, turn the target into a pointer.  If it's not addressable, make a copy.
-			if val.CanAddr() {
-				val = val.Addr()
+			// Here the destination type (to) is a pointer to a type that accepts val.
+			var adjusted reflect.Value // var adjusted *toElem
+			if val.CanAddr() && val.Addr().Type().AssignableTo(to) {
+				// If taking the address of val makes this right, do it.
+				adjusted = val.Addr() // adjusted = &val
 			} else {
-				slot := reflect.New(val.Type().Elem())
-				copy := reflect.ValueOf(val.Interface())
-				contract.Assert(copy.CanAddr())
-				slot.Set(copy)
-				val = slot
+				// Otherwise create a fresh pointer of the desired type and point it to val.
+				adjusted = reflect.New(to.Elem()) // adjusted = new(toElem)
+				adjusted.Elem().Set(val)          // *adjusted = val
 			}
+			// In either case, the loop condition should be sastisfied at this point.
+			contract.Assert(adjusted.Type().AssignableTo(to))
+			return adjusted, nil
 		} else if val.Kind() == reflect.Interface {
 			// It could be that the source is an interface{} with the right element type (or the right element type
 			// through a series of successive conversions); go ahead and give it a try.

@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed templates/*.tmpl
@@ -62,6 +61,7 @@ func titleLookup(shortName string) (string, bool) {
 		"alicloud":                             "Alibaba Cloud",
 		"auth0":                                "Auth0",
 		"aws":                                  "AWS Classic",
+		"awsx":                                 "AWSx (Pulumi Crosswalk for AWS)",
 		"aws-apigateway":                       "AWS API Gateway",
 		"aws-miniflux":                         "Miniflux",
 		"aws-native":                           "AWS Native",
@@ -72,12 +72,13 @@ func titleLookup(shortName string) (string, bool) {
 		"aws-quickstart-vpc":                   "AWS QuickStart VPC",
 		"aws-s3-replicated-bucket":             "AWS S3 Replicated Bucket",
 		"azure":                                "Azure Classic",
+		"azure-justrun":                        "Azure Justrun",
 		"azure-native":                         "Azure Native",
 		"azure-quickstart-acr-geo-replication": "Azure QuickStart ACR Geo Replication",
 		"azure-quickstart-aks":                 "Azure QuickStart AKS",
 		"azure-quickstart-compute":             "Azure QuickStart Compute",
 		"azure-quickstart-sql":                 "Azure QuickStart SQL",
-		"azuread":                              "Azure Active Directory",
+		"azuread":                              "Azure Active Directory (Azure AD)",
 		"azuredevops":                          "Azure DevOps",
 		"azuresel":                             "Azure",
 		"civo":                                 "Civo",
@@ -85,7 +86,7 @@ func titleLookup(shortName string) (string, bool) {
 		"cloudflare":                           "Cloudflare",
 		"cloudinit":                            "cloud-init",
 		"confluent":                            "Confluent Cloud",
-		"consul":                               "Consul",
+		"consul":                               "HashiCorp Consul",
 		"coredns-helm":                         "CoreDNS (Helm)",
 		"datadog":                              "Datadog",
 		"digitalocean":                         "DigitalOcean",
@@ -96,7 +97,7 @@ func titleLookup(shortName string) (string, bool) {
 		"equinix-metal":                        "Equinix Metal",
 		"f5bigip":                              "f5 BIG-IP",
 		"fastly":                               "Fastly",
-		"gcp":                                  "Google Cloud Classic",
+		"gcp":                                  "Google Cloud (GCP) Classic",
 		"gcp-global-cloudrun":                  "Google Global Cloud Run",
 		"gcp-project-scaffold":                 "Google Project Scaffolding",
 		"google-native":                        "Google Cloud Native",
@@ -120,7 +121,7 @@ func titleLookup(shortName string) (string, bool) {
 		"kubernetes-ingress-nginx":             "NGINX Ingress Controller (Helm)",
 		"kubernetes-coredns":                   "CoreDNS (Helm)",
 		"kubernetes-cert-manager":              "Jetstack Cert Manager (Helm)",
-		"nomad":                                "Nomad",
+		"nomad":                                "HashiCorp Nomad",
 		"ns1":                                  "NS1",
 		"okta":                                 "Okta",
 		"openstack":                            "OpenStack",
@@ -130,9 +131,9 @@ func titleLookup(shortName string) (string, bool) {
 		"postgresql":                           "PostgreSQL",
 		"prometheus-helm":                      "Prometheus (Helm)",
 		"rabbitmq":                             "RabbitMQ",
-		"rancher2":                             "Rancher 2",
+		"rancher2":                             "Rancher2",
 		"random":                               "random",
-		"rke":                                  "Rancher RKE",
+		"rke":                                  "Rancher Kubernetes Engine (RKE)",
 		"run-my-darn-container":                "Run My Darn Container",
 		"shipa":                                "Shipa",
 		"signalfx":                             "SignalFx",
@@ -1559,12 +1560,14 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		filteredOutputProps = filterOutputProperties(r.InputProperties, r.Properties)
 	}
 
-	// All resources have an implicit `id` output property, that we must inject into the docs.
-	filteredOutputProps = append(filteredOutputProps, &schema.Property{
-		Name:    "id",
-		Comment: "The provider-assigned unique ID for this managed resource.",
-		Type:    schema.StringType,
-	})
+	// All custom resources have an implicit `id` output property, that we must inject into the docs.
+	if !r.IsComponent {
+		filteredOutputProps = append(filteredOutputProps, &schema.Property{
+			Name:    "id",
+			Comment: "The provider-assigned unique ID for this managed resource.",
+			Type:    schema.StringType,
+		})
+	}
 
 	for _, lang := range dctx.supportedLanguages {
 		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
@@ -1690,14 +1693,6 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 	}
 }
 
-type fs map[string][]byte
-
-func (fs fs) add(path string, contents []byte) {
-	_, has := fs[path]
-	contract.Assertf(!has, "duplicate file: %s", path)
-	fs[path] = contents
-}
-
 // getModuleFileName returns the file name to use for a module.
 func (mod *modContext) getModuleFileName() string {
 	dctx := mod.docGenContext
@@ -1713,13 +1708,13 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
-func (mod *modContext) gen(fs fs) error {
+func (mod *modContext) gen(fs codegen.Fs) error {
 	dctx := mod.docGenContext
 	modName := mod.getModuleFileName()
 
 	addFile := func(name, contents string) {
 		p := path.Join(modName, name, "_index.md")
-		fs.add(p, []byte(contents))
+		fs.Add(p, []byte(contents))
 	}
 
 	// Resources
@@ -1758,7 +1753,7 @@ func (mod *modContext) gen(fs fs) error {
 		return err
 	}
 
-	fs.add(path.Join(modName, "_index.md"), buffer.Bytes())
+	fs.Add(path.Join(modName, "_index.md"), buffer.Bytes())
 	return nil
 }
 
@@ -1851,7 +1846,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, r := range mod.resources {
 		name := resourceName(r)
 		resources = append(resources, indexEntry{
-			Link:        getResourceLink(name),
+			Link:        getResourceLink(name) + "/",
 			DisplayName: name,
 		})
 	}
@@ -1861,7 +1856,7 @@ func (mod *modContext) genIndex() indexData {
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		functions = append(functions, indexEntry{
-			Link:        getFunctionLink(name),
+			Link:        getFunctionLink(name) + "/",
 			DisplayName: strings.Title(name),
 		})
 	}
@@ -2090,7 +2085,7 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 	defer glog.Flush()
 
 	glog.V(3).Infoln("generating package docs now...")
-	files := fs{}
+	files := codegen.Fs{}
 	modules := []string{}
 	modMap := dctx.modules()
 	for k := range modMap {

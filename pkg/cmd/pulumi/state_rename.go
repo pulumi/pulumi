@@ -50,7 +50,7 @@ func newStateRenameCommand() *cobra.Command {
 		Short: "Renames a resource from a stack's state",
 		Long: `Renames a resource from a stack's state
 
-This command renames a resource from a stack's state. The resource is specified 
+This command renames a resource from a stack's state. The resource is specified
 by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
@@ -60,6 +60,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 `,
 		Args: cmdutil.ExactArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			urn := resource.URN(args[0])
 			newResourceName := args[1]
@@ -70,7 +71,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 				return result.Error("The provided input URN is not valid")
 			}
 
-			res := runTotalStateEdit(stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
+			res := runTotalStateEdit(ctx, stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 				// Check whether the input URN corresponds to an existing resource
 				existingResources := edit.LocateResource(snap, urn)
 				if len(existingResources) != 1 {
@@ -111,7 +112,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 				return res
 			}
 
-			fmt.Println("Resource renamed successfully")
+			fmt.Println("Resource renamed")
 			return nil
 		}),
 	}

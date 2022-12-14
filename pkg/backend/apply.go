@@ -21,16 +21,16 @@ import (
 	"os"
 	"strings"
 
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -45,7 +45,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -75,12 +75,13 @@ type response string
 
 const (
 	yes     response = "yes"
+	yesPlan response = "[experimental] yes, using Update Plans (https://pulumi.com/updateplans)"
 	no      response = "no"
 	details response = "details"
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -121,26 +122,47 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
+		// If we're running in experimental mode then return the plan generated, else discard it. The user may
+		// be explicitly setting a plan but that's handled higher up the call stack.
+		if !op.Opts.Engine.Experimental {
+			plan = nil
+		}
 		return plan, changes, nil
 	}
 
+	infoPrefix := "\b" + op.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
+	if kind != apitype.UpdateUpdate {
+		// If not an update, we can skip displaying warnings
+	} else if countResources(events) == 0 {
+		// This is an update and there are no resources being CREATED
+		fmt.Print(infoPrefix, "There are no resources in your stack (other than the stack resource).\n\n")
+	}
+
 	// Otherwise, ensure the user wants to proceed.
-	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
+	res, plan = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
 	close(eventsChannel)
 	return plan, changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, opts UpdateOptions) result.Result {
+	events []engine.Event, plan *deploy.Plan, opts UpdateOptions) (result.Result, *deploy.Plan) {
 	for {
 		var response string
 
 		surveycore.DisableColor = true
-		surveycore.QuestionIcon = ""
-		surveycore.SelectFocusIcon = opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
+		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+			icons.Question = survey.Icon{}
+			icons.SelectFocus = survey.Icon{Text: opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+		})
 
 		choices := []string{string(yes), string(no)}
+
+		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
+		// If we're in experimental mode we don't add this because "yes" will also use the plan
+		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.Experimental {
+			choices = append([]string{string(yesPlan)}, choices...)
+		}
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
@@ -159,28 +181,33 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +
 				opts.Display.Color.Colorize(colors.SpecImportant+
-					"No resources will be modified as part of this refresh; just your stack's state will be."+
+					"No resources will be modified as part of this refresh; just your stack's state will be.\n"+
 					colors.Reset)
 		}
-
-		cmdutil.EndKeypadTransmitMode()
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
 		if err := survey.AskOne(&survey.Select{
 			Message: prompt,
 			Options: choices,
 			Default: string(no),
-		}, &response, nil); err != nil {
-			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err))
+		}, &response, surveyIcons); err != nil {
+			return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)), nil
 		}
 
 		if response == string(no) {
 			fmt.Printf("confirmation declined, not proceeding with the %s\n", kind)
-			return result.Bail()
+			return result.Bail(), nil
 		}
 
 		if response == string(yes) {
-			return nil
+			// If we're in experimental mode always use the plan
+			if opts.Engine.Experimental {
+				return nil, plan
+			}
+			return nil, nil
+		}
+		if response == string(yesPlan) {
+			return nil, plan
 		}
 
 		if response == string(details) {
@@ -193,7 +220,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier) (sdkDisplay.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
@@ -211,11 +238,14 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			return changes, res
 		}
 
-		// If we had an original plan use it, else if we're in experimental mode use the newly generated plan
+		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
+		// newly generated plan
 		if originalPlan != nil {
 			op.Opts.Engine.Plan = originalPlan
-		} else if op.Opts.ExperimentalPlans {
+		} else if plan != nil {
 			op.Opts.Engine.Plan = plan
+		} else {
+			op.Opts.Engine.Plan = nil
 		}
 	}
 
@@ -225,8 +255,32 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		DryRun:   false,
 		ShowLink: true,
 	}
+	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
+	// after here.
+	op.Opts.Engine.GeneratePlan = false
 	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
 	return changes, res
+}
+
+func countResources(events []engine.Event) int {
+	count := 0
+
+	for _, e := range events {
+		if e.Type != engine.ResourcePreEvent {
+			continue
+		}
+		p, ok := e.Payload().(engine.ResourcePreEventPayload)
+
+		if !ok {
+			continue
+		}
+
+		if p.Metadata.Type.String() == "pulumi:pulumi:Stack" {
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {
@@ -235,12 +289,26 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
+	outputEventsDiff := make([]string, 0)
 	for _, e := range events {
-		msg := display.RenderDiffEvent(e, seen, displayOpts)
-		if msg != "" && e.Type != engine.SummaryEvent {
-			_, err := buff.WriteString(msg)
-			contract.IgnoreError(err)
+		if e.Type == engine.SummaryEvent {
+			continue
 		}
+		msg := display.RenderDiffEvent(e, seen, displayOpts)
+		if msg == "" {
+			continue
+		}
+		// display output events last
+		if e.Type == engine.ResourceOutputsEvent {
+			outputEventsDiff = append(outputEventsDiff, msg)
+			continue
+		}
+		_, err := buff.WriteString(msg)
+		contract.IgnoreError(err)
+	}
+	for _, msg := range outputEventsDiff {
+		_, err := buff.WriteString(msg)
+		contract.IgnoreError(err)
 	}
 
 	return strings.TrimSpace(buff.String())

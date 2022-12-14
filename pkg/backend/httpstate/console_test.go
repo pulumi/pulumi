@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,13 +25,8 @@ func TestConsoleURL(t *testing.T) {
 
 	//nolint:paralleltest // sets env var, must be run in isolation
 	t.Run("HonorEnvVar", func(t *testing.T) {
-		initial := os.Getenv("PULUMI_CONSOLE_DOMAIN")
-		defer func() {
-			os.Setenv("PULUMI_CONSOLE_DOMAIN", initial)
-		}()
-
 		// Honor the PULUMI_CONSOLE_DOMAIN environment variable.
-		os.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
+		t.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
 		assert.Equal(t,
 			"https://pulumi-console.contoso.com/1/2",
 			cloudConsoleURL("https://api.pulumi.contoso.com", "1", "2"))

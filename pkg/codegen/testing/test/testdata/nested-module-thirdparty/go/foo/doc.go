@@ -1,3 +1,2 @@
-// Package foo-bar exports types, functions, subpackages for provisioning foo-bar resources.
-//
+// Package foo exports types, functions, subpackages for provisioning foo resources.
 package foo

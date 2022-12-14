@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -95,6 +95,9 @@ type StartUpdateResponse struct {
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
+
+	// TokenExpiration is a UNIX timestamp by which the token will expire.
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 // UpdateEventKind is an enum for the type of update events.
@@ -185,6 +188,9 @@ type RenewUpdateLeaseRequest struct {
 type RenewUpdateLeaseResponse struct {
 	// The renewed token.
 	Token string `json:"token"`
+
+	// TokenExpiration is a UNIX timestamp by which the token will expire.
+	TokenExpiration int64 `json:"tokenExpiration,omitempty"`
 }
 
 const (
@@ -208,6 +214,38 @@ type PatchUpdateCheckpointRequest struct {
 	IsInvalid  bool            `json:"isInvalid"`
 	Version    int             `json:"version"`
 	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// PatchUpdateVerbatimCheckpointRequest defines the body of a request to a patch update checkpoint endpoint of the
+// service API, where `UntypedDeloyment` is an `apitype.UntypedDeployment`. Whereas the PatchUpdateCheckpointRequest
+// API is subject to the service reformatting how a checkpoint is persisted, PatchUpdateVerbatimCheckpointRequest
+// enables the CLI to define the exact format.
+// Designed to be compatible with the PatchUpdateCheckpointDeltaRequest API, where formatting is critical in calculating
+// textual diffs.
+type PatchUpdateVerbatimCheckpointRequest struct {
+	Version           int             `json:"version"`
+	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
+}
+
+// PatchUpdateCheckpointDeltaRequest defines the body of a request to the bandwidth-optimized version of the patch
+// update checkpoint endpoint of the service API. It is semantically equivalent to the PatchUpdateCheckpointRequest, but
+// instead of transferring the entire Deployment as a JSON blob, it encodes it as a textual diff against the last-saved
+// deployment. This conserves bandwidth on large resources.
+type PatchUpdateCheckpointDeltaRequest struct {
+	// Protocol version.
+	Version int `json:"version"`
+
+	// SHA256 hash of the result of aplying the DeploymentDelta to the previously saved deployment.
+	CheckpointHash string `json:"checkpointHash"`
+
+	// Idempotency key incremented by the client on every PATCH call within the same update.
+	SequenceNumber int `json:"sequenceNumber"`
+
+	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
+	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rivo/uniseg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -84,8 +85,32 @@ func TestColorizer(t *testing.T) {
 			trimmedContent := content[:3]
 			actualTrimmed := TrimColorizedString(str, len(trimmedContent))
 			assert.Equal(t, c.command+trimmedContent+Reset, actualTrimmed)
+
+			assert.Equal(t, uniseg.GraphemeClusterCount("hello\n"), measureText(str))
+			assert.Equal(t, uniseg.GraphemeClusterCount(actualNever), measureText(str))
 		})
 	}
+}
+
+func TestColorizer_10351(t *testing.T) {
+	t.Parallel()
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/10351. If the character codes "%}>" were
+	// present in a string our lookup for color delimiters could crash with out of range errors.
+
+	str := "%}>" + Red + "hello" + Reset + "\n"
+
+	actualRaw := colorizeText(str, Raw, -1)
+	assert.Equal(t, str, actualRaw)
+
+	actualAlways := Always.Colorize(str)
+	assert.Equal(t, "%}>"+codes("38", "5", "1")+"hello"+codes("0")+"\n", actualAlways)
+
+	actualNever := Never.Colorize(str)
+	assert.Equal(t, "%}>hello\n", actualNever)
+
+	actualTrimmed := TrimColorizedString(str, 6)
+	assert.Equal(t, "%}>"+Red+"hel"+Reset, actualTrimmed)
 }
 
 // TestTrimColorizedString provides extra coverage for TrimColorizedString.
@@ -112,4 +137,7 @@ func TestTrimColorizedString(t *testing.T) {
 	plain := "hello, world!!"
 	actual = TrimColorizedString(plain, len("hello"))
 	assert.Equal(t, "hello", actual)
+
+	assert.Equal(t, uniseg.GraphemeClusterCount("hello, world!!"), measureText(str))
+	assert.Equal(t, uniseg.GraphemeClusterCount(Never.Colorize(str)), measureText(str))
 }

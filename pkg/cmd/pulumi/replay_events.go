@@ -43,6 +43,7 @@ func newReplayEventsCmd() *cobra.Command {
 	var debug bool
 
 	var delay time.Duration
+	var period time.Duration
 
 	var cmd = &cobra.Command{
 		Use:   "replay-events [kind] [events-file]",
@@ -110,6 +111,9 @@ func newReplayEventsCmd() *cobra.Command {
 
 			for _, e := range events {
 				eventChannel <- e
+				if period != 0 {
+					time.Sleep(period)
+				}
 			}
 			<-doneChannel
 
@@ -148,6 +152,8 @@ func newReplayEventsCmd() *cobra.Command {
 
 	cmd.PersistentFlags().DurationVar(&delay, "delay", time.Duration(0),
 		"Delay display by the given duration. Useful for attaching a debugger.")
+	cmd.PersistentFlags().DurationVar(&period, "period", time.Duration(0),
+		"Delay each event by the given duration.")
 
 	return cmd
 }

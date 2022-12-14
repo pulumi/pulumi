@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -46,45 +47,54 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func findProgram(binary string) (*exec.Cmd, error) {
-	// we default to execution via `go run`
-	// the user can explicitly opt in to using a binary executable by specifying
-	// runtime.options.binary in the Pulumi.yaml
-	if binary != "" {
-		program, err := executable.FindExecutable(binary)
-		if err != nil {
-			return nil, errors.Wrap(err, "expected to find prebuilt executable")
-		}
-		return exec.Command(program), nil
-	}
+// This function takes a file target to specify where to compile to.
+// If `outfile` is "", the binary is compiled to a new temporary file.
+// This function returns the path of the file that was produced.
+func compileProgram(programDirectory string, outfile string) (string, error) {
 
-	// Fall back to 'go run' style executions
-	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via 'go run'")
-	program, err := executable.FindExecutable("go")
-	if err != nil {
-		return nil, errors.Wrap(err, "problem executing program (could not run language executor)")
-	}
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get current working directory")
-	}
-
-	goFileSearchPattern := filepath.Join(cwd, "*.go")
+	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
-		return nil, errors.Errorf("Failed to find go files for 'go run' matching %s", goFileSearchPattern)
+		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
 
-	return exec.Command(program, "run", cwd), nil
+	if outfile == "" {
+		// If no outfile is supplied, write the Go binary to a temporary file.
+		f, err := os.CreateTemp("", "pulumi-go.*")
+		if err != nil {
+			return "", errors.Wrap(err, "unable to create go program temp file")
+		}
+
+		if err := f.Close(); err != nil {
+			return "", errors.Wrap(err, "unable to close go program temp file")
+		}
+		outfile = f.Name()
+	}
+
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return "", errors.Wrap(err, "unable to find 'go' executable")
+	}
+	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
+	buildCmd := exec.Command(gobin, "build", "-o", outfile)
+	buildCmd.Dir = programDirectory
+	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
+
+	if err := buildCmd.Run(); err != nil {
+		return "", errors.Wrap(err, "unable to run `go build`")
+	}
+
+	return outfile, nil
 }
 
 // Launches the language host, which in turn fires up an RPC server implementing the LanguageRuntimeServer endpoint.
 func main() {
 	var tracing string
 	var binary string
+	var buildTarget string
 	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
+	flag.StringVar(&buildTarget, "buildTarget", "", "Path to use to output the compiled Pulumi Go program")
 	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	flag.Parse()
@@ -110,23 +120,29 @@ func main() {
 		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
 	}
 
+	if binary != "" && buildTarget != "" {
+		cmdutil.Exit(errors.Errorf("binary and buildTarget cannot both be specified"))
+	}
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
-			host := newLanguageHost(engineAddress, tracing, binary)
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancelChannel,
+		Init: func(srv *grpc.Server) error {
+			host := newLanguageHost(engineAddress, tracing, binary, buildTarget)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// And finally wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
 }
@@ -136,13 +152,15 @@ type goLanguageHost struct {
 	engineAddress string
 	tracing       string
 	binary        string
+	buildTarget   string
 }
 
-func newLanguageHost(engineAddress, tracing, binary string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		binary:        binary,
+		buildTarget:   buildTarget,
 	}
 }
 
@@ -214,7 +232,7 @@ func normalizeVersion(version string) (string, error) {
 func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load pulumi-plugin.json: %w", err)
+		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
 	}
 
 	if (!strings.HasPrefix(m.Path, "github.com/pulumi/pulumi-") && pulumiPlugin == nil) ||
@@ -328,7 +346,58 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	}, nil
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
+	cmd.Env = env
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+
+	err := cmd.Run()
+
+	// error handling
+	exiterr, ok := err.(*exec.ExitError)
+	if !ok {
+		return 0, errors.Wrapf(err, "command errored unexpectedly")
+	}
+
+	// retrieve the status code
+	status, ok := exiterr.Sys().(syscall.WaitStatus)
+	if !ok {
+		return 0, errors.Wrapf(err, "program exited unexpectedly")
+	}
+
+	return status.ExitStatus(), nil
+}
+
+func runProgram(pwd, bin string, env []string) *pulumirpc.RunResponse {
+	cmd := exec.Command(bin)
+	cmd.Dir = pwd
+	status, err := runCmdStatus(cmd, env)
+	if err != nil {
+		return &pulumirpc.RunResponse{
+			Error: err.Error(),
+		}
+	}
+
+	if status == 0 {
+		return &pulumirpc.RunResponse{}
+	}
+
+	// If the program ran, but returned an error,
+	// the error message should look as nice as possible.
+	if status == constant.ExitStatusLoggedError {
+		// program failed but sent an error to the engine
+		return &pulumirpc.RunResponse{
+			Bail: true,
+		}
+	}
+
+	// If the program ran, but exited with a non-zero and non-reserved error code.
+	// indicate to the user which exit code the program returned.
+	return &pulumirpc.RunResponse{
+		Error: fmt.Sprintf("program exited with non-zero exit code: %d", status),
+	}
+}
+
+// Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	// Create the environment we'll use to run the process.  This is how we pass the RunInfo to the actual
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
@@ -337,33 +406,57 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, errors.Wrap(err, "failed to prepare environment")
 	}
 
-	cmd, err := findProgram(host.binary)
-	if err != nil {
-		return nil, err
+	// the user can explicitly opt in to using a binary executable by specifying
+	// runtime.options.binary in the Pulumi.yaml
+	if host.binary != "" {
+		bin, err := executable.FindExecutable(host.binary)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to find '%s' executable", host.binary)
+		}
+		return runProgram(req.Pwd, bin, env), nil
 	}
-	cmd.Env = env
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
-	var errResult string
-	if err := cmd.Run(); err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
-			// errors will trigger this.  So, the error message should look as nice as possible.
-			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = errors.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
-			} else {
-				err = errors.Wrapf(exiterr, "program exited unexpectedly")
-			}
-		} else {
-			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			err = errors.Wrapf(err, "problem executing program (could not run language executor)")
+	// feature flag to enable deprecated old behavior and use `go run`
+	if os.Getenv("PULUMI_GO_USE_RUN") != "" {
+		gobin, err := executable.FindExecutable("go")
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to find 'go' executable")
 		}
 
-		errResult = err.Error()
+		cmd := exec.Command(gobin, "run", req.Program)
+
+		status, err := runCmdStatus(cmd, env)
+		if err != nil {
+			return &pulumirpc.RunResponse{
+				Error: err.Error(),
+			}, nil
+		}
+
+		// `go run` does not return the actual exit status of a program
+		// it only returns 2 non-zero exit statuses {1, 2}
+		// and it emits the exit status to stderr
+		if status != 0 {
+			return &pulumirpc.RunResponse{
+				Bail: true,
+			}, nil
+		}
+
+		return &pulumirpc.RunResponse{}, nil
 	}
 
-	return &pulumirpc.RunResponse{Error: errResult}, nil
+	// user did not specify a binary and we will compile and run the binary on-demand
+	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
+
+	program, err := compileProgram(req.Program, host.buildTarget)
+	if err != nil {
+		return nil, errors.Wrap(err, "error in compiling Go")
+	}
+	if host.buildTarget == "" {
+		// If there is no specified buildTarget, delete the temporary program after running it.
+		defer os.Remove(program)
+	}
+
+	return runProgram(req.Pwd, program, env), nil
 }
 
 // constructEnv constructs an environment for a Go progam by enumerating all of the optional and non-optional
@@ -385,6 +478,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 		}
 	}
 
+	maybeAppendEnv(pulumi.EnvOrganization, req.GetOrganization())
 	maybeAppendEnv(pulumi.EnvProject, req.GetProject())
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
@@ -437,7 +531,7 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 func (host *goLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
@@ -462,10 +556,144 @@ func (host *goLanguageHost) InstallDependencies(
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
-
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	getResponse := func(execString string, args ...string) (string, string, error) {
+		ex, err := executable.FindExecutable(execString)
+		if err != nil {
+			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
+		}
+		cmd := exec.Command(ex, args...)
+		var out []byte
+		if out, err = cmd.Output(); err != nil {
+			cmd := ex
+			if len(args) != 0 {
+				cmd += " " + strings.Join(args, " ")
+			}
+			return "", "", fmt.Errorf("failed to execute '%s'", cmd)
+		}
+		return ex, strings.TrimSpace(string(out)), nil
+	}
+
+	goexe, version, err := getResponse("go", "version")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.AboutResponse{
+		Executable: goexe,
+		Version:    version,
+	}, nil
+}
+
+type goModule struct {
+	Path     string
+	Version  string
+	Time     string
+	Indirect bool
+	Dir      string
+	GoMod    string
+	Main     bool
+}
+
+func (host *goLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	// go list -m ...
+	//
+	//Go has a --json flag, but it doesn't emit a single json object (which
+	//makes it invalid json).
+	ex, err := executable.FindExecutable("go")
+	if err != nil {
+		return nil, err
+	}
+	if err := goversion.CheckMinimumGoVersion(ex); err != nil {
+		return nil, err
+	}
+	cmdArgs := []string{"list", "--json", "-m", "..."}
+	cmd := exec.Command(ex, cmdArgs...)
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return nil, fmt.Errorf("failed to get modules: %w", err)
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(out))
+	parsed := []goModule{}
+	for {
+		var m goModule
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, fmt.Errorf("failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
+		}
+		parsed = append(parsed, m)
+
+	}
+
+	result := []*pulumirpc.DependencyInfo{}
+	for _, d := range parsed {
+		if (!d.Indirect || req.TransitiveDependencies) && !d.Main {
+			datum := pulumirpc.DependencyInfo{
+				Name:    d.Path,
+				Version: d.Version,
+			}
+			result = append(result, &datum)
+		}
+	}
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: result,
+	}, nil
+}
+
+func (host *goLanguageHost) RunPlugin(
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
+
+	program, err := compileProgram(req.Program, "")
+	if err != nil {
+		return errors.Wrap(err, "error in compiling Go")
+	}
+	defer os.Remove(program)
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	cmd := exec.Command(program, req.Args...)
+	cmd.Dir = req.Pwd
+	cmd.Env = req.Env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if err = cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				err = server.Send(&pulumirpc.RunPluginResponse{
+					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
+				})
+			} else {
+				err = errors.Wrapf(exiterr, "program exited unexpectedly")
+			}
+		} else {
+			return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
 
 	if err := closer.Close(); err != nil {
 		return err

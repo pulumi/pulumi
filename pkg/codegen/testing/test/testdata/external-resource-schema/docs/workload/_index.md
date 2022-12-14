@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a Workload Resource {#create}
+## Create Workload Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -299,7 +299,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_go" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod</a></span>
+        <span class="property-type"><a href="#pod">Pod<wbr>Type</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

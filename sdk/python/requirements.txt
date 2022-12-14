@@ -1,14 +1,14 @@
 # Packages needed by the library.
 # Keep this list in sync with setup.py.
-protobuf~=3.6
-grpcio~=1.33
+protobuf~=4.21
+grpcio==1.47
 dill~=0.3
 six~=1.12
 semver~=2.8
-pyyaml~=5.3
+pyyaml~=6.0
 
 # Dev packages only needed during development.
-pylint
+pylint==2.15.5
 mypy>=0.78
 pytest
 pytest-timeout

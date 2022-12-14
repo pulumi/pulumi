@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "example/doc.go",
+    "example/init.go",
+    "example/mymodule/iamResource.go",
+    "example/mymodule/init.go",
+    "example/provider.go",
+    "example/pulumi-plugin.json",
+    "example/pulumiUtilities.go"
+  ]
+}

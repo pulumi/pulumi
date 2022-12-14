@@ -34,15 +34,14 @@ func newConsoleCmd() *cobra.Command {
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			currentBackend, err := currentBackend(opts)
+			currentBackend, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
-
-			ctx := commandContext()
 
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
@@ -74,13 +73,13 @@ func newConsoleCmd() *cobra.Command {
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if consoleURL, err := cloudBackend.StackConsoleURL(stack.Ref()); err != nil {
-					launchConsole(consoleURL)
-				} else {
+				url, err := cloudBackend.StackConsoleURL(stack.Ref())
+				if err != nil {
 					// Open the cloud backend home page if retrieving the stack
 					// console URL fails.
-					launchConsole(cloudBackend.URL())
+					url = cloudBackend.URL()
 				}
+				launchConsole(url)
 				return nil
 			}
 			fmt.Println("This command is not available for your backend. " +

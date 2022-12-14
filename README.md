@@ -32,13 +32,13 @@ For example, create three web servers:
 ```typescript
 let aws = require("@pulumi/aws");
 let sg = new aws.ec2.SecurityGroup("web-sg", {
-    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"]}],
+    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
 });
 for (let i = 0; i < 3; i++) {
     new aws.ec2.Instance(`web-${i}`, {
         ami: "ami-7172b611",
         instanceType: "t2.micro",
-        securityGroups: [ sg.name ],
+        vpcSecurityGroupIds: [sg.id],
         userData: `#!/bin/bash
             echo "Hello, World!" > index.html
             nohup python -m SimpleHTTPServer 80 &`,
@@ -72,7 +72,7 @@ aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", () => {
 Many examples are available spanning containers, serverless, and infrastructure in
 [pulumi/examples](https://github.com/pulumi/examples).
 
-Pulumi is open source under the Apache 2.0 license, supports many languages and clouds, and is easy to extend.  This
+Pulumi is open source under the [Apache 2.0 license](https://github.com/pulumi/pulumi/blob/master/LICENSE), supports many languages and clouds, and is easy to extend.  This
 repo contains the `pulumi` CLI, language SDKs, and core Pulumi engine, and individual libraries are in their own repos.
 
 ## Welcome
@@ -168,22 +168,25 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 ## <a name="platform"></a>Platform
 
-### CLI
-
-| Architecture | Build Status |
-| ------------ | ------------ |
-| Linux/macOS x64 | [![Linux x64 Build Status](https://github.com/pulumi/pulumi/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi/actions/workflows/master.yml) |
-| Windows x64     | [![Windows x64 Build Status](https://ci.appveyor.com/api/projects/status/uqrduw6qnoss7g4i?svg=true&branch=master)](https://ci.appveyor.com/project/pulumi/pulumi)   |
-
 ### Languages
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](./sdk/nodejs) | Stable  | Node.js 12+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](./sdk/nodejs) | Stable  | Node.js 12+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-python.png" height=38 /> | [Python](./sdk/python)     | Stable  | Python 3.6+ |
-| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](./sdk/go)             | Stable  | Go 1.14+   |
-| <img src="https://www.pulumi.com/logos/tech/dotnet.png" height=38 />      | [.NET (C#/F#/VB.NET)](./sdk/dotnet)     | Stable  | .NET Core 3.1+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 14+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 14+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-python.svg" height=38 /> | [Python](https://www.pulumi.com/docs/intro/languages/python/)     | Stable  | Python 3.7+ |
+| <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](https://www.pulumi.com/docs/intro/languages/go/)             | Stable  | Go 1.18+   |
+| <img src="https://www.pulumi.com/logos/tech/dotnet.svg" height=38 />      | [.NET (C#/F#/VB.NET)](https://www.pulumi.com/docs/intro/languages/dotnet/)     | Stable  | .NET Core 3.1+  |
+| <img src="https://www.pulumi.com/logos/tech/java.svg" height=38 />      | [Java](https://www.pulumi.com/docs/intro/languages/java/)     | Public Preview  | JDK 11+  |
+| <img src="https://www.pulumi.com/logos/tech/yaml.svg" height=38 />      | [YAML](https://www.pulumi.com/docs/intro/languages/yaml/)     | Public Preview  | n/a  |
+
+### EOL Releases
+
+The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
+
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-3.0/).
+
+* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-2.0/).
 
 ### Clouds
 

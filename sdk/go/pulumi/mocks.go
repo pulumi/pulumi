@@ -26,7 +26,13 @@ func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	}
 }
 
-// MockResourceArgs is used to construct call Mock
+func WithMocksWithOrganization(organization, project, stack string, mocks MockResourceMonitor) RunOption {
+	return func(info *RunInfo) {
+		info.Project, info.Stack, info.Mocks, info.Organization = project, stack, mocks, organization
+	}
+}
+
+// MockCallArgs is used to construct a call Mock
 type MockCallArgs struct {
 	// Token indicates which function is being called. This token is of the form "package:module:function".
 	Token string
@@ -81,7 +87,7 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id == "secrets" || id == "resourceReferences" || id == "aliasSpecs"
+	hasSupport := id == "secrets" || id == "resourceReferences"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,

@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -64,15 +66,15 @@ func jsonPythonLiteral(thing interface{}) (string, error) {
 //
 // Example:
 //
-// {
-//   "pkg": "azure-native",
-//   "mod": "databricks",
-//   "fqn": "pulumi_azure_native.databricks"
-//   "classes": {
-//     "azure-native:databricks:Workspace": "Workspace",
-//     "azure-native:databricks:vNetPeering": "VNetPeering"
-//   }
-// }
+//	{
+//	  "pkg": "azure-native",
+//	  "mod": "databricks",
+//	  "fqn": "pulumi_azure_native.databricks"
+//	  "classes": {
+//	    "azure-native:databricks:Workspace": "Workspace",
+//	    "azure-native:databricks:vNetPeering": "VNetPeering"
+//	  }
+//	}
 type resourceModuleInfo struct {
 	Pkg     string            `json:"pkg"`
 	Mod     string            `json:"mod"`
@@ -109,8 +111,8 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 		}
 
 		if !res.IsProvider {
-			pkg := mctx.pkg.Name
-			mod := mctx.pkg.TokenToRuntimeModule(res.Token)
+			pkg := mctx.pkg.Name()
+			mod := schema.TokenToRuntimeModule(res.Token)
 			fqn := mctx.fullyQualifiedImportName()
 
 			rmi, found := byMod[mod]
@@ -169,7 +171,7 @@ func collectResourcePackageInfos(mctx *modContext) []resourcePackageInfo {
 		}
 
 		if res.IsProvider {
-			pkg := mctx.pkg.Name
+			pkg := mctx.pkg.Name()
 			token := res.Token
 			fqn := mctx.fullyQualifiedImportName()
 			class := "Provider"

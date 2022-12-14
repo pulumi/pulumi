@@ -28,15 +28,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIgnoreSimple(t *testing.T) {
 	t.Parallel()
 
-	doArchiveTest(t,
+	doArchiveTest(t, ".",
 		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
 		fileContents{name: "included.txt", shouldRetain: true},
 		fileContents{name: "node_modules/included.txt", shouldRetain: true},
@@ -51,7 +49,7 @@ func TestIgnoreNegate(t *testing.T) {
 		t.Skip("Skipped on Windows: TODO[pulumi/pulumi#8648] handle Windows paths in test logic")
 	}
 
-	doArchiveTest(t,
+	doArchiveTest(t, ".",
 		fileContents{name: ".gitignore", contents: []byte("/*\n!/foo\n/foo/*\n!/foo/bar"), shouldRetain: false},
 		fileContents{name: "excluded.txt", shouldRetain: false},
 		fileContents{name: "foo/excluded.txt", shouldRetain: false},
@@ -62,7 +60,7 @@ func TestIgnoreNegate(t *testing.T) {
 func TestNested(t *testing.T) {
 	t.Parallel()
 
-	doArchiveTest(t,
+	doArchiveTest(t, ".",
 		fileContents{name: ".gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
 		fileContents{name: "node_modules/.gitignore", contents: []byte("@pulumi/"), shouldRetain: true},
 		fileContents{name: "included.txt", shouldRetain: true},
@@ -74,7 +72,7 @@ func TestNested(t *testing.T) {
 func TestTypicalPythonPolicyPackDir(t *testing.T) {
 	t.Parallel()
 
-	doArchiveTest(t,
+	doArchiveTest(t, ".",
 		fileContents{name: "__main__.py", shouldRetain: true},
 		fileContents{name: ".gitignore", contents: []byte("*.pyc\nvenv/\n"), shouldRetain: true},
 		fileContents{name: "PulumiPolicy.yaml", shouldRetain: true},
@@ -88,7 +86,7 @@ func TestTypicalPythonPolicyPackDir(t *testing.T) {
 func TestIgnoreContentOfDotGit(t *testing.T) {
 	t.Parallel()
 
-	doArchiveTest(t,
+	doArchiveTest(t, ".",
 		fileContents{name: ".git/HEAD", shouldRetain: false},
 		fileContents{name: ".git/objects/00/02ae827766d77ee9e2082fee9adeaae90aff65", shouldRetain: false},
 		fileContents{name: "__main__.py", shouldRetain: true},
@@ -96,9 +94,33 @@ func TestIgnoreContentOfDotGit(t *testing.T) {
 		fileContents{name: "requirements.txt", shouldRetain: true})
 }
 
-func doArchiveTest(t *testing.T, files ...fileContents) {
-	doTest := func(prefixPathInsideTar string) {
-		tarball, err := archiveContents(prefixPathInsideTar, files...)
+func TestNestedPath(t *testing.T) {
+	t.Parallel()
+
+	doArchiveTest(t, "pkg/",
+		fileContents{name: "excluded.txt", shouldRetain: false},
+		fileContents{name: "pkg/.gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
+		fileContents{name: "pkg/node_modules/included.txt", shouldRetain: true},
+		fileContents{name: "pkg/node_modules/pulumi/excluded.txt", shouldRetain: false},
+		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
+}
+
+func TestIgnoreNestedGitignore(t *testing.T) {
+	t.Parallel()
+
+	doArchiveTest(t, "pkg/",
+		fileContents{name: ".gitignore", contents: []byte("*.ts"), shouldRetain: false},
+		fileContents{name: "excluded.txt", shouldRetain: false},
+		fileContents{name: "pkg/.gitignore", contents: []byte("node_modules/pulumi/"), shouldRetain: true},
+		fileContents{name: "pkg/node_modules/excluded.ts", shouldRetain: false},
+		fileContents{name: "pkg/node_modules/included.txt", shouldRetain: true},
+		fileContents{name: "pkg/node_modules/pulumi/excluded.txt", shouldRetain: false},
+		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
+}
+
+func doArchiveTest(t *testing.T, path string, files ...fileContents) {
+	doTest := func(prefixPathInsideTar, path string) {
+		tarball, err := archiveContents(t, prefixPathInsideTar, path, files...)
 		assert.NoError(t, err)
 
 		tarReader := bytes.NewReader(tarball)
@@ -106,22 +128,15 @@ func doArchiveTest(t *testing.T, files ...fileContents) {
 		assert.NoError(t, err)
 		r := tar.NewReader(gzr)
 
-		checkFiles(t, prefixPathInsideTar, files, r)
+		checkFiles(t, prefixPathInsideTar, path, files, r)
 	}
 	for _, prefix := range []string{"", "package"} {
-		doTest(prefix)
+		doTest(prefix, path)
 	}
 }
 
-func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte, error) {
-	dir, err := ioutil.TempDir("", "archive-test")
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		contract.IgnoreError(os.RemoveAll(dir))
-	}()
+func archiveContents(t *testing.T, prefixPathInsideTar, path string, files ...fileContents) ([]byte, error) {
+	dir := t.TempDir()
 
 	for _, file := range files {
 		name := file.name
@@ -140,16 +155,19 @@ func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte,
 		}
 	}
 
-	return TGZ(dir, prefixPathInsideTar, true /*useDefaultExcludes*/)
+	return TGZ(filepath.Join(dir, path), prefixPathInsideTar, true /*useDefaultExcludes*/)
 }
 
-func checkFiles(t *testing.T, prefixPathInsideTar string, expected []fileContents, r *tar.Reader) {
+func checkFiles(t *testing.T, prefixPathInsideTar, path string, expected []fileContents, r *tar.Reader) {
 	var expectedFiles []string
 	var actualFiles []string
 
 	for _, f := range expected {
 		if f.shouldRetain {
 			name := f.name
+			if path != "." {
+				name = strings.Replace(name, path, "", 1)
+			}
 			if prefixPathInsideTar != "" {
 				// Joining with '/' rather than platform-specific `filepath.Join` because we expect
 				// the name in the tar to be using '/'.

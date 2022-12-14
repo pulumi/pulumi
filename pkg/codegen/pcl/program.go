@@ -159,3 +159,11 @@ func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
 	}
 	return values, nil
 }
+
+func (p *Program) Source() map[string]string {
+	source := make(map[string]string)
+	for _, file := range p.files {
+		source[file.Name] = string(file.Bytes)
+	}
+	return source
+}

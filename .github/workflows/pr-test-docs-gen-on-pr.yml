@@ -1,0 +1,29 @@
+name: Downstream Resource Docs Test
+
+on:
+  pull_request:
+    paths:
+      - 'pkg/codegen/docs/**'
+      - 'pkg/codegen/docs/docs.go'
+      - 'pkg/codegen/docs/docs_test.go'
+      - '.github/workflows/ci-test-docs-generation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci-codegen:
+    name: CI Codegen
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/ci-test-docs-generation.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      pull_request_number: ${{ github.event.pull_request.number }}
+      pull_request_author: ${{ github.event.pull_request.user.login }}
+    secrets: inherit

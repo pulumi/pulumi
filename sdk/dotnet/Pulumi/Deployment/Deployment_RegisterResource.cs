@@ -21,7 +21,11 @@ namespace Pulumi
             var label = $"resource:{name}[{type}]";
             Log.Debug($"Registering resource start: t={type}, name={name}, custom={custom}, remote={remote}");
 
-            var request = CreateRegisterResourceRequest(type, name, custom, remote, options);
+            if (options.DeletedWith != null && !(await MonitorSupportsDeletedWith().ConfigureAwait(false))) {
+                throw new Exception("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.");
+            }
+
+            var request = await CreateRegisterResourceRequest(type, name, custom, remote, options);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}, remote={remote}");
             var prepareResult = await PrepareResourceAsync(label, resource, custom, remote, args, options).ConfigureAwait(false);
@@ -53,15 +57,7 @@ namespace Pulumi
             request.Parent = prepareResult.ParentUrn;
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
-            if (prepareResult.UrnAliases != null) {
-                #pragma warning disable 612
-                // UrnAliases is marked obsolete, but it does still work and is needed for old engines.
-                request.UrnAliases.Add(prepareResult.UrnAliases);
-                #pragma warning restore 612
-            } else {
-                System.Diagnostics.Debug.Assert(prepareResult.Aliases != null, "UrnAliases and Aliases were both null");
-                request.Aliases.Add(prepareResult.Aliases);
-            }
+            request.AliasURNs.AddRange(prepareResult.AliasURNs);
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
             foreach (var (key, resourceUrns) in prepareResult.PropertyToDirectDependencyUrns)
@@ -72,11 +68,15 @@ namespace Pulumi
             }
         }
 
-        private static RegisterResourceRequest CreateRegisterResourceRequest(
+        private async static Task<RegisterResourceRequest> CreateRegisterResourceRequest(
             string type, string name, bool custom, bool remote, ResourceOptions options)
         {
             var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
+            var deletedWith = "";
+            if (options.DeletedWith != null) {
+                deletedWith = await options.DeletedWith.Urn.GetValueAsync("").ConfigureAwait(false);
+            }
 
             var request = new RegisterResourceRequest
             {
@@ -99,6 +99,7 @@ namespace Pulumi
                 },
                 Remote = remote,
                 RetainOnDelete = options.RetainOnDelete ?? false,
+                DeletedWith = deletedWith,
             };
 
             if (customOpts != null)

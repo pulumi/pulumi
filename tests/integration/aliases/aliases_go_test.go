@@ -1,5 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-// +build go all
+//go:build (go || all) && !smoke
 
 package ints
 
@@ -19,6 +19,7 @@ func TestGoAliases(t *testing.T) {
 		"rename_component_and_child",
 		"retype_component",
 		"rename_component",
+		"retype_parents",
 	}
 
 	for _, dir := range dirs {
@@ -27,7 +28,7 @@ func TestGoAliases(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir: filepath.Join(d, "step1"),
 				Dependencies: []string{
-					"github.com/pulumi/pulumi/sdk/v3",
+					"github.com/pulumi/pulumi/sdk/v3=../../../sdk",
 				},
 				Quick: true,
 				EditDirs: []integration.EditDir{

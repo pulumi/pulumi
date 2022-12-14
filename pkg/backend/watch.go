@@ -1,6 +1,3 @@
-//go:build !darwin || !arm64
-// +build !darwin !arm64
-
 // Copyright 2016-2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +15,23 @@
 package backend
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
-
-	"github.com/rjeczalik/notify"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -70,23 +72,12 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 		}
 	}()
 
-	events := make(chan notify.EventInfo, 1)
-
-	for _, p := range paths {
-		// Provided paths can be both relative and absolute.
-		watchPath := ""
-		if path.IsAbs(p) {
-			watchPath = path.Join(p, "...")
-		} else {
-			watchPath = path.Join(op.Root, p, "...")
-		}
-
-		if err := notify.Watch(watchPath, events, notify.All); err != nil {
-			return result.FromError(err)
-		}
+	// Provided paths can be both relative and absolute.
+	events, stop, err := watchPaths(op.Root, paths)
+	if err != nil {
+		return result.FromError(err)
 	}
-
-	defer notify.Stop(events)
+	defer stop()
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
 		colors.SpecHeadline+"Watching (%s):"+colors.Reset+"\n"), stack.Ref())
@@ -108,8 +99,85 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 			display.PrintfWithWatchPrefix(time.Now(), "",
 				op.Opts.Display.Color.Colorize(colors.SpecImportant+"Update complete."+colors.Reset+"\n"))
 		}
-
 	}
 
 	return nil
+}
+
+func watchPaths(root string, paths []string) (chan string, func(), error) {
+	args := []string{"--origin", root}
+	for _, p := range paths {
+
+		watchPath := ""
+		if path.IsAbs(p) {
+			watchPath = p
+		} else {
+			watchPath = path.Join(root, p)
+		}
+
+		args = append(args, "--watch", watchPath)
+	}
+
+	watchCmd, err := getWatchUtil()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cmd := exec.Command(watchCmd, args...)
+	cmdutil.RegisterProcessGroup(cmd)
+	reader, _ := cmd.StdoutPipe()
+
+	scanner := bufio.NewScanner(reader)
+	events := make(chan string)
+	go stdoutToChannel(scanner, events)
+	err = cmd.Start()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error starting pulumi-watch: %w", err)
+	}
+
+	stop := func() {
+		err := cmd.Process.Kill()
+		contract.AssertNoErrorf(err, "Unexpected error stopping pulumi-watch process: %v", err)
+	}
+
+	return events, stop, nil
+}
+
+const windowsGOOS = "windows"
+
+func getWatchUtil() (string, error) {
+	program := "pulumi-watch"
+	if runtime.GOOS == windowsGOOS {
+		program = "pulumi-watch.exe"
+	}
+
+	watchCmd, err := exec.LookPath("pulumi-watch")
+	if err == nil {
+		return watchCmd, nil
+	}
+
+	exePath, exeErr := os.Executable()
+	if exeErr == nil {
+		fullPath, fullErr := filepath.EvalSymlinks(exePath)
+		if fullErr == nil {
+			candidate := filepath.Join(filepath.Dir(fullPath), program)
+
+			// Let's see if the file is executable. On Windows, os.Stat() returns a mode of "-rw-rw-rw" so on
+			// on windows we just trust the fact that the .exe can actually be launched.
+			if stat, err := os.Stat(candidate); err == nil {
+				if stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS {
+					return candidate, nil
+				}
+				return "", fmt.Errorf("Could not locate an executable pulumi-watch, found %v without execute bit", fullPath)
+			}
+		}
+	}
+
+	return "", fmt.Errorf("Could not locate pulumi-watch binary")
+}
+
+func stdoutToChannel(scanner *bufio.Scanner, out chan string) {
+	for scanner.Scan() {
+		out <- scanner.Text()
+	}
 }

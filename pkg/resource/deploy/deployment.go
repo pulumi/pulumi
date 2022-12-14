@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"regexp"
+	"strings"
 	"sync"
 
 	uuid "github.com/gofrs/uuid"
@@ -50,20 +52,20 @@ type BackendClient interface {
 
 // Options controls the deployment process.
 type Options struct {
-	Events                    Events         // an optional events callback interface.
-	Parallel                  int            // the degree of parallelism for resource operations (<=1 for serial).
-	Refresh                   bool           // whether or not to refresh before executing the deployment.
-	RefreshOnly               bool           // whether or not to exit after refreshing.
-	RefreshTargets            []resource.URN // The specific resources to refresh during a refresh op.
-	ReplaceTargets            []resource.URN // Specific resources to replace.
-	DestroyTargets            []resource.URN // Specific resources to destroy.
-	UpdateTargets             []resource.URN // Specific resources to update.
-	TargetDependents          bool           // true if we're allowing things to proceed, even with unspecified targets
-	TrustDependencies         bool           // whether or not to trust the resource dependency graph.
-	UseLegacyDiff             bool           // whether or not to use legacy diffing behavior.
-	DisableResourceReferences bool           // true to disable resource reference support.
-	DisableOutputValues       bool           // true to disable output value support.
-	ExperimentalPlans         bool           // true to enable experimental plan support.
+	Events                    Events     // an optional events callback interface.
+	Parallel                  int        // the degree of parallelism for resource operations (<=1 for serial).
+	Refresh                   bool       // whether or not to refresh before executing the deployment.
+	RefreshOnly               bool       // whether or not to exit after refreshing.
+	RefreshTargets            UrnTargets // The specific resources to refresh during a refresh op.
+	ReplaceTargets            UrnTargets // Specific resources to replace.
+	DestroyTargets            UrnTargets // Specific resources to destroy.
+	UpdateTargets             UrnTargets // Specific resources to update.
+	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
+	TrustDependencies         bool       // whether or not to trust the resource dependency graph.
+	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.
+	DisableResourceReferences bool       // true to disable resource reference support.
+	DisableOutputValues       bool       // true to disable output value support.
+	GeneratePlan              bool       // true to enable plan generation.
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -78,6 +80,102 @@ func (o Options) DegreeOfParallelism() int {
 // InfiniteParallelism returns whether or not the requested level of parallelism is unbounded.
 func (o Options) InfiniteParallelism() bool {
 	return o.Parallel == math.MaxInt32
+}
+
+// An immutable set of urns to target with an operation.
+//
+// The zero value of UrnTargets is the set of all URNs.
+type UrnTargets struct {
+	// UrnTargets is internally made up of two components: literals, which are fully
+	// specified URNs and globs, which are partially specified URNs.
+
+	literals []resource.URN
+	globs    map[string]*regexp.Regexp
+}
+
+// Create a new set of targets.
+//
+// Each element is considered a glob if it contains any '*' and an URN otherwise. No other
+// URN validation is performed.
+//
+// If len(urnOrGlobs) == 0, an unconstrained set will be created.
+func NewUrnTargets(urnOrGlobs []string) UrnTargets {
+	literals, globs := []resource.URN{}, map[string]*regexp.Regexp{}
+	for _, urn := range urnOrGlobs {
+		if strings.ContainsRune(urn, '*') {
+			globs[urn] = nil
+		} else {
+			literals = append(literals, resource.URN(urn))
+		}
+	}
+	return UrnTargets{literals, globs}
+}
+
+// Create a new set of targets from fully resolved URNs.
+func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
+	return UrnTargets{urns, nil}
+}
+
+// Return if the target set constrains the set of acceptable URNs.
+func (t UrnTargets) IsConstrained() bool {
+	return len(t.literals) > 0 || len(t.globs) > 0
+}
+
+// Get a regexp that can match on the glob. This function caches regexp generation.
+func (t UrnTargets) getMatcher(glob string) *regexp.Regexp {
+	if r := t.globs[glob]; r != nil {
+		return r
+	}
+	segmentGlob := strings.Split(glob, "**")
+	for i, v := range segmentGlob {
+		part := strings.Split(v, "*")
+		for i, v := range part {
+			part[i] = regexp.QuoteMeta(v)
+		}
+		segmentGlob[i] = strings.Join(part, "[^:]*")
+	}
+
+	// Because we have quoted all input, this is safe to compile.
+	r := regexp.MustCompile("^" + strings.Join(segmentGlob, ".*") + "$")
+
+	// We cache and return the matcher
+	t.globs[glob] = r
+	return r
+}
+
+// Check if Targets contains the URN.
+//
+// If method receiver is not initialized, `true` is always returned.
+func (t UrnTargets) Contains(urn resource.URN) bool {
+	if !t.IsConstrained() {
+		return true
+	}
+	for _, literal := range t.literals {
+		if literal == urn {
+			return true
+		}
+	}
+	for glob := range t.globs {
+		if t.getMatcher(glob).MatchString(string(urn)) {
+			return true
+		}
+	}
+	return false
+}
+
+// URN literals specified as targets.
+//
+// It doesn't make sense to iterate over all targets, since the list of targets may be
+// infinite.
+func (t UrnTargets) Literals() []resource.URN {
+	return t.literals
+}
+
+// Adds a literal iff t is already initialized.
+func (t *UrnTargets) addLiteral(urn resource.URN) {
+	if t.IsConstrained() {
+		t.literals = append(t.literals, urn)
+	}
 }
 
 // StepExecutorEvents is an interface that can be used to hook resource lifecycle events.
@@ -151,6 +249,10 @@ func (m *resourcePlans) set(urn resource.URN, plan *ResourcePlan) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
+	if _, ok := m.plans.ResourcePlans[urn]; ok {
+		panic(fmt.Sprintf("tried to set resource plan for %s but it's already been set", urn))
+	}
+
 	m.plans.ResourcePlans[urn] = plan
 }
 
@@ -197,9 +299,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 	}
 
 	// Pull the versions we'll use for default providers from the snapshot's manifest.
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
 	for _, p := range prev.Manifest.Plugins {
-		defaultProviderInfo[tokens.Package(p.Name)] = p
+		defaultProviderInfo[tokens.Package(p.Name)] = p.Spec()
 	}
 
 	// Determine the necessary set of default providers and inject references to default providers as appropriate.

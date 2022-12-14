@@ -13,7 +13,7 @@ namespace Pulumi.Myedgeorder.Inputs
     /// <summary>
     /// Holds details about product hierarchy information
     /// </summary>
-    public sealed class HierarchyInformationArgs : Pulumi.ResourceArgs
+    public sealed class HierarchyInformationArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// Represents configuration name that uniquely identifies configuration
@@ -42,5 +42,6 @@ namespace Pulumi.Myedgeorder.Inputs
         public HierarchyInformationArgs()
         {
         }
+        public static new HierarchyInformationArgs Empty => new HierarchyInformationArgs();
     }
 }

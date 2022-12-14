@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := requireStack(stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)
 				}
@@ -115,6 +115,7 @@ func newStackExportCmd() *cobra.Command {
 
 			// Write the deployment.
 			enc := json.NewEncoder(writer)
+			enc.SetEscapeHTML(false)
 			enc.SetIndent("", "    ")
 
 			if err = enc.Encode(deployment); err != nil {

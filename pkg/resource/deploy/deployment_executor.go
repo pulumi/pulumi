@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -39,28 +40,11 @@ type deploymentExecutor struct {
 	stepExec *stepExecutor  // step executor owned by this deployment
 }
 
-// A set is returned of all the target URNs to facilitate later callers.  The set can be 'nil'
-// indicating no targets, or will be non-nil and non-empty if there are targets.  Only URNs in the
-// original array are in the set.  i.e. it's only checked for containment.  The value of the map is
-// unused.
-func createTargetMap(targets []resource.URN) map[resource.URN]bool {
-	if len(targets) == 0 {
-		return nil
-	}
-
-	targetMap := make(map[resource.URN]bool)
-	for _, target := range targets {
-		targetMap[target] = true
-	}
-
-	return targetMap
-}
-
 // checkTargets validates that all the targets passed in refer to existing resources.  Diagnostics
 // are generated for any target that cannot be found.  The target must either have existed in the stack
 // prior to running the operation, or it must be the urn for a resource that was created.
-func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) result.Result {
-	if len(targets) == 0 {
+func (ex *deploymentExecutor) checkTargets(targets UrnTargets, op display.StepOp) result.Result {
+	if !targets.IsConstrained() {
 		return nil
 	}
 
@@ -71,12 +55,8 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) re
 	}
 
 	hasUnknownTarget := false
-	for _, target := range targets {
-		hasOld := false
-		if _, has := olds[target]; has {
-			hasOld = true
-		}
-
+	for _, target := range targets.Literals() {
+		hasOld := olds != nil && olds[target] != nil
 		hasNew := news != nil && news[target]
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
@@ -103,20 +83,17 @@ func (ex *deploymentExecutor) printPendingOperationsWarning() {
 		pendingOperations = pendingOperations + fmt.Sprintf("  * %s, interrupted while %s\n", op.Resource.URN, op.Type)
 	}
 
-	resolutionMessage := `These resources are in an unknown state because the Pulumi CLI was interrupted while
-waiting for changes to these resources to complete. You should confirm whether or not the
-operations listed completed successfully by checking the state of the appropriate provider.
-For example, if you are using AWS, you can confirm using the AWS Console.
-	
-Once you have confirmed the status of the interrupted operations, you can repair your stack
-using 'pulumi refresh' which will refresh the state from the provider you are using and 
-clear the pending operations if there are any.
-
-Note that 'pulumi refresh' will not clear pending CREATE operations since those could have resulted in resources 
-which are not tracked by pulumi. To repair the stack and remove pending CREATE operation, 
-use 'pulumi stack export' which will  export your stack to a file. For each operation that succeeded,
-remove that operation from the "pending_operations" section of the file. Once this is complete,
-use 'pulumi stack import' to import the repaired stack.`
+	resolutionMessage := "" +
+		"These resources are in an unknown state because the Pulumi CLI was interrupted while " +
+		"waiting for changes to these resources to complete. You should confirm whether or not the " +
+		"operations listed completed successfully by checking the state of the appropriate provider. " +
+		"For example, if you are using AWS, you can confirm using the AWS Console.\n" +
+		"\n" +
+		"Once you have confirmed the status of the interrupted operations, you can repair your stack " +
+		"using `pulumi refresh` which will refresh the state from the provider you are using and " +
+		"clear the pending operations if there are any.\n" +
+		"\n" +
+		"Note that `pulumi refresh` will need to be run interactively to clear pending CREATE operations."
 
 	warning := "Attempting to deploy or update resources " +
 		fmt.Sprintf("with %d pending operations from previous deployment.\n", len(ex.deployment.prev.PendingOperations)) +
@@ -186,9 +163,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Non-nil means 'update only in this set'.  We don't error if the user specifies a target
 	// during `update` that we don't know about because it might be the urn for a resource they
 	// want to create.
-	updateTargetsOpt := createTargetMap(opts.UpdateTargets)
-	replaceTargetsOpt := createTargetMap(opts.ReplaceTargets)
-	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
+	updateTargetsOpt := opts.UpdateTargets
+	replaceTargetsOpt := opts.ReplaceTargets
+	destroyTargetsOpt := opts.DestroyTargets
 	if res := ex.checkTargets(opts.ReplaceTargets, OpReplace); res != nil {
 		return nil, res
 	}
@@ -196,7 +173,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		return nil, res
 	}
 
-	if (updateTargetsOpt != nil || replaceTargetsOpt != nil) && destroyTargetsOpt != nil {
+	if (updateTargetsOpt.IsConstrained() || replaceTargetsOpt.IsConstrained()) && destroyTargetsOpt.IsConstrained() {
 		contract.Failf("Should not be possible to have both .DestroyTargets and .UpdateTargets or .ReplaceTargets")
 	}
 
@@ -208,11 +185,6 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Set up a step generator for this deployment.
 	ex.stepGen = newStepGenerator(ex.deployment, opts, updateTargetsOpt, replaceTargetsOpt)
-
-	// Retire any pending deletes that are currently present in this deployment.
-	if res := ex.retirePendingDeletes(callerCtx, opts, preview); res != nil {
-		return nil, res
-	}
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -304,7 +276,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Now that we've performed all steps in the deployment, ensure that the list of targets to update was
 	// valid.  We have to do this *after* performing the steps as the target list may have referred
-	// to a resource that was created in one of hte steps.
+	// to a resource that was created in one of the steps.
 	if res == nil {
 		res = ex.checkTargets(opts.UpdateTargets, OpUpdate)
 	}
@@ -374,7 +346,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, updateTargetsOpt, destroyTargetsOpt map[resource.URN]bool) result.Result {
+	ctx context.Context, updateTargetsOpt, destroyTargetsOpt UrnTargets) result.Result {
 
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
@@ -391,10 +363,10 @@ func (ex *deploymentExecutor) performDeletes(
 	// At this point we have generated the set of resources above that we would normally want to
 	// delete.  However, if the user provided -target's we will only actually delete the specific
 	// resources that are in the set explicitly asked for.
-	var targetsOpt map[resource.URN]bool
-	if updateTargetsOpt != nil {
+	var targetsOpt UrnTargets
+	if updateTargetsOpt.IsConstrained() {
 		targetsOpt = updateTargetsOpt
-	} else if destroyTargetsOpt != nil {
+	} else if destroyTargetsOpt.IsConstrained() {
 		targetsOpt = destroyTargetsOpt
 	}
 
@@ -422,7 +394,7 @@ func (ex *deploymentExecutor) performDeletes(
 
 	// After executing targeted deletes, we may now have resources that depend on the resource that
 	// were deleted.  Go through and clean things up accordingly for them.
-	if targetsOpt != nil {
+	if targetsOpt.IsConstrained() {
 		resourceToStep := make(map[*resource.State]Step)
 		for _, step := range deleteSteps {
 			resourceToStep[ex.deployment.olds[step.URN()]] = step
@@ -458,51 +430,6 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result
 	}
 
 	ex.stepExec.ExecuteSerial(steps)
-	return nil
-}
-
-// retirePendingDeletes deletes all resources that are pending deletion. Run before the start of a deployment, this pass
-// ensures that the engine never sees any resources that are pending deletion from a previous deployment.
-//
-// retirePendingDeletes re-uses the deployment executor's step generator but uses its own step executor.
-func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, opts Options,
-	preview bool) result.Result {
-
-	contract.Require(ex.stepGen != nil, "ex.stepGen != nil")
-	steps := ex.stepGen.GeneratePendingDeletes()
-	if len(steps) == 0 {
-		logging.V(4).Infoln("deploymentExecutor.retirePendingDeletes(...): no pending deletions")
-		return nil
-	}
-
-	logging.V(4).Infof("deploymentExecutor.retirePendingDeletes(...): executing %d steps", len(steps))
-	ctx, cancel := context.WithCancel(callerCtx)
-
-	stepExec := newStepExecutor(ctx, cancel, ex.deployment, opts, preview, false)
-	antichains := ex.stepGen.ScheduleDeletes(steps)
-	// Submit the deletes for execution and wait for them all to retire.
-	for _, antichain := range antichains {
-		for _, step := range antichain {
-			ex.deployment.Ctx().StatusDiag.Infof(diag.RawMessage(step.URN(), "completing deletion from previous update"))
-		}
-
-		tok := stepExec.ExecuteParallel(antichain)
-		tok.Wait(ctx)
-	}
-
-	stepExec.SignalCompletion()
-	stepExec.WaitForCompletion()
-
-	// Like Refresh, we use the presence of an error in the caller's context to detect whether or not we have been
-	// cancelled.
-	canceled := callerCtx.Err() != nil
-	if stepExec.Errored() {
-		ex.reportExecResult("failed", preview)
-		return result.Bail()
-	} else if canceled {
-		ex.reportExecResult("canceled", preview)
-		return result.Bail()
-	}
 	return nil
 }
 
@@ -564,9 +491,8 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	// specific targets.
 	steps := []Step{}
 	resourceToStep := map[*resource.State]Step{}
-	targetMapOpt := createTargetMap(opts.RefreshTargets)
 	for _, res := range prev.Resources {
-		if targetMapOpt == nil || targetMapOpt[res.URN] {
+		if opts.RefreshTargets.Contains(res.URN) {
 			step := NewRefreshStep(ex.deployment, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step
@@ -644,7 +570,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			if refresh {
-				contract.Assert(old.Custom)
+				contract.Assertf(old.Custom, "Expected custom resource")
 				contract.Assert(!providers.IsProviderType(old.Type))
 			}
 			continue
@@ -671,6 +597,64 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 		}
 	}
 
+	undangleParentResources(olds, resources)
+
 	ex.deployment.prev.Resources = resources
 	ex.deployment.olds, ex.deployment.depGraph = olds, graph.NewDependencyGraph(resources)
+}
+
+func undangleParentResources(undeleted map[resource.URN]*resource.State, resources []*resource.State) {
+	// Since a refresh may delete arbitrary resources, we need to handle the case where
+	// the parent of a still existing resource is deleted.
+	//
+	// Invalid parents need to be fixed since otherwise they leave the state invalid, and
+	// the user sees an error:
+	// ```
+	// snapshot integrity failure; refusing to use it: child resource ${validURN} refers to missing parent ${deletedURN}
+	// ```
+	// To solve the problem we traverse the topologically sorted list of resources in
+	// order, setting newly invalidated parent URNS to the URN of the parent's parent.
+	//
+	// This can be illustrated by an example. Consider the graph of resource parents:
+	//
+	//         A            xBx
+	//       /   \           |
+	//    xCx      D        xEx
+	//     |     /   \       |
+	//     F    G     xHx    I
+	//
+	// When a capital letter is marked for deletion, it is bracketed by `x`s.
+	// We can obtain a topological sort by reading left to right, top to bottom.
+	//
+	// A..D -> valid parents, so we do nothing
+	// E -> The parent of E is marked for deletion, so set E.Parent to E.Parent.Parent.
+	//      Since B (E's parent) has no parent, we set E.Parent to "".
+	// F -> The parent of F is marked for deletion, so set F.Parent to F.Parent.Parent.
+	//      We set F.Parent to "A"
+	// G, H -> valid parents, do nothing
+	// I -> The parent of I is marked for deletion, so set I.Parent to I.Parent.Parent.
+	//      The parent of I has parent "", (since we addressed the parent of E
+	//      previously), so we set I.Parent = "".
+	//
+	// The new graph looks like this:
+	//
+	//         A        xBx   xEx   I
+	//       / | \
+	//     xCx F  D
+	//          /   \
+	//         G    xHx
+	// We observe that it is perfectly valid for deleted nodes to be leaf nodes, but they
+	// cannot be intermediary nodes.
+	_, hasEmptyValue := undeleted[""]
+	contract.Assertf(!hasEmptyValue, "the zero value for an URN is not a valid URN")
+	availableParents := map[resource.URN]resource.URN{}
+	for _, r := range resources {
+		if _, ok := undeleted[r.Parent]; !ok {
+			// Since existing must obey a topological sort, we have already addressed
+			// p.Parent. Since we know that it doesn't dangle, and that r.Parent no longer
+			// exists, we set r.Parent as r.Parent.Parent.
+			r.Parent = availableParents[r.Parent]
+		}
+		availableParents[r.URN] = r.Parent
+	}
 }

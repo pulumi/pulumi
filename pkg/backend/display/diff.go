@@ -181,7 +181,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader 
 			if c := changes[op]; c > 0 {
 				opDescription := string(op)
 				if !event.IsPreview {
-					opDescription = op.PastTense()
+					opDescription = deploy.PastTense(op)
 				}
 
 				// Increment the change count by the number of changes associated with this step kind
@@ -192,7 +192,7 @@ func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader 
 
 				// Print a summary of the changes of this kind
 				fprintIgnoreError(out, opts.Color.Colorize(
-					fmt.Sprintf("    %s%d %s%s%s\n", op.Prefix(true /*done*/), c, planTo, opDescription, colors.Reset)))
+					fmt.Sprintf("    %s%d %s%s%s\n", deploy.Prefix(op, true /*done*/), c, planTo, opDescription, colors.Reset)))
 			}
 		}
 	}
@@ -316,15 +316,15 @@ func renderDiff(
 	if metadata.DetailedDiff != nil {
 		var buf bytes.Buffer
 		if diff := engine.TranslateDetailedDiff(&metadata); diff != nil {
-			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, debug)
+			PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1, opts.SummaryDiff, opts.TruncateOutput, debug)
 		} else {
 			PrintObject(
-				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, debug)
+				&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true /*prefix*/, opts.TruncateOutput, debug)
 		}
 		details = buf.String()
 	} else {
 		details = getResourcePropertiesDetails(
-			metadata, indent, planning, opts.SummaryDiff, debug)
+			metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug)
 	}
 
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
@@ -379,7 +379,7 @@ func renderDiffResourceOutputsEvent(
 				payload.Debug, refresh, opts.ShowSameResources)
 			if text != "" {
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
-					payload.Metadata.Op.Color(), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
+					deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
 				fprintfIgnoreError(out, opts.Color.Colorize(header))
 				fprintIgnoreError(out, opts.Color.Colorize(text))
 			}

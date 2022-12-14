@@ -1,12 +1,15 @@
 PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
-VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language javascript))
+VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh javascript))
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
-TESTPARALLELISM ?= 10
 TEST_FAST_TIMEOUT := 2m
+
+ifeq ($(DEBUG),"true")
+$(info    VERSION         = $(VERSION))
+endif
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
@@ -21,7 +24,7 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
-	yarn install
+	yarn install --frozen-lockfile
 	@touch .ensure.phony
 
 lint:: ensure
@@ -66,7 +69,7 @@ unit_tests:: $(TEST_ALL_DEPS)
 	yarn run nyc -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc -s mocha --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc -s mocha --timeout 220000 'bin/tests/automation/**/*.spec.js'
 
 TSC_SUPPORTED_VERSIONS = ~3.7.3 ^3 ^4
 
@@ -110,5 +113,5 @@ brew::
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
-publish:: build_package
+publish::
 	bash -c ../../scripts/publish_npm.sh

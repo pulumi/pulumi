@@ -1,0 +1,320 @@
+{
+    "$schema":"https://json-schema.org/draft/2020-12/schema",
+    "$id":"https://github.com/pulumi/pulumi/blob/master/sdk/go/common/workspace/project.json",
+    "title":"Pulumi Project",
+    "description":"A schema for Pulumi project files.",
+    "type":"object",
+    "properties":{
+        "name":{
+            "description":"Name of the project containing alphanumeric characters, hyphens, underscores, and periods.",
+            "type":"string",
+            "minLength":1
+        },
+        "description":{
+            "description":"Description of the project.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "author":{
+            "description":"Author is an optional author that created this project.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "website":{
+            "description":"Website is an optional website for additional info about this project.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "license":{
+            "description":"License is the optional license governing this project's usage.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "runtime":{
+            "title":"ProjectRuntimeInfo",
+            "oneOf":[
+                {
+                    "title":"Name",
+                    "type":"string",
+                    "minLength":1
+                },
+                {
+                    "type":"object",
+                    "properties":{
+                        "name":{
+                            "title":"Name",
+                            "type":"string",
+                            "minLength":1
+                        },
+                        "options":{
+                            "title":"Options",
+                            "type":"object",
+                            "additionalProperties":true
+                        }
+                    },
+                    "additionalProperties":false
+                }
+            ]
+        },
+        "main":{
+            "description":"Path to the Pulumi program. The default is the working directory.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "config":{
+            "description":"A map of configuration keys to their types. Using config directory location relative to the location of Pulumi.yaml is a deprecated use of this key. Use stackConfigDir instead.",
+            "type":[
+                "object",
+                "string",
+                "null"
+            ],
+            "properties":{
+                "secret":{
+                    "description":"If true this configuration value should be encrypted.",
+                    "type":"boolean",
+                    "default":false
+                }
+            },
+            "additionalProperties":{
+                "oneOf":[
+                    {
+                        "type":"string"
+                    },
+                    {
+                        "type":"integer"
+                    },
+                    {
+                        "type":"boolean"
+                    },
+                    {
+                        "type": "array"
+                    },
+                    {
+                        "$ref":"#/$defs/configTypeDeclaration"
+                    }
+                ]
+            }
+        },
+        "stackConfigDir":{
+            "description":"Config directory location relative to the location of Pulumi.yaml.",
+            "type":[
+                "string",
+                "null"
+            ]
+        },
+        "backend":{
+            "description":"Backend of the project.",
+            "type":[
+                "object",
+                "null"
+            ],
+            "properties":{
+                "url":{
+                    "description":"URL is optional field to explicitly set backend url",
+                    "type":"string"
+                }
+            },
+            "additionalProperties":false
+        },
+        "options":{
+            "description":"Additional project options.",
+            "type":[
+                "object",
+                "null"
+            ],
+            "properties":{
+                "refresh":{
+                    "description":"Set to \"always\" to refresh the state before performing a Pulumi operation.",
+                    "type":"string",
+                    "const":"always"
+                }
+            },
+            "additionalProperties":false
+        },
+        "template":{
+            "title":"ProjectTemplate",
+            "description":"ProjectTemplate is a Pulumi project template manifest.",
+            "type":[
+                "object",
+                "null"
+            ],
+            "properties":{
+                "description":{
+                    "description":"Description of the template.",
+                    "type":[
+                        "string",
+                        "null"
+                    ]
+                },
+                "quickstart":{
+                    "description":"Quickstart contains optional text to be displayed after template creation.",
+                    "type":[
+                        "string",
+                        "null"
+                    ]
+                },
+                "important":{
+                    "description":"Important indicates the template is important and should be listed by default.",
+                    "type":[
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "config":{
+                    "description":"Config to apply to each stack in the project.",
+                    "type":[
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties":{
+                        "properties":{
+                            "description":{
+                                "description":"Description of the config.",
+                                "type":[
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "default":{
+                                "description":"Default value of the config."
+                            },
+                            "secret":{
+                                "description":"Boolean indicating if the configuration is labeled as a secret.",
+                                "type":[
+                                    "boolean",
+                                    "null"
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "additionalProperties":false
+        },
+        "plugins":{
+            "description":"Override for the plugin selection. Intended for use in developing pulumi plugins.",
+            "type":"object",
+            "properties":{
+                "providers":{
+                    "description":"Plugins for resource providers.",
+                    "type":"array",
+                    "items":{
+                        "$ref":"#/$defs/pluginOptions"
+                    }
+                },
+                "analyzers":{
+                    "description":"Plugins for policy analyzers.",
+                    "type":"array",
+                    "items":{
+                        "$ref":"#/$defs/pluginOptions"
+                    }
+                },
+                "languages":{
+                    "description":"Plugins for languages.",
+                    "type":"array",
+                    "items":{
+                        "$ref":"#/$defs/pluginOptions"
+                    }
+                }
+            }
+        }
+    },
+    "required":[
+        "name",
+        "runtime"
+    ],
+    "additionalProperties":true,
+    "$defs":{
+        "pluginOptions":{
+            "title":"PluginOptions",
+            "type":"object",
+            "properties":{
+                "name":{
+                    "type":"string",
+                    "description":"Name of the plugin"
+                },
+                "path":{
+                    "type":"string",
+                    "description":"Path to the plugin folder"
+                },
+                "version":{
+                    "type":"string",
+                    "description":"Version of the plugin, if not set, will match any version the engine requests."
+                }
+            }
+        },
+        "simpleConfigType":{
+            "title":"SimpleConfigType",
+            "enum":[
+                "string",
+                "integer",
+                "boolean",
+                "array"
+            ]
+        },
+        "configItemsType":{
+            "type":"object",
+            "required":[
+                "type"
+            ],
+            "properties":{
+                "type":{
+                    "oneOf":[
+                        {
+                            "$ref":"#/$defs/simpleConfigType"
+                        },
+                        {
+                            "$ref":"#/$defs/configItemsType"
+                        }
+                    ]
+                },
+                "items":{
+                    "$ref":"#/$defs/configItemsType"
+                }
+            },
+            "if":{
+                "properties":{
+                    "type":{
+                        "const":"array"
+                    }
+                }
+            },
+            "then":{
+                "required":[
+                    "items"
+                ]
+            }
+        },
+        "configTypeDeclaration":{
+            "title":"ConfigTypeDeclaration",
+            "type":"object",
+            "additionalProperties":false,
+            "properties":{
+                "type":{
+                    "$ref":"#/$defs/simpleConfigType"
+                },
+                "items":{
+                    "$ref":"#/$defs/configItemsType"
+                },
+                "description":{
+                    "type":"string"
+                },
+                "secret":{
+                    "type":"boolean"
+                },
+                "default":{ },
+                "value": { }
+            }
+        }
+    }
+}

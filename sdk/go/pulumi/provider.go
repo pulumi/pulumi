@@ -47,6 +47,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		DryRun:           req.GetDryRun(),
 		MonitorAddr:      req.GetMonitorEndpoint(),
 		engineConn:       engineConn,
+		Organization:     req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -428,13 +429,16 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		return nil
 	}
 
-	switch dest.Type().Kind() {
-	case reflect.Map:
-		return copyToMap(ctx, v, dest.Type(), dest)
-	case reflect.Slice:
-		return copyToSlice(ctx, v, dest.Type(), dest)
-	case reflect.Struct:
-		return copyToStruct(ctx, v, dest.Type(), dest)
+	// A resource reference looks like a struct, but must be deserialzed differently.
+	if !v.IsResourceReference() {
+		switch dest.Type().Kind() {
+		case reflect.Map:
+			return copyToMap(ctx, v, dest.Type(), dest)
+		case reflect.Slice:
+			return copyToSlice(ctx, v, dest.Type(), dest)
+		case reflect.Struct:
+			return copyToStruct(ctx, v, dest.Type(), dest)
+		}
 	}
 
 	_, err := unmarshalOutput(ctx, v, dest)
@@ -581,6 +585,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 			field := typ.Field(i)
 			tag, has := field.Tag.Lookup("pulumi")
+			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 			if !has || tag != k {
 				continue
 			}
@@ -725,13 +730,14 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Config:      req.GetConfig(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
-		MonitorAddr: req.GetMonitorEndpoint(),
-		engineConn:  engineConn,
+		Project:      req.GetProject(),
+		Stack:        req.GetStack(),
+		Config:       req.GetConfig(),
+		Parallel:     int(req.GetParallel()),
+		DryRun:       req.GetDryRun(),
+		MonitorAddr:  req.GetMonitorEndpoint(),
+		engineConn:   engineConn,
+		Organization: req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {

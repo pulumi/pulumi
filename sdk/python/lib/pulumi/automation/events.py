@@ -347,8 +347,8 @@ class StepEventStateMetadata(BaseEvent):
         custom: Optional[bool] = None,
         delete: Optional[bool] = None,
         protect: Optional[bool] = None,
-        inputs: Mapping[str, Any] = None,
-        outputs: Mapping[str, Any] = None,
+        inputs: Optional[Mapping[str, Any]] = None,
+        outputs: Optional[Mapping[str, Any]] = None,
         init_errors: Optional[List[str]] = None,
     ):
         self.type = type

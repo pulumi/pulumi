@@ -15,10 +15,9 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret } from "../output";
+import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret, jsonStringify } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
-import { asyncTest } from "./util";
 
 interface Widget {
     type: string;  // metric | text
@@ -64,7 +63,7 @@ function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<an
 }
 
 describe("output", () => {
-    it("propagates true isKnown bit from inner Output", asyncTest(async () => {
+    it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -75,9 +74,9 @@ describe("output", () => {
 
         const value = await output2.promise();
         assert.strictEqual(value, "inner");
-    }));
+    });
 
-    it("propagates false isKnown bit from inner Output", asyncTest(async () => {
+    it("propagates false isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -88,9 +87,9 @@ describe("output", () => {
 
         const value = await output2.promise();
         assert.strictEqual(value, "inner");
-    }));
+    });
 
-    it("can not await if isKnown is a rejected promise.", asyncTest(async () => {
+    it("can not await if isKnown is a rejected promise.", async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -109,9 +108,9 @@ describe("output", () => {
         }
         catch (err) {
         }
-    }));
+    });
 
-    it("propagates true isSecret bit from inner Output", asyncTest(async () => {
+    it("propagates true isSecret bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -122,9 +121,9 @@ describe("output", () => {
 
         const value = await output2.promise();
         assert.strictEqual(value, "inner");
-    }));
+    });
 
-     it("retains true isSecret bit from outer Output", asyncTest(async () => {
+     it("retains true isSecret bit from outer Output", async () => {
         runtime._setIsDryRun(true);
 
         const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
@@ -135,15 +134,14 @@ describe("output", () => {
 
         const value = await output2.promise();
         assert.strictEqual(value, "inner");
-    }));
+    });
 
     describe("apply", () => {
         function createOutput<T>(val: T, isKnown: boolean, isSecret: boolean = false): Output<T> {
-            return new Output(new Set(), Promise.resolve(val), Promise.resolve(isKnown), Promise.resolve(isSecret),
-                Promise.resolve(new Set()));
+            return new Output<T>(new Set(), Promise.resolve(val), Promise.resolve(isKnown), Promise.resolve(isSecret), Promise.resolve(new Set()));
         }
 
-        it("can run on known value during preview", asyncTest(async () => {
+        it("can run on known value during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -151,9 +149,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("can run on known awaitable value during preview", asyncTest(async () => {
+        it("can run on known awaitable value during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -161,9 +159,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("can run on known known output value during preview", asyncTest(async () => {
+        it("can run on known known output value during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -171,9 +169,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("can run on known unknown output value during preview", asyncTest(async () => {
+        it("can run on known unknown output value during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -181,9 +179,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("produces unknown default on unknown during preview", asyncTest(async () => {
+        it("produces unknown default on unknown during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -191,9 +189,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("produces unknown default on unknown awaitable during preview", asyncTest(async () => {
+        it("produces unknown default on unknown awaitable during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -201,9 +199,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("produces unknown default on unknown known output during preview", asyncTest(async () => {
+        it("produces unknown default on unknown known output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -211,9 +209,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("produces unknown default on unknown unknown output during preview", asyncTest(async () => {
+        it("produces unknown default on unknown unknown output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -221,9 +219,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("preserves secret on known during preview", asyncTest(async () => {
+        it("preserves secret on known during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
@@ -232,9 +230,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("preserves secret on known awaitable during preview", asyncTest(async () => {
+        it("preserves secret on known awaitable during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
@@ -243,9 +241,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on known known output during preview", asyncTest(async () => {
+        it("preserves secret on known known output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
@@ -254,9 +252,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on known unknown output during preview", asyncTest(async () => {
+        it("preserves secret on known unknown output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
@@ -265,9 +263,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on unknown during preview", asyncTest(async () => {
+        it("preserves secret on unknown during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
@@ -276,9 +274,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("preserves secret on unknown awaitable during preview", asyncTest(async () => {
+        it("preserves secret on unknown awaitable during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
@@ -287,9 +285,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("preserves secret on unknown known output during preview", asyncTest(async () => {
+        it("preserves secret on unknown known output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
@@ -298,9 +296,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("preserves secret on unknown unknown output during preview", asyncTest(async () => {
+        it("preserves secret on unknown unknown output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
@@ -309,9 +307,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("propagates secret on known known output during preview", asyncTest(async () => {
+        it("propagates secret on known known output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -320,9 +318,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("propagates secret on known unknown output during preview", asyncTest(async () => {
+        it("propagates secret on known unknown output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
@@ -331,9 +329,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("does not propagate secret on unknown known output during preview", asyncTest(async () => {
+        it("does not propagate secret on unknown known output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -342,9 +340,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("does not propagate secret on unknown unknown output during preview", asyncTest(async () => {
+        it("does not propagate secret on unknown unknown output during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
@@ -353,9 +351,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, false);
             assert.strictEqual(await r.promise(), undefined);
-        }));
+        });
 
-        it("can run on known value", asyncTest(async () => {
+        it("can run on known value", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -363,9 +361,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("can run on known awaitable value", asyncTest(async () => {
+        it("can run on known awaitable value", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -373,9 +371,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("can run on known known output value", asyncTest(async () => {
+        it("can run on known known output value", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -383,9 +381,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("can run on unknown known output value", asyncTest(async () => {
+        it("can run on unknown known output value", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -393,9 +391,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("produces known on unknown", asyncTest(async () => {
+        it("produces known on unknown", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -403,9 +401,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("produces known on unknown awaitable", asyncTest(async () => {
+        it("produces known on unknown awaitable", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -413,9 +411,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("produces known on unknown known output", asyncTest(async () => {
+        it("produces known on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -423,9 +421,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("produces unknown on unknown unknown output", asyncTest(async () => {
+        it("produces unknown on unknown unknown output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -433,9 +431,9 @@ describe("output", () => {
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on known", asyncTest(async () => {
+        it("preserves secret on known", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
@@ -444,9 +442,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("preserves secret on known awaitable", asyncTest(async () => {
+        it("preserves secret on known awaitable", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
@@ -455,9 +453,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on known known output", asyncTest(async () => {
+        it("preserves secret on known known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
@@ -466,9 +464,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on known known output", asyncTest(async () => {
+        it("preserves secret on known known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
@@ -477,9 +475,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on unknown", asyncTest(async () => {
+        it("preserves secret on unknown", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
@@ -488,9 +486,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), 1);
-        }));
+        });
 
-        it("preserves secret on unknown awaitable", asyncTest(async () => {
+        it("preserves secret on unknown awaitable", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
@@ -499,9 +497,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on unknown known output", asyncTest(async () => {
+        it("preserves secret on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
@@ -510,9 +508,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("preserves secret on unknown known output", asyncTest(async () => {
+        it("preserves secret on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
@@ -521,9 +519,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("propagates secret on known known output", asyncTest(async () => {
+        it("propagates secret on known known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -532,9 +530,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("propagates secret on known unknown output", asyncTest(async () => {
+        it("propagates secret on known unknown output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
@@ -543,9 +541,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("propagates secret on unknown known output", asyncTest(async () => {
+        it("propagates secret on unknown known output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -554,9 +552,9 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
 
-        it("propagates secret on unknown uknown output", asyncTest(async () => {
+        it("propagates secret on unknown uknown output", async () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
@@ -565,7 +563,7 @@ describe("output", () => {
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
             assert.strictEqual(await r.promise(), "inner");
-        }));
+        });
     });
 
     describe("isKnown", () => {
@@ -584,7 +582,7 @@ describe("output", () => {
                        .then(([r1, r2]) => new Set([...r1, ...r2])));
         }
 
-        it("choose between known and known output, non-secret", asyncTest(async () => {
+        it("choose between known and known output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -600,9 +598,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, false);
-        }));
+        });
 
-        it("choose between known and known output, secret", asyncTest(async () => {
+        it("choose between known and known output, secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
@@ -618,9 +616,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, true);
-        }));
+        });
 
-        it("choose between known and unknown output, non-secret", asyncTest(async () => {
+        it("choose between known and unknown output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -636,9 +634,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, false);
-        }));
+        });
 
-        it("choose between known and unknown output, secret", asyncTest(async () => {
+        it("choose between known and unknown output, secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
@@ -654,9 +652,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, true);
-        }));
+        });
 
-        it("choose between unknown and known output, non-secret", asyncTest(async () => {
+        it("choose between unknown and known output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
@@ -672,9 +670,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, false);
-        }));
+        });
 
-        it("choose between unknown and known output, secret", asyncTest(async () => {
+        it("choose between unknown and known output, secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
@@ -690,9 +688,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, true);
-        }));
+        });
 
-        it("choose between unknown and unknown output, non-secret", asyncTest(async () => {
+        it("choose between unknown and unknown output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
@@ -708,9 +706,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, false);
-        }));
+        });
 
-        it("choose between unknown and unknown output, secret1", asyncTest(async () => {
+        it("choose between unknown and unknown output, secret1", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
@@ -726,9 +724,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, false);
-        }));
+        });
 
-        it("choose between unknown and unknown output, secret2", asyncTest(async () => {
+        it("choose between unknown and unknown output, secret2", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
@@ -744,9 +742,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, true);
-        }));
+        });
 
-        it("choose between unknown and unknown output, secret3", asyncTest(async () => {
+        it("choose between unknown and unknown output, secret3", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
@@ -762,9 +760,9 @@ describe("output", () => {
 
             const secret = await result.isSecret;
             assert.strictEqual(secret, true);
-        }));
+        });
 
-        it("is unknown if the value is or contains unknowns", asyncTest(async () => {
+        it("is unknown if the value is or contains unknowns", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -774,9 +772,9 @@ describe("output", () => {
             assert.strictEqual(await o1.isKnown, false);
             assert.strictEqual(await o2.isKnown, false);
             assert.strictEqual(await o3.isKnown, false);
-        }));
+        });
 
-        it("is unknown if the result after apply is unknown or contains unknowns", asyncTest(async () => {
+        it("is unknown if the result after apply is unknown or contains unknowns", async () => {
             runtime._setIsDryRun(true);
 
             const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
@@ -793,90 +791,156 @@ describe("output", () => {
             assert.strictEqual(await r4.isKnown, false);
             assert.strictEqual(await r5.isKnown, false);
             assert.strictEqual(await r6.isKnown, false);
-        }));
+        });
     });
 
     describe("concat", () => {
-        it ("handles no args", asyncTest(async () => {
+        it ("handles no args", async () => {
             const result = concat();
             assert.strictEqual(await result.promise(), "");
-        }));
+        });
 
-        it ("handles empty string arg", asyncTest(async () => {
+        it ("handles empty string arg", async () => {
             const result = concat("");
             assert.strictEqual(await result.promise(), "");
-        }));
+        });
 
-        it ("handles non-empty string arg", asyncTest(async () => {
+        it ("handles non-empty string arg", async () => {
             const result = concat("a");
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles promise string arg", asyncTest(async () => {
+        it ("handles promise string arg", async () => {
             const result = concat(Promise.resolve("a"));
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles output string arg", asyncTest(async () => {
+        it ("handles output string arg", async () => {
             const result = concat(output("a"));
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles multiple args", asyncTest(async () => {
+        it ("handles multiple args", async () => {
             const result = concat("http://", output("a"), ":", 80);
             assert.strictEqual(await result.promise(), "http://a:80");
-        }));
+        });
     });
 
     describe("interpolate", () => {
-        it ("handles empty interpolation", asyncTest(async () => {
+        it ("handles empty interpolation", async () => {
             const result = interpolate ``;
             assert.strictEqual(await result.promise(), "");
-        }));
+        });
 
-        it ("handles no placeholders arg", asyncTest(async () => {
+        it ("handles no placeholders arg", async () => {
             const result = interpolate `a`;
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles string placeholders arg", asyncTest(async () => {
+        it ("handles string placeholders arg", async () => {
             const result = interpolate `${"a"}`;
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles promise placeholders arg", asyncTest(async () => {
+        it ("handles promise placeholders arg", async () => {
             const result = interpolate `${Promise.resolve("a")}`;
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles output placeholders arg", asyncTest(async () => {
+        it ("handles output placeholders arg", async () => {
             const result = interpolate `${output("a")}`;
             assert.strictEqual(await result.promise(), "a");
-        }));
+        });
 
-        it ("handles multiple args", asyncTest(async () => {
+        it ("handles multiple args", async () => {
             const result = interpolate `http://${output("a")}:${80}/`;
             assert.strictEqual(await result.promise(), "http://a:80/");
-        }));
+        });
+    });
+
+    describe("jsonStringify", () => {
+        it ("basic", async () => {
+            const x = output([0, 1])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested", async () => {
+            const x = output([output(0), output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested unknowns", async () => {
+            const x = output([
+                new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.isKnown, false);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested secret", async () => {
+            const x = output([
+                new Output(new Set(), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, true);
+        });
+
+        it ("with options", async () => {
+            const x = output([0, 1])
+            const result = jsonStringify(x, undefined, " ")
+            assert.strictEqual(await result.promise(), "[\n 0,\n 1\n]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("nested dependencies", async () => {
+            // Output's don't actually _look_ at the resources, they just need to keep a collection of them
+            const mockResource : Resource = {} as any
+            const mockResources : Resource[] = [mockResource]
+
+            const x = output([
+                new Output(new Set(mockResources), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
+                output(1)])
+            const result = jsonStringify(x)
+            assert.strictEqual(await result.promise(), "[0,1]");
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, true);
+            if (result.allResources === undefined) {
+                assert.fail("Output.allResources was undefined")
+            }
+            const allResources = await result.allResources();
+            // We should have just the one mockResource in this set
+            assert.strictEqual(allResources.size, 1)
+            assert.ok(allResources.has(mockResource))
+        });
     });
 
     describe("secret operations", () => {
-       it("ensure secret", asyncTest(async () => {
+       it("ensure secret", async () => {
            const sec = secret("foo");
            assert.strictEqual(await sec.isSecret, true)
-       }));
-       it("ensure that a secret can be unwrapped", asyncTest(async () => {
+       });
+       it("ensure that a secret can be unwrapped", async () => {
            const sec = secret("foo");
            assert.strictEqual(await isSecret(sec), true)
 
            const unsec = unsecret(sec);
            assert.strictEqual(await isSecret(unsec), false)
            assert.strictEqual(await unsec.promise(), "foo")
-       }));
+       });
     });
 
     describe("lifted operations", () => {
-        it("lifts properties from inner object", asyncTest(async () => {
+        it("lifts properties from inner object", async () => {
             const output1 = output({ a: 1, b: true, c: "str", d: [2], e: { f: 3 }, g: undefined, h: null });
 
             assert.strictEqual(await output1.a.promise(), 1);
@@ -897,25 +961,25 @@ describe("output", () => {
             // Unspecified things can be lifted, but produce 'undefined'.
             assert.notEqual((<any>output1).z, undefined);
             assert.strictEqual(await (<any>output1).z.promise(), undefined);
-        }));
+        });
 
-        it("prefers Output members over lifted members", asyncTest(async () => {
+        it("prefers Output members over lifted members", async () => {
             const output1 = output({ apply: 1, promise: 2 });
             assert.ok(output1.apply instanceof Function);
             assert.ok(output1.isKnown instanceof Promise);
-        }));
+        });
 
-        it("does not lift symbols", asyncTest(async () => {
+        it("does not lift symbols", async () => {
             const output1 = output({ apply: 1, promise: 2 });
             assert.strictEqual((<any>output1)[Symbol.toPrimitive], undefined);
-        }));
+        });
 
-        it("does not lift __ properties", asyncTest(async () => {
+        it("does not lift __ properties", async () => {
             const output1 = output({ a: 1, b: 2 });
             assert.strictEqual((<any>output1).__pulumiResource, undefined);
-        }));
+        });
 
-        it("lifts properties from values with nested unknowns", asyncTest(async () => {
+        it("lifts properties from values with nested unknowns", async () => {
             runtime._setIsDryRun(true);
 
             const output1 = output({
@@ -1008,6 +1072,6 @@ describe("output", () => {
             const result18 = (<any>result16).qux;
             assert.strictEqual(await result18.isKnown, false);
             assert.strictEqual(await (<any>result18).promise(/*withUnknowns*/ true), unknown);
-        }));
+        });
     });
 });

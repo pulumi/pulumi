@@ -24,6 +24,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const (
+	IndexToken   = "index"
+	fromBase64Fn = "fromBase64"
+)
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -40,7 +45,9 @@ type generator struct {
 	scopeTraversalRoots codegen.StringSet
 	arrayHelpers        map[string]*promptToInputArrayHelper
 	isErrAssigned       bool
+	tmpVarCount         int
 	configCreated       bool
+	externalCache       *Cache
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -49,9 +56,11 @@ type generator struct {
 // GenerateProgramOptions are used to configure optional generator behavior.
 type GenerateProgramOptions struct {
 	AssignResourcesToVariables bool // Assign resource to a new variable instead of _.
+	ExternalCache              *Cache
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	pcl.MapProvidersAsResources(program)
 	return GenerateProgramWithOptions(program, GenerateProgramOptions{})
 }
 
@@ -62,8 +71,13 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if opts.ExternalCache == nil {
+		opts.ExternalCache = globalCache
+	}
+
 	for _, pkg := range packageDefs {
-		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg)
+		packages[pkg.Name], contexts[pkg.Name] = pkg, getPackages("tool", pkg, opts.ExternalCache)
 	}
 
 	g := &generator{
@@ -78,6 +92,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		optionalSpiller:     &optionalSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		externalCache:       opts.ExternalCache,
 	}
 
 	// Apply any generate options.
@@ -118,7 +133,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// Run Go formatter on the code before saving to disk
 	formattedSource, err := gofmt.Source(index.Bytes())
 	if err != nil {
-		panic(fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err))
+		return nil, g.diagnostics, fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err)
 	}
 
 	files := map[string][]byte{
@@ -160,6 +175,9 @@ require (
 		return err
 	}
 	for _, p := range packages {
+		if p.Name == "pulumi" {
+			continue
+		}
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 			return err
 		}
@@ -192,11 +210,19 @@ require (
 			// add the module based on the import generated in the .go files, but it will always get the
 			// latest version.
 
+			if info, ok := p.Language["go"]; ok {
+				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
+					gomod.WriteString(fmt.Sprintf(" %s v%s\n", info.ModulePath, p.Version.String()))
+				}
+			}
 			continue
 		}
 
 		// Relatively safe default, this works for Pulumi provider packages:
-		vPath := fmt.Sprintf("/v%d", p.Version.Major)
+		vPath := ""
+		if p.Version != nil && p.Version.Major > 1 {
+			vPath = fmt.Sprintf("/v%d", p.Version.Major)
+		}
 		packageName := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", p.Name, vPath, p.Name)
 		if langInfo, found := p.Language["go"]; found {
 			goInfo, ok := langInfo.(GoPackageInfo)
@@ -233,7 +259,7 @@ require (
 
 var packageContexts sync.Map
 
-func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
+func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkgContext {
 	if v, ok := packageContexts.Load(pkg); ok {
 		return v.(map[string]*pkgContext)
 	}
@@ -246,7 +272,8 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	v := generatePackageContextMap(tool, pkg, goPkgInfo)
+	v, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, cache)
+	contract.AssertNoError(err)
 	packageContexts.Store(pkg, v)
 	return v
 }
@@ -324,12 +351,12 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type, impo
 	}
 
 	var tokenRange hcl.Range
-	pkg, mod, _, _ := pcl.DecomposeToken(token, tokenRange)
+	pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 	vPath, err := g.getVersionPath(program, pkg)
 	if err != nil {
 		panic(err)
 	}
-	imports.Add(g.getPulumiImport(pkg, vPath, mod))
+	imports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
@@ -337,21 +364,27 @@ func (g *generator) collectImports(
 	program *pcl.Program,
 	stdImports,
 	pulumiImports,
-	preambleHelperMethods codegen.StringSet) (codegen.StringSet, codegen.StringSet, codegen.StringSet) {
+	preambleHelperMethods codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
+			pcl.FixupPulumiPackageTokens(r)
 			pkg, mod, name, _ := r.DecomposeToken()
-			if pkg == "pulumi" && mod == "providers" {
-				pkg = name
-			}
+			if pkg == "pulumi" {
+				if mod == "providers" {
+					pkg = name
+					mod = ""
+				} else if mod == "" {
+					continue
+				}
 
+			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
 				panic(err)
 			}
 
-			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 		}
 		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
 			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
@@ -363,7 +396,7 @@ func (g *generator) collectImports(
 					tokenArg := call.Args[0]
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
-					pkg, mod, _, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 					contract.Assert(len(diagnostics) == 0)
 
@@ -371,7 +404,7 @@ func (g *generator) collectImports(
 					if err != nil {
 						panic(err)
 					}
-					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
+					pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
 				} else if call.Name == pcl.IntrinsicConvert {
 					g.collectConvertImports(program, call, pulumiImports)
 				}
@@ -400,8 +433,6 @@ func (g *generator) collectImports(
 		})
 		contract.Assert(len(diags) == 0)
 	}
-
-	return stdImports, pulumiImports, preambleHelperMethods
 }
 
 func (g *generator) collectConvertImports(
@@ -417,10 +448,14 @@ func (g *generator) collectConvertImports(
 		//
 		// Fully solving this is deferred for later:
 		// TODO[pulumi/pulumi#8324].
-		if expr, ok := call.Args[0].(*model.TemplateExpression); ok {
-			if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok &&
-				model.StringType.AssignableFrom(lit.Type()) &&
+		switch arg0 := call.Args[0].(type) {
+		case *model.TemplateExpression:
+			if lit, ok := arg0.Parts[0].(*model.LiteralValueExpression); ok &&
 				call.Type().AssignableFrom(lit.Type()) {
+				return
+			}
+		case *model.ScopeTraversalExpression:
+			if call.Type().AssignableFrom(arg0.Type()) {
 				return
 			}
 		}
@@ -460,42 +495,38 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	return info, ok
 }
 
-func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
-	info, _ := g.getGoPackageInfo(pkg)
+func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, _ := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+
+	importPath := func(mod string) string {
+		importBasePath := info.ImportBasePath
+		if importBasePath == "" {
+			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
+		}
+
+		if mod != "" && mod != IndexToken {
+			return fmt.Sprintf("%s/%s", importBasePath, mod)
+		}
+		return importBasePath
+	}
+
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
 
-	imp := fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, mod)
-	// namespaceless invokes "aws:index:..."
-	if mod == "" {
-		imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
+	path := importPath(mod)
+	if alias, ok := info.PackageImportAliases[path]; ok {
+		return fmt.Sprintf("%s %q", alias, path)
 	}
 
-	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
-	// a means to override this assumption.
-	if info.ImportBasePath != "" {
-		if mod != "" {
-			imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
-		} else {
-			imp = info.ImportBasePath
-		}
-	}
+	// Trim off anything after the first '/'.
+	// This handles transforming modules like s3/bucket to s3 (as found in
+	// aws:s3/bucket:Bucket).
+	mod = strings.SplitN(mod, "/", 2)[0]
 
-	if alias, ok := info.PackageImportAliases[imp]; ok {
-		return fmt.Sprintf("%s %q", alias, imp)
-	}
-
-	modSplit := strings.Split(mod, "/")
-	// account for mods like "eks/ClusterVpcConfig" index...
-	if len(modSplit) > 1 {
-		if modSplit[0] == "" || modSplit[0] == "index" {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, vPath, pkg)
-		} else {
-			imp = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s/%s", pkg, vPath, pkg, modSplit[0])
-		}
-	}
-	return fmt.Sprintf("%q", imp)
+	return fmt.Sprintf("%#v", importPath(mod))
 }
 
 // genPostamble closes the method
@@ -588,7 +619,14 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
+	originalMod := mod
+	if pkg == "pulumi" && mod == "providers" {
+		pkg = typ
+		mod = ""
+		typ = "Provider"
+	}
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
+		originalMod = mod
 		mod = pkg
 	}
 
@@ -605,7 +643,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTemps(w, temps)
 	}
 
-	modOrAlias := g.getModOrAlias(pkg, mod)
+	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
@@ -627,9 +665,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
-				g.Fgenf(w, "%s: ", strings.Title(attr.Name))
-				g.Fgenf(w, "%.v,\n", attr.Value)
-
+				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {
@@ -659,8 +695,16 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if isValUsed {
 			valVar = "val0"
 		}
+		if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
+			g.Indented(func() {
+				g.Fgenf(w, "%skey0 := index\n", g.Indent)
+				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+			})
+		} else {
+			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
+		}
 
-		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
 		g.Fgenf(w, "%[1]s = append(%[1]s, __res)\n", resNameVar)
 		g.Fgenf(w, "}\n")
@@ -724,9 +768,10 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			}
 			g.Fgenf(w, "}\n")
 			g.Fgenf(w, "%s := string(%s)\n", t.Variable.Name, bytesVar)
+			g.isErrAssigned = true
 		case *readDirTemp:
 			tmpSuffix := strings.Split(t.Name, "files")[1]
-			g.Fgenf(w, "%s, err := ioutil.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
+			g.Fgenf(w, "%s, err := os.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
 			g.Fgenf(w, "if err != nil {\n")
 			if genZeroValueDecl {
 				g.Fgenf(w, "return _zero, err\n")
@@ -741,6 +786,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
 			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
 			g.Fgenf(w, "}\n")
+			g.isErrAssigned = true
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each, t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
@@ -777,6 +823,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			// OutputVersionedInvoke does not return an error
 			noError, _, _ := pcl.RecognizeOutputVersionedInvoke(expr)
 			if noError {
+				if name == "_" {
+					assignment = "="
+				}
 				g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
 			} else {
 				g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr)
@@ -785,9 +834,31 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
-		case "join", "toBase64", "mimeType",
+		case pcl.IntrinsicApply:
+			if name == "_" {
+				assignment = "="
+			}
+			g.Fgenf(w, "%s %s ", name, assignment)
+			g.genApply(w, expr)
+			g.Fgenf(w, "\n")
+		case "join", "mimeType",
 			"fileArchive", "remoteArchive", "assetArchive",
-			"fileAsset", "stringAsset", "remoteAsset":
+			"fileAsset", "stringAsset", "remoteAsset",
+			"toBase64":
+			if name == "_" {
+				assignment = "="
+			}
+			g.Fgenf(w, "%s %s %.3v;\n", name, assignment, expr)
+		case fromBase64Fn:
+			tmpVar := fmt.Sprintf("%s%d", "tmpVar", g.tmpVarCount)
+			g.Fgenf(w, "%s, _ %s %.3v;\n", tmpVar, assignment, expr)
+			if name == "_" {
+				assignment = ":="
+			}
+			g.Fgenf(w, "%s %s string(%s)\n", name, assignment, tmpVar)
+			g.tmpVarCount++
+			g.isErrAssigned = true
+		default:
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:
@@ -820,8 +891,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
+	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
-		g.Fgenf(w, "%[1]s := cfg.%[2]s%[3]s(\"%[1]s\")\n", v.Name(), getOrRequire, getType)
+		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
 	} else {
 		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.genTemps(w, temps)
@@ -829,28 +901,34 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		case *model.FunctionCallExpression:
 			switch expr.Name {
 			case pcl.Invoke:
-				g.Fgenf(w, "%s, err := %.3v;\n", v.Name(), expr)
+				g.Fgenf(w, "%s, err := %.3v;\n", name, expr)
 				g.isErrAssigned = true
 				g.Fgenf(w, "if err != nil {\n")
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
 		default:
-			g.Fgenf(w, "%s := %.3v;\n", v.Name(), expr)
+			switch v.Type() {
+			// Go will default to interpreting integers (i.e. 3) as ints, even if the config is Number
+			case model.NumberType:
+				g.Fgenf(w, "%s := float64(%.3v);\n", name, expr)
+			default:
+				g.Fgenf(w, "%s := %.3v;\n", name, expr)
+			}
 		}
 		switch v.Type() {
 		case model.StringType:
-			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.Name())
+			g.Fgenf(w, "if param := cfg.Get(\"%s\"); param != \"\"{\n", v.LogicalName())
 		case model.NumberType:
-			g.Fgenf(w, "if param := cfg.GetFloat(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetFloat64(\"%s\"); param != 0 {\n", v.LogicalName())
 		case model.IntType:
-			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetInt(\"%s\"); param != 0 {\n", v.LogicalName())
 		case model.BoolType:
-			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param {\n", v.LogicalName())
 		default:
-			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param != nil {\n", v.Name())
+			g.Fgenf(w, "if param := cfg.GetBool(\"%s\"); param != nil {\n", v.LogicalName())
 		}
-		g.Fgenf(w, "%s = param\n", v.Name())
+		g.Fgenf(w, "%s = param\n", name)
 		g.Fgen(w, "}\n")
 	}
 }
@@ -867,7 +945,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	modSplit := strings.Split(module, "/")
 	mod := modSplit[0]
 	fn := Title(member)
-	if mod == "index" && len(modSplit) >= 2 {
+	if mod == IndexToken && len(modSplit) >= 2 {
 		// e.g. "aws:index/getPartition:getPartition" where module is "index/getPartition"
 		mod = ""
 		fn = Title(modSplit[1])
@@ -887,7 +965,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 
 // getModOrAlias attempts to reconstruct the import statement and check if the imported package
 // is aliased, returning that alias if available.
-func (g *generator) getModOrAlias(pkg, mod string) string {
+func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
 		return mod
@@ -899,7 +977,12 @@ func (g *generator) getModOrAlias(pkg, mod string) string {
 	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
 	if alias, ok := info.PackageImportAliases[imp]; ok {
 		return alias
+	} else if info.ImportBasePath != "" {
+		if originalMod == "" || originalMod == IndexToken {
+			return path.Base(info.ImportBasePath)
+		}
 	}
+	mod = strings.Split(mod, "/")[0]
 	return mod
 }
 

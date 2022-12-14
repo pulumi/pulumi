@@ -325,6 +325,10 @@
                 "replaceOnChanges": {
                     "description": "Specifies whether a change to the property causes its containing resource to be replaced instead of updated (default false).",
                     "type": "boolean"
+                },
+                "willReplaceOnChanges": {
+                    "description": "Indicates that the provider will replace the resource when this property is changed.",
+                    "type": "boolean"
                 }
             }
         },

@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -363,7 +364,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Equal(t, []deploy.StepOp{deploy.OpCreate}, []deploy.StepOp{payload.Metadata.Op})
+								assert.Equal(t, []display.StepOp{deploy.OpCreate}, []display.StepOp{payload.Metadata.Op})
 							}
 						}
 						return res
@@ -685,27 +686,30 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			testID := pulumi.ID("testID")
 
 			// read a resource that uses provider map
-			err = ctx.ReadResource("pkgA:m:typA", "readResA", testID, nil, &parentResource, pulumi.ProviderMap(parentProviders))
+			var rereadParent pulumi.CustomResourceState
+			err = ctx.ReadResource("pkgA:m:typA", "readResA", testID, nil, &rereadParent, pulumi.ProviderMap(parentProviders))
 			assert.NoError(t, err)
 			// parent uses specified provider from map
-			parentResultProvider = parentResource.GetProvider("pkgA:m:typA")
+			parentResultProvider = rereadParent.GetProvider("pkgA:m:typA")
 			assert.Equal(t, &providerA, parentResultProvider)
 
 			// read a child resource
-			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &childResource, pulumi.Parent(&parentResource))
+			var rereadChild pulumi.CustomResourceState
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &rereadChild, pulumi.Parent(&parentResource))
 			assert.NoError(t, err)
 
 			// child uses provider value from parent
-			childResultProvider = childResource.GetProvider("pkgB:m:typB")
+			childResultProvider = rereadChild.GetProvider("pkgB:m:typB")
 			assert.Equal(t, &providerB, childResultProvider)
 
 			// read a child with a provider specified
-			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &childWithOverride,
+			var rereadChildWithOverride pulumi.CustomResourceState
+			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &rereadChildWithOverride,
 				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
 			assert.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
-			childWithOverrideProvider = childWithOverride.GetProvider("pkgB:m:typB")
+			childWithOverrideProvider = rereadChildWithOverride.GetProvider("pkgB:m:typB")
 			assert.Equal(t, &providerBOverride, childWithOverrideProvider)
 
 			// invoke with specific provider
@@ -779,7 +783,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 		})
 	})
 
-	expectedOps := []deploy.StepOp{deploy.OpCreate}
+	expectedOps := []display.StepOp{deploy.OpCreate}
 
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 	p := &TestPlan{
@@ -790,7 +794,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 					events []Event, res result.Result) result.Result {
 
-					collectedOps := make([]deploy.StepOp, 0)
+					collectedOps := make([]display.StepOp, 0)
 					for _, event := range events {
 						if event.Type == ResourcePreEvent {
 							payload := event.Payload().(ResourcePreEventPayload)
@@ -815,7 +819,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	resourceProperties = &testResourceInputs{
 		Foo: pulumi.String("baz"),
 	}
-	expectedOps = []deploy.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
+	expectedOps = []display.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
 
 	snap = p.Run(t, snap)
 	assert.NotNil(t, snap)

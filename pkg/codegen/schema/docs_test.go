@@ -7,15 +7,29 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
+// loops.
+//
+// Time to complete on these tests increases from ~2s to 30s or more and the number of lines logged
+// to stdout from 46 lines to over 1,000,000 lines of output. This corresponds to the roughly 1
+// million doc items tested across each file.
+//
+// Aside from just being verbose, the voluminous output makes `gotestsum` analysis less useful and
+// prevents use of the `ci-matrix` tool.
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
@@ -107,7 +121,7 @@ func getDocsForPackage(pkg *Package) []doc {
 func TestParseAndRenderDocs(t *testing.T) {
 	t.Parallel()
 
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -115,7 +129,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
 		f := f
-		if filepath.Ext(f.Name()) != ".json" {
+		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
 			continue
 		}
 
@@ -140,78 +154,92 @@ func TestParseAndRenderDocs(t *testing.T) {
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
 				doc := doc
-				t.Run(doc.entity, func(t *testing.T) {
-					original := []byte(doc.content)
-					expected := ParseDocs(original)
-					rendered := []byte(RenderDocsToString(original, expected))
-					actual := ParseDocs(rendered)
-					if !testutil.AssertSameStructure(t, original, rendered, expected, actual, nodeAssertions) {
-						t.Logf("original: %v", doc.content)
-						t.Logf("rendered: %v", string(rendered))
-					}
-				})
+				original := []byte(doc.content)
+				expected := ParseDocs(original)
+				rendered := []byte(RenderDocsToString(original, expected))
+				actual := ParseDocs(rendered)
+				if !testutil.AssertSameStructure(t, original, rendered, expected, actual, nodeAssertions) {
+					t.Logf("original: %v", doc.content)
+					t.Logf("rendered: %v", string(rendered))
+				}
 			}
 		})
+	}
+}
+
+func pkgInfo(t *testing.T, filename string) (string, *semver.Version) {
+	filename = strings.TrimSuffix(filename, ".json")
+	idx := 0
+	for {
+		i := strings.IndexByte(filename[idx:], '-') + idx
+		require.Truef(t, i != -1, "Could not parse %q into (pkg, version)", filename)
+		name := filename[:i]
+		version := filename[i+1:]
+		if v, err := semver.Parse(version); err == nil {
+			return name, &v
+		}
+		idx = i + 1
 	}
 }
 
 func TestReferenceRenderer(t *testing.T) {
 	t.Parallel()
 
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
 
+	seenNames := map[string]struct{}{}
+
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, f := range files {
 		f := f
-		if filepath.Ext(f.Name()) != ".json" {
+		if filepath.Ext(f.Name()) != ".json" || f.Name() == "types.json" {
 			continue
+		}
+		name, version := pkgInfo(t, f.Name())
+
+		if _, ok := seenNames[name]; ok {
+			continue
+		} else {
+			seenNames[name] = struct{}{}
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Parallel()
 
-			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
+			host := utils.NewHost(testdataPath)
+			defer host.Close()
+			loader := NewPluginLoader(host)
+			pkg, err := loader.LoadPackage(name, version)
 			if err != nil {
-				t.Fatalf("could not read %v: %v", path, err)
-			}
-
-			var spec PackageSpec
-			if err = json.Unmarshal(contents, &spec); err != nil {
-				t.Fatalf("could not unmarshal package spec: %v", err)
-			}
-			pkg, err := ImportSpec(spec, nil)
-			if err != nil {
-				t.Fatalf("could not import package: %v", err)
+				t.Fatalf("could not import package %s,%s: %v", name, version, err)
 			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread
 			for _, doc := range getDocsForPackage(pkg) {
 				doc := doc
-				t.Run(doc.entity, func(t *testing.T) {
-					text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
-					expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"
 
-					parsed := ParseDocs(text)
-					actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(
-						func(r *Renderer, w io.Writer, src []byte, l *ast.Link, enter bool) (ast.WalkStatus, error) {
-							if !enter {
-								return ast.WalkContinue, nil
-							}
+				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
+				expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"
 
-							replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
-							if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
-								return ast.WalkStop, err
-							}
+				parsed := ParseDocs(text)
+				actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(
+					func(r *Renderer, w io.Writer, src []byte, l *ast.Link, enter bool) (ast.WalkStatus, error) {
+						if !enter {
+							return ast.WalkContinue, nil
+						}
 
-							return ast.WalkSkipChildren, nil
-						})))
+						replaced := bytes.Replace(l.Destination, []byte{'/'}, []byte{'_'}, -1)
+						if _, err := r.MarkdownRenderer().Write(w, replaced); err != nil {
+							return ast.WalkStop, err
+						}
 
-					assert.Equal(t, expected, string(actual))
-				})
+						return ast.WalkSkipChildren, nil
+					})))
+
+				assert.Equal(t, expected, string(actual))
 			}
 		})
 	}

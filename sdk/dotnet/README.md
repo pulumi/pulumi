@@ -90,10 +90,6 @@ error RS0016: Symbol XYZ' is not part of the declared API.
 
 This indicates a change in public API. If you are developing a change
 and this is intentional, add the new API elements to
-`PublicAPI.Unshipped.txt` corresponding to your project (some IDEs
+`PublicAPI.Shipped.txt` corresponding to your project (some IDEs
 will do this automatically for you, but manual additions are fine as
 well).
-
-Project maintainers will move API elements from
-`PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` when cutting a
-release.

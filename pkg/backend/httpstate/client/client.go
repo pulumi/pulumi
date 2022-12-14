@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
@@ -48,6 +49,9 @@ type Client struct {
 	apiOrgs  []string
 	diag     diag.Sink
 	client   restClient
+
+	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
+	DisableCapabilityProbing bool
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -320,7 +324,7 @@ func (pc *Client) GetLatestConfiguration(ctx context.Context, stackID StackIdent
 func (pc *Client) DoesProjectExist(ctx context.Context, owner string, projectName string) (bool, error) {
 	if err := pc.restCall(ctx, "HEAD", getProjectPath(owner, projectName), nil, nil, nil); err != nil {
 		// If this was a 404, return false - project not found.
-		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusNotFound {
+		if is404(err) {
 			return false, nil
 		}
 
@@ -437,7 +441,8 @@ func (pc *Client) BulkDecryptValue(ctx context.Context, stack StackIdentifier,
 	ciphertexts [][]byte) (map[string][]byte, error) {
 	req := apitype.BulkDecryptValueRequest{Ciphertexts: ciphertexts}
 	var resp apitype.BulkDecryptValueResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp); err != nil {
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "batch-decrypt"), nil, &req, &resp,
+		httpCallOptions{GzipCompress: true}); err != nil {
 		return nil, err
 	}
 
@@ -470,6 +475,9 @@ func (pc *Client) GetStackUpdates(
 func (pc *Client) ExportStackDeployment(
 	ctx context.Context, stack StackIdentifier, version *int) (apitype.UntypedDeployment, error) {
 
+	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "ExportStackDeployment")
+	defer tracingSpan.Finish()
+
 	path := getStackPath(stack, "export")
 
 	// Tack on a specific version as desired.
@@ -478,7 +486,7 @@ func (pc *Client) ExportStackDeployment(
 	}
 
 	var resp apitype.ExportStackResponse
-	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+	if err := pc.restCall(childCtx, "GET", path, nil, nil, &resp); err != nil {
 		return apitype.UntypedDeployment{}, err
 	}
 
@@ -490,7 +498,8 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 	deployment *apitype.UntypedDeployment) (UpdateIdentifier, error) {
 
 	var resp apitype.ImportStackResponse
-	if err := pc.restCall(ctx, "POST", getStackPath(stack, "import"), nil, deployment, &resp); err != nil {
+	if err := pc.restCallWithOptions(ctx, "POST", getStackPath(stack, "import"), nil, deployment, &resp,
+		httpCallOptions{GzipCompress: true}); err != nil {
 		return UpdateIdentifier{}, err
 	}
 
@@ -922,6 +931,46 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 
+// PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
+// UntypedDeployment transferred over the wire.
+func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token string) error {
+
+	req := apitype.PatchUpdateVerbatimCheckpointRequest{
+		Version:           3,
+		UntypedDeployment: untypedDeploymentBytes,
+		SequenceNumber:    sequenceNumber,
+	}
+
+	reqPayload, err := marshalVerbatimCheckpointRequest(req)
+	if err != nil {
+		return err
+	}
+
+	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
+	// deployment instead of a set of changes to apply.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+}
+
+// PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
+// PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
+// large stack states.
+func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token string) error {
+
+	req := apitype.PatchUpdateCheckpointDeltaRequest{
+		Version:         3,
+		CheckpointHash:  checkpointHash,
+		SequenceNumber:  sequenceNumber,
+		DeploymentDelta: deploymentDelta,
+	}
+
+	// It is safe to retry because SequenceNumber serves as an idempotency key.
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+}
+
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 
@@ -941,6 +990,23 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+}
+
+// GetUpdateEngineEvents returns the engine events for an update.
+func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdentifier,
+	continuationToken *string) (apitype.GetUpdateEventsResponse, error) {
+
+	path := getUpdatePath(update, "events")
+	if continuationToken != nil {
+		path += fmt.Sprintf("?continuationToken=%s", *continuationToken)
+	}
+
+	var resp apitype.GetUpdateEventsResponse
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.GetUpdateEventsResponse{}, err
+	}
+
+	return resp, nil
 }
 
 // RecordEngineEvents posts a batch of engine events to the Pulumi service.
@@ -966,4 +1032,73 @@ func (pc *Client) UpdateStackTags(
 	}
 
 	return pc.restCall(ctx, "PATCH", getStackPath(stack, "tags"), nil, tags, nil)
+}
+
+func getDeploymentPath(stack StackIdentifier, components ...string) string {
+	prefix := fmt.Sprintf("/api/preview/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
+	return path.Join(append([]string{prefix}, components...)...)
+}
+
+func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
+	req apitype.CreateDeploymentRequest) (*apitype.CreateDeploymentResponse, error) {
+
+	var resp apitype.CreateDeploymentResponse
+	err := pc.restCall(ctx, http.MethodPost, getDeploymentPath(stack), nil, req, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("creating deployment failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
+	token string) (*apitype.DeploymentLogs, error) {
+
+	path := getDeploymentPath(stack, id, fmt.Sprintf("logs?continuationToken=%s", token))
+	var resp apitype.DeploymentLogs
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment %s logs failed: %w", id, err)
+	}
+	return &resp, nil
+}
+
+func (pc *Client) GetDeploymentUpdates(ctx context.Context, stack StackIdentifier,
+	id string) ([]apitype.GetDeploymentUpdatesUpdateInfo, error) {
+
+	path := getDeploymentPath(stack, id, "updates")
+	var resp []apitype.GetDeploymentUpdatesUpdateInfo
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment %s updates failed: %w", id, err)
+	}
+	return resp, nil
+}
+
+func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesResponse, error) {
+	if pc.DisableCapabilityProbing {
+		return &apitype.CapabilitiesResponse{}, nil
+	}
+
+	var resp apitype.CapabilitiesResponse
+	err := pc.restCall(ctx, http.MethodGet, "/api/capabilities", nil, nil, &resp)
+	if is404(err) {
+		// The client continues to support legacy backends. They do not support /api/capabilities and are
+		// assumed here to have no additional capabilities.
+		return &apitype.CapabilitiesResponse{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("querying capabilities failed: %w", err)
+	}
+	return &resp, nil
+}
+
+func is404(err error) bool {
+	if err == nil {
+		return false
+	}
+	var errResp *apitype.ErrorResponse
+	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+		return true
+	}
+	return false
 }

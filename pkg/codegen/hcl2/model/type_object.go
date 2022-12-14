@@ -72,10 +72,32 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	keyString, err := convert.Convert(key, cty.String)
 	contract.Assert(err == nil)
 
+	propertiesLower := make(map[string]string)
+	for p := range t.Properties {
+		propertiesLower[strings.ToLower(p)] = p
+	}
+
 	propertyName := keyString.AsString()
 	propertyType, hasProperty := t.Properties[propertyName]
 	if !hasProperty {
-		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
+		propertyNameLower := strings.ToLower(propertyName)
+		if propertyNameOrig, ok := propertiesLower[propertyNameLower]; ok {
+			propertyType = t.Properties[propertyNameOrig]
+			rng := traverser.SourceRange()
+			return propertyType, hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Subject:  &rng,
+					Summary:  "Found matching case-insensitive property",
+					Detail:   fmt.Sprintf("Matched %s with %s", propertyName, propertyNameOrig),
+				},
+			}
+		}
+		props := make([]string, 0, len(t.Properties))
+		for k := range t.Properties {
+			props = append(props, k)
+		}
+		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange(), props)}
 	}
 	return propertyType, nil
 }

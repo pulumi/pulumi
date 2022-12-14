@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
+	var stack string
 	var cmd = &cobra.Command{
 		Use:   "change-secrets-provider <new-secrets-provider>",
 		Args:  cmdutil.ExactArgs(1),
-		Short: "Change the secrets provider for the current stack",
-		Long: "Change the secrets provider for the current stack. " +
+		Short: "Change the secrets provider for a stack",
+		Long: "Change the secrets provider for a stack. " +
 			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
 			"To change to using the Pulumi Default Secrets Provider, use the following:\n" +
 			"\n" +
@@ -52,8 +54,15 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
+			}
+
+			project, _, err := readProject()
+
+			if err != nil {
+				return err
 			}
 
 			// Validate secrets provider type
@@ -61,18 +70,12 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 				return err
 			}
 
-			// Get the current backend
-			b, err := currentBackend(opts)
-			if err != nil {
-				return err
-			}
-
 			// Get the current stack and its project
-			currentStack, err := requireStack("", false, opts, true /*setCurrent*/)
+			currentStack, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-			currentProjectStack, err := loadProjectStack(currentStack)
+			currentProjectStack, err := loadProjectStack(project, currentStack)
 			if err != nil {
 				return err
 			}
@@ -94,20 +97,27 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			secretsProvider := args[0]
 			rotatePassphraseProvider := secretsProvider == "passphrase"
 			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(b, currentStack.Ref(), secretsProvider, rotatePassphraseProvider); err != nil {
+			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotatePassphraseProvider,
+				false /*creatingStack*/); err != nil {
 				return err
 			}
 
 			// Fixup the checkpoint
 			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
-			return migrateOldConfigAndCheckpointToNewSecretsProvider(commandContext(), currentStack, currentConfig, decrypter)
+			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentConfig, decrypter)
 		}),
 	}
+
+	cmd.PersistentFlags().StringVarP(
+		&stack, "stack", "s", "",
+		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }
 
-func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, currentStack backend.Stack,
+func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
+	project *workspace.Project,
+	currentStack backend.Stack,
 	currentConfig config.Map, decrypter config.Decrypter) error {
 	// The order of operations here should be to load the secrets manager current stack
 	// Get the newly created secrets manager for the stack
@@ -129,7 +139,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	}
 
 	// Reload the project stack after the new secretsProvider is in place
-	reloadedProjectStack, err := loadProjectStack(currentStack)
+	reloadedProjectStack, err := loadProjectStack(project, currentStack)
 	if err != nil {
 		return err
 	}
@@ -149,7 +159,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context, curr
 	if err != nil {
 		return err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(checkpoint, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, stack.DefaultSecretsProvider)
 	if err != nil {
 		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
 	}

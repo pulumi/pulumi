@@ -13,6 +13,12 @@ Pulumi.Automation.DestroyOptions
 Pulumi.Automation.DestroyOptions.DestroyOptions() -> void
 Pulumi.Automation.DestroyOptions.TargetDependents.get -> bool?
 Pulumi.Automation.DestroyOptions.TargetDependents.set -> void
+Pulumi.Automation.EnvironmentVariableValue
+Pulumi.Automation.EnvironmentVariableValue.EnvironmentVariableValue(string value, bool isSecret = false) -> void
+Pulumi.Automation.EnvironmentVariableValue.IsSecret.get -> bool
+Pulumi.Automation.EnvironmentVariableValue.IsSecret.set -> void
+Pulumi.Automation.EnvironmentVariableValue.Value.get -> string
+Pulumi.Automation.EnvironmentVariableValue.Value.set -> void
 Pulumi.Automation.Events.CancelEvent
 Pulumi.Automation.Events.DiagnosticEvent
 Pulumi.Automation.Events.DiagnosticEvent.Color.get -> string
@@ -255,6 +261,63 @@ Pulumi.Automation.RefreshOptions
 Pulumi.Automation.RefreshOptions.ExpectNoChanges.get -> bool?
 Pulumi.Automation.RefreshOptions.ExpectNoChanges.set -> void
 Pulumi.Automation.RefreshOptions.RefreshOptions() -> void
+Pulumi.Automation.RemoteDestroyOptions
+Pulumi.Automation.RemoteDestroyOptions.RemoteDestroyOptions() -> void
+Pulumi.Automation.RemoteGitAuthArgs
+Pulumi.Automation.RemoteGitAuthArgs.Password.get -> string?
+Pulumi.Automation.RemoteGitAuthArgs.Password.set -> void
+Pulumi.Automation.RemoteGitAuthArgs.PersonalAccessToken.get -> string?
+Pulumi.Automation.RemoteGitAuthArgs.PersonalAccessToken.set -> void
+Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKey.get -> string?
+Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKey.set -> void
+Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKeyPath.get -> string?
+Pulumi.Automation.RemoteGitAuthArgs.SshPrivateKeyPath.set -> void
+Pulumi.Automation.RemoteGitAuthArgs.Username.get -> string?
+Pulumi.Automation.RemoteGitAuthArgs.Username.set -> void
+Pulumi.Automation.RemoteGitProgramArgs
+Pulumi.Automation.RemoteGitProgramArgs.Auth.get -> Pulumi.Automation.RemoteGitAuthArgs?
+Pulumi.Automation.RemoteGitProgramArgs.Auth.set -> void
+Pulumi.Automation.RemoteGitProgramArgs.Branch.get -> string?
+Pulumi.Automation.RemoteGitProgramArgs.Branch.set -> void
+Pulumi.Automation.RemoteGitProgramArgs.CommitHash.get -> string?
+Pulumi.Automation.RemoteGitProgramArgs.CommitHash.set -> void
+Pulumi.Automation.RemoteGitProgramArgs.ProjectPath.get -> string?
+Pulumi.Automation.RemoteGitProgramArgs.ProjectPath.set -> void
+Pulumi.Automation.RemoteGitProgramArgs.RemoteGitProgramArgs(string stackName, string url) -> void
+Pulumi.Automation.RemoteGitProgramArgs.StackName.get -> string
+Pulumi.Automation.RemoteGitProgramArgs.Url.get -> string
+Pulumi.Automation.RemotePreviewOptions
+Pulumi.Automation.RemotePreviewOptions.RemotePreviewOptions() -> void
+Pulumi.Automation.RemoteRefreshOptions
+Pulumi.Automation.RemoteRefreshOptions.RemoteRefreshOptions() -> void
+Pulumi.Automation.RemoteUpOptions
+Pulumi.Automation.RemoteUpOptions.RemoteUpOptions() -> void
+Pulumi.Automation.RemoteUpdateOptions
+Pulumi.Automation.RemoteUpdateOptions.OnEvent.get -> System.Action<Pulumi.Automation.Events.EngineEvent>
+Pulumi.Automation.RemoteUpdateOptions.OnEvent.set -> void
+Pulumi.Automation.RemoteUpdateOptions.OnStandardError.get -> System.Action<string>
+Pulumi.Automation.RemoteUpdateOptions.OnStandardError.set -> void
+Pulumi.Automation.RemoteUpdateOptions.OnStandardOutput.get -> System.Action<string>
+Pulumi.Automation.RemoteUpdateOptions.OnStandardOutput.set -> void
+Pulumi.Automation.RemoteUpdateOptions.RemoteUpdateOptions() -> void
+Pulumi.Automation.RemoteWorkspace
+Pulumi.Automation.RemoteWorkspaceOptions
+Pulumi.Automation.RemoteWorkspaceOptions.RemoteWorkspaceOptions() -> void
+Pulumi.Automation.RemoteWorkspaceOptions.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.EnvironmentVariableValue>?
+Pulumi.Automation.RemoteWorkspaceOptions.EnvironmentVariables.set -> void
+Pulumi.Automation.RemoteWorkspaceOptions.PreRunCommands.get -> System.Collections.Generic.IList<string>?
+Pulumi.Automation.RemoteWorkspaceOptions.PreRunCommands.set -> void
+Pulumi.Automation.RemoteWorkspaceStack
+Pulumi.Automation.RemoteWorkspaceStack.DestroyAsync(Pulumi.Automation.RemoteDestroyOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.RemoteWorkspaceStack.Dispose() -> void
+Pulumi.Automation.RemoteWorkspaceStack.ExportStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
+Pulumi.Automation.RemoteWorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
+Pulumi.Automation.RemoteWorkspaceStack.GetOutputsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
+Pulumi.Automation.RemoteWorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.RemoteWorkspaceStack.Name.get -> string
+Pulumi.Automation.RemoteWorkspaceStack.PreviewAsync(Pulumi.Automation.RemotePreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.PreviewResult>
+Pulumi.Automation.RemoteWorkspaceStack.RefreshAsync(Pulumi.Automation.RemoteRefreshOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.RemoteWorkspaceStack.UpAsync(Pulumi.Automation.RemoteUpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpResult>
 Pulumi.Automation.StackSettings
 Pulumi.Automation.StackSettings.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.StackSettingsConfigValue>
 Pulumi.Automation.StackSettings.Config.set -> void
@@ -454,6 +517,12 @@ static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task
 static Pulumi.Automation.PulumiFn.Create(System.IServiceProvider serviceProvider, System.Type stackType) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>() -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>(System.IServiceProvider serviceProvider) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.RemoteWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
+static Pulumi.Automation.RemoteWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
+static Pulumi.Automation.RemoteWorkspace.CreateStackAsync(Pulumi.Automation.RemoteGitProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
+static Pulumi.Automation.RemoteWorkspace.CreateStackAsync(Pulumi.Automation.RemoteGitProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
+static Pulumi.Automation.RemoteWorkspace.SelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
+static Pulumi.Automation.RemoteWorkspace.SelectStackAsync(Pulumi.Automation.RemoteGitProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.RemoteWorkspaceStack>
 static Pulumi.Automation.WorkspaceStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 static Pulumi.Automation.WorkspaceStack.CreateOrSelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 static Pulumi.Automation.WorkspaceStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
@@ -478,3 +547,21 @@ Pulumi.Automation.UpOptions.Plan.get -> string
 Pulumi.Automation.UpOptions.Plan.set -> void
 Pulumi.Automation.UpdateOptions.Color.get -> string
 Pulumi.Automation.UpdateOptions.Color.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.set -> void
+Pulumi.Automation.HistoryOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.DestroyOptions.ShowSecrets.set -> void
+Pulumi.Automation.DestroyOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpOptions.ShowSecrets.set -> void
+Pulumi.Automation.UpOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.RefreshOptions.ShowSecrets.set -> void
+Pulumi.Automation.RefreshOptions.ShowSecrets.get -> bool?
+Pulumi.Automation.UpdateOptions.LogFlow.get -> bool?
+Pulumi.Automation.UpdateOptions.LogFlow.set -> void
+Pulumi.Automation.UpdateOptions.LogVerbosity.get -> int?
+Pulumi.Automation.UpdateOptions.LogVerbosity.set -> void
+Pulumi.Automation.UpdateOptions.LogToStdErr.get -> bool?
+Pulumi.Automation.UpdateOptions.LogToStdErr.set -> void
+Pulumi.Automation.UpdateOptions.Tracing.get -> string?
+Pulumi.Automation.UpdateOptions.Tracing.set -> void
+Pulumi.Automation.UpdateOptions.Debug.get -> bool?
+Pulumi.Automation.UpdateOptions.Debug.set -> void

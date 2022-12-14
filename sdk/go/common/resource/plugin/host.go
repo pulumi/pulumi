@@ -15,7 +15,10 @@
 package plugin
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/blang/semver"
@@ -67,13 +70,18 @@ type Host interface {
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string) (LanguageRuntime, error)
+	LanguageRuntime(root, pwd, runtime string, options map[string]interface{}) (LanguageRuntime, error)
 
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
+	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
+	// InstallPlugin installs a given plugin if it's not available.
+	InstallPlugin(plugin workspace.PluginSpec) error
+
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
+
+	GetProjectPlugins() []workspace.ProjectPlugin
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -87,12 +95,36 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
-	disableProviderPreview bool) (Host, error) {
+func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
+	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
+	// Create plugin info from providers
+	projectPlugins := make([]workspace.ProjectPlugin, 0)
+	if plugins != nil {
+		for _, providerOpts := range plugins.Providers {
+			info, err := parsePluginOpts(providerOpts, workspace.ResourcePlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, languageOpts := range plugins.Languages {
+			info, err := parsePluginOpts(languageOpts, workspace.LanguagePlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+		for _, analyzerOpts := range plugins.Analyzers {
+			info, err := parsePluginOpts(analyzerOpts, workspace.AnalyzerPlugin)
+			if err != nil {
+				return nil, err
+			}
+			projectPlugins = append(projectPlugins, info)
+		}
+	}
 
 	host := &defaultHost{
 		ctx:                     ctx,
-		config:                  config,
 		runtimeOptions:          runtimeOptions,
 		analyzerPlugins:         make(map[tokens.QName]*analyzerPlugin),
 		languagePlugins:         make(map[string]*languagePlugin),
@@ -102,6 +134,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
 		closer:                  new(sync.Once),
+		projectPlugins:          projectPlugins,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -130,12 +163,37 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 	return host, nil
 }
 
+func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (workspace.ProjectPlugin, error) {
+	var v *semver.Version
+	if providerOpts.Version != "" {
+		ver, err := semver.Parse(providerOpts.Version)
+		if err != nil {
+			return workspace.ProjectPlugin{}, err
+		}
+		v = &ver
+	}
+
+	_, err := os.Stat(providerOpts.Path)
+	if err != nil {
+		return workspace.ProjectPlugin{}, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+	}
+
+	pluginInfo := workspace.ProjectPlugin{
+		Name:    providerOpts.Name,
+		Path:    filepath.Clean(providerOpts.Path),
+		Kind:    k,
+		Version: v,
+	}
+	return pluginInfo, nil
+}
+
 // PolicyAnalyzerOptions includes a bag of options to pass along to a policy analyzer.
 type PolicyAnalyzerOptions struct {
-	Project string
-	Stack   string
-	Config  map[config.Key]string
-	DryRun  bool
+	Organization string
+	Project      string
+	Stack        string
+	Config       map[config.Key]string
+	DryRun       bool
 }
 
 type pluginLoadRequest struct {
@@ -144,9 +202,10 @@ type pluginLoadRequest struct {
 }
 
 type defaultHost struct {
-	ctx                     *Context                         // the shared context for this host.
-	config                  ConfigSource                     // the source for provider configuration parameters.
-	runtimeOptions          map[string]interface{}           // options to pass to the language plugins.
+	ctx *Context // the shared context for this host.
+
+	// the runtime options for the project, passed to resource providers to support dynamic providers.
+	runtimeOptions          map[string]interface{}
 	analyzerPlugins         map[tokens.QName]*analyzerPlugin // a cache of analyzer plugins and their processes.
 	languagePlugins         map[string]*languagePlugin       // a cache of language plugins and their processes.
 	resourcePlugins         map[Provider]*resourcePlugin     // the set of loaded resource plugins.
@@ -156,7 +215,8 @@ type defaultHost struct {
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 
-	closer *sync.Once
+	closer         *sync.Once
+	projectPlugins []workspace.ProjectPlugin
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -314,17 +374,27 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 	return plugin.(Provider), nil
 }
 
-func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
+func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
+	options map[string]interface{}) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
 	plugin, err := loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
+
+		// Key our cached runtime plugins by the runtime name and the options
+		jsonOptions, err := json.Marshal(options)
+		if err != nil {
+			return nil, fmt.Errorf("could not marshal runtime options to JSON: %w", err)
+		}
+
+		key := runtime + ":" + root + ":" + pwd + ":" + string(jsonOptions)
+
 		// First see if we already loaded this plugin.
-		if plug, has := host.languagePlugins[runtime]; has {
+		if plug, has := host.languagePlugins[key]; has {
 			contract.Assert(plug != nil)
 			return plug.Plugin, nil
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
+		plug, err := NewLanguageRuntime(host, host.ctx, root, pwd, runtime, options)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -332,7 +402,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 			}
 
 			// Memoize the result.
-			host.languagePlugins[runtime] = &languagePlugin{Plugin: plug, Info: info}
+			host.languagePlugins[key] = &languagePlugin{Plugin: plug, Info: info}
 		}
 
 		return plug, err
@@ -345,7 +415,7 @@ func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error {
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
@@ -359,7 +429,12 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 			}
 		case workspace.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(plugin.Name); err != nil {
+				// Pass nil options here, we just need to check the language plugin is loadable. We can't use
+				// host.runtimePlugins because there might be other language plugins reported here (e.g
+				// shimless multi-language providers). Pass the host root for the plugin directory, it
+				// shouldn't matter because we're starting with no options but it's a directory we've already
+				// got hold of.
+				if _, err := host.LanguageRuntime(host.ctx.Root, host.ctx.Pwd, plugin.Name, nil); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
 				}
@@ -379,9 +454,35 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 	return result
 }
 
+func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
+	if !workspace.HasPlugin(pkgPlugin) {
+		// TODO: schema and provider versions
+		// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
+		// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
+		if pkgPlugin.Version == nil {
+			return nil
+		}
+
+		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
+		}
+		defer os.Remove(tarball.Name())
+		if err := pkgPlugin.InstallWithContext(host.ctx.baseContext, workspace.TarPlugin(tarball), false); err != nil {
+			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
+		}
+	}
+
+	return nil
+}
+
 func (host *defaultHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
-	return workspace.GetPluginInfo(kind, name, version)
+	return workspace.GetPluginInfo(kind, name, version, host.GetProjectPlugins())
+}
+
+func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
+	return host.projectPlugins
 }
 
 func (host *defaultHost) SignalCancellation() error {
@@ -461,17 +562,17 @@ const (
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error) {
-	var plugins []workspace.PluginInfo
+func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]workspace.PluginSpec, error) {
+	var plugins []workspace.PluginSpec
 
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
+		lang, err := host.LanguageRuntime(root, info.Pwd, info.Proj.Runtime.Name(), info.Proj.Runtime.Options())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}
-		plugins = append(plugins, workspace.PluginInfo{
+		plugins = append(plugins, workspace.PluginSpec{
 			Name: info.Proj.Runtime.Name(),
 			Kind: workspace.LanguagePlugin,
 		})

@@ -135,3 +135,30 @@ func Linearize(p *Program) []Node {
 
 	return nodes
 }
+
+// Remaps the "pulumi:providers:$Package" token style to "$Package:index:Provider", consistent with code generation.
+// This mapping is consistent with how provider resources are projected into the schema and removes special casing logic
+// to generate registering explicit providers.
+//
+// The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
+func MapProvidersAsResources(p *Program) {
+	nodes := make([]Node, 0, len(p.Nodes))
+	for _, n := range p.Nodes {
+		if r, ok := n.(*Resource); ok {
+			pkg, mod, name, _ := r.DecomposeToken()
+			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
+				// the binder emits tokens like this when the module is "index"
+				r.Token = name + "::Provider"
+			}
+		}
+
+		nodes = append(nodes, n)
+	}
+}
+
+func FixupPulumiPackageTokens(r *Resource) {
+	pkg, mod, name, _ := r.DecomposeToken()
+	if pkg == "pulumi" && mod == "pulumi" {
+		r.Token = "pulumi::" + name
+	}
+}

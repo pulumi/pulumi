@@ -1,7 +1,12 @@
 PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
-VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version))
-PYPI_VERSION 	 := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version --language python))
+VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh))
+PYPI_VERSION 	   := $(if ${PYPI_VERSION},${PYPI_VERSION},$(shell ../../scripts/pulumi-version.sh python))
+
+ifeq ($(DEBUG),"true")
+$(info    VERSION       = $(VERSION))
+$(info    PYPI_VERSION  = $(PYPI_VERSION))
+endif
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -9,7 +14,6 @@ PYENVSRC := $(PYENV)/src
 BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
 
 PROJECT_PKGS    := $(shell go list ./cmd/...)
-TESTPARALLELISM ?= 10
 
 include ../../build/common.mk
 
@@ -23,14 +27,14 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 ensure:: $(PYTHON).ensure .ensure.phony
 .ensure.phony:
 	$(PYTHON) -m venv venv
-	. venv/*/activate && python -m pip install wheel
+	. venv/*/activate && python -m pip install --upgrade pip setuptools wheel
 	. venv/*/activate && python -m pip install -r requirements.txt
 	mkdir -p $(PYENVSRC)
 	@touch .ensure.phony
 
 build_package:: ensure
 	rm -rf $(PYENVSRC) && cp -R ./lib/. $(PYENVSRC)/
-	sed -i.bak "s/\$${VERSION}/$(PYPI_VERSION)/g" $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
+	sed -i.bak 's/^VERSION = .*/VERSION = "$(PYPI_VERSION)"/g' $(PYENVSRC)/setup.py && rm $(PYENVSRC)/setup.py.bak
 	cp ../../README.md $(PYENVSRC)
 	. venv/*/activate && cd $(PYENVSRC) && \
 		python setup.py build bdist_wheel --universal
@@ -88,9 +92,13 @@ brew::
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
-publish:: build_package
+publish::
+	for file in ../../artifacts/sdk-python-*.whl; do \
+		basename=$$(basename $${file}); \
+		mv -vT "$${file}" "../../artifacts/$${basename##sdk-python-}"; \
+	done
 	twine upload \
 	-u pulumi -p "${PYPI_PASSWORD}" \
-        "env/src/dist"/*.whl \
-        --skip-existing \
-        --verbose
+		../../artifacts/*.whl \
+		--skip-existing \
+		--verbose

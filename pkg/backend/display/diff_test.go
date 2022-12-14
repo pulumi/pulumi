@@ -1,3 +1,4 @@
+//nolint:goconst
 package display
 
 import (
@@ -53,7 +54,7 @@ func loadEvents(path string) (events []engine.Event, err error) {
 	return events, nil
 }
 
-func testDiffEvents(t *testing.T, path string, accept bool) {
+func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool) {
 	events, err := loadEvents(path)
 	require.NoError(t, err)
 
@@ -78,6 +79,7 @@ func testDiffEvents(t *testing.T, path string, accept bool) {
 		ShowReplacementSteps: true,
 		ShowSameResources:    true,
 		ShowReads:            true,
+		TruncateOutput:       truncateOutput,
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 	})
@@ -104,7 +106,7 @@ func TestDiffEvents(t *testing.T) {
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
-	entries, err := os.ReadDir("testdata")
+	entries, err := os.ReadDir("testdata/not-truncated")
 	require.NoError(t, err)
 
 	//nolint:paralleltest
@@ -113,11 +115,26 @@ func TestDiffEvents(t *testing.T) {
 			continue
 		}
 
-		path := filepath.Join("testdata", entry.Name())
+		path := filepath.Join("testdata/not-truncated", entry.Name())
 		t.Run(entry.Name(), func(t *testing.T) {
 			t.Parallel()
+			testDiffEvents(t, path, accept, false)
+		})
+	}
 
-			testDiffEvents(t, path, accept)
+	entries, err = os.ReadDir("testdata/truncated")
+	require.NoError(t, err)
+
+	//nolint:paralleltest
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			testDiffEvents(t, path, accept, true)
 		})
 	}
 }

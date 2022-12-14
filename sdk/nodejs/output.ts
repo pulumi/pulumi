@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import { Resource } from "./resource";
-import * as runtime from "./runtime";
+import * as settings from "./runtime/settings";
 import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
@@ -357,7 +357,7 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
 async function applyHelperAsync<T, U>(
     allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
     func: (t: T) => Input<U>, runWithUnknowns: boolean) {
-    if (runtime.isDryRun()) {
+    if (settings.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
         const applyDuringPreview = isKnown || runWithUnknowns;
@@ -577,14 +577,14 @@ function createSimpleOutput(val: any) {
  */
 /* eslint-disable max-len */
 export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
-export function all<T1, T2, T3>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
-export function all<T1, T2>(values: [Input<T1> | undefined, Input<T2> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>]>;
-export function all<T>(ds: (Input<T> | undefined)[]): Output<Unwrap<T>[]>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>, Input<T8>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(values: [Input<T1>, Input<T2>, Input<T3>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2>(values: [Input<T1>, Input<T2>]): Output<[Unwrap<T1>, Unwrap<T2>]>;
+export function all<T>(ds: (Input<T>)[]): Output<Unwrap<T>[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     // Our recursive `output` helper already does exactly what `all` needs to do in terms of the
     // implementation. Why have both `output` and `all` then?  Currently, to the best of our
@@ -1011,5 +1011,14 @@ export function interpolate(literals: TemplateStringsArray, ...placeholders: Inp
         // add the last literal
         result += literals[literals.length - 1];
         return result;
+    });
+}
+
+/**
+ * [jsonStringify] Uses JSON.stringify to serialize the given Input value into a JSON string.
+ */
+export function jsonStringify(obj: Input<any>, replacer?: (this: any, key: string, value: any) => any | (number | string)[], space?: string | number): Output<string> {
+    return output(obj).apply(o => {
+        return JSON.stringify(o, replacer, space);
     });
 }

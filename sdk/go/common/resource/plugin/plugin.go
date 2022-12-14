@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,17 +17,18 @@ package plugin
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -40,7 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
@@ -115,14 +116,11 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
-func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
+func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) (*grpc.ClientConn, error) {
+	port := fmt.Sprintf("%d", portNum)
+
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.Dial(
-		"127.0.0.1:"+port,
-		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		rpcutil.GrpcChannelOptions(),
-	)
+	conn, err := grpc.Dial("127.0.0.1:"+port, dialOptions...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
@@ -172,7 +170,8 @@ func dialPlugin(port, bin, prefix string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, options ...otgrpc.Option) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
+	args, env []string, dialOptions []grpc.DialOption) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -185,7 +184,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	}
 
 	// Try to execute the binary.
-	plug, err := execPlugin(bin, args, pwd, env)
+	plug, err := execPlugin(ctx, bin, prefix, kind, args, pwd, env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
@@ -244,7 +243,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
-	var port string
+	var portString string
 	b := make([]byte, 1)
 	for {
 		n, readerr := plug.Stdout.Read(b)
@@ -258,19 +257,21 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 			}
 
 			// Fall back to a generic, opaque error.
-			if port == "" {
+			if portString == "" {
 				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", bin)
 			}
-			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", bin, port)
+			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')",
+				bin, portString)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
 		}
-		port += string(b[:n])
+		portString += string(b[:n])
 	}
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
-	if _, err = strconv.Atoi(port); err != nil {
+	var port int
+	if port, err = strconv.Atoi(portString); err != nil {
 		killerr := plug.Kill()
 		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
@@ -282,7 +283,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
 
-	conn, err := dialPlugin(port, bin, prefix)
+	conn, err := dialPlugin(port, bin, prefix, dialOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +294,8 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 }
 
 // execPlugin starts the plugin executable.
-func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
+func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
+	pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -302,6 +304,57 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
 	})
+
+	// Check to see if we have a binary we can invoke directly
+	if _, err := os.Stat(bin); os.IsNotExist(err) {
+		// If we don't have the expected binary, see if we have a "PulumiPlugin.yaml" or "PulumiPolicy.yaml"
+		pluginDir := filepath.Dir(bin)
+
+		var runtimeInfo workspace.ProjectRuntimeInfo
+		if kind == workspace.ResourcePlugin {
+			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
+			}
+			runtimeInfo = proj.Runtime
+		} else if kind == workspace.AnalyzerPlugin {
+			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPolicy.yaml"))
+			if err != nil {
+				return nil, fmt.Errorf("loading PulumiPolicy.yaml: %w", err)
+			}
+			runtimeInfo = proj.Runtime
+		} else {
+			return nil, fmt.Errorf("language plugins must be executable binaries")
+		}
+
+		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
+
+		runtime, err := ctx.Host.LanguageRuntime(pluginDir, pluginDir, runtimeInfo.Name(), runtimeInfo.Options())
+		if err != nil {
+			return nil, errors.Wrap(err, "loading runtime")
+		}
+
+		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+			Pwd:     pwd,
+			Program: pluginDir,
+			Args:    pluginArgs,
+			Env:     env,
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return &plugin{
+			Bin:    bin,
+			Args:   args,
+			Env:    env,
+			Kill:   func() error { kill(); return nil },
+			Stdout: io.NopCloser(stdout),
+			Stderr: io.NopCloser(stderr),
+		}, nil
+	}
+
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
@@ -376,8 +429,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 			args = append(args, "-v="+strconv.Itoa(opts.verbose))
 		}
 	}
-	// Flow tracing settings if we are using a remote collector.
-	if opts.tracingEndpoint != "" && !opts.tracingToFile {
+	if opts.tracingEndpoint != "" {
 		args = append(args, "--tracing", opts.tracingEndpoint)
 	}
 	args = append(args, opts.pluginArgs...)

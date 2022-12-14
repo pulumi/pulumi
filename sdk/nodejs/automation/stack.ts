@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,15 +19,16 @@ import * as readline from "readline";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
-import * as TailFile from "@logdna/tail-file";
+import TailFile from "@logdna/tail-file";
 
 import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
-import { StackAlreadyExistsError } from "./errors";
+import { StackNotFoundError } from "./errors";
 import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
+import { LocalWorkspace } from "./localWorkspace";
 
 const langrpc = require("../proto/language_grpc_pb.js");
 
@@ -104,9 +105,9 @@ export class Stack {
             this.ready = workspace.selectStack(name);
             return this;
         case "createOrSelect":
-            this.ready = workspace.createStack(name).catch((err) => {
-                if (err instanceof StackAlreadyExistsError) {
-                    return workspace.selectStack(name);
+            this.ready = workspace.selectStack(name).catch((err) => {
+                if (err instanceof StackNotFoundError) {
+                    return workspace.createStack(name);
                 }
                 throw err;
             });
@@ -152,6 +153,8 @@ Event: ${line}\n${e.toString()}`);
         let kind = execKind.local;
         let program = this.workspace.program;
 
+        args.push(...this.remoteArgs());
+
         if (opts) {
             if (opts.program) {
                 program = opts.program;
@@ -194,12 +197,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
             if (opts.plan) {
                 args.push("--plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -213,7 +214,7 @@ Event: ${line}\n${e.toString()}`);
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
             const port: number = await new Promise<number>((resolve, reject) => {
-                server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -257,7 +258,9 @@ Event: ${line}\n${e.toString()}`);
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
 
         return {
             stdout: upResult.stdout,
@@ -276,6 +279,8 @@ Event: ${line}\n${e.toString()}`);
         const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
+
+        args.push(...this.remoteArgs());
 
         if (opts) {
             if (opts.program) {
@@ -319,12 +324,10 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
             if (opts.plan) {
                 args.push("--save-plan", opts.plan);
             }
+            applyGlobalOpts(opts, args);
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -338,7 +341,7 @@ Event: ${line}\n${e.toString()}`);
             const languageServer = new LanguageServer(program);
             server.addService(langrpc.LanguageRuntimeService, languageServer);
             const port: number = await new Promise<number>((resolve, reject) => {
-                server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -400,6 +403,8 @@ Event: ${line}\n${e.toString()}`);
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
         const args = ["refresh", "--yes", "--skip-preview"];
 
+        args.push(...this.remoteArgs());
+
         if (opts) {
             if (opts.message) {
                 args.push("--message", opts.message);
@@ -418,9 +423,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -443,7 +446,9 @@ Event: ${line}\n${e.toString()}`);
         const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
@@ -457,6 +462,8 @@ Event: ${line}\n${e.toString()}`);
      */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
         const args = ["destroy", "--yes", "--skip-preview"];
+
+        args.push(...this.remoteArgs());
 
         if (opts) {
             if (opts.message) {
@@ -476,9 +483,7 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
-            if (opts.color) {
-                args.push("--color", opts.color);
-            }
+            applyGlobalOpts(opts, args);
         }
 
         let logPromise: Promise<ReadlineResult> | undefined;
@@ -501,7 +506,9 @@ Event: ${line}\n${e.toString()}`);
         const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
         await cleanUp(logFile, logResult);
 
-        const summary = await this.info(opts?.showSecrets);
+        // If it's a remote workspace, explicitly set showSecrets to false to prevent attempting to
+        // load the project file.
+        const summary = await this.info(!this.isRemote && opts?.showSecrets);
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
@@ -630,6 +637,9 @@ Event: ${line}\n${e.toString()}`);
         let envs: { [key: string]: string } = {
             "PULUMI_DEBUG_COMMANDS": "true",
         };
+        if (this.isRemote) {
+            envs["PULUMI_EXPERIMENTAL"] = "true";
+        }
         const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
@@ -640,6 +650,37 @@ Event: ${line}\n${e.toString()}`);
         const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;
+    }
+
+    private get isRemote(): boolean {
+        const ws = this.workspace;
+        return ws instanceof LocalWorkspace ? ws.isRemote : false;
+    }
+
+    private remoteArgs(): string[] {
+        const ws = this.workspace;
+        return ws instanceof LocalWorkspace ? ws.remoteArgs() : [];
+    }
+}
+
+function applyGlobalOpts(opts: GlobalOpts, args: string[]) {
+    if (opts.color) {
+        args.push("--color", opts.color);
+    }
+    if (opts.logFlow) {
+        args.push("--logflow");
+    }
+    if (opts.logVerbosity) {
+        args.push("--verbose", opts.logVerbosity.toString());
+    }
+    if (opts.logToStdErr) {
+        args.push("--logtostderr");
+    }
+    if (opts.tracing) {
+        args.push("--tracing", opts.tracing);
+    }
+    if (opts.debug) {
+        args.push("--debug");
     }
 }
 
@@ -760,10 +801,25 @@ export interface DestroyResult {
     summary: UpdateSummary;
 }
 
+export interface GlobalOpts {
+    /** Colorize output. */
+    color?: "always" | "never" | "raw" | "auto";
+    /** Flow log settings to child processes (like plugins) */
+    logFlow?: boolean;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    logVerbosity?: number;
+    /** Log to stderr instead of to files */
+    logToStdErr?: boolean;
+    /** Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Print detailed debugging output during resource operations */
+    debug?: boolean;
+}
+
 /**
  * Options controlling the behavior of a Stack.up() operation.
  */
-export interface UpOptions {
+export interface UpOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -777,7 +833,6 @@ export interface UpOptions {
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
-    color?: "always" | "never" | "raw" | "auto";
     /**
      * Plan specifies the path to an update plan to use for the update.
      */
@@ -791,7 +846,7 @@ export interface UpOptions {
 /**
  * Options controlling the behavior of a Stack.preview() operation.
  */
-export interface PreviewOptions {
+export interface PreviewOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -815,7 +870,7 @@ export interface PreviewOptions {
 /**
  * Options controlling the behavior of a Stack.refresh() operation.
  */
-export interface RefreshOptions {
+export interface RefreshOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
@@ -831,7 +886,7 @@ export interface RefreshOptions {
 /**
  * Options controlling the behavior of a Stack.destroy() operation.
  */
-export interface DestroyOptions {
+export interface DestroyOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     target?: string[];

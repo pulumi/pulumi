@@ -17,8 +17,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"sort"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -38,10 +40,10 @@ const (
 )
 
 // pluginSet represents a set of plugins.
-type pluginSet map[string]workspace.PluginInfo
+type pluginSet map[string]workspace.PluginSpec
 
 // Add adds a plugin to this plugin set.
-func (p pluginSet) Add(plug workspace.PluginInfo) {
+func (p pluginSet) Add(plug workspace.PluginSpec) {
 	p[plug.String()] = plug
 }
 
@@ -62,9 +64,9 @@ func (p pluginSet) Union(other pluginSet) pluginSet {
 // For example, the plugin aws would be removed if there was an already existing plugin
 // aws-5.4.0.
 func (p pluginSet) Deduplicate() pluginSet {
-	existing := map[string]workspace.PluginInfo{}
+	existing := map[string]workspace.PluginSpec{}
 	newSet := newPluginSet()
-	add := func(p workspace.PluginInfo) {
+	add := func(p workspace.PluginSpec) {
 		prev, ok := existing[p.Name]
 		if ok {
 			// If either `pluginDownloadURL`, `Version` or both are set we consider the
@@ -95,8 +97,8 @@ func (p pluginSet) Deduplicate() pluginSet {
 }
 
 // Values returns a slice of all of the plugins contained within this set.
-func (p pluginSet) Values() []workspace.PluginInfo {
-	var plugins []workspace.PluginInfo
+func (p pluginSet) Values() []workspace.PluginSpec {
+	var plugins []workspace.PluginSpec
 	for _, value := range p {
 		plugins = append(plugins, value)
 	}
@@ -104,8 +106,8 @@ func (p pluginSet) Values() []workspace.PluginInfo {
 }
 
 // newPluginSet creates a new empty pluginSet.
-func newPluginSet(plugins ...workspace.PluginInfo) pluginSet {
-	var s pluginSet = make(map[string]workspace.PluginInfo, len(plugins))
+func newPluginSet(plugins ...workspace.PluginSpec) pluginSet {
+	var s pluginSet = make(map[string]workspace.PluginSpec, len(plugins))
 	for _, p := range plugins {
 		s.Add(p)
 	}
@@ -117,7 +119,7 @@ func newPluginSet(plugins ...workspace.PluginInfo) pluginSet {
 func gatherPluginsFromProgram(plugctx *plugin.Context, prog plugin.ProgInfo) (pluginSet, error) {
 	logging.V(preparePluginLog).Infof("gatherPluginsFromProgram(): gathering plugins from language host")
 	set := newPluginSet()
-	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, prog, plugin.AllPlugins)
+	langhostPlugins, err := plugin.GetRequiredPlugins(plugctx.Host, plugctx.Root, prog, plugin.AllPlugins)
 	if err != nil {
 		return set, err
 	}
@@ -162,7 +164,7 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 		}
 		logging.V(preparePluginLog).Infof(
 			"gatherPluginsFromSnapshot(): plugin %s %s is required by first-class provider %q", pkg, version, urn)
-		set.Add(workspace.PluginInfo{
+		set.Add(workspace.PluginSpec{
 			Name:              pkg.String(),
 			Kind:              workspace.ResourcePlugin,
 			Version:           version,
@@ -175,11 +177,11 @@ func gatherPluginsFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (
 // ensurePluginsAreInstalled inspects all plugins in the plugin set and, if any plugins are not currently installed,
 // uses the given backend client to install them. Installations are processed in parallel, though
 // ensurePluginsAreInstalled does not return until all installations are completed.
-func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet) error {
+func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet, projectPlugins []workspace.ProjectPlugin) error {
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
-		_, path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version)
+		path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
 				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
@@ -207,7 +209,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds pl
 }
 
 // installPlugin installs a plugin from the given backend client.
-func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
+func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 	if plugin.Kind == workspace.LanguagePlugin {
 		logging.V(preparePluginLog).Infof(
@@ -229,23 +231,31 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
-	stream, size, err := plugin.Download()
+
+	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		return workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
+	}
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		logging.V(preparePluginVerboseLog).Infof(
+			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
+	}
+
+	tarball, err := workspace.DownloadToFile(plugin, withProgress, retry)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
 
 	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
-	stream = workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 
 	logging.V(preparePluginVerboseLog).Infof(
 		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
-	if err := plugin.InstallWithContext(ctx, stream, false); err != nil {
+	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(tarball), false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
 
 	}
 
-	logging.V(7).Infof("installPlugin(%s, %s): successfully installed", plugin.Name, plugin.Version)
+	logging.V(7).Infof("installPlugin(%s, %s): installation complete", plugin.Name, plugin.Version)
 	return nil
 }
 
@@ -266,7 +276,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginInfo) error {
 // that the engine uses to determine which version of a particular provider to load.
 //
 // it is critical that this function be 100% deterministic.
-func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginInfo {
+func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[tokens.Package]workspace.PluginSpec {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -283,7 +293,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		sourceSet = allPlugins
 	}
 
-	defaultProviderPlugins := make(map[tokens.Package]workspace.PluginInfo)
+	defaultProviderPlugins := make(map[tokens.Package]workspace.PluginSpec)
 
 	// Sort the set of source plugins by version, so that we iterate over the set of plugins in a deterministic order.
 	// Sorting by version gets us two properties:
@@ -295,7 +305,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 	// Despite these properties, the below loop explicitly handles those cases to preserve correct behavior even if the
 	// sort is not functioning properly.
 	sourcePlugins := sourceSet.Values()
-	sort.Sort(workspace.SortedPluginInfo(sourcePlugins))
+	sort.Sort(workspace.SortedPluginSpec(sourcePlugins))
 	for _, p := range sourcePlugins {
 		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
 		if p.Kind != workspace.ResourcePlugin {
@@ -323,9 +333,9 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 				continue
 			}
 
-			contract.Failf("Should not have seen an older plugin if sorting is correct!\n  %s-%s %s\n  %s-%s - %s",
-				p.Name, p.Version.String(), p.Path,
-				seenPlugin.Name, seenPlugin.Version.String(), seenPlugin.Path)
+			contract.Failf("Should not have seen an older plugin if sorting is correct!\n  %s-%s\n  %s-%s",
+				p.Name, p.Version.String(),
+				seenPlugin.Name, seenPlugin.Version.String())
 		}
 
 		logging.V(preparePluginLog).Infof(
@@ -340,7 +350,7 @@ func computeDefaultProviderPlugins(languagePlugins, allPlugins pluginSet) map[to
 		}
 	}
 
-	defaultProviderInfo := make(map[tokens.Package]workspace.PluginInfo)
+	defaultProviderInfo := make(map[tokens.Package]workspace.PluginSpec)
 	for name, plugin := range defaultProviderPlugins {
 		defaultProviderInfo[name] = plugin
 	}

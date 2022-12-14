@@ -19,13 +19,22 @@ import functools
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
-
 from google.protobuf import empty_pb2
 from . import rpc, rpc_manager
-from .settings import Settings, configure, get_stack, get_project, get_root_resource
+from .settings import (
+    Settings,
+    configure,
+    get_stack,
+    get_project,
+    get_root_resource,
+)
 from .sync_await import _ensure_event_loop, _sync_await
-from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
-from ..runtime.stack import Stack, run_pulumi_func, wait_for_rpcs
+from ..runtime.proto import (
+    engine_pb2,
+    provider_pb2,
+    resource_pb2,
+)
+from ..runtime.stack import Stack, run_pulumi_func
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -269,23 +278,36 @@ class MockEngine:
             self.logger.error(request.message)
 
 
+# We use this MockSettings class in the case where test setup needs to stub in settings objects
+# Because ContextVars are context-sensitive, asyncio threads lose track of external settings meddling
+class MockSettings(Settings):
+    def __init__(self, *_, **kwargs):  # pylint: disable=super-init-not-called
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __repr__(self):
+        return f"<class MockSettings[engine={self.engine.__repr__()} monitor={self.monitor.__repr__()} project={self.project.__repr__()} stack={self.stack.__repr__()}>"
+
+
 def set_mocks(
     mocks: Mocks,
     project: Optional[str] = None,
     stack: Optional[str] = None,
     preview: Optional[bool] = None,
     logger: Optional[logging.Logger] = None,
+    monitor: Optional[MockMonitor] = None,
+    organization: Optional[str] = None,
 ):
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
     """
-    settings = Settings(
-        monitor=MockMonitor(mocks),
+    settings = MockSettings(
+        monitor=MockMonitor(mocks) if not monitor else monitor,
         engine=MockEngine(logger),
         project=project if project is not None else "project",
         stack=stack if stack is not None else "stack",
         dry_run=preview,
-        test_mode_enabled=True,
+        organization=organization,
     )
     configure(settings)
 

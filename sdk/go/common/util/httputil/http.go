@@ -41,7 +41,7 @@ func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error)
 	return doWithRetry(req, client, opts)
 }
 
-// DoWithRetry calls client.Do, but retrying 500s (even for POSTs). Using the provided delays.
+// DoWithRetryOpts calls client.Do, but retrying 500s (even for POSTs). Using the provided delays.
 func DoWithRetryOpts(req *http.Request, client *http.Client, opts RetryOpts) (*http.Response, error) {
 	return doWithRetry(req, client, opts)
 }

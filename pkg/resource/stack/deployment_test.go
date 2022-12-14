@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package stack
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -97,8 +98,8 @@ func TestDeploymentSerialization(t *testing.T) {
 		nil,
 		nil,
 		"",
-		0,
 		false,
+		"",
 	)
 
 	dep, err := SerializeResource(res, config.NopEncrypter, false /* showSecrets */)
@@ -190,12 +191,13 @@ func TestDeploymentSerialization(t *testing.T) {
 
 func TestLoadTooNewDeployment(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: apitype.DeploymentSchemaVersionCurrent + 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
@@ -203,12 +205,13 @@ func TestLoadTooNewDeployment(t *testing.T) {
 
 func TestLoadTooOldDeployment(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionOldestSupported - 1,
 	}
 
-	deployment, err := DeserializeUntypedDeployment(untypedDeployment, DefaultSecretsProvider)
+	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, DefaultSecretsProvider)
 	assert.Nil(t, deployment)
 	assert.Error(t, err)
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
@@ -428,7 +431,8 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
-	_, err := DeserializeDeploymentV3(apitype.DeploymentV3{
+	ctx := context.Background()
+	_, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
 		Resources: []apitype.ResourceV3{
 			{
@@ -445,7 +449,8 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	t.Parallel()
 
-	deployment, err := DeserializeDeploymentV3(apitype.DeploymentV3{
+	ctx := context.Background()
+	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{},
 		},
@@ -455,7 +460,8 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	assert.Equal(t, "resource missing required 'urn' field", err.Error())
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
-	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+
+	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
 				URN: resource.URN(urn),
@@ -466,7 +472,7 @@ func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
 
-	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+	deployment, err = DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
 				URN:    resource.URN(urn),

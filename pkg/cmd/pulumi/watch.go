@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
@@ -52,8 +53,8 @@ func newWatchCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
-		Short:      "[PREVIEW] Continuously update the resources in a stack",
-		Long: "Continuously update the resources in a stack.\n" +
+		Short:      "Continuously update the resources in a stack",
+		Long: "[EXPERIMENTAL] Continuously update the resources in a stack.\n" +
 			"\n" +
 			"This command watches the working directory or specified paths for the current project and updates\n" +
 			"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +
@@ -63,6 +64,7 @@ func newWatchCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 
 			opts, err := updateFlagsToOptions(false /* interactive */, true /* skippreview*/, true /* autoapprove*/)
 			if err != nil {
@@ -85,7 +87,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -100,7 +102,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */)
+			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */, false)
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
@@ -110,9 +112,20 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, err := getStackConfiguration(ctx, s, proj, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
+			}
+
+			decrypter, err := sm.Decrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
+			}
+
+			stackName := s.Ref().Name().String()
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			if configErr != nil {
+				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}
 
 			opts.Engine = engine.UpdateOptions{
@@ -124,9 +137,10 @@ func newWatchCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
+				Experimental:              hasExperimentalCommands(),
 			}
 
-			res := s.Watch(commandContext(), backend.UpdateOperation{
+			res := s.Watch(ctx, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -168,7 +182,7 @@ func newWatchCmd() *cobra.Command {
 		"Config keys contain a path to a property in a map or list to set")
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only"+
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only "+
 			"used when creating a new stack from an existing template")
 
 	cmd.PersistentFlags().StringVarP(

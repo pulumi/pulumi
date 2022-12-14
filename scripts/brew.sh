@@ -12,7 +12,7 @@ BREW_VERSION=$(./scripts/get-version HEAD)
               ${PROJECT})
 
 # Fetch extra language binaries like YAML and Java from GitHub releases.
-./scripts/get-language-providers.sh
+./scripts/prep-for-goreleaser.sh "local"
 
 # Install these extra binaries into $GOPATH/bin
 GOOS=$(go env GOOS)
@@ -21,4 +21,5 @@ GOPATH=$(go env GOPATH)
 # goreleaser in pulumi/pulumi renames amd64 to x64
 RENAMED_ARCH="${GOARCH/amd64/x64}"
 mkdir -p "$GOPATH/bin"
-cp goreleaser-lang/*/${GOOS}-${RENAMED_ARCH}/pulumi-language-* "$GOPATH/bin/"
+cp bin/${GOOS}-${RENAMED_ARCH}/* "$GOPATH/bin/"
+cp bin/${GOOS}/* "$GOPATH/bin/"

@@ -155,7 +155,9 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+func pulumiAPICall(ctx context.Context,
+	requestSpan opentracing.Span,
+	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
 	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
 
 	// Normalize URL components
@@ -196,14 +198,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
 
-	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
-		opentracing.Tag{Key: "method", Value: method},
-		opentracing.Tag{Key: "path", Value: path},
-		opentracing.Tag{Key: "api", Value: cloudAPI},
-		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
-	defer requestSpan.Finish()
-
-	req = req.WithContext(requestContext)
+	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
@@ -218,7 +213,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
 	}
 
-	tracingOptions := tracing.OptionsFromContext(requestContext)
+	tracingOptions := tracing.OptionsFromContext(ctx)
 	if tracingOptions.PropagateSpans {
 		carrier := opentracing.HTTPHeadersCarrier(req.Header)
 		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {
@@ -262,7 +257,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
-		return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
+		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
@@ -308,6 +303,13 @@ type defaultRESTClient struct {
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 	respObj interface{}, tok accessToken, opts httpCallOptions) error {
 
+	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
+		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "path", Value: path},
+		opentracing.Tag{Key: "api", Value: cloudAPI},
+		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
+	defer requestSpan.Finish()
+
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
@@ -325,15 +327,21 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
-		reqBody, err = json.Marshal(reqObj)
-		if err != nil {
-			return fmt.Errorf("marshalling request object as JSON: %w", err)
+		// Send verbatim if already marshalled. This is
+		// important when sending indented JSON is needed.
+		if raw, ok := reqObj.(json.RawMessage); ok {
+			reqBody = []byte(raw)
+		} else {
+			reqBody, err = json.Marshal(reqObj)
+			if err != nil {
+				return fmt.Errorf("marshalling request object as JSON: %w", err)
+			}
 		}
 	}
 
 	// Make API call
 	url, resp, err := pulumiAPICall(
-		ctx, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}

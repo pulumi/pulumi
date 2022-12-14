@@ -1,13 +1,24 @@
+// Copyright 2016-2022, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package schema
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"regexp"
 	"sync"
 	"time"
 
@@ -72,7 +83,6 @@ func (l *pluginLoader) getPackage(key string) (PackageReference, bool) {
 	if l.cacheOptions.disableEntryCache {
 		return nil, false
 	}
-
 	p, ok := l.entries[key]
 	return p, ok
 }
@@ -88,89 +98,6 @@ func (l *pluginLoader) setPackage(key string, p PackageReference) PackageReferen
 
 	l.entries[key] = p
 	return p
-}
-
-// ensurePlugin downloads and installs the specified plugin if it does not already exist.
-func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
-	// TODO: schema and provider versions
-	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
-	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
-	if version == nil {
-		return nil
-	}
-
-	pkgPlugin := workspace.PluginInfo{
-		Kind:    workspace.ResourcePlugin,
-		Name:    pkg,
-		Version: version,
-	}
-
-	tryDownload := func(dst io.WriteCloser) error {
-		defer dst.Close()
-		tarball, expectedByteCount, err := pkgPlugin.Download()
-		if err != nil {
-			return err
-		}
-		defer tarball.Close()
-		copiedByteCount, err := io.Copy(dst, tarball)
-		if err != nil {
-			return err
-		}
-		if copiedByteCount != expectedByteCount {
-			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
-				expectedByteCount, copiedByteCount, pkgPlugin)
-		}
-		return nil
-	}
-
-	tryDownloadToFile := func() (string, error) {
-		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
-		if err != nil {
-			return "", err
-		}
-		err = tryDownload(file)
-		if err != nil {
-			err2 := os.Remove(file.Name())
-			if err2 != nil {
-				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
-			}
-			return "", err
-		}
-		return file.Name(), nil
-	}
-
-	downloadToFileWithRetry := func() (string, error) {
-		delay := 80 * time.Millisecond
-		for attempt := 0; ; attempt++ {
-			tempFile, err := tryDownloadToFile()
-			if err == nil {
-				return tempFile, nil
-			}
-
-			if err != nil && attempt >= 5 {
-				return tempFile, err
-			}
-			time.Sleep(delay)
-			delay = delay * 2
-		}
-	}
-
-	if !workspace.HasPlugin(pkgPlugin) {
-		tarball, err := downloadToFileWithRetry()
-		if err != nil {
-			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
-		}
-		defer os.Remove(tarball)
-		reader, err := os.Open(tarball)
-		if err != nil {
-			return fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
-		}
-		if err := pkgPlugin.InstallWithContext(context.Background(), reader, false); err != nil {
-			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
-		}
-	}
-
-	return nil
 }
 
 func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
@@ -189,20 +116,31 @@ func (f getSchemaNotImplemented) Error() string {
 	return fmt.Sprintf("it looks like GetSchema is not implemented")
 }
 
-var schemaIsEmptyRE = regexp.MustCompile(`\s*\{\s*\}\s*$`)
-
 func schemaIsEmpty(schemaBytes []byte) bool {
-	// We assume that GetSchema isn't implemented it something of the form "{[\t\n ]*}" is
-	// returned. That is what we did in the past when we chose not to implement GetSchema.
-	return schemaIsEmptyRE.Match(schemaBytes)
+	// A non-empty schema is any that contains non-whitespace, non brace characters.
+	//
+	// Some providers implemented GetSchema initially by returning text matching the regular
+	// expression: "\s*\{\s*\}\s*". This handles those cases while not strictly checking that braces
+	// match or reading the whole document.
+	for _, v := range schemaBytes {
+		if v != ' ' && v != '\t' && v != '\r' && v != '\n' && v != '{' && v != '}' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version) (PackageReference, error) {
+	if pkg == "pulumi" {
+		return DefaultPulumiPackage.Reference(), nil
+	}
+
 	l.m.Lock()
 	defer l.m.Unlock()
 
 	key := packageIdentity(pkg, version)
-	if p, ok := l.getPackage(key); ok {
+	if p, ok := l.getPackage(key); ok && version == nil {
 		return p, nil
 	}
 
@@ -219,45 +157,79 @@ func (l *pluginLoader) LoadPackageReference(pkg string, version *semver.Version)
 		return nil, err
 	}
 
-	// Insert a version into the spec if the package does not provide one
-	if version != nil && spec.PackageInfoSpec.Version == "" {
-		spec.PackageInfoSpec.Version = version.String()
+	// Insert a version into the spec if the package does not provide one or if the
+	// existing version is less than the provided one
+	if version != nil {
+		setVersion := true
+		if spec.PackageInfoSpec.Version != "" {
+			vSemver, err := semver.Make(spec.PackageInfoSpec.Version)
+			if err == nil {
+				if vSemver.Compare(*version) == 1 {
+					setVersion = false
+				}
+			}
+		}
+		if setVersion {
+			spec.PackageInfoSpec.Version = version.String()
+		}
 	}
 
 	p, err := importPartialSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
 	}
-
 	return l.setPackage(key, p), nil
 }
 
 func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (PackageReference, error) {
+	var ref PackageReference
+	var err error
 	if refLoader, ok := loader.(ReferenceLoader); ok {
-		return refLoader.LoadPackageReference(pkg, version)
+		ref, err = refLoader.LoadPackageReference(pkg, version)
+	} else {
+		p, pErr := loader.LoadPackage(pkg, version)
+		err = pErr
+		if err == nil {
+			ref = p.Reference()
+		}
 	}
-	p, err := loader.LoadPackage(pkg, version)
+
 	if err != nil {
 		return nil, err
 	}
-	return p.Reference(), nil
+
+	if pkg != ref.Name() || version != nil && ref.Version() != nil && !ref.Version().Equals(*version) {
+		if l, ok := loader.(*pluginLoader); ok {
+			return nil, fmt.Errorf("req: %s@%v: entries: %v (returned %s@%v)", pkg, version,
+				l.entries, ref.Name(), ref.Version())
+		}
+		return nil, fmt.Errorf("loader returned %s@%v: expected %s@%v", ref.Name(), ref.Version(), pkg, version)
+	}
+
+	return ref, nil
 }
 
 func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {
-	if err := l.ensurePlugin(pkg, version); err != nil {
-		return nil, nil, err
-	}
-
-	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, nil)
+	err := l.host.InstallPlugin(workspace.PluginSpec{
+		Kind:    workspace.ResourcePlugin,
+		Name:    pkg,
+		Version: version,
+	})
 	if err != nil {
 		return nil, nil, err
 	}
+
+	pluginInfo, err := l.host.ResolvePlugin(workspace.ResourcePlugin, pkg, version)
+	if err != nil {
+		return nil, nil, err
+	}
+	contract.Assertf(pluginInfo != nil, "loading pkg %q: pluginInfo was unexpectedly nil", pkg)
 
 	if version == nil {
 		version = pluginInfo.Version
 	}
 
-	if pluginInfo.SchemaPath != "" {
+	if pluginInfo.SchemaPath != "" && version != nil {
 		schemaBytes, ok := l.loadCachedSchemaBytes(pkg, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
 		if ok {
 			return schemaBytes, nil, nil

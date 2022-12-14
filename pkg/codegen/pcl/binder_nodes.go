@@ -108,6 +108,14 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.DefaultValue))
 		}
 	}
+	if attr, ok := block.Body.Attribute(LogicalNamePropertyKey); ok {
+		logicalName, lDiags := getStringAttrValue(attr)
+		if lDiags != nil {
+			diagnostics = diagnostics.Append(lDiags)
+		} else {
+			node.logicalName = logicalName
+		}
+	}
 	node.Definition = block
 	return diagnostics
 }

@@ -1,0 +1,66 @@
+# SECURITY: This PR run on untrusted branches when a maintainer comments "/run-acceptance-tests".
+#
+# Changes "permissions" and "secrets" should be narrowly scoped and carefully reviewed.
+#
+# Reusable workflows, "uses" jobs, *must* specify the main branch.
+
+on:
+  repository_dispatch:
+    types: [run-acceptance-tests-command]
+
+permissions:
+  contents: read
+  # Only the 'changelog-comment' job should use this permission.
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.client_payload.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  info:
+    name: info
+    uses: pulumi/pulumi/.github/workflows/ci-info.yml@master
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.ref }}
+      is-snapshot: true
+    secrets: inherit
+
+  comment-notification:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'repository_dispatch' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            Please view the results of the acceptance tests [Here](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  ci:
+    name: CI
+    needs: [info]
+    uses: pulumi/pulumi/.github/workflows/ci.yml@master
+    permissions:
+      contents: read
+    with:
+      ref: refs/pull/${{ github.event.client_payload.pull_request.number }}/merge
+      version: ${{ needs.info.outputs.version }}
+      lint: true
+      build-all-targets: false
+      test-version-sets: current
+      integration-test-platforms: ubuntu-latest
+      smoke-test-platforms: ''
+      enable-coverage: true
+    secrets:
+      # Scope secrets to the minimum required:
+      PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+      PULUMI_PROD_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}

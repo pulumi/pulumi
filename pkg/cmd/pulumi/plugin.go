@@ -51,14 +51,41 @@ func newPluginCmd() *cobra.Command {
 }
 
 // getProjectPlugins fetches a list of plugins used by this project.
-func getProjectPlugins() ([]workspace.PluginInfo, error) {
+func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	proj, root, err := readProject()
 	if err != nil {
 		return nil, err
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	defer ctx.Close()
+
+	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
+	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
+	plugins, err := plugin.GetRequiredPlugins(ctx.Host, ctx.Root, plugin.ProgInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+	}, plugin.AllPlugins)
+	if err != nil {
+		return nil, err
+	}
+	return plugins, nil
+}
+
+func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
+	proj, root, err := readProject()
+	if err != nil {
+		return nil, err
+	}
+
+	projinfo := &engine.Projinfo{Proj: proj, Root: root}
+	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,23 +95,18 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
-	plugins, err := plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-	}, plugin.AllPlugins)
-	if err != nil {
-		return nil, err
-	}
 	for _, plugin := range plugins {
-		if _, path, _ := workspace.GetPluginPath(plugin.Kind, plugin.Name, plugin.Version); path != "" {
-			err = plugin.SetFileMetadata(path)
+		info, err := workspace.GetPluginInfo(plugin.Kind, plugin.Name, plugin.Version, ctx.Host.GetProjectPlugins())
+		if err != nil {
+			err = info.SetFileMetadata(info.Path)
 			if err != nil {
 				return nil, err
 			}
 			contract.IgnoreError(err)
 		}
-		results = append(results, plugin)
+		if info != nil {
+			results = append(results, *info)
+		}
 	}
 	return results, nil
 }

@@ -85,6 +85,8 @@ func GetDefaultProviderDenied(urn resource.URN) *Diag {
 	return newError(urn, 2015, `Default provider for '%v' disabled. '%v' must use an explicit provider.`)
 }
 
-func GetBadAlias(urn resource.URN) *Diag {
-	return newError(urn, 2001, "Duplicate resource URN '%v'; try giving it a unique name")
+func GetDuplicateResourceAliasedError(urn resource.URN) *Diag {
+	return newError(urn, 2016,
+		"Duplicate resource URN '%v' conflicting with alias on resource with URN '%v'",
+	)
 }

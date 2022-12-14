@@ -18,6 +18,9 @@ class TestClass:
         self.num = 1
         self._private = 2
 
+
+my_test_class_instance = TestClass()
+
 recursive = {"a": 1}
 recursive["b"] = 2
 recursive["c"] = recursive
@@ -34,3 +37,5 @@ pulumi.export("dict", {"a": 1})
 pulumi.export("output", pulumi.Output.from_input(1))
 pulumi.export("class", TestClass())
 pulumi.export("recursive", recursive)
+pulumi.export("duplicate_output_0", my_test_class_instance)
+pulumi.export("duplicate_output_1", my_test_class_instance)

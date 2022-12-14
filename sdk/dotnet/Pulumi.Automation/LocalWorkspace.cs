@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+﻿// Copyright 2016-2022, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -33,10 +33,15 @@ namespace Pulumi.Automation
     /// </summary>
     public sealed class LocalWorkspace : Workspace
     {
+        private static readonly SemVersion _minimumVersion = new SemVersion(3, 1, 0);
+
         private readonly LocalSerializer _serializer = new LocalSerializer();
         private readonly bool _ownsWorkingDir;
-        private readonly Task _readyTask;
-        private static readonly SemVersion _minimumVersion = new SemVersion(3, 1, 0);
+        private readonly RemoteGitProgramArgs? _remoteGitProgramArgs;
+        private readonly IDictionary<string, EnvironmentVariableValue>? _remoteEnvironmentVariables;
+        private readonly IList<string>? _remotePreRunCommands;
+
+        internal Task ReadyTask { get; }
 
         /// <inheritdoc/>
         public override string WorkDir { get; }
@@ -61,6 +66,11 @@ namespace Pulumi.Automation
         public override IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
+        /// Whether this workspace is a remote workspace.
+        /// </summary>
+        internal bool Remote { get; }
+
+        /// <summary>
         /// Creates a workspace using the specified options. Used for maximal control and
         /// customization of the underlying environment before any stacks are created or selected.
         /// </summary>
@@ -74,7 +84,7 @@ namespace Pulumi.Automation
                 new LocalPulumiCmd(),
                 options,
                 cancellationToken);
-            await ws._readyTask.ConfigureAwait(false);
+            await ws.ReadyTask.ConfigureAwait(false);
             return ws;
         }
 
@@ -278,7 +288,7 @@ namespace Pulumi.Automation
                 new LocalPulumiCmd(),
                 args,
                 cancellationToken);
-            await ws._readyTask.ConfigureAwait(false);
+            await ws.ReadyTask.ConfigureAwait(false);
 
             return await initFunc(args.StackName, ws, cancellationToken).ConfigureAwait(false);
         }
@@ -292,7 +302,7 @@ namespace Pulumi.Automation
                 new LocalPulumiCmd(),
                 args,
                 cancellationToken);
-            await ws._readyTask.ConfigureAwait(false);
+            await ws.ReadyTask.ConfigureAwait(false);
 
             return await initFunc(args.StackName, ws, cancellationToken).ConfigureAwait(false);
         }
@@ -315,9 +325,20 @@ namespace Pulumi.Automation
                 this.Program = options.Program;
                 this.Logger = options.Logger;
                 this.SecretsProvider = options.SecretsProvider;
+                this.Remote = options.Remote;
+                this._remoteGitProgramArgs = options.RemoteGitProgramArgs;
 
                 if (options.EnvironmentVariables != null)
                     this.EnvironmentVariables = new Dictionary<string, string?>(options.EnvironmentVariables);
+
+                if (options.RemoteEnvironmentVariables != null)
+                    this._remoteEnvironmentVariables =
+                        new Dictionary<string, EnvironmentVariableValue>(options.RemoteEnvironmentVariables);
+
+                if (options.RemotePreRunCommands != null)
+                {
+                    this._remotePreRunCommands = new List<string>(options.RemotePreRunCommands);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(dir))
@@ -346,7 +367,7 @@ namespace Pulumi.Automation
                     readyTasks.Add(this.SaveStackSettingsAsync(pair.Key, pair.Value, cancellationToken));
             }
 
-            this._readyTask = Task.WhenAll(readyTasks);
+            ReadyTask = Task.WhenAll(readyTasks);
         }
 
         private async Task InitializeProjectSettingsAsync(ProjectSettings projectSettings,
@@ -380,6 +401,18 @@ namespace Pulumi.Automation
             var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(SkipVersionCheckVar) ?? false;
             var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(SkipVersionCheckVar) != null;
             this._pulumiVersion = ParseAndValidatePulumiVersion(_minimumVersion, versionString, optOut);
+
+            // If remote was specified, ensure the CLI supports it.
+            if (!optOut && Remote)
+            {
+                // See if `--remote` is present in `pulumi preview --help`'s output.
+                var args = new[] { "preview", "--help" };
+                var previewResult = await RunCommandAsync(args, cancellationToken).ConfigureAwait(false);
+                if (!previewResult.StandardOutput.Contains("--remote"))
+                {
+                    throw new InvalidOperationException("The Pulumi CLI does not support remote operations. Please update the Pulumi CLI.");
+                }
+            }
         }
 
         internal static SemVersion? ParseAndValidatePulumiVersion(SemVersion minVersion, string currentVersion, bool optOut)
@@ -582,12 +615,30 @@ namespace Pulumi.Automation
             if (!string.IsNullOrWhiteSpace(this.SecretsProvider))
                 args.AddRange(new[] { "--secrets-provider", this.SecretsProvider });
 
+            if (Remote)
+                args.Add("--no-select");
+
             return this.RunCommandAsync(args, cancellationToken);
         }
 
         /// <inheritdoc/>
         public override Task SelectStackAsync(string stackName, CancellationToken cancellationToken)
-            => this.RunCommandAsync(new[] { "stack", "select", stackName }, cancellationToken);
+        {
+            // If this is a remote workspace, we don't want to actually select the stack (which would modify
+            // global state); but we will ensure the stack exists by calling `pulumi stack`.
+            var args = new List<string>
+            {
+                "stack",
+            };
+            if (!Remote)
+            {
+                args.Add("select");
+            }
+            args.Add("--stack");
+            args.Add(stackName);
+
+            return RunCommandAsync(args, cancellationToken);
+        }
 
         /// <inheritdoc/>
         public override Task RemoveStackAsync(string stackName, CancellationToken cancellationToken = default)
@@ -729,6 +780,90 @@ namespace Pulumi.Automation
                     // in this case.
                 }
             }
+        }
+
+        internal IReadOnlyList<string> GetRemoteArgs()
+        {
+            if (!Remote)
+            {
+                return Array.Empty<string>();
+            }
+
+            var args = new List<string>
+            {
+                "--remote"
+            };
+
+            if (_remoteGitProgramArgs != null)
+            {
+                if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Url))
+                {
+                    args.Add(_remoteGitProgramArgs.Url);
+                }
+                if (!string.IsNullOrEmpty(_remoteGitProgramArgs.ProjectPath))
+                {
+                    args.Add("--remote-git-repo-dir");
+                    args.Add(_remoteGitProgramArgs.ProjectPath);
+                }
+                if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Branch))
+                {
+                    args.Add("--remote-git-branch");
+                    args.Add(_remoteGitProgramArgs.Branch);
+                }
+                if (!string.IsNullOrEmpty(_remoteGitProgramArgs.CommitHash))
+                {
+                    args.Add("--remote-git-commit");
+                    args.Add(_remoteGitProgramArgs.CommitHash);
+                }
+                if (_remoteGitProgramArgs.Auth != null)
+                {
+                    if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Auth.PersonalAccessToken))
+                    {
+                        args.Add("--remote-git-auth-access-token");
+                        args.Add(_remoteGitProgramArgs.Auth.PersonalAccessToken);
+                    }
+                    if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Auth.SshPrivateKey))
+                    {
+                        args.Add("--remote-git-auth-ssh-private-key");
+                        args.Add(_remoteGitProgramArgs.Auth.SshPrivateKey);
+                    }
+                    if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Auth.SshPrivateKeyPath))
+                    {
+                        args.Add("--remote-git-auth-ssh-private-key-path");
+                        args.Add(_remoteGitProgramArgs.Auth.SshPrivateKeyPath);
+                    }
+                    if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Auth.Password))
+                    {
+                        args.Add("--remote-git-auth-password");
+                        args.Add(_remoteGitProgramArgs.Auth.Password);
+                    }
+                    if (!string.IsNullOrEmpty(_remoteGitProgramArgs.Auth.Username))
+                    {
+                        args.Add("--remote-git-username");
+                        args.Add(_remoteGitProgramArgs.Auth.Username);
+                    }
+                }
+            }
+
+            if (_remoteEnvironmentVariables != null)
+            {
+                foreach (var (name, value) in _remoteEnvironmentVariables)
+                {
+                    args.Add(value.IsSecret ? "--remote-env-secret" : "--remote-env");
+                    args.Add($"{name}={value.Value}");
+                }
+            }
+
+            if (_remotePreRunCommands != null)
+            {
+                foreach (var command in _remotePreRunCommands)
+                {
+                    args.Add("--remote-pre-run-command");
+                    args.Add(command);
+                }
+            }
+
+            return args;
         }
     }
 }

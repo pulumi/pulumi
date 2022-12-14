@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/config,new,package
+  description: Preserve comments on editing of project and config files.

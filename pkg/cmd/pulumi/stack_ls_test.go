@@ -82,6 +82,10 @@ func (msr *mockStackReference) Name() tokens.Name {
 	return tokens.Name(msr.name)
 }
 
+func (msr *mockStackReference) FullyQualifiedName() tokens.QName {
+	return msr.Name().Q()
+}
+
 func (msr *mockStackReference) String() string {
 	return msr.name
 }
@@ -157,11 +161,12 @@ func TestListStacksPagination(t *testing.T) {
 
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
 	// backend calls were made.
-	var args = stackLSArgs{
+	ctx := context.Background()
+	args := stackLSArgs{
 		orgFilter:  testOrgName,
 		projFilter: testProjName,
 	}
-	if err := runStackLS(args); err != nil {
+	if err := runStackLS(ctx, args); err != nil {
 		t.Fatalf("runStackLS returned an error: %v", err)
 	}
 	if len(requestsMade) != 4 {

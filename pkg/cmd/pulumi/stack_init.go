@@ -33,6 +33,7 @@ func newStackInitCmd() *cobra.Command {
 	var secretsProvider string
 	var stackName string
 	var stackToCopy string
+	var noSelect bool
 
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
@@ -67,11 +68,12 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(opts)
+			b, err := currentBackend(ctx, opts)
 			if err != nil {
 				return err
 			}
@@ -117,24 +119,29 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			newStack, err := createStack(ctx, b, stackRef, createOpts, !noSelect, secretsProvider)
 			if err != nil {
 				return err
 			}
 
 			if stackToCopy != "" {
-				// load the old stack and its project
-				copyStack, err := requireStack(stackToCopy, false, opts, false /*setCurrent*/)
+				proj, _, err := readProject()
 				if err != nil {
 					return err
 				}
-				copyProjectStack, err := loadProjectStack(copyStack)
+
+				// load the old stack and its project
+				copyStack, err := requireStack(ctx, stackToCopy, false, opts, false /*setCurrent*/)
+				if err != nil {
+					return err
+				}
+				copyProjectStack, err := loadProjectStack(proj, copyStack)
 				if err != nil {
 					return err
 				}
 
 				// get the project for the newly created stack
-				newProjectStack, err := loadProjectStack(newStack)
+				newProjectStack, err := loadProjectStack(proj, newStack)
 				if err != nil {
 					return err
 				}
@@ -152,5 +159,7 @@ func newStackInitCmd() *cobra.Command {
 		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
 		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+	cmd.PersistentFlags().BoolVar(
+		&noSelect, "no-select", false, "Do not select the stack")
 	return cmd
 }

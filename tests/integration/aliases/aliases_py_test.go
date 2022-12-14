@@ -1,5 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-// +build python all
+//go:build (python || all) && !smoke
 
 package ints
 
@@ -19,6 +19,7 @@ func TestPythonAliases(t *testing.T) {
 		"rename_component_and_child",
 		"retype_component",
 		"rename_component",
+		"retype_parents",
 	}
 
 	for _, dir := range dirs {

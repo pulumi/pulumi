@@ -44,6 +44,69 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, &fixedSource{}, nil, false, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, nil, NewNullSource("test"), nil, false, nil)
 	assert.NoError(t, err)
+}
+
+func TestGlobUrn(t *testing.T) {
+	t.Parallel()
+
+	globs := []struct {
+		input      string
+		expected   []resource.URN
+		unexpected []resource.URN
+	}{
+		{
+			input: "**",
+			expected: []resource.URN{
+				"urn:pulumi:stack::test::typ$aws:resource::aname",
+				"urn:pulumi:stack::test::typ$aws:resource::bar",
+				"urn:pulumi:stack::test::typ$azure:resource::bar",
+			},
+		},
+		{
+			input: "urn:pulumi:stack::test::typ*:resource::bar",
+			expected: []resource.URN{
+				"urn:pulumi:stack::test::typ$aws:resource::bar",
+				"urn:pulumi:stack::test::typ$azure:resource::bar",
+			},
+			unexpected: []resource.URN{
+				"urn:pulumi:stack::test::ty:resource::bar",
+				"urn:pulumi:stack::test::type:resource::foobar",
+			},
+		},
+		{
+			input:      "**:aname",
+			expected:   []resource.URN{"urn:pulumi:stack::test::typ$aws:resource::aname"},
+			unexpected: []resource.URN{"urn:pulumi:stack::test::typ$aws:resource::somename"},
+		},
+		{
+			input: "*:*:stack::test::typ$aws:resource::*",
+			expected: []resource.URN{
+				"urn:pulumi:stack::test::typ$aws:resource::aname",
+				"urn:pulumi:stack::test::typ$aws:resource::bar",
+			},
+			unexpected: []resource.URN{
+				"urn:pulumi:stack::test::typ$azure:resource::aname",
+			},
+		},
+		{
+			input:    "stack::test::typ$aws:resource::none",
+			expected: []resource.URN{"stack::test::typ$aws:resource::none"},
+			unexpected: []resource.URN{
+				"stack::test::typ$aws:resource::nonee",
+			},
+		},
+	}
+	for _, tt := range globs {
+		tt := tt
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			targets := NewUrnTargets([]string{tt.input})
+			for _, urn := range tt.expected {
+				assert.True(t, targets.Contains(urn))
+			}
+		})
+	}
 }

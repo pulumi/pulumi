@@ -12,11 +12,11 @@ namespace Pulumi.Example
     public static class DoFoo
     {
         public static Task InvokeAsync(DoFooArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("example::doFoo", args ?? new DoFooArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync("example::doFoo", args ?? new DoFooArgs(), options.WithDefaults());
     }
 
 
-    public sealed class DoFooArgs : Pulumi.InvokeArgs
+    public sealed class DoFooArgs : global::Pulumi.InvokeArgs
     {
         [Input("foo", required: true)]
         public Inputs.Foo Foo { get; set; } = null!;
@@ -24,5 +24,6 @@ namespace Pulumi.Example
         public DoFooArgs()
         {
         }
+        public static new DoFooArgs Empty => new DoFooArgs();
     }
 }

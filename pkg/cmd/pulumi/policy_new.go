@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,16 +22,17 @@ import (
 	"sort"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 )
 
 type newPolicyArgs struct {
@@ -63,10 +64,11 @@ func newPolicyNewCmd() *cobra.Command {
 			"Only organization administrators can publish a Policy Pack.",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
+			ctx := commandContext()
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
-			return runNewPolicyPack(context.Background(), args)
+			return runNewPolicyPack(ctx, args)
 		}),
 	}
 
@@ -144,6 +146,9 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			return err
 		}
 	}
+	if template.Errored() {
+		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
+	}
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
@@ -170,9 +175,42 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return err
 	}
 
+	// Workaround for python, most of our templates don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the template does give virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
+		}
+	}
+
+	if err = proj.Save(projPath); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+
 	// Install dependencies.
 	if !args.generateOnly {
-		if err := installPolicyPackDependencies(ctx, proj, projPath, root); err != nil {
+		span := opentracing.SpanFromContext(ctx)
+		// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
+		// policy project. Ideally we should be able to make a plugin context without any related project. But
+		// fow now this works.
+		projinfo := &engine.Projinfo{Proj: &workspace.Project{
+			Main:    proj.Main,
+			Runtime: proj.Runtime}, Root: root}
+		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
+			projinfo,
+			nil,
+			cmdutil.Diag(),
+			cmdutil.Diag(),
+			false,
+			span,
+		)
+		if err != nil {
+			return err
+		}
+
+		defer pluginCtx.Close()
+
+		if err := installPolicyPackDependencies(pluginCtx, proj, pwd); err != nil {
 			return err
 		}
 	}
@@ -188,32 +226,20 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	return nil
 }
 
-func installPolicyPackDependencies(ctx context.Context,
-	proj *workspace.PolicyPackProject, projPath, root string) error {
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		fmt.Println("Installing dependencies...")
-		fmt.Println()
-
-		bin, err := npm.Install(ctx, "", false /*production*/, os.Stdout, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("`%s install` failed; rerun manually to try again.: %w", bin, err)
-		}
-
-		fmt.Println("Finished installing dependencies")
-		fmt.Println()
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		const venvDir = "venv"
-		if err := python.InstallDependencies(ctx, root, venvDir, true /*showOutput*/); err != nil {
-			return err
-		}
-
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", venvDir)
-		if err := proj.Save(projPath); err != nil {
-			return fmt.Errorf("saving project at %s: %w", projPath, err)
-		}
+func installPolicyPackDependencies(ctx *plugin.Context,
+	proj *workspace.PolicyPackProject, directory string) error {
+	// First make sure the language plugin is present.  We need this to load the required resource plugins.
+	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
+
+	if err = lang.InstallDependencies(directory); err != nil {
+		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
+			"then run `pulumi up` to perform an initial deployment: %w", err)
+	}
+
 	return nil
 }
 
@@ -284,21 +310,17 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a template:"
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	options, optionToTemplateMap := policyTemplatesToOptionArrayAndMap(templates)
 
-	cmdutil.EndKeypadTransmitMode()
-
 	var option string
 	if err := survey.AskOne(&survey.Select{
 		Message:  message,
 		Options:  options,
-		PageSize: len(options),
-	}, &option, nil); err != nil {
+		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil
@@ -319,15 +341,26 @@ func policyTemplatesToOptionArrayAndMap(
 
 	// Build the array and map.
 	var options []string
+	var brokenOptions []string
 	nameToTemplateMap := make(map[string]workspace.PolicyPackTemplate)
 	for _, template := range templates {
+		// If template is broken, indicate it in the project description.
+		if template.Errored() {
+			template.Description = brokenTemplateDescription
+		}
+
 		// Create the option string that combines the name, padding, and description.
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, template.Description)
 
-		// Add it to the array and map.
-		options = append(options, option)
 		nameToTemplateMap[option] = template
+		if template.Errored() {
+			brokenOptions = append(brokenOptions, option)
+		} else {
+			options = append(options, option)
+		}
 	}
+	// After sorting the options, add the broken templates to the end
 	sort.Strings(options)
+	options = append(options, brokenOptions...)
 	return options, nameToTemplateMap
 }

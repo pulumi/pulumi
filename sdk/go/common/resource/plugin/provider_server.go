@@ -266,7 +266,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, int(req.SequenceNumber))
+	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}
@@ -443,9 +443,9 @@ func (p *providerServer) Construct(ctx context.Context,
 		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
-	aliases := make([]resource.URN, len(req.GetAliases()))
+	aliases := make([]resource.Alias, len(req.GetAliases()))
 	for i, urn := range req.GetAliases() {
-		aliases[i] = resource.URN(urn)
+		aliases[i] = resource.Alias{URN: resource.URN(urn)}
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
@@ -620,4 +620,19 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		ReturnDependencies: returnDependencies,
 		Failures:           rpcFailures,
 	}, nil
+}
+
+func (p *providerServer) GetMapping(ctx context.Context,
+	req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	// TODO: We have to do a dance here where first we publish a version of pulumi with these RPC structures
+	// then add methods to terraform-bridge to implement this method as if it did exist, and then actually add
+	// the RPC method and uncomment out the code below. This is all because we currently build these in a loop
+	// (pulumi include terraform-bridge, which includes pulumi).
+	return &pulumirpc.GetMappingResponse{Data: nil, Provider: ""}, nil
+
+	//data, provider, err := p.provider.GetMapping(req.Key)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return &pulumirpc.GetMappingResponse{Data: data, Provider: provider}, nil
 }

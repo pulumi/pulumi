@@ -3,7 +3,6 @@ import pulumi_kubernetes as kubernetes
 
 bar = kubernetes.core.v1.Pod("bar",
     api_version="v1",
-    kind="Pod",
     metadata=kubernetes.meta.v1.ObjectMetaArgs(
         namespace="foo",
         name="bar",
@@ -12,6 +11,9 @@ bar = kubernetes.core.v1.Pod("bar",
         containers=[kubernetes.core.v1.ContainerArgs(
             name="nginx",
             image="nginx:1.14-alpine",
+            ports=[kubernetes.core.v1.ContainerPortArgs(
+                container_port=80,
+            )],
             resources=kubernetes.core.v1.ResourceRequirementsArgs(
                 limits={
                     "memory": "20Mi",
@@ -20,3 +22,4 @@ bar = kubernetes.core.v1.Pod("bar",
             ),
         )],
     ))
+kind = bar.kind

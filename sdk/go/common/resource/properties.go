@@ -103,12 +103,12 @@ type Secret struct {
 // resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
 // respect to the ID:
 //
-// - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
-//   be null.
-// - The ID may be unknown (in which case it will be the unknown property value)
-// - Otherwise, the ID must be a string.
+//   - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
+//     be null.
+//   - The ID may be unknown (in which case it will be the unknown property value)
+//   - Otherwise, the ID must be a string.
 //
-//nolint: revive
+// nolint: revive
 type ResourceReference struct {
 	URN            URN
 	ID             PropertyValue
@@ -142,14 +142,14 @@ func (err *ReqError) Error() string {
 // HasValue returns true if the slot associated with the given property key contains a real value.  It returns false
 // if a value is null or an output property that is awaiting a value to be assigned.  That is to say, HasValue indicates
 // a semantically meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
-func (m PropertyMap) HasValue(k PropertyKey) bool {
-	v, has := m[k]
+func (props PropertyMap) HasValue(k PropertyKey) bool {
+	v, has := props[k]
 	return has && v.HasValue()
 }
 
 // ContainsUnknowns returns true if the property map contains at least one unknown value.
-func (m PropertyMap) ContainsUnknowns() bool {
-	for _, v := range m {
+func (props PropertyMap) ContainsUnknowns() bool {
+	for _, v := range props {
 		if v.ContainsUnknowns() {
 			return true
 		}
@@ -158,8 +158,8 @@ func (m PropertyMap) ContainsUnknowns() bool {
 }
 
 // ContainsSecrets returns true if the property map contains at least one secret value.
-func (m PropertyMap) ContainsSecrets() bool {
-	for _, v := range m {
+func (props PropertyMap) ContainsSecrets() bool {
+	for _, v := range props {
 		if v.ContainsSecrets() {
 			return true
 		}
@@ -168,40 +168,40 @@ func (m PropertyMap) ContainsSecrets() bool {
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
-func (m PropertyMap) Mappable() map[string]interface{} {
-	return m.MapRepl(nil, nil)
+func (props PropertyMap) Mappable() map[string]interface{} {
+	return props.MapRepl(nil, nil)
 }
 
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
-func (m PropertyMap) MapRepl(replk func(string) (string, bool),
+func (props PropertyMap) MapRepl(replk func(string) (string, bool),
 	replv func(PropertyValue) (interface{}, bool)) map[string]interface{} {
 	obj := make(map[string]interface{})
-	for _, k := range m.StableKeys() {
+	for _, k := range props.StableKeys() {
 		key := string(k)
 		if replk != nil {
 			if rk, repk := replk(key); repk {
 				key = rk
 			}
 		}
-		obj[key] = m[k].MapRepl(replk, replv)
+		obj[key] = props[k].MapRepl(replk, replv)
 	}
 	return obj
 }
 
 // Copy makes a shallow copy of the map.
-func (m PropertyMap) Copy() PropertyMap {
+func (props PropertyMap) Copy() PropertyMap {
 	new := make(PropertyMap)
-	for k, v := range m {
+	for k, v := range props {
 		new[k] = v
 	}
 	return new
 }
 
 // StableKeys returns all of the map's keys in a stable order.
-func (m PropertyMap) StableKeys() []PropertyKey {
-	sorted := make([]PropertyKey, 0, len(m))
-	for k := range m {
+func (props PropertyMap) StableKeys() []PropertyKey {
+	sorted := make([]PropertyKey, 0, len(props))
+	for k := range props {
 		sorted = append(sorted, k)
 	}
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })

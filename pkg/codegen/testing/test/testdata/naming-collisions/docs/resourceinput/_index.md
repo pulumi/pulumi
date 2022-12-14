@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a ResourceInput Resource {#create}
+## Create ResourceInput Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

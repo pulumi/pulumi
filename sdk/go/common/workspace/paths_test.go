@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,9 +27,8 @@ import (
 // that directory. However DetectProjectAndPath will do symlink resolution, while ioutil.TempDir normally does
 // not. This can lead to asserts especially on macos where TmpDir will have returned /var/folders/XX, but
 // after sym link resolution that is /private/var/folders/XX.
-func mkTempDir(t *testing.T, pattern string) string {
-	tmpDir, err := ioutil.TempDir("", pattern)
-	assert.NoError(t, err)
+func mkTempDir(t *testing.T) string {
+	tmpDir := t.TempDir()
 	result, err := filepath.EvalSymlinks(tmpDir)
 	assert.NoError(t, err)
 	return result
@@ -38,7 +36,7 @@ func mkTempDir(t *testing.T, pattern string) string {
 
 //nolint:paralleltest // Theses test use and change the current working directory
 func TestDetectProjectAndPath(t *testing.T) {
-	tmpDir := mkTempDir(t, "TestDetectProjectAndPath")
+	tmpDir := mkTempDir(t)
 	cwd, err := os.Getwd()
 	assert.NoError(t, err)
 	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
@@ -90,14 +88,16 @@ func TestProjectStackPath(t *testing.T) {
 		"name: some_project\ndescription: Some project\nruntime: nodejs\nconfig: stacksA\nstackConfigDir: stacksB\n",
 		func(t *testing.T, projectDir, path string, err error) {
 			assert.Error(t, err)
-			assert.Equal(t, "can not set `config` and `stackConfigDir`, remove the `config` entry", err.Error())
+			errorMsg := "Should not use both config and stackConfigDir to define the stack directory. " +
+				"Use only stackConfigDir instead."
+			assert.Contains(t, err.Error(), errorMsg)
 		},
 	}}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := mkTempDir(t, "TestProjectStackPath")
+			tmpDir := mkTempDir(t)
 			cwd, err := os.Getwd()
 			assert.NoError(t, err)
 			defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
@@ -110,7 +110,7 @@ func TestProjectStackPath(t *testing.T) {
 				0600)
 			assert.NoError(t, err)
 
-			path, err := DetectProjectStackPath("my_stack")
+			_, path, err := DetectProjectStackPath("my_stack")
 			tt.validate(t, tmpDir, path, err)
 		})
 	}

@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pulumi.Random" Version="2.*" />
+    <PackageReference Include="Pulumi.Random" Version="4.2" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
 </Project>

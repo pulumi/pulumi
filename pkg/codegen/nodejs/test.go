@@ -109,3 +109,17 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 	}
 	return result
 }
+
+func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, true)
+			},
+			GenProgram: GenerateProgram,
+			TestCases:  testCases,
+		})
+}

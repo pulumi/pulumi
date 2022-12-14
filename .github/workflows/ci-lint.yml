@@ -1,0 +1,139 @@
+name: Lint
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version-set:
+        required: true
+        description: "Version matrix to use"
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  golangci:
+    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
+    container: golangci/golangci-lint:v1.47.3
+    name: Lint Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Tidy
+        run: make tidy
+      - name: Fail if go mod not tidy
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error go.mod not tidy"
+            exit 1
+          fi
+      - name: Lint
+        run: make lint
+
+  protobuf-lint:
+    name: Lint Protobufs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Check Protobufs
+        run: |
+          make check-proto
+
+  sdk-lint:
+    name: Lint SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        with:
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+          dotnet-quality: ga
+      - run: mkdir -p "${{ runner.temp }}/opt/pulumi/nuget"
+      - name: Add NuGet packages as a local NuGet source
+        run: |
+          command -v dotnet
+          dotnet --version
+          dotnet nuget add source "${{ runner.temp }}/opt/pulumi/nuget"
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
+      - name: Setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Update path
+        run: |
+          echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
+      - name: Ensure
+        run: |
+          make ensure
+      - name: Lint Node
+        run: |
+          cd sdk/nodejs && make lint
+      - name: Lint Python
+        run: |
+          cd sdk/python && make lint
+      - name: Lint .NET
+        run: |
+          cd sdk/dotnet && make lint
+
+  actionlint:
+    name: Lint GHA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+      - run: |
+          make lint_actions
+
+  linear-history:
+    name: linear-history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # This should be the merge commit of the PR or candidate merge commit in the staging branch for `bors`.
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Check for non-linear history
+        run: ./scripts/git-linear-history-check.sh

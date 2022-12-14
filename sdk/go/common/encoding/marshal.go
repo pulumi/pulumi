@@ -22,7 +22,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var (
@@ -63,27 +64,26 @@ func DefaultExt() string {
 
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
-	IsJSONLike() bool
-	IsYAMLLike() bool
 	Marshal(v interface{}) ([]byte, error)
 	Unmarshal(data []byte, v interface{}) error
 }
 
+// JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
 var JSON Marshaler = &jsonMarshaler{}
 
 type jsonMarshaler struct {
 }
 
-func (m *jsonMarshaler) IsJSONLike() bool {
-	return true
-}
-
-func (m *jsonMarshaler) IsYAMLLike() bool {
-	return false
-}
-
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return json.MarshalIndent(v, "", "    ")
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "    ")
+	err := enc.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
@@ -97,16 +97,15 @@ var YAML Marshaler = &yamlMarshaler{}
 type yamlMarshaler struct {
 }
 
-func (m *yamlMarshaler) IsJSONLike() bool {
-	return false
-}
-
-func (m *yamlMarshaler) IsYAMLLike() bool {
-	return true
-}
-
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return yaml.Marshal(v)
+	if r, ok := v.(yamlutil.HasRawValue); ok {
+		if len(r.RawValue()) > 0 {
+			// Attempt a comment preserving edit:
+			return yamlutil.Edit(r.RawValue(), v)
+		}
+	}
+
+	return yamlutil.YamlEncode(v)
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
@@ -127,14 +126,6 @@ func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
 
 type gzipMarshaller struct {
 	inner Marshaler
-}
-
-func (m *gzipMarshaller) IsJSONLike() bool {
-	return m.inner.IsJSONLike()
-}
-
-func (m *gzipMarshaller) IsYAMLLike() bool {
-	return m.inner.IsYAMLLike()
 }
 
 func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {

@@ -67,22 +67,22 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 // The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
 // or a remote component resource:
 //
-// - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
-// - Local component resources act as aggregations of their descendents. Rather than adding the component resource
-//   itself, each child resource is added as a dependency.
-// - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
-//   with respect to dependencies: the construction of a remote component always waits on the construction of its
-//   children.
+//   - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
+//   - Local component resources act as aggregations of their descendents. Rather than adding the component resource
+//     itself, each child resource is added as a dependency.
+//   - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
+//     with respect to dependencies: the construction of a remote component always waits on the construction of its
+//     children.
 //
 // In other words, if we had:
 //
-//				  Comp1
-//			  /     |     \
-//		  Cust1   Comp2  Remote1
-//				  /   \       \
-//			  Cust2   Cust3  Comp3
-//			  /                 \
-//		  Cust4                Cust5
+//			  Comp1
+//		  /     |     \
+//	  Cust1   Comp2  Remote1
+//			  /   \       \
+//		  Cust2   Cust3  Comp3
+//		  /                 \
+//	  Cust4                Cust5
 //
 // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
 // It will *not* include:
@@ -133,7 +133,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInput(pv, pt, true)
 		if err != nil {
-			return fmt.Errorf("awaiting input property %s: %w", pname, err)
+			return fmt.Errorf("awaiting input property %q: %w", pname, err)
 		}
 
 		// Record all dependencies accumulated from reading this property.
@@ -143,12 +143,9 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		}
 		deps.union(allDeps)
 
-		if len(allDeps) > 0 {
-			pdeps[pname] = allDeps.values()
-		}
-
 		if !v.IsNull() || len(allDeps) > 0 {
 			pmap[resource.PropertyKey(pname)] = v
+			pdeps[pname] = allDeps.values()
 		}
 		return nil
 	}
@@ -309,6 +306,15 @@ func marshalInputImpl(v interface{},
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && val.IsNil() {
+			// Here we round trip through a reflect.Value to catch fat pointers of the
+			// form
+			//
+			// 	<SomeType><nil value>
+			//
+			// This prevents calling methods on nil pointers when we cast to an interface
+			// (like `Resource`)
+			return resource.PropertyValue{}, nil, nil
 		}
 
 		// Look for some well known types.
@@ -350,8 +356,8 @@ func marshalInputImpl(v interface{},
 			if err != nil {
 				return resource.PropertyValue{}, nil, err
 			}
-			contract.Assert(known)
-			contract.Assert(!secretURN)
+			contract.Assertf(known, "URN must be known")
+			contract.Assertf(!secretURN, "URN must not be secret")
 
 			if custom, ok := v.(CustomResource); ok {
 				id, _, secretID, err := custom.ID().awaitID(context.Background())

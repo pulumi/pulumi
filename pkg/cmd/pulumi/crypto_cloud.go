@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/base64"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -26,16 +27,12 @@ import (
 
 func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider string) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
-
-	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName.Q())
-		if err != nil {
-			return nil, err
-		}
-		configFile = f
+	proj, _, err := workspace.DetectProjectStackPath(stackName.Q())
+	if err != nil {
+		return nil, err
 	}
 
-	info, err := workspace.LoadProjectStack(configFile)
+	info, err := workspace.LoadProjectStack(proj, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +45,13 @@ func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider s
 	}
 
 	var secretsManager *cloud.Manager
+
+	// Allow per-execution override of the secrets provider via an environment
+	// variable. This allows a temporary replacement without updating the stack
+	// config, such a during CI.
+	if override := os.Getenv("PULUMI_CLOUD_SECRET_OVERRIDE"); override != "" {
+		secretsProvider = override
+	}
 
 	// if there is no key OR the secrets provider is changing
 	// then we need to generate the new key based on the new secrets provider

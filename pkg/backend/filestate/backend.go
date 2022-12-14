@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -96,6 +97,10 @@ func (r localBackendReference) String() string {
 
 func (r localBackendReference) Name() tokens.Name {
 	return r.name
+}
+
+func (r localBackendReference) FullyQualifiedName() tokens.QName {
+	return r.Name().Q()
 }
 
 func IsFileStateBackendURL(urlstr string) bool {
@@ -150,6 +155,14 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 
 			bucket = blob.PrefixedBucket(bucket, bucketSubDir)
 		}
+	}
+
+	isAcc, err := bucket.IsAccessible(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
+	}
+	if !isAcc {
+		return nil, fmt.Errorf("bucket %s is not accessible", u)
 	}
 
 	// Allocate a unique lock ID for this backend instance.
@@ -267,6 +280,9 @@ func (b *localBackend) SupportsOrganizations() bool {
 }
 
 func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
+	if err := b.ValidateStackName(stackRefName); err != nil {
+		return nil, err
+	}
 	return localBackendReference{name: tokens.Name(stackRefName)}, nil
 }
 
@@ -279,7 +295,8 @@ func (b *localBackend) ValidateStackName(stackName string) error {
 
 	validNameRegex := regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
 	if !validNameRegex.MatchString(stackName) {
-		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, or periods")
+		return errors.New(
+			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
 	}
 
 	return nil
@@ -306,7 +323,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, err := b.getStack(stackName); err == nil {
+	if _, _, err := b.getStack(ctx, stackName); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -331,7 +348,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
 	stackName := stackRef.Name()
-	snapshot, path, err := b.getStack(stackName)
+	snapshot, path, err := b.getStack(ctx, stackName)
 
 	switch {
 	case gcerrors.Code(err) == gcerrors.NotFound:
@@ -378,7 +395,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	defer b.Unlock(ctx, stack.Ref())
 
 	stackName := stack.Ref().Name()
-	snapshot, _, err := b.getStack(stackName)
+	snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return false, err
 	}
@@ -402,7 +419,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +487,7 @@ func (b *localBackend) PackPolicies(
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
@@ -481,7 +498,7 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -493,7 +510,7 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation, imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -506,7 +523,7 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -518,7 +535,7 @@ func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -543,7 +560,7 @@ func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
@@ -556,7 +573,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(stackName, op)
+	update, err := b.newUpdate(ctx, stackName, op)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -600,7 +617,7 @@ func (b *localBackend) apply(
 	// Perform the update
 	start := time.Now().Unix()
 	var plan *deploy.Plan
-	var changes engine.ResourceChanges
+	var changes sdkDisplay.ResourceChanges
 	var updateRes result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
@@ -728,7 +745,7 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stack.Ref().Name()
-	target, err := b.getTarget(stackName, cfg.Config, cfg.Decrypter)
+	target, err := b.getTarget(ctx, stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -763,7 +780,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stk backend.Stack) (*apitype.UntypedDeployment, error) {
 
 	stackName := stk.Ref().Name()
-	snap, _, err := b.getStack(stackName)
+	snap, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
 	}
@@ -777,7 +794,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		return nil, fmt.Errorf("serializing deployment: %w", err)
 	}
 
-	data, err := json.Marshal(sdep)
+	data, err := encoding.JSON.Marshal(sdep)
 	if err != nil {
 		return nil, err
 	}
@@ -798,12 +815,12 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err = b.getStack(stackName)
+	_, _, err = b.getStack(ctx, stackName)
 	if err != nil {
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"google.golang.org/grpc"
@@ -38,20 +39,31 @@ type RunOption func(*RunInfo)
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 // If the program fails, the process will be terminated and the function will not return.
 func Run(body RunFunc, opts ...RunOption) {
-	if err := RunErr(body, opts...); err != nil {
-		if err != ErrPlugins {
-			fmt.Fprintf(os.Stderr, "error: program failed: %v\n", err)
-			os.Exit(1)
-		}
-
-		printRequiredPlugins()
-		os.Exit(0)
+	logError := func(ctx *Context, programErr error) {
+		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
+			programErr), nil)
+		contract.AssertNoError(logErr)
 	}
+
+	err := runErrInner(body, logError, opts...)
+	if err == nil {
+		return
+	}
+
+	if err == ErrPlugins {
+		printRequiredPlugins()
+	}
+
+	os.Exit(constant.ExitStatusLoggedError)
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
 // to register resources and orchestrate deployment activities.  This connects back to the Pulumi engine using gRPC.
 func RunErr(body RunFunc, opts ...RunOption) error {
+	return runErrInner(body, func(*Context, error) {}, opts...)
+}
+
+func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption) error {
 	// Parse the info out of environment variables.  This is a lame contract with the caller, but helps to keep
 	// boilerplate to a minimum in the average Pulumi Go program.
 	info := getEnvInfo()
@@ -81,7 +93,12 @@ func RunErr(body RunFunc, opts ...RunOption) error {
 	}
 	defer contract.IgnoreClose(ctx)
 
-	return RunWithContext(ctx, body)
+	err = RunWithContext(ctx, body)
+	// Log the error message
+	if err != nil {
+		logError(ctx, err)
+	}
+	return err
 }
 
 // RunWithContext runs the body of a Pulumi program using the given Context for information about the target stack,
@@ -131,6 +148,7 @@ type RunInfo struct {
 	DryRun           bool
 	MonitorAddr      string
 	EngineAddr       string
+	Organization     string
 	Mocks            MockResourceMonitor
 	getPlugins       bool
 	engineConn       *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
@@ -154,6 +172,7 @@ func getEnvInfo() RunInfo {
 	}
 
 	return RunInfo{
+		Organization:     os.Getenv(EnvOrganization),
 		Project:          os.Getenv(EnvProject),
 		Stack:            os.Getenv(EnvStack),
 		Config:           config,
@@ -167,6 +186,8 @@ func getEnvInfo() RunInfo {
 }
 
 const (
+	// EnvOrganization is the envvar used to read the current Pulumi organization name.
+	EnvOrganization = "PULUMI_ORGANIZATION"
 	// EnvProject is the envvar used to read the current Pulumi project name.
 	EnvProject = "PULUMI_PROJECT"
 	// EnvStack is the envvar used to read the current Pulumi stack name.
@@ -206,6 +227,8 @@ func printRequiredPlugins() {
 		plugins = append(plugins, info)
 	}
 
-	err := json.NewEncoder(os.Stdout).Encode(map[string]interface{}{"plugins": plugins})
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(map[string]interface{}{"plugins": plugins})
 	contract.IgnoreError(err)
 }

@@ -1,0 +1,360 @@
+name: Test
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+      platform:
+        description: "OS to run tests on, e.g.: ubuntu-latest"
+        required: true
+        type: string
+
+      test-name:
+        description: "Name of the test to run"
+        required: true
+        type: string
+      test-command:
+        description: Test command to run
+        required: true
+        type: string
+      is-integration-test:
+        description: Whether to download and install build artifacts
+        required: false
+        default: false
+        type: boolean
+      enable-coverage:
+        description: "Collects coverage stats; requires cov-enabled builds"
+        default: false
+        required: false
+        type: boolean
+
+      version-set:
+        required: false
+        description: "Set of language versions to use for builds, lints, releases, etc."
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "dotnet": "6.0.x",
+            "go": "1.18.x",
+            "nodejs": "14.x",
+            "python": "3.9.x"
+          }
+      continue-on-error:
+        description: "Whether to continue running the job if the step fails"
+        required: false
+        default: false
+        type: boolean
+
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_VERSION: ${{ inputs.version }}
+  PULUMI_TEST_OWNER: "moolumi"
+  PULUMI_TEST_ORG: "moolumi"
+  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  # Release builds use the service, PR checks and snapshots will use the local backend if possible.
+  PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
+  PULUMI_TEST_PYTHON_SHARED_VENV: "true"
+  PYTHON: python
+  GO_TEST_PARALLELISM: 8
+  GO_TEST_PKG_PARALLELISM: 2
+  GO_TEST_SHUFFLE: off
+  PULUMI_TEST_RETRIES: 2
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_ROLL_FORWARD: "Major"
+  SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
+
+jobs:
+  test:
+    name: ${{ inputs.test-name }}
+    env:
+      PULUMI_HOME: ${{ github.workspace }}/home
+      PULUMI_LOCAL_NUGET: ${{ github.workspace }}/nuget
+      TEST_ALL_DEPS: ""
+
+    runs-on: ${{ inputs.platform }}
+
+    timeout-minutes: 60
+    continue-on-error: ${{ inputs.continue-on-error }}
+    steps:
+      - name: "Windows cache workaround"
+        # https://github.com/actions/cache/issues/752#issuecomment-1222415717
+        # but only modify the path by adding tar.exe
+        if: ${{ runner.os == 'Windows' }}
+        env:
+          TOOL_BIN: ${{ runner.temp }}/tar-bin
+        run: |
+          set -x
+          mkdir -p "${TOOL_BIN}"
+          cp "C:/Program Files/Git/usr/bin/tar.exe" "${TOOL_BIN}"
+          PATH="${TOOL_BIN}:${PATH}"
+          echo "$TOOL_BIN" | tee -a "$GITHUB_PATH"
+          command -v tar
+          tar --version
+      - name: Reduce Windows test parallelism
+        if: ${{ runner.os == 'Windows' }}
+        run: |
+          echo "GO_TEST_PARALLELISM=4" >> "$GITHUB_ENV"
+          echo "GO_TEST_PKG_PARALLELISM=1" >> "$GITHUB_ENV"
+          # For debugging:
+          ps aux
+      - name: "macOS use coreutils"
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          set -x
+          brew install coreutils
+          echo "/usr/local/opt/coreutils/libexec/gnubin" | tee -a "$GITHUB_PATH"
+          command -v bash
+          bash --version
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "$GITHUB_ENV"
+      - name: Enable code coverage
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        run: |
+          echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
+      - name: Configure Go Cache Key
+        env:
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
+        run: echo "$CACHE_KEY" > .gocache.tmp
+      - uses: actions/setup-go@v3
+        id: setup-go
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          cache: true
+          cache-dependency-path: '*/go.sum'
+      - name: Prime Go cache
+        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
+        # Compile every test to ensure we populate a good cache entry.
+        run: |
+          ( cd sdk && go test -run "_________" ./... )
+          ( cd pkg && go test -run "_________" ./... )
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        with:
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+          dotnet-quality: ga
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Uninstall pre-installed Pulumi (windows)
+        if: inputs.platform == 'windows-latest'
+        run: |
+          if command -v pulumi.exe; then
+            echo "Deleting pulumi"
+            rm -rf "$(command -v pulumi.exe)/../pulumi*"
+          fi
+      - name: Install yarn
+        run: |
+          npm install -g yarn
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip requests wheel urllib3 chardet
+      - name: Setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: pulumi/pulumictl
+          tag: v0.0.32
+          cache: enable
+      - name: Install gotestsum
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: gotestyourself/gotestsum
+          tag: v1.8.1
+          cache: enable
+      - name: Install goteststats
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: t0yv0/goteststats
+          tag: v0.0.7
+          cache: enable
+      - name: Generate artifact name
+        id: goenv
+        run: |
+          echo "::set-output name=CLI-TARGET::$(go env GOOS)-$(go env GOARCH)"
+
+      # Ensure tests do not rely on pre-installed packages in CI. Unit tests must run absent a local
+      # Pulumi install, and integration tests must only test the version built by CI.
+      - name: Remove Pre-installed Pulumi
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          EXT=""
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            EXT=".exe"
+          fi
+
+          if command -v "pulumi${EXT}"; then
+            PULUMI_INSTALL_DIR=$(dirname "$(command -v "pulumi${EXT}")")
+            echo "Deleting Pulumi"
+            rm -v "$PULUMI_INSTALL_DIR"/pulumi*
+          fi
+
+      # Integration test only steps:
+      - name: Download pulumi-${{ steps.goenv.outputs.cli-target }}
+        if: ${{ inputs.is-integration-test }}
+        uses: actions/download-artifact@v2
+        with:
+          name: artifacts-cli-${{ steps.goenv.outputs.cli-target }}
+          path: artifacts/cli
+      - name: Install Pulumi Go Binaries
+        if: ${{ inputs.is-integration-test }}
+        run: |
+          echo "Checking contents of $PWD/artifacts/cli"
+          find "$PWD/artifacts/cli"
+          TMPDIR="$(mktemp -d)"
+
+          mkdir -p bin
+
+          # Extract files to temporary directory:
+          find "$PWD/artifacts/cli" -name '*.zip' -print0 -exec unzip {} -d "$TMPDIR" \;
+          find "$PWD/artifacts/cli" -name '*.tar.gz' -print0 -exec tar -xzvf {} -C "$TMPDIR" \;
+
+          # Windows .zip files have an extra "bin" path part, support both:
+          if [ -d "$TMPDIR/pulumi/bin" ]; then
+            mv "${TMPDIR}/pulumi/bin/"* "$PWD/bin/"
+          else
+            mv "${TMPDIR}/pulumi/"* "$PWD/bin/"
+          fi
+
+          echo "Checking contents of $PWD/bin"
+          find "$PWD/bin"
+
+          LOCAL_PATH=$(./scripts/normpath "${{ github.workspace }}/bin")
+          echo "Adding LOCAL_PATH=$LOCAL_PATH to PATH"
+          echo "$LOCAL_PATH" >> "$GITHUB_PATH"
+      - name: Download Pulumi .NET NuGet packages
+        if: ${{ inputs.is-integration-test }}
+        uses: actions/download-artifact@v2
+        with:
+          name: artifacts-dotnet-sdk
+          # path set to match PULUMI_LOCAL_NUGET
+          path: ${{ github.workspace }}/nuget
+      - name: Add NuGet packages as a local NuGet source
+        if: ${{ inputs.is-integration-test }}
+        run: |
+          command -v dotnet
+          dotnet --version
+          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
+          SOURCE="$(./scripts/normpath "$PULUMI_LOCAL_NUGET")"
+          echo "SOURCE=$SOURCE"
+          dotnet nuget add source "$SOURCE"
+      - name: Inspect downloaded artifacts
+        if: ${{ inputs.is-integration-test }}
+        run: |
+          echo "PULUMI_LOCAL_NUGET=$PULUMI_LOCAL_NUGET"
+          find "$PULUMI_LOCAL_NUGET"
+
+        # /end integration test steps
+      - name: Verify Pulumi Version
+        run: |
+          command -v pulumi || echo "no pulumi"
+          pulumi version    || echo "no pulumi"
+      - name: Ensure dependencies for the Node SDK
+        run: |
+          cd sdk/nodejs
+          make ensure
+      - name: Build the Node SDK
+        run: |
+          cd sdk/nodejs
+          make build_package
+          cd bin
+          yarn link
+      - name: Ensure dependencies for the Python SDK
+        run: |
+          cd sdk/python
+          make ensure
+      - name: Install Python SDK
+        run: |
+          cd sdk/python
+          make build_package
+      - name: Set PULUMI_ACCEPT if version-set is not current
+        if: ${{ fromJson(inputs.version-set).name != 'current' }}
+        run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
+      - name: run tests
+        id: test
+        run: ${{ inputs.test-command }}
+        env:
+          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Convert Node coverage data
+        if: ${{ inputs.platform != 'windows-latest' }}
+        run: |
+          cd sdk/nodejs
+          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
+      - name: Merge Go coverage data
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        run: |
+          pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
+          rm ./coverage/*.cov || true
+      - name: Upload code coverage
+        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        uses: codecov/codecov-action@v3
+        with:
+          directory: coverage
+          files: "*"
+          fail_ci_if_error: false
+          verbose: true
+      - name: Summarize Test Time by Package
+        continue-on-error: true
+        env:
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          mkdir -p test-results
+          touch test-results/empty.json # otherwise goteststats fails below when no files match
+          # Remove output lines, they make analysis slower & could leak logs:
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            # It's just another case of BSD sed, GNU sed.
+            sed -i '' -e '/"Action":"output"/d' ./test-results/*.json
+          else
+            sed -i'' -e '/"Action":"output"/d' ./test-results/*.json
+          fi
+
+          goteststats -statistic pkg-time test-results/*.json
+      - name: Summarize Test Times by Individual Test
+        continue-on-error: true
+        run: |
+          goteststats -statistic test-time test-results/*.json | head -n 100 || \
+                      if [[ $? -eq 141 ]]; then true; else exit $?; fi
+      - name: Upload artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: gotestsum-test-results
+          path: test-results/*.json

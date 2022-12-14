@@ -19,6 +19,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 )
 
@@ -55,6 +56,10 @@ func (in *archive) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetO
 
 // ArchiveOutput is an Output that returns Archive values.
 type ArchiveOutput struct{ *OutputState }
+
+func (ArchiveOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (Archive).
 func (ArchiveOutput) ElementType() reflect.Type {
@@ -107,6 +112,10 @@ func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) Arch
 
 // ArchiveArrayOutput is an Output that returns []Archive values.
 type ArchiveArrayOutput struct{ *OutputState }
+
+func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]Archive).
 func (ArchiveArrayOutput) ElementType() reflect.Type {
@@ -180,6 +189,10 @@ func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveM
 // ArchiveMapOutput is an Output that returns map[string]Archive values.
 type ArchiveMapOutput struct{ *OutputState }
 
+func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]Archive).
 func (ArchiveMapOutput) ElementType() reflect.Type {
 	return archiveMapType
@@ -245,6 +258,10 @@ func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context
 // ArchiveArrayMapOutput is an Output that returns map[string][]Archive values.
 type ArchiveArrayMapOutput struct{ *OutputState }
 
+func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]Archive).
 func (ArchiveArrayMapOutput) ElementType() reflect.Type {
 	return archiveArrayMapType
@@ -309,6 +326,10 @@ func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context
 
 // ArchiveMapArrayOutput is an Output that returns []map[string]Archive values.
 type ArchiveMapArrayOutput struct{ *OutputState }
+
+func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]Archive).
 func (ArchiveMapArrayOutput) ElementType() reflect.Type {
@@ -382,6 +403,10 @@ func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) Ar
 // ArchiveMapMapOutput is an Output that returns map[string]map[string]Archive values.
 type ArchiveMapMapOutput struct{ *OutputState }
 
+func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]Archive).
 func (ArchiveMapMapOutput) ElementType() reflect.Type {
 	return archiveMapMapType
@@ -446,6 +471,10 @@ func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Con
 
 // ArchiveArrayArrayOutput is an Output that returns [][]Archive values.
 type ArchiveArrayArrayOutput struct{ *OutputState }
+
+func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]Archive).
 func (ArchiveArrayArrayOutput) ElementType() reflect.Type {
@@ -524,6 +553,10 @@ func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrA
 // AssetOutput is an Output that returns Asset values.
 type AssetOutput struct{ *OutputState }
 
+func (AssetOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (Asset).
 func (AssetOutput) ElementType() reflect.Type {
 	return assetType
@@ -575,6 +608,10 @@ func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArr
 
 // AssetArrayOutput is an Output that returns []Asset values.
 type AssetArrayOutput struct{ *OutputState }
+
+func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]Asset).
 func (AssetArrayOutput) ElementType() reflect.Type {
@@ -648,6 +685,10 @@ func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutp
 // AssetMapOutput is an Output that returns map[string]Asset values.
 type AssetMapOutput struct{ *OutputState }
 
+func (AssetMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]Asset).
 func (AssetMapOutput) ElementType() reflect.Type {
 	return assetMapType
@@ -713,6 +754,10 @@ func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) As
 // AssetArrayMapOutput is an Output that returns map[string][]Asset values.
 type AssetArrayMapOutput struct{ *OutputState }
 
+func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]Asset).
 func (AssetArrayMapOutput) ElementType() reflect.Type {
 	return assetArrayMapType
@@ -777,6 +822,10 @@ func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) As
 
 // AssetMapArrayOutput is an Output that returns []map[string]Asset values.
 type AssetMapArrayOutput struct{ *OutputState }
+
+func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]Asset).
 func (AssetMapArrayOutput) ElementType() reflect.Type {
@@ -850,6 +899,10 @@ func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetM
 // AssetMapMapOutput is an Output that returns map[string]map[string]Asset values.
 type AssetMapMapOutput struct{ *OutputState }
 
+func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]Asset).
 func (AssetMapMapOutput) ElementType() reflect.Type {
 	return assetMapMapType
@@ -915,6 +968,10 @@ func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context
 // AssetArrayArrayOutput is an Output that returns [][]Asset values.
 type AssetArrayArrayOutput struct{ *OutputState }
 
+func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output ([][]Asset).
 func (AssetArrayArrayOutput) ElementType() reflect.Type {
 	return assetArrayArrayType
@@ -971,6 +1028,10 @@ type AssetOrArchiveInput interface {
 // AssetOrArchiveOutput is an Output that returns AssetOrArchive values.
 type AssetOrArchiveOutput struct{ *OutputState }
 
+func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (AssetOrArchive).
 func (AssetOrArchiveOutput) ElementType() reflect.Type {
 	return assetOrArchiveType
@@ -1012,6 +1073,10 @@ func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context
 
 // AssetOrArchiveArrayOutput is an Output that returns []AssetOrArchive values.
 type AssetOrArchiveArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]AssetOrArchive).
 func (AssetOrArchiveArrayOutput) ElementType() reflect.Type {
@@ -1069,6 +1134,10 @@ func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Con
 // AssetOrArchiveMapOutput is an Output that returns map[string]AssetOrArchive values.
 type AssetOrArchiveMapOutput struct{ *OutputState }
 
+func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]AssetOrArchive).
 func (AssetOrArchiveMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveMapType
@@ -1118,6 +1187,10 @@ func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx c
 // AssetOrArchiveArrayMapOutput is an Output that returns map[string][]AssetOrArchive values.
 type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
+func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]AssetOrArchive).
 func (AssetOrArchiveArrayMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
@@ -1166,6 +1239,10 @@ func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx c
 
 // AssetOrArchiveMapArrayOutput is an Output that returns []map[string]AssetOrArchive values.
 type AssetOrArchiveMapArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]AssetOrArchive).
 func (AssetOrArchiveMapArrayOutput) ElementType() reflect.Type {
@@ -1223,6 +1300,10 @@ func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx conte
 // AssetOrArchiveMapMapOutput is an Output that returns map[string]map[string]AssetOrArchive values.
 type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
+func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]AssetOrArchive).
 func (AssetOrArchiveMapMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
@@ -1271,6 +1352,10 @@ func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(c
 
 // AssetOrArchiveArrayArrayOutput is an Output that returns [][]AssetOrArchive values.
 type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
+
+func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]AssetOrArchive).
 func (AssetOrArchiveArrayArrayOutput) ElementType() reflect.Type {
@@ -1339,6 +1424,10 @@ func (in Bool) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
 // BoolOutput is an Output that returns bool values.
 type BoolOutput struct{ *OutputState }
 
+func (BoolOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (bool).
 func (BoolOutput) ElementType() reflect.Type {
 	return boolType
@@ -1378,6 +1467,12 @@ type boolPtr bool
 func BoolPtr(v bool) BoolPtrInput {
 	return (*boolPtr)(&v)
 }
+func BoolPtrFromPtr(v *bool) BoolPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*boolPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*bool).
 func (*boolPtr) ElementType() reflect.Type {
@@ -1394,6 +1489,10 @@ func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 
 // BoolPtrOutput is an Output that returns *bool values.
 type BoolPtrOutput struct{ *OutputState }
+
+func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*bool).
 func (BoolPtrOutput) ElementType() reflect.Type {
@@ -1447,6 +1546,10 @@ func (in BoolArray) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayO
 
 // BoolArrayOutput is an Output that returns []bool values.
 type BoolArrayOutput struct{ *OutputState }
+
+func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]bool).
 func (BoolArrayOutput) ElementType() reflect.Type {
@@ -1520,6 +1623,10 @@ func (in BoolMap) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput 
 // BoolMapOutput is an Output that returns map[string]bool values.
 type BoolMapOutput struct{ *OutputState }
 
+func (BoolMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]bool).
 func (BoolMapOutput) ElementType() reflect.Type {
 	return boolMapType
@@ -1585,6 +1692,10 @@ func (in BoolArrayMap) ToBoolArrayMapOutputWithContext(ctx context.Context) Bool
 // BoolArrayMapOutput is an Output that returns map[string][]bool values.
 type BoolArrayMapOutput struct{ *OutputState }
 
+func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]bool).
 func (BoolArrayMapOutput) ElementType() reflect.Type {
 	return boolArrayMapType
@@ -1649,6 +1760,10 @@ func (in BoolMapArray) ToBoolMapArrayOutputWithContext(ctx context.Context) Bool
 
 // BoolMapArrayOutput is an Output that returns []map[string]bool values.
 type BoolMapArrayOutput struct{ *OutputState }
+
+func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]bool).
 func (BoolMapArrayOutput) ElementType() reflect.Type {
@@ -1722,6 +1837,10 @@ func (in BoolMapMap) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapM
 // BoolMapMapOutput is an Output that returns map[string]map[string]bool values.
 type BoolMapMapOutput struct{ *OutputState }
 
+func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]bool).
 func (BoolMapMapOutput) ElementType() reflect.Type {
 	return boolMapMapType
@@ -1786,6 +1905,10 @@ func (in BoolArrayArray) ToBoolArrayArrayOutputWithContext(ctx context.Context) 
 
 // BoolArrayArrayOutput is an Output that returns [][]bool values.
 type BoolArrayArrayOutput struct{ *OutputState }
+
+func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]bool).
 func (BoolArrayArrayOutput) ElementType() reflect.Type {
@@ -1870,6 +1993,10 @@ func (in Float64) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrO
 // Float64Output is an Output that returns float64 values.
 type Float64Output struct{ *OutputState }
 
+func (Float64Output) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (float64).
 func (Float64Output) ElementType() reflect.Type {
 	return float64Type
@@ -1909,6 +2036,12 @@ type float64Ptr float64
 func Float64Ptr(v float64) Float64PtrInput {
 	return (*float64Ptr)(&v)
 }
+func Float64PtrFromPtr(v *float64) Float64PtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*float64Ptr)(v)
+}
 
 // ElementType returns the element type of this Input (*float64).
 func (*float64Ptr) ElementType() reflect.Type {
@@ -1925,6 +2058,10 @@ func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64
 
 // Float64PtrOutput is an Output that returns *float64 values.
 type Float64PtrOutput struct{ *OutputState }
+
+func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*float64).
 func (Float64PtrOutput) ElementType() reflect.Type {
@@ -1978,6 +2115,10 @@ func (in Float64Array) ToFloat64ArrayOutputWithContext(ctx context.Context) Floa
 
 // Float64ArrayOutput is an Output that returns []float64 values.
 type Float64ArrayOutput struct{ *OutputState }
+
+func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]float64).
 func (Float64ArrayOutput) ElementType() reflect.Type {
@@ -2051,6 +2192,10 @@ func (in Float64Map) ToFloat64MapOutputWithContext(ctx context.Context) Float64M
 // Float64MapOutput is an Output that returns map[string]float64 values.
 type Float64MapOutput struct{ *OutputState }
 
+func (Float64MapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]float64).
 func (Float64MapOutput) ElementType() reflect.Type {
 	return float64MapType
@@ -2116,6 +2261,10 @@ func (in Float64ArrayMap) ToFloat64ArrayMapOutputWithContext(ctx context.Context
 // Float64ArrayMapOutput is an Output that returns map[string][]float64 values.
 type Float64ArrayMapOutput struct{ *OutputState }
 
+func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]float64).
 func (Float64ArrayMapOutput) ElementType() reflect.Type {
 	return float64ArrayMapType
@@ -2180,6 +2329,10 @@ func (in Float64MapArray) ToFloat64MapArrayOutputWithContext(ctx context.Context
 
 // Float64MapArrayOutput is an Output that returns []map[string]float64 values.
 type Float64MapArrayOutput struct{ *OutputState }
+
+func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]float64).
 func (Float64MapArrayOutput) ElementType() reflect.Type {
@@ -2253,6 +2406,10 @@ func (in Float64MapMap) ToFloat64MapMapOutputWithContext(ctx context.Context) Fl
 // Float64MapMapOutput is an Output that returns map[string]map[string]float64 values.
 type Float64MapMapOutput struct{ *OutputState }
 
+func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]float64).
 func (Float64MapMapOutput) ElementType() reflect.Type {
 	return float64MapMapType
@@ -2317,6 +2474,10 @@ func (in Float64ArrayArray) ToFloat64ArrayArrayOutputWithContext(ctx context.Con
 
 // Float64ArrayArrayOutput is an Output that returns [][]float64 values.
 type Float64ArrayArrayOutput struct{ *OutputState }
+
+func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]float64).
 func (Float64ArrayArrayOutput) ElementType() reflect.Type {
@@ -2406,6 +2567,10 @@ func (in ID) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 // IDOutput is an Output that returns ID values.
 type IDOutput struct{ *OutputState }
 
+func (IDOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (ID).
 func (IDOutput) ElementType() reflect.Type {
 	return idType
@@ -2455,6 +2620,12 @@ type idPtr ID
 func IDPtr(v ID) IDPtrInput {
 	return (*idPtr)(&v)
 }
+func IDPtrFromPtr(v *ID) IDPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*idPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*ID).
 func (*idPtr) ElementType() reflect.Type {
@@ -2471,6 +2642,10 @@ func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 
 // IDPtrOutput is an Output that returns *ID values.
 type IDPtrOutput struct{ *OutputState }
+
+func (IDPtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*ID).
 func (IDPtrOutput) ElementType() reflect.Type {
@@ -2524,6 +2699,10 @@ func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput 
 
 // IDArrayOutput is an Output that returns []ID values.
 type IDArrayOutput struct{ *OutputState }
+
+func (IDArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]ID).
 func (IDArrayOutput) ElementType() reflect.Type {
@@ -2597,6 +2776,10 @@ func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 // IDMapOutput is an Output that returns map[string]ID values.
 type IDMapOutput struct{ *OutputState }
 
+func (IDMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]ID).
 func (IDMapOutput) ElementType() reflect.Type {
 	return iDMapType
@@ -2662,6 +2845,10 @@ func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayM
 // IDArrayMapOutput is an Output that returns map[string][]ID values.
 type IDArrayMapOutput struct{ *OutputState }
 
+func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]ID).
 func (IDArrayMapOutput) ElementType() reflect.Type {
 	return iDArrayMapType
@@ -2726,6 +2913,10 @@ func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArr
 
 // IDMapArrayOutput is an Output that returns []map[string]ID values.
 type IDMapArrayOutput struct{ *OutputState }
+
+func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]ID).
 func (IDMapArrayOutput) ElementType() reflect.Type {
@@ -2799,6 +2990,10 @@ func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutp
 // IDMapMapOutput is an Output that returns map[string]map[string]ID values.
 type IDMapMapOutput struct{ *OutputState }
 
+func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]ID).
 func (IDMapMapOutput) ElementType() reflect.Type {
 	return iDMapMapType
@@ -2863,6 +3058,10 @@ func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDAr
 
 // IDArrayArrayOutput is an Output that returns [][]ID values.
 type IDArrayArrayOutput struct{ *OutputState }
+
+func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]ID).
 func (IDArrayArrayOutput) ElementType() reflect.Type {
@@ -2936,6 +3135,10 @@ func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 // ArrayOutput is an Output that returns []interface{} values.
 type ArrayOutput struct{ *OutputState }
 
+func (ArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output ([]interface{}).
 func (ArrayOutput) ElementType() reflect.Type {
 	return arrayType
@@ -3008,6 +3211,10 @@ func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
 // MapOutput is an Output that returns map[string]interface{} values.
 type MapOutput struct{ *OutputState }
 
+func (MapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]interface{}).
 func (MapOutput) ElementType() reflect.Type {
 	return mapType
@@ -3073,6 +3280,10 @@ func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutp
 // ArrayMapOutput is an Output that returns map[string][]interface{} values.
 type ArrayMapOutput struct{ *OutputState }
 
+func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]interface{}).
 func (ArrayMapOutput) ElementType() reflect.Type {
 	return arrayMapType
@@ -3137,6 +3348,10 @@ func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutp
 
 // MapArrayOutput is an Output that returns []map[string]interface{} values.
 type MapArrayOutput struct{ *OutputState }
+
+func (MapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]interface{}).
 func (MapArrayOutput) ElementType() reflect.Type {
@@ -3210,6 +3425,10 @@ func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
 // MapMapOutput is an Output that returns map[string]map[string]interface{} values.
 type MapMapOutput struct{ *OutputState }
 
+func (MapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]interface{}).
 func (MapMapOutput) ElementType() reflect.Type {
 	return mapMapType
@@ -3274,6 +3493,10 @@ func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArr
 
 // ArrayArrayOutput is an Output that returns [][]interface{} values.
 type ArrayArrayOutput struct{ *OutputState }
+
+func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]interface{}).
 func (ArrayArrayOutput) ElementType() reflect.Type {
@@ -3346,6 +3569,10 @@ func (in ArrayArrayMap) ToArrayArrayMapOutputWithContext(ctx context.Context) Ar
 
 // ArrayArrayMapOutput is an Output that returns map[string][][]interface{} values.
 type ArrayArrayMapOutput struct{ *OutputState }
+
+func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (map[string][][]interface{}).
 func (ArrayArrayMapOutput) ElementType() reflect.Type {
@@ -3423,6 +3650,10 @@ func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 // IntOutput is an Output that returns int values.
 type IntOutput struct{ *OutputState }
 
+func (IntOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (int).
 func (IntOutput) ElementType() reflect.Type {
 	return intType
@@ -3462,6 +3693,12 @@ type intPtr int
 func IntPtr(v int) IntPtrInput {
 	return (*intPtr)(&v)
 }
+func IntPtrFromPtr(v *int) IntPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*intPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*int).
 func (*intPtr) ElementType() reflect.Type {
@@ -3478,6 +3715,10 @@ func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 
 // IntPtrOutput is an Output that returns *int values.
 type IntPtrOutput struct{ *OutputState }
+
+func (IntPtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*int).
 func (IntPtrOutput) ElementType() reflect.Type {
@@ -3531,6 +3772,10 @@ func (in IntArray) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutp
 
 // IntArrayOutput is an Output that returns []int values.
 type IntArrayOutput struct{ *OutputState }
+
+func (IntArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]int).
 func (IntArrayOutput) ElementType() reflect.Type {
@@ -3604,6 +3849,10 @@ func (in IntMap) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
 // IntMapOutput is an Output that returns map[string]int values.
 type IntMapOutput struct{ *OutputState }
 
+func (IntMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]int).
 func (IntMapOutput) ElementType() reflect.Type {
 	return intMapType
@@ -3669,6 +3918,10 @@ func (in IntArrayMap) ToIntArrayMapOutputWithContext(ctx context.Context) IntArr
 // IntArrayMapOutput is an Output that returns map[string][]int values.
 type IntArrayMapOutput struct{ *OutputState }
 
+func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]int).
 func (IntArrayMapOutput) ElementType() reflect.Type {
 	return intArrayMapType
@@ -3733,6 +3986,10 @@ func (in IntMapArray) ToIntMapArrayOutputWithContext(ctx context.Context) IntMap
 
 // IntMapArrayOutput is an Output that returns []map[string]int values.
 type IntMapArrayOutput struct{ *OutputState }
+
+func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]int).
 func (IntMapArrayOutput) ElementType() reflect.Type {
@@ -3806,6 +4063,10 @@ func (in IntMapMap) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapO
 // IntMapMapOutput is an Output that returns map[string]map[string]int values.
 type IntMapMapOutput struct{ *OutputState }
 
+func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]int).
 func (IntMapMapOutput) ElementType() reflect.Type {
 	return intMapMapType
@@ -3870,6 +4131,10 @@ func (in IntArrayArray) ToIntArrayArrayOutputWithContext(ctx context.Context) In
 
 // IntArrayArrayOutput is an Output that returns [][]int values.
 type IntArrayArrayOutput struct{ *OutputState }
+
+func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]int).
 func (IntArrayArrayOutput) ElementType() reflect.Type {
@@ -3954,6 +4219,10 @@ func (in String) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutp
 // StringOutput is an Output that returns string values.
 type StringOutput struct{ *OutputState }
 
+func (StringOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (string).
 func (StringOutput) ElementType() reflect.Type {
 	return stringType
@@ -3993,6 +4262,12 @@ type stringPtr string
 func StringPtr(v string) StringPtrInput {
 	return (*stringPtr)(&v)
 }
+func StringPtrFromPtr(v *string) StringPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*stringPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*string).
 func (*stringPtr) ElementType() reflect.Type {
@@ -4009,6 +4284,10 @@ func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtr
 
 // StringPtrOutput is an Output that returns *string values.
 type StringPtrOutput struct{ *OutputState }
+
+func (StringPtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*string).
 func (StringPtrOutput) ElementType() reflect.Type {
@@ -4062,6 +4341,10 @@ func (in StringArray) ToStringArrayOutputWithContext(ctx context.Context) String
 
 // StringArrayOutput is an Output that returns []string values.
 type StringArrayOutput struct{ *OutputState }
+
+func (StringArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]string).
 func (StringArrayOutput) ElementType() reflect.Type {
@@ -4135,6 +4418,10 @@ func (in StringMap) ToStringMapOutputWithContext(ctx context.Context) StringMapO
 // StringMapOutput is an Output that returns map[string]string values.
 type StringMapOutput struct{ *OutputState }
 
+func (StringMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]string).
 func (StringMapOutput) ElementType() reflect.Type {
 	return stringMapType
@@ -4200,6 +4487,10 @@ func (in StringArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) 
 // StringArrayMapOutput is an Output that returns map[string][]string values.
 type StringArrayMapOutput struct{ *OutputState }
 
+func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]string).
 func (StringArrayMapOutput) ElementType() reflect.Type {
 	return stringArrayMapType
@@ -4264,6 +4555,10 @@ func (in StringMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) 
 
 // StringMapArrayOutput is an Output that returns []map[string]string values.
 type StringMapArrayOutput struct{ *OutputState }
+
+func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]string).
 func (StringMapArrayOutput) ElementType() reflect.Type {
@@ -4337,6 +4632,10 @@ func (in StringMapMap) ToStringMapMapOutputWithContext(ctx context.Context) Stri
 // StringMapMapOutput is an Output that returns map[string]map[string]string values.
 type StringMapMapOutput struct{ *OutputState }
 
+func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]string).
 func (StringMapMapOutput) ElementType() reflect.Type {
 	return stringMapMapType
@@ -4401,6 +4700,10 @@ func (in StringArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Conte
 
 // StringArrayArrayOutput is an Output that returns [][]string values.
 type StringArrayArrayOutput struct{ *OutputState }
+
+func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([][]string).
 func (StringArrayArrayOutput) ElementType() reflect.Type {
@@ -4490,6 +4793,10 @@ func (in URN) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 // URNOutput is an Output that returns URN values.
 type URNOutput struct{ *OutputState }
 
+func (URNOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (URN).
 func (URNOutput) ElementType() reflect.Type {
 	return urnType
@@ -4539,6 +4846,12 @@ type urnPtr URN
 func URNPtr(v URN) URNPtrInput {
 	return (*urnPtr)(&v)
 }
+func URNPtrFromPtr(v *URN) URNPtrInput {
+	if v == nil {
+		return nil
+	}
+	return (*urnPtr)(v)
+}
 
 // ElementType returns the element type of this Input (*URN).
 func (*urnPtr) ElementType() reflect.Type {
@@ -4555,6 +4868,10 @@ func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 
 // URNPtrOutput is an Output that returns *URN values.
 type URNPtrOutput struct{ *OutputState }
+
+func (URNPtrOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output (*URN).
 func (URNPtrOutput) ElementType() reflect.Type {
@@ -4608,6 +4925,10 @@ func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutp
 
 // URNArrayOutput is an Output that returns []URN values.
 type URNArrayOutput struct{ *OutputState }
+
+func (URNArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]URN).
 func (URNArrayOutput) ElementType() reflect.Type {
@@ -4681,6 +5002,10 @@ func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 // URNMapOutput is an Output that returns map[string]URN values.
 type URNMapOutput struct{ *OutputState }
 
+func (URNMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]URN).
 func (URNMapOutput) ElementType() reflect.Type {
 	return uRNMapType
@@ -4746,6 +5071,10 @@ func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArr
 // URNArrayMapOutput is an Output that returns map[string][]URN values.
 type URNArrayMapOutput struct{ *OutputState }
 
+func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string][]URN).
 func (URNArrayMapOutput) ElementType() reflect.Type {
 	return uRNArrayMapType
@@ -4810,6 +5139,10 @@ func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMap
 
 // URNMapArrayOutput is an Output that returns []map[string]URN values.
 type URNMapArrayOutput struct{ *OutputState }
+
+func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
 
 // ElementType returns the element type of this Output ([]map[string]URN).
 func (URNMapArrayOutput) ElementType() reflect.Type {
@@ -4883,6 +5216,10 @@ func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapO
 // URNMapMapOutput is an Output that returns map[string]map[string]URN values.
 type URNMapMapOutput struct{ *OutputState }
 
+func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output (map[string]map[string]URN).
 func (URNMapMapOutput) ElementType() reflect.Type {
 	return uRNMapMapType
@@ -4948,6 +5285,10 @@ func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) UR
 // URNArrayArrayOutput is an Output that returns [][]URN values.
 type URNArrayArrayOutput struct{ *OutputState }
 
+func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
 // ElementType returns the element type of this Output ([][]URN).
 func (URNArrayArrayOutput) ElementType() reflect.Type {
 	return uRNArrayArrayType
@@ -4998,6 +5339,958 @@ func getResolvedValue(input Input) (reflect.Value, bool) {
 	default:
 		return reflect.Value{}, false
 	}
+}
+
+// AsArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// Archive and returns a `ArchiveOutput` with that value. AsArchiveOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsArchiveOutput() ArchiveOutput {
+	return a.ApplyT(func(i interface{}) Archive {
+		return i.(Archive)
+	}).(ArchiveOutput)
+}
+
+// AsArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []Archive or a compatible type and returns a `ArchiveArrayOutput` with that value.
+// AsArchiveArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayOutput() ArchiveArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]Archive), nil
+	}).(ArchiveArrayOutput)
+}
+
+// AsArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]Archive or a compatible type and returns a `ArchiveMapOutput` with that value.
+// AsArchiveMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapOutput() ArchiveMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]Archive), nil
+	}).(ArchiveMapOutput)
+}
+
+// AsArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]Archive or a compatible type and returns a `ArchiveArrayMapOutput` with that value.
+// AsArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayMapOutput() ArchiveArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]Archive), nil
+	}).(ArchiveArrayMapOutput)
+}
+
+// AsArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]Archive or a compatible type and returns a `ArchiveMapArrayOutput` with that value.
+// AsArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapArrayOutput() ArchiveMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]Archive), nil
+	}).(ArchiveMapArrayOutput)
+}
+
+// AsArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]Archive or a compatible type and returns a `ArchiveMapMapOutput` with that value.
+// AsArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveMapMapOutput() ArchiveMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]Archive), nil
+	}).(ArchiveMapMapOutput)
+}
+
+// AsArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]Archive or a compatible type and returns a `ArchiveArrayArrayOutput` with that value.
+// AsArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]Archive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Archive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]Archive), nil
+	}).(ArchiveArrayArrayOutput)
+}
+
+// AsAssetOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// Asset and returns a `AssetOutput` with that value. AsAssetOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsAssetOutput() AssetOutput {
+	return a.ApplyT(func(i interface{}) Asset {
+		return i.(Asset)
+	}).(AssetOutput)
+}
+
+// AsAssetArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []Asset or a compatible type and returns a `AssetArrayOutput` with that value.
+// AsAssetArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayOutput() AssetArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]Asset), nil
+	}).(AssetArrayOutput)
+}
+
+// AsAssetMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]Asset or a compatible type and returns a `AssetMapOutput` with that value.
+// AsAssetMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapOutput() AssetMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]Asset), nil
+	}).(AssetMapOutput)
+}
+
+// AsAssetArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]Asset or a compatible type and returns a `AssetArrayMapOutput` with that value.
+// AsAssetArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayMapOutput() AssetArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]Asset), nil
+	}).(AssetArrayMapOutput)
+}
+
+// AsAssetMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]Asset or a compatible type and returns a `AssetMapArrayOutput` with that value.
+// AsAssetMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapArrayOutput() AssetMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]Asset), nil
+	}).(AssetMapArrayOutput)
+}
+
+// AsAssetMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]Asset or a compatible type and returns a `AssetMapMapOutput` with that value.
+// AsAssetMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetMapMapOutput() AssetMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]Asset), nil
+	}).(AssetMapMapOutput)
+}
+
+// AsAssetArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]Asset or a compatible type and returns a `AssetArrayArrayOutput` with that value.
+// AsAssetArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetArrayArrayOutput() AssetArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]Asset, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]Asset)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]Asset), nil
+	}).(AssetArrayArrayOutput)
+}
+
+// AsAssetOrArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// AssetOrArchive and returns a `AssetOrArchiveOutput` with that value. AsAssetOrArchiveOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsAssetOrArchiveOutput() AssetOrArchiveOutput {
+	return a.ApplyT(func(i interface{}) AssetOrArchive {
+		return i.(AssetOrArchive)
+	}).(AssetOrArchiveOutput)
+}
+
+// AsAssetOrArchiveArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayOutput` with that value.
+// AsAssetOrArchiveArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayOutput)
+}
+
+// AsAssetOrArchiveMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapOutput` with that value.
+// AsAssetOrArchiveMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapOutput)
+}
+
+// AsAssetOrArchiveArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayMapOutput` with that value.
+// AsAssetOrArchiveArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapOutput)
+}
+
+// AsAssetOrArchiveMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapArrayOutput` with that value.
+// AsAssetOrArchiveMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayOutput)
+}
+
+// AsAssetOrArchiveMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]AssetOrArchive or a compatible type and returns a `AssetOrArchiveMapMapOutput` with that value.
+// AsAssetOrArchiveMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapOutput)
+}
+
+// AsAssetOrArchiveArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]AssetOrArchive or a compatible type and returns a `AssetOrArchiveArrayArrayOutput` with that value.
+// AsAssetOrArchiveArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]AssetOrArchive, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayOutput)
+}
+
+// AsBoolOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// bool and returns a `BoolOutput` with that value. AsBoolOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsBoolOutput() BoolOutput {
+	return a.ApplyT(func(i interface{}) bool {
+		return i.(bool)
+	}).(BoolOutput)
+}
+
+// AsBoolPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *bool or a compatible type and returns a `BoolPtrOutput` with that value.
+// AsBoolPtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolPtrOutput() BoolPtrOutput {
+	return a.ApplyT(func(i interface{}) (*bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*bool), nil
+	}).(BoolPtrOutput)
+}
+
+// AsBoolArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []bool or a compatible type and returns a `BoolArrayOutput` with that value.
+// AsBoolArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayOutput() BoolArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]bool), nil
+	}).(BoolArrayOutput)
+}
+
+// AsBoolMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]bool or a compatible type and returns a `BoolMapOutput` with that value.
+// AsBoolMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapOutput() BoolMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]bool), nil
+	}).(BoolMapOutput)
+}
+
+// AsBoolArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]bool or a compatible type and returns a `BoolArrayMapOutput` with that value.
+// AsBoolArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayMapOutput() BoolArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]bool), nil
+	}).(BoolArrayMapOutput)
+}
+
+// AsBoolMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]bool or a compatible type and returns a `BoolMapArrayOutput` with that value.
+// AsBoolMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapArrayOutput() BoolMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]bool), nil
+	}).(BoolMapArrayOutput)
+}
+
+// AsBoolMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]bool or a compatible type and returns a `BoolMapMapOutput` with that value.
+// AsBoolMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolMapMapOutput() BoolMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]bool), nil
+	}).(BoolMapMapOutput)
+}
+
+// AsBoolArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]bool or a compatible type and returns a `BoolArrayArrayOutput` with that value.
+// AsBoolArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBoolArrayArrayOutput() BoolArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]bool, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]bool)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]bool), nil
+	}).(BoolArrayArrayOutput)
+}
+
+// AsFloat64Output asserts that the type of the AnyOutput's underlying interface{} value is
+// float64 and returns a `Float64Output` with that value. AsFloat64Output panics if the value
+// was not the expected type.
+func (a AnyOutput) AsFloat64Output() Float64Output {
+	return a.ApplyT(func(i interface{}) float64 {
+		return i.(float64)
+	}).(Float64Output)
+}
+
+// AsFloat64PtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *float64 or a compatible type and returns a `Float64PtrOutput` with that value.
+// AsFloat64PtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64PtrOutput() Float64PtrOutput {
+	return a.ApplyT(func(i interface{}) (*float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*float64), nil
+	}).(Float64PtrOutput)
+}
+
+// AsFloat64ArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []float64 or a compatible type and returns a `Float64ArrayOutput` with that value.
+// AsFloat64ArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayOutput() Float64ArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]float64), nil
+	}).(Float64ArrayOutput)
+}
+
+// AsFloat64MapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]float64 or a compatible type and returns a `Float64MapOutput` with that value.
+// AsFloat64MapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapOutput() Float64MapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]float64), nil
+	}).(Float64MapOutput)
+}
+
+// AsFloat64ArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]float64 or a compatible type and returns a `Float64ArrayMapOutput` with that value.
+// AsFloat64ArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayMapOutput() Float64ArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]float64), nil
+	}).(Float64ArrayMapOutput)
+}
+
+// AsFloat64MapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]float64 or a compatible type and returns a `Float64MapArrayOutput` with that value.
+// AsFloat64MapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapArrayOutput() Float64MapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]float64), nil
+	}).(Float64MapArrayOutput)
+}
+
+// AsFloat64MapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]float64 or a compatible type and returns a `Float64MapMapOutput` with that value.
+// AsFloat64MapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64MapMapOutput() Float64MapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]float64), nil
+	}).(Float64MapMapOutput)
+}
+
+// AsFloat64ArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]float64 or a compatible type and returns a `Float64ArrayArrayOutput` with that value.
+// AsFloat64ArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]float64, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]float64)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]float64), nil
+	}).(Float64ArrayArrayOutput)
+}
+
+// AsIDOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// ID and returns a `IDOutput` with that value. AsIDOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsIDOutput() IDOutput {
+	return a.ApplyT(func(i interface{}) ID {
+		return i.(ID)
+	}).(IDOutput)
+}
+
+// AsIDPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *ID or a compatible type and returns a `IDPtrOutput` with that value.
+// AsIDPtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDPtrOutput() IDPtrOutput {
+	return a.ApplyT(func(i interface{}) (*ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*ID), nil
+	}).(IDPtrOutput)
+}
+
+// AsIDArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []ID or a compatible type and returns a `IDArrayOutput` with that value.
+// AsIDArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayOutput() IDArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]ID), nil
+	}).(IDArrayOutput)
+}
+
+// AsIDMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]ID or a compatible type and returns a `IDMapOutput` with that value.
+// AsIDMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapOutput() IDMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]ID), nil
+	}).(IDMapOutput)
+}
+
+// AsIDArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]ID or a compatible type and returns a `IDArrayMapOutput` with that value.
+// AsIDArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayMapOutput() IDArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]ID), nil
+	}).(IDArrayMapOutput)
+}
+
+// AsIDMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]ID or a compatible type and returns a `IDMapArrayOutput` with that value.
+// AsIDMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapArrayOutput() IDMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]ID), nil
+	}).(IDMapArrayOutput)
+}
+
+// AsIDMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]ID or a compatible type and returns a `IDMapMapOutput` with that value.
+// AsIDMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDMapMapOutput() IDMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]ID), nil
+	}).(IDMapMapOutput)
+}
+
+// AsIDArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]ID or a compatible type and returns a `IDArrayArrayOutput` with that value.
+// AsIDArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIDArrayArrayOutput() IDArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]ID, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]ID)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]ID), nil
+	}).(IDArrayArrayOutput)
+}
+
+// AsArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []interface{} or a compatible type and returns a `ArrayOutput` with that value.
+// AsArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayOutput() ArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]interface{}), nil
+	}).(ArrayOutput)
+}
+
+// AsMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]interface{} or a compatible type and returns a `MapOutput` with that value.
+// AsMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapOutput() MapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]interface{}), nil
+	}).(MapOutput)
+}
+
+// AsArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]interface{} or a compatible type and returns a `ArrayMapOutput` with that value.
+// AsArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayMapOutput() ArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]interface{}), nil
+	}).(ArrayMapOutput)
+}
+
+// AsMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]interface{} or a compatible type and returns a `MapArrayOutput` with that value.
+// AsMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapArrayOutput() MapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]interface{}), nil
+	}).(MapArrayOutput)
+}
+
+// AsMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]interface{} or a compatible type and returns a `MapMapOutput` with that value.
+// AsMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsMapMapOutput() MapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]interface{}), nil
+	}).(MapMapOutput)
+}
+
+// AsArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]interface{} or a compatible type and returns a `ArrayArrayOutput` with that value.
+// AsArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayArrayOutput() ArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]interface{}), nil
+	}).(ArrayArrayOutput)
+}
+
+// AsArrayArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][][]interface{} or a compatible type and returns a `ArrayArrayMapOutput` with that value.
+// AsArrayArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsArrayArrayMapOutput() ArrayArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][][]interface{}, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][][]interface{})(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][][]interface{}), nil
+	}).(ArrayArrayMapOutput)
+}
+
+// AsIntOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// int and returns a `IntOutput` with that value. AsIntOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsIntOutput() IntOutput {
+	return a.ApplyT(func(i interface{}) int {
+		return i.(int)
+	}).(IntOutput)
+}
+
+// AsIntPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *int or a compatible type and returns a `IntPtrOutput` with that value.
+// AsIntPtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntPtrOutput() IntPtrOutput {
+	return a.ApplyT(func(i interface{}) (*int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*int), nil
+	}).(IntPtrOutput)
+}
+
+// AsIntArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []int or a compatible type and returns a `IntArrayOutput` with that value.
+// AsIntArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayOutput() IntArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]int), nil
+	}).(IntArrayOutput)
+}
+
+// AsIntMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]int or a compatible type and returns a `IntMapOutput` with that value.
+// AsIntMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapOutput() IntMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]int), nil
+	}).(IntMapOutput)
+}
+
+// AsIntArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]int or a compatible type and returns a `IntArrayMapOutput` with that value.
+// AsIntArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayMapOutput() IntArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]int), nil
+	}).(IntArrayMapOutput)
+}
+
+// AsIntMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]int or a compatible type and returns a `IntMapArrayOutput` with that value.
+// AsIntMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapArrayOutput() IntMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]int), nil
+	}).(IntMapArrayOutput)
+}
+
+// AsIntMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]int or a compatible type and returns a `IntMapMapOutput` with that value.
+// AsIntMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntMapMapOutput() IntMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]int), nil
+	}).(IntMapMapOutput)
+}
+
+// AsIntArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]int or a compatible type and returns a `IntArrayArrayOutput` with that value.
+// AsIntArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsIntArrayArrayOutput() IntArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]int, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]int)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]int), nil
+	}).(IntArrayArrayOutput)
+}
+
+// AsStringOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// string and returns a `StringOutput` with that value. AsStringOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsStringOutput() StringOutput {
+	return a.ApplyT(func(i interface{}) string {
+		return i.(string)
+	}).(StringOutput)
+}
+
+// AsStringPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *string or a compatible type and returns a `StringPtrOutput` with that value.
+// AsStringPtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringPtrOutput() StringPtrOutput {
+	return a.ApplyT(func(i interface{}) (*string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*string), nil
+	}).(StringPtrOutput)
+}
+
+// AsStringArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []string or a compatible type and returns a `StringArrayOutput` with that value.
+// AsStringArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayOutput() StringArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]string), nil
+	}).(StringArrayOutput)
+}
+
+// AsStringMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]string or a compatible type and returns a `StringMapOutput` with that value.
+// AsStringMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapOutput() StringMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]string), nil
+	}).(StringMapOutput)
+}
+
+// AsStringArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]string or a compatible type and returns a `StringArrayMapOutput` with that value.
+// AsStringArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayMapOutput() StringArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]string), nil
+	}).(StringArrayMapOutput)
+}
+
+// AsStringMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]string or a compatible type and returns a `StringMapArrayOutput` with that value.
+// AsStringMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapArrayOutput() StringMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]string), nil
+	}).(StringMapArrayOutput)
+}
+
+// AsStringMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]string or a compatible type and returns a `StringMapMapOutput` with that value.
+// AsStringMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringMapMapOutput() StringMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]string), nil
+	}).(StringMapMapOutput)
+}
+
+// AsStringArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]string or a compatible type and returns a `StringArrayArrayOutput` with that value.
+// AsStringArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsStringArrayArrayOutput() StringArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]string, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]string)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]string), nil
+	}).(StringArrayArrayOutput)
+}
+
+// AsURNOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// URN and returns a `URNOutput` with that value. AsURNOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsURNOutput() URNOutput {
+	return a.ApplyT(func(i interface{}) URN {
+		return i.(URN)
+	}).(URNOutput)
+}
+
+// AsURNPtrOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// *URN or a compatible type and returns a `URNPtrOutput` with that value.
+// AsURNPtrOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNPtrOutput() URNPtrOutput {
+	return a.ApplyT(func(i interface{}) (*URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((**URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(*URN), nil
+	}).(URNPtrOutput)
+}
+
+// AsURNArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []URN or a compatible type and returns a `URNArrayOutput` with that value.
+// AsURNArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayOutput() URNArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]URN), nil
+	}).(URNArrayOutput)
+}
+
+// AsURNMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]URN or a compatible type and returns a `URNMapOutput` with that value.
+// AsURNMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapOutput() URNMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]URN), nil
+	}).(URNMapOutput)
+}
+
+// AsURNArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]URN or a compatible type and returns a `URNArrayMapOutput` with that value.
+// AsURNArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayMapOutput() URNArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]URN), nil
+	}).(URNArrayMapOutput)
+}
+
+// AsURNMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]URN or a compatible type and returns a `URNMapArrayOutput` with that value.
+// AsURNMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapArrayOutput() URNMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]URN), nil
+	}).(URNMapArrayOutput)
+}
+
+// AsURNMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]URN or a compatible type and returns a `URNMapMapOutput` with that value.
+// AsURNMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNMapMapOutput() URNMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]URN), nil
+	}).(URNMapMapOutput)
+}
+
+// AsURNArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]URN or a compatible type and returns a `URNArrayArrayOutput` with that value.
+// AsURNArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]URN, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]URN)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]URN), nil
+	}).(URNArrayArrayOutput)
 }
 
 func init() {

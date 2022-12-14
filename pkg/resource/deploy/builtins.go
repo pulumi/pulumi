@@ -46,6 +46,10 @@ func (p *builtinProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
 
+func (p *builtinProvider) GetMapping(key string) ([]byte, string, error) {
+	return nil, "", nil
+}
+
 // CheckConfig validates the configuration for this resource provider.
 func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -66,7 +70,7 @@ func (p *builtinProvider) Configure(props resource.PropertyMap) error {
 const stackReferenceType = "pulumi:pulumi:StackReference"
 
 func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
 	typ := urn.Type()
 	if typ != stackReferenceType {

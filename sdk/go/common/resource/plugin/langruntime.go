@@ -15,8 +15,10 @@
 package plugin
 
 import (
+	"context"
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -27,7 +29,7 @@ type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error)
+	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error)
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real
@@ -41,6 +43,33 @@ type LanguageRuntime interface {
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
 	InstallDependencies(directory string) error
+
+	// About returns information about the language runtime.
+	About() (AboutInfo, error)
+
+	// GetProgramDependencies returns information about the dependencies for the given program.
+	GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+
+	// RunPlugin executes a plugin program and returns its result asynchronously.
+	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+}
+
+type DependencyInfo struct {
+	Name    string
+	Version semver.Version
+}
+
+type AboutInfo struct {
+	Executable string
+	Version    string
+	Metadata   map[string]string
+}
+
+type RunPluginInfo struct {
+	Pwd     string
+	Program string
+	Args    []string
+	Env     []string
 }
 
 // ProgInfo contains minimal information about the program to be run.
@@ -63,4 +92,5 @@ type RunInfo struct {
 	DryRun           bool                  // true if we are performing a dry-run (preview).
 	QueryMode        bool                  // true if we're only doing a query.
 	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
+	Organization     string                // the organization name housing the program being run (might be empty).
 }

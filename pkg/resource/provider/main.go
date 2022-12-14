@@ -73,8 +73,9 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
-	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancelChannel,
+		Init: func(srv *grpc.Server) error {
 			prov, proverr := provMaker(host)
 			if proverr != nil {
 				return fmt.Errorf("failed to create resource provider: %v", proverr)
@@ -82,16 +83,17 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 
 	// The resource provider protocol requires that we now write out the port we have chosen to listen on.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// Finally, wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		return fmt.Errorf("fatal: %v", err)
 	}
 

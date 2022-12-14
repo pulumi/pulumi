@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,32 +44,58 @@ func IsBenignCloseErr(err error) bool {
 		strings.HasSuffix(msg, "grpc: the server has been stopped")
 }
 
-// Serve creates a new gRPC server, calls out to the supplied registration functions to bind interfaces, and then
-// listens on the supplied TCP port.  If the caller wishes for the kernel to choose a free port automatically, pass 0 as
-// the port number.  The return values are: the chosen port (the same as supplied if non-0), a channel that may
-// eventually return an error, and an error, in case something went wrong.  The channel is non-nil and waits until
-// the server is finished, in the case of a successful launch of the RPC server.
-func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
-	parentSpan opentracing.Span, options ...otgrpc.Option) (int, chan error, error) {
+type ServeOptions struct {
+	// Port to listen on. Passing 0 makes the system choose a port automatically.
+	Port int
+
+	// Initializer for the server. A typical Init registers handlers.
+	Init func(*grpc.Server) error
+
+	// If non-nil, Serve will gracefully terminate the server when Cancel is closed or receives true.
+	Cancel chan bool
+
+	// Options for serving gRPC.
+	Options []grpc.ServerOption
+}
+
+type ServeHandle struct {
+	// Port the server is listening on.
+	Port int
+
+	// The channel is non-nil and is closed when the server stops serving. The server will pass a non-nil error on
+	// this channel if something went wrong in the background and it did not terminate gracefully.
+	Done <-chan error
+}
+
+// ServeWithOptions creates a new gRPC server, calls opts.Init and listens on a TCP port.
+func ServeWithOptions(opts ServeOptions) (ServeHandle, error) {
+	h, _, err := serveWithOptions(opts)
+	return h, err
+}
+
+func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
+	port := opts.Port
 
 	// Listen on a TCP port, but let the kernel choose a free port for us.
 	lis, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
 	if err != nil {
-		return port, nil, errors.Errorf("failed to listen on TCP port ':%v': %v", port, err)
+		return ServeHandle{Port: port}, nil,
+			errors.Errorf("failed to listen on TCP port ':%v': %v", port, err)
 	}
 
 	health := health.NewServer()
 
 	// Now new up a gRPC server and register any RPC interfaces the caller wants.
-	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
-		grpc.MaxRecvMsgSize(maxRPCMessageSize),
-	)
-	for _, register := range registers {
-		if err := register(srv); err != nil {
-			return port, nil, errors.Errorf("failed to register RPC handler: %v", err)
+
+	srv := grpc.NewServer(append(opts.Options, grpc.MaxRecvMsgSize(maxRPCMessageSize))...)
+
+	if opts.Init != nil {
+		if err := opts.Init(srv); err != nil {
+			return ServeHandle{Port: port}, nil,
+				errors.Errorf("failed to Init GRPC to register RPC handlers: %v", err)
 		}
 	}
+
 	healthgrpc.RegisterHealthServer(srv, health) // enable health checks
 	reflection.Register(srv)                     // enable reflection.
 
@@ -86,8 +112,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 		port = tcpa.Port
 	}
 
-	// If the caller provided a cancellation channel, start a goroutine that will gracefully terminate the gRPC server when
-	// that channel is closed or receives a `true` value.
+	cancel := opts.Cancel
 	if cancel != nil {
 		go func() {
 			for v, ok := <-cancel; !v && ok; v, ok = <-cancel {
@@ -108,5 +133,31 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 		close(done)
 	}()
 
-	return port, done, nil
+	return ServeHandle{Port: port, Done: done}, done, nil
+}
+
+// Deprecated. Please use ServeWithOptions and OpenTracingServerInterceptorOptions.
+func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
+	parentSpan opentracing.Span, options ...otgrpc.Option) (int, chan error, error) {
+
+	opts := ServeOptions{
+		Port:   port,
+		Cancel: cancel,
+		Init: func(s *grpc.Server) error {
+			for _, r := range registers {
+				if err := r(s); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Options: OpenTracingServerInterceptorOptions(parentSpan, options...),
+	}
+
+	handle, done, err := serveWithOptions(opts)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return handle.Port, done, nil
 }

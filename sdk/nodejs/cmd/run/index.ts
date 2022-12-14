@@ -83,12 +83,13 @@ process.on("exit", (code: number) => {
 import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // This is the entrypoint for running a Node.js program with minimal scaffolding.
-import * as minimist from "minimist";
+import minimist from "minimist";
 
 function usage(): void {
     console.error(`usage: RUN <flags> [program] <[arg]...>`);
     console.error(``);
     console.error(`    where [flags] may include`);
+    console.error(`        --organization=o    set the organization name to o`);
     console.error(`        --project=p         set the project name to p`);
     console.error(`        --stack=s           set the stack name to s`);
     console.error(`        --config.k=v...     set runtime config key k to value v`);
@@ -116,7 +117,7 @@ function main(args: string[]): void {
         // eslint-disable-next-line id-blacklist
         boolean: [ "dry-run", "query-mode" ],
         // eslint-disable-next-line id-blacklist
-        string: [ "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
+        string: [ "organization", "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
         unknown: (arg: string) => {
             return true;
         },
@@ -146,6 +147,7 @@ function main(args: string[]): void {
     // to squirel these settings in the environment such that other copies which may be loaded later can recover them.
     //
     // Config is already an environment variaible set by the language plugin.
+    addToEnvIfDefined("PULUMI_NODEJS_ORGANIZATION", argv["organization"]);
     addToEnvIfDefined("PULUMI_NODEJS_PROJECT", argv["project"]);
     addToEnvIfDefined("PULUMI_NODEJS_STACK", argv["stack"]);
     addToEnvIfDefined("PULUMI_NODEJS_DRY_RUN", argv["dry-run"]);
@@ -167,7 +169,7 @@ function main(args: string[]): void {
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.
         //
         // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the users code throws
-        // an exception, this promise will get rejected, and we don't want touch or otherwise intercept the exception
+        // an exception, this promise will get rejected, and we don't want to touch or otherwise intercept the exception
         // or change the programRunning state here at all.
         promise.then(() => { programRunning = false; });
     });

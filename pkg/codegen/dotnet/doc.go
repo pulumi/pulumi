@@ -79,7 +79,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	}
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
-		pkg:           pkg,
+		pkg:           pkg.Reference(),
 		mod:           moduleName,
 		typeDetails:   typeDetails,
 		namespaces:    d.Namespaces,
@@ -114,7 +114,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
 			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
-				pkg:           pkg,
+				pkg:           pkg.Reference(),
 				mod:           modName,
 				typeDetails:   typeDetails,
 				namespaces:    d.Namespaces,

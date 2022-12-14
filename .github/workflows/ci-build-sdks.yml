@@ -1,0 +1,159 @@
+name: Build SDKs
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        description: "GitHub ref to use"
+        type: string
+      version:
+        required: true
+        description: "Version to produce"
+        type: string
+
+      version-set:
+        required: false
+        description: "Set of language versions to use for builds, lints, releases, etc."
+        type: string
+        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
+        default: |
+          {
+            "dotnet": "6.0.x",
+            "go": "1.18.x",
+            "nodejs": "14.x",
+            "python": "3.9.x"
+          }
+
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_VERSION: ${{ inputs.version }}
+
+jobs:
+  build_python_sdk:
+    name: python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ fromJson(inputs.version-set).python }}
+          cache: pip
+          cache-dependency-path: sdk/python/requirements.txt
+      - name: Build Pulumi Python SDK wheel
+        run: |
+          # TODO unify with sdk/python/Makefile once that does not use pipenv
+          cp README.md sdk/python/lib
+          cd sdk/python/lib
+          sed -i.bak "s/^VERSION = .*/VERSION = \"$PYPI_VERSION\"/g" setup.py
+          rm setup.py.bak
+          python3 -m venv venv
+          source venv/bin/activate
+          python -m pip install wheel
+          python setup.py build bdist_wheel --python-tag py3
+      - name: Upload pulumi.whl
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts-python-sdk
+          path: sdk/python/lib/dist/*.whl
+          retention-days: 1
+          if-no-files-found: error
+
+  build_node_sdk:
+    name: nodejs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: yarn
+          cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Install yarn
+        run: |
+          npm install -g yarn
+      # TODO something in `cd sdk/nodejs && make ensure` executes Go
+      # downloads, which is unfortunate and wasteful in this context.
+      # When this is fixed the no-op Go command can be removed.
+      - name: Make no-op Go command to avoid Go builds
+        run: |
+           cd sdk/nodejs
+           mkdir -p bin
+           # shellcheck disable=SC2230 # need to locate echo binary
+           ln -s "$(which echo)" bin/go
+      - name: Ensure installed dependencies
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make ensure
+      - name: Build the Node SDK package
+        run: |
+          cd sdk/nodejs
+          PATH=./bin:$PATH make build_package
+      - name: Pack the Node SDK
+        run: |
+          cd sdk/nodejs/bin
+          npm pack
+      - name: Upload pulumi-node-sdk.tgz
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts-nodejs-sdk
+          path: sdk/nodejs/bin/*.tgz
+          retention-days: 1
+          if-no-files-found: error
+
+  build_dotnet_sdk:
+    name: dotnet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Setup versioning env vars
+        env:
+          version: ${{ inputs.version }}
+        run: |
+          ./scripts/versions.sh | tee -a "${GITHUB_ENV}"
+      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
+        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
+        with:
+          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
+          dotnet-quality: ga
+      - name: Build the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet build --configuration Release dotnet.sln "/p:Version=${DOTNET_VERSION}"
+      - name: Pack the .NET SDK package
+        run: |
+          cd sdk/dotnet
+          dotnet pack --configuration Release --output nupkgs dotnet.sln "/p:Version=${DOTNET_VERSION}"
+      - name: Upload the NuGet packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts-dotnet-sdk
+          path: sdk/dotnet/nupkgs/*.nupkg
+          retention-days: 1
+          if-no-files-found: error

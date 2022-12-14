@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +45,7 @@ func TestNPMInstall(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
-	os.Setenv("PULUMI_PREFER_YARN", "true")
+	t.Setenv("PULUMI_PREFER_YARN", "true")
 	testInstall(t, "yarn", false /*production*/)
 	testInstall(t, "yarn", true /*production*/)
 }
@@ -56,8 +57,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	}
 
 	// Create a new empty test directory and change the current working directory to it.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
 	// Create a package directory to install dependencies into.
@@ -69,13 +69,15 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	packageJSON := []byte(`{
 	    "name": "test-package",
 	    "dependencies": {
-	        "@pulumi/pulumi": "^2.0.0"
+	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
 	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0600))
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
+	pulumi_testing.YarnInstallMutex.Lock()
+	defer pulumi_testing.YarnInstallMutex.Unlock()
 	bin, err := Install(context.Background(), pkgdir, production, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBin, bin)

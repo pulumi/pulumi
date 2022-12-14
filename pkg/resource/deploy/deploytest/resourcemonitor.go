@@ -96,15 +96,16 @@ type ResourceOptions struct {
 	PluginDownloadURL       string
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	UrnAliases              []resource.URN
+	AliasURNs               []resource.URN
+	Aliases                 []resource.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
+	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
-	Aliases                 []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -139,25 +140,29 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.UrnAliases {
+	for _, a := range opts.AliasURNs {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 
 	aliasObjects := []*pulumirpc.Alias{}
 	for _, a := range opts.Aliases {
-		alias := &pulumirpc.Alias_Spec{
-			Name:    a.Name,
-			Type:    a.Type,
-			Project: a.Project,
-			Stack:   a.Stack,
+		var obj *pulumirpc.Alias
+		if a.URN == "" {
+			alias := &pulumirpc.Alias_Spec{
+				Name:    a.Name,
+				Type:    a.Type,
+				Project: a.Project,
+				Stack:   a.Stack,
+			}
+			if a.NoParent() {
+				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent()}
+			} else if a.Parent != "" {
+				alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
+			}
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
+		} else {
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: string(a.URN)}}
 		}
-		if a.NoParent {
-			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
-		} else if a.Parent != "" {
-			alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
-		}
-
-		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
 		aliasObjects = append(aliasObjects, obj)
 	}
 
@@ -207,7 +212,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		UrnAliases:                 aliasStrings,
+		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
@@ -218,6 +223,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,
+		DeletedWith:                string(opts.DeletedWith),
 	}
 
 	// submit request

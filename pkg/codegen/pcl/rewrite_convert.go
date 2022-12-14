@@ -44,53 +44,53 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 
 // rewriteConversions implements the core of RewriteConversions. It returns the rewritten expression and true if the
 // type of the expression may have changed.
-func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bool) {
+func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostics) (model.Expression, bool) {
 	// If rewriting an operand changed its type and the type of the expression depends on the type of that operand, the
 	// expression must be typechecked in order to update its type.
 	var typecheck bool
 
 	switch x := x.(type) {
 	case *model.AnonymousFunctionExpression:
-		x.Body, _ = rewriteConversions(x.Body, to)
+		x.Body, _ = rewriteConversions(x.Body, to, diags)
 	case *model.BinaryOpExpression:
-		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()))
-		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()))
+		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
+		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
 	case *model.ConditionalExpression:
 		var trueChanged, falseChanged bool
-		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType))
-		x.TrueResult, trueChanged = rewriteConversions(x.TrueResult, to)
-		x.FalseResult, falseChanged = rewriteConversions(x.FalseResult, to)
+		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+		x.TrueResult, trueChanged = rewriteConversions(x.TrueResult, to, diags)
+		x.FalseResult, falseChanged = rewriteConversions(x.FalseResult, to, diags)
 		typecheck = trueChanged || falseChanged
 	case *model.ForExpression:
 		traverserType := model.NumberType
 		if x.Key != nil {
 			traverserType = model.StringType
-			x.Key, _ = rewriteConversions(x.Key, model.InputType(model.StringType))
+			x.Key, _ = rewriteConversions(x.Key, model.InputType(model.StringType), diags)
 		}
 		if x.Condition != nil {
-			x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType))
+			x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
 		}
 
-		valueType, diags := to.Traverse(model.MakeTraverser(traverserType))
-		contract.Ignore(diags)
+		valueType, tdiags := to.Traverse(model.MakeTraverser(traverserType))
+		*diags = diags.Extend(tdiags)
 
-		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type))
+		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type), diags)
 	case *model.FunctionCallExpression:
 		args := x.Args
 		for _, param := range x.Signature.Parameters {
 			if len(args) == 0 {
 				break
 			}
-			args[0], _ = rewriteConversions(args[0], model.InputType(param.Type))
+			args[0], _ = rewriteConversions(args[0], model.InputType(param.Type), diags)
 			args = args[1:]
 		}
 		if x.Signature.VarargsParameter != nil {
 			for i := range args {
-				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type))
+				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
 			}
 		}
 	case *model.IndexExpression:
-		x.Key, _ = rewriteConversions(x.Key, x.KeyType())
+		x.Key, _ = rewriteConversions(x.Key, x.KeyType(), diags)
 	case *model.ObjectConsExpression:
 		if v := resolveDiscriminatedUnions(x, to); v != nil {
 			to = model.InputType(v)
@@ -98,38 +98,51 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 		}
 		for i := range x.Items {
 			item := &x.Items[i]
-
-			var traverser hcl.Traverser
-			if lit, ok := item.Key.(*model.LiteralValueExpression); ok {
-				traverser = hcl.TraverseIndex{Key: lit.Value}
-			} else {
-				traverser = model.MakeTraverser(model.StringType)
+			if item.Key.Type() == model.DynamicType {
+				// We don't know the type of this expression, so we can't correct the
+				// type.
+				continue
 			}
-			valueType, diags := to.Traverse(traverser)
-			contract.Ignore(diags)
+
+			key, ediags := item.Key.Evaluate(&hcl.EvalContext{}) // empty context, we need a constant string
+			*diags = diags.Extend(ediags)
+
+			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
+				Key:      key,
+				SrcRange: item.Key.SyntaxNode().Range(),
+			})
+			*diags = diags.Extend(tdiags)
 
 			var valueChanged bool
-			item.Key, _ = rewriteConversions(item.Key, model.InputType(model.StringType))
-			item.Value, valueChanged = rewriteConversions(item.Value, valueType.(model.Type))
+			item.Key, _ = rewriteConversions(item.Key, model.InputType(model.StringType), diags)
+			item.Value, valueChanged = rewriteConversions(item.Value, valueType.(model.Type), diags)
 			typecheck = typecheck || valueChanged
 		}
 	case *model.TupleConsExpression:
-		for i := range x.Expressions {
-			valueType, diags := to.Traverse(hcl.TraverseIndex{Key: cty.NumberIntVal(int64(i))})
-			contract.Ignore(diags)
+		for i, expr := range x.Expressions {
+			if expr.Type() == model.DynamicType {
+				// We don't know the type of this expression, so we can't correct the
+				// type.
+				continue
+			}
+			valueType, tdiags := to.Traverse(hcl.TraverseIndex{
+				Key:      cty.NumberIntVal(int64(i)),
+				SrcRange: x.Syntax.Range(),
+			})
+			*diags = diags.Extend(tdiags)
 
 			var exprChanged bool
-			x.Expressions[i], exprChanged = rewriteConversions(x.Expressions[i], valueType.(model.Type))
+			x.Expressions[i], exprChanged = rewriteConversions(expr, valueType.(model.Type), diags)
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:
-		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()))
+		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
 	}
 
 	var typeChanged bool
 	if typecheck {
-		diags := x.Typecheck(false)
-		contract.Assert(len(diags) == 0)
+		typecheckDiags := x.Typecheck(false)
+		*diags = diags.Extend(typecheckDiags)
 		typeChanged = true
 	}
 
@@ -171,12 +184,26 @@ func resolveDiscriminatedUnions(obj *model.ObjectConsExpression, modelType model
 			continue
 		}
 
-		lit, ok := item.Value.(*model.TemplateExpression)
+		// The discriminator should be a string, but it could be in the
+		// form of a *string wrapped in a __convert call so we try both.
+		var lit *model.TemplateExpression
+		lit, ok = item.Value.(*model.TemplateExpression)
+		if !ok {
+			var call *model.FunctionCallExpression
+			call, ok = item.Value.(*model.FunctionCallExpression)
+			if ok && call.Name == IntrinsicConvert {
+				lit, ok = call.Args[0].(*model.TemplateExpression)
+			}
+		}
 		if !ok {
 			continue
 		}
 
-		discriminatorValue := lit.Parts[0].(*model.LiteralValueExpression).Value.AsString()
+		discriminatorValue, ok := extractStringValue(lit)
+		if !ok {
+			return nil
+		}
+
 		if ref, ok := union.Mapping[discriminatorValue]; ok {
 			discriminatorValue = strings.TrimPrefix(ref, "#/types/")
 		}
@@ -194,25 +221,26 @@ func resolveDiscriminatedUnions(obj *model.ObjectConsExpression, modelType model
 // Note that the result is a bit out of line with the HCL2 spec, as static conversions may happen earlier than they
 // would at runtime. For example, consider the case of a tuple of strings that is being converted to a list of numbers:
 //
-//     [a, b, c]
+//	[a, b, c]
 //
 // Calling RewriteConversions on this expression with a destination type of list(number) would result in this IR:
 //
-//     [__convert(a), __convert(b), __convert(c)]
+//	[__convert(a), __convert(b), __convert(c)]
 //
 // If any of these conversions fail, the evaluation of the tuple itself fails. The HCL2 evaluation semantics, however,
 // would convert the tuple _after_ it has been evaluated. The IR that matches these semantics is
 //
-//     __convert([a, b, c])
+//	__convert([a, b, c])
 //
 // This transform uses the former representation so that it can appropriately insert calls to `__convert` in the face
 // of schema-annotated types. There is a reasonable argument to be made that RewriteConversions should not be
 // responsible for propagating schema annotations, and that this pass should be split in two: one pass would insert
 // conversions that match HCL2 evaluation semantics, and another would insert calls to some separate intrinsic in order
 // to propagate schema information.
-func RewriteConversions(x model.Expression, to model.Type) model.Expression {
-	x, _ = rewriteConversions(x, to)
-	return x
+func RewriteConversions(x model.Expression, to model.Type) (model.Expression, hcl.Diagnostics) {
+	var diags hcl.Diagnostics
+	x, _ = rewriteConversions(x, to, &diags)
+	return x, diags
 }
 
 // convertPrimitiveValues returns a new expression if the given expression can be converted to another primitive type
@@ -331,24 +359,24 @@ func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
 // need to worry about. For example:
 // Given inputs
 //
-//   from = string("foo") # a constant string with value "foo"
-//   to = union(enum(string: "foo", "bar"), input(enum(string: "foo", "bar")), none)
+//	from = string("foo") # a constant string with value "foo"
+//	to = union(enum(string: "foo", "bar"), input(enum(string: "foo", "bar")), none)
 //
 // We would receive output type:
 //
-//   enum(string: "foo", "bar")
+//	enum(string: "foo", "bar")
 //
 // since the caller can convert string("foo") to the enum directly, and does not
 // need to consider the union.
 //
 // For another example consider inputs:
 //
-//   from = var(string) # A variable of type string
-//   to = union(enum(string: "foo", "bar"), string)
+//	from = var(string) # A variable of type string
+//	to = union(enum(string: "foo", "bar"), string)
 //
 // We would return type:
 //
-//   string
+//	string
 //
 // since var(string) can be safely assigned to string, but unsafely assigned to
 // enum(string: "foo", "bar").

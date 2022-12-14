@@ -2,11 +2,10 @@ package resource
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -18,14 +17,14 @@ type PropertyPath []interface{}
 // A property path string is essentially a Javascript property access expression in which all elements are literals.
 // Valid property paths obey the following EBNF-ish grammar:
 //
-//   propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
-//   quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
-//   arrayIndex := { [0-9] }
+//	propertyName := [a-zA-Z_$] { [a-zA-Z0-9_$] }
+//	quotedPropertyName := '"' ( '\' '"' | [^"] ) { ( '\' '"' | [^"] ) } '"'
+//	arrayIndex := { [0-9] }
 //
-//   propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
-//   rootProperty := ( propertyName | propertyIndex )
-//   propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
-//   path := rootProperty { propertyAccessor }
+//	propertyIndex := '[' ( quotedPropertyName | arrayIndex ) ']'
+//	rootProperty := ( propertyName | propertyIndex )
+//	propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
+//	path := rootProperty { propertyAccessor }
 //
 // Examples of valid paths:
 // - root
@@ -92,7 +91,7 @@ func ParsePropertyPath(path string) (PropertyPath, error) {
 				} else {
 					index, err := strconv.ParseInt(segment, 10, 0)
 					if err != nil {
-						return nil, errors.Wrap(err, "invalid array index")
+						return nil, fmt.Errorf("invalid array index: %w", err)
 					}
 					pathElement, path = int(index), path[rbracket:]
 				}

@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import unittest
-from random import random
 from semver import VersionInfo
 from typing import List, Optional
+
+import pytest
 
 from pulumi import Config, export
 from pulumi.automation import (
@@ -39,6 +41,8 @@ from pulumi.automation import (
     fully_qualified_stack_name,
 )
 from pulumi.automation._local_workspace import _parse_and_validate_pulumi_version
+
+from .test_utils import get_test_org, get_test_suffix, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
@@ -70,26 +74,10 @@ def test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
 
-def get_test_org():
-    test_org = "pulumi-test"
-    env_var = os.getenv("PULUMI_TEST_ORG")
-    if env_var is not None:
-        test_org = env_var
-    return test_org
-
-
-def stack_namer(project_name):
-    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
-
-
 def normalize_config_key(key: str, project_name: str):
     parts = key.split(":")
     if len(parts) < 2:
         return f"{project_name}:{key}"
-
-
-def get_test_suffix() -> int:
-    return int(100000 + random() * 900000)
 
 
 def found_plugin(plugin_list: List[PluginInfo], name: str, version: str) -> bool:
@@ -106,6 +94,7 @@ def get_stack(stack_list: List[StackSummary], name: str) -> Optional[StackSummar
     return None
 
 
+@pytest.mark.skipif("PULUMI_ACCESS_TOKEN" not in os.environ, reason="PULUMI_ACCESS_TOKEN not set")
 class TestLocalWorkspace(unittest.TestCase):
     def test_project_settings(self):
         for ext in extensions:
@@ -734,3 +723,19 @@ def pulumi_program():
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
+
+@pytest.mark.parametrize("key,default", [("string", None), ("bar", "baz"), ("doesnt-exist", None)])
+def test_config_get_with_defaults(key, default, mock_config, config_settings):
+    assert mock_config.get(key, default) == config_settings.get(f"test-config:{key}", default)
+
+def test_config_get_int(mock_config, config_settings):
+    assert mock_config.get_int("int") == int(config_settings.get("test-config:int"))
+
+def test_config_get_bool(mock_config):
+    assert mock_config.get_bool("bool") is False
+
+def test_config_get_object(mock_config, config_settings):
+    assert mock_config.get_object("object") == json.loads(config_settings.get("test-config:object"))
+
+def test_config_get_float(mock_config, config_settings):
+    assert mock_config.get_float("float") == float(config_settings.get("test-config:float"))

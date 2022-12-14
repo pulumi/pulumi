@@ -18,27 +18,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-type Alias struct {
-	// Optional URN that uniquely identifies a resource. If specified, it takes preference and
-	// other members of the struct are ignored.
-	URN URN `json:"urn,omitempty"`
-	// The previous name of the resource.
-	Name string `json:"name,omitempty"`
-	// The previous type of the resource.
-	Type string `json:"type,omitempty"`
-	// The previous parent of the resource. If not provided, the current parent of the resource is used by default.
-	// This option is mutually exclusive to `NoParent`.
-	// Use `Alias { NoParent: true }` to avoid defaulting to the current parent.
-	Parent URN `json:"parent,omitempty"`
-	// When true, indicates that the resource previously had no parent.
-	// This option is mutually exclusive to `Parent`.
-	NoParent bool `json:"noParent,omitempty"`
-	// The name of the previous stack of the resource.
-	Stack string `json:"stack,omitempty"`
-	// The previous project of the resource.
-	Project string `json:"project,omitempty"`
-}
-
 // Goal is a desired state for a resource object.  Normally it represents a subset of the resource's state expressed by
 // a program, however if Output is true, it represents a more complete, post-deployment view of the state.
 type Goal struct {
@@ -55,12 +34,15 @@ type Goal struct {
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
 	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
-	Aliases                 []Alias               // additional alias descriptions that should be aliased to this resource.
+	Aliases                 []Alias               // additional structured Aliases that should be assigned.
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
 	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set to True, the providers Delete method will not be called for this resource.
 	RetainOnDelete bool
+	// if set, the providers Delete method will not be called for this resource
+	// if specified resource is being deleted as well.
+	DeletedWith URN
 }
 
 // NewGoal allocates a new resource goal state.
@@ -68,7 +50,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool) *Goal {
+	replaceOnChanges []string, retainOnDelete bool, deletedWith URN) *Goal {
 
 	g := &Goal{
 		Type:                    t,
@@ -88,6 +70,7 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 		ID:                      id,
 		ReplaceOnChanges:        replaceOnChanges,
 		RetainOnDelete:          retainOnDelete,
+		DeletedWith:             deletedWith,
 	}
 
 	if customTimeouts != nil {

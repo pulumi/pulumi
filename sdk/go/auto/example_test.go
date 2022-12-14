@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint
+// nolint
 package auto
 
 import (
@@ -366,6 +366,13 @@ func ExampleLocalWorkspace_InstallPlugin() {
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	w.InstallPlugin(ctx, "aws", "v3.2.0")
+}
+
+func ExampleLocalWorkspace_InstallPluginFromServer() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	w.InstallPluginFromServer(ctx, "scaleway", "v1.2.0", "github://api.github.com/lbrlabs")
 }
 
 func ExampleNewLocalWorkspace() {

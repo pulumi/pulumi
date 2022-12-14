@@ -6,31 +6,15 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Awaitable
 from . import _utilities
 
 __all__ = [
-    'FuncWithEmptyOutputsResult',
-    'AwaitableFuncWithEmptyOutputsResult',
     'func_with_empty_outputs',
-    'func_with_empty_outputs_output',
 ]
 
-@pulumi.output_type
-class FuncWithEmptyOutputsResult:
-    def __init__(__self__):
-        pass
-
-class AwaitableFuncWithEmptyOutputsResult(FuncWithEmptyOutputsResult):
-    # pylint: disable=using-constant-test
-    def __await__(self):
-        if False:
-            yield self
-        return FuncWithEmptyOutputsResult()
-
-
 def func_with_empty_outputs(name: Optional[str] = None,
-                            opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableFuncWithEmptyOutputsResult:
+                            opts: Optional[pulumi.InvokeOptions] = None) -> Awaitable[None]:
     """
     n/a
 
@@ -40,18 +24,5 @@ def func_with_empty_outputs(name: Optional[str] = None,
     __args__ = dict()
     __args__['name'] = name
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('mypkg::funcWithEmptyOutputs', __args__, opts=opts, typ=FuncWithEmptyOutputsResult).value
+    __ret__ = pulumi.runtime.invoke('mypkg::funcWithEmptyOutputs', __args__, opts=opts).value
 
-    return AwaitableFuncWithEmptyOutputsResult()
-
-
-@_utilities.lift_output_func(func_with_empty_outputs)
-def func_with_empty_outputs_output(name: Optional[pulumi.Input[str]] = None,
-                                   opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithEmptyOutputsResult]:
-    """
-    n/a
-
-
-    :param str name: The Name of the FeatureGroup.
-    """
-    ...

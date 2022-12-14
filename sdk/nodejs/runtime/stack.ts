@@ -16,7 +16,8 @@ import * as asset from "../asset";
 import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransformation } from "../resource";
-import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./settings";
+import { isDryRun, isQueryMode, setRootResource } from "./settings";
+import { setStackResource, getStackResource as stateGetStackResource } from "./state";
 
 /**
  * rootPulumiStackTypeName is the type name that should be used to construct the root component in the tree of Pulumi
@@ -25,12 +26,6 @@ import { getRootResource, isDryRun, isQueryMode, setRootResource } from "./setti
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
-let stackResource: Stack | undefined;
-
-// Get the root stack resource for the current stack deployment
-export function getStackResource(): Stack | undefined {
-    return stackResource;
-}
 
 /**
  * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
@@ -49,13 +44,17 @@ export function runInPulumiStack(init: () => Promise<any>): Promise<Inputs | und
  * Stack is the root resource for a Pulumi stack. Before invoking the `init` callback, it registers itself as the root
  * resource with the Pulumi engine.
  */
-class Stack extends ComponentResource<Inputs> {
+export class Stack extends ComponentResource<Inputs> {
     /**
      * The outputs of this stack, if the `init` callback exited normally.
      */
     public readonly outputs: Output<Inputs>;
 
     constructor(init: () => Promise<Inputs>) {
+        // Clear the stackResource so that when the Resource constructor runs it gives us no parent, we'll
+        // then set this to ourselves in init before calling the user code that will then create other
+        // resources.
+        setStackResource(undefined);
         super(rootPulumiStackTypeName, `${getProject()}-${getStack()}`, { init });
         const data = this.getData();
         this.outputs = output(data);
@@ -68,14 +67,10 @@ class Stack extends ComponentResource<Inputs> {
      * @param init The callback to run in the context of this Pulumi stack
      */
     async initialize(args: { init: () => Promise<Inputs> }): Promise<Inputs> {
-        const parent = await getRootResource();
-        if (parent) {
-            throw new Error("Only one root Pulumi Stack may be active at once");
-        }
         await setRootResource(this);
 
         // Set the global reference to the stack resource before invoking this init() function
-        stackResource = this;
+        setStackResource(this);
 
         let outputs: Inputs | undefined;
         try {
@@ -214,8 +209,13 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * Add a transformation to all future resources constructed in this Pulumi stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
+    const stackResource = getStackResource();
     if (!stackResource) {
         throw new Error("The root stack resource was referenced before it was initialized.");
     }
     stackResource.__transformations = [...(stackResource.__transformations || []), t];
+}
+
+export function getStackResource(): Stack | undefined {
+    return stateGetStackResource();
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/blang/semver"
@@ -29,6 +30,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -36,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -94,7 +97,13 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	prefix := fmt.Sprintf("%v (resource)", pkg)
 
 	if optAttach != "" {
-		conn, err := dialPlugin(optAttach, pkg.String(), prefix)
+		port, err := strconv.Atoi(optAttach)
+		if err != nil {
+			return nil, fmt.Errorf("Expected a numeric port, got %s in PULUMI_DEBUG_PROVIDERS: %w",
+				optAttach, err)
+		}
+
+		conn, err := dialPlugin(port, pkg.String(), prefix, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -107,22 +116,23 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 	} else {
 		// Load the plugin's path by using the standard workspace logic.
-		_, path, err := workspace.GetPluginPath(
-			workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
+		path, err := workspace.GetPluginPath(
+			workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1),
+			version, host.GetProjectPlugins())
 		if err != nil {
 			return nil, err
 		}
 
 		contract.Assert(path != "")
 
-		// Runtime options are passed as environment variables to the provider.
+		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
+		// dynamic providers to do things like lookup the virtual environment to use.
 		env := os.Environ()
 		for k, v := range options {
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 		}
-
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
-			[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
+			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +160,61 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		}
 	}
 
+	return p, nil
+}
+
+func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(otgrpc.SpanDecorator(decorateProviderSpans)),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "resource",
+		}
+		if pkg != "" {
+			metadata["name"] = pkg.String()
+		}
+		if path != "" {
+			metadata["path"] = path
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
+// NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
+func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+	env := os.Environ()
+
+	plug, err := newPlugin(ctx, ctx.Pwd, path, "",
+		workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, "", path))
+	if err != nil {
+		return nil, err
+	}
+	contract.Assertf(plug != nil, "unexpected nil resource plugin at %q", path)
+
+	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
+
+	p := &provider{
+		ctx:           ctx,
+		plug:          plug,
+		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
+		cfgdone:       make(chan bool),
+		legacyPreview: legacyPreview,
+	}
+
+	// If we just attached (i.e. plugin bin is nil) we need to call attach
+	if plug.Bin == "" {
+		err := p.Attach(host.ServerAddr())
+		if err != nil {
+			return nil, err
+		}
+	}
 	return p, nil
 }
 
@@ -565,7 +630,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap,
-	allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -601,10 +666,10 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
-		Urn:            string(urn),
-		Olds:           molds,
-		News:           mnews,
-		SequenceNumber: int32(sequenceNumber),
+		Urn:        string(urn),
+		Olds:       molds,
+		News:       mnews,
+		RandomSeed: randomSeed,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -1154,9 +1219,9 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	}
 
 	// Marshal the aliases.
-	aliases := make([]string, len(options.Aliases))
+	aliasURNs := make([]string, len(options.Aliases))
 	for i, alias := range options.Aliases {
-		aliases[i] = string(alias)
+		aliasURNs[i] = string(alias.URN)
 	}
 
 	// Marshal the dependencies.
@@ -1200,7 +1265,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		Protect:           options.Protect,
 		Providers:         options.Providers,
 		InputDependencies: inputDependencies,
-		Aliases:           aliases,
+		Aliases:           aliasURNs,
 		Dependencies:      dependencies,
 	})
 	if err != nil {
@@ -1667,4 +1732,22 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 	case "/pulumirpc.ResourceProvider/Invoke":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
 	}
+}
+
+// GetMapping fetches the conversion mapping (if any) for this resource provider.
+func (p *provider) GetMapping(key string) ([]byte, string, error) {
+	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
+		Key: key,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		code := rpcError.Code()
+		if code == codes.Unimplemented {
+			// For backwards compatibility, just return nothing as if the provider didn't have a mapping for
+			// the given key
+			return nil, "", nil
+		}
+		return nil, "", err
+	}
+	return resp.Data, resp.Provider, nil
 }

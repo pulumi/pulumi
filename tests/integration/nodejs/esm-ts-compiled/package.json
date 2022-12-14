@@ -7,7 +7,7 @@
         "build": "tsc"
     },
     "devDependencies": {
-        "@types/node": "^17.0.5"
+        "@types/node": "^18.0.0"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

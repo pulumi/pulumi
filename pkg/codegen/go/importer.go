@@ -27,6 +27,14 @@ type GoPackageInfo struct {
 	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
 	ImportBasePath string `json:"importBasePath,omitempty"`
 
+	// Module path for go.mod
+	//
+	//   go get github.com/pulumi/pulumi-aws-native/sdk/go/aws@v0.16.0
+	//          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ module path
+	//                                                  ~~~~~~ package path - can be any number of path parts
+	//                                                         ~~~~~~~ version
+	ModulePath string `json:"modulePath,omitempty"`
+
 	// Explicit package name, which may be different to the import path.
 	RootPackageName string `json:"rootPackageName,omitempty"`
 
@@ -68,6 +76,10 @@ type GoPackageInfo struct {
 	// GenerateExtraInputTypes determines whether or not the code generator generates input (and output) types for
 	// all plain types, instead of for only types that are used as input/output types.
 	GenerateExtraInputTypes bool `json:"generateExtraInputTypes,omitempty"`
+
+	// omitExtraInputTypes determines whether the code generator generates input (and output) types
+	// for all plain types, instead of for only types that are used as input/output types.
+	OmitExtraInputTypes bool `json:"omitExtraInputTypes,omitempty"`
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`

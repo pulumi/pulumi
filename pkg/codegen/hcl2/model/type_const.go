@@ -98,3 +98,20 @@ func (t *ConstType) unify(other Type) (Type, ConversionKind) {
 }
 
 func (*ConstType) isType() {}
+
+func IsConstType(t Type) bool {
+	switch t := t.(type) {
+	case *ConstType:
+		return true
+	case *UnionType:
+		for _, t := range t.ElementTypes {
+			_, ok := t.(*ConstType)
+			if !ok {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}

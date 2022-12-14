@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,8 +32,7 @@ type clientLanguageRuntimeHost struct {
 
 func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host, error) {
 	// Dial the language runtime.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()), rpcutil.GrpcChannelOptions())
+	conn, err := grpc.Dial(address, langRuntimePluginDialOptions(ctx, address)...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to language host: %w", err)
 	}
@@ -45,6 +44,28 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 	}, nil
 }
 
-func (host *clientLanguageRuntimeHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *clientLanguageRuntimeHost) LanguageRuntime(
+	root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
+}
+
+func langRuntimePluginDialOptions(ctx *plugin.Context, address string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(),
+		grpc.WithInsecure(),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "language",
+		}
+		if address != "" {
+			metadata["address"] = address
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
 }

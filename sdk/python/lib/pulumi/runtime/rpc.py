@@ -29,6 +29,7 @@ from typing import (
     Optional,
     Sequence,
     Set,
+    Union,
     TYPE_CHECKING,
     cast,
 )
@@ -45,7 +46,7 @@ from .. import urn as urn_util
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import CustomResource, Resource, ProviderResource
+    from ..resource import Resource, CustomResource, ProviderResource
     from ..asset import (
         FileAsset,
         RemoteAsset,
@@ -96,6 +97,39 @@ See sdk/go/common/resource/properties.go.
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
+# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
+# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
+# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
+# up causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s
+# provider.
+#
+# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
+# [2] https://github.com/pulumi/pulumi-kubernetes/issues/984
+#
+# This setting requires a platform-specific and python version-specific .so file called
+# `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is
+# released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
+# python programs using a new version.
+try:
+    from google.protobuf.pyext._message import (  # pylint: disable-msg=C0412
+        SetAllowOversizeProtos,
+    )  # pylint: disable-msg=E0611
+
+    SetAllowOversizeProtos(True)
+except ImportError:
+    pass
+
+# New versions of protobuf have moved the above import to api_implementation
+try:
+    from google.protobuf.pyext import (
+        cpp_message,
+    )  # pylint: disable-msg=E0611
+
+    if cpp_message._message is not None:
+        cpp_message._message.SetAllowOversizeProtos(True)
+except ImportError:
+    pass
+
 
 def isLegalProtobufValue(value: Any) -> bool:
     """
@@ -113,13 +147,13 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # Annotations not specifying the element type are assumed by mypy
     # to signify Any element type. Follow suit here.
-    if typ in {list, List, Sequence, abc.Sequence}:
+    if typ in [list, List, Sequence, abc.Sequence]:
         return cast(type, Any)
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = _types.get_origin(typ)
-    if typ is list or origin in {list, List, Sequence, abc.Sequence}:
+    if typ is list or origin in [list, List, Sequence, abc.Sequence]:
         args = _types.get_args(typ)
         if len(args) == 1:
             return args[0]
@@ -415,7 +449,7 @@ async def serialize_property(
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
                 origin = _types.get_origin(typ)
-                if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
+                if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                     args = _types.get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         # pylint: disable=C3001
@@ -485,11 +519,11 @@ def deserialize_properties(
         if props_struct[_special_sig_key] == _special_asset_sig:
             # This is an asset. Re-hydrate this object into an Asset.
             if "path" in props_struct:
-                return FileAsset(props_struct["path"])
+                return FileAsset(str(props_struct["path"]))
             if "text" in props_struct:
-                return StringAsset(props_struct["text"])
+                return StringAsset(str(props_struct["text"]))
             if "uri" in props_struct:
-                return RemoteAsset(props_struct["uri"])
+                return RemoteAsset(str(props_struct["uri"]))
             raise AssertionError(
                 "Invalid asset encountered when unmarshalling resource property"
             )
@@ -498,9 +532,9 @@ def deserialize_properties(
             if "assets" in props_struct:
                 return AssetArchive(deserialize_property(props_struct["assets"]))
             if "path" in props_struct:
-                return FileArchive(props_struct["path"])
+                return FileArchive(str(props_struct["path"]))
             if "uri" in props_struct:
-                return RemoteArchive(props_struct["uri"])
+                return RemoteArchive(str(props_struct["uri"]))
             raise AssertionError(
                 "Invalid archive encountered when unmarshalling resource property"
             )
@@ -537,9 +571,11 @@ def deserialize_properties(
 
 def deserialize_resource(
     ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None
-) -> "Resource":
-    urn = ref_struct["urn"]
-    version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
+) -> Union["Resource", str]:
+    urn = str(ref_struct["urn"])
+    version = (
+        str(ref_struct["packageVersion"]) if "packageVersion" in ref_struct else ""
+    )
 
     urn_parts = urn_util._parse_urn(urn)
     urn_name = urn_parts.urn_name
@@ -756,6 +792,7 @@ def translate_output_properties(
     typ: Optional[type] = None,
     transform_using_type_metadata: bool = False,
     path: Optional["_Path"] = None,
+    return_none_on_dict_type_mismatch: bool = False,
 ) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
@@ -794,7 +831,12 @@ def translate_output_properties(
     if is_rpc_secret(output):
         unwrapped = unwrap_rpc_secret(output)
         result = translate_output_properties(
-            unwrapped, output_transformer, typ, transform_using_type_metadata
+            unwrapped,
+            output_transformer,
+            typ,
+            transform_using_type_metadata,
+            path,
+            return_none_on_dict_type_mismatch,
         )
         return wrap_rpc_secret(result)
 
@@ -827,7 +869,8 @@ def translate_output_properties(
                         output_transformer,
                         get_type(k),
                         transform_using_type_metadata,
-                        path=_Path(k, parent=path),
+                        _Path(k, parent=path),
+                        return_none_on_dict_type_mismatch,
                     )
                     for k, v in output.items()
                 }
@@ -835,7 +878,7 @@ def translate_output_properties(
 
             # If typ is a dict, get the type for its values, to pass along for each key.
             origin = _types.get_origin(typ)
-            if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
+            if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     # pylint: disable=C3001
@@ -845,6 +888,8 @@ def translate_output_properties(
                     if transform_using_type_metadata:
                         # pylint: disable=C3001
                         translate = lambda k: k
+            elif return_none_on_dict_type_mismatch:
+                return None
             else:
                 raise AssertionError(
                     (
@@ -860,7 +905,8 @@ def translate_output_properties(
                 output_transformer,
                 get_type(k),
                 transform_using_type_metadata,
-                path=_Path(k, parent=path),
+                _Path(k, parent=path),
+                return_none_on_dict_type_mismatch,
             )
             for k, v in output.items()
         }
@@ -873,7 +919,8 @@ def translate_output_properties(
                 output_transformer,
                 element_type,
                 transform_using_type_metadata,
-                path=_Path(str(i), parent=path),
+                _Path(str(i), parent=path),
+                return_none_on_dict_type_mismatch,
             )
             for i, v in enumerate(output)
         ]
@@ -1011,14 +1058,19 @@ def resolve_outputs(
         for key, value in list(serialized_props.items()):
             translated_key = translate(key)
             if translated_key not in all_properties:
-                # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
-                # the user.
+                # input prop the engine didn't give us a final value for.
+                # Just use the value passed into the resource by the user.
+                # Set `return_none_on_dict_type_mismatch` to return `None` rather than raising an error when the value
+                # is a dict and the type doesn't match (which is what would happen if the value didn't exist as an
+                # input prop). This allows `pulumi up` to work without erroring when there is an input and output prop
+                # with the same name but different types.
                 all_properties[translated_key] = translate_output_properties(
                     deserialize_property(value),
                     translate_to_pass,
                     types.get(key),
                     transform_using_type_metadata,
                     path=_Path(translated_key, resource=f"{res._name}"),
+                    return_none_on_dict_type_mismatch=True,
                 )
 
     resolve_properties(resolvers, all_properties, translated_deps)

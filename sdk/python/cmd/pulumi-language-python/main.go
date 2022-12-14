@@ -63,11 +63,16 @@ const (
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
 	//nolint: gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+
+	// A exit-code we recognize when the python process exits.  If we see this error, there's no
+	// need for us to print any additional error messages since the user already got a a good
+	// one they can handle.
+	pythonProcessExitedAfterShowingUserActionableMessage = 32
 )
 
 var (
 	// The minimum python version that Pulumi supports
-	minimumSupportedPythonVersion = semver.MustParse("3.6.0")
+	minimumSupportedPythonVersion = semver.MustParse("3.7.0")
 	// Any version less then `eolPythonVersion` is EOL.
 	eolPythonVersion = semver.MustParse("3.7.0")
 	// An url to the issue discussing EOL.
@@ -142,25 +147,26 @@ func main() {
 
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	validateVersion(ctx, virtualenvPath)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
-	port, done, err := rpcutil.Serve(0, cancelChannel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancelChannel,
+		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-	}, nil)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+	})
 	if err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
-	fmt.Printf("%d\n", port)
+	fmt.Printf("%d\n", handle.Port)
 
 	// And finally wait for the server to stop serving.
-	if err := <-done; err != nil {
+	if err := <-handle.Done; err != nil {
 		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
 	}
 }
@@ -204,6 +210,8 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	validateVersion(ctx, host.virtualenvPath)
 
 	// Now, determine which Pulumi packages are installed.
 	pulumiPackages, err := determinePulumiPackages(ctx, host.virtualenvPath, host.cwd)
@@ -342,10 +350,10 @@ var packagesWithoutPlugins = map[string]struct{}{
 }
 
 type pythonPackage struct {
-	Name     string                   `json:"name"`
-	Version  string                   `json:"version"`
-	Location string                   `json:"location"`
-	plugin   *plugin.PulumiPluginJSON `json:"-"`
+	Name     string `json:"name"`
+	Version  string `json:"version"`
+	Location string `json:"location"`
+	plugin   *plugin.PulumiPluginJSON
 }
 
 // Returns if pkg is a pulumi package.
@@ -486,26 +494,28 @@ func determinePluginDependency(
 // determinePluginVersion attempts to convert a PEP440 package version into a plugin version.
 //
 // Supported versions:
-//   PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
-//   determinePluginVersion only supports a subset of that. Translations are provided for
-//   `N(.N)*[{a|b|rc}N][.postN][.devN]`.
+//
+//	PEP440 defines a version as `[N!]N(.N)*[{a|b|rc}N][.postN][.devN]`, but
+//	determinePluginVersion only supports a subset of that. Translations are provided for
+//	`N(.N)*[{a|b|rc}N][.postN][.devN]`.
 //
 // Translations:
-//   We ensure that there are at least 3 version segments. Missing segments are `0`
-//   padded.
-//   Example: 1.0 => 1.0.0
 //
-//   We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
-//   Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//	We ensure that there are at least 3 version segments. Missing segments are `0`
+//	padded.
+//	Example: 1.0 => 1.0.0
 //
-//   We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
-//   and `.dev` are present, only one separator is used.
-//   Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
+//	We translate a,b,rc to alpha,beta,rc respectively with a hyphen separator.
+//	Example: 1.2.3a4 => 1.2.3-alpha.4, 1.2.3rc4 => 1.2.3-rc.4
+//
+//	We translate `.post` and `.dev` by replacing the `.` with a `+`. If both `.post`
+//	and `.dev` are present, only one separator is used.
+//	Example: 1.2.3.post4 => 1.2.3+post4, 1.2.3.post4.dev5 => 1.2.3+post4dev5
 //
 // Reference on PEP440: https://www.python.org/dev/peps/pep-0440/
 func determinePluginVersion(packageVersion string) (string, error) {
 	if len(packageVersion) == 0 {
-		return "", fmt.Errorf("Cannot parse empty string")
+		return "", fmt.Errorf("cannot parse empty string")
 	}
 	// Verify ASCII
 	for i := 0; i < len(packageVersion); i++ {
@@ -528,7 +538,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 	// Explicitly err on epochs
 	if num, maybeEpoch := parseNumber(packageVersion); num != "" && strings.HasPrefix(maybeEpoch, "!") {
-		return "", fmt.Errorf("Epochs are not supported")
+		return "", fmt.Errorf("epochs are not supported")
 	}
 
 	segments := []string{}
@@ -604,7 +614,13 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 	var err error
 	var cmd *exec.Cmd
 	if virtualenv != "" {
-		cmd = python.VirtualEnvCommand(virtualenv, "python", arg...)
+		// Default to the "python" executable in the virtual environment, but allow the user to override it
+		// with PULUMI_PYTHON_CMD.
+		pythonCmd := os.Getenv("PULUMI_PYTHON_CMD")
+		if pythonCmd == "" {
+			pythonCmd = "python"
+		}
+		cmd = python.VirtualEnvCommand(virtualenv, pythonCmd, arg...)
 	} else {
 		cmd, err = python.Command(ctx, arg...)
 		if err != nil {
@@ -630,7 +646,7 @@ func runPythonCommand(ctx context.Context, virtualenv, cwd string, arg ...string
 	return output, err
 }
 
-// RPC endpoint for LanguageRuntimeServer::Run
+// Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
 	args := []string{host.exec}
 	args = append(args, host.constructArguments(req)...)
@@ -696,7 +712,15 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
 			// errors will trigger this.  So, the error message should look as nice as possible.
 			if status, stok := exiterr.Sys().(syscall.WaitStatus); stok {
-				err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+				switch status.ExitStatus() {
+				case 0:
+					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+				case pythonProcessExitedAfterShowingUserActionableMessage:
+					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
+				default:
+					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+				}
 			} else {
 				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
 			}
@@ -731,6 +755,7 @@ func (host *pythonLanguageHost) constructArguments(req *pulumirpc.RunRequest) []
 	maybeAppendArg("dry_run", fmt.Sprintf("%v", req.GetDryRun()))
 	maybeAppendArg("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendArg("tracing", host.tracing)
+	maybeAppendArg("organization", req.GetOrganization())
 
 	// If no program is specified, just default to the current directory (which will invoke "__main__.py").
 	if req.GetProgram() == "" {
@@ -817,7 +842,7 @@ func validateVersion(ctx context.Context, virtualEnvPath string) {
 func (host *pythonLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 
-	closer, stdout, stderr, err := rpcutil.MakeStreams(server, req.IsTerminal)
+	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
 	}
@@ -838,4 +863,99 @@ func (host *pythonLanguageHost) InstallDependencies(
 	}
 
 	return nil
+}
+
+func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
+	errCouldNotGet := func(err error) (*pulumirpc.AboutResponse, error) {
+		return nil, fmt.Errorf("failed to get version: %w", err)
+	}
+
+	var cmd *exec.Cmd
+	// if CommandPath has an error, then so will Command. The error can
+	// therefore be ignored as redundant.
+	pyexe, _, _ := python.CommandPath()
+	cmd, err := python.Command(ctx, "--version")
+	if err != nil {
+		return nil, err
+	}
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return errCouldNotGet(err)
+	}
+	version := strings.TrimPrefix(string(out), "Python ")
+
+	return &pulumirpc.AboutResponse{
+		Executable: pyexe,
+		Version:    version,
+	}, nil
+}
+
+// Calls a python command as pulumi would. This means we need to accommodate for
+// a virtual environment if it exists.
+func (host *pythonLanguageHost) callPythonCommand(ctx context.Context, args ...string) (string, error) {
+	if host.virtualenvPath == "" {
+		return callPythonCommandNoEnvironment(ctx, args...)
+	}
+	// We now know that a virtual environment exists.
+	cmd := python.VirtualEnvCommand(host.virtualenvPath, "python", args...)
+	result, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+// Call a python command in a runtime agnostic way. Call python from the path.
+// Do not use a virtual environment.
+func callPythonCommandNoEnvironment(ctx context.Context, args ...string) (string, error) {
+	cmd, err := python.Command(ctx, args...)
+	if err != nil {
+		return "", err
+	}
+
+	var result []byte
+	if result, err = cmd.Output(); err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+type pipDependency struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+func (host *pythonLanguageHost) GetProgramDependencies(
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
+	if !req.TransitiveDependencies {
+		cmdArgs = append(cmdArgs, "--not-required")
+
+	}
+	out, err := host.callPythonCommand(ctx, cmdArgs...)
+	if err != nil {
+		return nil, err
+	}
+	var result []pipDependency
+	err = json.Unmarshal([]byte(out), &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse \"python %s\" result: %w", strings.Join(cmdArgs, " "), err)
+	}
+
+	dependencies := make([]*pulumirpc.DependencyInfo, len(result))
+	for i, dep := range result {
+		dependencies[i] = &pulumirpc.DependencyInfo{
+			Name:    dep.Name,
+			Version: dep.Version,
+		}
+	}
+
+	return &pulumirpc.GetProgramDependenciesResponse{
+		Dependencies: dependencies,
+	}, nil
+}
+
+func (host *pythonLanguageHost) RunPlugin(
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	return errors.New("not supported")
 }

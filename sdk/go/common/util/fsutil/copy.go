@@ -35,7 +35,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 
 	if info.IsDir() {
 		// Recursively copy all files in a directory.
-		files, err := ioutil.ReadDir(src)
+		files, err := os.ReadDir(src)
 		if err != nil {
 			return err
 		}

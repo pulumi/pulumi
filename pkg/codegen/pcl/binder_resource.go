@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint: goconst
+// nolint: goconst
 package pcl
 
 import (
@@ -42,6 +42,82 @@ func (b *binder) bindResource(node *Resource) hcl.Diagnostics {
 	return diagnostics
 }
 
+func annotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
+	if optionalType, ok := attributeType.(*schema.OptionalType); ok {
+		return annotateAttributeValue(expr, optionalType.ElementType)
+	}
+
+	switch attrValue := expr.(type) {
+	case *model.ObjectConsExpression:
+		if schemaObjectType, ok := attributeType.(*schema.ObjectType); ok {
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range schemaObjectType.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+
+			for _, item := range attrValue.Items {
+				keyLiteral, isLit := item.Key.(*model.LiteralValueExpression)
+				if isLit {
+					correspondingSchemaType, ok := schemaProperties[keyLiteral.Value.AsString()]
+					if ok {
+						item.Value = annotateAttributeValue(item.Value, correspondingSchemaType)
+					}
+				}
+			}
+			return attrValue.WithType(func(attrValueType model.Type) *model.ObjectConsExpression {
+				annotateObjectProperties(attrValueType, attributeType)
+				return attrValue
+			})
+		}
+
+		return attrValue
+
+	case *model.TupleConsExpression:
+		if schemaArrayType, ok := attributeType.(*schema.ArrayType); ok {
+			elementType := schemaArrayType.ElementType
+			for _, arrayExpr := range attrValue.Expressions {
+				annotateAttributeValue(arrayExpr, elementType)
+			}
+		}
+
+		return attrValue
+	case *model.FunctionCallExpression:
+		if attrValue.Name == IntrinsicConvert {
+			converterArg := attrValue.Args[0]
+			annotateAttributeValue(converterArg, attributeType)
+		}
+
+		return attrValue
+	default:
+		return expr
+	}
+}
+
+func AnnotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
+	return annotateAttributeValue(expr, attributeType)
+}
+
+func AnnotateResourceInputs(node *Resource) {
+	resourceProperties := make(map[string]*schema.Property)
+	for _, property := range node.Schema.Properties {
+		resourceProperties[property.Name] = property
+	}
+
+	// add type annotations to the attributes
+	// and their nested objects
+	for index := range node.Inputs {
+		attr := node.Inputs[index]
+		if property, ok := resourceProperties[attr.Name]; ok {
+			node.Inputs[index] = &model.Attribute{
+				Tokens: attr.Tokens,
+				Name:   attr.Name,
+				Syntax: attr.Syntax,
+				Value:  AnnotateAttributeValue(attr.Value, property.Type),
+			}
+		}
+	}
+}
+
 // bindResourceTypes binds the input and output types for a resource.
 func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
@@ -58,32 +134,40 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if pkg == "pulumi" && module == "providers" {
 		pkg, isProvider = name, true
 	}
+	var pkgSchema *packageSchema
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
-	if !ok {
-		return hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
+	// It is important that we call `loadPackageSchema` instead of `getPackageSchema` here
+	// because the the version may be wrong. When the version should not be empty,
+	// `loadPackageSchema` will load the default version while `getPackageSchema` will
+	// simply fail. We can't give a populated version field since we have not processed
+	// the body, and thus the version yet.
+	pkgSchema, err := b.options.packageCache.loadPackageSchema(b.options.loader, pkg, "")
+	if err != nil {
+		e := unknownPackage(pkg, tokenRange)
+		e.Detail = err.Error()
+		return hcl.Diagnostics{e}
 	}
 
+	var res *schema.Resource
 	var inputProperties, properties []*schema.Property
-	if !isProvider {
-		var res *schema.Resource
-		if r, tk, ok, err := pkgSchema.LookupResource(token); err != nil {
-			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		} else if !ok {
-			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
-		} else {
-			res = r
-			token = tk
-		}
-		node.Schema = res
-		inputProperties, properties = res.InputProperties, res.Properties
-	} else {
-		config, err := pkgSchema.schema.Config()
+	if isProvider {
+		r, err := pkgSchema.schema.Provider()
 		if err != nil {
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
-		inputProperties, properties = config, config
+		res = r
+	} else {
+		r, tk, ok, err := pkgSchema.LookupResource(token)
+		if err != nil {
+			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		} else if !ok {
+			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
+		}
+		res = r
+		token = tk
 	}
+	node.Schema = res
+	inputProperties, properties = res.InputProperties, res.Properties
 	node.Token = token
 
 	// Create input and output types for the schema.
@@ -99,6 +183,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	outputType := model.NewObjectType(outputProperties, &schema.ObjectType{Properties: properties})
 
 	node.InputType, node.OutputType = inputType, outputType
+
 	return diagnostics
 }
 
@@ -220,6 +305,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					diags := rangeExpr.Typecheck(false)
 					contract.Assert(len(diags) == 0)
 
+					rangeValue = model.IntType
+
 					node.VariableType = rangeExpr.Type()
 				default:
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range())
@@ -276,25 +363,37 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	}
 
 	// Typecheck the attributes.
-	if objectType, ok := node.InputType.(*model.ObjectType); ok && !b.options.skipResourceTypecheck {
+	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+		diag := func(d *hcl.Diagnostic) {
+			if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
+				d.Severity = hcl.DiagWarning
+			}
+			diagnostics = append(diagnostics, d)
+		}
 		attrNames := codegen.StringSet{}
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
 
 			if typ, ok := objectType.Properties[attr.Name]; ok {
 				if !typ.ConversionFrom(attr.Value.Type()).Exists() {
-					diagnostics = append(diagnostics, model.ExprNotConvertible(typ, attr.Value))
+					diag(model.ExprNotConvertible(typ, attr.Value))
 				}
 			} else {
-				diagnostics = append(diagnostics, unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
+				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
 			}
 		}
 
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
-			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
-				diagnostics = append(diagnostics,
-					missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
+			typ := objectType.Properties[k]
+			if model.IsOptionalType(typ) || attrNames.Has(k) {
+				// The type is present or optional. No error.
+				continue
 			}
+			if model.IsConstType(objectType.Properties[k]) {
+				// The type is const, so the value is implied. No error.
+				continue
+			}
+			diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
 		}
 	}
 
@@ -325,6 +424,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value
+				case "version":
+					t = model.StringType
+					resourceOptions.Version = item.Value
+				case "pluginDownloadURL":
+					t = model.StringType
+					resourceOptions.PluginDownloadURL = item.Value
 				default:
 					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 					continue

@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
 	"strings"
 
@@ -37,8 +38,8 @@ type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 	opts       Options     // options for this step generator
 
-	updateTargetsOpt  map[resource.URN]bool // the set of resources to update; resources not in this set will be same'd
-	replaceTargetsOpt map[resource.URN]bool // the set of resoures to replace
+	updateTargetsOpt  UrnTargets // the set of resources to update; resources not in this set will be same'd
+	replaceTargetsOpt UrnTargets // the set of resoures to replace
 
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
@@ -66,37 +67,38 @@ type stepGenerator struct {
 
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
-	// a list of aliases for each resource discovered so far
-	aliases map[resource.URN][]resource.URN
+	// a map from current URN of the resource to the old URN that it was aliased from.
+	aliases map[resource.URN]resource.URN
 }
 
 func (sg *stepGenerator) isTargetedUpdate() bool {
-	return sg.updateTargetsOpt != nil || sg.replaceTargetsOpt != nil
+	return sg.updateTargetsOpt.IsConstrained() || sg.replaceTargetsOpt.IsConstrained()
 }
 
 // isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-	if sg.updateTargetsOpt == nil || sg.updateTargetsOpt[res.URN] {
+	if sg.updateTargetsOpt.Contains(res.URN) {
 		return true
 	} else if !sg.opts.TargetDependents {
 		return false
 	}
+
 	if res.Provider != "" {
 		res, err := providers.ParseReference(res.Provider)
 		contract.AssertNoError(err)
-		if sg.updateTargetsOpt[res.URN()] {
+		if sg.updateTargetsOpt.Contains(res.URN()) {
 			return true
 		}
 	}
 	if res.Parent != "" {
-		if sg.updateTargetsOpt[res.Parent] {
+		if sg.updateTargetsOpt.Contains(res.Parent) {
 			return true
 		}
 	}
 	for _, dep := range res.Dependencies {
-		if dep != "" && sg.updateTargetsOpt[dep] {
+		if dep != "" && sg.updateTargetsOpt.Contains(dep) {
 			return true
 		}
 	}
@@ -104,7 +106,7 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
-	return sg.replaceTargetsOpt != nil && sg.replaceTargetsOpt[urn]
+	return sg.replaceTargetsOpt.IsConstrained() && sg.replaceTargetsOpt.Contains(urn)
 }
 
 func (sg *stepGenerator) Errored() bool {
@@ -138,11 +140,22 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 			}
 		} else {
 			// Else try and set it to the root stack
-			for urn := range sg.urns {
-				if urn.Type() == resource.RootStackType {
-					return urn, nil
-				}
-			}
+
+			// TODO: It looks like this currently has some issues with state ordering (see
+			// https://github.com/pulumi/pulumi/issues/10950). Best I can guess is the stack resource is
+			// hitting the step generator and so saving it's URN to sg.urns and issuing a Create step but not
+			// actually getting to writing it's state to the snapshot. Then in parallel with this something
+			// else is causing a pulumi:providers:pulumi default provider to be created, this picks up the
+			// stack URN from sg.urns and so sets it's parent automatically, but then races the step executor
+			// to write itself to state before the stack resource manages to. Long term we want to ensure
+			// there's always a stack resource present, and so that all resources (except the stack) have a
+			// parent (this will save us some work in each SDK), but for now lets just turn this support off.
+
+			//for urn := range sg.urns {
+			//	if urn.Type() == resource.RootStackType {
+			//		return urn, nil
+			//	}
+			//}
 		}
 	}
 
@@ -197,17 +210,10 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		nil,   /* aliases */
 		nil,   /* customTimeouts */
 		"",    /* importID */
-		1,     /* sequenceNumber */
 		false, /* retainOnDelete */
+		"",    /* deletedWith */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
-
-	if hasOld {
-		// If we have an old state maintain the sequence number from it.
-		// This means even if we relinqish and then reimport we'll maintain the sequence number that
-		// defined the current name.
-		newState.SequenceNumber = old.SequenceNumber
-	}
 
 	if newState.ID == "" {
 		return nil, result.Errorf("Expected an ID for %v", urn)
@@ -260,26 +266,30 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
+		logging.V(5).Infof("Checking step %s for %s", s.Op(), s.URN())
+
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
 				if len(resourcePlan.Ops) == 0 {
 					return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 				}
-
 				constraint := resourcePlan.Ops[0]
-				if !s.Op().ConstrainedTo(constraint) {
+				// We remove the Op from the list before doing the constraint check.
+				// This is because we look at Ops at the end to see if any expected operations didn't attempt to happen.
+				// This op has been attempted, it just might fail its constraint.
+				resourcePlan.Ops = resourcePlan.Ops[1:]
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
-				resourcePlan.Ops = resourcePlan.Ops[1:]
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
 
-		// If we're in experimental mode add the operation to the plan being generated
-		if sg.opts.ExperimentalPlans {
+		// If we're generating plans add the operation to the plan being generated
+		if sg.opts.GeneratePlan {
 			// Resource plan might be aliased
 			urn, isAliased := sg.aliased[s.URN()]
 			if !isAliased {
@@ -352,7 +362,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 
 	var parentType tokens.Type
 	// If alias.NoParent is true then parentType is blank, else we need to look if a parent URN is given
-	if !alias.NoParent {
+	if !alias.NoParent() {
 		parentURN := alias.Parent
 		if parentURN == "" {
 			parentURN = goal.Parent
@@ -428,28 +438,30 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	// Generate the aliases for this resource
-	aliases := make([]resource.URN, 0)
+	aliases := make(map[resource.URN]struct{}, 0)
 	for _, alias := range goal.Aliases {
 		urn := sg.collapseAliasToUrn(goal, alias)
-		aliases = append(aliases, urn)
+		aliases[urn] = struct{}{}
 	}
 	// Now multiply out any aliases our parent had.
 	if goal.Parent != "" {
-		parentAliases := sg.aliases[goal.Parent]
-		for _, parentAlias := range parentAliases {
-			aliases = append(aliases, sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias))
+		if parentAlias, has := sg.aliases[goal.Parent]; has {
+			aliases[sg.inheritedChildAlias(goal.Type, goal.Name, goal.Parent.Name(), parentAlias)] = struct{}{}
 			for _, alias := range goal.Aliases {
 				childAlias := sg.collapseAliasToUrn(goal, alias)
 				aliasedChildType := childAlias.Type()
 				aliasedChildName := childAlias.Name()
 				inheritedAlias := sg.inheritedChildAlias(aliasedChildType, aliasedChildName, goal.Parent.Name(), parentAlias)
-				aliases = append(aliases, inheritedAlias)
+				aliases[inheritedAlias] = struct{}{}
 			}
 		}
 	}
 
-	// Save the aliases so we can look them up later if anything has this as a parent
-	sg.aliases[urn] = aliases
+	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
+		// This resource is claiming to be X but we've already seen another resource claim that via aliases
+		invalid = true
+		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasedError(urn), urn, previousAliasURN)
+	}
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
@@ -458,14 +470,21 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	var oldOutputs resource.PropertyMap
 	var old *resource.State
 	var hasOld bool
-	var alias []resource.URN
-	for _, urnOrAlias := range append([]resource.URN{urn}, aliases...) {
+	var alias []resource.Alias
+	aliases[urn] = struct{}{}
+	for urnOrAlias := range aliases {
 		old, hasOld = sg.deployment.Olds()[urnOrAlias]
 		if hasOld {
 			oldInputs = old.Inputs
 			oldOutputs = old.Outputs
 			if urnOrAlias != urn {
+				if _, alreadySeen := sg.urns[urnOrAlias]; alreadySeen {
+					// This resource is claiming to X but we've already seen that urn created
+					invalid = true
+					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, urn)
+				}
 				if previousAliasURN, alreadyAliased := sg.aliased[urnOrAlias]; alreadyAliased {
+					// This resource is claiming to be X but we've already seen another resource claim that
 					invalid = true
 					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
 				}
@@ -477,7 +496,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				// NOTE: we save the URN of the existing resource so that the snapshotter can replace references to the
 				// existing resource with the URN of the newly-registered resource. We do not need to save any of the
 				// resource's other possible aliases.
-				alias = []resource.URN{urnOrAlias}
+				alias = []resource.Alias{{URN: urnOrAlias}}
+				// Save the alias actually being used so we can look it up later if anything has this as a parent
+				sg.aliases[urn] = urnOrAlias
 			}
 			break
 		}
@@ -494,14 +515,16 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputs = processedInputs
 	}
 
+	aliasUrns := make([]resource.URN, len(alias))
+	for i, a := range alias {
+		aliasUrns[i] = a.URN
+	}
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
-		goal.AdditionalSecretOutputs, alias, &goal.CustomTimeouts, "", 1, goal.RetainOnDelete)
-	if hasOld {
-		new.SequenceNumber = old.SequenceNumber
-	}
+		goal.AdditionalSecretOutputs, aliasUrns, &goal.CustomTimeouts, "", goal.RetainOnDelete, goal.DeletedWith)
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -525,6 +548,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We may be creating this resource if it previously existed in the snapshot as an External resource
 	wasExternal := hasOld && old.External
 
+	// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+	var randomSeed []byte
+	if sg.deployment.plan != nil {
+		if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+			randomSeed = resourcePlan.Seed
+		}
+	}
+	// If the above didn't set the seed, generate a new random one. If we're running with plans but this
+	// resource was missing a seed then if the seed is used later checks will fail.
+	if randomSeed == nil {
+		randomSeed = make([]byte, 32)
+		n, err := cryptorand.Read(randomSeed)
+		contract.AssertNoError(err)
+		contract.Assert(n == len(randomSeed))
+	}
+
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
 	// resource's ID does not match the ID in the goal state.
 	var oldImportID resource.ID
@@ -545,19 +584,21 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.ID = goal.ID
 		new.ImportID = goal.ID
 
-		// If we're in experimental mode create a plan, Imports have no diff, just a goal state
-		if sg.opts.ExperimentalPlans {
-			newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(nil, nil, goal)}
+		// If we're generating plans create a plan, Imports have no diff, just a goal state
+		if sg.opts.GeneratePlan {
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(nil, goal)}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
 		if isReplace := hasOld && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
 			}, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges)}, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -570,46 +611,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			if hasOld {
-				// Only increment/change sequence number if this is a replace. If hasOld is false this is a
-				// new resource and sequence number will already be correctly set to 1.
-				if new.SequenceNumber == -1 {
-					// This is known to have been created with a non-deterministic sequnce number in the last
-					// update, it should now be safe to create with sequence number == 1 as that shouldn't
-					// clash with the current random name.
-					new.SequenceNumber = 1
-				} else if new.SequenceNumber == 0 {
-					// We don't have any info on the current resources sequnce number, but we know we're
-					// going to do a replace with sequnce number == 0 to create a random name so the next
-					// time we do a replace it should be safe to go back to sequnce number == 1 (see above)
-					new.SequenceNumber = -1
-				} else {
-					new.SequenceNumber++
-				}
-			}
-
-			checkNumber := new.SequenceNumber
-			// We don't want to call check with -1, that's just an internal state file marker
-			if checkNumber == -1 {
-				checkNumber = 0
-			}
-
-			// If we have a plan for this resource we need to feed the saved checked inputs to Check to remove non-determinism
-			var oldChecked resource.PropertyMap
-			if sg.deployment.plan != nil {
-				if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
-					oldChecked = resourcePlan.Goal.CheckedInputs
-				}
-			}
-
-			inputs, failures, err = prov.Check(urn, oldChecked, goal.Properties, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			checkNumber := new.SequenceNumber
-			// We don't want to call check with -1, that's just an internal state file marker
-			if checkNumber == -1 {
-				checkNumber = 0
-			}
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, checkNumber)
+			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
@@ -620,18 +624,29 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		new.Inputs = inputs
 	}
 
-	// If the resource is valid and we're in experimental mode generate a plan
-	if !invalid && sg.opts.ExperimentalPlans {
+	// If the resource is valid and we're generating plans then generate a plan
+	if !invalid && sg.opts.GeneratePlan {
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			oldInputs = nil
 		}
 		inputDiff := oldInputs.Diff(inputs)
 
-		// Generate the output goal plan
-		// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-		// application. However, it is necessary in the face of computed inputs.
-		newResourcePlan := &ResourcePlan{Goal: NewGoalPlan(inputs, inputDiff, goal)}
-		sg.deployment.newPlans.set(urn, newResourcePlan)
+		// Generate the output goal plan, if we're recreating this it should already exist
+		if recreating {
+			plan, ok := sg.deployment.newPlans.get(urn)
+			if !ok {
+				return nil, result.FromError(fmt.Errorf("no plan for resource %v", urn))
+			}
+			// The plan will have had it's Ops already partially filled in for the delete operation, but we
+			// now have the information needed to fill in Seed and Goal.
+			plan.Seed = randomSeed
+			plan.Goal = NewGoalPlan(inputDiff, goal)
+		} else {
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(inputDiff, goal)}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
+		}
 	}
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
@@ -665,7 +680,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.Aliases,
+				Aliases:                 new.GetAliases(),
 				CustomTimeouts:          new.CustomTimeouts,
 			},
 		}
@@ -750,8 +765,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	isTargeted := sg.isTargetedForUpdate(new)
-	if isTargeted && sg.updateTargetsOpt != nil {
-		sg.updateTargetsOpt[urn] = true
+	if isTargeted {
+		sg.updateTargetsOpt.addLiteral(urn)
 	}
 
 	// Case 3: hasOld
@@ -778,7 +793,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
 		} else {
 			updateSteps, res := sg.generateStepsFromDiff(
-				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal)
+				event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed)
 
 			if res != nil {
 				return nil, res
@@ -837,7 +852,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal) ([]Step, result.Result) {
+	prov plugin.Provider, goal *resource.Goal, randomSeed []byte) ([]Step, result.Result) {
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
@@ -901,21 +916,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn) {
-				// Increment the sequence number (if it's known) before calling check so we get a new autoname
-				var checkNumber int
-				if new.SequenceNumber == -1 {
-					new.SequenceNumber = 1
-					checkNumber = 1
-				} else if new.SequenceNumber == 0 {
-					new.SequenceNumber = -1
-					checkNumber = 0
-				} else {
-					new.SequenceNumber++
-					checkNumber = new.SequenceNumber
-				}
-
 				var failures []plugin.CheckFailure
-				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, checkNumber)
+				inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
 				if err != nil {
 					return nil, result.FromError(err)
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
@@ -971,12 +973,12 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						dependentResource := toReplace[i].res
 
 						// If we already deleted this resource due to some other DBR, don't do it again.
-						if sg.deletes[dependentResource.URN] {
+						if sg.pendingDeletes[dependentResource] {
 							continue
 						}
 
-						// If we're in experimental mode create a plan for this delete
-						if sg.opts.ExperimentalPlans {
+						// If we're generating plans create a plan for this delete
+						if sg.opts.GeneratePlan {
 							if _, ok := sg.deployment.newPlans.get(dependentResource.URN); !ok {
 								// We haven't see this resource before, create a new
 								// resource plan for it with no goal (because it's going to be a delete)
@@ -990,15 +992,21 @@ func (sg *stepGenerator) generateStepsFromDiff(
 						logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
 							dependentResource.URN, urn)
 
-						steps = append(steps, NewDeleteReplacementStep(sg.deployment, dependentResource, true))
+						// This resource might already be pending-delete
+						if dependentResource.Delete {
+							steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource))
+						} else {
+							steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true))
+						}
 						// Mark the condemned resource as deleted. We won't know until later in the deployment whether
 						// or not we're going to be replacing this resource.
 						sg.deletes[dependentResource.URN] = true
+						sg.pendingDeletes[dependentResource] = true
 					}
 				}
 
 				return append(steps,
-					NewDeleteReplacementStep(sg.deployment, old, true),
+					NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true),
 					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
 					NewCreateReplacementStep(
 						sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
@@ -1035,7 +1043,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	return nil, nil
 }
 
-func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]Step, result.Result) {
+func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, result.Result) {
 	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
@@ -1074,7 +1082,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 
 				logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 				sg.deletes[res.URN] = true
-				dels = append(dels, NewDeleteReplacementStep(sg.deployment, res, false))
+				dels = append(dels, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false))
 			} else if _, aliased := sg.aliased[res.URN]; !sg.sames[res.URN] && !sg.updates[res.URN] && !sg.replaces[res.URN] &&
 				!sg.reads[res.URN] && !aliased {
 				// NOTE: we deliberately do not check sg.deletes here, as it is possible for us to issue multiple
@@ -1082,7 +1090,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 				logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 				sg.deletes[res.URN] = true
 				if !res.PendingReplacement {
-					dels = append(dels, NewDeleteStep(sg.deployment, res))
+					dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 				} else {
 					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
 				}
@@ -1104,18 +1112,18 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 				// This op has been attempted, it just might fail its constraint.
 				resourcePlan.Ops = resourcePlan.Ops[1:]
 
-				if !s.Op().ConstrainedTo(constraint) {
+				if !ConstrainedTo(s.Op(), constraint) {
 					return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 				}
 			} else {
-				if !s.Op().ConstrainedTo(OpSame) {
+				if !ConstrainedTo(s.Op(), OpSame) {
 					return nil, result.Errorf("%v is not allowed by the plan: no steps were expected for this resource", s.Op())
 				}
 			}
 		}
 
-		// If we're in experimental mode add a delete op to the plan for this resource
-		if sg.opts.ExperimentalPlans {
+		// If we're generating plans add a delete op to the plan for this resource
+		if sg.opts.GeneratePlan {
 			resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
 			if !ok {
 				// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
@@ -1148,7 +1156,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	deletingUnspecifiedTarget := false
 	for _, step := range dels {
 		urn := step.URN()
-		if targetsOpt != nil && !targetsOpt[urn] && !sg.opts.TargetDependents {
+		if !targetsOpt.Contains(urn) && !sg.opts.TargetDependents {
 			d := diag.GetResourceWillBeDestroyedButWasNotSpecifiedInTargetList(urn)
 
 			// Targets were specified, but didn't include this resource to create.  Report all the
@@ -1178,11 +1186,11 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 
 // getTargetDependents returns the (transitive) set of dependents on the target resources.
 // This includes both implicit and explicit dependents in the DAG itself, as well as children.
-func (sg *stepGenerator) getTargetDependents(targetsOpt map[resource.URN]bool) map[resource.URN]bool {
+func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource.URN]bool {
 	// Seed the list with the initial set of targets.
 	var frontier []*resource.State
 	for _, res := range sg.deployment.prev.Resources {
-		if _, has := targetsOpt[res.URN]; has {
+		if targetsOpt.Contains(res.URN) {
 			frontier = append(frontier, res)
 		}
 	}
@@ -1215,9 +1223,9 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt map[resource.URN]bool) m
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
 // or child resources that require the targets to exist (and so are implicated in the deletion).
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
-	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
+	targetsOpt UrnTargets) (map[resource.URN]bool, result.Result) {
 
-	if targetsOpt == nil {
+	if !targetsOpt.IsConstrained() {
 		// no specific targets, so we won't filter down anything
 		return nil, nil
 	}
@@ -1267,26 +1275,6 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	return resourcesToDelete, nil
 }
 
-// GeneratePendingDeletes generates delete steps for all resources that are pending deletion. This function should be
-// called at the start of a deployment in order to find all resources that are pending deletion from the previous
-// deployment.
-func (sg *stepGenerator) GeneratePendingDeletes() []Step {
-	var dels []Step
-	if prev := sg.deployment.prev; prev != nil {
-		logging.V(7).Infof("stepGenerator.GeneratePendingDeletes(): scanning previous snapshot for pending deletes")
-		for i := len(prev.Resources) - 1; i >= 0; i-- {
-			res := prev.Resources[i]
-			if res.Delete {
-				logging.V(7).Infof(
-					"stepGenerator.GeneratePendingDeletes(): resource (%v, %v) is pending deletion", res.URN, res.ID)
-				sg.pendingDeletes[res] = true
-				dels = append(dels, NewDeleteStep(sg.deployment, res))
-			}
-		}
-	}
-	return dels
-}
-
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
 // steps, where each list can be executed in parallel but a previous list must be executed to completion before
 // advancing to the next list.
@@ -1299,14 +1287,14 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Step {
 //
 // The algorithm for decomposing a poset into antichains is:
 //  1. While there exist elements in the poset,
-//    1a. There must exist at least one "maximal" element of the poset. Let E_max be those elements.
-//    2a. Remove all elements E_max from the poset. E_max is an antichain.
-//    3a. Goto 1.
+//     1a. There must exist at least one "maximal" element of the poset. Let E_max be those elements.
+//     2a. Remove all elements E_max from the poset. E_max is an antichain.
+//     3a. Goto 1.
 //
 // Translated to our dependency graph:
 //  1. While the set of condemned resources is not empty:
-//    1a. Remove all resources with no outgoing edges from the graph and add them to the current antichain.
-//    2a. Goto 1.
+//     1a. Remove all resources with no outgoing edges from the graph and add them to the current antichain.
+//     2a. Goto 1.
 //
 // The resulting list of antichains is a list of list of steps that can be safely executed in parallel. Since we must
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
@@ -1863,7 +1851,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 					IgnoreChanges:           goal.IgnoreChanges,
 					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 					AdditionalSecretOutputs: v.AdditionalSecretOutputs,
-					Aliases:                 v.Aliases,
+					Aliases:                 v.GetAliases(),
 					CustomTimeouts:          v.CustomTimeouts,
 				},
 			},
@@ -1913,7 +1901,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
 func newStepGenerator(
-	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt map[resource.URN]bool) *stepGenerator {
+	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt UrnTargets) *stepGenerator {
 
 	return &stepGenerator{
 		deployment:           deployment,
@@ -1932,6 +1920,6 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
-		aliases:              make(map[resource.URN][]resource.URN),
+		aliases:              make(map[resource.URN]resource.URN),
 	}
 }

@@ -16,18 +16,18 @@ namespace Pulumi.Myedgeorder
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Task<ListProductFamiliesResult> InvokeAsync(ListProductFamiliesArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesArgs(), options.WithDefaults());
 
         /// <summary>
         /// The list of product families.
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Output<ListProductFamiliesResult> Invoke(ListProductFamiliesInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<ListProductFamiliesResult>("myedgeorder::listProductFamilies", args ?? new ListProductFamiliesInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class ListProductFamiliesArgs : Pulumi.InvokeArgs
+    public sealed class ListProductFamiliesArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
@@ -62,9 +62,10 @@ namespace Pulumi.Myedgeorder
         public ListProductFamiliesArgs()
         {
         }
+        public static new ListProductFamiliesArgs Empty => new ListProductFamiliesArgs();
     }
 
-    public sealed class ListProductFamiliesInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ListProductFamiliesInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Customer subscription properties. Clients can display available products to unregistered customers by explicitly passing subscription details
@@ -99,6 +100,7 @@ namespace Pulumi.Myedgeorder
         public ListProductFamiliesInvokeArgs()
         {
         }
+        public static new ListProductFamiliesInvokeArgs Empty => new ListProductFamiliesInvokeArgs();
     }
 
 

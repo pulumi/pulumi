@@ -122,7 +122,7 @@ class Workspace(ABC):
     secrets_provider: Optional[str]
     """
     The secrets provider to use for encryption and decryption of stack secrets.
-    See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+    See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
     """
 
     program: Optional[PulumiFn]
@@ -323,6 +323,16 @@ class Workspace(ABC):
         :param name: The name of the plugin to install.
         :param version: The version to install.
         :param kind: The kind of plugin.
+        """
+
+    @abstractmethod
+    def install_plugin_from_server(self, name: str, version: str, server: str) -> None:
+        """
+        Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+
+        :param name: The name of the plugin to install.
+        :param version: The version to install.
+        :param server: The server to install from.
         """
 
     @abstractmethod

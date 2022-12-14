@@ -20,6 +20,8 @@ type DependencyGraph struct {
 // order with respect to the snapshot dependency graph.
 //
 // The time complexity of DependingOn is linear with respect to the number of resources.
+//
+// includeChildren adds children as another type of (transitive) dependency.
 func (dg *DependencyGraph) DependingOn(res *resource.State,
 	ignore map[resource.URN]bool, includeChildren bool) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
@@ -35,7 +37,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 		if ignore[candidate.URN] {
 			return false
 		}
-		if includeChildren && candidate.Parent == res.URN {
+		if includeChildren && dependentSet[candidate.Parent] {
 			return true
 		}
 		for _, dependency := range candidate.Dependencies {

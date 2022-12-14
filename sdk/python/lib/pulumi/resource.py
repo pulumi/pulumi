@@ -487,6 +487,12 @@ class ResourceOptions:
     If set to True, the providers Delete method will not be called for this resource.
     """
 
+    deleted_with: Optional["Resource"]
+    """
+    If set, the providers Delete method will not be called for this resource
+    if specified resource is being deleted as well.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(
         self,
@@ -512,6 +518,7 @@ class ResourceOptions:
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
+        deleted_with: Optional["Resource"] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -552,6 +559,8 @@ class ResourceOptions:
                from the provided url. This url overrides the plugin download url inferred from the current package and should
                rarely be used.
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
+        :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
+               if specified resource is being deleted as well.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -577,6 +586,7 @@ class ResourceOptions:
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
+        self.deleted_with = deleted_with
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -601,6 +611,45 @@ class ResourceOptions:
             self.depends_on,
             lambda x: list(x) if isinstance(x, Sequence) else [cast(Any, x)],
         )
+
+    def _copy(self) -> "ResourceOptions":
+        """
+        Copy a ResourceOptions.
+        """
+
+        # ResourceOptions.merge is a static method that is reassigned to a field, not a
+        # true method. This assignment captures the original class. When we copy a
+        # ResourceOptions, we need update merge to point to the new class.
+        #
+        # We can illustrate this with an example.
+        #
+        # instance_1 of type ResourceOptions :
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields:
+        #   ...
+        #
+        # instance_2 = copy.copy(instance_1):
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields
+        #   ...
+        #
+        # instance_2.parent = parent_2
+        #
+        # instance_3 = instance_2.merge(None)
+        #
+        # We get `instance_3.parent == None`, when we should get `instance_3.parent ==
+        # parent_2`. This is because merge had a handle to instance_1, instead of
+        # instance_2.
+        #
+        # The fix is to re-assign merge after the copy.
+
+        out = copy.copy(self)
+        # Expose 'merge' again this this object, but this time as an instance method.
+        # TODO[python/mypy#2427]: mypy disallows method assignment
+        out.merge = out._merge_instance  # type: ignore
+        return out
 
     # pylint: disable=method-hidden
     @staticmethod
@@ -642,8 +691,8 @@ class ResourceOptions:
         if not isinstance(opts2, ResourceOptions):
             raise TypeError("Expected opts2 to be a ResourceOptions instance")
 
-        dest = copy.copy(opts1)
-        source = copy.copy(opts2)
+        dest = opts1._copy()
+        source = opts2._copy()
 
         # This makes merging simple.
         def expand_providers(providers) -> Optional[Sequence["ProviderResource"]]:
@@ -703,6 +752,9 @@ class ResourceOptions:
             dest.retain_on_delete
             if source.retain_on_delete is None
             else source.retain_on_delete
+        )
+        dest.deleted_with = (
+            dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
@@ -882,7 +934,7 @@ class Resource:
         self._name = name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
-        opts = copy.copy(opts)
+        opts = opts._copy()
 
         self._providers = {}
         self._childResources = set()
@@ -1238,8 +1290,8 @@ def create_urn(
     name: "Input[str]",
     type_: "Input[str]",
     parent: Optional[Union["Resource", "Input[str]"]] = None,
-    project: str = None,
-    stack: str = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
 ) -> "Output[str]":
     """
     create_urn computes a URN from the combination of a resource name, resource type, optional

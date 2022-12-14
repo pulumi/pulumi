@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import * as grpc from "@grpc/grpc-js";
 
 import * as dynamic from "../../dynamic";
-import * as runtime from "../../runtime";
+import * as rpc from "../../runtime/rpc";
 import { version } from "../../version";
 
 const requireFromString = require("require-from-string");
@@ -109,7 +109,7 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
+        const provider = getProvider(news[providerKey] === rpc.unknownValue ? olds : news);
 
         let inputs: any = news;
         let failures: any[] = [];
@@ -169,7 +169,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         // time the provider was updated.
         const olds = req.getOlds().toJavaScript();
         const news = req.getNews().toJavaScript();
-        const provider = getProvider(news[providerKey] === runtime.unknownValue ? olds : news);
+        const provider = getProvider(news[providerKey] === rpc.unknownValue ? olds : news);
         if (provider.diff) {
             const result: any = await provider.diff(req.getId(), olds, news);
 
@@ -385,7 +385,7 @@ export async function main(args: string[]) {
         construct: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
-        server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {

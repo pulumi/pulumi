@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
@@ -23,7 +24,7 @@ import pulumi
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
     def wrapper(*args, **kwargs):
-        settings.configure(settings.Settings())
+        settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
         rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
@@ -224,10 +225,73 @@ class OutputStrTests(unittest.TestCase):
     @pulumi_test
     async def test_str(self):
         o = Output.from_input(1)
-        self.assertEqual(str(o), """Calling [str] on an [Output<T>] is not supported.
+        self.assertEqual(str(o), """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi.""")
+
+
+class OutputApplyTests(unittest.TestCase):
+
+    @pulumi_test
+    async def test_apply_always_sets_is_secret_and_is_known(self):
+        """Regressing a convoluted situation where apply created an Output
+        with incomplete is_secret, is_known future, manifesting in
+        program hangs when those futures were awaited.
+
+        To reproduce this, a synthetic output is needed with is_known
+        set to a Future completing exceptionally. Perhaps it would one
+        day be possible to make it invalid for is_known to enter this
+        state.
+
+        """
+        bad = asyncio.Future()
+        bad.set_exception(Exception('!'))
+        ok = asyncio.Future()
+        ok.set_result('ok')
+        bad_output = Output(resources=set(), future=ok, is_known=bad)
+        test_output = Output.from_input('anything').apply(lambda _: bad_output)
+        self.assertEqual(await test_output.is_secret(), False)
+        self.assertEqual(await test_output.is_known(), False)
+
+class OutputAllTests(unittest.TestCase):
+    @pulumi_test
+    async def test_args(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(o1, o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, [1, "hi"])
+
+    @pulumi_test
+    async def test_kwargs(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(x=o1, y=o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, {"x": 1, "y": "hi"})
+
+class OutputFormatTests(unittest.TestCase):
+    @pulumi_test
+    async def test_nothing(self):
+        x = Output.format("blank format")
+        x_val = await x.future()
+        self.assertEqual(x_val, "blank format")
+
+    @pulumi_test
+    async def test_simple(self):
+        i = Output.from_input(1)
+        x = Output.format("{0}", i)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1")
+
+    @pulumi_test
+    async def test_args_and_kwags(self):
+        i = Output.from_input(1)
+        s = Output.from_input("hi")
+        x = Output.format("{0}, {s}", i, s=s)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1, hi")

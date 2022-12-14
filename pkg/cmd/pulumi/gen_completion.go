@@ -26,14 +26,12 @@ import (
 )
 
 // newCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
-// It is hidden by default since it's not commonly used outside of our own build processes.
 func newGenCompletionCmd(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:     "gen-completion <SHELL>",
 		Aliases: []string{"completion"},
 		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
-		Hidden:  true,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			switch {
 			case args[0] == "bash":

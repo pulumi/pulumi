@@ -17,7 +17,7 @@ test new feature with resoruces
 
 
 
-## Create a Foo Resource {#create}
+## Create Foo Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>

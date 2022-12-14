@@ -56,6 +56,23 @@
         }
       }
     },
+    "example:mod:Component": {
+      "component": true,
+      "inputProperties": {
+        "main": {
+          "$ref": "#/resources/example::MainComponent"
+        },
+        "local": {
+          "$ref": "#/resources/example:mod:Component2"
+        }
+      }
+    },
+    "example:mod:Component2": {
+      "component": true
+    },
+    "example::MainComponent": {
+      "component": true
+    },
     "example::ResourceInput": {
       "properties": {
         "bar": {
@@ -72,7 +89,7 @@
       ]
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/input-collision/go/example",
+      "importBasePath": "naming-collisions/example",
       "generateExtraInputTypes": true
     },
     "nodejs": {

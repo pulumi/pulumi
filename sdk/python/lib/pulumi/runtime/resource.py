@@ -36,7 +36,7 @@ import grpc
 
 from . import rpc, settings, known_types
 from .. import log
-from ..runtime.proto import provider_pb2, resource_pb2
+from ..runtime.proto import provider_pb2, resource_pb2, alias_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
 from .resource_cycle_breaker import declare_dependency
@@ -154,7 +154,7 @@ async def prepare_resource(
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
     provider_refs: Dict[str, Optional[str]] = {}
-    if remote and opts is not None:
+    if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
             # If we were given providers, wait for them to resolve and construct provider references from them.
@@ -243,8 +243,17 @@ def get_resource(
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
+
+            accept_resources = not (
+                os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
+                in {"TRUE", "1"}
+            )
             req = resource_pb2.ResourceInvokeRequest(
-                tok="pulumi:pulumi:getResource", args=inputs, provider="", version=""
+                tok="pulumi:pulumi:getResource",
+                args=inputs,
+                provider="",
+                version="",
+                acceptResources=accept_resources,
             )
 
             def do_invoke():
@@ -553,6 +562,11 @@ def register_resource(
                         "Expected custom_timeouts to be a CustomTimeouts object"
                     )
 
+            if opts.deleted_with and not await settings.monitor_supports_deleted_with():
+                raise Exception(
+                    "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
+                )
+
             accept_resources = not (
                 os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
                 in {"TRUE", "1"}
@@ -579,11 +593,12 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                urnAliases=resolver.aliases,
+                aliases=[alias_pb2.Alias(urn=alias) for alias in resolver.aliases],
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
                 retainOnDelete=opts.retain_on_delete or False,
+                deletedWith=opts.deleted_with,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel
@@ -682,7 +697,9 @@ def register_resource_outputs(
 ):
     async def do_register_resource_outputs():
         urn = await res.urn.future()
-        serialized_props = await rpc.serialize_properties(outputs, {})
+        # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
+        # much directly by users who could pass None in (although the type hints say they shouldn't).
+        serialized_props = await rpc.serialize_properties(outputs or {}, {})
         log.debug(
             f"register resource outputs prepared: urn={urn}, props={serialized_props}"
         )
@@ -800,7 +817,12 @@ async def _add_dependency(
     from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
     if isinstance(res, ComponentResource) and not res._remote:
-        for child in res._childResources:
+        # Copy the set before iterating so that any concurrent child additions during
+        # the dependency computation (which is async, so can be interleaved with other
+        # operations including child resource construction which adds children to this
+        # resource) do not trigger modification during iteration errors.
+        child_resources = res._childResources.copy()
+        for child in child_resources:
             await _add_dependency(deps, child, from_resource)
         return
 

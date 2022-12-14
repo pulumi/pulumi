@@ -19,11 +19,6 @@ n/a
 
 ## Using funcWithEmptyOutputs {#using}
 
-Two invocation forms are available. The direct form accepts plain
-arguments and either blocks until the result value is available, or
-returns a Promise-wrapped result. The output form accepts
-Input-wrapped arguments and returns an Output-wrapped result.
-
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -34,8 +29,6 @@ Input-wrapped arguments and returns an Output-wrapped result.
 <div class="highlight"
 ><pre class="chroma"><code class="language-typescript" data-lang="typescript"
 ><span class="k">function </span>funcWithEmptyOutputs<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithEmptyOutputsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Promise&lt;<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>></span
-><span class="k">
-function </span>funcWithEmptyOutputsOutput<span class="p">(</span><span class="nx">args</span><span class="p">:</span> <span class="nx">FuncWithEmptyOutputsOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p">?:</span> <span class="nx"><a href="/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions">InvokeOptions</a></span><span class="p">): Output&lt;<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>></span
 ></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -46,9 +39,6 @@ function </span>funcWithEmptyOutputsOutput<span class="p">(</span><span class="n
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"
 ><span class="k">def </span>func_with_empty_outputs<span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>FuncWithEmptyOutputsResult</span
-><span class="k">
-def </span>func_with_empty_outputs_output<span class="p">(</span><span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-                            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[FuncWithEmptyOutputsResult]</span
 ></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -58,8 +48,6 @@ def </span>func_with_empty_outputs_output<span class="p">(</span><span class="nx
 <pulumi-choosable type="language" values="go">
 <div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"
 ><span class="k">func </span>FuncWithEmptyOutputs<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithEmptyOutputsArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) (*<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>, error)</span
-><span class="k">
-func </span>FuncWithEmptyOutputsOutput<span class="p">(</span><span class="nx">ctx</span><span class="p"> *</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context">Context</a></span><span class="p">,</span> <span class="nx">args</span><span class="p"> *</span><span class="nx">FuncWithEmptyOutputsOutputArgs</span><span class="p">,</span> <span class="nx">opts</span><span class="p"> ...</span><span class="nx"><a href="https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption">InvokeOption</a></span><span class="p">) FuncWithEmptyOutputsResultOutput</span
 ></code></pre></div>
 
 &gt; Note: This function is named `FuncWithEmptyOutputs` in the Go SDK.
@@ -72,8 +60,7 @@ func </span>FuncWithEmptyOutputsOutput<span class="p">(</span><span class="nx">c
 <pulumi-choosable type="language" values="csharp">
 <div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public static class </span><span class="nx">FuncWithEmptyOutputs </span><span class="p">
 {</span><span class="k">
-    public static </span>Task&lt;<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">FuncWithEmptyOutputsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="k">
-    public static </span>Output&lt;<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>> <span class="p">Invoke(</span><span class="nx">FuncWithEmptyOutputsInvokeArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
+    public static </span>Task&lt;<span class="nx"><a href="#result">FuncWithEmptyOutputsResult</a></span>> <span class="p">InvokeAsync(</span><span class="nx">FuncWithEmptyOutputsArgs</span><span class="p"> </span><span class="nx">args<span class="p">,</span> <span class="nx"><a href="/docs/reference/pkg/dotnet/Pulumi/Pulumi.InvokeOptions.html">InvokeOptions</a></span><span class="p">? </span><span class="nx">opts = null<span class="p">)</span><span class="p">
 }</span></code></pre></div>
 </pulumi-choosable>
 </div>
@@ -90,10 +77,10 @@ func </span>FuncWithEmptyOutputsOutput<span class="p">(</span><span class="nx">c
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
-<span class="k">&nbsp;&nbsp;Function:</span> mypkg:funcWithEmptyOutputs
-<span class="k">&nbsp;&nbsp;Arguments:</span>
-<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">fn::invoke:</span>
+<span class="k">&nbsp;&nbsp;function:</span> mypkg:funcWithEmptyOutputs
+<span class="k">&nbsp;&nbsp;arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 

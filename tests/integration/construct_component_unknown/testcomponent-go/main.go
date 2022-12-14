@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -239,6 +241,11 @@ func (p *testcomponentProvider) GetSchema(ctx context.Context,
 
 func (p *testcomponentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
+}
+
+func (p *testcomponentProvider) GetMapping(
+	context.Context, *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	return &pulumirpc.GetMappingResponse{}, nil
 }
 
 func init() {

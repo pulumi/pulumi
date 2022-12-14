@@ -21,6 +21,7 @@ Feel free to pick up any existing issue that looks interesting to you or fix a b
 
 For larger features, we'd appreciate it if you open a [new issue](https://github.com/pulumi/pulumi/issues/new) before investing a lot of time so we can discuss the feature together.
 Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/issues) to make sure your issue is unique, to lighten the triage burden on our maintainers.
+Finally, please limit your pull requests to contain only one feature at a time. Separating feature work into individual pull requests helps speed up code review and reduces the barrier to merge.
 
 ## Developing
 
@@ -28,21 +29,22 @@ Please also be sure to browse [current issues](https://github.com/pulumi/pulumi/
 
 You'll want to install the following on your machine:
 
-- Go 1.17
-- NodeJS 14.X.X or later
-- Python 3.6 or later
-- [.NET Core](https://dotnet.microsoft.com/download)
+- [Go 1.18 or later](https://go.dev/dl/)
+- [NodeJS 14.X.X or later](https://nodejs.org/en/download/)
+- [Python 3.6 or later](https://www.python.org/downloads/)
+- [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
+- [jq](https://stedolan.github.io/jq/)
 
 ### Installing Pulumi dependencies on macOS
 
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.17 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils
-curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
+brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils jq
+curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
 ```
@@ -77,7 +79,7 @@ Across our projects, we try to use a regular set of make targets. The ones you'l
 1. `make`, which builds Pulumi and runs a quick set of tests
 1. `make all` which builds Pulumi and runs the quick tests and a larger set of tests.
 
-We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.
+We make heavy use of integration level tests that invoke `pulumi` to create and then delete cloud resources. In order to run our integration tests, you will need a Pulumi account (so [sign up for free](https://pulumi.com) today if you haven't already) and log in with `pulumi login`.  Additionally, before running integration tests, be sure to set the environment variable `PULUMI_TEST_ORG` to your pulumi username.
 
 The tests in this repository do not create any real cloud resources as part of testing but still uses Pulumi.com to store information about some synthetic resources the tests create. Other repositories may require additional setup before running tests. In most cases, this additional setup consists of setting a few environment variables to configure the provider for the the cloud service we are testing. Please see the `CONTRIBUTING.md` file in the relevant repository, which will explain what additional configuration is needed before running tests.
 
@@ -101,11 +103,16 @@ is a pretty standard starting point during debugging that will show a fairly com
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
 
-When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your pull request gets into the next release.
+We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
+
+```bash
+$ make changelog
+````
+…and follow the prompts on screen.
 
 ### Pulumi employees
 
-Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Test can run directly without approval for PRs based on branches rather than forks.
+Pulumi employees have write access to Pulumi repositories and should push directly to branches rather than forking the repository. Tests can run directly without approval for PRs based on branches rather than forks.
 
 Please ensure that you nest your branches under a unique identifier such as your name (e.g. `refs/heads/pulumipus/cool_feature`).
 

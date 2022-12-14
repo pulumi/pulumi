@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -124,7 +125,7 @@ func makeResourceOptions(state *resource.State, names NameTable) (*model.Block, 
 		if !providers.IsDefaultProvider(ref.URN()) {
 			name, ok := names[ref.URN()]
 			if !ok {
-				return nil, fmt.Errorf("no name for provider %v", state.Parent)
+				return nil, fmt.Errorf("no name for provider %v", state.Provider)
 			}
 			resourceOptions = appendResourceOption(resourceOptions, "provider", newVariableReference(name))
 		}
@@ -197,15 +198,15 @@ func typeRank(t schema.Type) int {
 //
 // The first-order ranking is:
 //
-//   bool < int < number < string < archive < asset < json < token < array < map < object < union < any
+//	bool < int < number < string < archive < asset < json < token < array < map < object < union < any
 //
 // Additional rules apply to composite types of the same kind:
-// - array(T) is simpler than array(U) if T is simpler than U
-// - map(T) is simpler than map(U) if T is simpler than U
-// - object({ ... }) is simpler than object({ ... }) if the former has a greater number of required properties that are
-//   simpler than the latter's required properties
-// - union(...) is simpler than union(...) if the former's simplest element type is simpler than the latter's simplest
-//   element type
+//   - array(T) is simpler than array(U) if T is simpler than U
+//   - map(T) is simpler than map(U) if T is simpler than U
+//   - object({ ... }) is simpler than object({ ... }) if the former has a greater number of required properties that
+//     are simpler than the latter's required properties
+//   - union(...) is simpler than union(...) if the former's simplest element type is simpler than the latter's simplest
+//     element type
 func simplerType(t, u schema.Type) bool {
 	tRank, uRank := typeRank(t), typeRank(u)
 	if tRank < uRank {
@@ -365,10 +366,221 @@ func generatePropertyValue(property *schema.Property, value resource.PropertyVal
 	return generateValue(property.Type, value)
 }
 
+// valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
+func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Type) bool {
+	if union, ok := schemaType.(*schema.UnionType); ok {
+		schemaType = reduceUnionType(union, value)
+	}
+
+	switch {
+	case value.IsObject():
+		switch arg := schemaType.(type) {
+		case *schema.ObjectType:
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range arg.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+
+			objectProperties := value.ObjectValue()
+			// check that each property is present in the schema and that the value is structurally typed as well
+			for propertyKey, propertyValue := range objectProperties {
+				propertyValueSchema, ok := arg.Property(string(propertyKey))
+				if !ok {
+					// unknown property
+					return false
+				}
+
+				if !valueStructurallyTypedAs(propertyValue, propertyValueSchema.Type) {
+					return false
+				}
+			}
+
+			// check that all required properties from the schema are present in the object properties
+			for _, schemaProperty := range arg.Properties {
+				if schemaProperty.IsRequired() {
+					if _, ok := objectProperties[resource.PropertyKey(schemaProperty.Name)]; !ok {
+						// the required property was not present in the object
+						return false
+					}
+				}
+			}
+
+			// all properties are present and structurally typed
+			return true
+
+		case *schema.UnionType:
+			// make sure that at least of the union element types is structurally typed
+			for _, unionElement := range arg.ElementTypes {
+				if valueStructurallyTypedAs(value, unionElement) {
+					return true
+				}
+			}
+		}
+
+	case value.IsString():
+		// basic case
+		if schemaType == schema.StringType {
+			return true
+		}
+
+		// for unions: check that at least of one of the element types is also a string
+		// collapsing unions of unions as necessary recursively
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsBool():
+		// basic case
+		if schemaType == schema.BoolType {
+			return true
+		}
+
+		// for unions: check that at least of one of the element types is also a bool
+		// collapsing unions of unions as necessary recursively
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsNumber():
+		// basic case
+		if schemaType == schema.NumberType || schemaType == schema.IntType {
+			return true
+		}
+
+		// for unions: check that at least of one of the element types is also a number
+		// collapsing unions of unions as necessary recursively
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsArray():
+		// basic case: check that each element in the array is structurally typed as the element type of the schenma array
+		switch arg := schemaType.(type) {
+		case *schema.ArrayType:
+			for _, element := range value.ArrayValue() {
+				if !valueStructurallyTypedAs(element, arg.ElementType) {
+					return false
+				}
+			}
+
+			// all elements are structurally typed
+			return true
+		case *schema.UnionType:
+			// make sure that at least of the union element types is structurally typed
+			for _, unionElement := range arg.ElementTypes {
+				if valueStructurallyTypedAs(value, unionElement) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// reduceUnionType reduces the given union type to a simpler type that potentially matches the value.
+// When the value type is primitive, choose the first element type of the union elements that is of the same type.
+// When the value is an object, use the discriminator to choose the element type.
+func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue) schema.Type {
+	switch {
+	case value.IsObject():
+		// return the first element type that matches structurally fits the value
+		findBestFitType := func() schema.Type {
+			for _, t := range schemaUnion.ElementTypes {
+				if valueStructurallyTypedAs(value, t) {
+					return t
+				}
+			}
+
+			// if we still couldn't find a type that fits the value
+			return nil
+		}
+
+		// If the value is an object, use the discriminator to choose the element type.
+		if schemaUnion.Discriminator == "" {
+			return findBestFitType()
+		}
+
+		obj := value.ObjectValue()
+		discriminatorValue, ok := obj[resource.PropertyKey(schemaUnion.Discriminator)]
+		if !ok {
+			// discriminator property is not present
+			// return the first type that fits the value
+			return findBestFitType()
+		}
+
+		if !discriminatorValue.IsString() {
+			// discriminator property value is not a string,
+			// so we can't select a type from the union mapping
+			return findBestFitType()
+		}
+
+		correspondingTypeToken, ok := schemaUnion.Mapping[discriminatorValue.StringValue()]
+		if !ok {
+			// discriminator property value is not a key in the union mapping,
+			return findBestFitType()
+		}
+
+		for _, elementType := range schemaUnion.ElementTypes {
+			// found the type token
+			// match it against the element type which should be an object
+			elementTypeObject, ok := codegen.UnwrapType(elementType).(*schema.ObjectType)
+			if ok {
+				elementTypeToken, parseError := tokens.ParseTypeToken(elementTypeObject.Token)
+				if parseError != nil {
+					continue
+				}
+
+				foundTypeToken, parseError := tokens.ParseTypeToken(correspondingTypeToken)
+
+				if parseError != nil {
+					continue
+				}
+
+				typeName := string(elementTypeToken.Name())
+				foundTypeName := string(foundTypeToken.Name())
+				if typeName == foundTypeName {
+					return elementTypeObject
+				}
+			}
+		}
+
+	default:
+		for _, t := range schemaUnion.ElementTypes {
+			if unionType, ok := t.(*schema.UnionType); ok {
+				t = reduceUnionType(unionType, value)
+			}
+
+			if valueStructurallyTypedAs(value, t) {
+				return t
+			}
+		}
+	}
+
+	// anything else, we don't know
+	return nil
+}
+
 // generateValue generates a value from the given property value. The given type may or may not match the shape of the
 // given value.
 func generateValue(typ schema.Type, value resource.PropertyValue) (model.Expression, error) {
 	typ = codegen.UnwrapType(typ)
+
+	if unionType, ok := typ.(*schema.UnionType); ok {
+		typ = reduceUnionType(unionType, value)
+	}
 
 	switch {
 	case value.IsArchive():
@@ -410,8 +622,9 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 		obj := value.ObjectValue()
 		items := make([]model.ObjectConsItem, 0, len(obj))
 
-		if objectType, ok := typ.(*schema.ObjectType); ok {
-			for _, p := range objectType.Properties {
+		switch arg := typ.(type) {
+		case *schema.ObjectType:
+			for _, p := range arg.Properties {
 				x, err := generatePropertyValue(p, obj[resource.PropertyKey(p.Name)])
 				if err != nil {
 					return nil, err
@@ -425,7 +638,8 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 					})
 				}
 			}
-		} else {
+
+		default:
 			elementType := schema.AnyType
 			if mapType, ok := typ.(*schema.MapType); ok {
 				elementType = mapType.ElementType

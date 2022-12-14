@@ -17,8 +17,8 @@
 //
 'use strict';
 var grpc = require('@grpc/grpc-js');
-var provider_pb = require('./provider_pb.js');
-var plugin_pb = require('./plugin_pb.js');
+var pulumi_provider_pb = require('./provider_pb.js');
+var pulumi_plugin_pb = require('./plugin_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
@@ -34,256 +34,278 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
 }
 
 function serialize_pulumirpc_CallRequest(arg) {
-  if (!(arg instanceof provider_pb.CallRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.CallRequest)) {
     throw new Error('Expected argument of type pulumirpc.CallRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CallRequest(buffer_arg) {
-  return provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CallRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CallResponse(arg) {
-  if (!(arg instanceof provider_pb.CallResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.CallResponse)) {
     throw new Error('Expected argument of type pulumirpc.CallResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CallResponse(buffer_arg) {
-  return provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CheckRequest(arg) {
-  if (!(arg instanceof provider_pb.CheckRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CheckRequest(buffer_arg) {
-  return provider_pb.CheckRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CheckRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CheckResponse(arg) {
-  if (!(arg instanceof provider_pb.CheckResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.CheckResponse)) {
     throw new Error('Expected argument of type pulumirpc.CheckResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CheckResponse(buffer_arg) {
-  return provider_pb.CheckResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CheckResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ConfigureRequest(arg) {
-  if (!(arg instanceof provider_pb.ConfigureRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.ConfigureRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConfigureRequest(buffer_arg) {
-  return provider_pb.ConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ConfigureRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ConfigureResponse(arg) {
-  if (!(arg instanceof provider_pb.ConfigureResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.ConfigureResponse)) {
     throw new Error('Expected argument of type pulumirpc.ConfigureResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConfigureResponse(buffer_arg) {
-  return provider_pb.ConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ConstructRequest(arg) {
-  if (!(arg instanceof provider_pb.ConstructRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.ConstructRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConstructRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConstructRequest(buffer_arg) {
-  return provider_pb.ConstructRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ConstructRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ConstructResponse(arg) {
-  if (!(arg instanceof provider_pb.ConstructResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.ConstructResponse)) {
     throw new Error('Expected argument of type pulumirpc.ConstructResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ConstructResponse(buffer_arg) {
-  return provider_pb.ConstructResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ConstructResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CreateRequest(arg) {
-  if (!(arg instanceof provider_pb.CreateRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.CreateRequest)) {
     throw new Error('Expected argument of type pulumirpc.CreateRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CreateRequest(buffer_arg) {
-  return provider_pb.CreateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CreateRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_CreateResponse(arg) {
-  if (!(arg instanceof provider_pb.CreateResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.CreateResponse)) {
     throw new Error('Expected argument of type pulumirpc.CreateResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_CreateResponse(buffer_arg) {
-  return provider_pb.CreateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.CreateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_DeleteRequest(arg) {
-  if (!(arg instanceof provider_pb.DeleteRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.DeleteRequest)) {
     throw new Error('Expected argument of type pulumirpc.DeleteRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DeleteRequest(buffer_arg) {
-  return provider_pb.DeleteRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.DeleteRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_DiffRequest(arg) {
-  if (!(arg instanceof provider_pb.DiffRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.DiffRequest)) {
     throw new Error('Expected argument of type pulumirpc.DiffRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DiffRequest(buffer_arg) {
-  return provider_pb.DiffRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.DiffRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_DiffResponse(arg) {
-  if (!(arg instanceof provider_pb.DiffResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.DiffResponse)) {
     throw new Error('Expected argument of type pulumirpc.DiffResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_DiffResponse(buffer_arg) {
-  return provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.DiffResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetMappingRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.GetMappingRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetMappingRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetMappingRequest(buffer_arg) {
+  return pulumi_provider_pb.GetMappingRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetMappingResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.GetMappingResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetMappingResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetMappingResponse(buffer_arg) {
+  return pulumi_provider_pb.GetMappingResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetSchemaRequest(arg) {
-  if (!(arg instanceof provider_pb.GetSchemaRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.GetSchemaRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetSchemaRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetSchemaRequest(buffer_arg) {
-  return provider_pb.GetSchemaRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.GetSchemaRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetSchemaResponse(arg) {
-  if (!(arg instanceof provider_pb.GetSchemaResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.GetSchemaResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetSchemaResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
-  return provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeRequest(arg) {
-  if (!(arg instanceof provider_pb.InvokeRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeRequest(buffer_arg) {
-  return provider_pb.InvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.InvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeResponse(arg) {
-  if (!(arg instanceof provider_pb.InvokeResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
     throw new Error('Expected argument of type pulumirpc.InvokeResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
-  return provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_PluginAttach(arg) {
-  if (!(arg instanceof plugin_pb.PluginAttach)) {
+  if (!(arg instanceof pulumi_plugin_pb.PluginAttach)) {
     throw new Error('Expected argument of type pulumirpc.PluginAttach');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginAttach(buffer_arg) {
-  return plugin_pb.PluginAttach.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_plugin_pb.PluginAttach.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_PluginInfo(arg) {
-  if (!(arg instanceof plugin_pb.PluginInfo)) {
+  if (!(arg instanceof pulumi_plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {
-  return plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ReadRequest(arg) {
-  if (!(arg instanceof provider_pb.ReadRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.ReadRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadRequest(buffer_arg) {
-  return provider_pb.ReadRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ReadRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ReadResponse(arg) {
-  if (!(arg instanceof provider_pb.ReadResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.ReadResponse)) {
     throw new Error('Expected argument of type pulumirpc.ReadResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_ReadResponse(buffer_arg) {
-  return provider_pb.ReadResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.ReadResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_UpdateRequest(arg) {
-  if (!(arg instanceof provider_pb.UpdateRequest)) {
+  if (!(arg instanceof pulumi_provider_pb.UpdateRequest)) {
     throw new Error('Expected argument of type pulumirpc.UpdateRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_UpdateRequest(buffer_arg) {
-  return provider_pb.UpdateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.UpdateRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_UpdateResponse(arg) {
-  if (!(arg instanceof provider_pb.UpdateResponse)) {
+  if (!(arg instanceof pulumi_provider_pb.UpdateResponse)) {
     throw new Error('Expected argument of type pulumirpc.UpdateResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_UpdateResponse(buffer_arg) {
-  return provider_pb.UpdateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_provider_pb.UpdateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -295,8 +317,8 @@ getSchema: {
     path: '/pulumirpc.ResourceProvider/GetSchema',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.GetSchemaRequest,
-    responseType: provider_pb.GetSchemaResponse,
+    requestType: pulumi_provider_pb.GetSchemaRequest,
+    responseType: pulumi_provider_pb.GetSchemaResponse,
     requestSerialize: serialize_pulumirpc_GetSchemaRequest,
     requestDeserialize: deserialize_pulumirpc_GetSchemaRequest,
     responseSerialize: serialize_pulumirpc_GetSchemaResponse,
@@ -307,8 +329,8 @@ checkConfig: {
     path: '/pulumirpc.ResourceProvider/CheckConfig',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.CheckRequest,
-    responseType: provider_pb.CheckResponse,
+    requestType: pulumi_provider_pb.CheckRequest,
+    responseType: pulumi_provider_pb.CheckResponse,
     requestSerialize: serialize_pulumirpc_CheckRequest,
     requestDeserialize: deserialize_pulumirpc_CheckRequest,
     responseSerialize: serialize_pulumirpc_CheckResponse,
@@ -319,8 +341,8 @@ diffConfig: {
     path: '/pulumirpc.ResourceProvider/DiffConfig',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.DiffRequest,
-    responseType: provider_pb.DiffResponse,
+    requestType: pulumi_provider_pb.DiffRequest,
+    responseType: pulumi_provider_pb.DiffResponse,
     requestSerialize: serialize_pulumirpc_DiffRequest,
     requestDeserialize: deserialize_pulumirpc_DiffRequest,
     responseSerialize: serialize_pulumirpc_DiffResponse,
@@ -331,8 +353,8 @@ configure: {
     path: '/pulumirpc.ResourceProvider/Configure',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.ConfigureRequest,
-    responseType: provider_pb.ConfigureResponse,
+    requestType: pulumi_provider_pb.ConfigureRequest,
+    responseType: pulumi_provider_pb.ConfigureResponse,
     requestSerialize: serialize_pulumirpc_ConfigureRequest,
     requestDeserialize: deserialize_pulumirpc_ConfigureRequest,
     responseSerialize: serialize_pulumirpc_ConfigureResponse,
@@ -343,8 +365,8 @@ invoke: {
     path: '/pulumirpc.ResourceProvider/Invoke',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.InvokeRequest,
-    responseType: provider_pb.InvokeResponse,
+    requestType: pulumi_provider_pb.InvokeRequest,
+    responseType: pulumi_provider_pb.InvokeResponse,
     requestSerialize: serialize_pulumirpc_InvokeRequest,
     requestDeserialize: deserialize_pulumirpc_InvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
@@ -356,8 +378,8 @@ streamInvoke: {
     path: '/pulumirpc.ResourceProvider/StreamInvoke',
     requestStream: false,
     responseStream: true,
-    requestType: provider_pb.InvokeRequest,
-    responseType: provider_pb.InvokeResponse,
+    requestType: pulumi_provider_pb.InvokeRequest,
+    responseType: pulumi_provider_pb.InvokeResponse,
     requestSerialize: serialize_pulumirpc_InvokeRequest,
     requestDeserialize: deserialize_pulumirpc_InvokeRequest,
     responseSerialize: serialize_pulumirpc_InvokeResponse,
@@ -368,8 +390,8 @@ call: {
     path: '/pulumirpc.ResourceProvider/Call',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.CallRequest,
-    responseType: provider_pb.CallResponse,
+    requestType: pulumi_provider_pb.CallRequest,
+    responseType: pulumi_provider_pb.CallResponse,
     requestSerialize: serialize_pulumirpc_CallRequest,
     requestDeserialize: deserialize_pulumirpc_CallRequest,
     responseSerialize: serialize_pulumirpc_CallResponse,
@@ -384,8 +406,8 @@ check: {
     path: '/pulumirpc.ResourceProvider/Check',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.CheckRequest,
-    responseType: provider_pb.CheckResponse,
+    requestType: pulumi_provider_pb.CheckRequest,
+    responseType: pulumi_provider_pb.CheckResponse,
     requestSerialize: serialize_pulumirpc_CheckRequest,
     requestDeserialize: deserialize_pulumirpc_CheckRequest,
     responseSerialize: serialize_pulumirpc_CheckResponse,
@@ -396,8 +418,8 @@ diff: {
     path: '/pulumirpc.ResourceProvider/Diff',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.DiffRequest,
-    responseType: provider_pb.DiffResponse,
+    requestType: pulumi_provider_pb.DiffRequest,
+    responseType: pulumi_provider_pb.DiffResponse,
     requestSerialize: serialize_pulumirpc_DiffRequest,
     requestDeserialize: deserialize_pulumirpc_DiffRequest,
     responseSerialize: serialize_pulumirpc_DiffResponse,
@@ -409,8 +431,8 @@ create: {
     path: '/pulumirpc.ResourceProvider/Create',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.CreateRequest,
-    responseType: provider_pb.CreateResponse,
+    requestType: pulumi_provider_pb.CreateRequest,
+    responseType: pulumi_provider_pb.CreateResponse,
     requestSerialize: serialize_pulumirpc_CreateRequest,
     requestDeserialize: deserialize_pulumirpc_CreateRequest,
     responseSerialize: serialize_pulumirpc_CreateResponse,
@@ -422,8 +444,8 @@ read: {
     path: '/pulumirpc.ResourceProvider/Read',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.ReadRequest,
-    responseType: provider_pb.ReadResponse,
+    requestType: pulumi_provider_pb.ReadRequest,
+    responseType: pulumi_provider_pb.ReadResponse,
     requestSerialize: serialize_pulumirpc_ReadRequest,
     requestDeserialize: deserialize_pulumirpc_ReadRequest,
     responseSerialize: serialize_pulumirpc_ReadResponse,
@@ -434,8 +456,8 @@ update: {
     path: '/pulumirpc.ResourceProvider/Update',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.UpdateRequest,
-    responseType: provider_pb.UpdateResponse,
+    requestType: pulumi_provider_pb.UpdateRequest,
+    responseType: pulumi_provider_pb.UpdateResponse,
     requestSerialize: serialize_pulumirpc_UpdateRequest,
     requestDeserialize: deserialize_pulumirpc_UpdateRequest,
     responseSerialize: serialize_pulumirpc_UpdateResponse,
@@ -446,7 +468,7 @@ delete: {
     path: '/pulumirpc.ResourceProvider/Delete',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.DeleteRequest,
+    requestType: pulumi_provider_pb.DeleteRequest,
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_DeleteRequest,
     requestDeserialize: deserialize_pulumirpc_DeleteRequest,
@@ -458,8 +480,8 @@ construct: {
     path: '/pulumirpc.ResourceProvider/Construct',
     requestStream: false,
     responseStream: false,
-    requestType: provider_pb.ConstructRequest,
-    responseType: provider_pb.ConstructResponse,
+    requestType: pulumi_provider_pb.ConstructRequest,
+    responseType: pulumi_provider_pb.ConstructResponse,
     requestSerialize: serialize_pulumirpc_ConstructRequest,
     requestDeserialize: deserialize_pulumirpc_ConstructRequest,
     responseSerialize: serialize_pulumirpc_ConstructResponse,
@@ -487,7 +509,7 @@ getPluginInfo: {
     requestStream: false,
     responseStream: false,
     requestType: google_protobuf_empty_pb.Empty,
-    responseType: plugin_pb.PluginInfo,
+    responseType: pulumi_plugin_pb.PluginInfo,
     requestSerialize: serialize_google_protobuf_Empty,
     requestDeserialize: deserialize_google_protobuf_Empty,
     responseSerialize: serialize_pulumirpc_PluginInfo,
@@ -498,12 +520,25 @@ attach: {
     path: '/pulumirpc.ResourceProvider/Attach',
     requestStream: false,
     responseStream: false,
-    requestType: plugin_pb.PluginAttach,
+    requestType: pulumi_plugin_pb.PluginAttach,
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_PluginAttach,
     requestDeserialize: deserialize_pulumirpc_PluginAttach,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // GetMapping fetches the mapping for this resource provider, if any. A provider should return an empty
+// response (not an error) if it doesn't have a mapping for the given key.
+getMapping: {
+    path: '/pulumirpc.ResourceProvider/GetMapping',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.GetMappingRequest,
+    responseType: pulumi_provider_pb.GetMappingResponse,
+    requestSerialize: serialize_pulumirpc_GetMappingRequest,
+    requestDeserialize: deserialize_pulumirpc_GetMappingRequest,
+    responseSerialize: serialize_pulumirpc_GetMappingResponse,
+    responseDeserialize: deserialize_pulumirpc_GetMappingResponse,
   },
 };
 

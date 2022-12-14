@@ -12,14 +12,14 @@ namespace Pulumi.Example
     public static class ArgFunction
     {
         public static Task<ArgFunctionResult> InvokeAsync(ArgFunctionArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithDefaults());
 
         public static Output<ArgFunctionResult> Invoke(ArgFunctionInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class ArgFunctionArgs : Pulumi.InvokeArgs
+    public sealed class ArgFunctionArgs : global::Pulumi.InvokeArgs
     {
         [Input("name")]
         public Pulumi.Random.RandomPet? Name { get; set; }
@@ -27,9 +27,10 @@ namespace Pulumi.Example
         public ArgFunctionArgs()
         {
         }
+        public static new ArgFunctionArgs Empty => new ArgFunctionArgs();
     }
 
-    public sealed class ArgFunctionInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ArgFunctionInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("name")]
         public Input<Pulumi.Random.RandomPet>? Name { get; set; }
@@ -37,6 +38,7 @@ namespace Pulumi.Example
         public ArgFunctionInvokeArgs()
         {
         }
+        public static new ArgFunctionInvokeArgs Empty => new ArgFunctionInvokeArgs();
     }
 
 

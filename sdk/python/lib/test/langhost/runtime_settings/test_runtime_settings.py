@@ -18,6 +18,7 @@ from ..util import LanghostTest
 class RuntimeSettingsTest(LanghostTest):
     def test_runtime_settings(self):
         self.run_test(program=path.join(self.base_path(), "runtime_settings"),
+                      organization="myorg",
                       project="myproject",
                       stack="mystack",
                       config={

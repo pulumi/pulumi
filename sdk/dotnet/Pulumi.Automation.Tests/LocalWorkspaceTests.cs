@@ -21,30 +21,13 @@ using Xunit;
 using Xunit.Abstractions;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
+using static Pulumi.Automation.Tests.Utility;
+
 namespace Pulumi.Automation.Tests
 {
     public class LocalWorkspaceTests
     {
         private static readonly string _pulumiOrg = GetTestOrg();
-
-        private static string GetTestSuffix()
-        {
-            var random = new Random();
-            var result = random.Next(); // 31 bits, highest bit will be 0 (signed)
-            return result.ToString("x"); // 8 hex characters
-        }
-
-        private static string RandomStackName()
-        {
-            const string chars = "abcdefghijklmnopqrstuvwxyz";
-            return new string(Enumerable.Range(1, 8).Select(_ => chars[new Random().Next(chars.Length)]).ToArray());
-        }
-
-        private static string GetTestOrg() =>
-            Environment.GetEnvironmentVariable("PULUMI_TEST_ORG") ?? "pulumi-test";
-
-        private static string FullyQualifiedStackName(string org, string project, string stack) =>
-            $"{org}/{project}/{stack}";
 
         private static string NormalizeConfigKey(string key, string projectName)
         {
@@ -117,24 +100,27 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task AddRemoveListPlugins()
         {
+            // verion for the aws plugin
+            var version = "5.10.0";
+            var plugin = "aws";
             using var workspace = await LocalWorkspace.CreateAsync();
 
             var plugins = await workspace.ListPluginsAsync();
-            if (plugins.Any(p => p.Name == "aws" && p.Version == "3.0.0"))
+            if (plugins.Any(p => p.Name == plugin && p.Version == version))
             {
-                await workspace.RemovePluginAsync("aws", "3.0.0");
+                await workspace.RemovePluginAsync(plugin, version);
                 plugins = await workspace.ListPluginsAsync();
-                Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
+                Assert.DoesNotContain(plugins, p => p.Name == plugin && p.Version == version);
             }
 
-            await workspace.InstallPluginAsync("aws", "v3.0.0");
+            await workspace.InstallPluginAsync(plugin, $"v{version}");
             plugins = await workspace.ListPluginsAsync();
-            var aws = plugins.FirstOrDefault(p => p.Name == "aws" && p.Version == "3.0.0");
+            var aws = plugins.FirstOrDefault(p => p.Name == plugin && p.Version == version);
             Assert.NotNull(aws);
 
-            await workspace.RemovePluginAsync("aws", "3.0.0");
+            await workspace.RemovePluginAsync(plugin, version);
             plugins = await workspace.ListPluginsAsync();
-            Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
+            Assert.DoesNotContain(plugins, p => p.Name == plugin && p.Version == version);
         }
 
         [Fact]
@@ -1801,7 +1787,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
 
@@ -1810,7 +1796,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Single(state.Deployment.Resources);
             }
             finally
@@ -1864,7 +1850,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
 
@@ -1876,7 +1862,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Single(state.Deployment.Resources);
             }
             finally
@@ -1930,7 +1916,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 var resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
                 Assert.True(resource.Protect);
@@ -1940,7 +1926,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(2, state.Deployment.Resources.Count);
                 resource = state.Deployment.Resources.Single(r => r.Urn.Contains(type));
                 Assert.False(resource.Protect);
@@ -2005,7 +1991,7 @@ namespace Pulumi.Automation.Tests
 
                 // export state
                 var exportResult = await stack.ExportStackAsync();
-                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                var state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(3, state.Deployment.Resources.Count);
                 var resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
                 Assert.Equal(2, resources.Count);
@@ -2016,7 +2002,7 @@ namespace Pulumi.Automation.Tests
 
                 // test
                 exportResult = await stack.ExportStackAsync();
-                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions);
+                state = JsonSerializer.Deserialize<StackState>(exportResult.Json.GetRawText(), jsonOptions)!;
                 Assert.Equal(3, state.Deployment.Resources.Count);
                 resources = state.Deployment.Resources.Where(x => x.Urn.Contains(type)).ToList();
                 Assert.Equal(2, resources.Count);
@@ -2089,7 +2075,7 @@ namespace Pulumi.Automation.Tests
             public bool IsEnabled(LogLevel logLevel)
                 => true;
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception, string> formatter)
                 => _action();
         }
 

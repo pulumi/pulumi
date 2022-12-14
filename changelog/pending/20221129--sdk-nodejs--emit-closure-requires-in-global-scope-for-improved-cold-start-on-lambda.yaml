@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Emit closure requires in global scope for improved cold start on Lambda

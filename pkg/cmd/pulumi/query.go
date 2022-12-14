@@ -34,7 +34,7 @@ func newQueryCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "query",
 		Short: "Run query program against cloud resources",
-		Long: "Run query program against cloud resources.\n" +
+		Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +
 			"\n" +
 			"This command loads a Pulumi query program and executes it. In \"query mode\", Pulumi provides various\n" +
 			"useful data sources for querying, such as the resource outputs for a stack. Query mode also disallows\n" +
@@ -46,6 +46,7 @@ func newQueryCmd() *cobra.Command {
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			interactive := cmdutil.Interactive()
 
 			opts := backend.UpdateOptions{}
@@ -55,7 +56,7 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			b, err := currentBackend(opts.Display)
+			b, err := currentBackend(ctx, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -65,9 +66,11 @@ func newQueryCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			opts.Engine = engine.UpdateOptions{}
+			opts.Engine = engine.UpdateOptions{
+				Experimental: hasExperimentalCommands(),
+			}
 
-			res := b.Query(commandContext(), backend.QueryOperation{
+			res := b.Query(ctx, backend.QueryOperation{
 				Proj:   proj,
 				Root:   root,
 				Opts:   opts,

@@ -68,16 +68,25 @@ func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version
 func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
-func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+func (host *testPluginHost) LanguageRuntime(
+	root, pwd, runtime string, options map[string]interface{}) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
+func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
+	return nil
+}
+func (host *testPluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
 	return nil
 }
 func (host *testPluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
+
+func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
+	return nil
+}
+
 func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
 	return nil, nil
@@ -121,7 +130,7 @@ func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	return nil
 }
 func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, _ int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	olds, news resource.PropertyMap, _ bool, _ []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
@@ -168,6 +177,9 @@ func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 		Name:    "testProvider",
 		Version: &prov.version,
 	}, nil
+}
+func (prov *testProvider) GetMapping(key string) ([]byte, string, error) {
+	return nil, "", nil
 }
 
 type providerLoader struct {
@@ -463,7 +475,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -498,7 +510,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -608,7 +620,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -629,7 +641,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -662,7 +674,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -700,7 +712,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -723,7 +735,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -746,7 +758,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -769,7 +781,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
@@ -793,7 +805,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))

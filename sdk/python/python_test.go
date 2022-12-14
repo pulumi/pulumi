@@ -30,8 +30,7 @@ func TestIsVirtualEnv(t *testing.T) {
 	t.Parallel()
 
 	// Create a new empty test directory.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// Assert the empty test directory is not a virtual environment.
 	assert.False(t, IsVirtualEnv(tempdir))
@@ -68,6 +67,10 @@ func TestActivateVirtualEnv(t *testing.T) {
 			input:    []string{"PYTHONHOME=foo", "FOO=blah"},
 			expected: []string{"FOO=blah", fmt.Sprintf("PATH=%s", venvDir)},
 		},
+		{
+			input:    []string{"PythonHome=foo", "Path=bar"},
+			expected: []string{fmt.Sprintf("Path=%s%sbar", venvDir, string(os.PathListSeparator))},
+		},
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
@@ -90,8 +93,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 	}
 
 	// Create a new empty test directory.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")

@@ -78,6 +78,8 @@ func init() {
 		routes.Path(path).Methods(method).Name(name)
 	}
 
+	addEndpoint("GET", "/api/capabilities", "getCapabilities")
+
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
@@ -104,6 +106,8 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}", "getUpdateStatus")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}", "startUpdate")
 	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/checkpoint", "patchCheckpoint")
+	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/checkpointdelta", "patchCheckpointDelta")
+	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/checkpointverbatim", "patchCheckpointVerbatim")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/complete", "completeUpdate")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events", "postEngineEvent")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events/batch", "postEngineEventBatch")

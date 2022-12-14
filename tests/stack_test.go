@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -111,6 +112,39 @@ func TestStackCommands(t *testing.T) {
 		// cloud: "Stack 'integration-test-59f645ba/pulumi-test/anor-londo' not found"
 		assert.Contains(t, err, "anor-londo")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	})
+
+	t.Run("StackInitNoSelect", func(t *testing.T) {
+		t.Parallel()
+
+		e := ptesting.NewEnvironment(t)
+		defer deleteIfNotFailed(e)
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "first")
+		e.RunCommand("pulumi", "stack", "init", "second")
+
+		// Last one created is always selected.
+		stacks, current := integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		assert.Equal(t, "second", *current)
+
+		// Specifying `--no-select` prevents selection.
+		e.RunCommand("pulumi", "stack", "init", "third", "--no-select")
+		stacks, current = integration.GetStacks(e)
+		if current == nil {
+			t.Fatalf("No stack was labeled as current among: %v", stacks)
+		}
+		// "second" should still be selected.
+		assert.Equal(t, "second", *current)
+
+		assert.Equal(t, 3, len(stacks))
+		assert.Contains(t, stacks, "first")
+		assert.Contains(t, stacks, "second")
+		assert.Contains(t, stacks, "third")
 	})
 
 	t.Run("StackUnselect", func(t *testing.T) {
@@ -254,8 +288,8 @@ func TestStackCommands(t *testing.T) {
 		e.ImportDirectory("integration/stack_dependencies")
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
-		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 		// We're going to futz with the stack a little so that one of the resources we just created
 		// becomes invalid.
@@ -270,8 +304,10 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		os.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
-		snap, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
+		snap, err := stack.DeserializeUntypedDeployment(
+			context.Background(),
+			&deployment, stack.DefaultSecretsProvider)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -345,8 +381,8 @@ func TestStackBackups(t *testing.T) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
-		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
 
 		// Now run pulumi up.
 		before := time.Now().UnixNano()
@@ -354,7 +390,7 @@ func TestStackBackups(t *testing.T) {
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
-		files, err := ioutil.ReadDir(backupDir)
+		files, err := os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
@@ -370,7 +406,7 @@ func TestStackBackups(t *testing.T) {
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.
-		files, err = ioutil.ReadDir(backupDir)
+		files, err = os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
@@ -466,8 +502,8 @@ func TestLocalStateLocking(t *testing.T) {
 	e.ImportDirectory("integration/single_resource")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "foo")
-	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
 
 	count := 10
 	stderrs := make(chan string, count)
@@ -558,9 +594,14 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName s
 		}
 		if t.Failed() {
 			fmt.Printf("Stacks dir state at time of failure (gzip: %t):\n", gzip)
-			files, _ := ioutil.ReadDir(e.CWD + "/" + stacksDir)
+			files, _ := os.ReadDir(e.CWD + "/" + stacksDir)
 			for _, file := range files {
-				fmt.Println(file.Name(), file.Size())
+				fi, err := file.Info()
+				if err != nil {
+					fmt.Printf("failed to read file info: %s\n", file.Name())
+					continue
+				}
+				fmt.Println(fi.Name(), fi.Size())
 			}
 		}
 	}
@@ -579,8 +620,8 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.ImportDirectory("integration/stack_dependencies")
 	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
 	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, stackName)
@@ -620,7 +661,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	assert.Equal(t, 5, len(history), "Stack history doesn't match reality")
 }
 
-func getFileNames(infos []os.FileInfo) []string {
+func getFileNames(infos []os.DirEntry) []string {
 	var result []string
 	for _, i := range infos {
 		result = append(result, i.Name())
@@ -628,8 +669,8 @@ func getFileNames(infos []os.FileInfo) []string {
 	return result
 }
 
-func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
-	var result []os.FileInfo
+func filterOutAttrsFiles(files []os.DirEntry) []os.DirEntry {
+	var result []os.DirEntry
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".attrs" {
 			result = append(result, f)
@@ -638,9 +679,11 @@ func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
 	return result
 }
 
-func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, before int64, after int64) {
 	assert.False(t, file.IsDir())
-	assert.True(t, file.Size() > 0)
+	fi, err := file.Info()
+	assert.NoError(t, err)
+	assert.True(t, fi.Size() > 0)
 	split := strings.Split(file.Name(), ".")
 	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])

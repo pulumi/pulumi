@@ -10,6 +10,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -110,9 +111,6 @@ type GoalPlan struct {
 	Name tokens.QName
 	// true if this resource is custom, managed by a plugin.
 	Custom bool
-	// the resource's checked input properties that we saw during preview.
-	// TODO(pdg-plan): Temporary for preview release, should be removed for GA
-	CheckedInputs resource.PropertyMap
 	// the resource's checked input properties we expect to change.
 	InputDiff PlanDiff
 	// the resource's output properties we expect to change (only set for RegisterResourceOutputs)
@@ -133,7 +131,7 @@ type GoalPlan struct {
 	IgnoreChanges []string
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
-	// additional alias that should be aliased to this resource.
+	// Structured Alias objects to be assigned to this resource
 	Aliases []resource.Alias
 	// the expected ID of the resource, if any.
 	ID resource.ID
@@ -166,7 +164,7 @@ func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	return diff
 }
 
-func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -177,7 +175,6 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 		Type:                    goal.Type,
 		Name:                    goal.Name,
 		Custom:                  goal.Custom,
-		CheckedInputs:           checkedInputs,
 		InputDiff:               diff,
 		OutputDiff:              PlanDiff{},
 		Parent:                  goal.Parent,
@@ -198,51 +195,10 @@ func NewGoalPlan(checkedInputs resource.PropertyMap, inputDiff *resource.ObjectD
 // ordered.
 type ResourcePlan struct {
 	Goal    *GoalPlan
-	Ops     []StepOp
+	Ops     []display.StepOp
 	Outputs resource.PropertyMap
-}
-
-func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, changed bool) {
-
-	setA := map[resource.Alias]struct{}{}
-	for _, s := range a {
-		setA[s] = struct{}{}
-	}
-
-	setB := map[resource.Alias]struct{}{}
-	for _, s := range b {
-		setB[s] = struct{}{}
-	}
-
-	var adds, deletes []string
-	for s := range setA {
-		if _, has := setB[s]; !has {
-			deletes = append(deletes, fmt.Sprintf("%v", s))
-		}
-	}
-	for s := range setB {
-		if _, has := setA[s]; !has {
-			adds = append(adds, fmt.Sprintf("%v", s))
-		}
-	}
-
-	if len(adds) == 0 && len(deletes) == 0 {
-		return "", false
-	}
-
-	sort.Strings(adds)
-	sort.Strings(deletes)
-
-	if len(adds) != 0 {
-		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
-	}
-	if len(deletes) != 0 {
-		if len(adds) != 0 {
-			message += "; "
-		}
-		message += fmt.Sprintf("deleted %v", strings.Join(deletes, ", "))
-	}
-	return message, true
+	// The random byte seed used for resource goal.
+	Seed []byte
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {
@@ -311,6 +267,49 @@ func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed b
 	return message, true
 }
 
+func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, changed bool) {
+
+	setA := map[resource.Alias]struct{}{}
+	for _, s := range a {
+		setA[s] = struct{}{}
+	}
+
+	setB := map[resource.Alias]struct{}{}
+	for _, s := range b {
+		setB[s] = struct{}{}
+	}
+
+	var adds, deletes []string
+	for s := range setA {
+		if _, has := setB[s]; !has {
+			deletes = append(deletes, fmt.Sprintf("%v", s))
+		}
+	}
+	for s := range setB {
+		if _, has := setA[s]; !has {
+			adds = append(adds, fmt.Sprintf("%v", s))
+		}
+	}
+
+	if len(adds) == 0 && len(deletes) == 0 {
+		return "", false
+	}
+
+	sort.Strings(adds)
+	sort.Strings(deletes)
+
+	if len(adds) != 0 {
+		message = fmt.Sprintf("added %v", strings.Join(adds, ", "))
+	}
+	if len(deletes) != 0 {
+		if len(adds) != 0 {
+			message += "; "
+		}
+		message += fmt.Sprintf("deleted %v", strings.Join(deletes, ", "))
+	}
+	return message, true
+}
+
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
@@ -318,17 +317,11 @@ func checkMissingPlan(
 	newInputs resource.PropertyMap,
 	programGoal *resource.Goal) error {
 
-	aliases := make([]resource.Alias, 0)
-	for _, alias := range oldState.Aliases {
-		aliases = append(aliases, resource.Alias{URN: alias})
-	}
-
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
 		Type:                    oldState.Type,
 		Name:                    oldState.URN.Name(),
 		Custom:                  oldState.Custom,
-		CheckedInputs:           nil,
 		InputDiff:               PlanDiff{},
 		OutputDiff:              PlanDiff{},
 		Parent:                  oldState.Parent,
@@ -339,7 +332,7 @@ func checkMissingPlan(
 		DeleteBeforeReplace:     nil,
 		IgnoreChanges:           nil,
 		AdditionalSecretOutputs: oldState.AdditionalSecretOutputs,
-		Aliases:                 aliases,
+		Aliases:                 oldState.GetAliases(),
 		ID:                      "",
 		CustomTimeouts:          oldState.CustomTimeouts,
 	}
@@ -612,14 +605,14 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("additionalSecretOutputs changed: %v", message)
 	}
 
-	// Check that the alias sets are identical.
-	if message, changed := rp.diffAliases(rp.Goal.Aliases, programGoal.Aliases); changed {
-		return fmt.Errorf("aliases changed: %v", message)
-	}
-
 	// Check that the dependencies match.
 	if message, changed := rp.diffURNs(rp.Goal.Dependencies, programGoal.Dependencies); changed {
 		return fmt.Errorf("dependencies changed: %v", message)
+	}
+
+	// Check that the actual alias sets are identical.
+	if message, changed := rp.diffAliases(rp.Goal.Aliases, programGoal.Aliases); changed {
+		return fmt.Errorf("aliases changed: %v", message)
 	}
 
 	// Check that the property diffs meet the constraints set in the plan

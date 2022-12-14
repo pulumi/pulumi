@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ import * as upath from "upath";
 import { ResourceError } from "../../errors";
 import { Input, isSecretOutput, Output } from "../../output";
 import * as resource from "../../resource";
-import { hasTrueBooleanMember } from "../../utils";
-import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap, parseFunction } from "./parseFunction";
+import { hasTrueBooleanMember, hasFunctionMember } from "../../utils";
+import { CapturedPropertyChain, CapturedPropertyInfo, CapturedVariableMap } from "./parseFunction";
+import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
@@ -412,7 +413,9 @@ async function analyzeFunctionInfoAsync(
         // either a "function (...) { ... }" form, or a "(...) => ..." form.  In other words, all
         // 'funky' functions (like classes and whatnot) will be transformed to reasonable forms we can
         // process down the pipeline.
-        const [error, parsedFunction] = parseFunction(functionString);
+
+        const pf: typeof parseFunctionModule = require("./parseFunction");
+        const [error, parsedFunction] = pf.parseFunction(functionString);
         if (error) {
             throwSerializationError(func, context, error);
         }
@@ -866,6 +869,20 @@ async function getOrCreateEntryAsync(
         const errorFunc = () => { throw new Error(message); };
 
         obj = errorFunc;
+    }
+
+    if (obj instanceof Function && hasFunctionMember(obj, "captureReplacement")) {
+        // If we've defined a replacement function, then use that instead.
+        // This is best used in the case we'd serialize something with undefined runtime
+        // behavior.  For example, we don't want to serialize out a function that will
+        // reference unset environment variables etc, so we provide an alternate function
+        // that will be called at runtime instead.
+        const funcToSerialize = obj.captureReplacement();
+
+        if (!(funcToSerialize instanceof Function)) {
+            throw new Error("captureReplacement must return a function");
+        }
+        obj = funcToSerialize;
     }
 
     // We may be processing recursive objects.  Because of that, we preemptively put a placeholder

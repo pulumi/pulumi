@@ -3,7 +3,6 @@ package filestate
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -142,8 +142,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 //nolint:paralleltest // mutates environment variables
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -155,15 +154,14 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
-		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 		_, err := b.RemoveStack(ctx, aStack, true)
 		assert.NoError(t, err)
 	}()
 	deployment, err := makeUntypedDeployment("a", "abc123",
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	assert.NoError(t, err)
-	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
-	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 	err = b.ImportDeployment(ctx, aStack, deployment)
 	assert.NoError(t, err)
 
@@ -174,15 +172,14 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
-		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 		_, err := b.RemoveStack(ctx, bStack, true)
 		assert.NoError(t, err)
 	}()
 	deployment, err = makeUntypedDeployment("b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	assert.NoError(t, err)
-	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
-	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 	err = b.ImportDeployment(ctx, bStack, deployment)
 	assert.NoError(t, err)
 
@@ -206,8 +203,7 @@ func TestDrillError(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -225,8 +221,7 @@ func TestCancel(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -287,8 +282,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -331,8 +325,7 @@ func TestRenameWorks(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
-	tmpDir, err := ioutil.TempDir("", "filestatebackend")
-	assert.NoError(t, err)
+	tmpDir := t.TempDir()
 	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
@@ -394,4 +387,82 @@ func TestRenameWorks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, history, 1)
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
+}
+
+func TestLoginToNonExistingFolderFails(t *testing.T) {
+	t.Parallel()
+
+	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
+	b, err := New(cmdutil.Diag(), fakeDir)
+	assert.Error(t, err)
+	assert.Nil(t, b)
+}
+
+// TestParseEmptyStackFails demonstrates that ParseStackReference returns
+// an error when the stack name is the empty string.TestParseEmptyStackFails
+func TestParseEmptyStackFails(t *testing.T) {
+	t.Parallel()
+	// ParseStackReference does use the method receiver
+	// (it is a total function disguised as a method.)
+	var b *localBackend
+	var stackName = ""
+	var _, err = b.ParseStackReference(stackName)
+	assert.Error(t, err)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/10439
+func TestHtmlEscaping(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+	resources := []*resource.State{
+		{
+			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
+			Type: "a:b:c",
+			Inputs: resource.PropertyMap{
+				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+			},
+		},
+	}
+
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	assert.NoError(t, err)
+
+	data, err := json.Marshal(sdep)
+	assert.NoError(t, err)
+
+	udep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(data),
+	}
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// Create stack "a" and import a checkpoint with a secret
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.ImportDeployment(ctx, aStack, udep)
+	assert.NoError(t, err)
+
+	// Ensure the file has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
+
+	// Grab the bucket interface to read the file with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	chkpath := lb.stackPath("a")
+	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
+	assert.NoError(t, err)
+	state := string(bytes)
+	assert.Contains(t, state, "<html@tags>")
 }

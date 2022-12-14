@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -32,9 +31,9 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 
-	survey "gopkg.in/AlecAivazis/survey.v1"
-	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
-	git "gopkg.in/src-d/go-git.v4"
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -109,7 +108,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
-func currentBackend(opts display.Options) (backend.Backend, error) {
+func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
 	}
@@ -122,7 +121,23 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}
-	return httpstate.Login(commandContext(), cmdutil.Diag(), url, opts)
+	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url)
+}
+
+func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
+	if backendInstance != nil {
+		return backendInstance, nil
+	}
+
+	url, err := workspace.GetCurrentCloudURL()
+	if err != nil {
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
+	}
+
+	if filestate.IsFileStateBackendURL(url) {
+		return filestate.New(cmdutil.Diag(), url)
+	}
+	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -144,60 +159,45 @@ func commandContext() context.Context {
 	return ctx
 }
 
-func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
-	rotatePassphraseSecretsProvider bool) error {
+func createSecretsManager(
+	ctx context.Context, stack backend.Stack, secretsProvider string,
+	rotatePassphraseSecretsProvider, creatingStack bool) error {
+
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
 	// for the Pulumi service backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
-	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
-		// The default when using the filestate backend is the passphrase secrets provider
-		secretsProvider = passphrase.Type
-	}
 
-	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
-		stack, err := state.CurrentStack(commandContext(), b)
-		if err != nil {
-			return err
-		}
-		if stack == nil {
-			// This means this is the first time we are initiating a stack
-			// there is no way a stack will exist here so we need to just return nil
-			// this will mean the "old" default behaviour will work for us
+	// If we're creating the stack, it's the default secrets provider, and it's the cloud backend
+	// return early to avoid probing for the project and stack config files, which otherwise
+	// would fail when creating a stack from a directory that does not have a project file.
+	if isDefaultSecretsProvider && creatingStack {
+		if _, isCloud := stack.Backend().(httpstate.Backend); isCloud {
 			return nil
 		}
-		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
-			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
-			return serviceSecretsErr
-		}
+	}
+
+	configFile, err := getProjectStackPath(stack)
+	if err != nil {
+		return err
+	}
+
+	if isDefaultSecretsProvider {
+		_, err = stack.DefaultSecretManager(configFile)
+		return err
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+		if _, pharseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(), configFile,
 			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
-	} else if !isDefaultSecretsProvider {
+	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-
-		// Azure KeyVault never used to require an algorithm and there's no real reason to require it,
-		// but if someone specifies one, don't clobber it.
-		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
-			parsed, err := url.Parse(secretsProvider)
-			if err != nil {
-				return fmt.Errorf("failed to parse secrets provider URL: %w", err)
-			}
-
-			if parsed.Query().Get("algorithm") == "" {
-				parsed.Query().Set("algorithm", "RSA-OAEP-256")
-				secretsProvider = parsed.String()
-			}
-		}
-
-		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
+		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(), configFile, secretsProvider); secretsErr != nil {
 			return secretsErr
 		}
 	}
@@ -206,11 +206,11 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(
+func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	stack, err := b.CreateStack(commandContext(), stackRef, opts)
+	stack, err := b.CreateStack(ctx, stackRef, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -222,8 +222,8 @@ func createStack(
 		return nil, fmt.Errorf("could not create stack: %w", err)
 	}
 
-	if err := createSecretsManager(b, stackRef, secretsProvider,
-		false /* rotateSecretsManager */); err != nil {
+	if err := createSecretsManager(ctx, stack, secretsProvider,
+		false /*rotateSecretsManager*/, true /*creatingStack*/); err != nil {
 		return nil, err
 	}
 
@@ -239,13 +239,13 @@ func createStack(
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
-func requireStack(
+func requireStack(ctx context.Context,
 	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(offerNew, opts, setCurrent)
+		return requireCurrentStack(ctx, offerNew, opts, setCurrent)
 	}
 
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func requireStack(
 		return nil, err
 	}
 
-	stack, err := b.GetStack(commandContext(), stackRef)
+	stack, err := b.GetStack(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -273,19 +273,21 @@ func requireStack(
 			return nil, err
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(
+	ctx context.Context, offerNew bool,
+	opts display.Options, setCurrent bool) (backend.Stack, error) {
 	// Search for the current stack.
-	b, err := currentBackend(opts)
+	b, err := currentBackend(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	stack, err := state.CurrentStack(commandContext(), b)
+	stack, err := state.CurrentStack(ctx, b)
 	if err != nil {
 		return nil, err
 	} else if stack != nil {
@@ -293,14 +295,13 @@ func requireCurrentStack(offerNew bool, opts display.Options, setCurrent bool) (
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(b, offerNew, opts, setCurrent)
+	return chooseStack(ctx, b, offerNew, opts, setCurrent)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
-func chooseStack(
+func chooseStack(ctx context.Context,
 	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
-	ctx := commandContext()
 
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
@@ -346,27 +347,34 @@ func chooseStack(
 	}
 	sort.Strings(options)
 
-	// If we are offering to create a new stack, add that to the end of the list.
-	const newOption = "<create a new stack>"
-	if offerNew {
-		options = append(options, newOption)
-	} else if len(options) == 0 {
-		// If no options are available, we can't offer a choice!
-		return nil, errors.New("this command requires a stack, but there are none")
-	}
-
 	// If a stack is already selected, make that the default.
-	var current string
+	var defaultOption string
 	currStack, currErr := state.CurrentStack(ctx, b)
 	contract.IgnoreError(currErr)
 	if currStack != nil {
-		current = currStack.Ref().String()
+		defaultOption = currStack.Ref().String()
+	}
+
+	// If we are offering to create a new stack, add that to the end of the list.
+	// Otherwise, default to a stack if one exists – otherwise pressing enter will result in
+	// the empty string being passed (see https://github.com/go-survey/survey/issues/342).
+	const newOption = "<create a new stack>"
+	if offerNew {
+		options = append(options, newOption)
+		// If we're offering the option to make a new stack AND we don't have a default current stack then
+		// make the new option the default
+		if defaultOption == "" {
+			defaultOption = newOption
+		}
+	} else if len(options) == 0 {
+		// If no options are available, we can't offer a choice!
+		return nil, errors.New("this command requires a stack, but there are none")
+	} else if defaultOption == "" {
+		defaultOption = options[0]
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
-	surveycore.QuestionIcon = ""
-	surveycore.SelectFocusIcon = opts.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)
 	message := "\rPlease choose a stack"
 	if offerNew {
 		message += ", or create a new one:"
@@ -375,14 +383,12 @@ func chooseStack(
 	}
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
-	cmdutil.EndKeypadTransmitMode()
-
 	var option string
 	if err = survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
-		Default: current,
-	}, &option, nil); err != nil {
+		Default: defaultOption,
+	}, &option, surveyIcons(opts.Color)); err != nil {
 		return nil, errors.New(chooseStackErr)
 	}
 
@@ -402,7 +408,7 @@ func chooseStack(
 			return nil, parseErr
 		}
 
-		return createStack(b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, setCurrent, "")
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -468,28 +474,36 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
-	pwd, err := os.Getwd()
+	proj, path, err := readProjectWithPath()
 	if err != nil {
 		return nil, "", err
 	}
 
+	return proj, filepath.Dir(path), nil
+}
+
+// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to the project
+// file, which will be used as the root of the project's Pulumi program.
+//
+// If a project is not found while searching and no other error occurs, workspace.ErrProjectNotFound
+// is returned.
+func readProjectWithPath() (*workspace.Project, string, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return nil, "", err
+	}
 	// Now that we got here, we have a path, so we will try to load it.
 	path, err := workspace.DetectProjectPathFrom(pwd)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to find current Pulumi project because of "+
-			"an error when searching for the Pulumi.yaml file (searching upwards from %s)"+": %w", pwd, err)
-
-	} else if path == "" {
-		return nil, "", fmt.Errorf(
-			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so", pwd)
+		return nil, "", err
 	}
 	proj, err := workspace.LoadProject(path)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
 	}
 
-	return proj, filepath.Dir(path), nil
+	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current
@@ -554,7 +568,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(msg, root, execKind, execAgent string, updatePlan bool) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
@@ -567,6 +581,8 @@ func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMe
 	addCIMetadataToEnvironment(m.Environment)
 
 	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
+
+	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
 
 	return m, nil
 }
@@ -737,6 +753,11 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 }
 
+// addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.
+func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) {
+	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
+}
+
 type cancellationScope struct {
 	context *cancel.Context
 	sigint  chan os.Signal
@@ -881,6 +902,7 @@ func writePlan(path string, plan *deploy.Plan, enc config.Encrypter, showSecrets
 		return err
 	}
 	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "    ")
 	return encoder.Encode(deploymentPlan)
 }
@@ -946,4 +968,11 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 			}
 		}
 	}
+}
+
+func surveyIcons(color colors.Colorization) survey.AskOpt {
+	return survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
 }

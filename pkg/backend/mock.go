@@ -17,11 +17,12 @@ package backend
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -57,15 +58,15 @@ type MockBackend struct {
 	LogoutAllF              func() error
 	CurrentUserF            func() (string, []string, error)
 	PreviewF                func(context.Context, Stack,
-		UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
+		UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	UpdateF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (engine.ResourceChanges, result.Result)
+		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
 	RefreshF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	DestroyF func(context.Context, Stack,
-		UpdateOperation) (engine.ResourceChanges, result.Result)
+		UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	WatchF func(context.Context, Stack,
 		UpdateOperation, []string) result.Result
 	GetLogsF func(context.Context, Stack, StackConfiguration,
@@ -189,7 +190,7 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 }
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
@@ -198,7 +199,7 @@ func (be *MockBackend) Preview(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Update(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	if be.UpdateF != nil {
 		return be.UpdateF(ctx, stack, op)
@@ -207,7 +208,7 @@ func (be *MockBackend) Update(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Import(ctx context.Context, stack Stack,
-	op UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation, imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
 
 	if be.ImportF != nil {
 		return be.ImportF(ctx, stack, op, imports)
@@ -216,7 +217,7 @@ func (be *MockBackend) Import(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	if be.RefreshF != nil {
 		return be.RefreshF(ctx, stack, op)
@@ -225,7 +226,7 @@ func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
-	op UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 
 	if be.DestroyF != nil {
 		return be.DestroyF(ctx, stack, op)
@@ -343,20 +344,21 @@ type MockStack struct {
 	SnapshotF func(ctx context.Context) (*deploy.Snapshot, error)
 	TagsF     func() map[apitype.StackTagName]string
 	BackendF  func() Backend
-	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
-	UpdateF   func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	PreviewF  func(ctx context.Context, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
+	UpdateF   func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	ImportF   func(ctx context.Context, op UpdateOperation,
-		imports []deploy.Import) (engine.ResourceChanges, result.Result)
-	RefreshF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
-	DestroyF func(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
+	RefreshF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
+	DestroyF func(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	WatchF   func(ctx context.Context, op UpdateOperation, paths []string) result.Result
 	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
 	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
 	GetLogsF func(ctx context.Context, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
-	ExportDeploymentF func(ctx context.Context) (*apitype.UntypedDeployment, error)
-	ImportDeploymentF func(ctx context.Context, deployment *apitype.UntypedDeployment) error
+	ExportDeploymentF     func(ctx context.Context) (*apitype.UntypedDeployment, error)
+	ImportDeploymentF     func(ctx context.Context, deployment *apitype.UntypedDeployment) error
+	DefaultSecretManagerF func(configFile string) (secrets.Manager, error)
 }
 
 var _ Stack = (*MockStack)(nil)
@@ -398,7 +400,7 @@ func (ms *MockStack) Backend() Backend {
 
 func (ms *MockStack) Preview(
 	ctx context.Context,
-	op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
@@ -406,7 +408,7 @@ func (ms *MockStack) Preview(
 	panic("not implemented")
 }
 
-func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 	if ms.UpdateF != nil {
 		return ms.UpdateF(ctx, op)
 	}
@@ -414,21 +416,21 @@ func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (engine.Res
 }
 
 func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
-	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
 	if ms.ImportF != nil {
 		return ms.ImportF(ctx, op, imports)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Refresh(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 	if ms.RefreshF != nil {
 		return ms.RefreshF(ctx, op)
 	}
 	panic("not implemented")
 }
 
-func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (ms *MockStack) Destroy(ctx context.Context, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
 	if ms.DestroyF != nil {
 		return ms.DestroyF(ctx, op)
 	}
@@ -481,6 +483,13 @@ func (ms *MockStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDepl
 func (ms *MockStack) ImportDeployment(ctx context.Context, deployment *apitype.UntypedDeployment) error {
 	if ms.ImportDeploymentF != nil {
 		return ms.ImportDeploymentF(ctx, deployment)
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
+	if ms.DefaultSecretManagerF != nil {
+		return ms.DefaultSecretManagerF(configFile)
 	}
 	panic("not implemented")
 }

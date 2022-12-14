@@ -14,18 +14,12 @@ namespace Pulumi.Mypkg
         /// <summary>
         /// n/a
         /// </summary>
-        public static Task<FuncWithEmptyOutputsResult> InvokeAsync(FuncWithEmptyOutputsArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsArgs(), options.WithDefaults());
-
-        /// <summary>
-        /// n/a
-        /// </summary>
-        public static Output<FuncWithEmptyOutputsResult> Invoke(FuncWithEmptyOutputsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithEmptyOutputsResult>("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsInvokeArgs(), options.WithDefaults());
+        public static Task InvokeAsync(FuncWithEmptyOutputsArgs args, InvokeOptions? options = null)
+            => global::Pulumi.Deployment.Instance.InvokeAsync("mypkg::funcWithEmptyOutputs", args ?? new FuncWithEmptyOutputsArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithEmptyOutputsArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithEmptyOutputsArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// The Name of the FeatureGroup.
@@ -36,28 +30,6 @@ namespace Pulumi.Mypkg
         public FuncWithEmptyOutputsArgs()
         {
         }
-    }
-
-    public sealed class FuncWithEmptyOutputsInvokeArgs : Pulumi.InvokeArgs
-    {
-        /// <summary>
-        /// The Name of the FeatureGroup.
-        /// </summary>
-        [Input("name", required: true)]
-        public Input<string> Name { get; set; } = null!;
-
-        public FuncWithEmptyOutputsInvokeArgs()
-        {
-        }
-    }
-
-
-    [OutputType]
-    public sealed class FuncWithEmptyOutputsResult
-    {
-        [OutputConstructor]
-        private FuncWithEmptyOutputsResult()
-        {
-        }
+        public static new FuncWithEmptyOutputsArgs Empty => new FuncWithEmptyOutputsArgs();
     }
 }

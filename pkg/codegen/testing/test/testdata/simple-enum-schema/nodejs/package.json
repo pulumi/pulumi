@@ -9,10 +9,12 @@
         "@pulumi/pulumi": "^3.12"
     },
     "devDependencies": {
+        "@types/node": "^14",
         "typescript": "^3.7.0"
     },
     "pulumi": {
         "resource": true,
+        "name": "plant",
         "version": "0.0.1"
     }
 }

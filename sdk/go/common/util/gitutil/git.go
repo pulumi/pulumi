@@ -17,17 +17,22 @@ package gitutil
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
+
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	git "gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/config"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.
@@ -38,13 +43,13 @@ type VCSKind = string
 const (
 	defaultGitCloudRepositorySuffix = ".git"
 
-	// The host name for GitLab.
+	// GitLabHostName The host name for GitLab.
 	GitLabHostName VCSKind = "gitlab.com"
-	// The host name for GitHub.
+	// GitHubHostName The host name for GitHub.
 	GitHubHostName VCSKind = "github.com"
-	// The host name for Azure DevOps
+	// AzureDevOpsHostName The host name for Azure DevOps
 	AzureDevOpsHostName VCSKind = "dev.azure.com"
-	// The host name for Bitbucket
+	// BitbucketHostName The host name for Bitbucket
 	BitbucketHostName VCSKind = "bitbucket.org"
 )
 
@@ -53,8 +58,8 @@ const (
 // be sure to update its usage elsewhere in the code as well.
 // The nolint instruction prevents gometalinter from complaining about the length of the line.
 var (
-	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.com|[a-zA-Z.-]*\.org):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)      //nolint
-	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.com):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
+	cloudSourceControlSSHRegex    = regexp.MustCompile(`git@(?P<host_name>[a-zA-Z.-]*\.[a-zA-Z]+):(?P<owner_and_repo>[^/]+/[^/]+\.git).?$`)                       //nolint
+	azureSourceControlSSHRegex    = regexp.MustCompile(`git@([a-zA-Z]+\.)?(?P<host_name>([a-zA-Z]+\.)*[a-zA-Z]*\.[a-zA-Z]+):(v[0-9]{1}/)?(?P<owner_and_repo>.*)`) //nolint
 	legacyAzureSourceControlRegex = regexp.MustCompile("(?P<owner>[a-zA-Z0-9-]*).visualstudio.com$")
 )
 
@@ -232,10 +237,33 @@ func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[strin
 	return groups
 }
 
+func parseAuthURL(remoteURL string) (string, *http.BasicAuth, error) {
+	u, err := url.Parse(remoteURL)
+	if err != nil {
+		return "", nil, err
+	}
+	var auth *http.BasicAuth
+	if u.User != nil {
+		auth = &http.BasicAuth{
+			Username: u.User.Username(),
+		}
+		if password, ok := u.User.Password(); ok {
+			auth.Password = password
+		}
+		u.User = nil
+	}
+	return u.String(), auth, nil
+}
+
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) error {
+	u, auth, err := parseAuthURL(url)
+	if err != nil {
+		return err
+	}
 	repo, err := git.PlainClone(path, false, &git.CloneOptions{
-		URL: url,
+		URL:  u,
+		Auth: auth,
 	})
 	if err != nil {
 		return err
@@ -252,17 +280,32 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 	})
 }
 
+func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
+	if u, err := url.Parse(rawurl); err == nil && u.Hostname() == AzureDevOpsHostName {
+		// system-installed git is used to clone Azure DevOps repositories
+		// due to https://github.com/go-git/go-git/issues/64
+		return gitCloneOrPullSystemGit(rawurl, referenceName, path, shallow)
+	}
+	return gitCloneOrPull(rawurl, referenceName, path, shallow)
+}
+
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
-func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+func gitCloneOrPull(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	// For shallow clones, use a depth of 1.
 	depth := 0
 	if shallow {
 		depth = 1
 	}
 
+	u, auth, err := parseAuthURL(url)
+	if err != nil {
+		return err
+	}
 	// Attempt to clone the repo.
 	_, cloneErr := git.PlainClone(path, false, &git.CloneOptions{
-		URL:           url,
+		URL:           u,
+		Auth:          auth,
 		ReferenceName: referenceName,
 		SingleBranch:  true,
 		Depth:         depth,
@@ -281,18 +324,92 @@ func GitCloneOrPull(url string, referenceName plumbing.ReferenceName, path strin
 				return err
 			}
 
-			if err = w.Pull(&git.PullOptions{
+			// There are cases where go-git gets confused about files that were included in .gitignore
+			// and then later removed from .gitignore and added to the repository, leaving unstaged
+			// changes in the working directory after a pull. To address this, we'll first do a hard
+			// reset of the worktree before pulling to ensure it's in a good state.
+			if err := w.Reset(&git.ResetOptions{
+				Mode: git.HardReset,
+			}); err != nil {
+				return err
+			}
+
+			if cloneErr = w.Pull(&git.PullOptions{
 				ReferenceName: referenceName,
 				SingleBranch:  true,
 				Force:         true,
-			}); err != nil && err != git.NoErrAlreadyUpToDate {
-				return err
+			}); cloneErr == git.NoErrAlreadyUpToDate {
+				return nil
 			}
-		} else {
-			return cloneErr
 		}
 	}
 
+	if cloneErr == git.ErrUnstagedChanges {
+		// See https://github.com/pulumi/pulumi/issues/11121. We seem to be getting intermittent unstaged
+		// changes errors, which is very hard to reproduce. This block of code catches this error and tries to
+		// do a diff to see what the unstaged change is and tells the user to report this error to the above
+		// ticket.
+
+		repo, err := git.PlainOpen(path)
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the repo couldn't be opened to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		worktree, err := repo.Worktree()
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the worktree couldn't be opened to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		status, err := worktree.Status()
+		if err != nil {
+			return fmt.Errorf(
+				"GitCloneOrPull reported unstaged changes, but the worktree status couldn't be fetched to check: %w\n"+
+					"Please report this to https://github.com/pulumi/pulumi/issues/11121.", err)
+		}
+
+		messages := make([]string, 0)
+		for path, stat := range status {
+			if stat.Worktree != git.Unmodified {
+				messages = append(messages, fmt.Sprintf("%s was %c", path, rune(stat.Worktree)))
+			}
+		}
+
+		return fmt.Errorf("GitCloneOrPull reported unstaged changes: %s\n"+
+			"Please report this to https://github.com/pulumi/pulumi/issues/11121.",
+			strings.Join(messages, "\n"))
+	}
+
+	return cloneErr
+}
+
+// gitCloneOrPullSystemGit uses the `git` command to pull or clone repositories.
+func gitCloneOrPullSystemGit(url string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
+	// Assume repo already exists, pull changes.
+	gitArgs := []string{
+		"pull",
+	}
+	if _, err := os.Stat(filepath.Join(path, ".git")); os.IsNotExist(err) {
+		// Repo does not exist, clone it.
+		gitArgs = []string{
+			"clone", url, ".",
+		}
+		// For shallow clones, use a depth of 1.
+		if shallow {
+			gitArgs = append(gitArgs, "--depth")
+			gitArgs = append(gitArgs, "1")
+		}
+	}
+
+	cmd := exec.Command("git", gitArgs...)
+	cmd.Dir = path
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run `git %v`", strings.Join(gitArgs, " "))
+	}
 	return nil
 }
 
@@ -322,7 +439,18 @@ func parseGistURL(u *url.URL) (string, error) {
 
 	resultURL := u.Scheme + "://" + u.Host + "/" + id
 	return resultURL, nil
+}
 
+func parseHostAuth(u *url.URL) string {
+	if u.User == nil {
+		return u.Host
+	}
+	user := u.User.Username()
+	p, ok := u.User.Password()
+	if !ok {
+		return user + "@" + u.Host
+	}
+	return user + ":" + p + "@" + u.Host
 }
 
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
@@ -331,6 +459,9 @@ func parseGistURL(u *url.URL) (string, error) {
 // Additionally, it supports nested git projects, as used by GitLab.
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
+//
+// Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
+// and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
@@ -350,6 +481,12 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		return repo, "", nil
 	}
 
+	// Special case Azure DevOps.
+	if u.Hostname() == AzureDevOpsHostName {
+		// Specifying branch/ref and subpath is currently unsupported.
+		return rawurl, "", nil
+	}
+
 	path := strings.TrimPrefix(u.Path, "/")
 	paths := strings.Split(path, "/")
 	if len(paths) < 2 {
@@ -359,10 +496,10 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 	// Shortcut for general case: URI Path contains '.git'
 	// Cleave URI into what comes before and what comes after.
 	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
-		var extensionOffset = loc + len(defaultGitCloudRepositorySuffix)
-		var resultURL = u.Scheme + "://" + u.Host + "/" + path[:extensionOffset]
-		var gitRepoPath = path[extensionOffset:]
-		var resultPath = strings.Trim(gitRepoPath, "/")
+		extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
+		resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + path[:extensionOffset]
+		gitRepoPath := path[extensionOffset:]
+		resultPath := strings.Trim(gitRepoPath, "/")
 		return resultURL, resultPath, nil
 	}
 
@@ -380,7 +517,7 @@ func ParseGitRepoURL(rawurl string) (string, string, error) {
 		repo = repo + ".git"
 	}
 
-	resultURL := u.Scheme + "://" + u.Host + "/" + owner + "/" + repo
+	resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
 	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
 
 	return resultURL, resultPath, nil
@@ -391,8 +528,8 @@ var gitSHARegex = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
 // GetGitReferenceNameOrHashAndSubDirectory returns the reference name or hash, and sub directory path.
 // The sub directory path always uses "/" as the separator.
 func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
-	plumbing.ReferenceName, plumbing.Hash, string, error) {
-
+	plumbing.ReferenceName, plumbing.Hash, string, error,
+) {
 	// If path is empty, use HEAD.
 	if urlPath == "" {
 		return plumbing.HEAD, plumbing.ZeroHash, "", nil

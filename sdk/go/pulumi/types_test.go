@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,12 +21,14 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func await(out Output) (interface{}, bool, bool, []Resource, error) {
-	return out.getState().await(context.Background())
+	return awaitWithContext(context.Background(), out)
 }
 
 func assertApplied(t *testing.T, out Output) {
@@ -152,6 +154,62 @@ func TestStringOutputs(t *testing.T) {
 			return nil, nil
 		}))
 	}
+}
+
+func TestAliasedOutputs(t *testing.T) {
+	t.Parallel()
+
+	// Irrelevant for the tests, we're testing return type handling.
+	initialOutput := String("").ToStringOutput()
+
+	t.Run("Bool", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Bool, error) {
+			return Bool(false), nil
+		}).(BoolOutput))
+	})
+	t.Run("Float64", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Float64, error) {
+			return Float64(0.0), nil
+		}).(Float64Output))
+	})
+	t.Run("Int", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Int, error) {
+			return Int(0), nil
+		}).(IntOutput))
+	})
+	t.Run("String", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (String, error) {
+			return String(""), nil
+		}).(StringOutput))
+	})
+	t.Run("BoolInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (BoolInput, error) {
+			return Bool(false), nil
+		}).(BoolOutput))
+	})
+	t.Run("Float64Input", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (Float64Input, error) {
+			return Float64(0.0), nil
+		}).(Float64Output))
+	})
+	t.Run("IntInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (IntInput, error) {
+			return Int(0), nil
+		}).(IntOutput))
+	})
+	t.Run("StringInput", func(t *testing.T) {
+		t.Parallel()
+		assertApplied(t, initialOutput.ApplyT(func(v interface{}) (StringInput, error) {
+			return String(""), nil
+		}).(StringOutput))
+	})
 }
 
 func TestResolveOutputToOutput(t *testing.T) {
@@ -458,7 +516,7 @@ func TestUnsecret(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -498,7 +556,7 @@ func TestSecrets(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -544,7 +602,7 @@ func TestSecretApply(t *testing.T) {
 			// validate the value
 			resultChan <- val
 		} else {
-			errChan <- fmt.Errorf("Invalid result: %v", val)
+			errChan <- fmt.Errorf("invalid result: %v", val)
 		}
 		return val, nil
 	})
@@ -562,7 +620,25 @@ func TestSecretApply(t *testing.T) {
 			break
 		}
 	}
+}
 
+// Test that secretness is properly bubbled up with all/apply that delays its execution.
+func TestSecretApplyDelayed(t *testing.T) {
+	t.Parallel()
+
+	// We run multiple tests here to increase the likelihood of a hypothetical race
+	// condition triggering. As with all concurrency tests, its not a 100% guarantee.
+	for i := 0; i < 10 && !t.Failed(); i++ {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			s1 := String("foo").ToStringOutput().ApplyT(func(s string) StringOutput {
+				time.Sleep(time.Millisecond * 5)
+				return ToSecret(String("bar")).(StringOutput)
+			})
+			// assert that s1 is secret.
+			assert.True(t, IsSecret(s1))
+		})
+	}
 }
 
 func TestNil(t *testing.T) {
@@ -912,4 +988,143 @@ func TestApplyTOutputJoin(t *testing.T) {
 	assertResult(t, out3, 5, true, true, r3)
 	assertResult(t, out31, 2, true, true, r3, r1)
 	assertResult(t, out312, nil, false, true, r3, r1, r2) /* out2 is unknown, hiding the output */
+}
+
+func TestTypeCoersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    interface{}
+		expected interface{}
+		err      string
+	}{
+		{"foo", "foo", ""},
+		{"foo", 0, "expected value of type int, not string"},
+		{
+			map[string]interface{}{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			map[string]string{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			"",
+		},
+		{
+			map[string]interface{}{
+				"foo":  "bar",
+				"fizz": 8,
+			},
+			map[string]string{
+				"foo":  "bar",
+				"fizz": "buzz",
+			},
+			`["fizz"]: expected value of type string, not int`,
+		},
+		{
+			[]interface{}{1, 2, 3},
+			[]int{1, 2, 3},
+			"",
+		},
+		{
+			[]interface{}{1, "two", 3},
+			[]int{1, 2, 3},
+			`[1]: expected value of type int, not string`,
+		},
+		{
+			[]interface{}{
+				map[string]interface{}{
+					"fizz":     []interface{}{3, 15},
+					"buzz":     []interface{}{5, 15},
+					"fizzbuzz": []interface{}{15},
+				},
+				map[string]interface{}{},
+			},
+			[]map[string][]int{
+				{
+					"fizz":     {3, 15},
+					"buzz":     {5, 15},
+					"fizzbuzz": {15},
+				},
+				{},
+			},
+			"",
+		},
+		{
+			[]interface{}{
+				map[string]interface{}{
+					"fizz":     []interface{}{3, 15},
+					"buzz":     []interface{}{"5", 15},
+					"fizzbuzz": []interface{}{15},
+				},
+				map[string]interface{}{},
+			},
+			[]map[string][]int{
+				{
+					"fizz":     {3, 15},
+					"buzz":     {5, 15},
+					"fizzbuzz": {15},
+				},
+				{},
+			},
+			`[0]: ["buzz"]: [0]: expected value of type int, not string`,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprintf("%v->%v", tt.input, tt.expected), func(t *testing.T) {
+			t.Parallel()
+			dstT := reflect.TypeOf(tt.expected)
+			val, err := coerceTypeConversion(tt.input, dstT)
+			if tt.err == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, val)
+			} else {
+				assert.EqualError(t, err, tt.err)
+			}
+		})
+	}
+}
+
+func TestJSONMarshalBasic(t *testing.T) {
+	t.Parallel()
+
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve([]int{0, 1})
+	}()
+	json := JSONMarshal(out)
+	v, known, secret, deps, err := await(json)
+	assert.Nil(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.NotNil(t, v)
+	assert.Equal(t, "[0,1]", v.(string))
+}
+
+func TestJSONMarshalNested(t *testing.T) {
+	t.Parallel()
+
+	a, resolvea, _ := NewOutput()
+	go func() {
+		resolvea(0)
+	}()
+	b, resolveb, _ := NewOutput()
+	go func() {
+		resolveb(1)
+	}()
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve([]Output{a, b})
+	}()
+	json := JSONMarshal(out)
+	v, known, secret, deps, err := await(json)
+	assert.Equal(t, "json: error calling MarshalJSON for type pulumi.AnyOutput: Outputs can not be marshaled to JSON", err.Error())
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.Nil(t, v)
 }

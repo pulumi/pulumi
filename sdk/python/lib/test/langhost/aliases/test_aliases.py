@@ -23,7 +23,7 @@ class AliasesTest(LanghostTest):
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
                           _replace_on_changes):
         return {
-            "urn": "urn:pulumi:stack::project::"+ty+"::"+name,
+            "urn": f"urn:pulumi:stack::project::{ty}::{name}",
             "id": "myID",
             "object": {}
         }

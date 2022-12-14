@@ -17,7 +17,6 @@ package cmdutil
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/url"
@@ -36,7 +35,14 @@ import (
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
 var TracingEndpoint string
+
+// TracingToFile indicates if pulumi was called with a file:// scheme URL (--tracing=file:///...).
+//
+// Deprecated: Even in this case TracingEndpoint will now have the tcp:// scheme and will point to a
+// proxy server that will append traces to the user-specified file. Plugins should respect
+// TracingEndpoint and ignore TracingToFile.
 var TracingToFile bool
+
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
@@ -188,7 +194,7 @@ func startProxyAppDashServer(collector appdash.Collector) (string, error) {
 
 	// The default sends to stderr, which is unfortunate for
 	// end-users. Discard for now.
-	cs.Log = log.New(ioutil.Discard, "appdash", 0)
+	cs.Log = log.New(io.Discard, "appdash", 0)
 
 	return fmt.Sprintf("tcp://127.0.0.1:%d", collectorPort), nil
 }
