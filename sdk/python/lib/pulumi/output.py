@@ -13,9 +13,12 @@
 # limitations under the License.
 import asyncio
 import contextlib
+import json
 from functools import reduce
 from inspect import isawaitable
 from typing import (
+    Tuple,
+    Type,
     TypeVar,
     Generic,
     Set,
@@ -35,6 +38,7 @@ from typing import (
 from . import _types
 from . import runtime
 from .runtime import rpc
+from .runtime.sync_await import _sync_await
 
 if TYPE_CHECKING:
     from .resource import Resource
@@ -535,6 +539,130 @@ class Output(Generic[T_co]):
                 lambda str, kwargs: str.format(**kwargs),
             )
         return Output.from_input(format_string).apply(lambda str: str.format())
+
+    @staticmethod
+    def json_dumps(
+        obj: Input[Any],
+        *,
+        skipkeys: bool = False,
+        ensure_ascii: bool = True,
+        check_circular: bool = True,
+        allow_nan: bool = True,
+        cls: Optional[Type[json.JSONEncoder]] = None,
+        indent: Optional[Union[int, str]] = None,
+        separators: Optional[Tuple[str, str]] = None,
+        default: Optional[Callable[[Any], Any]] = None,
+        sort_keys: bool = False,
+        **kw: Any
+    ) -> "Output[str]":
+        """
+        Uses json.dumps to serialize the given Input[object] value into a JSON string.
+
+        The arguments have the same meaning as in `json.dumps` except obj is an Input.
+        """
+
+        if cls is None:
+            cls = json.JSONEncoder
+
+        output = Output.from_input(obj)
+        result_resources: asyncio.Future[Set["Resource"]] = asyncio.Future()
+        result_is_known: asyncio.Future[bool] = asyncio.Future()
+        result_is_secret: asyncio.Future[bool] = asyncio.Future()
+
+        async def run() -> str:
+            resources: Set["Resource"] = set()
+            try:
+                seen_unknown = False
+                seen_secret = False
+                seen_resources = set()
+
+                class OutputEncoder(cls):  # type: ignore
+                    def default(self, o):
+                        if isinstance(o, Output):
+                            nonlocal seen_unknown
+                            nonlocal seen_secret
+                            nonlocal seen_resources
+
+                            # We need to synchronously wait for o to complete
+                            async def wait_output() -> Tuple[object, bool, bool, set]:
+                                return (
+                                    await o._future,
+                                    await o._is_known,
+                                    await o._is_secret,
+                                    await o._resources,
+                                )
+
+                            (result, known, secret, resources) = _sync_await(
+                                asyncio.ensure_future(wait_output())
+                            )
+                            # Update the secret flag and set of seen resources
+                            seen_secret = seen_secret or secret
+                            seen_resources.update(resources)
+                            if known:
+                                return result
+                            # The value wasn't known set the local seenUnknown variable and just return None
+                            # so the serialization doesn't raise an exception at this point
+                            seen_unknown = True
+                            return None
+
+                        return super().default(o)
+
+                # Await the output's details.
+                resources = await output._resources
+                is_known = await output._is_known
+                is_secret = await output._is_secret
+                value = await output._future
+
+                if not is_known:
+                    result_resources.set_result(resources)
+                    result_is_known.set_result(is_known)
+                    result_is_secret.set_result(is_secret)
+                    return cast(str, None)
+
+                # Try and dump using our special OutputEncoder to handle nested outputs
+                result = json.dumps(
+                    value,
+                    skipkeys=skipkeys,
+                    ensure_ascii=ensure_ascii,
+                    check_circular=check_circular,
+                    allow_nan=allow_nan,
+                    cls=OutputEncoder,
+                    indent=indent,
+                    separators=separators,
+                    default=default,
+                    sort_keys=sort_keys,
+                    **kw
+                )
+
+                # Update the final resources and secret flag based on what we saw while dumping
+                is_secret = is_secret or seen_secret
+                resources = set(resources)
+                resources.update(seen_resources)
+
+                # If we saw an unknown during dumping then throw away the result and return not known
+                if seen_unknown:
+                    result_resources.set_result(resources)
+                    result_is_known.set_result(False)
+                    result_is_secret.set_result(is_secret)
+                    return cast(str, None)
+
+                result_resources.set_result(resources)
+                result_is_known.set_result(True)
+                result_is_secret.set_result(is_secret)
+                return result
+
+            finally:
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_resources.set_result(resources)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_known.set_result(False)
+
+                with contextlib.suppress(asyncio.InvalidStateError):
+                    result_is_secret.set_result(False)
+
+        run_fut = asyncio.ensure_future(run())
+        return Output(result_resources, run_fut, result_is_known, result_is_secret)
 
     def __str__(self) -> str:
         return """Calling __str__ on an Output[T] is not supported.
