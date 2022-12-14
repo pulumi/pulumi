@@ -27,6 +27,7 @@ import { OutputMap, Stack } from "./stack";
 import * as localState from "../runtime/state";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+import { TagMap } from "./tag";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
@@ -498,6 +499,45 @@ export class LocalWorkspace implements Workspace {
     async refreshConfig(stackName: string): Promise<ConfigMap> {
         await this.runPulumiCmd(["config", "refresh", "--force", "--stack", stackName]);
         return this.getAllConfig(stackName);
+    }
+    /**
+     * Returns the value associated with the specified stack name and key,
+     * scoped to the LocalWorkspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     * @param key The key to use for the tag lookup.
+     */
+    async getTag(stackName: string, key: string): Promise<string> {
+        const result = await this.runPulumiCmd(["stack", "tag", "get", key, "--stack", stackName]);
+        return result.stdout.trim();
+    }
+    /**
+     * Sets the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to set.
+     * @param value The tag value to set.
+     */
+    async setTag(stackName: string, key: string, value: string): Promise<void> {
+        await this.runPulumiCmd(["stack", "tag", "set", key, value, "--stack", stackName]);
+    }
+    /**
+     * Removes the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to remove.
+     */
+    async removeTag(stackName: string, key: string): Promise<void> {
+        await this.runPulumiCmd(["stack", "tag", "rm", key, "--stack", stackName]);
+    }
+    /**
+     * Returns the tag map for the specified tag name, scoped to the current LocalWorkspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     */
+    async listTags(stackName: string): Promise<TagMap> {
+        const result = await this.runPulumiCmd(["stack", "tag", "ls", "--json", "--stack", stackName]);
+        return JSON.parse(result.stdout);
     }
     /**
      * Returns the currently authenticated user.

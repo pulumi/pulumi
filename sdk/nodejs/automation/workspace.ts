@@ -16,6 +16,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
+import { TagMap } from "./tag";
 
 /**
  * Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -140,6 +141,35 @@ export interface Workspace {
      * @param stackName The stack to refresh
      */
     refreshConfig(stackName: string): Promise<ConfigMap>;
+    /**
+     * Returns the value associated with the specified stack name and key,
+     * scoped to the Workspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     * @param key The key to use for the tag lookup.
+     */
+    getTag(stackName: string, key: string): Promise<string>;
+    /**
+     * Sets the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to set.
+     * @param value The tag value to set.
+     */
+    setTag(stackName: string, key: string, value: string): Promise<void>;
+    /**
+     * Removes the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to remove.
+     */
+    removeTag(stackName: string, key: string): Promise<void>;
+    /**
+     * Returns the tag map for the specified tag name, scoped to the current Workspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     */
+    listTags(stackName: string): Promise<TagMap>;
     /**
      * Returns the currently authenticated user.
      */
