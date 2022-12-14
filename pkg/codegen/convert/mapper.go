@@ -34,8 +34,16 @@ type Mapper interface {
 	GetMapping(provider string) ([]byte, error)
 }
 
+type mapperPluginSpec struct {
+	name    tokens.Package
+	version semver.Version
+}
+
 type pluginMapper struct {
-	entries map[string][]byte
+	host          plugin.Host
+	conversionKey string
+	plugins       []mapperPluginSpec
+	entries       map[string][]byte
 }
 
 func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, error) {
@@ -45,7 +53,7 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 	// convert aws terraform code for example by just having 'pulumi-aws' plugin locally, without needing to
 	// specify it anywhere on the command line, and without tf2pulumi needing to know about every possible
 	// plugin.
-	plugins, err := workspace.GetPlugins()
+	allPlugins, err := workspace.GetPlugins()
 	if err != nil {
 		return nil, fmt.Errorf("could not get plugins: %w", err)
 	}
@@ -56,7 +64,7 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 	// provide the manual workaround that this is based on what is locally installed, not what is published
 	// and so the user can just delete the higher version plugins from their cache.
 	latestVersions := make(map[string]semver.Version)
-	for _, plugin := range plugins {
+	for _, plugin := range allPlugins {
 		if plugin.Kind != workspace.ResourcePlugin {
 			continue
 		}
@@ -70,31 +78,18 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 		}
 	}
 
-	// Now go through each of those plugins and ask for any conversion data they have for the given key we're
-	// looking for. Second assumption is that only one pulumi provider will provide a mapping for each source
-	// mapping. This _might_ change in the future if we for example add support to convert terraform to
-	// azure/aws-native, or multiple community members bridge the same terraform provider. But as above the
-	// decisions here are based on what's locally installed so the user can manually edit their plugin cache
-	// to be the set of plugins they want to use.
+	// We now have a list of plugin specs (i.e. a name and version), save that list because we don't want to
+	// iterate all the plugins now because the convert might not even ask for any mappings.
+	plugins := make([]mapperPluginSpec, 0)
 	for pkg, version := range latestVersions {
-		version := version
-		provider, err := host.Provider(tokens.Package(pkg), &version)
-		if err != nil {
-			return nil, fmt.Errorf("could not create provider '%s': %w", pkg, err)
-		}
-
-		data, mappedProvider, err := provider.GetMapping(key)
-		if err != nil {
-			return nil, fmt.Errorf("could not get mapping for provider '%s': %w", pkg, err)
-		}
-		// A provider returns empty if it didn't have a mapping
-		if mappedProvider != "" && len(data) != 0 {
-			entries[mappedProvider] = data
-		}
+		plugins = append(plugins, mapperPluginSpec{
+			name:    tokens.Package(pkg),
+			version: version,
+		})
 	}
 
-	// These take precedence over any plugin returned mappings so we do them last and just overwrite the
-	// entries.
+	// These take precedence over any plugin returned mappings, but we want to error early if we can't read
+	// any of these.
 	for _, path := range mappings {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -112,10 +107,59 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 		entries[provider] = data
 	}
 	return &pluginMapper{
-		entries: entries,
+		host:          host,
+		conversionKey: key,
+		plugins:       plugins,
+		entries:       entries,
 	}, nil
 }
 
 func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
-	return l.entries[provider], nil
+	// Do we already have an entry for this provider, if so use it
+	if entry, has := l.entries[provider]; has {
+		return entry, nil
+	}
+
+	// No entry yet, start popping providers off the plugin list and return the first one that returns
+	// conversion data for this provider for the given key we're looking for. Second assumption is that only
+	// one pulumi provider will provide a mapping for each source mapping. This _might_ change in the future
+	// if we for example add support to convert terraform to azure/aws-native, or multiple community members
+	// bridge the same terraform provider. But as above the decisions here are based on what's locally
+	// installed so the user can manually edit their plugin cache to be the set of plugins they want to use.
+	for {
+		if len(l.plugins) == 0 {
+			// No plugins left to look in, return that we don't have a mapping
+			return nil, nil
+		}
+
+		// Pop the first spec off the plugins list
+		pluginSpec := l.plugins[0]
+		l.plugins = l.plugins[1:]
+
+		providerPlugin, err := l.host.Provider(pluginSpec.name, &pluginSpec.version)
+		if err != nil {
+			// We should maybe be lenient here and ignore errors but for now assume it's better to fail out on
+			// things like providers failing to start.
+			return nil, fmt.Errorf("could not create provider '%s': %w", pluginSpec.name, err)
+		}
+
+		data, mappedProvider, err := providerPlugin.GetMapping(l.conversionKey)
+		if err != nil {
+			// This was an error calling GetMapping, not just that GetMapping returned a nil result. It's fine
+			// for GetMapping to return (nil, nil).
+			return nil, fmt.Errorf("could not get mapping for provider '%s': %w", pluginSpec.name, err)
+		}
+		// A provider returns empty if it didn't have a mapping
+		if mappedProvider != "" && len(data) != 0 {
+			// Don't overwrite entries, the first wins
+			if _, has := l.entries[mappedProvider]; !has {
+				l.entries[mappedProvider] = data
+
+				// If this was the provider we we're looking for we can now return it
+				if mappedProvider == provider {
+					return data, nil
+				}
+			}
+		}
+	}
 }
