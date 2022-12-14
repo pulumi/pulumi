@@ -147,9 +147,6 @@ func (*ArrayType) isType() {}
 
 // EnumType represents an enum.
 type EnumType struct {
-	// Package is the type's package. Package will not be accurate for types loaded by
-	// reference. In that case, use PackageReference instead.
-	Package *Package
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
@@ -214,9 +211,6 @@ func (*UnionType) isType() {}
 
 // ObjectType represents schematized maps from strings to particular types.
 type ObjectType struct {
-	// Package is the package that defines the resource. Package will not be accurate for
-	// types loaded by reference. In that case, use PackageReference instead.
-	Package *Package
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
@@ -380,9 +374,6 @@ type Alias struct {
 
 // Resource describes a Pulumi resource.
 type Resource struct {
-	// Package is the package that defines the resource. Package will not be accurate for
-	// types loaded by reference. In that case, use PackageReference instead.
-	Package *Package
 	// PackageReference is the PackageReference that defines the resource.
 	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
@@ -530,9 +521,6 @@ type Method struct {
 
 // Function describes a Pulumi function.
 type Function struct {
-	// Package is the package that defines the function. Package will not be accurate for
-	// types loaded by reference. In that case, use PackageReference instead.
-	Package *Package
 	// PackageReference is the PackageReference that defines the function.
 	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
@@ -1272,11 +1260,11 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 			Plain:         !plain,
 		}
 	case *ObjectType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
 	case *EnumType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
 	case *ResourceType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.Package, "resources", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token)}
 	case *TokenType:
 		var defaultType string
 		if t.UnderlyingType != nil {
@@ -1311,15 +1299,15 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 	}
 }
 
-func (pkg *Package) marshalTypeRef(container *Package, section, token string) string {
+func (pkg *Package) marshalTypeRef(container PackageReference, section, token string) string {
 	token = url.PathEscape(token)
 
-	if container == pkg {
+	if p, err := container.Definition(); err == nil && p == pkg {
 		return fmt.Sprintf("#/%s/%s", section, token)
 	}
 
 	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
-	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name, container.Version, section, token)
+	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name(), container.Version(), section, token)
 }
 
 func marshalLanguage(lang map[string]interface{}) (map[string]RawMessage, error) {

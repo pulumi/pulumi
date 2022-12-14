@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed templates/*.tmpl
@@ -405,7 +406,7 @@ func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
 }
 
 type modContext struct {
-	pkg           *schema.Package
+	pkg           schema.PackageReference
 	mod           string
 	inputTypes    []*schema.ObjectType
 	resources     []*schema.Resource
@@ -564,7 +565,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 	if lang == "nodejs" {
 		return cleanNodeJSName(modName)
 	} else if lang == "csharp" {
-		return cleanCSharpName(mod.pkg.Name, modName)
+		return cleanCSharpName(mod.pkg.Name(), modName)
 	}
 	return strings.ReplaceAll(langTypeString, modName, "")
 }
@@ -576,7 +577,9 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 
 	docLanguageHelper := mod.docGenContext.getLanguageDocHelper(lang)
 	modName := mod.getLanguageModuleName(lang)
-	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input)
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(def, modName, t, characteristics.input)
 
 	if optional, ok := t.(*schema.OptionalType); ok {
 		t = optional.ElementType
@@ -688,6 +691,9 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		argsFlag = "?"
 	}
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	return []formalParam{
 		{
 			Name: "name",
@@ -710,7 +716,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: optsType,
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, optsType),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, optsType),
 			},
 			Comment: ctorOptsArgComment,
 		},
@@ -727,13 +733,16 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("go")
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	return []formalParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Context"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Context"),
 			},
 			Comment: "Context object for the current deployment.",
 		},
@@ -758,7 +767,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: "...",
 			Type: propertyType{
 				Name: "ResourceOption",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "ResourceOption"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "ResourceOption"),
 			},
 			Comment: ctorOptsArgComment,
 		},
@@ -782,6 +791,9 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("csharp")
+
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
 
 	return []formalParam{
 		{
@@ -807,7 +819,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: " = null",
 			Type: propertyType{
 				Name: optsType,
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, fmt.Sprintf("Pulumi.%s", optsType)),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, fmt.Sprintf("Pulumi.%s", optsType)),
 			},
 			Comment: ctorOptsArgComment,
 		},
@@ -837,6 +849,9 @@ func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool)
 
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("java")
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	result := []formalParam{
 		{
 			Name: "name",
@@ -860,7 +875,7 @@ func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool)
 			OptionalFlag: "@Nullable",
 			Type: propertyType{
 				Name: optsType,
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, optsType),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, optsType),
 			},
 			Comment: ctorOptsArgComment,
 		})
@@ -871,7 +886,7 @@ func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool)
 func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, argsOverload bool) []formalParam {
 	docLanguageHelper := mod.docGenContext.getLanguageDocHelper("python")
 	isK8sOverlayMod := mod.isKubernetesOverlayModule()
-	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
+	isDockerImageResource := mod.pkg.Name() == "docker" && resourceName(r) == "Image"
 
 	// Kubernetes overlay resources use a different ordering of formal params in Python.
 	if isK8sOverlayMod && r.IsOverlay {
@@ -943,7 +958,9 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		if p.ConstValue != nil {
 			continue
 		}
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
+		def, err := mod.pkg.Definition()
+		contract.AssertNoError(err)
+		typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
 			Name:         python.InitParamName(p.Name),
 			DefaultValue: " = None",
@@ -970,7 +987,9 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 	var typs []docNestedType
 	for _, token := range sortedTokens {
-		for _, t := range mod.pkg.Types {
+		for iter := mod.pkg.Types().Range(); iter.Next(); {
+			t, err := iter.Type()
+			contract.AssertNoError(err)
 			switch typ := t.(type) {
 			case *schema.ObjectType:
 				if typ.Token != token || len(typ.Properties) == 0 || typ.IsInputShape() {
@@ -1246,8 +1265,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) 
 		case "nodejs", "go", "python", "java":
 			// Intentionally left blank.
 		case "csharp":
-			namespace := title(mod.pkg.Name, lang)
-			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+			namespace := title(mod.pkg.Name(), lang)
+			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name()]; ok {
 				namespace = ns
 			}
 			if mod.mod == "" {
@@ -1257,9 +1276,11 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) 
 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		case "yaml":
+			def, err := mod.pkg.Definition()
+			contract.AssertNoError(err)
 			resourceMap[lang] = propertyType{
 				Name:        resourceTypeName,
-				DisplayName: docLangHelper.GetLanguageTypeString(mod.pkg, mod.mod, &schema.ResourceType{Token: tok}, false),
+				DisplayName: docLangHelper.GetLanguageTypeString(def, mod.mod, &schema.ResourceType{Token: tok}, false),
 			}
 			continue
 		default:
@@ -1281,6 +1302,8 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) 
 func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("nodejs")
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
 
 	return []formalParam{
 		{
@@ -1294,7 +1317,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "Input<ID>",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "ID"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "ID"),
 			},
 		},
 		{
@@ -1309,7 +1332,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "CustomResourceOptions"),
 			},
 		},
 	}
@@ -1319,13 +1342,16 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("go")
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	return []formalParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Context"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Context"),
 			},
 		},
 		{
@@ -1338,7 +1364,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "IDInput",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "IDInput"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "IDInput"),
 			},
 		},
 		{
@@ -1353,7 +1379,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "...",
 			Type: propertyType{
 				Name: "ResourceOption",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "ResourceOption"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "ResourceOption"),
 			},
 		},
 	}
@@ -1362,6 +1388,9 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("csharp")
+
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
 
 	return []formalParam{
 		{
@@ -1374,7 +1403,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "id",
 			Type: propertyType{
 				Name: "Input<string>",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.Input"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Pulumi.Input"),
 			},
 		},
 		{
@@ -1390,7 +1419,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			DefaultValue: " = null",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Pulumi.CustomResourceOptions"),
 			},
 		},
 	}
@@ -1399,6 +1428,8 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 func (mod *modContext) getJavaLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("java")
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
 
 	return []formalParam{
 		{
@@ -1411,7 +1442,7 @@ func (mod *modContext) getJavaLookupParams(r *schema.Resource, stateParam string
 			Name: "id",
 			Type: propertyType{
 				Name: "Output<String>",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Output"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "Output"),
 			},
 		},
 		{
@@ -1424,7 +1455,7 @@ func (mod *modContext) getJavaLookupParams(r *schema.Resource, stateParam string
 			Name: "options",
 			Type: propertyType{
 				Name: "CustomResourceOptions",
-				Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "CustomResourceOptions"),
+				Link: docLangHelper.GetDocLinkForPulumiType(def, "CustomResourceOptions"),
 			},
 		},
 	}
@@ -1437,7 +1468,10 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 	docLanguageHelper := dctx.getLanguageDocHelper("python")
 	params := make([]formalParam, 0, len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
+		def, err := mod.pkg.Definition()
+		contract.AssertNoError(err)
+
+		typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
 			Name:         python.PyName(p.Name),
 			DefaultValue: " = None",
@@ -1527,13 +1561,13 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 	if mod.mod == "" {
 		metaDescription = fmt.Sprintf("Documentation for the %s.%s resource "+
 			"with examples, input properties, output properties, "+
-			"lookup functions, and supporting types.", mod.pkg.Name, resourceName)
-		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, resourceName)
+			"lookup functions, and supporting types.", mod.pkg.Name(), resourceName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), resourceName)
 	} else {
 		metaDescription = fmt.Sprintf("Documentation for the %s.%s.%s resource "+
 			"with examples, input properties, output properties, "+
-			"lookup functions, and supporting types.", mod.pkg.Name, mod.mod, resourceName)
-		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, resourceName)
+			"lookup functions, and supporting types.", mod.pkg.Name(), mod.mod, resourceName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name(), mod.mod, resourceName)
 	}
 
 	return header{
@@ -1595,10 +1629,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		}
 	}
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	packageDetails := packageDetails{
-		Repository: mod.pkg.Repository,
-		License:    mod.pkg.License,
-		Notes:      mod.pkg.Attribution,
+		Repository: def.Repository,
+		License:    def.License,
+		Notes:      def.Attribution,
 	}
 
 	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
@@ -1822,12 +1859,15 @@ func (mod *modContext) genIndex() indexData {
 	modName := mod.getModuleFileName()
 	title := modName
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoError(err)
+
 	// An empty string indicates that this is the root module.
 	if title == "" {
-		if mod.pkg.DisplayName != "" {
-			title = mod.pkg.DisplayName
+		if def.DisplayName != "" {
+			title = def.DisplayName
 		} else {
-			title = getPackageDisplayName(mod.pkg.Name)
+			title = getPackageDisplayName(mod.pkg.Name())
 		}
 	}
 
@@ -1863,14 +1903,14 @@ func (mod *modContext) genIndex() indexData {
 	sortIndexEntries(functions)
 
 	version := ""
-	if mod.pkg.Version != nil {
-		version = mod.pkg.Version.String()
+	if mod.pkg.Version() != nil {
+		version = mod.pkg.Version().String()
 	}
 
 	packageDetails := packageDetails{
-		Repository: mod.pkg.Repository,
-		License:    mod.pkg.License,
-		Notes:      mod.pkg.Attribution,
+		Repository: def.Repository,
+		License:    def.License,
+		Notes:      def.Attribution,
 		Version:    version,
 	}
 
@@ -1882,8 +1922,9 @@ func (mod *modContext) genIndex() indexData {
 	if len(modules) > 0 {
 		titleTag = fmt.Sprintf("%s Package", getPackageDisplayName(title))
 	} else {
-		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, title)
-		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.", mod.pkg.Name, title)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), title)
+		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.",
+			mod.pkg.Name(), title)
 	}
 
 	data := indexData{
@@ -1899,7 +1940,7 @@ func (mod *modContext) genIndex() indexData {
 
 	// If this is the root module, write out the package description.
 	if mod.mod == "" {
-		data.PackageDescription = mod.pkg.Description
+		data.PackageDescription = mod.pkg.Description()
 	}
 
 	return data
@@ -1916,9 +1957,9 @@ func getPackageDisplayName(title string) string {
 }
 
 func (dctx *docGenContext) getMod(
-	pkg *schema.Package,
+	pkg schema.PackageReference,
 	token string,
-	tokenPkg *schema.Package,
+	tokenPkg schema.PackageReference,
 	modules map[string]*modContext,
 	tool string,
 	add bool) *modContext {
@@ -1933,7 +1974,7 @@ func (dctx *docGenContext) getMod(
 			docGenContext: dctx,
 		}
 
-		if modName != "" && tokenPkg == pkg {
+		if modName != "" && codegen.PkgEquals(tokenPkg, pkg) {
 			parentName := path.Dir(modName)
 			// If the parent name is blank, it means this is the package-level.
 			if parentName == "." || parentName == "" {
@@ -1986,21 +2027,21 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 		visitObjectTypes(r.InputProperties, func(t schema.Type) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				dctx.getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+				dctx.getMod(pkg.Reference(), T.Token, T.PackageReference, modules, tool, true).details(T).inputType = true
 			}
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					dctx.getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+					dctx.getMod(pkg.Reference(), T.Token, T.PackageReference, modules, tool, true).details(T).inputType = true
 				}
 			})
 		}
 	}
 
 	scanResource := func(r *schema.Resource) {
-		mod := dctx.getMod(pkg, r.Token, r.Package, modules, tool, true)
+		mod := dctx.getMod(pkg.Reference(), r.Token, r.PackageReference, modules, tool, true)
 		mod.resources = append(mod.resources, r)
 		visitObjects(r)
 	}
@@ -2012,7 +2053,7 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 	}
 
 	glog.V(3).Infoln("scanning resources")
-	if isKubernetesPackage(pkg) {
+	if isKubernetesPackage(pkg.Reference()) {
 		scanK8SResource(pkg.Provider)
 		for _, r := range pkg.Resources {
 			scanK8SResource(r)
@@ -2027,7 +2068,7 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 
 	for _, f := range pkg.Functions {
 		if !f.IsMethod {
-			mod := dctx.getMod(pkg, f.Token, f.Package, modules, tool, true)
+			mod := dctx.getMod(pkg.Reference(), f.Token, f.PackageReference, modules, tool, true)
 			mod.functions = append(mod.functions, f)
 		}
 	}
@@ -2036,7 +2077,7 @@ func (dctx *docGenContext) generateModulesFromSchemaPackage(tool string, pkg *sc
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := dctx.getMod(pkg, typ.Token, typ.Package, modules, tool, false)
+			mod := dctx.getMod(pkg.Reference(), typ.Token, typ.PackageReference, modules, tool, false)
 			if mod.details(typ).inputType {
 				mod.inputTypes = append(mod.inputTypes, typ)
 			}

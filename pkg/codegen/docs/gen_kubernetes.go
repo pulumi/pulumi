@@ -28,8 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-func isKubernetesPackage(pkg *schema.Package) bool {
-	return pkg.Name == "kubernetes"
+func isKubernetesPackage(pkg schema.PackageReference) bool {
+	return pkg.Name() == "kubernetes"
 }
 
 func (mod *modContext) isKubernetesOverlayModule() bool {
@@ -142,7 +142,7 @@ func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*mod
 	mod, ok := modules[modName]
 	if !ok {
 		mod = &modContext{
-			pkg:  pkg,
+			pkg:  pkg.Reference(),
 			mod:  modName,
 			tool: tool,
 		}

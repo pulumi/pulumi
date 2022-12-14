@@ -2060,7 +2060,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 }
 
 func NeedsGoOutputVersion(f *schema.Function) bool {
-	fPkg := f.Package
+	fPkgRef := f.PackageReference
+
+	fPkg, err := fPkgRef.Definition()
+	contract.AssertNoError(err)
 
 	var goInfo GoPackageInfo
 
