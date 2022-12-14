@@ -182,10 +182,8 @@ func TestProjectLoadJSON(t *testing.T) {
 	_, err = writeAndLoad("{\"name\": \"project\", \"runtime\": 4}")
 	// These can vary in order, so contains not equals check
 	expected := []string{
-		"3 errors occurred:",
-		"* #/runtime: oneOf failed",
-		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number"}
+		"1 error occurred:",
+		"* #/runtime: expected string, but got number; expected object, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -900,10 +898,8 @@ func TestProjectLoadYAML(t *testing.T) {
 	_, err = loadProjectFromText(t, "name: project\nruntime: 4")
 	// These can vary in order, so contains not equals check
 	expected := []string{
-		"3 errors occurred:",
-		"* #/runtime: oneOf failed",
-		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number"}
+		"1 error occurred:",
+		"* #/runtime: expected string, but got number; expected object, but got number"}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}

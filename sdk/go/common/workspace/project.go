@@ -357,20 +357,29 @@ func ValidateProject(raw interface{}) error {
 
 	var errs *multierror.Error
 	var appendError func(err *jsonschema.ValidationError)
+	locToErr := make(map[string]*strings.Builder)
+	errorf := func(path, message string, args ...interface{}) error {
+		contract.Require(path != "", "path")
+		return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
+	}
 	appendError = func(err *jsonschema.ValidationError) {
-		if err.InstanceLocation != "" && err.Message != "" {
-			errorf := func(path, message string, args ...interface{}) error {
-				contract.Require(path != "", "path")
-				return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
+		if err.InstanceLocation != "" && err.Message != "" && len(err.Causes) == 0 {
+			if e, ok := locToErr[err.InstanceLocation]; ok {
+				e.WriteString("; " + err.Message)
+			} else {
+				locToErr[err.InstanceLocation] = &strings.Builder{}
+				e = locToErr[err.InstanceLocation]
+				e.WriteString(errorf("#"+err.InstanceLocation, "%v", err.Message).Error())
 			}
-
-			errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", err.Message))
 		}
 		for _, err := range err.Causes {
 			appendError(err)
 		}
 	}
 	appendError(validationError)
+	for _, e := range locToErr {
+		errs = multierror.Append(errs, errors.New(e.String()))
+	}
 
 	return errs
 }
