@@ -23,7 +23,7 @@ import (
 )
 
 func NewPassphraseSecretsManager(stackName tokens.Name, configFile string,
-	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
+	rotateSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	project, _, err := workspace.DetectProjectStackPath(stackName.Q())
@@ -36,16 +36,14 @@ func NewPassphraseSecretsManager(stackName tokens.Name, configFile string,
 		return nil, err
 	}
 
-	if rotatePassphraseSecretsProvider {
+	if rotateSecretsProvider {
 		info.EncryptionSalt = ""
 	}
 
 	// If there are any other secrets providers set in the config, remove them, as the passphrase
 	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
-	if info.EncryptedKey != "" || info.SecretsProvider != "" {
-		info.EncryptedKey = ""
-		info.SecretsProvider = ""
-	}
+	info.EncryptedKey = ""
+	info.SecretsProvider = ""
 
 	// If we have a salt, we can just use it.
 	if info.EncryptionSalt != "" {
@@ -53,7 +51,7 @@ func NewPassphraseSecretsManager(stackName tokens.Name, configFile string,
 	}
 
 	// Otherwise, prompt the user for a new passphrase.
-	salt, sm, err := passphrase.PromptForNewPassphrase(rotatePassphraseSecretsProvider)
+	salt, sm, err := passphrase.PromptForNewPassphrase(rotateSecretsProvider)
 	if err != nil {
 		return nil, err
 	}

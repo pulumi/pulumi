@@ -64,11 +64,11 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 
 		// nolint: goconst
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider)
+			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider, false /* rotateSecretsProvider */)
 		}
 
 		if ps.EncryptionSalt != "" {
-			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
+			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
 		}
 
 		return s.DefaultSecretManager(configFile)

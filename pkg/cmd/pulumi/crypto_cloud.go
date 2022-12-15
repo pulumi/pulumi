@@ -25,7 +25,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider string) (secrets.Manager, error) {
+func newCloudSecretsManager(stackName tokens.Name, configFile,
+	secretsProvider string, rotateSecretsProvider bool) (secrets.Manager, error) {
+
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 	proj, _, err := workspace.DetectProjectStackPath(stackName.Q())
 	if err != nil {
@@ -40,9 +42,7 @@ func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider s
 	// Only a passphrase provider has an encryption salt. So changing a secrets provider
 	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
 	// as it's a legacy artifact and needs to be removed
-	if info.EncryptionSalt != "" {
-		info.EncryptionSalt = ""
-	}
+	info.EncryptionSalt = ""
 
 	var secretsManager *cloud.Manager
 
@@ -51,6 +51,11 @@ func newCloudSecretsManager(stackName tokens.Name, configFile, secretsProvider s
 	// config, such a during CI.
 	if override := os.Getenv("PULUMI_CLOUD_SECRET_OVERRIDE"); override != "" {
 		secretsProvider = override
+	}
+
+	// If we're rotating then just clear the key so we create a fresh one below
+	if rotateSecretsProvider {
+		info.EncryptedKey = ""
 	}
 
 	// if there is no key OR the secrets provider is changing

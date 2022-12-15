@@ -64,10 +64,10 @@ func TestSecretsProviderOverride(t *testing.T) {
 	t.Run("without override", func(t *testing.T) {
 		createTempFiles(t, files, func() {
 			opener.wantURL = "test://foo"
-			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo")
+			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo", false)
 			assert.Nil(t, createSecretsManagerError, "Creating the cloud secret manager should succeed")
 
-			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
+			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar", false)
 			msg := "newCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
 			assert.NotNil(t, createSecretsManagerError, msg)
 		})
@@ -82,9 +82,9 @@ func TestSecretsProviderOverride(t *testing.T) {
 			// Last argument here shouldn't matter anymore, since it gets overridden
 			// by the env var. Both calls should succeed.
 			msg := "creating the secrets manager should succeed regardless of secrets provider"
-			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo")
+			_, createSecretsManagerError := newCloudSecretsManager(stackName, stackConfigFileName, "test://foo", false)
 			assert.Nil(t, createSecretsManagerError, msg)
-			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar")
+			_, createSecretsManagerError = newCloudSecretsManager(stackName, stackConfigFileName, "test://bar", false)
 			assert.Nil(t, createSecretsManagerError, msg)
 		})
 	})
