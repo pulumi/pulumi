@@ -511,7 +511,11 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	}
 	g.genTemps(w, temps)
 
-	if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
+	if g.inGenTupleConExprListArgs {
+		if g.isPtrArg {
+			g.Fgenf(w, "&%s", typeName)
+		}
+	} else if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
@@ -740,6 +744,16 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	}
 	g.genTemps(w, temps)
 	argType := g.argumentTypeName(expr, destType, isInput)
+	// don't need to generate type for list args if not a pointer, i.e. []ec2.SubnetSpecArgs{ {Type: ...} }
+	// unless it contains an interface, i.e. []map[string]interface{ map[string]interface{"key": "val"} }
+	if strings.HasPrefix(argType, "[]") && !strings.Contains(argType, "interface{}") {
+		defer func(b bool) { g.inGenTupleConExprListArgs = b }(g.inGenTupleConExprListArgs)
+		g.inGenTupleConExprListArgs = true
+		if strings.HasPrefix(argType, "[]*") {
+			defer func(b bool) { g.isPtrArg = b }(g.isPtrArg)
+			g.isPtrArg = true
+		}
+	}
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:

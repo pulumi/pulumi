@@ -49,6 +49,10 @@ type generator struct {
 	configCreated       bool
 	externalCache       *Cache
 
+	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
+	inGenTupleConExprListArgs bool
+	isPtrArg                  bool
+
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
 }
