@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Don't panic on some empty objects
