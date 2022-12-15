@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/service
+  description: "Fixes out-of-memory issues when using PULUMI_OPTIMIZED_CHECKPOINT_PATCH protocol"

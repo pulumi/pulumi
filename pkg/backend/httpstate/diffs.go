@@ -25,8 +25,6 @@ import (
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
@@ -59,39 +57,30 @@ func (dds *deploymentDiffState) CanDiff() bool {
 
 // Size-based heuristics trying to estimate if the diff method will be
 // worth it and take less time than sending the entire deployment.
-func (dds *deploymentDiffState) ShouldDiff(new *apitype.UntypedDeployment) bool {
+func (dds *deploymentDiffState) ShouldDiff(new json.RawMessage) bool {
 	if !dds.CanDiff() {
 		return false
 	}
 	if len(dds.lastSavedDeployment) < dds.minimalDiffSize {
 		return false
 	}
-	if len(new.Deployment) < dds.minimalDiffSize {
+	if len(new) < dds.minimalDiffSize {
 		return false
 	}
 	return true
 }
 
-func (dds *deploymentDiffState) Diff(ctx context.Context,
-	deployment *apitype.UntypedDeployment) (deploymentDiff, error) {
+func (dds *deploymentDiffState) Diff(ctx context.Context, deployment json.RawMessage) (deploymentDiff, error) {
 
 	if !dds.CanDiff() {
 		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
-	}
-
-	if deployment.Version == 0 {
-		return deploymentDiff{}, fmt.Errorf("deployment.Version should be set")
 	}
 
 	tracingSpan, childCtx := opentracing.StartSpanFromContext(ctx, "Diff")
 	defer tracingSpan.Finish()
 
 	before := dds.lastSavedDeployment
-
-	after, err := marshalUntypedDeployment(deployment)
-	if err != nil {
-		return deploymentDiff{}, fmt.Errorf("marshalUntypedDeployment failed: %v", err)
-	}
+	after := deployment
 
 	var checkpointHash string
 	checkpointHashReady := &sync.WaitGroup{}
@@ -125,12 +114,8 @@ func (dds *deploymentDiffState) Diff(ctx context.Context,
 }
 
 // Indicates that a deployment was just saved to the service.
-func (dds *deploymentDiffState) Saved(ctx context.Context, deployment *apitype.UntypedDeployment) error {
-	d, err := marshalUntypedDeployment(deployment)
-	if err != nil {
-		return err
-	}
-	dds.lastSavedDeployment = d
+func (dds *deploymentDiffState) Saved(ctx context.Context, deployment json.RawMessage) error {
+	dds.lastSavedDeployment = deployment
 	dds.sequenceNumber++
 
 	return nil

@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -62,7 +61,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			persister.context, persister.update, deploymentV3, token)
 	}
 
-	deployment, err := persister.marshalDeployment(deploymentV3)
+	deployment, err := client.MarshalUntypedDeployment(deploymentV3)
 	if err != nil {
 		return err
 	}
@@ -102,23 +101,10 @@ func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment *apitype.UntypedDeployment, token string) error {
-	untypedDeploymentBytes, err := marshalUntypedDeployment(deployment)
-	if err != nil {
-		return err
-	}
+	differ *deploymentDiffState, deployment json.RawMessage, token string) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
-		untypedDeploymentBytes, token)
-}
-
-func (persister *cloudSnapshotPersister) marshalDeployment(
-	deployment *apitype.DeploymentV3) (*apitype.UntypedDeployment, error) {
-	raw, err := json.MarshalIndent(deployment, "", "")
-	if err != nil {
-		return nil, fmt.Errorf("serializing deployment to json: %w", err)
-	}
-	return &apitype.UntypedDeployment{Deployment: raw, Version: 3}, nil
+		deployment, token)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
