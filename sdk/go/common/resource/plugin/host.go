@@ -26,10 +26,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -339,7 +339,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 			}
 
 			// Warn if the plugin version was not what we expected
-			if version != nil && !cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
+			if version != nil && !env.Dev.Value() {
 				if info.Version == nil || !info.Version.GTE(*version) {
 					var v string
 					if info.Version != nil {

@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
@@ -225,7 +226,7 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
+			if env.SkipUpdateCheck.Value() {
 				logging.V(5).Infof("skipping update check")
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
@@ -355,6 +356,7 @@ func NewPulumiCmd() *cobra.Command {
 				newConvertCmd(),
 				newWatchCmd(),
 				newLogsCmd(),
+				newEnvCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
@@ -396,7 +398,7 @@ func checkForUpdate(ctx context.Context) *diag.Diag {
 	latestVer, oldestAllowedVer, err := getCLIVersionInfo(ctx)
 	if err != nil {
 		logging.V(3).Infof("error fetching latest version information "+
-			"(set `PULUMI_SKIP_UPDATE_CHECK=true` to skip update checks): %s", err)
+			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 	}
 
 	if oldestAllowedVer.GT(curVer) {

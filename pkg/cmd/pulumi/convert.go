@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -66,7 +67,7 @@ func newConvertCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("could not resolve current working directory"))
 			}
 
-			return runConvert(cwd, mappings, from, language, outDir, generateOnly)
+			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly)
 		}),
 	}
 
@@ -159,6 +160,7 @@ func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Proje
 }
 
 func runConvert(
+	e env.Env,
 	cwd string, mappings []string, from string, language string,
 	outDir string, generateOnly bool) result.Result {
 
@@ -177,7 +179,7 @@ func runConvert(
 	case "yaml": // nolint: goconst
 		projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
+		if e.GetBool(env.Dev) {
 			// No plugin for PCL to install dependencies with
 			generateOnly = true
 			projectGenerator = pclGenerateProject
@@ -215,7 +217,7 @@ func runConvert(
 			return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
 		}
 	} else if from == "pcl" {
-		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEV")) {
+		if e.GetBool(env.Dev) {
 			proj, program, err = pclEject(cwd, loader)
 			if err != nil {
 				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))

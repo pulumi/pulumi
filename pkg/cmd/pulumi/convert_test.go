@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,18 +33,20 @@ func TestYamlConvert(t *testing.T) {
 		t.Fatalf("Pulumi.yaml is a directory, not a file")
 	}
 
-	result := runConvert("convert_testdata", []string{}, "yaml", "go", "convert_testdata/go", true)
+	result := runConvert(env.Global(), "convert_testdata", []string{}, "yaml", "go", "convert_testdata/go", true)
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
-//nolint:paralleltest // sets env var, must be run in isolation
 func TestPclConvert(t *testing.T) {
-	t.Setenv("PULUMI_DEV", "TRUE")
+	t.Parallel()
+	env := env.NewEnv(env.MapStore{
+		env.Dev.Var().Name(): "true",
+	})
 
 	// Check that we can run convert from PCL to PCL
 	tmp := t.TempDir()
 
-	result := runConvert("pcl_convert_testdata", []string{}, "pcl", "pcl", tmp, true)
+	result := runConvert(env, "pcl_convert_testdata", []string{}, "pcl", "pcl", tmp, true)
 	assert.Nil(t, result)
 
 	// Check that we made one file
