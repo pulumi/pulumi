@@ -518,6 +518,17 @@ export async function monitorSupportsDeletedWith(): Promise<boolean> {
     return monitorSupportsFeature("deletedWith");
 }
 
+/**
+ * monitorSupportsAliasSpecs returns a promise that when resolved tells you if the resource monitor we are
+ * connected to is able to support alias specs across its RPC interface. When it does, we marshal aliases
+ * in a special way.
+ *
+ * @internal
+ */
+export async function monitorSupportsAliasSpecs(): Promise<boolean> {
+    return monitorSupportsFeature("aliasSpecs");
+}
+
 // sxsRandomIdentifier is a module level global that is transfered to process.env.
 // the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
 // and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.

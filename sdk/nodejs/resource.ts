@@ -17,7 +17,6 @@ import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
-import * as stacklib from "./runtime/stack";
 import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
 import * as log from "./log";
@@ -215,7 +214,7 @@ export abstract class Resource {
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private readonly __name?: string;
+    readonly __name?: string;
 
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -332,9 +331,6 @@ export abstract class Resource {
             if (opts.protect === undefined) {
                 opts.protect = parent.__protect;
             }
-
-            // Update aliases to include the full set of aliases implied by the child and parent aliases.
-            opts.aliases = allAliases(opts.aliases || [], name, t, parent, parent.__name!);
 
             this.__providers = parent.__providers;
         }

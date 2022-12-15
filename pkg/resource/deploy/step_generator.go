@@ -415,7 +415,7 @@ func (sg *stepGenerator) inheritedChildAlias(
 	return resource.NewURN(
 		sg.deployment.Target().Name.Q(),
 		sg.deployment.source.Project(),
-		parentAlias.Type(),
+		parentAlias.QualifiedType(),
 		childType,
 		aliasName)
 }
