@@ -25,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
+const maxNewLines = 1024
+
 var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 
 // Marshals to canonical JSON in the apitype.UntypedDeployment format.
@@ -32,8 +34,8 @@ var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 // Optimized for large checkpoints.
 //
 // Injects newlines to allow efficient textual diffs over the JSON. Textual diffs currently use O(N^2) memory in the
-// number of newlines, so the injection needs to be conservative. Currently it limits to up to 1024 newlines which would
-// result in max 8MB memory use by the algorithm.
+// number of newlines, so the injection needs to be conservative. Currently it limits to up to maxNewLines newlines
+// which would result in max 8MB memory use by the algorithm.
 func MarshalUntypedDeployment(deployment *apitype.DeploymentV3) (json.RawMessage, error) {
 	var buf bytes.Buffer
 	var md = &marshalUntypedDeployment{deployment}
@@ -62,13 +64,13 @@ func (c *marshalUntypedDeployment) Write(w io.Writer) error {
 }
 
 func (c *marshalUntypedDeployment) writeToStream(stream *jsoniter.Stream) error {
-	stream.WriteObjectStart()
-	stream.WriteObjectField("version")
+	stream.WriteObjectStart()          // writes `{`
+	stream.WriteObjectField("version") // writes `"version":`
 	stream.WriteInt(3)
-	stream.WriteMore()
+	stream.WriteMore() // writes `,`
 	stream.WriteObjectField("deployment")
 	c.writeDeploymentV3(stream)
-	stream.WriteObjectEnd()
+	stream.WriteObjectEnd() // writes `}`
 	return stream.Flush()
 }
 
@@ -87,8 +89,8 @@ func (c *marshalUntypedDeployment) writeDeploymentV3(stream *jsoniter.Stream) (e
 	}
 	nResources := len(deployment.Resources)
 
-	maxNewlines := 1024 - 2
-	newlinePeriod := int(math.Ceil(float64(nResources) / float64(maxNewlines)))
+	maxNL := maxNewLines - 2
+	newlinePeriod := int(math.Ceil(float64(nResources) / float64(maxNL)))
 
 	if nResources > 0 {
 		stream.WriteMore()
@@ -97,7 +99,7 @@ func (c *marshalUntypedDeployment) writeDeploymentV3(stream *jsoniter.Stream) (e
 		for i, r := range deployment.Resources {
 			if i > 0 {
 				stream.WriteRaw(",")
-				if (nResources <= maxNewlines) || (i%newlinePeriod == 0) {
+				if (nResources <= maxNL) || (i%newlinePeriod == 0) {
 					stream.WriteRaw("\n")
 				}
 			}
