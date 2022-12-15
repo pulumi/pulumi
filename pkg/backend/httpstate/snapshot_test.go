@@ -54,7 +54,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		t.Cleanup(func() {
 			bytes, err := json.MarshalIndent(expectations, "", "  ")
 			require.NoError(t, err)
-			err = os.WriteFile(expectationsFile, bytes, 0700)
+			err = os.WriteFile(expectationsFile, bytes, 0600)
 			require.NoError(t, err)
 		})
 	} else {

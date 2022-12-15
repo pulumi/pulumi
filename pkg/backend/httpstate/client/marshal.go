@@ -69,7 +69,10 @@ func (c *marshalUntypedDeployment) writeToStream(stream *jsoniter.Stream) error 
 	stream.WriteInt(3)
 	stream.WriteMore() // writes `,`
 	stream.WriteObjectField("deployment")
-	c.writeDeploymentV3(stream)
+	err := c.writeDeploymentV3(stream)
+	if err != nil {
+		return err
+	}
 	stream.WriteObjectEnd() // writes `}`
 	return stream.Flush()
 }
