@@ -44,20 +44,20 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 	return literal.Val.AsString(), call.Args[0].Range(), true
 }
 
-// annotateObjectProperties annotates the properties of an object expression with the types of the corresponding
-// properties in the schema. This is used to provide type information
-// for invoke calls that didn't have type annotations.
+// annotateObjectProperties annotates the properties of an object expression with the
+// types of the corresponding properties in the schema. This is used to provide type
+// information for invoke calls that didn't have type annotations.
 //
-// This function will recursively annotate the properties of objects
-// that are nested within the object expression type.
+// This function will recursively annotate the properties of objects that are nested
+// within the object expression type.
 func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
-	if optionalType, ok := schemaType.(*schema.OptionalType); ok {
+	if optionalType, ok := schemaType.(*schema.OptionalType); ok && optionalType != nil {
 		schemaType = optionalType.ElementType
 	}
 
 	switch arg := modelType.(type) {
 	case *model.ObjectType:
-		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok {
+		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok && schemaObjectType != nil {
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range schemaObjectType.Properties {
 				schemaProperties[schemaProperty.Name] = schemaProperty.Type
@@ -74,13 +74,13 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 		}
 	case *model.ListType:
 		underlyingArrayType := arg.ElementType
-		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok && schemaArrayType != nil {
 			underlyingSchemaArrayType := schemaArrayType.ElementType
 			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType)
 		}
 
 	case *model.TupleType:
-		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok {
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok && schemaArrayType != nil {
 			underlyingSchemaArrayType := schemaArrayType.ElementType
 			elementTypes := arg.ElementTypes
 			for _, elemType := range elementTypes {
