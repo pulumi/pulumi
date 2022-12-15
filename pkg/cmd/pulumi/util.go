@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -59,27 +60,27 @@ import (
 )
 
 func hasDebugCommands() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG_COMMANDS"))
+	return env.DebugCommands.Value()
 }
 
 func hasExperimentalCommands() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL"))
+	return env.Experimental.Value()
 }
 
 func useLegacyDiff() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
+	return env.EnableLegacyDiff.Value()
 }
 
 func disableProviderPreview() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_PROVIDER_PREVIEW"))
+	return env.DisableProviderPreview.Value()
 }
 
 func disableResourceReferences() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
+	return env.DisableResourceReferences.Value()
 }
 
 func disableOutputValues() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_OUTPUT_VALUES"))
+	return env.DisableOutputValues.Value()
 }
 
 // skipConfirmations returns whether or not confirmation prompts should
@@ -89,7 +90,7 @@ func disableOutputValues() bool {
 // This should NOT be used to bypass protections for destructive
 // operations, such as those that will fail without a --force parameter.
 func skipConfirmations() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_CONFIRMATIONS"))
+	return env.SkipConfirmations.Value()
 }
 
 // backendInstance is used to inject a backend mock from tests.

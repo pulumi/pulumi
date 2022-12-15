@@ -152,6 +152,37 @@ func MeasureText(text string) int {
 	return uniseg.GraphemeClusterCount(clean)
 }
 
+// normalizedRows returns the rows of a table in normalized form.
+//
+// A row is considered normalized if and only if it has no new lines in any of its fields.
+func (table *Table) normalizedRows() []TableRow {
+	rows := make([]TableRow, 0, len(table.Rows))
+	for _, row := range table.Rows {
+		info := row.AdditionalInfo
+		buckets := make([][]string, len(row.Columns))
+		maxLines := 0
+		for i, column := range row.Columns {
+			buckets[i] = strings.Split(column, "\n")
+			maxLines = max(maxLines, len(buckets[i]))
+		}
+		row := []TableRow{}
+		for i := 0; i < maxLines; i++ {
+			part := TableRow{}
+			for _, b := range buckets {
+				if i < len(b) {
+					part.Columns = append(part.Columns, b[i])
+				} else {
+					part.Columns = append(part.Columns, "")
+				}
+			}
+			row = append(row, part)
+		}
+		row[len(row)-1].AdditionalInfo = info
+		rows = append(rows, row...)
+	}
+	return rows
+}
+
 func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
@@ -163,7 +194,7 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 		Columns: table.Headers,
 	}}
 
-	allRows = append(allRows, table.Rows...)
+	allRows = append(allRows, table.normalizedRows()...)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns

@@ -17,7 +17,6 @@ package backend
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"time"
@@ -26,15 +25,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
-
-// Experimental flag to skip saving state checkpoints and only save
-// the final deployment. See #10668.
-const pulumiSkipCheckpointsEnvVar = "PULUMI_SKIP_CHECKPOINTS"
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
 // persistence. In order to fit into our current model, snapshot persisters have two functions:
@@ -720,8 +715,7 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 
 	serviceLoop := manager.defaultServiceLoop
 
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL")) &&
-		cmdutil.IsTruthy(os.Getenv(pulumiSkipCheckpointsEnvVar)) {
+	if env.SkipCheckpoints.Value() {
 		serviceLoop = manager.unsafeServiceLoop
 	}
 

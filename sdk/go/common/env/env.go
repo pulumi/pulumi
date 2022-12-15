@@ -43,5 +43,28 @@ var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new 
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself")
 
+var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Experimental flag to skip saving state "+
+	"checkpoints and only save the final deployment. See #10668", env.Needs(Experimental))
+
+var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself")
+
+var EnableLegacyDiff = env.Bool("ENABLE_LEGACY_DIFF", "")
+
+var DisableProviderPreview = env.Bool("DISABLE_PROVIDER_PREVIEW", "")
+
+var DisableResourceReferences = env.Bool("DISABLE_RESOURCE_REFERENCES", "")
+
+var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
+
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining the $PATH")
+
+var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
+	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
+that a --yes parameter has been set for non-interactive scenarios.
+
+This should NOT be used to bypass protections for destructive operations, such as those that will
+fail without a --force parameter.`)
+
+var DebugGRPC = env.String("DEBUG_GRPC", `Enables debug tracing of Pulumi gRPC internals.
+The variable should be set to the log file to which gRPC debug traces will be sent.`)
