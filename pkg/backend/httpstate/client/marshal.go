@@ -36,7 +36,7 @@ var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 // result in max 8MB memory use by the algorithm.
 func MarshalUntypedDeployment(deployment *apitype.DeploymentV3) (json.RawMessage, error) {
 	var buf bytes.Buffer
-	md := &marshalUntypedDeployment{deployment}
+	var md = &marshalUntypedDeployment{deployment}
 	if err := md.Write(&buf); err != nil {
 		return nil, err
 	}
