@@ -39,6 +39,8 @@ const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 // used instead of the currently logged in backend or the current projects backend.
 const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
 
+const LoadCurrentProjectFailMsg = "could not load current project"
+
 // GetAccount returns an account underneath a given key.
 //
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
@@ -161,7 +163,7 @@ func GetCurrentCloudURL() (string, error) {
 	if err == nil && projPath != "" {
 		proj, err := LoadProject(projPath)
 		if err != nil {
-			return "", errors.Wrap(err, "could not load current project")
+			return "", errors.Wrap(err, LoadCurrentProjectFailMsg)
 		}
 
 		if proj.Backend != nil {

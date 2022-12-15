@@ -355,32 +355,49 @@ func ValidateProject(raw interface{}) error {
 		return err
 	}
 
-	var errs *multierror.Error
 	var appendError func(err *jsonschema.ValidationError)
-	locToErr := make(map[string]*strings.Builder)
-	errorf := func(path, message string, args ...interface{}) error {
-		contract.Require(path != "", "path")
-		return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
-	}
+	locToErr := make(map[string][]*jsonschema.ValidationError)
 	appendError = func(err *jsonschema.ValidationError) {
 		if err.InstanceLocation != "" && err.Message != "" && len(err.Causes) == 0 {
-			if e, ok := locToErr[err.InstanceLocation]; ok {
-				e.WriteString("; " + err.Message)
-			} else {
-				locToErr[err.InstanceLocation] = &strings.Builder{}
-				e = locToErr[err.InstanceLocation]
-				e.WriteString(errorf("#"+err.InstanceLocation, "%v", err.Message).Error())
-			}
+			locToErr[err.InstanceLocation] = append(locToErr[err.InstanceLocation], err)
 		}
 		for _, err := range err.Causes {
 			appendError(err)
 		}
 	}
 	appendError(validationError)
-	for _, e := range locToErr {
-		errs = multierror.Append(errs, errors.New(e.String()))
+	return formatErrMsgs(locToErr)
+}
+
+func formatErrMsgs(errMap map[string][]*jsonschema.ValidationError) *multierror.Error {
+	var errs *multierror.Error
+	errorf := func(path, message string, args ...interface{}) error {
+		contract.Require(path != "", "path")
+		return fmt.Errorf("%s: %s", path, fmt.Sprintf(message, args...))
 	}
 
+	for _, errList := range errMap {
+		expectedTypes := make([]string, 0)
+		expectedTypeMsg := ""
+		for _, err := range errList {
+			if strings.HasPrefix(err.Message, "expected") {
+				parts := strings.Split(strings.TrimPrefix(err.Message, "expected"), ",")
+				expectedTypes = append(expectedTypes, parts[0])
+				expectedTypeMsg = parts[1]
+			} else {
+				errs = multierror.Append(errs, errorf("#"+err.InstanceLocation, "%v", err.Message))
+			}
+		}
+		if expectedTypeMsg != "" {
+			types := expectedTypes[0]
+			if len(expectedTypes) > 1 {
+				types = fmt.Sprintf("%s or%s", strings.Join(expectedTypes[:len(expectedTypes)-1], ","),
+					expectedTypes[len(expectedTypes)-1])
+			}
+			expectedTypeMsg = "expected" + types + "," + expectedTypeMsg
+			errs = multierror.Append(errs, errorf("#"+errList[0].InstanceLocation, "%v", expectedTypeMsg))
+		}
+	}
 	return errs
 }
 
