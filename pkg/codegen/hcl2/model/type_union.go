@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -103,6 +104,30 @@ func IsOptionalType(t Type) bool {
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*UnionType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *UnionType) Pretty() pretty.Formatter {
+	elements := make([]pretty.Formatter, 0, len(t.ElementTypes))
+	isOptional := false
+	for _, el := range t.ElementTypes {
+		if el == NoneType {
+			isOptional = true
+			continue
+		}
+		elements = append(elements, el.Pretty())
+	}
+	var v pretty.Formatter = pretty.List{
+		Separator: " | ",
+		Elements:  elements,
+	}
+	if isOptional {
+		v = pretty.Wrap{
+			Value:           v,
+			Postfix:         "?",
+			PostfixSameline: true,
+		}
+	}
+	return v
 }
 
 // Traverse attempts to traverse the union type with the given traverser. This always fails.

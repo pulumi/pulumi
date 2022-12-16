@@ -19,6 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -36,6 +38,14 @@ func NewListType(elementType Type) *ListType {
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*ListType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *ListType) Pretty() pretty.Formatter {
+	return pretty.Wrap{
+		Prefix:  "list(",
+		Postfix: ")",
+		Value:   t.ElementType.Pretty(),
+	}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of traverse(list(T))

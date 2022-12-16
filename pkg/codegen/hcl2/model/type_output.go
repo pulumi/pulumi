@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -37,6 +38,14 @@ func NewOutputType(elementType Type) *OutputType {
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*OutputType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *OutputType) Pretty() pretty.Formatter {
+	return pretty.Wrap{
+		Prefix:  "output(",
+		Value:   t.ElementType.Pretty(),
+		Postfix: ")",
+	}
 }
 
 // Traverse attempts to traverse the output type with the given traverser. The result type of traverse(output(T))

@@ -21,10 +21,12 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ObjectType represents schematized maps from strings to particular types.
@@ -46,6 +48,14 @@ func NewObjectType(properties map[string]Type, annotations ...interface{}) *Obje
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*ObjectType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *ObjectType) Pretty() pretty.Formatter {
+	m := make(map[string]pretty.Formatter, len(t.Properties))
+	for k, v := range t.Properties {
+		m[k] = v.Pretty()
+	}
+	return pretty.Object{Properties: m}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of

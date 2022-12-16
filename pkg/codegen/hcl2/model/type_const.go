@@ -15,10 +15,15 @@
 package model
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // ConstType represents a type that is a single constant value.
@@ -32,6 +37,26 @@ type ConstType struct {
 // NewConstType creates a new constant type with the given type and value.
 func NewConstType(typ Type, value cty.Value) *ConstType {
 	return &ConstType{Type: typ, Value: value}
+}
+
+func (t *ConstType) Pretty() pretty.Formatter {
+	if t.Value.IsNull() {
+		return pretty.FromString("null")
+	}
+	if !t.Value.IsKnown() {
+		return pretty.FromString("unknown")
+	}
+	switch t.Value.Type() {
+	case cty.String:
+		return pretty.FromString(strconv.Quote(t.Value.AsString()))
+	case cty.Bool:
+		return pretty.FromString(fmt.Sprintf("%v", t.Value.True()))
+	case cty.Number:
+		return pretty.FromStringer(t.Value.AsBigFloat())
+	}
+	if t.Value.Type() == cty.String {
+	}
+	return pretty.FromStringer(t)
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

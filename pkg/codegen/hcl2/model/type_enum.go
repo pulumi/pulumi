@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/zclconf/go-cty/cty"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -74,6 +75,23 @@ func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...in
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*EnumType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *EnumType) Pretty() pretty.Formatter {
+	types := make([]pretty.Formatter, len(t.Elements))
+	for i, c := range t.Elements {
+		types[i] = pretty.FromStringer(
+			NewConstType(ctyTypeToType(c.Type(), false), c).Pretty(),
+		)
+	}
+	return pretty.Wrap{
+		Prefix:  "enum(",
+		Postfix: ")",
+		Value: pretty.List{
+			Separator: " | ",
+			Elements:  types,
+		},
+	}
 }
 
 // Traverse attempts to traverse the enum type with the given traverser. This always fails.

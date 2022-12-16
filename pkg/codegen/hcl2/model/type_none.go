@@ -17,6 +17,8 @@ package model
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -24,6 +26,10 @@ type noneType int
 
 func (noneType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (noneType) Pretty() pretty.Formatter {
+	return pretty.FromStringer(NoneType)
 }
 
 func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {

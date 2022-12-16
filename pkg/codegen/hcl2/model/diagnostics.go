@@ -44,13 +44,13 @@ func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
 	if len(why) != 0 {
 		return errorf(expr.SyntaxNode().Range(), why[0].Summary)
 	}
-	return errorf(expr.SyntaxNode().Range(), "cannot assign expression of type %v to location of type %v: ", expr.Type(),
-		destType)
+	return errorf(expr.SyntaxNode().Range(), "cannot assign expression of type %s to location of type %s: ",
+		expr.Type().Pretty(), destType.Pretty())
 }
 
 func typeNotConvertible(dest, src Type) *hcl.Diagnostic {
-	return &hcl.Diagnostic{Severity: hcl.DiagError, Summary: fmt.Sprintf("cannot assign value of type %v to type %v",
-		src, dest)}
+	return &hcl.Diagnostic{Severity: hcl.DiagError, Summary: fmt.Sprintf("cannot assign value of type %s to type %s",
+		src.Pretty(), dest.Pretty())}
 }
 
 func tuplesHaveDifferentLengths(dest, src *TupleType) *hcl.Diagnostic {
