@@ -76,16 +76,9 @@ for i in "github.com/pulumi/pulumi-java java" "github.com/pulumi/pulumi-yaml yam
         OUTDIR="${LANG_DIST}/$DIST_OS-$RENAMED_ARCH"
 
         mkdir -p "${OUTDIR}"
-        case "${PULUMI_LANG}-${DIST_OS}" in
-          java-windows)
-            download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.zip"
-            unzip -o "${ARCHIVE}.zip" "pulumi-language-${PULUMI_LANG}${DIST_EXT}" -d "${OUTDIR}"
-            ;;
-          *)
-            download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
-            tar -xzvf "${ARCHIVE}.tar.gz" -C "${OUTDIR}" "pulumi-language-${PULUMI_LANG}${DIST_EXT}"
-            ;;
-        esac
+
+        download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
+        tar -xzvf "${ARCHIVE}.tar.gz" -C "${OUTDIR}" "pulumi-language-${PULUMI_LANG}${DIST_EXT}"
       done
     done
   )
