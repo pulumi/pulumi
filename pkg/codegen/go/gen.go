@@ -1883,7 +1883,14 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		methodName := Title(method.Name)
 		f := method.Function
 
-		shouldLiftReturn := pkg.liftSingleValueMethodReturns && f.Outputs != nil && len(f.Outputs.Properties) == 1
+		var objectReturnType *schema.ObjectType
+		if f.ReturnType != nil {
+			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				objectReturnType = objectType
+			}
+		}
+
+		liftReturn := pkg.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
 
 		var args []*schema.Property
 		if f.Inputs != nil {
@@ -1901,10 +1908,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			argsig = fmt.Sprintf("%s, args *%s%sArgs", argsig, name, methodName)
 		}
 		var retty string
-		if f.Outputs == nil {
+		if objectReturnType == nil {
 			retty = "error"
-		} else if shouldLiftReturn {
-			retty = fmt.Sprintf("(%s, error)", pkg.outputType(f.Outputs.Properties[0].Type))
+		} else if liftReturn {
+			retty = fmt.Sprintf("(%s, error)", pkg.outputType(objectReturnType.Properties[0].Type))
 		} else {
 			retty = fmt.Sprintf("(%s%sResultOutput, error)", name, methodName)
 		}
@@ -1913,7 +1920,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "func (r *%s) %s(%s) %s {\n", name, methodName, argsig, retty)
 
 		resultVar := "_"
-		if f.Outputs != nil {
+		if objectReturnType != nil {
 			resultVar = "out"
 		}
 
@@ -1925,24 +1932,24 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 		// Now simply invoke the runtime function with the arguments.
 		outputsType := "pulumi.AnyOutput"
-		if f.Outputs != nil {
-			if shouldLiftReturn {
+		if objectReturnType != nil {
+			if liftReturn {
 				outputsType = fmt.Sprintf("%s%sResultOutput", cgstrings.Camel(name), methodName)
 			} else {
 				outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 			}
 		}
 		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
-		if f.Outputs == nil {
+		if objectReturnType == nil {
 			fmt.Fprintf(w, "\treturn err\n")
-		} else if shouldLiftReturn {
+		} else if liftReturn {
 			// Check the error before proceeding.
 			fmt.Fprintf(w, "\tif err != nil {\n")
-			fmt.Fprintf(w, "\t\treturn %s{}, err\n", pkg.outputType(f.Outputs.Properties[0].Type))
+			fmt.Fprintf(w, "\t\treturn %s{}, err\n", pkg.outputType(objectReturnType.Properties[0].Type))
 			fmt.Fprintf(w, "\t}\n")
 
 			// Get the name of the method to return the output
-			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, cgstrings.Camel(outputsType), Title(f.Outputs.Properties[0].Name))
+			fmt.Fprintf(w, "\treturn %s.(%s).%s(), nil\n", resultVar, cgstrings.Camel(outputsType), Title(objectReturnType.Properties[0].Name))
 		} else {
 			// Check the error before proceeding.
 			fmt.Fprintf(w, "\tif err != nil {\n")
@@ -1977,17 +1984,17 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		if f.Outputs != nil {
+		if objectReturnType != nil {
 			outputStructName := name
 
 			// Don't export the result struct if we're lifting the value
-			if shouldLiftReturn {
+			if liftReturn {
 				outputStructName = cgstrings.Camel(name)
 			}
 
 			fmt.Fprintf(w, "\n")
-			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), f.Outputs.Comment, "",
-				f.Outputs.Properties)
+			pkg.genPlainType(w, fmt.Sprintf("%s%sResult", outputStructName, methodName), objectReturnType.Comment, "",
+				objectReturnType.Properties)
 
 			fmt.Fprintf(w, "\n")
 			fmt.Fprintf(w, "type %s%sResultOutput struct{ *pulumi.OutputState }\n\n", outputStructName, methodName)
@@ -1996,7 +2003,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sResult)(nil)).Elem()\n", outputStructName, methodName)
 			fmt.Fprintf(w, "}\n")
 
-			for _, p := range f.Outputs.Properties {
+			for _, p := range objectReturnType.Properties {
 				fmt.Fprintf(w, "\n")
 				printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 				fmt.Fprintf(w, "func (o %s%sResultOutput) %s() %s {\n", outputStructName, methodName, Title(p.Name),
@@ -2101,6 +2108,21 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 
 func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 	name := pkg.functionName(f)
+
+	if f.MultiArgumentInputs {
+		return fmt.Errorf("go SDK-gen does not implement MultiArgumentInputs for function '%s'", f.Token)
+	}
+
+	var objectReturnType *schema.ObjectType
+	if f.ReturnType != nil {
+		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok {
+			objectReturnType = objectType
+		} else {
+			// TODO: remove when we add support for generalized return type for go
+			return fmt.Errorf("go sdk-gen doesn't support non-Object return types for function %s", f.Token)
+		}
+	}
+
 	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
 	// Now, emit the function signature.
@@ -2109,7 +2131,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 		argsig = fmt.Sprintf("%s, args *%sArgs", argsig, name)
 	}
 	var retty string
-	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
+	if objectReturnType == nil {
 		retty = "error"
 	} else {
 		retty = fmt.Sprintf("(*%sResult, error)", name)
@@ -2128,7 +2150,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 
 	// Now simply invoke the runtime function with the arguments.
 	var outputsType string
-	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
+	if objectReturnType == nil {
 		outputsType = "struct{}"
 	} else {
 		outputsType = name + "Result"
@@ -2142,7 +2164,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 	fmt.Fprintf(w, "\tvar rv %s\n", outputsType)
 	fmt.Fprintf(w, "\terr := ctx.Invoke(\"%s\", %s, &rv, opts...)\n", f.Token, inputsVar)
 
-	if f.Outputs == nil || len(f.Outputs.Properties) == 0 {
+	if objectReturnType == nil {
 		fmt.Fprintf(w, "\treturn err\n")
 	} else {
 		// Check the error before proceeding.
@@ -2152,7 +2174,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 
 		// Return the result.
 		var retValue string
-		if codegen.IsProvideDefaultsFuncRequired(f.Outputs) && !pkg.disableObjectDefaults {
+		if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
 			retValue = "rv.Defaults()"
 		} else {
 			retValue = "&rv"
@@ -2172,12 +2194,12 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) error {
 			}
 		}
 	}
-	if f.Outputs != nil && len(f.Outputs.Properties) > 0 {
+	if objectReturnType != nil {
 		fmt.Fprintf(w, "\n")
 		fnOutputsName := pkg.functionResultTypeName(f)
-		pkg.genPlainType(w, fnOutputsName, f.Outputs.Comment, "", f.Outputs.Properties)
-		if codegen.IsProvideDefaultsFuncRequired(f.Outputs) && !pkg.disableObjectDefaults {
-			if err := pkg.genObjectDefaultFunc(w, fnOutputsName, f.Outputs.Properties); err != nil {
+		pkg.genPlainType(w, fnOutputsName, objectReturnType.Comment, "", objectReturnType.Properties)
+		if codegen.IsProvideDefaultsFuncRequired(objectReturnType) && !pkg.disableObjectDefaults {
+			if err := pkg.genObjectDefaultFunc(w, fnOutputsName, objectReturnType.Properties); err != nil {
 				return err
 			}
 		}
@@ -2244,10 +2266,14 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 		elementType:  pkg.functionArgsTypeName(f),
 	})
 
-	pkg.genOutputTypes(w, genOutputTypesArgs{
-		t:    f.Outputs,
-		name: originalResultTypeName,
-	})
+	if f.ReturnType != nil {
+		if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			pkg.genOutputTypes(w, genOutputTypesArgs{
+				t:    objectType,
+				name: originalResultTypeName,
+			})
+		}
+	}
 
 	// Assuming the file represented by `w` only has one function,
 	// generate an `init()` for Output type init.
@@ -2654,8 +2680,16 @@ func (pkg *pkgContext) genResourceRegistrations(w io.Writer, r *schema.Resource,
 	// Register all output types
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 	for _, method := range r.Methods {
-		if method.Function.Outputs != nil {
-			if pkg.liftSingleValueMethodReturns && len(method.Function.Outputs.Properties) == 1 {
+
+		var objectReturnType *schema.ObjectType
+		if method.Function.ReturnType != nil {
+			if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				objectReturnType = objectType
+			}
+		}
+
+		if objectReturnType != nil {
+			if pkg.liftSingleValueMethodReturns && len(objectReturnType.Properties) == 1 {
 				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", cgstrings.Camel(name), Title(method.Name))
 			} else {
 				fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s%sResultOutput{})\n", name, Title(method.Name))
@@ -2779,8 +2813,16 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 					pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 				}
 			}
-			if method.Function.Outputs != nil {
-				for _, p := range method.Function.Outputs.Properties {
+
+			var returnType *schema.ObjectType
+			if method.Function.ReturnType != nil {
+				if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+					returnType = objectType
+				}
+			}
+
+			if returnType != nil {
+				for _, p := range returnType.Properties {
 					pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 				}
 			}
@@ -2789,8 +2831,16 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 		if member.Inputs != nil {
 			pkg.getTypeImports(member.Inputs, true, importsAndAliases, seen)
 		}
-		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, true, importsAndAliases, seen)
+
+		var returnType *schema.ObjectType
+		if member.ReturnType != nil {
+			if objectType, ok := member.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				returnType = objectType
+			}
+		}
+
+		if returnType != nil {
+			pkg.getTypeImports(returnType, true, importsAndAliases, seen)
 		}
 	case []*schema.Property:
 		for _, p := range member {
@@ -3310,8 +3360,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 			if method.Function.Inputs != nil {
 				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Args")
 			}
-			if method.Function.Outputs != nil {
-				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Result")
+			if method.Function.ReturnType != nil {
+				if _, ok := method.Function.ReturnType.(*schema.ObjectType); ok {
+					pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Result")
+				}
 			}
 		}
 	}
@@ -3439,8 +3491,8 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				if f.Inputs != nil {
 					populateDetailsForPropertyTypes(seenMap, f.Inputs.InputShape.Properties, optional, false, false)
 				}
-				if f.Outputs != nil {
-					populateDetailsForTypes(seenMap, f.Outputs, optional, false, true)
+				if f.ReturnType != nil {
+					populateDetailsForTypes(seenMap, f.ReturnType, optional, false, true)
 				}
 			}
 		}
@@ -3469,11 +3521,14 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 		pkg.names.Add(name)
 		pkg.functionNames[f] = name
 
-		if f.Inputs != nil {
+		if f.Inputs != nil && !f.MultiArgumentInputs {
 			pkg.names.Add(name + "Args")
 		}
-		if f.Outputs != nil {
-			pkg.names.Add(name + "Result")
+
+		if f.ReturnType != nil {
+			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				pkg.names.Add(name + "Result")
+			}
 		}
 	}
 
