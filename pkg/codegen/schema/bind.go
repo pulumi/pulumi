@@ -1476,6 +1476,13 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	path := memberPath("functions", token)
 
+	// Check that spec.MultiArgumentInputs => spec.Inputs
+	if len(spec.MultiArgumentInputs) > 0 && spec.Inputs == nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "cannot specify multi-argument inputs without specifying inputs",
+		})
+	}
 	var inputs *ObjectType
 	if spec.Inputs != nil {
 		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
@@ -1483,33 +1490,101 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
 		}
+
+		if len(spec.MultiArgumentInputs) > 0 {
+			idx := make(map[string]int, len(spec.MultiArgumentInputs))
+			for i, k := range spec.MultiArgumentInputs {
+				idx[k] = i
+			}
+			// Check that MultiArgumentInputs matches up 1:1 with the input properties
+			for k, i := range idx {
+				if _, ok := spec.Inputs.Properties[k]; !ok {
+					diags = diags.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("multiArgumentInputs[%d] refers to non-existent property %#v", i, k),
+					})
+				}
+			}
+			var detailGiven bool
+			for k := range spec.Inputs.Properties {
+				if _, ok := idx[k]; !ok {
+					diag := hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("Property %#v not specified by multiArgumentInputs", k),
+					}
+					if !detailGiven {
+						detailGiven = true
+						diag.Detail = "If multiArgumentInputs is given, all properties must be specified"
+					}
+					diags = diags.Append(&diag)
+				}
+			}
+
+			// Order output properties as specified by MultiArgumentInputs
+			sortProps := func(props []*Property) {
+				sort.Slice(props, func(i, j int) bool {
+					return idx[props[i].Name] < idx[props[j].Name]
+				})
+			}
+			sortProps(ins.Properties)
+			if ins.InputShape != nil {
+				sortProps(ins.InputShape.Properties)
+			}
+			if ins.PlainShape != nil {
+				sortProps(ins.PlainShape.Properties)
+			}
+		}
+
 		inputs = ins
 	}
 
 	var outputs *ObjectType
-	if spec.Outputs != nil {
-		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
-		diags = diags.Extend(outDiags)
-		if err != nil {
-			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
-		}
-		outputs = outs
-	}
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
 		language[name] = json.RawMessage(raw)
 	}
 
+	var inlineObjectAsReturnType bool
+	var returnType Type
+	if spec.ReturnType != nil {
+		// compute the return type from the spec
+		if spec.ReturnType.ObjectTypeSpec != nil {
+			// bind as an object type
+			outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+			diags = diags.Extend(outDiags)
+			if err != nil {
+				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+			}
+			returnType = outs
+			outputs = outs
+			inlineObjectAsReturnType = true
+		} else if spec.ReturnType.TypeSpec != nil {
+			out, outDiags, err := t.bindTypeSpec(path+"/outputs", *spec.ReturnType.TypeSpec, false)
+			diags = diags.Extend(outDiags)
+			if err != nil {
+				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+			}
+			returnType = out
+		} else {
+			// Setting `spec.ReturnType` to a value without setting either `TypeSpec` or `ObjectTypeSpec`
+			// indicates a logical bug in our marshaling code.
+			return nil, diags, fmt.Errorf("error binding outputs for function %v: invalid return type", token)
+		}
+	}
+
 	fn := &Function{
-		PackageReference:   t.externalPackage(),
-		Token:              token,
-		Comment:            spec.Description,
-		Inputs:             inputs,
-		Outputs:            outputs,
-		DeprecationMessage: spec.DeprecationMessage,
-		Language:           language,
-		IsOverlay:          spec.IsOverlay,
+		PackageReference:         t.externalPackage(),
+		Token:                    token,
+		Comment:                  spec.Description,
+		Inputs:                   inputs,
+		MultiArgumentInputs:      len(spec.MultiArgumentInputs) > 0,
+		InlineObjectAsReturnType: inlineObjectAsReturnType,
+		Outputs:                  outputs,
+		ReturnType:               returnType,
+		DeprecationMessage:       spec.DeprecationMessage,
+		Language:                 language,
+		IsOverlay:                spec.IsOverlay,
 	}
 	t.functionDefs[token] = fn
 

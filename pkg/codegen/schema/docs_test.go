@@ -72,7 +72,13 @@ func getDocsForFunction(f *Function) []doc {
 		{entity: entity + "/deprecationMessage", content: f.DeprecationMessage},
 	}
 	docs = append(docs, getDocsForObjectType(entity+"/inputs/properties", f.Inputs)...)
-	docs = append(docs, getDocsForObjectType(entity+"/outputs/properties", f.Outputs)...)
+
+	if f.ReturnType != nil {
+		if objectType, ok := f.ReturnType.(*ObjectType); ok && objectType != nil {
+			docs = append(docs, getDocsForObjectType(entity+"/outputs/properties", objectType)...)
+		}
+	}
+
 	return docs
 }
 

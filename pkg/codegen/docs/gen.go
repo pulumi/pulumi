@@ -1721,11 +1721,14 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 			mod.getTypes(m.Function, types)
 		}
 	case *schema.Function:
-		if t.Inputs != nil {
+		if t.Inputs != nil && !t.MultiArgumentInputs {
 			mod.getNestedTypes(t.Inputs, types, true)
 		}
-		if t.Outputs != nil {
-			mod.getNestedTypes(t.Outputs, types, false)
+
+		if t.ReturnType != nil {
+			if objectType, ok := t.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				mod.getNestedTypes(objectType, types, false)
+			}
 		}
 	}
 }
