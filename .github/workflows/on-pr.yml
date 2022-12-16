@@ -1,8 +1,12 @@
 name: Pull Request
 
 permissions:
+  # To create a draft release.
   contents: write
+  # To comment on PRs.
   pull-requests: write
+  # To sign artifacts.
+  id-token: write
 
 on:
   pull_request:
@@ -48,6 +52,8 @@ jobs:
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
+      # To sign artifacts.
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
@@ -80,6 +86,8 @@ jobs:
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
       contents: write
+      # To sign artifacts.
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
