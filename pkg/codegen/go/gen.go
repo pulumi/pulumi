@@ -1763,7 +1763,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	// Setup secrets
 	for _, p := range secretInputProps {
 		fmt.Fprintf(w, "\tif args.%s != nil {\n", pkg.fieldName(r, p))
-		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", pkg.fieldName(r, p), pkg.outputType(p.Type))
+
+		fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", pkg.fieldName(r, p), pkg.typeString(p.Type))
 		fmt.Fprintf(w, "\t}\n")
 	}
 	if len(secretProps) > 0 {
