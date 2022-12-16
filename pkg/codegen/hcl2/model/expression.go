@@ -344,6 +344,9 @@ type BinaryOpExpression struct {
 
 // SyntaxNode returns the syntax node associated with the binary operation.
 func (x *BinaryOpExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -468,6 +471,9 @@ type ConditionalExpression struct {
 
 // SyntaxNode returns the syntax node associated with the conditional expression.
 func (x *ConditionalExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -723,6 +729,9 @@ type ForExpression struct {
 
 // SyntaxNode returns the syntax node associated with the for expression.
 func (x *ForExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1002,6 +1011,9 @@ type FunctionCallExpression struct {
 
 // SyntaxNode returns the syntax node associated with the function call expression.
 func (x *FunctionCallExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1143,6 +1155,9 @@ type IndexExpression struct {
 
 // SyntaxNode returns the syntax node associated with the index expression.
 func (x *IndexExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1331,6 +1346,9 @@ type LiteralValueExpression struct {
 
 // SyntaxNode returns the syntax node associated with the literal value expression.
 func (x *LiteralValueExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1468,6 +1486,9 @@ type ObjectConsExpression struct {
 
 // SyntaxNode returns the syntax node associated with the object construction expression.
 func (x *ObjectConsExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1746,6 +1767,9 @@ type RelativeTraversalExpression struct {
 
 // SyntaxNode returns the syntax node associated with the relative traversal expression.
 func (x *RelativeTraversalExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -1872,6 +1896,9 @@ type ScopeTraversalExpression struct {
 
 // SyntaxNode returns the syntax node associated with the scope traversal expression.
 func (x *ScopeTraversalExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -2014,6 +2041,9 @@ type SplatExpression struct {
 
 // SyntaxNode returns the syntax node associated with the splat expression.
 func (x *SplatExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -2169,6 +2199,9 @@ type TemplateExpression struct {
 
 // SyntaxNode returns the syntax node associated with the template expression.
 func (x *TemplateExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -2274,6 +2307,9 @@ type TemplateJoinExpression struct {
 
 // SyntaxNode returns the syntax node associated with the template join expression.
 func (x *TemplateJoinExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -2355,6 +2391,9 @@ type TupleConsExpression struct {
 
 // SyntaxNode returns the syntax node associated with the tuple construction expression.
 func (x *TupleConsExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
@@ -2489,6 +2528,9 @@ type UnaryOpExpression struct {
 
 // SyntaxNode returns the syntax node associated with the unary operation.
 func (x *UnaryOpExpression) SyntaxNode() hclsyntax.Node {
+	if x.Syntax == nil {
+		return syntax.None
+	}
 	return x.Syntax
 }
 
