@@ -949,11 +949,13 @@ func (s *Stack) remoteArgs() []string {
 	var repo *GitRepo
 	var preRunCommands []string
 	var envvars map[string]EnvVarValue
+	var skipInstallDependencies bool
 	if lws, isLocalWorkspace := s.Workspace().(*LocalWorkspace); isLocalWorkspace {
 		remote = lws.remote
 		repo = lws.repo
 		preRunCommands = lws.preRunCommands
 		envvars = lws.remoteEnvVars
+		skipInstallDependencies = lws.remoteSkipInstallDependencies
 	}
 	if !remote {
 		return nil
@@ -1004,6 +1006,10 @@ func (s *Stack) remoteArgs() []string {
 
 	for _, command := range preRunCommands {
 		args = append(args, fmt.Sprintf("--remote-pre-run-command=%s", command))
+	}
+
+	if skipInstallDependencies {
+		args = append(args, "--remote-skip-install-dependencies")
 	}
 
 	return args

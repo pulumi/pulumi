@@ -152,6 +152,7 @@ type RemoteArgs struct {
 	envVars                  []string
 	secretEnvVars            []string
 	preRunCommands           []string
+	skipInstallDependencies  bool
 	gitBranch                string
 	gitCommit                string
 	gitRepoDir               string
@@ -182,6 +183,9 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringArrayVar(
 		&r.preRunCommands, "remote-pre-run-command", []string{},
 		"[EXPERIMENTAL] Commands to run before the remote operation")
+	cmd.PersistentFlags().BoolVar(
+		&r.skipInstallDependencies, "remote-skip-install-dependencies", false,
+		"[EXPERIMENTAL] Whether to skip the default dependency installation step")
 	cmd.PersistentFlags().StringVar(
 		&r.gitBranch, "remote-git-branch", "",
 		"[EXPERIMENTAL] Git branch to deploy; this is mutually exclusive with --remote-git-branch; "+
@@ -298,6 +302,13 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		}
 	}
 
+	var operationOptions *apitype.OperationContextOptions
+	if args.skipInstallDependencies {
+		operationOptions = &apitype.OperationContextOptions{
+			SkipInstallDependencies: args.skipInstallDependencies,
+		}
+	}
+
 	req := apitype.CreateDeploymentRequest{
 		Source: &apitype.SourceContext{
 			Git: &apitype.SourceContextGit{
@@ -311,6 +322,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			Operation:            operation,
 			PreRunCommands:       args.preRunCommands,
 			EnvironmentVariables: env,
+			Options:              operationOptions,
 		},
 	}
 	err = cb.RunDeployment(ctx, stackRef, req, opts)

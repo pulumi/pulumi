@@ -147,6 +147,7 @@ func remoteToLocalOptions(repo GitRepo, opts ...RemoteWorkspaceOption) ([]LocalW
 		remote(true),
 		remoteEnvVars(remoteOpts.EnvVars),
 		preRunCommands(remoteOpts.PreRunCommands...),
+		remoteSkipInstallDependencies(remoteOpts.SkipInstallDependencies),
 		Repo(repo),
 	}
 	return localOpts, nil
@@ -158,6 +159,8 @@ type remoteWorkspaceOptions struct {
 	EnvVars map[string]EnvVarValue
 	// PreRunCommands is an optional list of arbitrary commands to run before the remote Pulumi operation is invoked.
 	PreRunCommands []string
+	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
+	SkipInstallDependencies bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -184,6 +187,13 @@ func RemoteEnvVars(envvars map[string]EnvVarValue) RemoteWorkspaceOption {
 func RemotePreRunCommands(commands ...string) RemoteWorkspaceOption {
 	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
 		opts.PreRunCommands = commands
+	})
+}
+
+// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
+func RemoteSkipInstallDependencies(skipInstallDependencies bool) RemoteWorkspaceOption {
+	return remoteWorkspaceOption(func(opts *remoteWorkspaceOptions) {
+		opts.SkipInstallDependencies = skipInstallDependencies
 	})
 }
 

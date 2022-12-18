@@ -26,15 +26,18 @@ class RemoteWorkspaceOptions:
 
     env_vars: Optional[Mapping[str, Union[str, Secret]]]
     pre_run_commands: Optional[List[str]]
+    skip_install_dependencies: Optional[bool]
 
     def __init__(
         self,
         *,
         env_vars: Optional[Mapping[str, Union[str, Secret]]] = None,
         pre_run_commands: Optional[List[str]] = None,
+        skip_install_dependencies: Optional[bool] = None,
     ):
         self.env_vars = env_vars
         self.pre_run_commands = pre_run_commands
+        self.skip_install_dependencies = skip_install_dependencies
 
 
 class RemoteGitAuth:
@@ -199,14 +202,17 @@ def _create_local_workspace(
 
     env_vars = None
     pre_run_commands = None
+    skip_install_dependencies = None
     if opts is not None:
         env_vars = opts.env_vars
         pre_run_commands = opts.pre_run_commands
+        skip_install_dependencies = opts.skip_install_dependencies
 
     ws = LocalWorkspace()
     ws._remote = True
     ws._remote_env_vars = env_vars
     ws._remote_pre_run_commands = pre_run_commands
+    ws._remote_skip_install_dependencies = skip_install_dependencies
     ws._remote_git_url = url
     ws._remote_git_project_path = project_path
     ws._remote_git_branch = branch
