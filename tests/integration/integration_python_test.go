@@ -994,3 +994,15 @@ func TestAboutPython(t *testing.T) {
 func TestConstructOutputValuesPython(t *testing.T) {
 	testConstructOutputValues(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
+
+// TestResourceRefsGetResourcePython tests that invoking the built-in 'pulumi:pulumi:getResource' function
+// returns resource references for any resource reference in a resource's state.
+func TestResourceRefsGetResourcePython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("resource_refs_get_resource", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+	})
+}

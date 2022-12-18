@@ -814,3 +814,15 @@ func TestRefreshGo(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// TestResourceRefsGetResourceGo tests that invoking the built-in 'pulumi:pulumi:getResource' function
+// returns resource references for any resource reference in a resource's state.
+func TestResourceRefsGetResourceGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("resource_refs_get_resource", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick: true,
+	})
+}

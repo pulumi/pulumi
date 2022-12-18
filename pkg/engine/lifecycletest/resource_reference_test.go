@@ -229,3 +229,66 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+// TestResourceReferences_GetResource tests that invoking the built-in 'pulumi:pulumi:getResource' function
+// returns resource references for any resource reference in a resource's state.
+func TestResourceReferences_GetResource(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			v := &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap,
+					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					id := "created-id"
+					if preview {
+						id = ""
+					}
+					return resource.ID(id), news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}
+			return v, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urnChild, idChild, _, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
+		assert.NoError(t, err)
+
+		refChild := resource.MakeCustomResourceReference(urnChild, idChild, "")
+		urnContainer, idContainer, _, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"child": refChild,
+				},
+			})
+		assert.NoError(t, err)
+
+		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
+		// as a resource reference.
+		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
+			"urn": resource.NewStringProperty(string(urnContainer)),
+		}, "", "")
+		assert.NoError(t, err)
+		assert.Empty(t, failures)
+		assert.Equal(t, resource.NewStringProperty(string(urnContainer)), result["urn"])
+		assert.Equal(t, resource.NewStringProperty(string(idContainer)), result["id"])
+		state := result["state"].ObjectValue()
+		assert.Equal(t, refChild, state["child"])
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 4),
+	}
+	p.Run(t, nil)
+}
