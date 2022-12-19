@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Remove function serialization code for out of suppport NodeJS versions.

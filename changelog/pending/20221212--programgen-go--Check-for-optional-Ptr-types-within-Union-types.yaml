@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Check for optional/ Ptr types within Union types. This fixes a bug in Go programgen where optional outputs are not returned as pointers.

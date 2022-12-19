@@ -1,5 +1,97 @@
 # Changelog
 
+## 3.50.0 (2022-12-19)
+
+We're approaching the end of 2022, and this is the final minor release scheduled for the year! 🎸
+Thank you very much to our wonderful community for your many contributions! ❤️
+
+### Features
+
+- [auto/{go,nodejs,python}] Adds SkipInstallDependencies option for Remote Workspaces
+  [#11674](https://github.com/pulumi/pulumi/pull/11674)
+
+- [ci] GitHub release artifacts are now signed using [cosign](https://github.com/sigstore/cosign) and signatures are uploaded to the [Rekor transparency log](https://rekor.tlog.dev/).
+  [#11310](https://github.com/pulumi/pulumi/pull/11310)
+
+- [cli] Adds a flag that allows user to set the node label as the resource name instead of full URN in the stack graph
+  [#11383](https://github.com/pulumi/pulumi/pull/11383)
+
+- [cli] pulumi destroy --remove will now delete the stack config file
+  [#11394](https://github.com/pulumi/pulumi/pull/11394)
+
+- [cli] Allow rotating the encrpytion key for cloud secrets.
+  [#11554](https://github.com/pulumi/pulumi/pull/11554)
+
+- [cli/{config,new,package}] Preserve comments on editing of project and config files.
+  [#11456](https://github.com/pulumi/pulumi/pull/11456)
+
+- [sdk/dotnet] Add Output.JsonSerialize using System.Text.Json.
+  [#11556](https://github.com/pulumi/pulumi/pull/11556)
+
+- [sdk/go] Add JSONMarshal to go sdk.
+  [#11609](https://github.com/pulumi/pulumi/pull/11609)
+
+- [sdkgen/{dotnet,nodejs}] Initial implementation of simplified invokes for dotnet and nodejs.
+  [#11418](https://github.com/pulumi/pulumi/pull/11418)
+
+- [sdk/nodejs] Delegates alias computation to engine for Node SDK
+  [#11206](https://github.com/pulumi/pulumi/pull/11206)
+
+- [sdk/nodejs] Emit closure requires in global scope for improved cold start on Lambda
+  [#11481](https://github.com/pulumi/pulumi/pull/11481)
+
+- [sdk/nodejs] Add output jsonStringify using JSON.stringify.
+  [#11605](https://github.com/pulumi/pulumi/pull/11605)
+
+- [sdk/python] Add json_dumps to python sdk.
+  [#11607](https://github.com/pulumi/pulumi/pull/11607)
+
+
+### Bug Fixes
+
+- [backend/service] Fixes out-of-memory issues when using PULUMI_OPTIMIZED_CHECKPOINT_PATCH protocol
+  [#11666](https://github.com/pulumi/pulumi/pull/11666)
+
+- [cli] Improve performance of convert to not try and load so many provider plugins.
+  [#11639](https://github.com/pulumi/pulumi/pull/11639)
+
+- [programgen] Don't panic on some empty objects
+  [#11660](https://github.com/pulumi/pulumi/pull/11660)
+
+- [cli/display] Fixes negative durations on update display.
+  [#11631](https://github.com/pulumi/pulumi/pull/11631)
+
+- [programgen/go] Check for optional/ Ptr types within Union types. This fixes a bug in Go programgen where optional outputs are not returned as pointers.
+  [#11635](https://github.com/pulumi/pulumi/pull/11635)
+
+- [sdkgen/{dotnet,go,nodejs,python}] Do not generate Result types for functions with empty outputs
+  [#11596](https://github.com/pulumi/pulumi/pull/11596)
+
+- [sdk/python] Fix a deadlock on provider-side error with automation api
+  [#11595](https://github.com/pulumi/pulumi/pull/11595)
+
+- [sdkgen/{dotnet,nodejs}] Fix imports when a component is using another component from the same schema as a property
+  [#11606](https://github.com/pulumi/pulumi/pull/11606)
+  [#11467](https://github.com/pulumi/pulumi/pull/11467)
+
+- [sdkgen/go] Illegal cast in resource constructors when secret-wrapping input arguments.
+  [#11673](https://github.com/pulumi/pulumi/pull/11673)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] Remove function serialization code for out of suppport NodeJS versions.
+  [#11551](https://github.com/pulumi/pulumi/pull/11551)
+  queue-merge: true
+  run-dispatch-commands: true
+  version-set: {
+  "dotnet": "6.0.x",
+  "go": "1.18.x",
+  "nodejs": "14.x",
+  "python": "3.9.x"
+}
+
+
 ## 3.49.0 (2022-12-08)
 
 

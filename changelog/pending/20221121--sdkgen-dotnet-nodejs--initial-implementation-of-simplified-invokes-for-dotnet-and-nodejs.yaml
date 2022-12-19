@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/dotnet,nodejs
-  description: Initial implementation of simplified invokes for dotnet and nodejs.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet,go,nodejs,python
-  description: Do not generate Result types for functions with empty outputs
