@@ -1277,6 +1277,8 @@ func TestUnsafeSnapshotManagerRetainsResourcesOnError(t *testing.T) {
 // TestResourceRefsGetResourceNode tests that invoking the built-in 'pulumi:pulumi:getResource' function
 // returns resource references for any resource reference in a resource's state.
 func TestResourceRefsGetResourceNode(t *testing.T) {
+	t.Skip() // TODO[pulumi/pulumi#11677]
+
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("resource_refs_get_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
