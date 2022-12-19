@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: pulumi destroy --remove will now delete the stack config file

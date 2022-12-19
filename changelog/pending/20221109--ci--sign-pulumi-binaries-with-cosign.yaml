@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: ci
-  description: GitHub release artifacts are now signed using [cosign](https://github.com/sigstore/cosign) and signatures are uploaded to the [Rekor transparency log](https://rekor.tlog.dev/).

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fixes negative durations on update display.

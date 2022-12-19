@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/dotnet
-  description: Add Output.JsonSerialize using System.Text.Json.
