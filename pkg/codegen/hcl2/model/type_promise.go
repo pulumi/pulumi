@@ -19,6 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -37,6 +39,14 @@ func NewPromiseType(elementType Type) *PromiseType {
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*PromiseType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *PromiseType) Pretty() pretty.Formatter {
+	return pretty.Wrap{
+		Prefix:  "promise(",
+		Value:   t.ElementType.Pretty(),
+		Postfix: ")",
+	}
 }
 
 // Traverse attempts to traverse the promise type with the given traverser. The result type of traverse(promise(T))

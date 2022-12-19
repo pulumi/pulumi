@@ -21,8 +21,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // TupleType represents values that are a sequence of independently-typed elements.
@@ -37,6 +39,22 @@ type TupleType struct {
 // NewTupleType creates a new tuple type with the given element types.
 func NewTupleType(elementTypes ...Type) Type {
 	return &TupleType{ElementTypes: elementTypes}
+}
+
+func (t *TupleType) Pretty() pretty.Formatter {
+	elements := make([]pretty.Formatter, len(t.ElementTypes))
+	for i, el := range t.ElementTypes {
+		elements[i] = el.Pretty()
+	}
+	return pretty.Wrap{
+		Prefix: "(",
+		Value: pretty.List{
+			AdjoinSeparator: true,
+			Separator:       ", ",
+			Elements:        elements,
+		},
+		Postfix: ")",
+	}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

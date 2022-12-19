@@ -19,6 +19,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -31,6 +33,14 @@ type MapType struct {
 // NewMapType creates a new map type with the given element type.
 func NewMapType(elementType Type) *MapType {
 	return &MapType{ElementType: elementType}
+}
+
+func (t *MapType) Pretty() pretty.Formatter {
+	return pretty.Wrap{
+		Prefix:  "map(",
+		Value:   t.ElementType.Pretty(),
+		Postfix: ")",
+	}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of traverse(map(T))
