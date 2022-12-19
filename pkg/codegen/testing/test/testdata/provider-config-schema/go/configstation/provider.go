@@ -26,7 +26,7 @@ func NewProvider(ctx *pulumi.Context,
 		args.FavoriteColor = pulumi.StringPtr(getEnvOrDefault("", nil, "FAVE_COLOR").(string))
 	}
 	if args.SecretSandwiches != nil {
-		args.SecretSandwiches = pulumi.ToSecret(args.SecretSandwiches).(config.SandwichArrayOutput)
+		args.SecretSandwiches = pulumi.ToSecret(args.SecretSandwiches).(config.SandwichArrayInput)
 	}
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:configstation", name, args, &resource, opts...)

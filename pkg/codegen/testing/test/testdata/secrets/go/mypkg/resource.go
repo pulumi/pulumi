@@ -48,22 +48,22 @@ func NewResource(ctx *pulumi.Context,
 		return nil, errors.New("invalid value for required argument 'FooMap'")
 	}
 	if args.Config != nil {
-		args.Config = pulumi.ToSecret(args.Config).(ConfigOutput)
+		args.Config = pulumi.ToSecret(args.Config).(ConfigInput)
 	}
 	if args.ConfigArray != nil {
-		args.ConfigArray = pulumi.ToSecret(args.ConfigArray).(ConfigArrayOutput)
+		args.ConfigArray = pulumi.ToSecret(args.ConfigArray).(ConfigArrayInput)
 	}
 	if args.ConfigMap != nil {
-		args.ConfigMap = pulumi.ToSecret(args.ConfigMap).(ConfigMapOutput)
+		args.ConfigMap = pulumi.ToSecret(args.ConfigMap).(ConfigMapInput)
 	}
 	if args.Foo != nil {
-		args.Foo = pulumi.ToSecret(args.Foo).(pulumi.StringOutput)
+		args.Foo = pulumi.ToSecret(args.Foo).(pulumi.StringInput)
 	}
 	if args.FooArray != nil {
-		args.FooArray = pulumi.ToSecret(args.FooArray).(pulumi.StringArrayOutput)
+		args.FooArray = pulumi.ToSecret(args.FooArray).(pulumi.StringArrayInput)
 	}
 	if args.FooMap != nil {
-		args.FooMap = pulumi.ToSecret(args.FooMap).(pulumi.StringMapOutput)
+		args.FooMap = pulumi.ToSecret(args.FooMap).(pulumi.StringMapInput)
 	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"config",
