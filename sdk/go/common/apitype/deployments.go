@@ -123,6 +123,15 @@ type OperationContext struct {
 
 	// EnvironmentVariables contains environment variables to be applied during the execution.
 	EnvironmentVariables map[string]SecretValue `json:"environmentVariables"`
+
+	// Options is a bag of settings to specify or override default behavior
+	Options *OperationContextOptions `json:"options,omitempty"`
+}
+
+// OperationContextOptions is a bag of settings to specify or override default behavior in a deployment
+type OperationContextOptions struct {
+	// SkipInstallDependencies sets whether to skip the default dependency installation step. Defaults to false.
+	SkipInstallDependencies bool `json:"skipInstallDependencies"`
 }
 
 // CreateDeploymentResponse defines the response given when a new Deployment is created.

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go,nodejs,python
+  description: Adds SkipInstallDependencies option for Remote Workspaces

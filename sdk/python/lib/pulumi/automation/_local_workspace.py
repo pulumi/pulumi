@@ -97,6 +97,7 @@ class LocalWorkspace(Workspace):
     _remote: bool = False
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
     _remote_pre_run_commands: Optional[List[str]]
+    _remote_skip_install_dependencies: Optional[bool]
     _remote_git_url: str
     _remote_git_project_path: Optional[str]
     _remote_git_branch: Optional[str]
@@ -479,6 +480,9 @@ class LocalWorkspace(Workspace):
             for command in self._remote_pre_run_commands:
                 args.append("--remote-pre-run-command")
                 args.append(command)
+
+        if self._remote_skip_install_dependencies:
+            args.append("--remote-skip-install-dependencies")
 
         return args
 

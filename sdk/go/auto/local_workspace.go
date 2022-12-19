@@ -45,16 +45,17 @@ import (
 // alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
 // This is identical to the behavior of Pulumi CLI driven workspaces.
 type LocalWorkspace struct {
-	workDir         string
-	pulumiHome      string
-	program         pulumi.RunFunc
-	envvars         map[string]string
-	secretsProvider string
-	pulumiVersion   semver.Version
-	repo            *GitRepo
-	remote          bool
-	remoteEnvVars   map[string]EnvVarValue
-	preRunCommands  []string
+	workDir                       string
+	pulumiHome                    string
+	program                       pulumi.RunFunc
+	envvars                       map[string]string
+	secretsProvider               string
+	pulumiVersion                 semver.Version
+	repo                          *GitRepo
+	remote                        bool
+	remoteEnvVars                 map[string]EnvVarValue
+	preRunCommands                []string
+	remoteSkipInstallDependencies bool
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -650,13 +651,14 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 
 	l := &LocalWorkspace{
-		workDir:        workDir,
-		preRunCommands: lwOpts.PreRunCommands,
-		program:        program,
-		pulumiHome:     lwOpts.PulumiHome,
-		remote:         lwOpts.Remote,
-		remoteEnvVars:  lwOpts.RemoteEnvVars,
-		repo:           lwOpts.Repo,
+		workDir:                       workDir,
+		preRunCommands:                lwOpts.PreRunCommands,
+		program:                       program,
+		pulumiHome:                    lwOpts.PulumiHome,
+		remote:                        lwOpts.Remote,
+		remoteEnvVars:                 lwOpts.RemoteEnvVars,
+		remoteSkipInstallDependencies: lwOpts.RemoteSkipInstallDependencies,
+		repo:                          lwOpts.Repo,
 	}
 
 	// optOut indicates we should skip the version check.
@@ -756,6 +758,8 @@ type localWorkspaceOptions struct {
 	RemoteEnvVars map[string]EnvVarValue
 	// PreRunCommands is an optional list of arbitrary commands to run before the remote Pulumi operation is invoked.
 	PreRunCommands []string
+	// RemoteSkipInstallDependencies sets whether to skip the default dependency installation step
+	RemoteSkipInstallDependencies bool
 }
 
 // LocalWorkspaceOption is used to customize and configure a LocalWorkspace at initialization time.
@@ -894,6 +898,13 @@ func remote(remote bool) LocalWorkspaceOption {
 func preRunCommands(commands ...string) LocalWorkspaceOption {
 	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
 		lo.PreRunCommands = commands
+	})
+}
+
+// remoteSkipInstallDependencies sets whether to skip the default dependency installation step.
+func remoteSkipInstallDependencies(skipInstallDependencies bool) LocalWorkspaceOption {
+	return localWorkspaceOption(func(lo *localWorkspaceOptions) {
+		lo.RemoteSkipInstallDependencies = skipInstallDependencies
 	})
 }
 

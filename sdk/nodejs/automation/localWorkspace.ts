@@ -102,6 +102,11 @@ export class LocalWorkspace implements Workspace {
     private remoteEnvVars?: { [key: string]: string | { secret: string } };
 
     /**
+     * Whether to skip the default dependency installation step.
+     */
+    private remoteSkipInstallDependencies?: boolean;
+
+    /**
      * Creates a workspace using the specified options. Used for maximal control and customization
      * of the underlying environment before any stacks are created or selected.
      *
@@ -246,7 +251,8 @@ export class LocalWorkspace implements Workspace {
 
         if (opts) {
             const { workDir, pulumiHome, program, envVars, secretsProvider,
-                remote, remoteGitProgramArgs, remotePreRunCommands, remoteEnvVars } = opts;
+                remote, remoteGitProgramArgs, remotePreRunCommands, remoteEnvVars,
+                remoteSkipInstallDependencies } = opts;
             if (workDir) {
                 dir = workDir;
             }
@@ -257,6 +263,7 @@ export class LocalWorkspace implements Workspace {
             this.remoteGitProgramArgs = remoteGitProgramArgs;
             this.remotePreRunCommands = remotePreRunCommands;
             this.remoteEnvVars = { ...remoteEnvVars };
+            this.remoteSkipInstallDependencies = remoteSkipInstallDependencies;
             envs = { ...envVars };
         }
 
@@ -734,6 +741,10 @@ export class LocalWorkspace implements Workspace {
             args.push("--remote-pre-run-command", command);
         }
 
+        if (this.remoteSkipInstallDependencies) {
+            args.push("--remote-skip-install-dependencies");
+        }
+
         return args;
     }
 }
@@ -823,6 +834,12 @@ export interface LocalWorkspaceOptions {
      * @internal
      */
     remoteEnvVars?: { [key: string]: string | { secret: string } };
+    /**
+     * Whether to skip the default dependency installation step.
+     *
+     * @internal
+     */
+    remoteSkipInstallDependencies?: boolean;
 }
 
 /**

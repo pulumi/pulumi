@@ -184,6 +184,7 @@ async function testLifecycle(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorks
             `pulumi config set bar abc --stack ${stackName}`,
             `pulumi config set --secret buzz secret --stack ${stackName}`,
         ],
+        skipInstallDependencies: true,
     });
 
     // pulumi up

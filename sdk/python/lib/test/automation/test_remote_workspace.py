@@ -86,10 +86,13 @@ def test_remote_workspace_stack_lifecycle(factory):
         url=test_repo,
         branch="refs/heads/master",
         project_path="goproj",
-        opts=RemoteWorkspaceOptions(pre_run_commands=[
-            f"pulumi config set bar abc --stack {stack_name}",
-            f"pulumi config set --secret buzz secret --stack {stack_name}",
-        ]),
+        opts=RemoteWorkspaceOptions(
+            pre_run_commands=[
+                f"pulumi config set bar abc --stack {stack_name}",
+                f"pulumi config set --secret buzz secret --stack {stack_name}",
+            ],
+            skip_install_dependencies=True,
+        ),
     )
 
     # pulumi up
