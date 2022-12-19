@@ -42,7 +42,6 @@ on:
         # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
         default: |
           {
-            "dotnet": "6.0.x",
             "go": "1.18.x",
             "nodejs": "14.x",
             "python": "3.9.x"
@@ -57,7 +56,6 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-  NUGET_PUBLISH_KEY: ${{ secrets.NUGET_PUBLISH_KEY }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
 jobs:
@@ -67,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["nodejs", "python", "dotnet", "go"]
+        language: ["nodejs", "python", "go"]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -83,12 +81,6 @@ jobs:
         if: ${{ matrix.language == 'python' }}
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet twine
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        if: ${{ matrix.language == 'dotnet' }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
         if: ${{ matrix.language == 'nodejs' }}
         uses: actions/setup-node@v3
