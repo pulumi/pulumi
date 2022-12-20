@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/blang/semver"
@@ -109,6 +110,10 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	}
 
 	isExecutable := func(info fs.FileInfo) bool {
+		// Windows doesn't have executable bits to check
+		if runtime.GOOS == "windows" {
+			return !info.IsDir()
+		}
 		return info.Mode()&0111 != 0 && !info.IsDir()
 	}
 

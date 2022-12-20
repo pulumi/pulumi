@@ -233,7 +233,8 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 		return nil, fmt.Errorf("seeking back in file %s: %w", source, err)
 	}
 	if !encoding.IsCompressed(compressHeader) {
-		if (stat.Mode() & 0100) == 0 {
+		// Windows doesn't have executable bits to check
+		if runtime.GOOS != "windows" && (stat.Mode()&0100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
 		return workspace.SingleFilePlugin(f, spec), nil
