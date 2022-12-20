@@ -10,6 +10,7 @@ import (
 type Info interface {
 	Parse(attr string, params ...interface{}) (string, error)
 
+	ClearEnd(out io.Writer)
 	ClearLine(out io.Writer)
 	CursorUp(out io.Writer, count int)
 	CursorDown(out io.Writer, count int)
@@ -49,6 +50,15 @@ func (i info) ClearLine(out io.Writer) {
 		fmt.Fprintf(out, "\x1b[1K")
 	}
 	// Then clear line from cursor to end
+	if attr, err := i.Parse("el"); err == nil {
+		fmt.Fprintf(out, "%s", attr)
+	} else {
+		fmt.Fprintf(out, "\x1b[K")
+	}
+}
+
+func (i info) ClearEnd(out io.Writer) {
+	// clear line from cursor to end
 	if attr, err := i.Parse("el"); err == nil {
 		fmt.Fprintf(out, "%s", attr)
 	} else {

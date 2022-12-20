@@ -52,6 +52,10 @@ func (t *MockTerminal) ClearLine() {
 	t.info.ClearLine(t)
 }
 
+func (t *MockTerminal) ClearEnd() {
+	t.info.ClearEnd(t)
+}
+
 func (t *MockTerminal) CursorUp(count int) {
 	t.info.CursorUp(t, count)
 }
