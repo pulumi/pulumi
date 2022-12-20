@@ -345,6 +345,11 @@ func ValidateProject(raw interface{}) error {
 	if _, ok := project["runtime"]; !ok {
 		return errors.New("project is missing a 'runtime' attribute")
 	}
+	if _, ok := project["template"]; !ok {
+		fmt.Println("missing template section")
+	} else {
+		fmt.Println("has template section")
+	}
 
 	// Let everything else be caught by jsonschema
 	if err = ProjectSchema.Validate(project); err == nil {

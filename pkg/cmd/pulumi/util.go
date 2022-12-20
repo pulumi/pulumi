@@ -102,7 +102,7 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	}
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		if strings.HasPrefix(err.Error(), workspace.LoadCurrentProjectFailMsg) {
+		if errors.Is(err, workspace.LoadCurrentProjectErr) {
 			return false, err
 		}
 		return false, fmt.Errorf("could not get cloud url: %w", err)
@@ -118,7 +118,7 @@ func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) 
 
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		if strings.HasPrefix(err.Error(), workspace.LoadCurrentProjectFailMsg) {
+		if errors.Is(err, workspace.LoadCurrentProjectErr) {
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
@@ -137,7 +137,7 @@ func currentBackend(ctx context.Context, opts display.Options) (backend.Backend,
 
 	url, err := workspace.GetCurrentCloudURL()
 	if err != nil {
-		if strings.HasPrefix(err.Error(), workspace.LoadCurrentProjectFailMsg) {
+		if errors.Is(err, workspace.LoadCurrentProjectErr) {
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not get cloud url: %w", err)

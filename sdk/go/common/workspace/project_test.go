@@ -913,6 +913,71 @@ func TestProjectLoadYAML(t *testing.T) {
 		assert.Contains(t, err.Error(), e)
 	}
 
+	// Test runtime options errors
+	_, err = loadProjectFromText(t, "name: project\nruntime:\n  options: foo")
+	expected = []string{
+		"2 errors occurred:",
+		"* #/runtime: expected string, but got object",
+		"* #/runtime/options: expected object, but got string"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+
+	// Test config options errors
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nconfig:\n  configKey:\n    type: array")
+	expected = []string{
+		"The configuration key 'configKey' declares an array " +
+			"but does not specify the underlying type via the 'items' attribute"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nconfig:\n  configKey:\n    "+
+		"type: array\n    items:\n      foo")
+	expected = []string{
+		"2 errors occurred:",
+		"* #/config/configKey: expected string, integer, boolean or array, but got object",
+		"* #/config/configKey/items: expected object, but got string"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nconfig:\n  configKey:\n    "+
+		"type: integer\n    default: \"foo\"")
+	expected = []string{
+		"The default value specified for configuration key 'configKey' " +
+			"is not of the expected type 'integer'"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+
+	// Test backend option errors
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nbackend: \"foo.com\"")
+	expected = []string{
+		"1 error occurred:",
+		"* #/backend: expected object or null, but got string"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+
+	// Test template option errors
+	fmt.Println("-------")
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\ntemplate:\n  config:\n    configKey:\n      dflt: string")
+	expected = []string{
+		"2 errors occurred:",
+		"* #/template/config/configKey: additionalProperties 'dflt' not allowed",
+		"* #/template/config/configKey: expected string, integer, boolean or array, but got object"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+
+	// Test plugins option errors
+	_, err = loadProjectFromText(t, "name: project\nruntime: test\nplugins:\n  providers:\n    plugin1: fooPlugin")
+	expected = []string{
+		"1 error occurred:",
+		"* #/plugins/providers: expected array, but got object"}
+	for _, e := range expected {
+		assert.Contains(t, err.Error(), e)
+	}
+
 	// Test success
 	proj, err := loadProjectFromText(t, "name: project\nruntime: test")
 	assert.NoError(t, err)

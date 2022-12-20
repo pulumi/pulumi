@@ -177,25 +177,23 @@
                         "null"
                     ],
                     "additionalProperties":{
-                        "properties":{
-                            "description":{
-                                "description":"Description of the config.",
-                                "type":[
-                                    "string",
-                                    "null"
-                                ]
-                            },
-                            "default":{
-                                "description":"Default value of the config."
-                            },
-                            "secret":{
-                                "description":"Boolean indicating if the configuration is labeled as a secret.",
-                                "type":[
-                                    "boolean",
-                                    "null"
-                                ]
-                            }
-                        }
+						"oneOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "integer"
+							},
+							{
+								"type": "boolean"
+							},
+							{
+								"type": "array"
+							},
+							{
+								"$ref": "#/$defs/configTypeDeclaration"
+							}
+						]
                     }
                 }
             },
