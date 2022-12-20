@@ -31,7 +31,7 @@ import (
 )
 
 type constructFunc func(ctx *Context, typ, name string, inputs map[string]interface{},
-	options ResourceOption) (URNInput, Input, error)
+	options ...ResourceOption) (URNInput, Input, error)
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,

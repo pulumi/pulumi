@@ -27,15 +27,15 @@ import (
 // go:linkname.
 
 type ConstructFunc func(ctx *pulumi.Context, typ, name string, inputs ConstructInputs,
-	options pulumi.ResourceOption) (*ConstructResult, error)
+	options ...pulumi.ResourceOption) (*ConstructResult, error)
 
 // Construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
 	construct ConstructFunc) (*pulumirpc.ConstructResponse, error) {
 	return linkedConstruct(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, typ, name string,
-		inputs map[string]interface{}, options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error) {
+		inputs map[string]interface{}, options ...pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error) {
 		ci := ConstructInputs{ctx: pulumiCtx, inputs: inputs}
-		result, err := construct(pulumiCtx, typ, name, ci, options)
+		result, err := construct(pulumiCtx, typ, name, ci, options...)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -150,7 +150,7 @@ func NewCallResult(result interface{}) (*CallResult, error) {
 }
 
 type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]interface{},
-	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
+	options ...pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
 
 // linkedConstruct is made available here from ../provider_linked.go via go:linkname.
 func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,

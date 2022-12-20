@@ -155,7 +155,7 @@ func (p *Provider) Create(ctx context.Context,
 func (p *Provider) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
+		inputs pulumiprovider.ConstructInputs, options ...pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 
 		if typ != providerName+":index:Component" {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
@@ -166,7 +166,7 @@ func (p *Provider) Construct(ctx context.Context,
 			return nil, fmt.Errorf("setting args: %w", err)
 		}
 
-		component, err := NewComponent(ctx, name, args, options)
+		component, err := NewComponent(ctx, name, args, options...)
 		if err != nil {
 			return nil, fmt.Errorf("creating component: %w", err)
 		}
