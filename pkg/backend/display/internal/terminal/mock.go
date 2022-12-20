@@ -64,6 +64,14 @@ func (t *MockTerminal) CursorDown(count int) {
 	t.info.CursorDown(t, count)
 }
 
+func (t *MockTerminal) HideCursor() {
+	t.info.HideCursor(t)
+}
+
+func (t *MockTerminal) ShowCursor() {
+	t.info.ShowCursor(t)
+}
+
 func (t *MockTerminal) ReadKey() (string, error) {
 	k, ok := <-t.keys
 	if !ok {

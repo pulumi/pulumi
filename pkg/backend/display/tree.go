@@ -58,6 +58,7 @@ func newInteractiveRenderer(term terminal.Terminal, opts Options) progressRender
 	if !term.IsRaw() {
 		return newInteractiveMessageRenderer(term, opts)
 	}
+	term.HideCursor()
 
 	r := &treeRenderer{
 		opts:   opts,
@@ -75,6 +76,7 @@ func newInteractiveRenderer(term terminal.Terminal, opts Options) progressRender
 }
 
 func (r *treeRenderer) Close() error {
+	r.term.ShowCursor()
 	return r.term.Close()
 }
 
