@@ -18,8 +18,11 @@ type Terminal interface {
 	Size() (width, height int, err error)
 
 	ClearLine()
+	ClearEnd()
 	CursorUp(count int)
 	CursorDown(count int)
+	HideCursor()
+	ShowCursor()
 
 	ReadKey() (string, error)
 }
@@ -131,12 +134,24 @@ func (t *terminal) ClearLine() {
 	t.info.ClearLine(t.out)
 }
 
+func (t *terminal) ClearEnd() {
+	t.info.ClearEnd(t.out)
+}
+
 func (t *terminal) CursorUp(count int) {
 	t.info.CursorUp(t.out, count)
 }
 
 func (t *terminal) CursorDown(count int) {
 	t.info.CursorDown(t.out, count)
+}
+
+func (t *terminal) HideCursor() {
+	t.info.HideCursor(t.out)
+}
+
+func (t *terminal) ShowCursor() {
+	t.info.ShowCursor(t.out)
 }
 
 func (t *terminal) ReadKey() (string, error) {

@@ -52,12 +52,24 @@ func (t *MockTerminal) ClearLine() {
 	t.info.ClearLine(t)
 }
 
+func (t *MockTerminal) ClearEnd() {
+	t.info.ClearEnd(t)
+}
+
 func (t *MockTerminal) CursorUp(count int) {
 	t.info.CursorUp(t, count)
 }
 
 func (t *MockTerminal) CursorDown(count int) {
 	t.info.CursorDown(t, count)
+}
+
+func (t *MockTerminal) HideCursor() {
+	t.info.HideCursor(t)
+}
+
+func (t *MockTerminal) ShowCursor() {
+	t.info.ShowCursor(t)
 }
 
 func (t *MockTerminal) ReadKey() (string, error) {

@@ -58,6 +58,7 @@ func newInteractiveRenderer(term terminal.Terminal, opts Options) progressRender
 	if !term.IsRaw() {
 		return newInteractiveMessageRenderer(term, opts)
 	}
+	term.HideCursor()
 
 	r := &treeRenderer{
 		opts:   opts,
@@ -75,6 +76,7 @@ func newInteractiveRenderer(term terminal.Terminal, opts Options) progressRender
 }
 
 func (r *treeRenderer) Close() error {
+	r.term.ShowCursor()
 	return r.term.Close()
 }
 
@@ -107,6 +109,16 @@ func (r *treeRenderer) print(text string) {
 
 func (r *treeRenderer) println(display *ProgressDisplay, text string) {
 	r.print(text)
+	r.print("\n")
+}
+
+func (r *treeRenderer) over(text string) {
+	r.print(text)
+	r.term.ClearEnd()
+}
+
+func (r *treeRenderer) overln(text string) {
+	r.over(text)
 	r.print("\n")
 }
 
@@ -222,7 +234,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 		}
 
 		treeTableHeight = termHeight - systemMessagesHeight - 1
-		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight - 1
+		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
 
 		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
 
@@ -239,37 +251,40 @@ func (r *treeRenderer) frame(locked, done bool) {
 		footer := fmt.Sprintf("%smore%s", upArrow, downArrow)
 		padding := termWidth - uniseg.GraphemeClusterCount(footer)
 		treeTableFooter = strings.Repeat(" ", padding) + footer
+
+		if systemMessagesHeight > 0 {
+			treeTableFooter += "\n"
+		}
 	}
 
 	// Re-home the cursor.
-	r.term.ClearLine()
+	r.print("\r")
 	for ; r.rewind > 0; r.rewind-- {
 		r.term.CursorUp(1)
-		r.term.ClearLine()
 	}
 	r.rewind = totalHeight - 1
 
 	// Render the tree table.
-	r.println(nil, r.clampLine(treeTableHeader, termWidth))
+	r.overln(r.clampLine(treeTableHeader, termWidth))
 	for _, row := range treeTableRows {
-		r.println(nil, r.clampLine(row, termWidth))
+		r.overln(r.clampLine(row, termWidth))
 	}
 	if treeTableFooter != "" {
-		r.print(treeTableFooter)
+		r.over(treeTableFooter)
 	}
 
 	// Render the system messages.
 	if systemMessagesHeight > 0 {
-		r.println(nil, "")
-		r.println(nil, colors.Yellow+"System Messages"+colors.Reset)
+		r.overln("")
+		r.overln(colors.Yellow + "System Messages" + colors.Reset)
 
 		for _, line := range systemMessages {
-			r.println(nil, "  "+line)
+			r.overln("  " + line)
 		}
 	}
 
 	if done && totalHeight > 0 {
-		r.println(nil, "")
+		r.overln("")
 	}
 }
 
