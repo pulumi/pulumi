@@ -68,6 +68,7 @@
                     "format": "regex"
                 }
             },
+            "additionalProperties": false,
             "required": ["moduleFormat"]
         },
         "config": {
@@ -81,14 +82,15 @@
                         "$ref": "#/$defs/propertySpec"
                     }
                 },
-                "required": {
-                    "description": "A list of the names of the package's required configuration variables.",
+                "defaults": {
+                    "description": "A list of the names of the package's non-required configuration variables.",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 }
-            }
+            },
+            "additionalProperties": false
         },
         "types": {
             "description": "A map from type token to complexTypeSpec that describes the set of complex types (i.e. object, enum) defined by this package.",
