@@ -96,8 +96,8 @@ func (i *ReplayInterceptor) ClientInterceptor(opts LogOptions) grpc.UnaryClientI
 
 			if err := transcodeBack(entry.Response, reply); err != nil {
 				return status.Errorf(codes.FailedPrecondition,
-					"ReplayInterceptor failed to transcodeBack from %q (%d bytes): %w",
-					entry.Response, len(entry.Response), err)
+					"ReplayInterceptor failed to transcodeBack from %q (%d bytes): %s",
+					entry.Response, len(entry.Response), err.Error())
 			}
 
 			return nil
