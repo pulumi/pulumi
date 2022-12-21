@@ -81,7 +81,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		}
 	}
 
-	if replayFile := os.Getenv("PULUMI_REPLAY_GRPC"); replayFile != "" {
+	if replayFile := env.ReplayGRPC.Value(); replayFile != "" {
 		i, err := interceptors.NewReplayInterceptor(interceptors.ReplayInterceptorOptions{
 			LogFile: replayFile,
 			Mutex:   ctx.DebugTraceMutex,
