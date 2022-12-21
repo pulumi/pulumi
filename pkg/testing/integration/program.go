@@ -15,8 +15,10 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
+	"crypto/sha1"
 	sha256 "crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -320,6 +322,11 @@ type ProgramTestOptions struct {
 
 	// Array of provider plugin dependencies which come from local packages.
 	LocalProviders []LocalDependency
+
+	// If set, enables recording the interactions between Pulumi CLI and providers to the given directory. If the
+	// directory already exists, Pulumi will run the program against mock providers that replay the interactions
+	// from the logs in the directory instead of talking to actual providers.
+	ProviderTraceDir string
 }
 
 func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
@@ -799,9 +806,11 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 //
 // All commands must return success return codes for the test to succeed, unless ExpectFailure is true.
 func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
+	opts, err := setupRecordReplay(t, opts)
+	assert.NoError(t, err)
 	prepareProgram(t, opts)
 	pt := newProgramTester(t, opts)
-	err := pt.TestLifeCycleInitAndDestroy()
+	err = pt.TestLifeCycleInitAndDestroy()
 	assert.NoError(t, err)
 }
 
@@ -827,6 +836,7 @@ type ProgramTester struct {
 	tmpdir         string              // the temporary directory we use for our test environment
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
+	counters       map[string]int      // internal counters for pulumi command invocations
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -840,6 +850,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 		opts:           opts,
 		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
+		counters:       map[string]int{},
 	}
 }
 
@@ -994,7 +1005,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 
 	_, _, err = retry.Until(context.Background(), retry.Acceptor{
 		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
-			runerr := pt.runCommand(name, cmd, wd)
+			runerr := withRecordReplaySetup(pt, name, cmd).runCommand(name, cmd, wd)
 			if runerr == nil {
 				return true, nil, nil
 			} else if _, ok := runerr.(*exec.ExitError); ok && isUpdate && !expectFailure {
@@ -2417,4 +2428,104 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
+}
+
+type recordReplayOptions struct {
+	record bool
+	dir    string
+}
+
+func setupRecordReplay(t *testing.T, opts *ProgramTestOptions) (*ProgramTestOptions, error) {
+	var copy ProgramTestOptions = *opts
+	if opts.ProviderTraceDir != "" {
+		absPath, err := filepath.Abs(opts.ProviderTraceDir)
+		if err != nil {
+			return nil, err
+		}
+		_, err = os.Stat(absPath)
+		if os.IsNotExist(err) {
+			t.Logf("Since ProgramTestOptions.ProviderTraceDir option is set and points to a non-existing "+
+				"dir, assuming recording mode. Running the test while recording provider interactions "+
+				"to %q", absPath)
+			copy.ProviderTraceDir = "Record:" + absPath
+			if err := os.Mkdir(absPath, 0777); err != nil {
+				return nil, err
+			}
+		} else if err == nil {
+			t.Logf("Testing against mock resource providers that replay interactions from "+
+				"ProgramTestOptions.ProviderTraceDir=%q", absPath)
+			copy.ProviderTraceDir = "Replay:" + absPath
+		} else {
+			return nil, err
+		}
+	}
+	return &copy, nil
+}
+
+func checkRecordReplayOptions(opts *ProgramTestOptions) *recordReplayOptions {
+	if opts.ProviderTraceDir == "" {
+		return nil
+	}
+	if strings.HasPrefix(opts.ProviderTraceDir, "Record:") {
+		return &recordReplayOptions{
+			record: true,
+			dir:    strings.TrimPrefix(opts.ProviderTraceDir, "Record:"),
+		}
+	}
+	if strings.HasPrefix(opts.ProviderTraceDir, "Replay:") {
+		return &recordReplayOptions{
+			record: false,
+			dir:    strings.TrimPrefix(opts.ProviderTraceDir, "Replay:"),
+		}
+	}
+	return nil
+}
+
+func withRecordReplaySetup(pt *ProgramTester, name string, cmd []string) *ProgramTester {
+	rropts := checkRecordReplayOptions(pt.opts)
+	if rropts == nil {
+		return pt
+	}
+
+	// Compute hash of name, cmd, wd to unqiuely identify a Pulumi command.
+	var hash string
+	{
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "%s\n", name)
+		fmt.Fprintf(&buf, "%d\n", len(cmd))
+		for i, c := range cmd {
+			// Skip --event-log argument as it is non-determinstic across runs.
+			if i > 0 && cmd[i-1] == "--event-log" {
+				continue
+			}
+			fmt.Fprintf(&buf, "%s\n", c)
+		}
+		hasher := sha1.New()
+		hasher.Write(buf.Bytes())
+		hash = hex.EncodeToString(hasher.Sum(nil))
+	}
+
+	// Compute log filename to record or replay.
+	var logFile string
+	{
+		n := pt.counters[hash]
+		pt.counters[hash] = n + 1
+		logFile = filepath.Join(rropts.dir, fmt.Sprintf("%s-%d.json", hash, n))
+	}
+
+	// Set record or replay env vars.
+	var opts ProgramTestOptions = *pt.opts
+	opts.Env = append(opts.Env, "PULUMI_RANDOM_SEED=fzlyXMQh3lyCSdlY/w6YdIopfNQLD6/ea9oksqhw0C8=")
+	if rropts.record {
+		opts.Env = append(opts.Env, fmt.Sprintf("PULUMI_DEBUG_GRPC=%s", logFile))
+	} else {
+		_, err := os.Stat(logFile)
+		if !os.IsNotExist(err) {
+			opts.Env = append(opts.Env, fmt.Sprintf("PULUMI_REPLAY_GRPC=%s", logFile))
+		}
+	}
+
+	var ptcopy ProgramTester = *pt
+	ptcopy.opts = &opts
+	return &ptcopy
 }
