@@ -1,0 +1,10 @@
+*
+!.gitignore
+!schema.json
+!nodejs/
+nodejs/*
+!nodejs/storage/
+nodejs/storage/*
+!nodejs/storage/getaccount
+nodejs/storage/getaccount/*
+!nodejs/storage/getaccount/getAccount.ts

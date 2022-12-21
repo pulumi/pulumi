@@ -1,0 +1,517 @@
+{
+  "name": "node11699",
+  "version": "0.0.1",
+  "language": {
+    "nodejs": {
+      "compatibility": "tfbridge20",
+      "dependencies": {
+        "@azure/eventgrid": "^4.6.0",
+        "@azure/functions": "=1.2.2",
+        "@azure/ms-rest-azure-js": "^2.0.1",
+        "@azure/ms-rest-nodeauth": "^3.0.0",
+        "@pulumi/pulumi": "^3.0.0",
+        "azure-functions-ts-essentials": "^1.3.2",
+        "moment": "2.29.4",
+        "node-fetch": "^2.3.0"
+      },
+      "devDependencies": {
+        "@types/node": "^10.0.0",
+        "@types/node-fetch": "^2.5.8"
+      },
+      "disableUnionOutputTypes": true,
+      "packageDescription": "A Pulumi package for creating and managing Microsoft Azure cloud resources, based on the Terraform azurerm provider. We recommend using the [Azure Native provider](https://github.com/pulumi/pulumi-azure-native) to provision Azure infrastructure. Azure Native provides complete coverage of Azure resources and same-day access to new resources and resource updates.",
+      "packageName": "",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-azurerm)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-azure` repo](https://github.com/pulumi/pulumi-azure/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-azurerm` repo](https://github.com/hashicorp/terraform-provider-azurerm/issues).",
+      "typescriptVersion": "4.7.4"
+    }
+  },
+  "functions": {
+    "node11699:storage/getAccount:getAccount": {
+      "inputs": {
+        "description": "A collection of arguments for invoking getAccount.\n",
+        "properties": {
+          "minTlsVersion": {
+            "type": "string",
+            "description": "The minimum supported TLS version for this storage account.\n"
+          },
+          "name": {
+            "type": "string",
+            "description": "Specifies the name of the Storage Account\n"
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "Specifies the name of the resource group the Storage Account is located in.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ]
+      },
+      "outputs": {
+        "description": "A collection of values returned by getAccount.\n",
+        "properties": {
+          "accessTier": {
+            "type": "string",
+            "description": "The access tier for `BlobStorage` accounts.\n"
+          },
+          "accountKind": {
+            "type": "string",
+            "description": "The Kind of account.\n"
+          },
+          "accountReplicationType": {
+            "type": "string",
+            "description": "The type of replication used for this storage account.\n"
+          },
+          "accountTier": {
+            "type": "string",
+            "description": "The Tier of this storage account.\n"
+          },
+          "allowNestedItemsToBePublic": {
+            "type": "boolean",
+            "description": "Can nested items in the storage account opt into allowing public access?\n"
+          },
+          "azureFilesAuthentications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/node11699:storage/getAccountAzureFilesAuthentication:getAccountAzureFilesAuthentication"
+            },
+            "description": "A `azure_files_authentication` block as documented below.\n"
+          },
+          "customDomains": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/node11699:storage/getAccountCustomDomain:getAccountCustomDomain"
+            },
+            "description": "A `custom_domain` block as documented below.\n"
+          },
+          "enableHttpsTrafficOnly": {
+            "type": "boolean",
+            "description": "Is traffic only allowed via HTTPS? See [here](https://docs.microsoft.com/azure/storage/storage-require-secure-transfer/)\nfor more information.\n"
+          },
+          "id": {
+            "type": "string",
+            "description": "The provider-assigned unique ID for this managed resource.\n"
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/node11699:storage/getAccountIdentity:getAccountIdentity"
+            },
+            "description": "An `identity` block as documented below.\n"
+          },
+          "infrastructureEncryptionEnabled": {
+            "type": "boolean",
+            "description": "Is infrastructure encryption enabled? See [here](https://docs.microsoft.com/azure/storage/common/infrastructure-encryption-enable/)\nfor more information.\n"
+          },
+          "isHnsEnabled": {
+            "type": "boolean",
+            "description": "Is Hierarchical Namespace enabled?\n"
+          },
+          "location": {
+            "type": "string",
+            "description": "The Azure location where the Storage Account exists\n"
+          },
+          "minTlsVersion": {
+            "type": "string",
+            "description": "The minimum supported TLS version for this storage account.\n"
+          },
+          "name": {
+            "type": "string",
+            "description": "The Custom Domain Name used for the Storage Account.\n"
+          },
+          "nfsv3Enabled": {
+            "type": "boolean",
+            "description": "Is NFSv3 protocol enabled?\n"
+          },
+          "primaryAccessKey": {
+            "type": "string",
+            "description": "The primary access key for the Storage Account.\n"
+          },
+          "primaryBlobConnectionString": {
+            "type": "string",
+            "description": "The connection string associated with the primary blob location\n"
+          },
+          "primaryBlobEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for blob storage in the primary location.\n"
+          },
+          "primaryBlobHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for blob storage in the primary location.\n"
+          },
+          "primaryConnectionString": {
+            "type": "string",
+            "description": "The connection string associated with the primary location\n"
+          },
+          "primaryDfsEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for DFS storage in the primary location.\n"
+          },
+          "primaryDfsHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for DFS storage in the primary location.\n"
+          },
+          "primaryFileEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for file storage in the primary location.\n"
+          },
+          "primaryFileHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for file storage in the primary location.\n"
+          },
+          "primaryLocation": {
+            "type": "string",
+            "description": "The primary location of the Storage Account.\n"
+          },
+          "primaryQueueEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for queue storage in the primary location.\n"
+          },
+          "primaryQueueHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for queue storage in the primary location.\n"
+          },
+          "primaryTableEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for table storage in the primary location.\n"
+          },
+          "primaryTableHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for table storage in the primary location.\n"
+          },
+          "primaryWebEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for web storage in the primary location.\n"
+          },
+          "primaryWebHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for web storage in the primary location.\n"
+          },
+          "queueEncryptionKeyType": {
+            "type": "string",
+            "description": "The encryption key type of the queue.\n"
+          },
+          "resourceGroupName": {
+            "type": "string"
+          },
+          "secondaryAccessKey": {
+            "type": "string",
+            "description": "The secondary access key for the Storage Account.\n"
+          },
+          "secondaryBlobConnectionString": {
+            "type": "string",
+            "description": "The connection string associated with the secondary blob location\n"
+          },
+          "secondaryBlobEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for blob storage in the secondary location.\n"
+          },
+          "secondaryBlobHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for blob storage in the secondary location.\n"
+          },
+          "secondaryConnectionString": {
+            "type": "string",
+            "description": "The connection string associated with the secondary location\n"
+          },
+          "secondaryDfsEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for DFS storage in the secondary location.\n"
+          },
+          "secondaryDfsHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for DFS storage in the secondary location.\n"
+          },
+          "secondaryFileEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for file storage in the secondary location.\n"
+          },
+          "secondaryFileHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for file storage in the secondary location.\n"
+          },
+          "secondaryLocation": {
+            "type": "string",
+            "description": "The secondary location of the Storage Account.\n"
+          },
+          "secondaryQueueEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for queue storage in the secondary location.\n"
+          },
+          "secondaryQueueHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for queue storage in the secondary location.\n"
+          },
+          "secondaryTableEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for table storage in the secondary location.\n"
+          },
+          "secondaryTableHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for table storage in the secondary location.\n"
+          },
+          "secondaryWebEndpoint": {
+            "type": "string",
+            "description": "The endpoint URL for web storage in the secondary location.\n"
+          },
+          "secondaryWebHost": {
+            "type": "string",
+            "description": "The hostname with port if applicable for web storage in the secondary location.\n"
+          },
+          "tableEncryptionKeyType": {
+            "type": "string",
+            "description": "The encryption key type of the table.\n"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "A mapping of tags to assigned to the resource.\n"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accessTier",
+          "accountKind",
+          "accountReplicationType",
+          "accountTier",
+          "allowNestedItemsToBePublic",
+          "azureFilesAuthentications",
+          "customDomains",
+          "enableHttpsTrafficOnly",
+          "identities",
+          "infrastructureEncryptionEnabled",
+          "isHnsEnabled",
+          "location",
+          "name",
+          "nfsv3Enabled",
+          "primaryAccessKey",
+          "primaryBlobConnectionString",
+          "primaryBlobEndpoint",
+          "primaryBlobHost",
+          "primaryConnectionString",
+          "primaryDfsEndpoint",
+          "primaryDfsHost",
+          "primaryFileEndpoint",
+          "primaryFileHost",
+          "primaryLocation",
+          "primaryQueueEndpoint",
+          "primaryQueueHost",
+          "primaryTableEndpoint",
+          "primaryTableHost",
+          "primaryWebEndpoint",
+          "primaryWebHost",
+          "queueEncryptionKeyType",
+          "secondaryAccessKey",
+          "secondaryBlobConnectionString",
+          "secondaryBlobEndpoint",
+          "secondaryBlobHost",
+          "secondaryConnectionString",
+          "secondaryDfsEndpoint",
+          "secondaryDfsHost",
+          "secondaryFileEndpoint",
+          "secondaryFileHost",
+          "secondaryLocation",
+          "secondaryQueueEndpoint",
+          "secondaryQueueHost",
+          "secondaryTableEndpoint",
+          "secondaryTableHost",
+          "secondaryWebEndpoint",
+          "secondaryWebHost",
+          "tableEncryptionKeyType",
+          "tags",
+          "id"
+        ]
+      }
+    }
+  },
+  "resources": {},
+  "types": {
+    "node11699:storage/getAccountAzureFilesAuthentication:getAccountAzureFilesAuthentication": {
+      "properties": {
+        "activeDirectories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/node11699:storage/getAccountAzureFilesAuthenticationActiveDirectory:getAccountAzureFilesAuthenticationActiveDirectory"
+          },
+          "description": "An `active_directory` block as documented below.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "directoryType": {
+          "type": "string",
+          "description": "The directory service used for this Storage Account.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "activeDirectories",
+        "directoryType"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    },
+    "node11699:storage/getAccountAzureFilesAuthenticationActiveDirectory:getAccountAzureFilesAuthenticationActiveDirectory": {
+      "properties": {
+        "domainGuid": {
+          "type": "string",
+          "description": "The domain GUID.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "domainName": {
+          "type": "string",
+          "description": "The primary domain that the AD DNS server is authoritative for.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "domainSid": {
+          "type": "string",
+          "description": "The domain security identifier.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "forestName": {
+          "type": "string",
+          "description": "The name of the Active Directory forest.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "netbiosDomainName": {
+          "type": "string",
+          "description": "The NetBIOS domain name.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "storageSid": {
+          "type": "string",
+          "description": "The security identifier for Azure Storage.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "domainGuid",
+        "domainName",
+        "domainSid",
+        "forestName",
+        "netbiosDomainName",
+        "storageSid"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    },
+    "node11699:storage/getAccountCustomDomain:getAccountCustomDomain": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Specifies the name of the Storage Account\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    },
+    "node11699:storage/getAccountIdentity:getAccountIdentity": {
+      "properties": {
+        "identityIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A list of User Assigned Managed Identity IDs assigned with the Identity of this Storage Account.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "principalId": {
+          "type": "string",
+          "description": "The Principal ID for the Service Principal associated with the Identity of this Storage Account.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "The Tenant ID for the Service Principal associated with the Identity of this Storage Account.\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of Managed Service Identity that is configured on this Storage Account\n",
+          "language": {
+            "python": {
+              "mapCase": false
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "identityIds",
+        "principalId",
+        "tenantId",
+        "type"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      }
+    }
+  }
+}
