@@ -158,6 +158,64 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	return sig, nil
 }
 
+func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+	if len(args) < 1 {
+		return b.zeroSignature(), nil
+	}
+
+	template, ok := args[0].(*model.TemplateExpression)
+	if !ok || len(template.Parts) != 1 {
+		return b.zeroSignature(), hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
+	}
+	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
+	if !ok || model.StringType.ConversionFrom(lit.Type()) == model.NoConversion {
+		return b.zeroSignature(), hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
+	}
+
+	token, tokenRange := lit.Value.AsString(), args[0].SyntaxNode().Range()
+	pkg, _, _, diagnostics := DecomposeToken(token, tokenRange)
+	if diagnostics.HasErrors() {
+		return b.zeroSignature(), diagnostics
+	}
+
+	pkgInfo := PackageInfo{
+		name: pkg,
+	}
+	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
+	if !ok {
+		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
+	}
+
+	var fn *schema.Function
+	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
+	} else if !ok {
+		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
+	} else {
+		fn = f
+		lit.Value = cty.StringVal(tk)
+	}
+
+	if len(args) < 2 {
+		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
+	}
+	sig, err := b.signatureForArgs(fn, args[1])
+	if err != nil {
+		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
+		return b.zeroSignature(), diag
+	}
+
+	// annotate the input args on the expression with the input type of the function
+	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
+		if fn.Inputs != nil {
+			annotateObjectProperties(argsObject.Type(), fn.Inputs)
+		}
+	}
+
+	sig.MultiArgumentInputs = fn.MultiArgumentInputs
+	return sig, nil
+}
+
 func (b *binder) makeSignature(argsType, returnType model.Type) model.StaticFunctionSignature {
 	return model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
