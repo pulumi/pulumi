@@ -15,19 +15,14 @@
 package rpcdebug
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"sync"
 
 	"google.golang.org/grpc"
-
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -88,7 +83,11 @@ func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnarySer
 		}
 		i.trackRequest(&log, req)
 		resp, err := handler(ctx, req)
-		i.trackResponse(&log, resp)
+		if err != nil {
+			i.track(&log, err)
+		} else {
+			i.trackResponse(&log, resp)
+		}
 		if e := i.record(log); e != nil {
 			return resp, e
 		}
@@ -125,7 +124,11 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 		}
 		i.trackRequest(&log, req)
 		err := invoker(ctx, method, req, reply, cc, gopts...)
-		i.trackResponse(&log, reply)
+		if err != nil {
+			i.track(&log, err)
+		} else {
+			i.trackResponse(&log, reply)
+		}
 		if e := i.record(log); e != nil {
 			return e
 		}
@@ -172,7 +175,7 @@ func (*DebugInterceptor) track(log *debugInterceptorLogEntry, err error) {
 }
 
 func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req interface{}) {
-	j, err := i.transcode(req)
+	j, err := transcode(req)
 	if err != nil {
 		i.track(log, err)
 	} else {
@@ -181,32 +184,12 @@ func (i *DebugInterceptor) trackRequest(log *debugInterceptorLogEntry, req inter
 }
 
 func (i *DebugInterceptor) trackResponse(log *debugInterceptorLogEntry, resp interface{}) {
-	j, err := i.transcode(resp)
+	j, err := transcode(resp)
 	if err != nil {
 		i.track(log, err)
 	} else {
 		log.Response = j
 	}
-}
-
-func (*DebugInterceptor) transcode(obj interface{}) (json.RawMessage, error) {
-	if obj == nil {
-		return json.RawMessage("null"), nil
-	}
-
-	m, ok := obj.(proto.Message)
-	if !ok {
-		return json.RawMessage("null"),
-			fmt.Errorf("Failed to decode, expecting proto.Message, got %v",
-				reflect.TypeOf(obj))
-	}
-
-	jsonSer := jsonpb.Marshaler{}
-	buf := bytes.Buffer{}
-	if err := jsonSer.Marshal(&buf, m); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // Wraps grpc.ServerStream with interceptor hooks for SendMsg, RecvMsg.
@@ -248,7 +231,7 @@ func (dss *debugServerStream) SendMsg(m interface{}) error {
 			return e
 		}
 	} else {
-		req, err := dss.interceptor.transcode(m)
+		req, err := transcode(m)
 		if err != nil {
 			if e := dss.interceptor.record(dss.errorEntry(err)); e != nil {
 				return e
@@ -275,7 +258,7 @@ func (dss *debugServerStream) RecvMsg(m interface{}) error {
 			return e
 		}
 	} else {
-		resp, err := dss.interceptor.transcode(m)
+		resp, err := transcode(m)
 		if err != nil {
 			if e := dss.interceptor.record(dss.errorEntry(err)); e != nil {
 				return e
@@ -334,7 +317,7 @@ func (d *debugClientStream) SendMsg(m interface{}) error {
 			return e
 		}
 	} else {
-		req, err := d.interceptor.transcode(m)
+		req, err := transcode(m)
 		if err != nil {
 			if e := d.interceptor.record(d.errorEntry(err)); e != nil {
 				return e
@@ -361,7 +344,7 @@ func (d *debugClientStream) RecvMsg(m interface{}) error {
 			return e
 		}
 	} else {
-		resp, err := d.interceptor.transcode(m)
+		resp, err := transcode(m)
 		if err != nil {
 			if e := d.interceptor.record(d.errorEntry(err)); e != nil {
 				return e
