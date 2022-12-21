@@ -519,13 +519,6 @@
                     "description": "The bag of input values for the function, if any.",
                     "$ref": "#/$defs/objectTypeSpec"
                 },
-                "multiArgumentInputs": {
-                    "description": "A list of parameter names that determines whether the input bag should be treated as a single argument or as multiple arguments. The list corresponds to the order in which the parameters should be passed to the function.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "outputs": {
                     "description": "The bag of output values for the function, if any.",
                     "$ref": "#/$defs/objectTypeSpec"

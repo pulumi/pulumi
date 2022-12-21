@@ -561,11 +561,6 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			continue
 		}
 
-		if f.MultiArgumentInputs {
-			return fmt.Errorf("python SDK-gen does not implement MultiArgumentInputs for function '%s'",
-				f.Token)
-		}
-
 		fun, err := mod.genFunction(f)
 		if err != nil {
 			return err
@@ -1156,9 +1151,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if method.Function.Inputs != nil {
 			mod.collectImportsForResource(method.Function.Inputs.Properties, imports, true /*input*/, res)
 		}
-		returnType := returnTypeObject(method.Function)
-		if returnType != nil {
-			mod.collectImportsForResource(returnType.Properties, imports, false /*input*/, res)
+		if method.Function.Outputs != nil {
+			mod.collectImportsForResource(method.Function.Outputs.Properties, imports, false /*input*/, res)
 		}
 	}
 
@@ -1532,7 +1526,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 
 func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 	genReturnType := func(method *schema.Method) string {
-		obj := returnTypeObject(method.Function)
+		obj := method.Function.Outputs
 		name := pyClassName(title(method.Name)) + "Result"
 
 		// Produce a class definition with optional """ comment.
@@ -1576,19 +1570,18 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 	genMethod := func(method *schema.Method) {
 		methodName := PyName(method.Name)
 		fun := method.Function
-		returnType := returnTypeObject(fun)
 
-		shouldLiftReturn := mod.liftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1
+		shouldLiftReturn := mod.liftSingleValueMethodReturns && method.Function.Outputs != nil && len(method.Function.Outputs.Properties) == 1
 
 		// If there is a return type, emit it.
 		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string
-		if returnType != nil {
+		if fun.Outputs != nil {
 			retTypeName = genReturnType(method)
 			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
 			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
 
 			if shouldLiftReturn {
-				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(returnType.Properties[0].Type))
+				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(fun.Outputs.Properties[0].Type))
 			} else {
 				methodRetType = retTypeNameQualifiedOutput
 			}
@@ -1676,12 +1669,12 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			typ = fmt.Sprintf(", typ=%s", retTypeNameQualified)
 		}
 
-		if returnType == nil {
+		if method.Function.Outputs == nil {
 			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 		} else if shouldLiftReturn {
 			// Store the return in a variable and return the property output
 			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
-			fmt.Fprintf(w, "        return __result__.%s\n", PyName(returnType.Properties[0].Name))
+			fmt.Fprintf(w, "        return __result__.%s\n", PyName(fun.Outputs.Properties[0].Name))
 		} else {
 			// Otherwise return the call directly
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
@@ -1724,32 +1717,21 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if fun.Inputs != nil {
 		mod.collectImports(fun.Inputs.Properties, imports, true)
 	}
-
-	var returnType *schema.ObjectType
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok {
-			returnType = objectType
-		} else {
-			// TODO: remove when we add support for generalized return type for python
-			return "", fmt.Errorf("python sdk-gen doesn't support non-Object return types for function %s", fun.Token)
-		}
-	}
-
-	if returnType != nil {
-		mod.collectImports(returnType.Properties, imports, false)
+	if fun.Outputs != nil {
+		mod.collectImports(fun.Outputs.Properties, imports, false)
 	}
 
 	mod.genFunctionHeader(w, fun, imports)
 
 	var baseName, awaitableName string
-	if returnType != nil {
-		baseName, awaitableName = awaitableTypeNames(returnType.Token)
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
+		baseName, awaitableName = awaitableTypeNames(fun.Outputs.Token)
 	}
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
-	if returnType != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1767,8 +1749,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	// If there is a return type, emit it.
 	retTypeName := ""
 	var rets []*schema.Property
-	if returnType != nil {
-		retTypeName, rets = mod.genAwaitableType(w, returnType), returnType.Properties
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
+		retTypeName, rets = mod.genAwaitableType(w, fun.Outputs), fun.Outputs.Properties
 		fmt.Fprintf(w, "\n\n")
 	} else {
 		retTypeName = "Awaitable[None]"
@@ -1795,7 +1777,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	// Now simply invoke the runtime function with the arguments.
 	var typ string
-	if returnType != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
 		typ = fmt.Sprintf(", typ=%s", baseName)
@@ -1804,7 +1786,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	fmt.Fprintf(w, "\n")
 
 	// And copy the results to an object, if there are indeed any expected returns.
-	if returnType != nil {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
 		fmt.Fprintf(w, "    return %s(", retTypeName)
 		for i, ret := range rets {
 			if i > 0 {
@@ -1888,15 +1870,6 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 	}
 }
 
-func returnTypeObject(fun *schema.Function) *schema.ObjectType {
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-			return objectType
-		}
-	}
-	return nil
-}
-
 // Generates `def ${fn}_output(..) version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
@@ -1904,11 +1877,9 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		return
 	}
 
-	returnType := returnTypeObject(fun)
-
 	var retTypeName string
-	if returnType != nil {
-		originalOutputTypeName, _ := awaitableTypeNames(returnType.Token)
+	if fun.Outputs != nil {
+		originalOutputTypeName, _ := awaitableTypeNames(fun.Outputs.Token)
 		retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 	} else {
 		retTypeName = "pulumi.Output[void]"
@@ -2817,16 +2788,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				}
 			})
 		}
-
-		var returnType *schema.ObjectType
-		if f.ReturnType != nil {
-			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				returnType = objectType
-			}
-		}
-
-		if returnType != nil {
-			visitObjectTypes(returnType.Properties, func(t schema.Type) {
+		if f.Outputs != nil {
+			visitObjectTypes(f.Outputs.Properties, func(t schema.Type) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
 					getModFromToken(T.Token, T.PackageReference).details(T).outputType = true

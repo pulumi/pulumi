@@ -155,7 +155,6 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		}
 	}
 
-	sig.MultiArgumentInputs = fn.MultiArgumentInputs
 	return sig, nil
 }
 
@@ -222,10 +221,10 @@ func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSigna
 	}
 
 	var returnType model.Type
-	if fn.ReturnType == nil {
+	if fn.Outputs == nil {
 		returnType = model.NewObjectType(map[string]model.Type{})
 	} else {
-		returnType = b.schemaTypeToType(fn.ReturnType)
+		returnType = b.schemaTypeToType(fn.Outputs)
 	}
 
 	return b.makeSignature(argsType, model.NewPromiseType(returnType))
@@ -236,9 +235,9 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
+	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.Outputs != nil`.
 	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
-	returnType := b.schemaTypeToType(fn.ReturnType)
+	returnType := b.schemaTypeToType(fn.Outputs)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
 

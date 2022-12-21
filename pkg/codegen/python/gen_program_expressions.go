@@ -298,12 +298,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0])
-			panic(err)
-		}
-
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
 		if module != "" {
