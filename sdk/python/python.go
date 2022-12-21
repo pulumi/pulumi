@@ -221,91 +221,24 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool) error {
-	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr)
+func InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool, dependencyTool DependencyTool) error {
+	return InstallDependenciesWithWriters(ctx, root, venvDir, showOutput, os.Stdout, os.Stderr, dependencyTool)
 }
 
 func InstallDependenciesWithWriters(ctx context.Context,
-	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
-	print := func(message string) {
-		if showOutput {
-			fmt.Fprintf(infoWriter, "%s\n", message)
-		}
-	}
-
-	print("Creating virtual environment...")
-
-	// Create the virtual environment by running `python -m venv <venvDir>`.
-	if !filepath.IsAbs(venvDir) {
-		venvDir = filepath.Join(root, venvDir)
-	}
-
-	cmd, err := Command(ctx, "-m", "venv", venvDir)
+	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer, dependencyTool DependencyTool) error {
+	var err error = nil
+	err = dependencyTool.Prepare(ctx, root, venvDir, showOutput, infoWriter, errorWriter)
 	if err != nil {
 		return err
 	}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		if len(output) > 0 {
-			fmt.Fprintf(errorWriter, "%s\n", string(output))
-		}
-		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
-	}
+	err = dependencyTool.InstallDependencies(ctx, root, venvDir, showOutput, infoWriter, errorWriter)
 
-	print("Finished creating virtual environment")
-
-	runPipInstall := func(errorMsg string, arg ...string) error {
-		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
-		pipCmd.Dir = root
-		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
-
-		wrapError := func(err error) error {
-			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
-		}
-
-		if showOutput {
-			// Show stdout/stderr output.
-			pipCmd.Stdout = infoWriter
-			pipCmd.Stderr = errorWriter
-			if err := pipCmd.Run(); err != nil {
-				return wrapError(err)
-			}
-		} else {
-			// Otherwise, only show output if there is an error.
-			if output, err := pipCmd.CombinedOutput(); err != nil {
-				if len(output) > 0 {
-					fmt.Fprintf(errorWriter, "%s\n", string(output))
-				}
-				return wrapError(err)
-			}
-		}
-		return nil
-	}
-
-	print("Updating pip, setuptools, and wheel in virtual environment...")
-
-	err = runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
 	if err != nil {
 		return err
 	}
 
-	print("Finished updating")
-
-	// If `requirements.txt` doesn't exist, exit early.
-	requirementsPath := filepath.Join(root, "requirements.txt")
-	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
-		return nil
-	}
-
-	print("Installing dependencies in virtual environment...")
-
-	err = runPipInstall("installing dependencies", "-r", "requirements.txt")
-	if err != nil {
-		return err
-	}
-
-	print("Finished installing dependencies")
-
-	return nil
+	return err
 }
 
 func virtualEnvBinDirName() string {
@@ -313,4 +246,57 @@ func virtualEnvBinDirName() string {
 		return "Scripts"
 	}
 	return "bin"
+}
+
+type DependencyTool interface {
+	IDependencyTool
+	GetName() string
+	GetPath() string
+	SetName(name string)
+	SetPath(path string)
+}
+
+var _ DependencyTool = &Poetry{}
+var _ DependencyTool = &Pip{}
+
+type IDependencyTool interface {
+	GetBinaryPath() (string, error)
+	InstallDependencies(ctx context.Context, root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error
+	Prepare(ctx context.Context, root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error
+}
+
+type SDependencyTool struct {
+	name string
+	path string
+}
+
+func (d *SDependencyTool) GetName() string {
+	return d.name
+}
+
+func (d *SDependencyTool) GetPath() string {
+	return d.path
+}
+
+func (d *SDependencyTool) SetName(name string) {
+	d.name = name
+}
+
+func (d *SDependencyTool) SetPath(path string) {
+	d.path = path
+}
+
+func NewDependencyTool(name string) (DependencyTool, error) {
+	var err error = nil
+	var dependencyTool DependencyTool
+	switch name {
+	case "pip":
+		dependencyTool = &Pip{}
+	case "poetry":
+		dependencyTool = &Poetry{}
+	default:
+		err = errors.Errorf("Invalid dependency tool name: %s", name)
+	}
+	dependencyTool.SetName(name)
+	return dependencyTool, err
 }

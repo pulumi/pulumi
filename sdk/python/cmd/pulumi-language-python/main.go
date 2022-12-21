@@ -79,14 +79,46 @@ var (
 	eolPythonVersionIssue = "https://github.com/pulumi/pulumi/issues/8131"
 )
 
+func validateDependencyTool(dependencyTool string) (string, error) {
+	switch dependencyTool {
+	case "pip", "poetry":
+		return dependencyTool, nil
+	default:
+		return "", errors.Errorf("unknown dependency tool %q", dependencyTool)
+	}
+}
+
+func validateBuildTool(buildTool string) (string, error) {
+	switch buildTool {
+	case "python", "poetry":
+		return buildTool, nil
+	default:
+		return "", errors.Errorf("unknown build tool %q", buildTool)
+	}
+}
+
+func validateEntrypoint(entrypoint string) (string, error) {
+	return entrypoint, nil
+}
+
+func validateVirtualenv(virtualenv string) (string, error) {
+	return virtualenv, nil
+}
+
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
 // LanguageRuntimeServer RPC endpoint.
 func main() {
 	var tracing string
-	var virtualenv string
+	var virtualenvInput string
 	var root string
+	var buildToolInput string
+	var dependencyToolInput string
+	var entrypointInput string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
+	flag.StringVar(&virtualenvInput, "virtualenv", "venv", "Virtual environment path to use")
+	flag.StringVar(&buildToolInput, "build-tool", "python", "Build tool to use")
+	flag.StringVar(&dependencyToolInput, "dependency-tool", "pip", "Dependency tool to use")
+	flag.StringVar(&entrypointInput, "entrypoint", "./__main__.py", "Entrypoint to use")
 	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	cwd, err := os.Getwd()
@@ -101,6 +133,26 @@ func main() {
 		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
+
+	buildTool, err := validateBuildTool(buildToolInput)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "validating build tool: %s", buildToolInput))
+	}
+	dependencyTool, err := validateDependencyTool(dependencyToolInput)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "validating dependency tool: %s", dependencyToolInput))
+	}
+	entrypoint, err := validateEntrypoint(entrypointInput)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "validating entrypoint: %s", entrypointInput))
+	}
+	virtualenv, err := validateVirtualenv(virtualenvInput)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "validating virtualenv: %s", virtualenvInput))
+	}
+
+	runtimeConfig := &pythonRuntimeConfig{buildTool: buildTool, dependencyTool: dependencyTool, entrypoint: entrypoint}
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
@@ -148,11 +200,15 @@ func main() {
 	// Resolve virtualenv path relative to root.
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
 
+	pythonDependencyTool, err := python.NewDependencyTool(runtimeConfig.dependencyTool)
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "could not create dependency tool"))
+	}
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath, runtimeConfig, pythonDependencyTool)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -186,10 +242,22 @@ type pythonLanguageHost struct {
 
 	// if non-empty, points to the resolved directory path of the virtualenv
 	virtualenvPath string
+
+	// The runtime configuration for the current program
+	runtimeConfig *pythonRuntimeConfig
+
+	// The tool which will be used to manage dependencies
+	dependencyTool python.DependencyTool
+}
+
+type pythonRuntimeConfig struct {
+	buildTool      string
+	dependencyTool string
+	entrypoint     string
 }
 
 func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
-	virtualenvPath string) pulumirpc.LanguageRuntimeServer {
+	virtualenvPath string, runtimeConfig *pythonRuntimeConfig, dependencyTool python.DependencyTool) pulumirpc.LanguageRuntimeServer {
 
 	return &pythonLanguageHost{
 		cwd:            cwd,
@@ -198,6 +266,8 @@ func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
 		tracing:        tracing,
 		virtualenv:     virtualenv,
 		virtualenvPath: virtualenvPath,
+		runtimeConfig:  runtimeConfig,
+		dependencyTool: dependencyTool,
 	}
 }
 
@@ -308,7 +378,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 		}
 
 		if err := python.InstallDependenciesWithWriters(ctx,
-			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
+			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter, host.dependencyTool); err != nil {
 			return err
 		}
 	}
@@ -852,7 +922,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	if err := python.InstallDependenciesWithWriters(server.Context(),
-		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
+		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr, host.dependencyTool); err != nil {
 		return err
 	}
 
