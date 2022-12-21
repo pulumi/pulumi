@@ -98,12 +98,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("python"),
 	},
 	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet("python", "go"),
-		SkipCompile: codegen.NewStringSet("dotnet", "nodejs"),
-	},
-	{
 		Directory:   "aws-optionals",
 		Description: "AWS get invoke with nested object constructor that takes an optional string",
 		// Testing Go behavior exclusively:

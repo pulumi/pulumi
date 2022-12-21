@@ -78,11 +78,9 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 				inputProps[lang] = props
 			}
 		}
-		if f.ReturnType != nil {
-			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				outputProps[lang] = mod.getPropertiesWithIDPrefixAndExclude(objectType.Properties, lang, false, false, false,
-					fmt.Sprintf("%s_result_", m.Name), nil)
-			}
+		if f.Outputs != nil {
+			outputProps[lang] = mod.getPropertiesWithIDPrefixAndExclude(f.Outputs.Properties, lang, false, false, false,
+				fmt.Sprintf("%s_result_", m.Name), nil)
 		}
 	}
 
@@ -326,7 +324,7 @@ func (mod *modContext) getMethodResult(r *schema.Resource, m *schema.Method) map
 
 	var resultTypeName string
 	for _, lang := range dctx.supportedLanguages {
-		if m.Function.ReturnType != nil {
+		if m.Function.Outputs != nil && len(m.Function.Outputs.Properties) > 0 {
 			def, err := mod.pkg.Definition()
 			contract.AssertNoError(err)
 			resultTypeName = dctx.getLanguageDocHelper(lang).GetMethodResultName(def, mod.mod, r, m)

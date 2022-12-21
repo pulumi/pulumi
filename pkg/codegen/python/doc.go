@@ -110,22 +110,15 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
 	m *schema.Method) string {
 
-	var returnType *schema.ObjectType
-	if m.Function.ReturnType != nil {
-		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-			returnType = objectType
-		}
-	}
-
 	if info, ok := pkg.Language["python"].(PackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
+		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
 			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
 				pkg:         pkg.Reference(),
 				mod:         modName,
 				typeDetails: typeDetails,
 			}
-			return mod.typeString(returnType.Properties[0].Type, false, false)
+			return mod.typeString(m.Function.Outputs.Properties[0].Type, false, false)
 		}
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))

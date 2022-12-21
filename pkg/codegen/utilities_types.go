@@ -32,11 +32,6 @@ func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen Set) {
 	}
 }
 
-func VisitType(schemaType schema.Type, visitor func(t schema.Type)) {
-	seen := Set{}
-	visitTypeClosure(schemaType, visitor, seen)
-}
-
 func VisitTypeClosure(properties []*schema.Property, visitor func(t schema.Type)) {
 	seen := Set{}
 	for _, p := range properties {

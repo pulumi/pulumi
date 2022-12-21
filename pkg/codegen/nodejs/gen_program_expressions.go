@@ -416,20 +416,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
-			if expr.Signature.MultiArgumentInputs {
-				var invokeArgs *model.ObjectConsExpression
-				// extract invoke args in case we have the form invoke("token", __convert(args))
-				if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
-					invokeArgs = objectArgs
-				} else {
-					// otherwise, we have the form invoke("token", args)
-					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
-				}
-
-				pcl.GenerateMultiArguments(g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr))
-			} else {
-				g.Fgenf(w, "%.v", expr.Args[1])
-			}
+			g.Fgenf(w, "%.v", expr.Args[1])
 		}
 		if len(expr.Args) == 3 {
 			g.Fgenf(w, ", %.v", expr.Args[2])

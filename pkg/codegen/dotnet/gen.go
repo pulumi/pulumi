@@ -1128,26 +1128,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		methodName := Title(method.Name)
 		fun := method.Function
 
-		var objectReturnType *schema.ObjectType
-
-		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-				objectReturnType = objectType
-			}
-		}
-
-		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
+		shouldLiftReturn := mod.liftSingleValueMethodReturns && fun.Outputs != nil && len(fun.Outputs.Properties) == 1
 
 		fmt.Fprintf(w, "\n")
 
 		returnType, typeParameter, lift := "void", "", ""
-		if fun.ReturnType != nil {
+		if fun.Outputs != nil {
 			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
-			if liftReturn {
+			if shouldLiftReturn {
 				returnType = fmt.Sprintf("global::Pulumi.Output<%s>",
-					mod.typeString(objectReturnType.Properties[0].Type, "", false, false, false))
+					mod.typeString(fun.Outputs.Properties[0].Type, "", false, false, false))
 
-				fieldName := mod.propertyName(objectReturnType.Properties[0])
+				fieldName := mod.propertyName(fun.Outputs.Properties[0])
 				lift = fmt.Sprintf(".Apply(v => v.%s)", fieldName)
 			} else {
 				returnType = fmt.Sprintf("global::Pulumi.Output%s", typeParameter)
@@ -1275,16 +1267,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		}
 
-		var objectReturnType *schema.ObjectType
-		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				objectReturnType = objectType
-			}
-		}
-
 		// Generate result type.
-		if objectReturnType != nil {
-			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(objectReturnType.Properties) == 1
+		if fun.Outputs != nil {
+			shouldLiftReturn := mod.liftSingleValueMethodReturns && len(fun.Outputs.Properties) == 1
 
 			comment, escape := fun.Inputs.Comment, true
 			if comment == "" {
@@ -1297,7 +1282,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				unescapeComment:       !escape,
 				name:                  fmt.Sprintf("%s%sResult", className, methodName),
 				propertyTypeQualifier: "Outputs",
-				properties:            objectReturnType.Properties,
+				properties:            fun.Outputs.Properties,
 				internal:              shouldLiftReturn,
 			}
 			resultType.genOutputType(w, 1)
@@ -1351,64 +1336,16 @@ func allOptionalInputs(fun *schema.Function) bool {
 	return true
 }
 
-func typeParamOrEmpty(typeParamName string) string {
-	if typeParamName != "" {
-		return fmt.Sprintf("<%s>", typeParamName)
-	}
-
-	return ""
-}
-
-func (mod *modContext) functionReturnType(fun *schema.Function) string {
-	className := tokenToFunctionName(fun.Token)
-	if fun.ReturnType != nil {
-		if _, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
-			// for object return types, assume a Result type is generated in the same class as it's function
-			// and reference it from here directly
-			return fmt.Sprintf("%sResult", className)
-		}
-
-		// otherwise, the object type is a reference to an output type
-		return mod.typeString(fun.ReturnType, "Outputs", false, false, true)
-	}
-
-	return ""
-}
-
-// runtimeInvokeFunction returns the name of the Invoke function to use at runtime
-// from the SDK for the given provider function. This is necessary because some
-// functions have simple return types such as number, string, array<string> etc.
-// and the SDK's Invoke function cannot handle these types since the engine expects
-// the result of invokes to be a dictionary.
-//
-// We use Invoke for functions with object return types and InvokeSingle for everything else.
-func runtimeInvokeFunction(fun *schema.Function) string {
-	switch fun.ReturnType.(type) {
-	// If the function has no return type, it is a void function.
-	case nil:
-		return "Invoke"
-	// If the function has an object return type, it is a normal invoke function.
-	case *schema.ObjectType:
-		return "Invoke"
-	// If the function has an object return type, it is also a normal invoke function.
-	// because the deserialization can handle it
-	case *schema.MapType:
-		return "Invoke"
-	default:
-		// Anything else needs to be handled by InvokeSingle
-		// which expects an object with a single property to be returned
-		// then unwraps the value from that property
-		return "InvokeSingle"
-	}
-}
-
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
 	fmt.Fprintf(w, "namespace %s\n", mod.tokenToNamespace(fun.Token, ""))
 	fmt.Fprintf(w, "{\n")
 
-	typeParameter := mod.functionReturnType(fun)
+	var typeParameter string
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
+		typeParameter = fmt.Sprintf("<%sResult>", className)
+	}
 
 	var argsParamDef string
 	argsParamRef := "InvokeArgs.Empty"
@@ -1426,65 +1363,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	if fun.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(fun.DeprecationMessage, `"`, `""`, -1))
 	}
-
-	// Open the class we'll use for data sources.
+	// Open the class we'll use for datasources.
 	fmt.Fprintf(w, "    public static class %s\n", className)
 	fmt.Fprintf(w, "    {\n")
 
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
-	invokeCall := runtimeInvokeFunction(fun)
-	if !fun.MultiArgumentInputs {
-		// Emit the datasource method.
-		// this is default behavior for all functions.
-		fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
-			typeParamOrEmpty(typeParameter), argsParamDef)
-		// new line and indent
-		fmt.Fprint(w, "            ")
-		fmt.Fprintf(w, "=> global::Pulumi.Deployment.Instance.%sAsync%s", invokeCall, typeParamOrEmpty(typeParameter))
-		fmt.Fprintf(w, "(\"%s\", %s, options.WithDefaults());\n", fun.Token, argsParamRef)
-	} else {
-		// multi-argument inputs and output property bag
-		// first generate the function definition
-		fmt.Fprintf(w, "        public static async Task%s InvokeAsync(", typeParamOrEmpty(typeParameter))
-		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
-			argumentType := mod.typeString(prop.Type, "", false, false, true)
-			paramDeclaration := fmt.Sprintf("%s %s", argumentType, argumentName)
-			if !prop.IsRequired() {
-				paramDeclaration += " = null"
-			}
 
-			fmt.Fprintf(w, "%s", paramDeclaration)
-			fmt.Fprint(w, ", ")
-		}
-
-		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
-
-		funcBodyIndent := func() {
-			fmt.Fprintf(w, "            ")
-		}
-
-		// now the function body
-		fmt.Fprint(w, "        {\n")
-		// generate a dictionary where each entry is a key-value pair made out of the inputs of the function
-		funcBodyIndent()
-		fmt.Fprint(w, "var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
-		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
-			funcBodyIndent()
-			fmt.Fprintf(w, "builder[\"%s\"] = %s;\n", prop.Name, argumentName)
-		}
-
-		funcBodyIndent()
-		fmt.Fprint(w, "var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
-		funcBodyIndent()
-		// full invoke call
-		fmt.Fprint(w, "return await global::Pulumi.Deployment.Instance.")
-		fmt.Fprintf(w, "%sAsync%s", invokeCall, typeParamOrEmpty(typeParameter))
-		fmt.Fprintf(w, "(\"%s\", args, invokeOptions.WithDefaults());\n", fun.Token)
-		fmt.Fprint(w, "        }\n")
-	}
+	// Emit the datasource method.
+	fmt.Fprintf(w, "        public static Task%s InvokeAsync(%sInvokeOptions? options = null)\n",
+		typeParameter, argsParamDef)
+	fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithDefaults());\n",
+		typeParameter, fun.Token, argsParamRef)
 
 	// Emit the Output method if needed.
 	err := mod.genFunctionOutputVersion(w, fun)
@@ -1496,7 +1386,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "    }\n")
 
 	// Emit the args and result types, if any.
-	if fun.Inputs != nil && !fun.MultiArgumentInputs {
+	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
 
 		args := &plainType{
@@ -1516,19 +1406,16 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		return err
 	}
 
-	if fun.ReturnType != nil {
-		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
+		fmt.Fprintf(w, "\n")
 
-			fmt.Fprintf(w, "\n")
-
-			res := &plainType{
-				mod:                   mod,
-				name:                  className + "Result",
-				propertyTypeQualifier: "Outputs",
-				properties:            objectType.Properties,
-			}
-			res.genOutputType(w, 1)
+		res := &plainType{
+			mod:                   mod,
+			name:                  className + "Result",
+			propertyTypeQualifier: "Outputs",
+			properties:            fun.Outputs.Properties,
 		}
+		res.genOutputType(w, 1)
 	}
 
 	// Close the namespace.
@@ -1547,59 +1434,26 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	if !fun.NeedsOutputVersion() {
 		return nil
 	}
+	className := tokenToFunctionName(fun.Token)
+
 	var argsDefault, sigil string
 	if allOptionalInputs(fun) {
 		// If the number of required input properties was zero, we can make the args object optional.
 		argsDefault, sigil = " = null", "?"
 	}
 
-	typeParameter := mod.functionReturnType(fun)
-	invokeCall := runtimeInvokeFunction(fun)
 	argsTypeName := functionOutputVersionArgsTypeName(fun)
 	outputArgsParamDef := fmt.Sprintf("%s%s args%s, ", argsTypeName, sigil, argsDefault)
 	outputArgsParamRef := fmt.Sprintf("args ?? new %s()", argsTypeName)
 
 	fmt.Fprintf(w, "\n")
+
 	// Emit the doc comment, if any.
 	printComment(w, fun.Comment, "        ")
-
-	if !fun.MultiArgumentInputs {
-		fmt.Fprintf(w, "        public static Output%s Invoke(%sInvokeOptions? options = null)\n",
-			typeParamOrEmpty(typeParameter), outputArgsParamDef)
-		fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.%s%s(\"%s\", %s, options.WithDefaults());\n",
-			invokeCall, typeParamOrEmpty(typeParameter), fun.Token, outputArgsParamRef)
-	} else {
-		fmt.Fprintf(w, "        public static Output%s Invoke(", typeParamOrEmpty(typeParameter))
-		for _, prop := range fun.Inputs.Properties {
-			var paramDeclaration string
-			argumentName := LowerCamelCase(prop.Name)
-			propertyType := &schema.InputType{ElementType: prop.Type}
-			argumentType := mod.typeString(propertyType, "", true /* input */, false, true)
-			if prop.IsRequired() {
-				paramDeclaration = fmt.Sprintf("%s %s", argumentType, argumentName)
-			} else {
-				paramDeclaration = fmt.Sprintf("%s? %s = null", argumentType, argumentName)
-			}
-
-			fmt.Fprintf(w, "%s", paramDeclaration)
-			fmt.Fprint(w, ", ")
-		}
-
-		fmt.Fprint(w, "InvokeOptions? invokeOptions = null)\n")
-
-		// now the function body
-		fmt.Fprint(w, "        {\n")
-		fmt.Fprint(w, "            var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
-		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
-			fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
-		}
-		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
-		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults());\n",
-			invokeCall, typeParamOrEmpty(typeParameter), fun.Token)
-		fmt.Fprint(w, "        }\n")
-	}
-
+	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
+		className, outputArgsParamDef)
+	fmt.Fprintf(w, "            => global::Pulumi.Deployment.Instance.Invoke<%sResult>(\"%s\", %s, options.WithDefaults());\n",
+		className, fun.Token, outputArgsParamRef)
 	return nil
 }
 
@@ -1609,21 +1463,18 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 		return nil
 	}
 
-	if !fun.MultiArgumentInputs {
-		applyArgs := &plainType{
-			mod:                   mod,
-			name:                  functionOutputVersionArgsTypeName(fun),
-			propertyTypeQualifier: "Inputs",
-			baseClass:             "InvokeArgs",
-			properties:            fun.Inputs.InputShape.Properties,
-			args:                  true,
-		}
-
-		if err := applyArgs.genInputTypeWithFlags(w, 1, true /* generateInputAttributes */); err != nil {
-			return err
-		}
+	applyArgs := &plainType{
+		mod:                   mod,
+		name:                  functionOutputVersionArgsTypeName(fun),
+		propertyTypeQualifier: "Inputs",
+		baseClass:             "InvokeArgs",
+		properties:            fun.Inputs.InputShape.Properties,
+		args:                  true,
 	}
 
+	if err := applyArgs.genInputTypeWithFlags(w, 1, true /* generateInputAttributes */); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2319,13 +2170,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		if f.Inputs != nil {
 			computePropertyNames(f.Inputs.Properties, propertyNames)
 		}
-		if f.ReturnType != nil {
-			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				computePropertyNames(objectType.Properties, propertyNames)
-			}
+		if f.Outputs != nil {
+			computePropertyNames(f.Outputs.Properties, propertyNames)
 		}
 	}
-
 	for _, t := range pkg.Types {
 		if obj, ok := t.(*schema.ObjectType); ok {
 			computePropertyNames(obj.Properties, propertyNames)
@@ -2439,24 +2287,12 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				})
 			}
 		}
-		if f.ReturnType != nil {
-			// special case where the return type is defined inline with the function
-			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && f.InlineObjectAsReturnType {
-				visitObjectTypes(objectType.Properties, func(t *schema.ObjectType) {
-					details := getModFromToken(t.Token, t.PackageReference).details(t)
-					details.outputType = true
-					details.plainType = true
-				})
-			} else {
-				// otherwise, the return type is a reference to a type defined elsewhere
-				codegen.VisitType(f.ReturnType, func(schemaType schema.Type) {
-					if t, ok := schemaType.(*schema.ObjectType); ok {
-						details := getModFromToken(t.Token, t.PackageReference).details(t)
-						details.outputType = true
-						details.plainType = true
-					}
-				})
-			}
+		if f.Outputs != nil {
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {
+				details := getModFromToken(t.Token, t.PackageReference).details(t)
+				details.outputType = true
+				details.plainType = true
+			})
 		}
 	}
 
