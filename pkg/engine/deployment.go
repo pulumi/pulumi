@@ -60,6 +60,10 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		return "", "", nil, err
 	}
 
+	ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+		return []grpc.DialOption{}
+	}
+
 	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
@@ -68,10 +72,24 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 		if err != nil {
 			return "", "", nil, err
 		}
+		oldOptions := ctx.DialOptions
 		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
-			return di.DialOptions(interceptors.LogOptions{
+			more := di.DialOptions(interceptors.LogOptions{
 				Metadata: metadata,
 			})
+			return append(oldOptions(metadata), more...)
+		}
+	}
+
+	if replayFile := os.Getenv("PULUMI_REPLAY_GRPC"); replayFile != "" {
+		i, err := interceptors.NewReplayInterceptor(interceptors.ReplayInterceptorOptions{})
+		if err != nil {
+			return "", "", nil, err
+		}
+		oldOptions := ctx.DialOptions
+		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+			more := i.DialOptions()
+			return append(oldOptions(metadata), more...)
 		}
 	}
 
