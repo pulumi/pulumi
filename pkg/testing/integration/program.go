@@ -2487,7 +2487,7 @@ func withRecordReplaySetup(pt *ProgramTester, name string, cmd []string) *Progra
 		return pt
 	}
 
-	// Compute hash of name, cmd, wd to unqiuely identify a Pulumi command.
+	// Compute hash of name, cmd, wd to uniquely identify a Pulumi command.
 	var hash string
 	{
 		var buf bytes.Buffer
