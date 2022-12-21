@@ -1,4 +1,4 @@
-283055245 2069 proto/build-container/Dockerfile
+3850377987 2069 proto/build-container/Dockerfile
 3003861496 625 proto/build-container/scripts/install-go.sh
 853251015 873 proto/build-container/scripts/install-node.sh
 2003827277 549 proto/build-container/scripts/install-packages.sh
