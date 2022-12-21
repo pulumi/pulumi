@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -575,7 +575,7 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span) [
 		tracingSpan,
 		otgrpc.SpanDecorator(decorateResourceSpans),
 	)
-	if logFile := os.Getenv("PULUMI_DEBUG_GRPC"); logFile != "" {
+	if logFile := env.DebugGRPC.Value(); logFile != "" {
 		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
 			LogFile: logFile,
 			Mutex:   ctx.DebugTraceMutex,

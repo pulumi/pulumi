@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -252,12 +253,12 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 
 // This test checks that we only write the Checkpoint once whether or
 // not there are important changes when asked to via
-// pulumiSkipCheckpointsEnvVar.
+// env.SkipCheckpoints.
 //
 //nolint:paralleltest // mutates environment variables
 func TestWriteCheckpointOnceUnsafe(t *testing.T) {
-	t.Setenv("PULUMI_EXPERIMENTAL", "1")
-	t.Setenv(pulumiSkipCheckpointsEnvVar, "1")
+	t.Setenv(env.Experimental.Var().Name(), "1")
+	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
 
 	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")
 	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgUnsafe", "id"
