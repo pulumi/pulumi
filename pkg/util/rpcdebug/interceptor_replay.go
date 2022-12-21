@@ -37,6 +37,7 @@ type ReplayInterceptorOptions struct {
 }
 
 type ReplayInterceptor struct {
+	logFile string
 	entries []debugInterceptorLogEntry
 	mutex   *sync.Mutex
 }
@@ -66,6 +67,7 @@ func NewReplayInterceptor(opts ReplayInterceptorOptions) (*ReplayInterceptor, er
 		return nil, err
 	}
 	return &ReplayInterceptor{
+		logFile: opts.LogFile,
 		entries: entries,
 		mutex:   opts.Mutex,
 	}, nil
@@ -84,8 +86,8 @@ func (i *ReplayInterceptor) ClientInterceptor(opts LogOptions) grpc.UnaryClientI
 			found, _, entry := i.popEntry(method, reqJ, opts.Metadata)
 			if !found {
 				return status.Errorf(codes.FailedPrecondition,
-					"Cannot find matching logs of a call with method=%q reqJ=%s metadata=%v",
-					method, reqJ, opts.Metadata)
+					"No matching logs of a call with method=%q req=%s metadata=%v in %q",
+					method, reqJ, opts.Metadata, i.logFile)
 			}
 
 			if i.isUnimplemented(entry) {
