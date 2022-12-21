@@ -82,13 +82,18 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	}
 
 	if replayFile := os.Getenv("PULUMI_REPLAY_GRPC"); replayFile != "" {
-		i, err := interceptors.NewReplayInterceptor(interceptors.ReplayInterceptorOptions{})
+		i, err := interceptors.NewReplayInterceptor(interceptors.ReplayInterceptorOptions{
+			LogFile: replayFile,
+			Mutex:   ctx.DebugTraceMutex,
+		})
 		if err != nil {
 			return "", "", nil, err
 		}
 		oldOptions := ctx.DialOptions
 		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
-			more := i.DialOptions()
+			more := i.DialOptions(interceptors.LogOptions{
+				Metadata: metadata,
+			})
 			return append(oldOptions(metadata), more...)
 		}
 	}
