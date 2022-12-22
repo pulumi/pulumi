@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.50.1 (2022-12-21)
+
+
+### Bug Fixes
+
+- [cli/display] Fix flickering in the interactive display
+  [#11695](https://github.com/pulumi/pulumi/pull/11695)
+
+- [cli/plugin] Fix check of executable bits on Windows.
+  [#11692](https://github.com/pulumi/pulumi/pull/11692)
+
+- [codegen] Revert change to codegen schema spec.
+   [#11701](https://github.com/pulumi/pulumi/pull/11701)
+
 ## 3.50.0 (2022-12-19)
 
 We're approaching the end of 2022, and this is the final minor release scheduled for the year! 🎸
