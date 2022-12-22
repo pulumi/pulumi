@@ -15,10 +15,7 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -39,13 +36,12 @@ func (k ConversionKind) Exists() bool {
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
 // equal values.
 type Type interface {
-	fmt.Stringer
 	Definition
 
 	Equals(other Type) bool
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
-	Pretty() pretty.Formatter
+	String() string
 
 	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)

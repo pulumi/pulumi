@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -97,14 +96,6 @@ func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 		}
 		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
-}
-
-func (t *SetType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
-		Prefix:  "set(",
-		Value:   t.ElementType.Pretty(),
-		Postfix: ")",
-	}
 }
 
 func (t *SetType) String() string {
