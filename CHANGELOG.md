@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.50.2 (2022-12-21)
+
+Happy holidays! The Pulumi team thanks grpc maintainers for addressing build issues and publishing wheels on macOS.
+
+### Miscellaneous
+
+- [sdk/python] Fix error installing SDK when using Python 3.11, bumping `grpcio` dependency.
+  [#11431](https://github.com/pulumi/pulumi/pull/11431)
+
 ## 3.50.0 (2022-12-19)
 
 We're approaching the end of 2022, and this is the final minor release scheduled for the year! 🎸
