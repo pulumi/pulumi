@@ -21,12 +21,20 @@ import "encoding/json"
 type APICapability string
 
 const (
+	// Deprecated. Use DeltaCheckpointUploadsV2.
+	//DeltaCheckpointUploads APICapability = "delta-checkpoint-uploads"
+
 	// DeltaCheckpointUploads is the feature that enables the CLI to upload checkpoints
 	// via the PatchUpdateCheckpointDeltaRequest API to save on network bytes.
-	DeltaCheckpointUploads APICapability = "delta-checkpoint-uploads"
+	DeltaCheckpointUploadsV2 APICapability = "delta-checkpoint-uploads-v2"
 )
 
-type DeltaCheckpointUploadsConfigV1 struct {
+// Deprecated. Use DeltaCheckpointUploadsConfigV2.
+// type DeltaCheckpointUploadsConfigV1 struct {
+// 	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
+// }
+
+type DeltaCheckpointUploadsConfigV2 struct {
 	// CheckpointCutoffSizeBytes defines the size of a checkpoint file, in bytes,
 	// at which the CLI should cutover to using delta checkpoint uploads.
 	CheckpointCutoffSizeBytes int `json:"checkpointCutoffSizeBytes"`
