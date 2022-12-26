@@ -1022,3 +1022,12 @@ export function jsonStringify(obj: Input<any>, replacer?: (this: any, key: strin
         return JSON.stringify(o, replacer, space);
     });
 }
+
+/**
+ * [jsonParse] Uses JSON.parse to deserialize the given Input JSON string into a value.
+ */
+export function jsonParse(text: Input<string>, reviver?: (this: any, key: string, value: any) => any): Output<any> {
+    return output(text).apply(t => {
+        return JSON.parse(t, reviver);
+    });
+}

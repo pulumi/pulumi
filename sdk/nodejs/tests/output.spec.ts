@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret, jsonStringify } from "../output";
+import { all, concat, interpolate, isSecret, jsonParse, jsonStringify, Output, output, secret, unknown, unsecret } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 
@@ -921,6 +921,30 @@ describe("output", () => {
             // We should have just the one mockResource in this set
             assert.strictEqual(allResources.size, 1)
             assert.ok(allResources.has(mockResource))
+        });
+    });
+
+    describe("jsonParse", () => {
+        it ("basic", async () => {
+            const x = output("[0, 1]")
+            const result = jsonParse(x)
+            assert.deepStrictEqual(await result.promise(), [0, 1]);
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
+        });
+
+        it ("with reviver", async () => {
+            const reviver = (key: string, value: any ): any => {
+                if (key === "bob") {
+                    return "goodbye";
+                }
+                return value;
+            }
+            const x = output("{\"bob\": \"hello\"}")
+            const result = jsonParse(x, reviver)
+            assert.deepStrictEqual(await result.promise(), { bob: "goodbye" })
+            assert.strictEqual(await result.isKnown, true);
+            assert.strictEqual(await result.isSecret, false);
         });
     });
 
