@@ -319,7 +319,11 @@ func completeNodeJSInstall(ctx context.Context, finalDir string) error {
 
 func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
 	const venvDir = "venv"
-	if err := python.InstallDependencies(ctx, finalDir, venvDir, false /*showOutput*/); err != nil {
+	dependencyTool, err := python.NewDependencyTool("pip")
+	if err != nil {
+		return err
+	}
+	if err := python.InstallDependencies(ctx, finalDir, venvDir, false /*showOutput*/, dependencyTool); err != nil {
 		return err
 	}
 

@@ -52,7 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 const (
@@ -1202,10 +1201,10 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 				os.Stderr.Write(b.Bytes())
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
-		case "python":
-			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
-				return errors.Wrap(err, "installing plugin dependencies")
-			}
+			// case "python":
+			// if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
+			// return errors.Wrap(err, "installing plugin dependencies")
+			// }
 		}
 	}
 
