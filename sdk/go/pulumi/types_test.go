@@ -1128,3 +1128,23 @@ func TestJSONMarshalNested(t *testing.T) {
 	assert.Nil(t, deps)
 	assert.Nil(t, v)
 }
+
+func TestJSONUnmarshalBasic(t *testing.T) {
+	t.Parallel()
+
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve("[0, 1]")
+	}()
+	str := out.ApplyT(func(str interface{}) (string, error) {
+		return str.(string), nil
+	}).(StringOutput)
+	json := JSONUnmarshal(str)
+	v, known, secret, deps, err := await(json)
+	assert.Nil(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.NotNil(t, v)
+	assert.Equal(t, []interface{}{0.0, 1.0}, v.([]interface{}))
+}
