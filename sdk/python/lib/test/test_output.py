@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import asyncio
+import json
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
 from pulumi.runtime import rpc, rpc_manager, settings
-from pulumi import Output
+
 import pulumi
+from pulumi import Output
 
 
 def pulumi_test(coro):
@@ -297,7 +298,7 @@ class OutputFormatTests(unittest.TestCase):
         x_val = await x.future()
         self.assertEqual(x_val, "1, hi")
 
-class OutputJsonTests(unittest.TestCase):
+class OutputJsonDumpsTests(unittest.TestCase):
     @pulumi_test
     async def test_basic(self):
         i = Output.from_input([0, 1])
@@ -315,14 +316,14 @@ class OutputJsonTests(unittest.TestCase):
 
     class CustomEncoder(json.JSONEncoder):
         def default(self, o):
-            if isinstance(o, OutputJsonTests.CustomClass):
+            if isinstance(o, OutputJsonDumpsTests.CustomClass):
                 return (o.a, o.b)
             return json.JSONEncoder.default(self, o)
 
     @pulumi_test
     async def test_nested(self):
-        i = Output.from_input(OutputJsonTests.CustomClass(Output.from_input(0), Output.from_input(1)))
-        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(Output.from_input(0), Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
         self.assertEqual(await x.future(), "[0, 1]")
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), True)
@@ -335,8 +336,8 @@ class OutputJsonTests(unittest.TestCase):
         is_known.set_result(False)
         unknown = Output(resources=set(), future=future, is_known=is_known)
 
-        i = Output.from_input(OutputJsonTests.CustomClass(unknown, Output.from_input(1)))
-        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(unknown, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), False)
 
@@ -348,8 +349,8 @@ class OutputJsonTests(unittest.TestCase):
         future_true.set_result(True)
         inner = Output(resources=set(), future=future, is_known=future_true, is_secret=future_true)
 
-        i = Output.from_input(OutputJsonTests.CustomClass(inner, Output.from_input(1)))
-        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
         self.assertEqual(await x.future(), "[0, 1]")
         self.assertEqual(await x.is_secret(), True)
         self.assertEqual(await x.is_known(), True)
@@ -363,9 +364,18 @@ class OutputJsonTests(unittest.TestCase):
         resource = object()
         inner = Output(resources=set([resource]), future=future, is_known=future_true)
 
-        i = Output.from_input(OutputJsonTests.CustomClass(inner, Output.from_input(1)))
-        x = Output.json_dumps(i, cls=OutputJsonTests.CustomEncoder)
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
         self.assertEqual(await x.future(), "[0, 1]")
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), True)
         self.assertIn(resource, await x.resources())
+
+class OutputJsonLoadsTests(unittest.TestCase):
+    @pulumi_test
+    async def test_basic(self):
+        i = Output.from_input("[0, 1]")
+        x = Output.json_loads(i)
+        self.assertEqual(await x.future(), [0, 1])
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
