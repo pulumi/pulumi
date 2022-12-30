@@ -97,11 +97,11 @@ func TestDepRootCalc(t *testing.T) {
 func TestGoModEdits(t *testing.T) {
 	t.Parallel()
 
-	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
-	gopath, err := GoPath()
-	require.NoError(t, err)
-
 	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	depRoot := filepath.Clean(filepath.Join(cwd, "../../../.."))
+
+	gopath, err := GoPath()
 	require.NoError(t, err)
 
 	// Were we to commit this go.mod file, `make tidy` would fail, and we should keep the complexity
