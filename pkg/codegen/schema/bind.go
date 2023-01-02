@@ -1547,7 +1547,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	var inlineObjectAsReturnType bool
 	var returnType Type
-	if spec.ReturnType != nil {
+	if spec.ReturnType != nil && spec.Outputs == nil {
 		// compute the return type from the spec
 		if spec.ReturnType.ObjectTypeSpec != nil {
 			// bind as an object type
@@ -1571,6 +1571,15 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 			// indicates a logical bug in our marshaling code.
 			return nil, diags, fmt.Errorf("error binding outputs for function %v: invalid return type", token)
 		}
+	} else if spec.Outputs != nil {
+		// bind the outputs when the specs don't rely on the new ReturnType field
+		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+		diags = diags.Extend(outDiags)
+		if err != nil {
+			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+		}
+		outputs = outs
+		returnType = outs
 	}
 
 	fn := &Function{

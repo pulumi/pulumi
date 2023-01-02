@@ -571,6 +571,50 @@ func TestIsOverlay(t *testing.T) {
 	})
 }
 
+func TestBindingOutputsPopulatesReturnType(t *testing.T) {
+	t.Parallel()
+
+	// Test that using Outputs in PackageSpec correctly populates the return type of the function.
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Functions: map[string]FunctionSpec{
+			"xyz:index:abs": {
+				MultiArgumentInputs: []string{"value"},
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							TypeSpec: TypeSpec{
+								Type: "number",
+							},
+						},
+					},
+				},
+				Outputs: &ObjectTypeSpec{
+					Required: []string{"result"},
+					Properties: map[string]PropertySpec{
+						"result": {
+							TypeSpec: TypeSpec{
+								Type: "number",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, err := ImportSpec(pkgSpec, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.NotNil(t, pkg.Functions[0].ReturnType)
+	objectType, ok := pkg.Functions[0].ReturnType.(*ObjectType)
+	assert.True(t, ok)
+	assert.Equal(t, NumberType, objectType.Properties[0].Type)
+}
+
 // Tests that the method ReplaceOnChanges works as expected. Does not test
 // codegen.
 func TestReplaceOnChanges(t *testing.T) {
