@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -40,7 +41,6 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -91,7 +91,7 @@ func main() {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "getting the working directory"))
+		cmdutil.Exit(fmt.Errorf("getting the working directory: %w", err))
 	}
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
@@ -110,13 +110,13 @@ func main() {
 		// By default, the -exec script is installed next to the language host.
 		thisPath, err := os.Executable()
 		if err != nil {
-			err = errors.Wrap(err, "could not determine current executable")
+			err = fmt.Errorf("could not determine current executable: %w", err)
 			cmdutil.Exit(err)
 		}
 
 		pathExec := filepath.Join(filepath.Dir(thisPath), pythonDefaultExec)
 		if _, err = os.Stat(pathExec); os.IsNotExist(err) {
-			err = errors.Errorf("missing executor %s", pathExec)
+			err = fmt.Errorf("missing executor %s: %w", pathExec, err)
 			cmdutil.Exit(err)
 		}
 
@@ -142,7 +142,7 @@ func main() {
 	}()
 	err = rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
 	}
 
 	// Resolve virtualenv path relative to root.
@@ -159,7 +159,7 @@ func main() {
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
@@ -167,7 +167,7 @@ func main() {
 
 	// And finally wait for the server to stop serving.
 	if err := <-handle.Done; err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
+		cmdutil.Exit(fmt.Errorf("language host RPC stopped serving: %w", err))
 	}
 }
 
@@ -263,7 +263,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			return err
 		}
 	} else if !info.IsDir() {
-		return errors.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenv)
+		return fmt.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenv)
 	}
 
 	// If the virtual environment directory exists, but is empty, it needs to be created.
@@ -284,7 +284,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
-			return errors.Wrapf(err, "language host could not make connection to engine")
+			return fmt.Errorf("language host could not make connection to engine: %w", err)
 		}
 
 		// Make a client around that connection.
@@ -400,7 +400,7 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
 	output, err := runPythonCommand(ctx, virtualenv, cwd, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "calling `python %s`", strings.Join(args, " "))
+		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(args, " "), err)
 	}
 
 	// Parse the JSON output; on some systems pip -v verbose mode
@@ -409,7 +409,7 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 	var packages []pythonPackage
 	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
 	if err := jsonDecoder.Decode(&packages); err != nil {
-		return nil, errors.Wrapf(err, "parsing `python %s` output", strings.Join(args, " "))
+		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(args, " "), err)
 	}
 
 	// Only return Pulumi packages.
@@ -653,12 +653,12 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	config, err := host.constructConfig(req)
 	if err != nil {
-		err = errors.Wrap(err, "failed to serialize configuration")
+		err = fmt.Errorf("failed to serialize configuration: %w", err)
 		return nil, err
 	}
 	configSecretKeys, err := host.constructConfigSecretKeys(req)
 	if err != nil {
-		err = errors.Wrap(err, "failed to serialize configuration secret keys")
+		err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
 		return nil, err
 	}
 
@@ -715,19 +715,19 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 				switch status.ExitStatus() {
 				case 0:
 					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
-					err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+					err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
 				case pythonProcessExitedAfterShowingUserActionableMessage:
 					return &pulumirpc.RunResponse{Error: "", Bail: true}, nil
 				default:
-					err = errors.Errorf("Program exited with non-zero exit code: %d", status.ExitStatus())
+					err = fmt.Errorf("program exited with non-zero exit code: %d", status.ExitStatus())
 				}
 			} else {
-				err = errors.Wrapf(exiterr, "Program exited unexpectedly")
+				err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
 			}
 		} else {
 			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
 			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-			err = errors.Wrapf(err, "Problem executing program (could not run language executor)")
+			err = fmt.Errorf("problem executing program (could not run language executor): %w", err)
 		}
 
 		errResult = err.Error()

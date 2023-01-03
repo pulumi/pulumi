@@ -16,6 +16,7 @@ package python
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -68,8 +68,8 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
 		}
 		if err != nil {
-			return "", "", errors.Errorf(
-				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+			return "", "", fmt.Errorf(
+				"failed to locate any of %q on your PATH. Have you installed Python 3.6 or greater?",
 				pythonCmds)
 		}
 	}
@@ -129,7 +129,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 				path := filepath.Join(dir, pythonCmd+ext)
 				_, err := os.Lstat(path)
 				if err != nil && !os.IsNotExist(err) {
-					return "", "", errors.Wrap(err, "evaluating python execution alias")
+					return "", "", fmt.Errorf("evaluating python execution alias: %w", err)
 				}
 				if os.IsNotExist(err) {
 					continue
@@ -181,7 +181,7 @@ func NewVirtualEnvError(dir, fullPath string) error {
 		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel\n", venvPythonBin) +
 		fmt.Sprintf("    3. %s -m pip install -r requirements.txt\n", venvPythonBin)
 
-	return errors.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
+	return fmt.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
 		"run the following commands to create the virtual environment and install dependencies into it:\n\n%s\n\n"+
 		"For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments",
 		dir, fullPath, message, commandsText)
@@ -248,7 +248,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		if len(output) > 0 {
 			fmt.Fprintf(errorWriter, "%s\n", string(output))
 		}
-		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
+		return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
 	}
 
 	print("Finished creating virtual environment")
@@ -259,7 +259,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
 		wrapError := func(err error) error {
-			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
+			return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
 		}
 
 		if showOutput {
