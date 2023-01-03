@@ -106,7 +106,7 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 }
 
 func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.UntypedDeployment, error) {
-	sm, err := passphrase.NewPassphaseSecretsManager(phrase, state)
+	sm, err := passphrase.NewPassphraseSecretsManager(phrase, state)
 	if err != nil {
 		return nil, err
 	}

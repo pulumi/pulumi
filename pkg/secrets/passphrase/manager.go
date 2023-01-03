@@ -142,7 +142,7 @@ func setCachedSecretsManager(state string, sm secrets.Manager) {
 	cache[state] = sm
 }
 
-func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
+func NewPassphraseSecretsManager(phrase string, state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
 	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
@@ -181,7 +181,7 @@ func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error)
 			return nil, phraseErr
 		}
 
-		sm, smerr := NewPassphaseSecretsManager(phrase, state)
+		sm, smerr := NewPassphraseSecretsManager(phrase, state)
 		switch {
 		case interactive && smerr == ErrIncorrectPassphrase:
 			cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
@@ -194,10 +194,10 @@ func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error)
 	}
 }
 
-// NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
+// NewPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
-func NewPromptingPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
+func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s localSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
@@ -270,7 +270,7 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
 
 	// Create the secrets manager using the state.
-	sm, err := NewPassphaseSecretsManager(phrase, state)
+	sm, err := NewPassphraseSecretsManager(phrase, state)
 	if err != nil {
 		return "", nil, err
 	}
