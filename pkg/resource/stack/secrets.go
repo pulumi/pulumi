@@ -51,7 +51,7 @@ func (defaultSecretsProvider) OfType(ty string, state json.RawMessage) (secrets.
 	case b64.Type:
 		sm = b64.NewBase64SecretsManager()
 	case passphrase.Type:
-		sm, err = passphrase.NewPromptingPassphaseSecretsManagerFromState(state)
+		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
 		sm, err = service.NewServiceSecretsManagerFromState(state)
 	case cloud.Type:

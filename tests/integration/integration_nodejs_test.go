@@ -705,7 +705,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
 			assert.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
@@ -722,7 +722,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
 			assert.Error(t, err)
 		},
 	})
