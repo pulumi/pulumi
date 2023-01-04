@@ -5,7 +5,6 @@ This directory contains Pulumi SDKs for the following languages:
 * [Node.js](./nodejs)
 * [Python](./python)
 * [Go](./go)
-* [.NET](./dotnet)
 
 See the respective `README`s for information about installing and using these libraries.
 
