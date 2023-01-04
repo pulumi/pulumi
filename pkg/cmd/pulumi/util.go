@@ -191,7 +191,7 @@ func createSecretsManager(
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, phraseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(),
+		if _, phraseErr := passphrase.NewPromptingPassphraseSecretsManager(stack.Ref().Name(),
 			configFile, rotateSecretsProvider); phraseErr != nil {
 			return phraseErr
 		}

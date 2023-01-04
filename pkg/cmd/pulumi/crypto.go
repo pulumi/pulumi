@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -68,7 +67,7 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		}
 
 		if ps.EncryptionSalt != "" {
-			return filestate.NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
+			return passphrase.NewPromptingPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
 		}
 
 		return s.DefaultSecretManager(configFile)
