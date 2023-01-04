@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.51.0 (2023-01-04)
+
+Happy New Years from the Pulumi team!  This is our first release of 2023, and we're very excited for all the things to come this year.
+
+### Features
+
+- [sdk/nodejs] Add output jsonParse using JSON.parse.
+  [#11735](https://github.com/pulumi/pulumi/pull/11735)
+
 ## 3.50.1 (2022-12-21)
 
 
