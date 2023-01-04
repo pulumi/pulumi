@@ -1768,7 +1768,7 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 // Represents feature-detected capabilities of the service the backend is connected to.
 type capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
-	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV1
+	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
@@ -1817,10 +1817,21 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 		case apitype.DeltaCheckpointUploads:
 			var cap apitype.DeltaCheckpointUploadsConfigV1
 			if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
-				msg := "decoding DeltaCheckpointUploadsConfigV1 returned %w"
+				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
 				return capabilities{}, fmt.Errorf(msg, err)
 			}
-			parsed.deltaCheckpointUpdates = &cap
+			parsed.deltaCheckpointUpdates = &apitype.DeltaCheckpointUploadsConfigV2{
+				CheckpointCutoffSizeBytes: cap.CheckpointCutoffSizeBytes,
+			}
+		case apitype.DeltaCheckpointUploadsV2:
+			if entry.Version == 2 {
+				var cap apitype.DeltaCheckpointUploadsConfigV2
+				if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
+					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
+					return capabilities{}, fmt.Errorf(msg, err)
+				}
+				parsed.deltaCheckpointUpdates = &cap
+			}
 		default:
 			continue
 		}
