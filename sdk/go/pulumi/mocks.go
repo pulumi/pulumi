@@ -1,11 +1,11 @@
 package pulumi
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -109,7 +109,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		urn := args["urn"].StringValue()
 		registeredResourceV, ok := m.resources.Load(urn)
 		if !ok {
-			return nil, errors.Errorf("unknown resource %s", urn)
+			return nil, fmt.Errorf("unknown resource %s", urn)
 		}
 		registeredResource := registeredResourceV.(resource.PropertyMap)
 		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
