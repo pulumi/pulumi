@@ -256,9 +256,10 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			}
 			o.cond.Wait()
 		}
+		odeps := o.deps
 		o.cond.L.Unlock()
 
-		deps = mergeDependencies(deps, o.deps)
+		deps = mergeDependencies(deps, odeps)
 		known = known && o.known
 		secret = secret || o.secret
 		if !o.known || o.err != nil {
@@ -282,6 +283,10 @@ func (o *OutputState) getState() *OutputState {
 }
 
 func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
+	if deps == nil && len(deps) != 0 {
+		panic(fmt.Sprintf("data race detected - please report to https://github.com/pulumi/pulumi/issues: deps is nil with len %d", len(deps)))
+	}
+
 	if join != nil {
 		join.Add(1)
 	}
