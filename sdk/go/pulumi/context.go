@@ -219,6 +219,12 @@ func (ctx *Context) Parallel() int { return ctx.info.Parallel }
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
 func (ctx *Context) DryRun() bool { return ctx.info.DryRun }
 
+// RunningWithMocks is true if the program is running using a Mock monitor instead of a real Pulumi engine.
+func (ctx *Context) RunningWithMocks() bool {
+	_, isMockMonitor := ctx.monitor.(*mockMonitor)
+	return isMockMonitor
+}
+
 // GetConfig returns the config value, as a string, and a bool indicating whether it exists or not.
 func (ctx *Context) GetConfig(key string) (string, bool) {
 	v, ok := ctx.info.Config[key]
