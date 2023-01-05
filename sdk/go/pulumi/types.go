@@ -238,42 +238,49 @@ func (o *OutputState) reject(err error) {
 	o.fulfill(nil, true, false, nil, err)
 }
 
+// awaitOnce is a single iteration of the "await" loop, using the condition variable as a lock to
+// guard accessing the fields to avoid tearing reads and writes.
+func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	if o == nil {
+		// If the state is nil, treat its value as resolved and unknown.
+		return nil, false, false, nil, nil
+	}
+
+	o.cond.L.Lock()
+	defer o.cond.L.Unlock()
+	for o.state == outputPending {
+		if ctx.Err() != nil {
+			return nil, true, false, nil, ctx.Err()
+		}
+		o.cond.Wait()
+	}
+
+	return o.value, o.known, o.secret, o.deps, o.err
+}
+
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
 
 	for {
-		if o == nil {
-			// If the state is nil, treat its value as resolved and unknown.
-			return nil, false, false, nil, nil
-		}
-
-		o.cond.L.Lock()
-		for o.state == outputPending {
-			if ctx.Err() != nil {
-				return nil, true, false, nil, ctx.Err()
-			}
-			o.cond.Wait()
-		}
-		odeps := o.deps
-		o.cond.L.Unlock()
-
-		deps = mergeDependencies(deps, odeps)
-		known = known && o.known
-		secret = secret || o.secret
-		if !o.known || o.err != nil {
-			return nil, known, secret, deps, o.err
+		v, k, s, d, err := o.awaitOnce(ctx)
+		value := v
+		known = known && k
+		secret = secret || s
+		deps = mergeDependencies(deps, d)
+		if !known || err != nil {
+			return nil, known, secret, deps, err
 		}
 
 		// If the result is an Output, await it in turn.
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		if ov, ok := o.value.(Output); ok {
+		if ov, ok := value.(Output); ok {
 			o = ov.getState()
 		} else {
-			return o.value, true, secret, deps, nil
+			return value, known, secret, deps, nil
 		}
 	}
 }
