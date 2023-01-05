@@ -286,6 +286,10 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 		join.Add(1)
 	}
 
+	if deps == nil && len(deps) != 0 {
+		panic(fmt.Sprintf("data race detected: deps is nil with len %d", len(deps)))
+	}
+
 	var m sync.Mutex
 	out := &OutputState{
 		join:    join,
