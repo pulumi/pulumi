@@ -87,7 +87,7 @@ func titleLookup(shortName string) (string, bool) {
 		"cloudflare":                           "Cloudflare",
 		"cloudinit":                            "cloud-init",
 		"confluentcloud":                       "Confluent Cloud",
-		"confluent":                            "Deprecated Confluent Cloud",
+		"confluent":                            "Confluent Cloud (Deprecated)",
 		"consul":                               "HashiCorp Consul",
 		"coredns-helm":                         "CoreDNS (Helm)",
 		"datadog":                              "Datadog",
