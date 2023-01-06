@@ -212,7 +212,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 		}
 	}
 
-	sig.MultiArgumentInputs = fn.MultiArgumentInputs
+	// sig.MultiArgumentInputs = fn.MultiArgumentInputs
 	return sig, nil
 }
 

@@ -830,7 +830,9 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "}\n")
 			}
 		case "call":
-			g.Fgenf(w, "%s, err %s %.3v;\n", expr.Res, assignment, expr)
+			// g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr.Res)
+			g.Fgenf(w, "%s, err %s n", name, assignment)
+			g.Fprintf(w, "%s.%v\n", expr.Res, expr)
 			g.isErrAssigned = true
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
