@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // changes directory for process
@@ -708,6 +709,71 @@ func TestSetFail(t *testing.T) {
 
 			_, err := parseConfig(test.Array, true /*path*/)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestErrorIfNotEmptyDirectory(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc  string
+		files []string
+		dirs  []string
+		ok    bool
+	}{
+		{
+			desc: "empty",
+			ok:   true,
+		},
+		{
+			desc:  "non-empty",
+			files: []string{"foo"},
+			dirs:  []string{"bar"},
+			ok:    false,
+		},
+		{
+			desc: "empty git repository",
+			dirs: []string{".git"},
+			ok:   true,
+		},
+		{
+			desc:  "non-empty git repository",
+			dirs:  []string{".git"},
+			files: []string{".gitignore"},
+			ok:    false,
+		},
+		{
+			desc: "every VCS",
+			dirs: []string{".git", ".hg", ".bzr"},
+			ok:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			path := t.TempDir()
+
+			// Fill test directory with files and directories
+			// requested by the test case.
+			for _, name := range tt.dirs {
+				err := os.MkdirAll(filepath.Join(path, name), 01700)
+				require.NoError(t, err)
+			}
+			for _, name := range tt.files {
+				err := os.WriteFile(filepath.Join(path, name), nil /* body */, 0600)
+				require.NoError(t, err)
+			}
+
+			err := errorIfNotEmptyDirectory(path)
+			if tt.ok {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
 		})
 	}
 }
