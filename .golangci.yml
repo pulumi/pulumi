@@ -21,6 +21,7 @@ linters:
     - ineffassign
     - lll
     - misspell
+    - nolintlint
     - nakedret
     - structcheck
     - unconvert
@@ -29,3 +30,10 @@ linters:
   disable:
     - staticcheck # Disabled due to OOM errors in golangci-lint@v1.18.0
     - megacheck # Disabled due to OOM errors in golangci-lint@v1.18.0
+
+linters-settings:
+  nolintlint:
+    # Some linter exclusions are added to generated or templated files
+    # pre-emptively.
+    # Don't complain about these.
+    allow-unused: true
