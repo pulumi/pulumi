@@ -18,7 +18,7 @@ package ints
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -216,7 +216,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
 		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
 
-		oldYaml, err := ioutil.ReadFile(pulumiYaml)
+		oldYaml, err := os.ReadFile(pulumiYaml)
 		if err != nil {
 			t.Error(err)
 			return
@@ -225,7 +225,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
 
-		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
+		if err := os.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
 			t.Error(err)
 			return
 		}

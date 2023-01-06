@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -247,13 +246,13 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 const packageDir = "package"
 
 func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
-	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
+	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
-	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
 	if err != nil {
 		return fmt.Errorf("creating plugin directory %s: %w", tempDir, err)
 	}

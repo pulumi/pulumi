@@ -16,7 +16,7 @@ package httputil
 
 import (
 	"crypto/tls"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -66,7 +66,7 @@ func TestRetryPostHTTP2(t *testing.T) {
 
 		// Check that the body's content length matches the sent data.
 		defer r.Body.Close()
-		content, err := ioutil.ReadAll(r.Body)
+		content, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		assert.Equal(t, strconv.Itoa(len(content)), r.Header.Get("Content-Length"))
 

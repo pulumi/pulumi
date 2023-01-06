@@ -15,7 +15,7 @@
 package provider
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -39,7 +39,7 @@ type HostClient struct {
 func NewHostClient(addr string) (*HostClient, error) {
 	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
 	// See https://github.com/pulumi/pulumi/issues/7156
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	conn, err := grpc.Dial(
 		addr,
 		grpc.WithInsecure(),

@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 
@@ -236,7 +235,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Create temp directory for the "virtual workspace".
-		temp, err := ioutil.TempDir("", "pulumi-up-")
+		temp, err := os.MkdirTemp("", "pulumi-up-")
 		if err != nil {
 			return result.FromError(err)
 		}

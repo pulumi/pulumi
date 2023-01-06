@@ -33,7 +33,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -294,7 +293,7 @@ func getPluginsFromDir(
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
-			b, err := ioutil.ReadFile(curr)
+			b, err := os.ReadFile(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("reading package.json %s: %w", curr, err))
 				continue
@@ -951,7 +950,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("could not get node dependency data: %w", err)
 	}
 	if !req.TransitiveDependencies {
-		file, err := ioutil.ReadFile(packageFile)
+		file, err := os.ReadFile(packageFile)
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("could not find %s. "+
 				"Please include this in your report and run "+

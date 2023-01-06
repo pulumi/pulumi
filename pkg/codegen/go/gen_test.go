@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -149,7 +149,7 @@ func TestGenerateTypeNames(t *testing.T) {
 
 func readSchemaFile(file string) *schema.Package {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}

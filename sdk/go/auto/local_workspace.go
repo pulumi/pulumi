@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -474,7 +473,7 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 // ImportStack imports the specified deployment state into a pre-existing stack.
 // This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, state apitype.UntypedDeployment) error {
-	f, err := ioutil.TempFile(os.TempDir(), "")
+	f, err := os.CreateTemp(os.TempDir(), "")
 	if err != nil {
 		return errors.Wrap(err, "could not import stack. failed to allocate temp file")
 	}
@@ -629,7 +628,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	if lwOpts.WorkDir != "" {
 		workDir = lwOpts.WorkDir
 	} else {
-		dir, err := ioutil.TempDir("", "pulumi_auto")
+		dir, err := os.MkdirTemp("", "pulumi_auto")
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to create tmp directory for workspace")
 		}

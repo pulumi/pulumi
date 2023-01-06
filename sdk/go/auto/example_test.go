@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -957,7 +956,7 @@ func ExampleStack_Destroy_streamingProgress() {
 	// select an existing stack to destroy
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optdestroy.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}
@@ -981,7 +980,7 @@ func ExampleStack_Up_streamingProgress() {
 	// create a new stack to update
 	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optup.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}
@@ -1011,7 +1010,7 @@ func ExampleStack_Refresh_streamingProgress() {
 	// select an existing stack and refresh the resources under management
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optrefresh.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}

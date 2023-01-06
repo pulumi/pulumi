@@ -22,7 +22,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -78,7 +77,7 @@ func prepareTestPluginTGZ(t *testing.T, files map[string][]byte) io.ReadCloser {
 
 	tgz, err := createTGZ(files)
 	require.NoError(t, err)
-	return ioutil.NopCloser(bytes.NewReader(tgz))
+	return io.NopCloser(bytes.NewReader(tgz))
 }
 
 func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadCloser, PluginSpec) {
@@ -186,7 +185,7 @@ func TestInstallNoDeps(t *testing.T) {
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
@@ -204,7 +203,7 @@ func TestReinstall(t *testing.T) {
 
 	pluginInfo := assertPluginInstalled(t, dir, plugin)
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
@@ -215,7 +214,7 @@ func TestReinstall(t *testing.T) {
 
 	pluginInfo = assertPluginInstalled(t, dir, plugin)
 
-	b, err = ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	b, err = os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	require.NoError(t, err)
 	assert.Equal(t, content, b)
 
@@ -231,7 +230,7 @@ func TestConcurrentInstalls(t *testing.T) {
 	assertSuccess := func() PluginInfo {
 		pluginInfo := assertPluginInstalled(t, dir, plugin)
 
-		b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+		b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 		assert.NoError(t, err)
 		assert.Equal(t, content, b)
 
@@ -263,16 +262,16 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	dir, tarball, plugin := prepareTestDir(t, nil)
 
 	// Leftover temp dirs.
-	tempDir1, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir1, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
-	tempDir2, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir2, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
-	tempDir3, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir3, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
 
 	// Leftover partial file.
 	partialPath := filepath.Join(dir, plugin.Dir()+".partial")
-	err = ioutil.WriteFile(partialPath, nil, 0600)
+	err = os.WriteFile(partialPath, nil, 0600)
 	assert.NoError(t, err)
 
 	err = plugin.Install(tarball, false)
@@ -296,7 +295,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
-	err = ioutil.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
+	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
 	assert.NoError(t, err)
 
 	assert.False(t, HasPlugin(plugin))

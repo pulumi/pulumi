@@ -24,7 +24,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1436,7 +1435,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	}
 
 	if f := pt.opts.ExportStateValidator; f != nil {
-		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		bytes, err := os.ReadFile(filepath.Join(dir, "stack.json"))
 		if err != nil {
 			pt.t.Logf("Failed to read stack.json: %s", err.Error())
 			return err
@@ -1557,7 +1556,7 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		}
 	} else {
 		// Create a new temporary directory
-		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
+		newDir, err := os.MkdirTemp("", pt.opts.StackName+"-")
 		if err != nil {
 			return fmt.Errorf("Couldn't create new temporary directory: %w", err)
 		}
@@ -1663,7 +1662,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	stackName := pt.opts.GetStackName()
 
 	// Create a temporary file name for the stack export
-	tempDir, err := ioutil.TempDir("", string(stackName))
+	tempDir, err := os.MkdirTemp("", string(stackName))
 	if err != nil {
 		return err
 	}
@@ -1798,7 +1797,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	} else {
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+		targetDir, tempErr := os.MkdirTemp("", stackName+"-")
 		if tempErr != nil {
 			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", tempErr)
 		}
@@ -1866,7 +1865,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
 
-	if err := ioutil.WriteFile(projfile, bytes, 0600); err != nil {
+	if err := os.WriteFile(projfile, bytes, 0600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
 	}
 
@@ -1894,7 +1893,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 				"@pulumi/pulumi": "latest"
 			}
 		}`
-		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
 		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {

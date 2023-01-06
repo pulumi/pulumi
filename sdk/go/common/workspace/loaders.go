@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -49,9 +48,9 @@ var policyPackProjectSingleton = &policyPackProjectLoader{
 	internal: map[string]*PolicyPackProject{},
 }
 
-// readFileStripUTF8BOM wraps ioutil.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
+// readFileStripUTF8BOM wraps os.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
 func readFileStripUTF8BOM(path string) ([]byte, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

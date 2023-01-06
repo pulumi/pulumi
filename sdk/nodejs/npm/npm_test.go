@@ -16,7 +16,6 @@ package npm
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,7 +71,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
-	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0600))
+	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0600))
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).

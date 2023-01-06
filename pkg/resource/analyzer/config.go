@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -29,7 +29,7 @@ import (
 
 // LoadPolicyPackConfigFromFile loads the JSON config from a file.
 func LoadPolicyPackConfigFromFile(file string) (map[string]plugin.AnalyzerPolicyConfig, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}

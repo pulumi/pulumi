@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -2109,7 +2108,7 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	}
 	defer contract.IgnoreClose(resp.Body)
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 func computePropertyNames(props []*schema.Property, names map[*schema.Property]string) {

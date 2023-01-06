@@ -17,7 +17,6 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -273,7 +272,7 @@ func GetPulumiConfig() (PulumiConfig, error) {
 		return PulumiConfig{}, err
 	}
 
-	c, err := ioutil.ReadFile(configFile)
+	c, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return PulumiConfig{}, nil
@@ -302,7 +301,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 
 	// Use a temporary file and atomic os.Rename to ensure the file contents are
 	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
-	tempConfigFile, err := ioutil.TempFile(filepath.Dir(configFile), "config-*.json")
+	tempConfigFile, err := os.CreateTemp(filepath.Dir(configFile), "config-*.json")
 	if err != nil {
 		return err
 	}

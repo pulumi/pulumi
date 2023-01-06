@@ -1192,13 +1192,13 @@ var functionPackages = map[string][]string{
 	"join":             {"strings"},
 	"mimeType":         {"mime", "path"},
 	"readDir":          {"os"},
-	"readFile":         {"io/ioutil"},
-	"filebase64":       {"io/ioutil", "encoding/base64"},
+	"readFile":         {"os"},
+	"filebase64":       {"encoding/base64", "os"},
 	"toBase64":         {"encoding/base64"},
 	"fromBase64":       {"encoding/base64"},
 	"toJSON":           {"encoding/json"},
 	"sha1":             {"fmt", "crypto/sha1"},
-	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},
+	"filebase64sha256": {"fmt", "crypto/sha256", "os"},
 	"cwd":              {"os"},
 }
 

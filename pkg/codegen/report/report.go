@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -241,6 +240,6 @@ func (r *reporter) defaultExport(dir string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0600)
 
 }

@@ -17,7 +17,6 @@ package workspace
 import (
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -302,7 +301,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	// Create a temp dir.
 	var temp string
-	if temp, err = ioutil.TempDir("", "pulumi-template-"); err != nil {
+	if temp, err = os.MkdirTemp("", "pulumi-template-"); err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -509,7 +508,7 @@ func CopyTemplateFiles(
 			}
 
 			// Read the source file.
-			b, err := ioutil.ReadFile(source)
+			b, err := os.ReadFile(source)
 			if err != nil {
 				return err
 			}

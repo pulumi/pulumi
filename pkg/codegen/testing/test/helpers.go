@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,7 +40,7 @@ type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[strin
 // GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
 func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(schemaPath)
+	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +72,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	result := map[string][]byte{}
 	for _, file := range files {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(dir, lang, file))
+		fileBytes, err := os.ReadFile(filepath.Join(dir, lang, file))
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +109,7 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
 	for _, f := range cm.EmittedFiles {
-		bytes, err := ioutil.ReadFile(filepath.Join(dir, lang, f))
+		bytes, err := os.ReadFile(filepath.Join(dir, lang, f))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
 		}
@@ -125,7 +124,7 @@ type codegenManifest struct {
 }
 
 func (cm *codegenManifest) load(dir string) error {
-	bytes, err := ioutil.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
+	bytes, err := os.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
 	if err != nil {
 		return err
 	}
@@ -143,7 +142,7 @@ func (cm *codegenManifest) save(dir string) error {
 		return err
 	}
 	data := buf.Bytes()
-	return ioutil.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
+	return os.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
 }
 
 // ValidateFileEquality compares maps of files for equality.
@@ -239,7 +238,7 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 		}
 		destPath := filepath.Join(codeDir, relPath)
 
-		bytes, err := ioutil.ReadFile(path)
+		bytes, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -259,7 +258,7 @@ func writeFileEnsuringDir(path string, bytes []byte) error {
 		return err
 	}
 
-	return ioutil.WriteFile(path, bytes, 0600)
+	return os.WriteFile(path, bytes, 0600)
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
@@ -305,7 +304,7 @@ func ValidateFileTransformer(
 	actualBytes := buf.Bytes()
 
 	if os.Getenv("PULUMI_ACCEPT") != "" {
-		err := ioutil.WriteFile(expectedOutputFile, actualBytes, 0600)
+		err := os.WriteFile(expectedOutputFile, actualBytes, 0600)
 		if err != nil {
 			t.Error(err)
 			return
@@ -314,7 +313,7 @@ func ValidateFileTransformer(
 
 	actual := map[string][]byte{expectedOutputFile: actualBytes}
 
-	expectedBytes, err := ioutil.ReadFile(expectedOutputFile)
+	expectedBytes, err := os.ReadFile(expectedOutputFile)
 	if err != nil {
 		t.Error(err)
 		return
