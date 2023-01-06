@@ -43,7 +43,8 @@ const (
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool

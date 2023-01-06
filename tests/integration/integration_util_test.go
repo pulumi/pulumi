@@ -14,7 +14,7 @@
 
 // The linter doesn't see the uses since the consumers are conditionally compiled tests.
 //
-// nolint:unused,deadcode,varcheck
+//nolint:unused,deadcode,varcheck
 package ints
 
 import (
@@ -123,7 +123,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			assert.NoError(t, err)
 			defer func() {
 				// Ignore the error as it may fail with access denied on Windows.
-				cmd.Process.Kill() // nolint: errcheck
+				cmd.Process.Kill() //nolint:errcheck
 			}()
 
 			// Read the port from standard output.

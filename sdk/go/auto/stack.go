@@ -1244,7 +1244,7 @@ func (fw *fileWatcher) Close() {
 
 	// Tell the watcher to end on next EoF, wait for the done event, then cleanup.
 
-	// nolint: errcheck
+	//nolint:errcheck
 	fw.tail.StopAtEOF()
 	<-fw.done
 	logDir := filepath.Dir(fw.tail.Filename)

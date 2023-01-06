@@ -1,7 +1,7 @@
 package python
 
 import (
-	"crypto/md5" //nolint: gosec
+	"crypto/md5" //nolint:gosec
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -61,7 +61,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 			return ""
 		}
 
-		return fmt.Sprintf("%x", md5.Sum(file)) //nolint: gosec
+		return fmt.Sprintf("%x", md5.Sum(file)) //nolint:gosec
 	}
 
 	h1 := generateInitHash()

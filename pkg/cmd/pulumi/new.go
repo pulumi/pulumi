@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: goconst
+//nolint:goconst
 package main
 
 import (
@@ -366,7 +366,8 @@ func useSpecifiedDir(dir string) (string, error) {
 
 // newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	var args = newArgs{
 		interactive: cmdutil.Interactive(),

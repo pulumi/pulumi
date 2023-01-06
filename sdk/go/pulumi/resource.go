@@ -552,7 +552,8 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
-// nolint: revive
+//
+//nolint:revive
 func URN_(o string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.URN = o

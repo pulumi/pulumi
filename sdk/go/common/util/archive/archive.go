@@ -64,7 +64,7 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 	// TODO: check the name to ensure that it does not contain path traversal characters.
 	//
-	//nolint: gosec
+	//nolint:gosec
 	path := filepath.Join(dir, header.Name)
 
 	switch header.Typeflag {
@@ -94,7 +94,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		defer contract.IgnoreClose(dst)
 
 		// We're not concerned with potential tarbombs, so disable gosec.
-		// nolint:gosec
+		//nolint:gosec
 		if _, err = io.Copy(dst, r); err != nil {
 			return errors.Wrapf(err, "untarring file %s", path)
 		}

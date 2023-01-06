@@ -1049,7 +1049,7 @@ func addNextFileToZIP(r ArchiveReader, zw *zip.Writer, seenFiles map[string]bool
 	// websites) can't extract the resulting archive. The date is comfortably after 1980 because
 	// the ZIP format includes a date representation that starts at 1980. Use `SetModTime` to
 	// remain compatible with Go 1.9.
-	// nolint: megacheck
+	//nolint:megacheck
 	fh.Modified = time.Date(1990, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	fw, err := zw.CreateHeader(fh)

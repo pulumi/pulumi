@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	//nolint: gosec
+	//nolint:gosec
 	pulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 )
 
@@ -208,7 +208,7 @@ func (e *Environment) GetCommandResults(command string, args ...string) (string,
 		passphrase = e.Passphrase
 	}
 
-	// nolint: gas
+	//nolint:gas
 	cmd := exec.Command(command, args...)
 	cmd.Dir = e.CWD
 	if e.Stdin != nil {

@@ -204,7 +204,8 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 }
 
 // `gosec` thinks these are credentials, but they are not.
-// nolint: gosec
+//
+//nolint:gosec
 const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"

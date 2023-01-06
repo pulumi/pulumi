@@ -68,7 +68,7 @@ func getEndpointName(method, path string) string {
 // routes is the canonical muxer we use to determine friendly names for Pulumi APIs.
 var routes *mux.Router
 
-// nolint: lll
+//nolint:lll
 func init() {
 	routes = mux.NewRouter()
 

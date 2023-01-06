@@ -195,7 +195,7 @@ const (
 	// EnvConfig is the envvar used to read the current Pulumi configuration variables.
 	EnvConfig = "PULUMI_CONFIG"
 	// EnvConfigSecretKeys is the envvar used to read the current Pulumi configuration keys that are secrets.
-	//nolint: gosec
+	//nolint:gosec
 	EnvConfigSecretKeys = "PULUMI_CONFIG_SECRET_KEYS"
 	// EnvParallel is the envvar used to read the current Pulumi degree of parallelism.
 	EnvParallel = "PULUMI_PARALLEL"

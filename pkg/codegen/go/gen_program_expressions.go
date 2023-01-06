@@ -500,7 +500,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	// first lower all inner expressions and emit temps
 	for i, item := range expr.Items {
 		// don't treat keys as inputs
-		//nolint: revive
+		//nolint:revive
 		k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
 		temps = append(temps, kTemps...)
 		item.Key = k
@@ -1128,7 +1128,7 @@ func (g *generator) escapeString(v string) string {
 	return builder.String()
 }
 
-// nolint: lll
+//nolint:lll
 func isInputty(destType model.Type) bool {
 	// TODO this needs to be more robust, likely the inverse of:
 	// https://github.com/pulumi/pulumi/blob/5330c97684cad78bcc60d8867f1b28704bd8a555/pkg/codegen/hcl2/model/type_eventuals.go#L244
