@@ -149,6 +149,8 @@ func main() {
 
 // goLanguageHost implements the LanguageRuntimeServer interface for use as an API endpoint.
 type goLanguageHost struct {
+	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
+
 	engineAddress string
 	tracing       string
 	binary        string

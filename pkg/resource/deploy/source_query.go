@@ -301,6 +301,8 @@ func newQueryResourceMonitor(
 //  2. Services requests for stack snapshots. This is primarily to allow us to allow queries across
 //     stack snapshots.
 type queryResmon struct {
+	pulumirpc.UnimplementedResourceMonitorServer
+
 	builtins         *builtinProvider    // provides builtins such as `getStack`.
 	providers        ProviderSource      // the provider source itself.
 	defaultProviders *defaultProviders   // the default provider manager.

@@ -31,6 +31,8 @@ import (
 
 // hostServer is the server side of the host RPC machinery.
 type hostServer struct {
+	lumirpc.UnsafeEngineServer // opt out of forward compat
+
 	host   Host         // the host for this RPC server.
 	ctx    *Context     // the associated plugin context.
 	addr   string       // the address the host is listening on.

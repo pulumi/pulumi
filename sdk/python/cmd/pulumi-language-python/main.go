@@ -174,6 +174,8 @@ func main() {
 // pythonLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type pythonLanguageHost struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	exec          string
 	engineAddress string
 	tracing       string

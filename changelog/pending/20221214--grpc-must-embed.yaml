@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: protobuf
+  description: Downstream implementers of the RPC server interfaces must embed UnimplementedServer structs or opt out of forward compatibility.

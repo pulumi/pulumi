@@ -112,8 +112,6 @@ import (
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
@@ -1023,6 +1021,8 @@ const (
 )
 
 type languageRuntimeServer struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	m sync.Mutex
 	c *sync.Cond
 
@@ -1171,20 +1171,6 @@ func (s *languageRuntimeServer) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
 	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 	return nil
-}
-
-func (s *languageRuntimeServer) About(_ context.Context, _ *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
-}
-
-func (s *languageRuntimeServer) GetProgramDependencies(
-	_ context.Context, _ *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
-}
-
-func (s *languageRuntimeServer) RunPlugin(
-	_ *pulumirpc.RunPluginRequest, _ pulumirpc.LanguageRuntime_RunPluginServer) error {
-	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
 }
 
 type fileWatcher struct {

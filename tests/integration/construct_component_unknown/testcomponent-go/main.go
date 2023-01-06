@@ -111,6 +111,8 @@ func main() {
 }
 
 type testcomponentProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
 	host    *provider.HostClient
 	name    string
 	version string
