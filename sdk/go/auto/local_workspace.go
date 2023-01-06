@@ -17,6 +17,7 @@ package auto
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -91,12 +91,12 @@ func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*
 		if _, err := os.Stat(stackPath); err == nil {
 			proj, err := workspace.LoadProjectStack(project, stackPath)
 			if err != nil {
-				return nil, errors.Wrap(err, "found stack settings, but failed to load")
+				return nil, fmt.Errorf("found stack settings, but failed to load: %w", err)
 			}
 			return proj, nil
 		}
 	}
-	return nil, errors.Errorf("unable to find stack settings in workspace for %s", stackName)
+	return nil, fmt.Errorf("unable to find stack settings in workspace for %s", stackName)
 }
 
 // SaveStackSettings overwrites the settings object for the stack matching the specified stack name.
@@ -110,7 +110,7 @@ func (l *LocalWorkspace) SaveStackSettings(
 	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s.yaml", name))
 	err := settings.Save(stackYamlPath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to save stack setttings for %s", stackName)
+		return fmt.Errorf("failed to save stack setttings for %s: %w", stackName, err)
 	}
 	return nil
 }
@@ -138,11 +138,11 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key st
 	var val ConfigValue
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--json", "--stack", stackName)
 	if err != nil {
-		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
+		return val, newAutoError(fmt.Errorf("unable to read config: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &val)
 	if err != nil {
-		return val, errors.Wrap(err, "unable to unmarshal config value")
+		return val, fmt.Errorf("unable to unmarshal config value: %w", err)
 	}
 	return val, nil
 }
@@ -153,11 +153,11 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (Co
 	var val ConfigMap
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json", "--stack", stackName)
 	if err != nil {
-		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
+		return val, newAutoError(fmt.Errorf("unable to read config: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &val)
 	if err != nil {
-		return val, errors.Wrap(err, "unable to unmarshal config value")
+		return val, fmt.Errorf("unable to unmarshal config value: %w", err)
 	}
 	return val, nil
 }
@@ -174,7 +174,7 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 		"config", "set", key, secretArg, "--stack", stackName,
 		"--non-interactive", "--", val.Value)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("unable to set config: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ func (l *LocalWorkspace) SetAllConfig(ctx context.Context, stackName string, con
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("unable to set config: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -204,7 +204,7 @@ func (l *LocalWorkspace) SetAllConfig(ctx context.Context, stackName string, con
 func (l *LocalWorkspace) RemoveConfig(ctx context.Context, stackName string, key string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "rm", key, "--stack", stackName)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "could not remove config"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("could not remove config: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -216,7 +216,7 @@ func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, stackName string, 
 	args = append(args, keys...)
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("unable to set config: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -226,12 +226,12 @@ func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, stackName string, 
 func (l *LocalWorkspace) RefreshConfig(ctx context.Context, stackName string) (ConfigMap, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "refresh", "--force", "--stack", stackName)
 	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not refresh config"), stdout, stderr, errCode)
+		return nil, newAutoError(fmt.Errorf("could not refresh config: %w", err), stdout, stderr, errCode)
 	}
 
 	cfg, err := l.GetAllConfig(ctx, stackName)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not fetch config after refresh")
+		return nil, fmt.Errorf("could not fetch config after refresh: %w", err)
 	}
 	return cfg, nil
 }
@@ -304,7 +304,7 @@ func (l *LocalWorkspace) PulumiVersion() string {
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
 	if err != nil {
-		return "", newAutoError(errors.Wrap(err, "could not determine authenticated user"), stdout, stderr, errCode)
+		return "", newAutoError(fmt.Errorf("could not determine authenticated user: %w", err), stdout, stderr, errCode)
 	}
 	return strings.TrimSpace(stdout), nil
 }
@@ -313,7 +313,7 @@ func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	stacks, err := l.ListStacks(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not determine selected stack")
+		return nil, fmt.Errorf("could not determine selected stack: %w", err)
 	}
 	for _, s := range stacks {
 		if s.Current {
@@ -334,7 +334,7 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) erro
 	}
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to create stack"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to create stack: %w", err), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -352,7 +352,7 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, stackName string) erro
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to select stack"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to select stack: %w", err), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -373,7 +373,7 @@ func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to remove stack: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -384,11 +384,11 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 	var stacks []StackSummary
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "ls", "--json")
 	if err != nil {
-		return stacks, newAutoError(errors.Wrap(err, "could not list stacks"), stdout, stderr, errCode)
+		return stacks, newAutoError(fmt.Errorf("could not list stacks: %w", err), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &stacks)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal config value")
+		return nil, fmt.Errorf("unable to unmarshal config value: %w", err)
 	}
 	return stacks, nil
 }
@@ -397,7 +397,7 @@ func (l *LocalWorkspace) ListStacks(ctx context.Context) ([]StackSummary, error)
 func (l *LocalWorkspace) InstallPlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "install", "resource", name, version)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to install plugin"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to install plugin: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -412,7 +412,7 @@ func (l *LocalWorkspace) InstallPluginFromServer(
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(
 		ctx, "plugin", "install", "resource", name, version, "--server", server)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to install plugin"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to install plugin: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -421,7 +421,7 @@ func (l *LocalWorkspace) InstallPluginFromServer(
 func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version string) error {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "rm", "resource", name, version, "--yes")
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to remove plugin"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to remove plugin: %w", err), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -430,12 +430,12 @@ func (l *LocalWorkspace) RemovePlugin(ctx context.Context, name string, version 
 func (l *LocalWorkspace) ListPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "plugin", "ls", "--json")
 	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not list list"), stdout, stderr, errCode)
+		return nil, newAutoError(fmt.Errorf("could not list list: %w", err), stdout, stderr, errCode)
 	}
 	var plugins []workspace.PluginInfo
 	err = json.Unmarshal([]byte(stdout), &plugins)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal plugin response")
+		return nil, fmt.Errorf("unable to unmarshal plugin response: %w", err)
 	}
 	return plugins, nil
 }
@@ -458,13 +458,13 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets", "--stack", stackName)
 	if err != nil {
-		return state, newAutoError(errors.Wrap(err, "could not export stack"), stdout, stderr, errCode)
+		return state, newAutoError(fmt.Errorf("could not export stack: %w", err), stdout, stderr, errCode)
 	}
 
 	err = json.Unmarshal([]byte(stdout), &state)
 	if err != nil {
 		return state, newAutoError(
-			errors.Wrap(err, "failed to export stack, unable to unmarshall stack state"), stdout, stderr, errCode,
+			fmt.Errorf("failed to export stack, unable to unmarshall stack state: %w", err), stdout, stderr, errCode,
 		)
 	}
 
@@ -476,23 +476,23 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, state apitype.UntypedDeployment) error {
 	f, err := ioutil.TempFile(os.TempDir(), "")
 	if err != nil {
-		return errors.Wrap(err, "could not import stack. failed to allocate temp file")
+		return fmt.Errorf("could not import stack. failed to allocate temp file: %w", err)
 	}
 	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
 
 	bytes, err := json.Marshal(state)
 	if err != nil {
-		return errors.Wrap(err, "could not import stack, failed to marshal stack state")
+		return fmt.Errorf("could not import stack, failed to marshal stack state: %w", err)
 	}
 
 	_, err = f.Write(bytes)
 	if err != nil {
-		return errors.Wrap(err, "could not import stack. failed to write out stack intermediate")
+		return fmt.Errorf("could not import stack. failed to write out stack intermediate: %w", err)
 	}
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "import", "--file", f.Name(), "--stack", stackName)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "could not import stack"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("could not import stack: %w", err), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -503,7 +503,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 	// standard outputs
 	outStdout, outStderr, code, err := l.runPulumiCmdSync(ctx, "stack", "output", "--json", "--stack", stackName)
 	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
+		return nil, newAutoError(fmt.Errorf("could not get outputs: %w", err), outStdout, outStderr, code)
 	}
 
 	// secret outputs
@@ -511,25 +511,25 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		"stack", "output", "--json", "--show-secrets", "--stack", stackName,
 	)
 	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
+		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), outStdout, outStderr, code)
 	}
 
 	var outputs map[string]interface{}
 	var secrets map[string]interface{}
 
 	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
+		return nil, fmt.Errorf("error unmarshalling outputs: %s: %w", secretStderr, err)
 	}
 
 	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
+		return nil, fmt.Errorf("error unmarshalling secret outputs: %s: %w", secretStderr, err)
 	}
 
 	res := make(OutputMap)
 	for k, v := range secrets {
 		raw, err := json.Marshal(outputs[k])
 		if err != nil {
-			return nil, errors.Wrapf(err, "error determining secretness: %s", secretStderr)
+			return nil, fmt.Errorf("error determining secretness: %s: %w", secretStderr, err)
 		}
 		rawString := string(raw)
 		isSecret := strings.Contains(rawString, secretSentinel)
@@ -545,7 +545,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
 	if err != nil {
-		return "", newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+		return "", newAutoError(fmt.Errorf("could not determine pulumi version: %w", err), stdout, stderr, errCode)
 	}
 	return stdout, nil
 }
@@ -554,16 +554,16 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (string, error) {
 func parseAndValidatePulumiVersion(minVersion semver.Version, currentVersion string, optOut bool) (semver.Version, error) {
 	version, err := semver.ParseTolerant(currentVersion)
 	if err != nil && !optOut {
-		return semver.Version{}, errors.Wrapf(err, "Unable to parse Pulumi CLI version (skip with %s=true)", skipVersionCheckVar)
+		return semver.Version{}, fmt.Errorf("Unable to parse Pulumi CLI version (skip with %s=true): %w", skipVersionCheckVar, err)
 	}
 	if optOut {
 		return version, nil
 	}
 	if minVersion.Major < version.Major {
-		return semver.Version{}, errors.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
+		return semver.Version{}, fmt.Errorf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major) //nolint
 	}
 	if minVersion.GT(version) {
-		return semver.Version{}, errors.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
+		return semver.Version{}, fmt.Errorf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion) //nolint
 	}
 	return version, nil
 }
@@ -631,7 +631,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	} else {
 		dir, err := ioutil.TempDir("", "pulumi_auto")
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to create tmp directory for workspace")
+			return nil, fmt.Errorf("unable to create tmp directory for workspace: %w", err)
 		}
 		workDir = dir
 	}
@@ -640,7 +640,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		// now do the git clone
 		projDir, err := setupGitRepo(ctx, workDir, lwOpts.Repo)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create workspace, unable to enlist in git repo")
+			return nil, fmt.Errorf("failed to create workspace, unable to enlist in git repo: %w", err)
 		}
 		workDir = projDir
 	}
@@ -689,7 +689,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	if lwOpts.Project != nil {
 		err := l.SaveProjectSettings(ctx, lwOpts.Project)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create workspace, unable to save project settings")
+			return nil, fmt.Errorf("failed to create workspace, unable to save project settings: %w", err)
 		}
 	}
 
@@ -697,7 +697,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		s := lwOpts.Stacks[stackName]
 		err := l.SaveStackSettings(ctx, stackName, &s)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to create workspace")
+			return nil, fmt.Errorf("failed to create workspace: %w", err)
 		}
 	}
 
@@ -705,7 +705,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	if !lwOpts.Remote && lwOpts.Repo != nil && lwOpts.Repo.Setup != nil {
 		err := lwOpts.Repo.Setup(ctx, l)
 		if err != nil {
-			return nil, errors.Wrap(err, "error while running setup function")
+			return nil, fmt.Errorf("error while running setup function: %w", err)
 		}
 	}
 
@@ -717,7 +717,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	// Environment values
 	if lwOpts.EnvVars != nil {
 		if err := setEnvVars(l, lwOpts.EnvVars); err != nil {
-			return nil, errors.Wrap(err, "failed to set environment values")
+			return nil, fmt.Errorf("failed to set environment values: %w", err)
 		}
 	}
 
@@ -916,7 +916,7 @@ func NewStackLocalSource(ctx context.Context, stackName, workDir string, opts ..
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return NewStack(ctx, stackName, w)
@@ -936,7 +936,7 @@ func UpsertStackLocalSource(
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return UpsertStack(ctx, stackName, w)
@@ -955,7 +955,7 @@ func SelectStackLocalSource(
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to select stack")
+		return stack, fmt.Errorf("failed to select stack: %w", err)
 	}
 
 	return SelectStack(ctx, stackName, w)
@@ -975,7 +975,7 @@ func NewStackRemoteSource(
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return NewStack(ctx, stackName, w)
@@ -993,7 +993,7 @@ func UpsertStackRemoteSource(
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return UpsertStack(ctx, stackName, w)
@@ -1012,7 +1012,7 @@ func SelectStackRemoteSource(
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to select stack")
+		return stack, fmt.Errorf("failed to select stack: %w", err)
 	}
 
 	return SelectStack(ctx, stackName, w)
@@ -1042,7 +1042,7 @@ func NewStackInlineSource(
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return NewStack(ctx, stackName, w)
@@ -1073,7 +1073,7 @@ func UpsertStackInlineSource(
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	return UpsertStack(ctx, stackName, w)
@@ -1103,7 +1103,7 @@ func SelectStackInlineSource(
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to select stack")
+		return stack, fmt.Errorf("failed to select stack: %w", err)
 	}
 
 	return SelectStack(ctx, stackName, w)
@@ -1143,7 +1143,7 @@ func readProjectSettingsFromDir(ctx context.Context, workDir string) (*workspace
 		if _, err := os.Stat(projectPath); err == nil {
 			proj, err := workspace.LoadProject(projectPath)
 			if err != nil {
-				return nil, errors.Wrap(err, "found project settings, but failed to load")
+				return nil, fmt.Errorf("found project settings, but failed to load: %w", err)
 			}
 			return proj, nil
 		}
@@ -1177,18 +1177,18 @@ func getProjectSettings(
 		if err.Error() == "unable to find project settings in workspace" {
 			proj, err := defaultInlineProject(projectName)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to create default project")
+				return nil, fmt.Errorf("failed to create default project: %w", err)
 			}
 			return &proj, nil
 		}
 
-		return nil, errors.Wrap(err, "failed to load project settings")
+		return nil, fmt.Errorf("failed to load project settings: %w", err)
 	}
 
 	// If there was no workdir specified, create the default project.
 	proj, err := defaultInlineProject(projectName)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create default project")
+		return nil, fmt.Errorf("failed to create default project: %w", err)
 	}
 	return &proj, nil
 }

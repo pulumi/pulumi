@@ -16,6 +16,7 @@ package auto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/pkg/errors"
 )
 
 func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (string, error) {
@@ -49,7 +49,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		if authDetails.SSHPrivateKeyPath != "" {
 			publicKeys, err := ssh.NewPublicKeysFromFile("git", repoArgs.Auth.SSHPrivateKeyPath, repoArgs.Auth.Password)
 			if err != nil {
-				return "", errors.Wrap(err, "unable to use SSH Private Key Path")
+				return "", fmt.Errorf("unable to use SSH Private Key Path: %w", err)
 			}
 
 			cloneOptions.Auth = publicKeys
@@ -59,7 +59,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		if authDetails.SSHPrivateKey != "" {
 			publicKeys, err := ssh.NewPublicKeys("git", []byte(repoArgs.Auth.SSHPrivateKey), repoArgs.Auth.Password)
 			if err != nil {
-				return "", errors.Wrap(err, "unable to use SSH Private Key")
+				return "", fmt.Errorf("unable to use SSH Private Key: %w", err)
 			}
 
 			cloneOptions.Auth = publicKeys
@@ -114,7 +114,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	// clone
 	repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to clone repo")
+		return "", fmt.Errorf("unable to clone repo: %w", err)
 	}
 
 	if repoArgs.CommitHash != "" {
@@ -130,7 +130,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 			Force: true,
 		})
 		if err != nil {
-			return "", errors.Wrap(err, "unable to checkout commit")
+			return "", fmt.Errorf("unable to checkout commit: %w", err)
 		}
 	}
 
