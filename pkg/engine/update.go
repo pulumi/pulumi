@@ -95,7 +95,8 @@ func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string 
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
-// nolint: structcheck
+//
+//nolint:structcheck
 type UpdateOptions struct {
 	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
 	LocalPolicyPacks []LocalPolicyPack

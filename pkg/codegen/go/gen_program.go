@@ -936,13 +936,14 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 }
 
-// nolint: lll
 // useLookupInvokeForm takes a token for an invoke and determines whether to use the
 // .Get or .Lookup form. The Go SDK has collisions in .Get methods that require renaming.
 // For instance, gen.go creates a resource getter for AWS VPCs that collides with a function:
 // GetVPC resource getter: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
 // LookupVPC function: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
 // Given that the naming here is not consisten, we must reverse the process from gen.go.
+//
+//nolint:lll
 func (g *generator) useLookupInvokeForm(token string) bool {
 	pkg, module, member, _ := pcl.DecomposeToken(token, *new(hcl.Range))
 	modSplit := strings.Split(module, "/")

@@ -321,7 +321,7 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
-	// nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		i, tt := i, tt
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {

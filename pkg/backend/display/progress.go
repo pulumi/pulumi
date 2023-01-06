@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: goconst
+//nolint:goconst
 package display
 
 import (
@@ -1032,7 +1032,7 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 			case deploy.OpDeleteReplaced:
 				opText = "deleted original"
 			case deploy.OpRead:
-				// nolint: goconst
+				//nolint:goconst
 				opText = "read"
 			case deploy.OpReadReplacement:
 				opText = "read for replacement"
@@ -1098,7 +1098,7 @@ func (display *ProgressDisplay) getPreviewText(step engine.StepEventMetadata) st
 	case deploy.OpDeleteReplaced:
 		return "delete original"
 	case deploy.OpRead:
-		// nolint: goconst
+		//nolint:goconst
 		return "read"
 	case deploy.OpReadReplacement:
 		return "read for replacement"
@@ -1134,7 +1134,7 @@ func (display *ProgressDisplay) getPreviewDoneText(step engine.StepEventMetadata
 		deploy.OpDiscardReplaced:
 		return "replace"
 	case deploy.OpRead:
-		// nolint: goconst
+		//nolint:goconst
 		return "read"
 	case deploy.OpRefresh:
 		return "refresh"

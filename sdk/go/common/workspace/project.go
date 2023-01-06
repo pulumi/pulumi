@@ -721,6 +721,6 @@ func save(path string, value interface{}, mkDirAll bool) error {
 		}
 	}
 
-	//nolint: gosec
+	//nolint:gosec
 	return os.WriteFile(path, b, 0644)
 }

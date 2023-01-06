@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+//nolint:lll
 package dotnet
 
 import (
@@ -85,7 +85,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		namespaces:    d.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
-	qualifier := "Inputs" // nolint: goconst
+	qualifier := "Inputs" //nolint:goconst
 	if !input {
 		qualifier = "Outputs"
 	}

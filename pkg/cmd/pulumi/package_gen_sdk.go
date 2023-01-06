@@ -79,7 +79,7 @@ func genSDK(language, out string, pkg *schema.Package) error {
 	case "typescript", "nodejs":
 		f = nodejs.GeneratePackage
 		language = "nodejs"
-	case "python": // nolint: goconst
+	case "python": //nolint:goconst
 		f = python.GeneratePackage
 	case "java":
 		f = javagen.GeneratePackage

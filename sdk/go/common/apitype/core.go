@@ -25,7 +25,7 @@
 // breaking changes.  If that isn't possible, the next best approach is to support both the old and new formats
 // side-by-side (for instance, by using a union type for the property in question).
 //
-// nolint: lll
+//nolint:lll
 package apitype
 
 import (

@@ -53,7 +53,7 @@ const (
 	jsonType    primitiveType = 8
 )
 
-// nolint: goconst
+//nolint:goconst
 func (t primitiveType) String() string {
 	switch t {
 	case boolType:

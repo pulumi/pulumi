@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package dotnet
 
 import (
@@ -2102,7 +2102,7 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	}
 
 	// Get the data.
-	// nolint: gosec
+	//nolint:gosec
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err

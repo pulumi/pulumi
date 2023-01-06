@@ -22,7 +22,8 @@ import (
 // State is a structure containing state associated with a resource.  This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
-// nolint: lll
+//
+//nolint:lll
 type State struct {
 	Type                    tokens.Type           // the resource's type.
 	URN                     URN                   // the resource's object urn, a human-friendly, unique name for the resource.

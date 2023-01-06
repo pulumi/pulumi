@@ -30,7 +30,8 @@ import (
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newWatchCmd() *cobra.Command {
 	var debug bool
 	var message string

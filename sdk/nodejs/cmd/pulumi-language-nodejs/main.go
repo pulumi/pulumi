@@ -68,7 +68,7 @@ const (
 	pulumiConfigVar = "PULUMI_CONFIG"
 
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
-	//nolint: gosec
+	//nolint:gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
