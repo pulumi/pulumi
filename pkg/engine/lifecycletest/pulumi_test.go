@@ -4208,10 +4208,10 @@ func TestPendingDeleteOrder(t *testing.T) {
 				DeleteF: func(urn resource.URN,
 					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
-					for _, res := range cloudState {
+					for other, res := range cloudState {
 						for _, v := range res {
 							if v.IsString() && v.StringValue() == string(id) {
-								return resource.StatusOK, fmt.Errorf("Can not delete %s", id)
+								return resource.StatusOK, fmt.Errorf("Can not delete %s used by %s", id, other)
 							}
 						}
 					}
@@ -4268,7 +4268,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 		"foo": "bar",
 	})
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		urnA, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
 		assert.NoError(t, err)
@@ -4277,6 +4277,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"parent": idA,
 			}),
+			Dependencies: []resource.URN{urnA},
 		})
 		assert.NoError(t, err)
 
