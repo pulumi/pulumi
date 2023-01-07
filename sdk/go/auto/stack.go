@@ -98,6 +98,7 @@ package auto
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -110,7 +111,6 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/nxadm/tail"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
@@ -294,7 +294,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	t, err := tailLogs("preview", eventChannels)
 	if err != nil {
-		return res, errors.Wrap(err, "failed to tail logs")
+		return res, fmt.Errorf("failed to tail logs: %w", err)
 	}
 	defer t.Close()
 	args = append(args, "--event-log", t.Filename)
@@ -306,7 +306,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		args...,
 	)
 	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
+		return res, newAutoError(fmt.Errorf("failed to run preview: %w", err), stdout, stderr, code)
 	}
 
 	// Close the file watcher wait for all events to send
@@ -396,7 +396,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		eventChannels := upOpts.EventStreams
 		t, err := tailLogs("up", eventChannels)
 		if err != nil {
-			return res, errors.Wrap(err, "failed to tail logs")
+			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
@@ -405,7 +405,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	args = append(args, sharedArgs...)
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, upOpts.ErrorProgressStreams, args...)
 	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
+		return res, newAutoError(fmt.Errorf("failed to run update: %w", err), stdout, stderr, code)
 	}
 
 	outs, err := s.Outputs(ctx)
@@ -482,7 +482,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		eventChannels := refreshOpts.EventStreams
 		t, err := tailLogs("refresh", eventChannels)
 		if err != nil {
-			return res, errors.Wrap(err, "failed to tail logs")
+			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
@@ -498,7 +498,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		args...,
 	)
 	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
+		return res, newAutoError(fmt.Errorf("failed to refresh stack: %w", err), stdout, stderr, code)
 	}
 
 	historyOpts := []opthistory.Option{}
@@ -512,7 +512,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
-		return res, errors.Wrap(err, "failed to refresh stack")
+		return res, fmt.Errorf("failed to refresh stack: %w", err)
 	}
 
 	var summary UpdateSummary
@@ -570,7 +570,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		eventChannels := destroyOpts.EventStreams
 		t, err := tailLogs("destroy", eventChannels)
 		if err != nil {
-			return res, errors.Wrap(err, "failed to tail logs")
+			return res, fmt.Errorf("failed to tail logs: %w", err)
 		}
 		defer t.Close()
 		args = append(args, "--event-log", t.Filename)
@@ -586,7 +586,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		args...,
 	)
 	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
+		return res, newAutoError(fmt.Errorf("failed to destroy stack: %w", err), stdout, stderr, code)
 	}
 
 	historyOpts := []opthistory.Option{}
@@ -600,7 +600,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/, historyOpts...)
 	if err != nil {
-		return res, errors.Wrap(err, "failed to destroy stack")
+		return res, fmt.Errorf("failed to destroy stack: %w", err)
 	}
 
 	var summary UpdateSummary
@@ -653,13 +653,13 @@ func (s *Stack) History(ctx context.Context,
 		args...,
 	)
 	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
+		return nil, newAutoError(fmt.Errorf("failed to get stack history: %w", err), stdout, stderr, errCode)
 	}
 
 	var history []UpdateSummary
 	err = json.Unmarshal([]byte(stdout), &history)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal history result")
+		return nil, fmt.Errorf("unable to unmarshal history result: %w", err)
 	}
 
 	return history, nil
@@ -705,12 +705,12 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	var info StackSummary
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
-		return info, errors.Wrap(err, "failed to fetch stack info")
+		return info, fmt.Errorf("failed to fetch stack info: %w", err)
 	}
 
 	summary, err := s.Workspace().Stack(ctx)
 	if err != nil {
-		return info, errors.Wrap(err, "failed to fetch stack info")
+		return info, fmt.Errorf("failed to fetch stack info: %w", err)
 	}
 
 	if summary != nil {
@@ -731,7 +731,7 @@ func (s *Stack) Cancel(ctx context.Context) error {
 		nil, /* additionalErrorOutput */
 		"cancel", "--yes")
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
+		return newAutoError(fmt.Errorf("failed to cancel update: %w", err), stdout, stderr, errCode)
 	}
 
 	return nil
@@ -911,7 +911,7 @@ func (s *Stack) runPulumiCmdSync(
 	}
 	additionalArgs, err := s.Workspace().SerializeArgsForOp(ctx, s.Name())
 	if err != nil {
-		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
+		return "", "", -1, fmt.Errorf("failed to exec command, error getting additional args: %w", err)
 	}
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
@@ -929,7 +929,7 @@ func (s *Stack) runPulumiCmdSync(
 	}
 	err = s.Workspace().PostCommandCallback(ctx, s.Name())
 	if err != nil {
-		return stdout, stderr, errCode, errors.Wrap(err, "command ran successfully, but error running PostCommandCallback")
+		return stdout, stderr, errCode, fmt.Errorf("command ran successfully, but error running PostCommandCallback: %w", err)
 	}
 	return stdout, stderr, errCode, nil
 }
@@ -1109,7 +1109,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 	s.m.Lock()
 	if s.state == stateCanceled {
 		s.m.Unlock()
-		return nil, errors.Errorf("program canceled")
+		return nil, errors.New("program canceled")
 	}
 	s.state = stateRunning
 	s.m.Unlock()
@@ -1146,7 +1146,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		defer func() {
 			if r := recover(); r != nil {
 				if pErr, ok := r.(error); ok {
-					err = errors.Wrap(pErr, "go inline source runtime error, an unhandled error occurred")
+					err = fmt.Errorf("go inline source runtime error, an unhandled error occurred: %w", pErr)
 				} else {
 					err = errors.New("go inline source runtime error, an unhandled error occurred: unknown error")
 				}
@@ -1225,13 +1225,13 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 func tailLogs(command string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
 	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create logdir")
+		return nil, fmt.Errorf("failed to create logdir: %w", err)
 	}
 	logFile := filepath.Join(logDir, "eventlog.txt")
 
 	t, err := watchFile(logFile, receivers)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to watch file")
+		return nil, fmt.Errorf("failed to watch file: %w", err)
 	}
 
 	return t, nil

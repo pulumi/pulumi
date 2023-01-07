@@ -16,10 +16,9 @@ package auto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // PREVIEW: NewRemoteStackGitSource creates a Stack backed by a RemoteWorkspace with source code from the specified
@@ -39,7 +38,7 @@ func NewRemoteStackGitSource(
 	}
 	w, err := NewLocalWorkspace(ctx, localOpts...)
 	if err != nil {
-		return RemoteStack{}, errors.Wrap(err, "failed to create stack")
+		return RemoteStack{}, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	s, err := NewStack(ctx, stackName, w)
@@ -67,7 +66,7 @@ func UpsertRemoteStackGitSource(
 	}
 	w, err := NewLocalWorkspace(ctx, localOpts...)
 	if err != nil {
-		return RemoteStack{}, errors.Wrap(err, "failed to create stack")
+		return RemoteStack{}, fmt.Errorf("failed to create stack: %w", err)
 	}
 
 	s, err := UpsertStack(ctx, stackName, w)
@@ -94,7 +93,7 @@ func SelectRemoteStackGitSource(
 	}
 	w, err := NewLocalWorkspace(ctx, localOpts...)
 	if err != nil {
-		return RemoteStack{}, errors.Wrap(err, "failed to select stack")
+		return RemoteStack{}, fmt.Errorf("failed to select stack: %w", err)
 	}
 
 	s, err := SelectStack(ctx, stackName, w)
