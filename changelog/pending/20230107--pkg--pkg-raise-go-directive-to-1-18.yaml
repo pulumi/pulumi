@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg
+  description: Raise 'go' directive to 1.18.
