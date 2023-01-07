@@ -2094,7 +2094,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			// Markdown fragments in the templates need to be rendered as-is,
 			// so that html/template package doesn't try to inject data into it,
 			// which will most certainly fail.
-			//nolint gosec
+			//nolint:gosec
 			return template.HTML(html)
 		},
 		"markdownify": func(html string) template.HTML {
@@ -2103,7 +2103,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			if err := goldmark.Convert([]byte(html), &buf); err != nil {
 				glog.Fatalf("rendering Markdown: %v", err)
 			}
-			//nolint gosec
+			//nolint:gosec
 			return template.HTML(buf.String())
 		},
 	})
