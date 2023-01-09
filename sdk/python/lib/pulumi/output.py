@@ -17,26 +17,25 @@ import json
 from functools import reduce
 from inspect import isawaitable
 from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Set,
     Tuple,
     Type,
     TypeVar,
-    Generic,
-    Set,
-    Callable,
-    Awaitable,
     Union,
     cast,
-    Mapping,
-    Any,
-    List,
-    Dict,
-    Optional,
-    TYPE_CHECKING,
     overload,
 )
 
-from . import _types
-from . import runtime
+from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 
@@ -553,7 +552,7 @@ class Output(Generic[T_co]):
         separators: Optional[Tuple[str, str]] = None,
         default: Optional[Callable[[Any], Any]] = None,
         sort_keys: bool = False,
-        **kw: Any
+        **kw: Any,
     ) -> "Output[str]":
         """
         Uses json.dumps to serialize the given Input[object] value into a JSON string.
@@ -631,7 +630,7 @@ class Output(Generic[T_co]):
                     separators=separators,
                     default=default,
                     sort_keys=sort_keys,
-                    **kw
+                    **kw,
                 )
 
                 # Update the final resources and secret flag based on what we saw while dumping
@@ -663,6 +662,41 @@ class Output(Generic[T_co]):
 
         run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
+
+    @staticmethod
+    def json_loads(
+        s: Input[Union[str, bytes, bytearray]],
+        *,
+        cls: Optional[Type[json.JSONDecoder]] = None,
+        object_hook: Optional[Callable[[Dict[Any, Any]], Any]] = None,
+        parse_float: Optional[Callable[[str], Any]] = None,
+        parse_int: Optional[Callable[[str], Any]] = None,
+        parse_constant: Optional[Callable[[str], Any]] = None,
+        object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = None,
+        **kwds: Any,
+    ) -> "Output[Any]":
+        """
+        Uses json.loads to deserialize the given JSON Input[str] value into a value.
+
+        The arguments have the same meaning as in `json.loads` except s is an Input.
+        """
+
+        def loads(s: Union[str, bytes, bytearray]) -> Any:
+            return json.loads(
+                s,
+                cls=cls,
+                object_hook=object_hook,
+                parse_float=parse_float,
+                parse_int=parse_int,
+                parse_constant=parse_constant,
+                object_pairs_hook=object_pairs_hook,
+                **kwds,
+            )
+
+        # You'd think this could all be on one line but mypy seems to think `s` is a `Sequence[object]` if you
+        # do.
+        os: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
+        return os.apply(loads)
 
     def __str__(self) -> str:
         return """Calling __str__ on an Output[T] is not supported.
