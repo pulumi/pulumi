@@ -31,8 +31,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const Type = "passphrase"
@@ -163,10 +165,10 @@ func NewPassphraseSecretsManager(phrase string, state string) (secrets.Manager, 
 	return sm, nil
 }
 
-// NewPromptingPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
+// newPromptingPassphraseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
-func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error) {
+func newPromptingPassphraseSecretsManagerFromState(state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
 	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
@@ -203,7 +205,7 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	sm, err := NewPromptingPassphraseSecretsManager(s.Salt)
+	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt)
 	switch {
 	case err == ErrIncorrectPassphrase:
 		return newLockedPasspharseSecretsManager(s), nil
@@ -212,6 +214,50 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 	default:
 		return sm, nil
 	}
+}
+
+func NewPromptingPassphraseSecretsManager(stackName tokens.Name, configFile string,
+	rotateSecretsProvider bool) (secrets.Manager, error) {
+	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+
+	project, _, err := workspace.DetectProjectStackPath(stackName.Q())
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := workspace.LoadProjectStack(project, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	if rotateSecretsProvider {
+		info.EncryptionSalt = ""
+	}
+
+	// If there are any other secrets providers set in the config, remove them, as the passphrase
+	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
+	info.EncryptedKey = ""
+	info.SecretsProvider = ""
+
+	// If we have a salt, we can just use it.
+	if info.EncryptionSalt != "" {
+		return newPromptingPassphraseSecretsManagerFromState(info.EncryptionSalt)
+	}
+
+	// Otherwise, prompt the user for a new passphrase.
+	salt, sm, err := PromptForNewPassphrase(rotateSecretsProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store the salt and save it.
+	info.EncryptionSalt = salt
+	if err = info.Save(configFile); err != nil {
+		return nil, err
+	}
+
+	// Return the passphrase secrets manager.
+	return sm, nil
 }
 
 // PromptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
