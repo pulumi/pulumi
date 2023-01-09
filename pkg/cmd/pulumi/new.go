@@ -31,6 +31,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -1037,6 +1038,7 @@ func promptForValue(
 func templatesToOptionArrayAndMap(templates []workspace.Template,
 	showAll bool) ([]string, map[string]workspace.Template) {
 
+	termWidth, _, _ := terminal.GetSize(0)
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
@@ -1061,6 +1063,11 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 
 		// Create the option string that combines the name, padding, and description.
 		desc := workspace.ValueOrDefaultProjectDescription("", template.ProjectDescription, template.Description)
+		// 2 spaces before the template name, 4 spaces between template name and description = 6
+		curWidth := maxNameLength + len(desc) + 6
+		if termWidth < curWidth {
+			desc = formatDesc(maxNameLength+6, termWidth, desc)
+		}
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
 		nameToTemplateMap[option] = template
@@ -1081,6 +1088,21 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	}
 
 	return options, nameToTemplateMap
+}
+
+// formatDesc formats the template description nicely if the term width requires it to wrap around.
+func formatDesc(prefixWidth int, maxWidth int, desc string) string {
+	descFormatted := ""
+	descWidth := maxWidth - prefixWidth
+	for idx := descWidth; idx < len(desc); idx += descWidth {
+		buffer := prefixWidth
+		if strings.LastIndex(desc[:idx], " ") != -1 {
+			idx = strings.LastIndex(desc[:idx], " ")
+			buffer += (descWidth - idx - 1)
+		}
+		descFormatted = fmt.Sprintf("%s%s%s", desc[:idx], strings.Repeat(" ", buffer), desc[idx:])
+	}
+	return descFormatted
 }
 
 // containsWhiteSpace returns true if the string contains whitespace.
