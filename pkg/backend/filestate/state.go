@@ -149,7 +149,7 @@ func (b *localBackend) getStack(
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, chk)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, stack.DefaultSecretsProvider, chk)
 	if err != nil {
 		return nil, "", err
 	}
