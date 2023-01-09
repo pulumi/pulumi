@@ -15,7 +15,7 @@
 package stack
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -25,7 +25,7 @@ import (
 func TestLoadV0Checkpoint(t *testing.T) {
 	t.Parallel()
 
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-v0.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-v0.json")
 	assert.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
@@ -37,7 +37,7 @@ func TestLoadV0Checkpoint(t *testing.T) {
 func TestLoadV1Checkpoint(t *testing.T) {
 	t.Parallel()
 
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-v1.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-v1.json")
 	assert.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)
@@ -49,7 +49,7 @@ func TestLoadV1Checkpoint(t *testing.T) {
 func TestLoadV3Checkpoint(t *testing.T) {
 	t.Parallel()
 
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-v3.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-v3.json")
 	assert.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)

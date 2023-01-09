@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -137,7 +136,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 			t.Parallel()
 
 			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
+			contents, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", path, err)
 			}

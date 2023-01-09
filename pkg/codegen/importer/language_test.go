@@ -17,7 +17,6 @@ package importer
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -50,7 +49,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 
 			var actualState *resource.State
-			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
+			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *pcl.Program) error {
 				if !assert.Len(t, p.Nodes, 1) {
 					t.Fatal()
 				}

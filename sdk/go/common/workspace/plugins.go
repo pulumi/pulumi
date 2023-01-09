@@ -23,7 +23,6 @@ import (
 	"hash"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -271,7 +270,7 @@ func (source *githubSource) GetLatestVersion(
 	if err != nil {
 		return nil, err
 	}
-	jsonBody, err := ioutil.ReadAll(resp)
+	jsonBody, err := io.ReadAll(resp)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal github response len(%d): %s", length, err.Error())
 	}
@@ -309,7 +308,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	jsonBody, err := ioutil.ReadAll(resp)
+	jsonBody, err := io.ReadAll(resp)
 	if err != nil {
 		logging.V(9).Infof("cannot unmarshal github response len(%d): %s", length, err.Error())
 		return nil, -1, err
@@ -939,7 +938,7 @@ func DownloadToFile(
 	}
 
 	tryDownloadToFile := func() (string, error, error) {
-		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		file, err := os.CreateTemp("" /* default temp dir */, "pulumi-plugin-tar")
 		if err != nil {
 			return "", nil, err
 		}
@@ -1023,7 +1022,7 @@ type singleFilePlugin struct {
 }
 
 func (p singleFilePlugin) writeToDir(finalDir string) error {
-	bytes, err := ioutil.ReadAll(p.F)
+	bytes, err := io.ReadAll(p.F)
 	if err != nil {
 		return err
 	}
@@ -1090,7 +1089,7 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 			return err
 		}
 
-		bytes, err := ioutil.ReadAll(src)
+		bytes, err := io.ReadAll(src)
 		if err != nil {
 			return err
 		}
@@ -1166,7 +1165,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	}
 
 	// Create an empty partial file to indicate installation is in-progress.
-	if err := ioutil.WriteFile(partialFilePath, nil, 0600); err != nil {
+	if err := os.WriteFile(partialFilePath, nil, 0600); err != nil {
 		return err
 	}
 
@@ -1224,7 +1223,7 @@ func cleanupTempDirs(finalDir string) error {
 
 	for _, info := range infos {
 		// Temp dirs have a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number,
-		// from ioutil.TempFile.
+		// from os.CreateTemp.
 		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
 			path := filepath.Join(dir, info.Name())
 			if err := os.RemoveAll(path); err != nil {
@@ -1830,7 +1829,7 @@ var pluginRegexp = regexp.MustCompile(
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted
 // plugins to a temporary folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
-// ioutil.TempFile. We should ignore these folders.
+// os.CreateTemp. We should ignore these folders.
 var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.

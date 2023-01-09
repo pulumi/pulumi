@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -183,7 +183,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
+	c := client.NewClient(s.URL, token, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never}))
 
 	return &serviceSecretsManager{

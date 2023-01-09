@@ -101,7 +101,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1223,7 +1222,7 @@ func watchFile(path string, receivers []chan<- events.EngineEvent) (*fileWatcher
 }
 
 func tailLogs(command string, receivers []chan<- events.EngineEvent) (*fileWatcher, error) {
-	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
+	logDir, err := os.MkdirTemp("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logdir: %w", err)
 	}

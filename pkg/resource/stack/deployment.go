@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -76,7 +75,7 @@ func init() {
 		default:
 			return jsonschema.LoadURL(s)
 		}
-		return ioutil.NopCloser(strings.NewReader(schema)), nil
+		return io.NopCloser(strings.NewReader(schema)), nil
 	}
 	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
 	resourceSchema = compiler.MustCompile(apitype.ResourceSchemaID)

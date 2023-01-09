@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -247,7 +247,7 @@ func TestMapCrypter(t *testing.T) {
 
 	ctx := context.Background()
 
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-secrets.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-secrets.json")
 	require.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(encoding.JSON, bytes)

@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -145,7 +144,7 @@ func (pw *projectWorkspace) Save() error {
 
 // atomicWriteFile provides a rename based atomic write through a temporary file.
 func atomicWriteFile(path string, b []byte) error {
-	tmp, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create temporary file %s", path)
 	}
@@ -169,7 +168,7 @@ func atomicWriteFile(path string, b []byte) error {
 func (pw *projectWorkspace) readSettings() error {
 	settingsPath := pw.settingsPath()
 
-	b, err := ioutil.ReadFile(settingsPath)
+	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}

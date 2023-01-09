@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 	"sort"
@@ -529,7 +529,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			case len(args) == 2:
 				value = args[1]
 			case !terminal.IsTerminal(int(os.Stdin.Fd())):
-				b, readerr := ioutil.ReadAll(os.Stdin)
+				b, readerr := io.ReadAll(os.Stdin)
 				if readerr != nil {
 					return readerr
 				}

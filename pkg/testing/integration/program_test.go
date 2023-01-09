@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +51,7 @@ func TestRunCommandLog(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(matches))
 
-	output, err := ioutil.ReadFile(matches[0])
+	output, err := os.ReadFile(matches[0])
 	assert.Nil(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }

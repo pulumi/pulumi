@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -128,7 +128,7 @@ venv/`)
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := ioutil.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}

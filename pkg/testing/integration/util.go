@@ -17,7 +17,6 @@ package integration
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -56,12 +55,12 @@ func DecodeMapString(val string) (map[string]string, error) {
 
 // ReplaceInFile does a find and replace for a given string within a file.
 func ReplaceInFile(old, new, path string) error {
-	rawContents, err := ioutil.ReadFile(path)
+	rawContents, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 	newContents := strings.Replace(string(rawContents), old, new, -1)
-	return ioutil.WriteFile(path, []byte(newContents), os.ModePerm)
+	return os.WriteFile(path, []byte(newContents), os.ModePerm)
 }
 
 // getCmdBin returns the binary named bin in location loc or, if it hasn't yet been initialized, will lazily
@@ -100,7 +99,7 @@ func writeCommandOutput(commandName, runDir string, output []byte) (string, erro
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
-	if err := ioutil.WriteFile(logFile, output, 0600); err != nil {
+	if err := os.WriteFile(logFile, output, 0600); err != nil {
 		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
 	}
 
@@ -236,7 +235,7 @@ func AssertHTTPResultWithRetry(
 	}
 	// Read the body
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if !assert.NoError(t, err) {
 		return false
 	}
