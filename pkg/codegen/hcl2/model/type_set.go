@@ -100,7 +100,7 @@ func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 }
 
 func (t *SetType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "set(",
 		Value:   t.ElementType.Pretty(),
 		Postfix: ")",

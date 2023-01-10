@@ -40,14 +40,14 @@ func TestIndentFormatter(t *testing.T) {
 	testFormatter(t, []test{
 		{
 			">>123",
-			indent{
+			&indent{
 				prefix: ">>",
 				inner:  FromString("123"),
 			},
 		},
 		{
 			">>123\n>>456",
-			indent{
+			&indent{
 				prefix: ">>",
 				inner:  FromString("123\n456"),
 			},
@@ -61,7 +61,7 @@ func TestObjectFormatter(t *testing.T) {
 	testFormatter(t, []test{
 		{
 			"{ fizz: abc, hello: world }",
-			Object{
+			&Object{
 				Properties: map[string]Formatter{
 					"fizz":  FromString("abc"),
 					"hello": FromString("world"),
@@ -70,25 +70,25 @@ func TestObjectFormatter(t *testing.T) {
 		},
 		{
 			"{\n  fizz: abc,\n  hello: world,\n}",
-			Object{
+			(&Object{
 				Properties: map[string]Formatter{
 					"fizz":  FromString("abc"),
 					"hello": FromString("world"),
 				},
-			}.Columns(18),
+			}).Columns(18),
 		},
 		{
 			"{\n  aFoo: bar?,\n  bFizz: \n    buzz,\n}",
-			Object{
+			(&Object{
 				Properties: map[string]Formatter{
-					"aFoo": Wrap{
+					"aFoo": &Wrap{
 						Postfix:         "?",
 						PostfixSameline: true,
 						Value:           FromString("bar"),
 					},
 					"bFizz": FromString("buzz"),
 				},
-			}.Columns(14),
+			}).Columns(14),
 		},
 	})
 }
@@ -136,7 +136,7 @@ func TestWrapFormatter(t *testing.T) {
 func TestListFormatter(t *testing.T) {
 	t.Parallel()
 
-	commaList := List{
+	commaList := &List{
 		AdjoinSeparator: true,
 		Separator:       ", ",
 		Elements: []Formatter{
@@ -147,7 +147,7 @@ func TestListFormatter(t *testing.T) {
 		},
 	}
 
-	barList := List{
+	barList := &List{
 		Separator: " | ",
 		Elements: []Formatter{
 			FromString("a"),
@@ -171,15 +171,15 @@ func TestListFormatter(t *testing.T) {
     4
   ]
 | c`,
-			List{
+			(&List{
 				Separator: " | ",
 				Elements: []Formatter{
 					FromString("a"),
 					FromString("b"),
-					Wrap{
+					&Wrap{
 						Prefix:  "[",
 						Postfix: "]",
-						Value: List{
+						Value: &List{
 							AdjoinSeparator: true,
 							Separator:       ", ",
 							Elements: []Formatter{
@@ -192,7 +192,80 @@ func TestListFormatter(t *testing.T) {
 					},
 					FromString("c"),
 				},
-			}.Columns(4),
+			}).Columns(4),
 		},
+	})
+}
+
+func TestObjectTagging(t *testing.T) {
+	t.Parallel()
+
+	testFormatter(t, []test{
+		// Direct recursion
+		{`'T1 { foo: val1, rec: 'T1 }`, func() Formatter {
+			obj := &Object{
+				Properties: map[string]Formatter{
+					"foo": FromString("val1"),
+				},
+			}
+			obj.Properties["rec"] = obj
+			return obj
+		}()},
+		// Mutual recursion
+		{`'T1 { foo: val1, mutRec: { rec: 'T1 } }`, func() Formatter {
+			obj := &Object{
+				Properties: map[string]Formatter{
+					"foo": FromString("val1"),
+				},
+			}
+			obj.Properties["mutRec"] = &Object{
+				Properties: map[string]Formatter{
+					"rec": obj,
+				},
+			}
+			return obj
+		}()},
+		// Direct and mutual recursion
+		{`'T1 { foo: val1, mutRec: { rec: 'T1 }, rec: 'T1 }`, func() Formatter {
+			obj := &Object{
+				Properties: map[string]Formatter{
+					"foo": FromString("val1"),
+				},
+			}
+			obj.Properties["rec"] = obj
+			obj.Properties["mutRec"] = &Object{
+				Properties: map[string]Formatter{
+					"rec": obj,
+				},
+			}
+			return obj
+		}()},
+		// Non-recursive duplicates
+		{`{ one: { foo: val }, two: { foo: val } }`, func() Formatter {
+
+			inner := &Object{
+				Properties: map[string]Formatter{
+					"foo": FromString("val"),
+				},
+			}
+			return &Object{
+				Properties: map[string]Formatter{
+					"one": inner,
+					"two": inner,
+				},
+			}
+		}()},
+		// Structurally recursive object without matching pointer recursion.
+		{`'T1 { key: 'T1 }`, func() Formatter {
+			obj := &Object{
+				Properties: map[string]Formatter{},
+			}
+			obj.Properties["key"] = &Object{
+				Properties: map[string]Formatter{
+					"key": obj,
+				},
+			}
+			return obj
+		}()},
 	})
 }
