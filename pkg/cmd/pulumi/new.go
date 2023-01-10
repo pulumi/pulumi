@@ -1096,8 +1096,8 @@ func formatDesc(prefixWidth int, maxWidth int, desc string) string {
 	descWidth := maxWidth - prefixWidth
 	for idx := descWidth; idx < len(desc); idx += descWidth {
 		buffer := prefixWidth
-		if strings.LastIndex(desc[:idx], " ") != -1 {
-			idx = strings.LastIndex(desc[:idx], " ")
+		if lastSpace := strings.LastIndex(desc[:idx], " "); lastSpace != -1 {
+			idx = lastSpace
 			buffer += (descWidth - idx - 1)
 		}
 		descFormatted = fmt.Sprintf("%s%s%s", desc[:idx], strings.Repeat(" ", buffer), desc[idx:])
