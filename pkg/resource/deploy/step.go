@@ -356,15 +356,23 @@ func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool
 	return r
 }
 
+type deleteProtectedError struct {
+	urn resource.URN
+}
+
+func (d deleteProtectedError) Error() string {
+	return fmt.Sprintf("resource %[1]q cannot be deleted\n"+
+		"because it is protected. To unprotect the resource, "+
+		"either remove the `protect` flag from the resource in your Pulumi "+
+		"program and run `pulumi up`, or use the command:\n"+
+		"`pulumi state unprotect '%[1]s'`", d.urn)
+}
+
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
 	if !s.replacing && s.old.Protect {
-		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
-			"as it is currently marked for protection. To unprotect the resource, "+
-			"either remove the `protect` flag from the resource in your Pulumi "+
-			"program and run `pulumi up` or use the command:\n"+
-			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
+		return resource.StatusOK, nil, deleteProtectedError{urn: s.old.URN}
 	}
 
 	if preview {

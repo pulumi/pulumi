@@ -3558,9 +3558,9 @@ func TestProtect(t *testing.T) {
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
-	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
-		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
-		"from the resource in your Pulumi program and run `pulumi up` or use the command:\n" +
+	expectedMessage = "<{%reset%}>resource \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted\n" +
+		"because it is protected. To unprotect the resource, either remove the `protect` flag " +
+		"from the resource in your Pulumi program and run `pulumi up`, or use the command:\n" +
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
