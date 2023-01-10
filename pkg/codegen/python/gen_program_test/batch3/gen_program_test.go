@@ -17,14 +17,14 @@
 package batch3
 
 import (
-  "os"
-  "testing"
+	"os"
+	"testing"
 
-  codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-  os.Chdir("../../../python") // chdir into codegen/python
-  codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(3, 6))
+	os.Chdir("../../../python") // chdir into codegen/python
+	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(3, 6))
 }

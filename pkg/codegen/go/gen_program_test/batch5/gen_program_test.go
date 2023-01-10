@@ -17,14 +17,14 @@
 package batch5
 
 import (
-  "os"
-  "testing"
+	"os"
+	"testing"
 
-  codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-  os.Chdir("../../../go") // chdir into codegen/go
-  codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(5, 6))
+	os.Chdir("../../../go") // chdir into codegen/go
+	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(5, 6))
 }
