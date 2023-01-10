@@ -1038,7 +1038,10 @@ func promptForValue(
 func templatesToOptionArrayAndMap(templates []workspace.Template,
 	showAll bool) ([]string, map[string]workspace.Template) {
 
-	termWidth, _, _ := terminal.GetSize(0)
+	termWidth, _, err := terminal.GetSize(0)
+	if err != nil {
+		termWidth = 80
+	}
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
