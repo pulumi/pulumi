@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
@@ -73,7 +74,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if addr := info.MonitorAddr; addr != "" {
 		conn, err := grpc.Dial(
 			info.MonitorAddr,
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
@@ -91,7 +92,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	} else if addr := info.EngineAddr; addr != "" {
 		conn, err := grpc.Dial(
 			info.EngineAddr,
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {

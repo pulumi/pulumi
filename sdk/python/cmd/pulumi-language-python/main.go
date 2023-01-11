@@ -51,6 +51,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -282,7 +283,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 		// Make a connection to the real engine that we will log messages to.
 		conn, err := grpc.Dial(
 			host.engineAddress,
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
