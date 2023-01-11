@@ -148,7 +148,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 	for i, v := range md.Keys {
 		keys[i] = string(v)
 	}
-	var diffs = make([]string, 0, len(md.Diffs))
+	diffs := make([]string, 0, len(md.Diffs))
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
 	}

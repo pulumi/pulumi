@@ -201,7 +201,7 @@ func GetStoredCredentials() (Credentials, error) {
 			"`pulumi login` to reset your credentials file")
 	}
 
-	var secrets = make([]string, 0, len(creds.AccessTokens))
+	secrets := make([]string, 0, len(creds.AccessTokens))
 	for _, v := range creds.AccessTokens {
 		secrets = append(secrets, v)
 	}

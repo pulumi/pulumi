@@ -277,7 +277,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sConfiguration:%s\n", colors.SpecUnimportant, colors.Reset)))
 
-	var keys = make([]string, 0, len(event.Config))
+	keys := make([]string, 0, len(event.Config))
 	for key := range event.Config {
 		keys = append(keys, key)
 	}

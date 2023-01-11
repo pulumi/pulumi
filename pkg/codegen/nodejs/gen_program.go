@@ -328,7 +328,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 
 	var sortedVals = importSet.SortedValues()
-	var imports = make([]string, 0, len(sortedVals))
+	imports := make([]string, 0, len(sortedVals))
 	for _, pkg := range sortedVals {
 		if pkg == "@pulumi/pulumi" {
 			continue

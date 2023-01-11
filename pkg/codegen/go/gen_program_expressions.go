@@ -1081,7 +1081,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 func (g *generator) rewriteThenForAllApply(
 	then *model.AnonymousFunctionExpression,
 ) (*model.AnonymousFunctionExpression, []string) {
-	var typeConvDecls = make([]string, 0, len(then.Parameters))
+	typeConvDecls := make([]string, 0, len(then.Parameters))
 	for i, v := range then.Parameters {
 		typ := g.argumentTypeName(nil, v.VariableType, false)
 		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)

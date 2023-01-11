@@ -340,7 +340,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	}
 
 	// And now any properties that failed verification.
-	var failures = make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -700,7 +700,7 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	// And now any properties that failed verification.
-	var failures = make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1349,7 +1349,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	// And now any properties that failed verification.
-	var failures = make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1524,7 +1524,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	}
 
 	// And now any properties that failed verification.
-	var failures = make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}

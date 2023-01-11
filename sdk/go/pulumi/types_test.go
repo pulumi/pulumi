@@ -901,7 +901,7 @@ func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKno
 	assert.Equal(t, expectedValue, v, "values do not match")
 	assert.Equal(t, expectedKnown, known, "known-ness does not match")
 	assert.Equal(t, expectedSecret, secret, "secret-ness does not match")
-	var depUrns = make([]URN, 0, len(deps))
+	depUrns := make([]URN, 0, len(deps))
 	for _, v := range deps {
 		depUrns = append(depUrns, v.URN().value.(URN))
 	}

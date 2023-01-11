@@ -415,7 +415,7 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 	}
 
 	// Only return Pulumi packages.
-	var pulumiPackages = make([]pythonPackage, 0, len(packages))
+	pulumiPackages := make([]pythonPackage, 0, len(packages))
 	for _, pkg := range packages {
 		if !pkg.isPulumiPackage() {
 			continue

@@ -1213,7 +1213,7 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	}
 
 	// Build the type list.
-	var typeList = make([]Type, 0, len(t.resources))
+	typeList := make([]Type, 0, len(t.resources))
 	for _, t := range t.resources {
 		typeList = append(typeList, t)
 	}

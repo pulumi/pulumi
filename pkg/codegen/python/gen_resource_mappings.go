@@ -125,7 +125,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 		}
 	}
 
-	var result = make([]resourceModuleInfo, 0, len(byMod))
+	result := make([]resourceModuleInfo, 0, len(byMod))
 	for _, rmi := range byMod {
 		result = append(result, rmi)
 	}

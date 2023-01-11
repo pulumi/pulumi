@@ -106,7 +106,7 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]interface{
 	if err != nil {
 		return nil, err
 	}
-	var args = make([]string, 0, len(options))
+	args := make([]string, 0, len(options))
 
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
@@ -349,7 +349,7 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 		return nil, rpcError
 	}
 
-	var results = make([]DependencyInfo, 0, len(resp.GetDependencies()))
+	results := make([]DependencyInfo, 0, len(resp.GetDependencies()))
 	for _, dep := range resp.GetDependencies() {
 		var version semver.Version
 		if v := dep.Version; v != "" {

@@ -896,7 +896,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		return getDockerImagePythonFormalParams()
 	}
 
-	var params = make([]formalParam, 0, len(mod.inputTypes))
+	params := make([]formalParam, 0, len(mod.inputTypes))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
@@ -980,7 +980,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var sortedTokens = make([]string, 0, len(tokens))
+	sortedTokens := make([]string, 0, len(tokens))
 	for token := range tokens {
 		sortedTokens = append(sortedTokens, token)
 	}
