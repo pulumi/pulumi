@@ -101,6 +101,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
+		Directory:   "simplified-invokes",
+		Description: "Simplified invokes",
+		Skip:        codegen.NewStringSet("python/any", "go/any"),
+	},
+	{
 		Directory:        "nested-module-thirdparty",
 		Description:      "Third-party nested module",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
