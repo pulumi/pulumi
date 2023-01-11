@@ -530,7 +530,7 @@ func determinePluginVersion(packageVersion string) (string, error) {
 
 	parseNumber := func(s string) (string, string) {
 		i := 0
-		for _, c := range []rune(s) {
+		for _, c := range s {
 			if c > '9' || c < '0' {
 				break
 			}
