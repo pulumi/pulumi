@@ -532,7 +532,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	var params []string
+	var params = make([]string, 0, len(runtime.other))
 
 	if r := runtime.Executable; r != "" {
 		params = append(params, fmt.Sprintf("executable='%s'", r))

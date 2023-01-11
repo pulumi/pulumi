@@ -1639,7 +1639,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 		return diff, nil
 	}
 
-	var replaceOnChangePaths []resource.PropertyPath
+	var replaceOnChangePaths = make([]resource.PropertyPath, 0, len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
 		path, err := resource.ParsePropertyPath(p)
 		if err != nil {
@@ -1687,7 +1687,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 			}
 		}
 	}
-	var modifiedReplaceKeys []resource.PropertyKey
+	var modifiedReplaceKeys = make([]resource.PropertyKey, 0, len(modifiedReplaceKeysMap))
 	for k := range modifiedReplaceKeysMap {
 		modifiedReplaceKeys = append(modifiedReplaceKeys, k)
 	}

@@ -286,7 +286,7 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	}
 	seen[t] = struct{}{}
 
-	var properties []string
+	var properties = make([]string, 0, len(t.Properties))
 	for k, v := range t.Properties {
 		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
 	}

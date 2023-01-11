@@ -125,13 +125,13 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 }
 
 func printStackTags(tags map[apitype.StackTagName]string) {
-	var names []string
+	var names = make([]string, 0, len(tags))
 	for n := range tags {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 
-	rows := []cmdutil.TableRow{}
+	var rows = make([]cmdutil.TableRow, 0, len(names))
 	for _, name := range names {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}

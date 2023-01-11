@@ -102,11 +102,12 @@ func init() {
 
 // parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
 func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideArray, error) {
-	var result pluginDownloadOverrideArray
+	var splits = strings.Split(overrides, ",")
+	var result = make(pluginDownloadOverrideArray, 0, len(splits))
 	if overrides == "" {
 		return result, nil
 	}
-	for _, pair := range strings.Split(overrides, ",") {
+	for _, pair := range splits {
 		split := strings.Split(pair, "=")
 		if len(split) != 2 || split[0] == "" || split[1] == "" {
 			return nil, fmt.Errorf("expected format to be \"regexp1=URL1,regexp2=URL2\"; got %q", overrides)

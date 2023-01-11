@@ -896,8 +896,8 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	// as an add.  For any asset in both we print out of it is unchanged or not.  If so, we
 	// recurse on that data to print out how it changed.
 
-	var oldNames []string
-	var newNames []string
+	var oldNames = make([]string, 0, len(oldAssets))
+	var newNames = make([]string, 0, len(newAssets))
 
 	for name := range oldAssets {
 		oldNames = append(oldNames, name)
@@ -913,7 +913,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	i := 0
 	j := 0
 
-	var keys []resource.PropertyKey
+	var keys = make([]resource.PropertyKey, 0, len(oldNames)+len(newNames))
 	for _, name := range oldNames {
 		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
 	}

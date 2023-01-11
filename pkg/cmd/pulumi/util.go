@@ -342,7 +342,7 @@ func chooseStack(ctx context.Context,
 		inContToken = outContToken
 	}
 
-	var options []string
+	var options = make([]string, 0, len(allSummaries))
 	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)

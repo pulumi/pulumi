@@ -731,7 +731,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -817,7 +817,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
 	for _, failure := range ret.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -872,7 +872,7 @@ func (rm *resmon) StreamInvoke(
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -916,7 +916,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	id := resource.ID(req.GetId())
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
-	var deps []resource.URN
+	var deps = make([]resource.URN, 0, len(req.GetDependencies()))
 	for _, depURN := range req.GetDependencies() {
 		deps = append(deps, resource.URN(depURN))
 	}
@@ -931,7 +931,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
-	var additionalSecretOutputs []resource.PropertyKey
+	var additionalSecretOutputs = make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
@@ -1144,7 +1144,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	var additionalSecretOutputs []resource.PropertyKey
+	var additionalSecretOutputs = make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}

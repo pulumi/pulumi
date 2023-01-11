@@ -1771,7 +1771,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
-	var files []fileInfo
+	var files = make([]fileInfo, 0, len(mod.extraSourceFiles))
 	for _, path := range mod.extraSourceFiles {
 		files = append(files, fileInfo{
 			fileType:         otherFileType,

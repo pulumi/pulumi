@@ -369,7 +369,7 @@ func (rm *queryResmon) Invoke(
 		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -419,7 +419,7 @@ func (rm *queryResmon) StreamInvoke(
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -496,7 +496,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	var chkfails []*pulumirpc.CheckFailure
+	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
 	for _, failure := range ret.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),

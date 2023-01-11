@@ -1033,7 +1033,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	var result []*Property
+	var result = make([]*Property, 0, len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 		// NOTE: The correct determination for if we should bind an input is:
@@ -1213,7 +1213,7 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	}
 
 	// Build the type list.
-	var typeList []Type
+	var typeList = make([]Type, 0, len(t.resources))
 	for _, t := range t.resources {
 		typeList = append(typeList, t)
 	}
@@ -1372,7 +1372,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	var aliases []*Alias
+	var aliases = make([]*Alias, 0, len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
@@ -1416,7 +1416,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
-	var stringProperties []*Property
+	var stringProperties = make([]*Property, 0, len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
@@ -1445,7 +1445,7 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	}
 	diags = diags.Extend(provDiags)
 
-	var resources []*Resource
+	var resources = make([]*Resource, 0, len(tokens))
 	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
@@ -1519,7 +1519,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	var functions []*Function
+	var functions = make([]*Function, 0, len(tokens))
 	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)

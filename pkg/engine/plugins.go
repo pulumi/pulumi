@@ -98,7 +98,7 @@ func (p pluginSet) Deduplicate() pluginSet {
 
 // Values returns a slice of all of the plugins contained within this set.
 func (p pluginSet) Values() []workspace.PluginSpec {
-	var plugins []workspace.PluginSpec
+	var plugins = make([]workspace.PluginSpec, 0, len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
 	}

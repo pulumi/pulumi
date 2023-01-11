@@ -327,8 +327,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		contract.Assert(len(diags) == 0)
 	}
 
-	var imports []string
-	for _, pkg := range importSet.SortedValues() {
+	var sortedVals = importSet.SortedValues()
+	var imports = make([]string, 0, len(sortedVals))
+	for _, pkg := range sortedVals {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}

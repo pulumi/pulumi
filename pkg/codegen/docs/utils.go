@@ -39,7 +39,7 @@ func isPythonTypeNameBoundary(prev rune, next rune) bool {
 
 // wbr inserts HTML <wbr> in between case changes, e.g. "fooBar" becomes "foo<wbr>Bar".
 func wbr(s string) string {
-	var runes []rune
+	var runes = make([]rune, 0, len(s))
 	var prev rune
 	for i, r := range s {
 		if i != 0 &&

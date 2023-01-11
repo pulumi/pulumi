@@ -595,7 +595,7 @@ func assertHasDeps(
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
-	var expDeps []URN
+	var expDeps = make([]URN, 0, len(expectedDeps))
 	for _, expDepRes := range expectedDeps {
 		expDep := urn(t, ctx, expDepRes)
 		expDeps = append(expDeps, expDep)
