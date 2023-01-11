@@ -329,7 +329,11 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	for i, v := range md.Keys {
 		keys[i] = resource.PropertyKey(v)
 	}
-	var diffs = make([]resource.PropertyKey, 0, len(md.Diffs))
+	//nolint:prealloc
+	var diffs []resource.PropertyKey
+	if len(md.Diffs) > 0 {
+		diffs = make([]resource.PropertyKey, 0, len(md.Diffs))
+	}
 	for _, v := range md.Diffs {
 		diffs = append(diffs, resource.PropertyKey(v))
 	}

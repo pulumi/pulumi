@@ -671,7 +671,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}{
 		{
 			input:    "",
-			expected: nil,
+			expected: pluginDownloadOverrideArray{},
 		},
 		{
 			input: "^foo.*=https://foo",
@@ -767,27 +767,22 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 		{
 			input:       "=", // missing regex and url
 			expectError: true,
-			matches:     []match{},
 		},
 		{
 			input:       "^foo.*=", // missing url
 			expectError: true,
-			matches:     []match{},
 		},
 		{
 			input:       "=https://foo", // missing regex
 			expectError: true,
-			matches:     []match{},
 		},
 		{
 			input:       "^foo.*=https://foo,", // trailing comma
 			expectError: true,
-			matches:     []match{},
 		},
 		{
 			input:       "[=https://foo", // invalid regex
 			expectError: true,
-			matches:     []match{},
 		},
 	}
 	for _, tt := range tests {
