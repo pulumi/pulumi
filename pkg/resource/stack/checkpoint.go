@@ -79,6 +79,28 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes 
 	}
 }
 
+func MarshalUntypedDeploymentToVersionedCheckpoint(
+	stack tokens.Name, deployment *apitype.UntypedDeployment) (*apitype.VersionedCheckpoint, error) {
+
+	chk := struct {
+		Stack  tokens.QName
+		Latest json.RawMessage
+	}{
+		Stack:  stack.Q(),
+		Latest: deployment.Deployment,
+	}
+
+	bytes, err := encoding.JSON.Marshal(chk)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	return &apitype.VersionedCheckpoint{
+		Version:    deployment.Version,
+		Checkpoint: bytes,
+	}, nil
+}
+
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
 func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 	sm secrets.Manager, showSecrets bool) (*apitype.VersionedCheckpoint, error) {

@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -430,8 +431,12 @@ func TestHtmlEscaping(t *testing.T) {
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
 	assert.NoError(t, err)
 
-	data, err := json.Marshal(sdep)
+	data, err := encoding.JSON.Marshal(sdep)
 	assert.NoError(t, err)
+
+	// Ensure data has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
+	// ImportDeployment below should not modify the data
+	assert.Contains(t, string(data), "<html@tags>")
 
 	udep := &apitype.UntypedDeployment{
 		Version:    3,

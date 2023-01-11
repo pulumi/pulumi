@@ -780,21 +780,12 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 	stk backend.Stack) (*apitype.UntypedDeployment, error) {
 
 	stackName := stk.Ref().Name()
-	snap, _, err := b.getStack(ctx, stackName)
+	chk, err := b.getCheckpoint(stackName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
-	if snap == nil {
-		snap = deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil)
-	}
-
-	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager /* showSecrsts */, false)
-	if err != nil {
-		return nil, fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	data, err := encoding.JSON.Marshal(sdep)
+	data, err := encoding.JSON.Marshal(chk.Latest)
 	if err != nil {
 		return nil, err
 	}
@@ -815,17 +806,12 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, stk.Ref())
 
 	stackName := stk.Ref().Name()
-	_, _, err = b.getStack(ctx, stackName)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
 	if err != nil {
 		return err
 	}
 
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
-	if err != nil {
-		return err
-	}
-
-	_, err = b.saveStack(stackName, snap, snap.SecretsManager)
+	_, _, err = b.saveCheckpoint(stackName, chk)
 	return err
 }
 

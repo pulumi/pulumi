@@ -179,12 +179,14 @@ func (b *localBackend) getCheckpoint(stackName tokens.Name) (*apitype.Checkpoint
 	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
 }
 
-func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
+func (b *localBackend) saveCheckpoint(
+	name tokens.Name, checkpoint *apitype.VersionedCheckpoint) (backupFile string, file string, _ error) {
+
 	// Make a serializable stack and then use the encoder to encode it.
-	file := b.stackPath(name)
+	file = b.stackPath(name)
 	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
 	if m == nil {
-		return "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
+		return "", "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
@@ -198,13 +200,9 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 		file = strings.TrimSuffix(file, ".gz")
 	}
 
-	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
+	byts, err := m.Marshal(checkpoint)
 	if err != nil {
-		return "", fmt.Errorf("serializaing checkpoint: %w", err)
-	}
-	byts, err := m.Marshal(chk)
-	if err != nil {
-		return "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
+		return "", "", fmt.Errorf("An IO error occurred while marshalling the checkpoint: %w", err)
 	}
 
 	// Back up the existing file if it already exists. Don't delete the original, the following WriteAll will
@@ -217,11 +215,10 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 	// only keep the file of the type we are working with.
 	bckGzip := backupTarget(b.bucket, fileGzip, b.gzip)
 	bckPlain := backupTarget(b.bucket, filePlain, !b.gzip)
-	var bck string
 	if b.gzip {
-		bck = bckGzip
+		backupFile = bckGzip
 	} else {
-		bck = bckPlain
+		backupFile = bckPlain
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
@@ -254,17 +251,31 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 			},
 		})
 		if err != nil {
-			return "", err
+			return backupFile, "", err
 		}
 	}
 
-	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
+	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, backupFile)
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
-			return "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
+			return backupFile, "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 		}
+	}
+
+	return backupFile, file, nil
+}
+
+func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
+	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
+	if err != nil {
+		return "", fmt.Errorf("serializaing checkpoint: %w", err)
+	}
+
+	backup, file, err := b.saveCheckpoint(name, chk)
+	if err != nil {
+		return "", err
 	}
 
 	if !DisableIntegrityChecking {
@@ -274,7 +285,7 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
-				file, bck, verifyerr)
+				file, backup, verifyerr)
 
 		}
 	}
