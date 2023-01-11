@@ -20,8 +20,7 @@ env:
 
 jobs:
   golangci:
-    # See https://github.com/pulumi/pulumi/issues/9280 for why this is set to v1.44
-    container: golangci/golangci-lint:v1.47.3
+    container: golangci/golangci-lint:latest
     name: Lint Go
     runs-on: ubuntu-latest
     steps:
