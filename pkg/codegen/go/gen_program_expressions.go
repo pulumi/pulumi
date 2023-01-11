@@ -543,24 +543,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	g.Fgenf(w, "}")
 }
 
-func (g *generator) genRelativeTraversalExpression(
-	w io.Writer, expr *model.RelativeTraversalExpression, isInput bool) {
-
-	if _, ok := expr.Parts[0].(*model.PromiseType); ok {
-		isInput = false
-	}
-	if _, ok := expr.Parts[0].(*pcl.Resource); ok {
-		isInput = false
-	}
-	if isInput {
-		g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
-	}
-	g.GenRelativeTraversalExpression(w, expr)
-	if isInput {
-		g.Fgenf(w, ")")
-	}
-}
-
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
 	g.Fgenf(w, "%.20v", expr.Source)
 	isRootResource := false

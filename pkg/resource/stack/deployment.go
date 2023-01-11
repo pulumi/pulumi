@@ -58,7 +58,6 @@ var (
 )
 
 var deploymentSchema *jsonschema.Schema
-var resourceSchema *jsonschema.Schema
 var propertyValueSchema *jsonschema.Schema
 
 func init() {
@@ -78,7 +77,6 @@ func init() {
 		return io.NopCloser(strings.NewReader(schema)), nil
 	}
 	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
-	resourceSchema = compiler.MustCompile(apitype.ResourceSchemaID)
 	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
 }
 

@@ -173,10 +173,6 @@ func (r *messageRenderer) writeSimpleMessage(msg string) {
 	r.colorizeAndWriteProgress(makeMessageProgress(msg))
 }
 
-func (r *messageRenderer) writeBlankLine() {
-	r.writeSimpleMessage(" ")
-}
-
 func (r *messageRenderer) println(display *ProgressDisplay, line string) {
 	r.writeSimpleMessage(line)
 }
