@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint
+//nolint:errcheck,goconst
 package auto
 
 import (
@@ -1123,7 +1123,7 @@ func ExampleStack_Export() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	dep, _ := stack.Export(ctx)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1144,7 +1144,7 @@ func ExampleStack_Import() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	dep, _ := stack.Export(ctx)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1166,7 +1166,7 @@ func ExampleLocalWorkspace_ExportStack() {
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
 	dep, _ := w.ExportStack(ctx, stackName)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1188,7 +1188,7 @@ func ExampleLocalWorkspace_ImportStack() {
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
 	dep, _ := w.ExportStack(ctx, stackName)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
