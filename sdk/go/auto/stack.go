@@ -150,8 +150,7 @@ func FullyQualifiedStackName(org, project, stack string) string {
 // NewStack creates a new stack using the given workspace, and stack name.
 // It fails if a stack with that name already exists
 func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
-	var s Stack
-	s = Stack{
+	s := Stack{
 		workspace: ws,
 		stackName: stackName,
 	}
@@ -167,8 +166,7 @@ func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error
 // SelectStack selects stack using the given workspace, and stack name.
 // It returns an error if the given Stack does not exist.
 func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
-	var s Stack
-	s = Stack{
+	s := Stack{
 		workspace: ws,
 		stackName: stackName,
 	}

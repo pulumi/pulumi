@@ -504,7 +504,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 }
 
 func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
-	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	schemaType, ok := pcl.GetSchemaForType(destType)
 	if !ok {
 		return nil, false
 	}
