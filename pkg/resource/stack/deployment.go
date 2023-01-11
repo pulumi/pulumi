@@ -167,7 +167,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 func DeserializeUntypedDeployment(
 	ctx context.Context,
 	deployment *apitype.UntypedDeployment,
-	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	secretsProv secrets.Provider) (*deploy.Snapshot, error) {
 
 	contract.Require(deployment != nil, "deployment")
 	switch {
@@ -207,7 +207,7 @@ func DeserializeUntypedDeployment(
 func DeserializeDeploymentV3(
 	ctx context.Context,
 	deployment apitype.DeploymentV3,
-	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	secretsProv secrets.Provider) (*deploy.Snapshot, error) {
 
 	// Unpack the versions.
 	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
