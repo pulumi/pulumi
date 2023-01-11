@@ -378,11 +378,7 @@ func resourceRequiresAsyncMain(r *pcl.Resource) bool {
 
 func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 	outputName := ov.LogicalName()
-	if makeValidIdentifier(outputName) != outputName {
-		return true
-	}
-
-	return false
+	return makeValidIdentifier(outputName) != outputName
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.

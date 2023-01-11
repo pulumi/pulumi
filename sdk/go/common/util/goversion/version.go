@@ -29,9 +29,7 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 
 	}
 	version := strings.TrimSpace(split[2])
-	if strings.HasPrefix(version, "go") {
-		version = version[2:]
-	}
+	version = strings.TrimPrefix(version, "go")
 
 	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {

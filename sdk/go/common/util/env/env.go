@@ -195,7 +195,7 @@ func (v value) String() string {
 	if m := v.missingPrerequs(); m != "" {
 		return fmt.Sprintf("need %s (%s)", m, v.Var().Value.formattedValue())
 	}
-	return fmt.Sprintf("%s", v.Var().Value.formattedValue())
+	return v.Var().Value.formattedValue()
 }
 
 func (v *value) setVar(variable Var) {

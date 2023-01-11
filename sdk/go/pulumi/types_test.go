@@ -441,8 +441,7 @@ func TestToOutputAnyDeps(t *testing.T) {
 	assert.Equal(t, true, bo.value)
 	assert.ElementsMatch(t, []Resource{boolDep1, boolDep2}, bo.deps)
 
-	ro, ok := argsV.R.(Resource)
-	assert.True(t, ok)
+	ro := argsV.R
 	urn, known, secret, deps, err := await(ro.URN())
 	assert.Equal(t, URN("foo"), urn)
 	assert.True(t, known)

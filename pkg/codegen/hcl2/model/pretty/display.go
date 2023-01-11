@@ -224,7 +224,7 @@ func (o Object) String() string {
 	for i, key := range keys {
 		s += key + ": "
 		v := o.Properties[key].Columns(columns - len(s) - 1).String()
-		if strings.IndexRune(v, '\n') != -1 {
+		if strings.ContainsRune(v, '\n') {
 			singleLine = false
 			break
 		}
@@ -286,7 +286,7 @@ func (l List) String() string {
 	singleLine := true
 	for i, el := range l.Elements {
 		v := el.Columns(columns - len(s)).String()
-		if strings.IndexRune(v, '\n') != -1 {
+		if strings.ContainsRune(v, '\n') {
 			singleLine = false
 			break
 		}
