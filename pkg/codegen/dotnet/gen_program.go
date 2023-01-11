@@ -252,14 +252,6 @@ func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{}) {
-	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagWarning,
-		Summary:  fmt.Sprintf(reason, args...),
-		Subject:  location,
-	})
-}
-
 func (g *generator) findFunctionSchema(token string, location *hcl.Range) (*schema.Function, bool) {
 	for _, pkg := range g.program.PackageReferences() {
 		fn, ok, err := pcl.LookupFunction(pkg, token)
