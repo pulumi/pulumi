@@ -140,7 +140,7 @@ func runTotalStateEdit(
 
 func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return result.FromError(err)
 	} else if snap == nil {

@@ -305,7 +305,7 @@ func newImportCmd() *cobra.Command {
 
 	var debug bool
 	var message string
-	var stack string
+	var stackName string
 	var execKind string
 	var execAgent string
 
@@ -509,7 +509,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -554,6 +554,7 @@ func newImportCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             cancellationScopes,
 			}, imports)
 
@@ -626,7 +627,7 @@ func newImportCmd() *cobra.Command {
 		&message, "message", "m", "",
 		"Optional message to associate with the update operation")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

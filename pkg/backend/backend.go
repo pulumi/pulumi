@@ -188,7 +188,7 @@ type Backend interface {
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
+	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
@@ -230,6 +230,7 @@ type UpdateOperation struct {
 	M                  *UpdateMetadata
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
+	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
 }
@@ -240,6 +241,7 @@ type QueryOperation struct {
 	Root               string
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
+	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
 }
@@ -286,12 +288,13 @@ type CancellationScopeSource interface {
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
-func NewBackendClient(backend Backend) deploy.BackendClient {
-	return &backendClient{backend: backend}
+func NewBackendClient(backend Backend, secretsProvider secrets.Provider) deploy.BackendClient {
+	return &backendClient{backend: backend, secretsProvider: secretsProvider}
 }
 
 type backendClient struct {
-	backend Backend
+	backend         Backend
+	secretsProvider secrets.Provider
 }
 
 // GetStackOutputs returns the outputs of the stack with the given name.
@@ -307,7 +310,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +337,7 @@ func (c *backendClient) GetStackResourceOutputs(
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
 		return nil, err
 	}

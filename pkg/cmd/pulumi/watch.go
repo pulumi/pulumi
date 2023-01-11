@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -36,7 +37,7 @@ func newWatchCmd() *cobra.Command {
 	var debug bool
 	var message string
 	var execKind string
-	var stack string
+	var stackName string
 	var configArray []string
 	var pathArray []string
 	var configPath bool
@@ -88,7 +89,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -148,6 +149,7 @@ func newWatchCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             cancellationScopes,
 			}, pathArray)
 
@@ -170,7 +172,7 @@ func newWatchCmd() *cobra.Command {
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

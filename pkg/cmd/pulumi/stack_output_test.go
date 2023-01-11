@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -138,7 +139,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			requireStack := func(context.Context,
 				string, stackLoadOption, display.Options) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil
@@ -251,7 +252,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 			requireStack := func(context.Context,
 				string, stackLoadOption, display.Options) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil
@@ -374,7 +375,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			requireStack := func(context.Context,
 				string, stackLoadOption, display.Options) (backend.Stack, error) {
 				return &backend.MockStack{
-					SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
+					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 						return &snap, nil
 					},
 				}, nil

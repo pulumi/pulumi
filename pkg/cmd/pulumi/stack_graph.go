@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -65,7 +66,7 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(ctx)
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return err
 			}

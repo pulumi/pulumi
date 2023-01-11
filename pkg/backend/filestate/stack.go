@@ -53,11 +53,15 @@ func newStack(ref backend.StackReference, path string, snapshot *deploy.Snapshot
 	}
 }
 
-func (s *localStack) Ref() backend.StackReference                            { return s.ref }
-func (s *localStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) { return s.snapshot, nil }
-func (s *localStack) Backend() backend.Backend                               { return s.b }
-func (s *localStack) Path() string                                           { return s.path }
-func (s *localStack) Tags() map[apitype.StackTagName]string                  { return nil }
+func (s *localStack) Ref() backend.StackReference { return s.ref }
+func (s *localStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+	// TODO: We should delay snapshot reading till here like we do for httpstate, which _also_ means we can
+	// use the secretsProvider passed in rather than assuming DefaultSecretsProvider.
+	return s.snapshot, nil
+}
+func (s *localStack) Backend() backend.Backend              { return s.b }
+func (s *localStack) Path() string                          { return s.path }
+func (s *localStack) Tags() map[apitype.StackTagName]string { return nil }
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
@@ -95,9 +99,9 @@ func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, path
 	return backend.WatchStack(ctx, s, op, paths)
 }
 
-func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
+func (s *localStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, cfg, query)
+	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 func (s *localStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

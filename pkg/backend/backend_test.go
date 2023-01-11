@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -51,7 +52,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 		},
 		GetStackF: func(ctx context.Context, stackRef StackReference) (Stack, error) {
 			return &MockStack{
-				SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
+				SnapshotF: func(ctx context.Context, sp secrets.Provider) (*deploy.Snapshot, error) {
 					return &deploy.Snapshot{Resources: []*resource.State{
 						resc1, resc2, deleted,
 					}}, nil

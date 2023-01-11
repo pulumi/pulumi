@@ -123,12 +123,12 @@ func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	return si
 }
 
-func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
+func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {
 		return *s.snapshot, nil
 	}
 
-	snap, err := s.b.getSnapshot(ctx, s.ref)
+	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref)
 	if err != nil {
 		return nil, err
 	}
@@ -176,9 +176,9 @@ func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, path
 	return backend.WatchStack(ctx, s, op, paths)
 }
 
-func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
+func (s *cloudStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, cfg, query)
+	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {

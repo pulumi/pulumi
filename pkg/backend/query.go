@@ -46,7 +46,7 @@ func RunQuery(ctx context.Context, b Backend, op QueryOperation,
 	engineCtx := &engine.Context{
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
-		BackendClient: NewBackendClient(b),
+		BackendClient: NewBackendClient(b, op.SecretsProvider),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()

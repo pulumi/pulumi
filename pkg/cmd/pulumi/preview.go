@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,7 +40,7 @@ func newPreviewCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
-	var stack string
+	var stackName string
 	var configArray []string
 	var configPath bool
 	var client string
@@ -132,7 +133,7 @@ func newPreviewCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, displayOpts, apitype.Preview, stack, args[0], remoteArgs)
+				return runDeployment(ctx, displayOpts, apitype.Preview, stackName, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(displayOpts)
@@ -150,7 +151,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew, displayOpts)
+			s, err := requireStack(ctx, stackName, stackOfferNew, displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -239,6 +240,7 @@ func newPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             cancellationScopes,
 			})
 
@@ -280,7 +282,7 @@ func newPreviewCmd() *cobra.Command {
 		&expectNop, "expect-no-changes", false,
 		"Return an error if any changes are proposed by this preview")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

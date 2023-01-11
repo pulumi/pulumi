@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -30,7 +31,7 @@ import (
 //
 //nolint:vetshadow
 func newQueryCmd() *cobra.Command {
-	var stack string
+	var stackName string
 
 	var cmd = &cobra.Command{
 		Use:   "query",
@@ -72,10 +73,11 @@ func newQueryCmd() *cobra.Command {
 			}
 
 			res := b.Query(ctx, backend.QueryOperation{
-				Proj:   proj,
-				Root:   root,
-				Opts:   opts,
-				Scopes: cancellationScopes,
+				Proj:            proj,
+				Root:            root,
+				Opts:            opts,
+				Scopes:          cancellationScopes,
+				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {
 			case res != nil && res.Error() == context.Canceled:
@@ -89,7 +91,7 @@ func newQueryCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
