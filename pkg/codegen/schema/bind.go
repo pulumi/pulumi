@@ -1033,7 +1033,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	var result []*Property
+	var result = make([]*Property, 0, len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 		// NOTE: The correct determination for if we should bind an input is:
@@ -1372,7 +1372,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	var aliases []*Alias
+	var aliases = make([]*Alias, 0, spec.Aliases)
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}

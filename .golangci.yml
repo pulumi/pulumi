@@ -11,6 +11,7 @@ run:
 linters:
   enable-all: false
   enable:
+    - prealloc
     - deadcode
     - errcheck
     - goconst

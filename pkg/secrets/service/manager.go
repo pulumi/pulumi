@@ -66,7 +66,7 @@ func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) 
 }
 
 func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
-	var secretsToDecrypt [][]byte
+	var secretsToDecrypt = make([][]byte, 0, len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
 		if err != nil {
