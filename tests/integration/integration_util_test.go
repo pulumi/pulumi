@@ -42,6 +42,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const WindowsOS = "windows"
@@ -133,7 +134,11 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
-			conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+			conn, err := grpc.Dial(
+				"127.0.0.1:"+port,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				rpcutil.GrpcChannelOptions(),
+			)
 			assert.NoError(t, err)
 			client := pulumirpc.NewResourceProviderClient(conn)
 
