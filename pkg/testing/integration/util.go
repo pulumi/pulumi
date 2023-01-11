@@ -192,7 +192,7 @@ func AssertHTTPResultWithRetry(
 	var resp *http.Response
 	startTime := time.Now()
 	count, sleep := 0, 0
-	for true {
+	for {
 		now := time.Now()
 		req, err := http.NewRequest("GET", hostname, nil)
 		if !assert.NoError(t, err, "error reading request: %v", err) {
