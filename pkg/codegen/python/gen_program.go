@@ -334,7 +334,7 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 
 // argumentTypeName computes the Python argument class name for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
-	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	schemaType, ok := pcl.GetSchemaForType(destType)
 	if !ok {
 		return ""
 	}

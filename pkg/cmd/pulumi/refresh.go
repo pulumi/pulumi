@@ -245,9 +245,7 @@ func newRefreshCmd() *cobra.Command {
 			}
 
 			targetUrns := []string{}
-			for _, t := range *targets {
-				targetUrns = append(targetUrns, t)
-			}
+			targetUrns = append(targetUrns, *targets...)
 
 			opts.Engine = engine.UpdateOptions{
 				Parallel:                  parallel,

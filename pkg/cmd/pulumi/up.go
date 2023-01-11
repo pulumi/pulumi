@@ -126,14 +126,8 @@ func newUpCmd() *cobra.Command {
 		}
 
 		targetURNs, replaceURNs := []string{}, []string{}
-
-		for _, t := range targets {
-			targetURNs = append(targetURNs, t)
-		}
-
-		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, r)
-		}
+		targetURNs = append(targetURNs, targets...)
+		replaceURNs = append(replaceURNs, replaces...)
 
 		for _, tr := range targetReplaces {
 			targetURNs = append(targetURNs, tr)

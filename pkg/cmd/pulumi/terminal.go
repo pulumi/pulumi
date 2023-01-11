@@ -15,9 +15,7 @@
 // Terminal detection utilities.
 package main
 
-import (
-	"golang.org/x/crypto/ssh/terminal"
-)
+import "golang.org/x/term"
 
 type optimalPageSizeOpts struct {
 	nopts          int
@@ -30,7 +28,7 @@ func optimalPageSize(opts optimalPageSizeOpts) int {
 	pageSize := 15
 	if opts.terminalHeight != 0 {
 		pageSize = opts.terminalHeight
-	} else if _, height, err := terminal.GetSize(0); err == nil {
+	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
 	if pageSize > opts.nopts {
