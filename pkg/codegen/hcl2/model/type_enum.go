@@ -96,7 +96,8 @@ func (t *EnumType) Pretty() pretty.Formatter {
 
 // Traverse attempts to traverse the enum type with the given traverser. This always fails.
 func (t *EnumType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	return &*t, nil
+	out := *t
+	return &out, nil
 }
 
 // Equals returns true if this type has the same identity as the given type.

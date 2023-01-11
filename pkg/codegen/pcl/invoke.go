@@ -94,8 +94,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			annotateObjectProperties(arg.ElementTypes[1], schemaType)
 		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
 			annotateObjectProperties(arg.ElementTypes[0], schemaType)
-		} else {
-			// TODO https://github.com/pulumi/pulumi/issues/10993
+		} else { //nolint:staticcheck // TODO https://github.com/pulumi/pulumi/issues/10993
 			// We need to handle the case where the schema type is a union type.
 		}
 	}

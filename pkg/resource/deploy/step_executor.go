@@ -325,7 +325,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			} else {
 				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 					newState.Outputs[k] = resource.MakeSecret(v)
-				} else if !has {
+				} else if !has { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
 					// TODO (https://github.com/pulumi/pulumi/issues/9926): We want to re-enable this warning
 					// but it requires that providers always return back _every_ output even in preview. We
 					// might need to add a new "unset" PropertyValue to do this as there might be optional
