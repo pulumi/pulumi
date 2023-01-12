@@ -411,7 +411,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+						g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+							pcl.SortedFunctionParameters(funcExpr))
 					})
 				default:
 					g.genIntrensic(w, funcExpr.Args[0], expr.Signature.ReturnType)
@@ -422,7 +423,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						useImplicitTypeName := g.generateOptions.implicitResourceArgsTypeName
 						inputTypeName := functionName + "InvokeArgs"
 						destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName)
+						g.genObjectConsExpressionWithTypeName(w, objectExpr, destTypeName, useImplicitTypeName,
+							pcl.SortedFunctionParameters(funcExpr))
 					})
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
@@ -492,7 +494,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					}
 
 					destTypeName := strings.ReplaceAll(fullFunctionName, functionName, inputTypeName)
-					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+					g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+						pcl.SortedFunctionParameters(expr))
 				})
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
@@ -503,7 +506,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			case *model.ObjectConsExpression:
 				useImplicitTypeName := true
 				destTypeName := "Irrelevant"
-				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName)
+				g.genObjectConsExpressionWithTypeName(w, arg, destTypeName, useImplicitTypeName,
+					pcl.SortedFunctionParameters(expr))
 			default:
 				g.genIntrensic(w, expr.Args[0], expr.Signature.ReturnType)
 			}
@@ -665,7 +669,7 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	}
 
 	destTypeName := g.argumentTypeName(expr, destType)
-	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false)
+	g.genObjectConsExpressionWithTypeName(w, expr, destTypeName, false, nil)
 }
 
 func propertyNameOverrides(exprType model.Type) map[string]string {
@@ -705,9 +709,18 @@ func resolvePropertyName(property string, overrides map[string]string) string {
 }
 
 func (g *generator) genObjectConsExpressionWithTypeName(
-	w io.Writer, expr *model.ObjectConsExpression, destTypeName string, implicitTypeName bool) {
+	w io.Writer,
+	expr *model.ObjectConsExpression,
+	destTypeName string,
+	implicitTypeName bool,
+	multiArguments []*schema.Property) {
 
 	if len(expr.Items) == 0 {
+		return
+	}
+
+	if len(multiArguments) > 0 {
+		pcl.GenerateMultiArguments(g.Formatter, w, "null", expr, multiArguments)
 		return
 	}
 
@@ -813,10 +826,17 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	invokedFunctionSchema, isFunctionInvoke := g.functionInvokes[rootName]
 
-	if isFunctionInvoke && !g.asyncInit {
-		lambdaArg := LowerCamelCase(g.schemaTypeName(invokedFunctionSchema.Outputs))
+	if isFunctionInvoke && !g.asyncInit && len(expr.Parts) > 1 {
+		lambdaArg := "invoke"
+		if invokedFunctionSchema.ReturnType != nil {
+			if objectType, ok := invokedFunctionSchema.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				lambdaArg = LowerCamelCase(g.schemaTypeName(objectType))
+			}
+		}
+
 		// Assume invokes are returning Output<T> instead of Task<T>
 		g.Fgenf(w, ".Apply(%s => %s", lambdaArg, lambdaArg)
+
 	}
 
 	var objType *schema.ObjectType
@@ -827,7 +847,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 	}
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, objType)
 
-	if isFunctionInvoke && !g.asyncInit {
+	if isFunctionInvoke && !g.asyncInit && len(expr.Parts) > 1 {
 		g.Fgenf(w, ")")
 	}
 }

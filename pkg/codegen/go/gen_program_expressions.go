@@ -264,6 +264,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
 	case pcl.Invoke:
+		if expr.Signature.MultiArgumentInputs {
+			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",
+				expr.Args[0]))
+		}
 
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")

@@ -929,7 +929,16 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		methodName := camel(method.Name)
 		fun := method.Function
 
-		shouldLiftReturn := mod.liftSingleValueMethodReturns && fun.Outputs != nil && len(fun.Outputs.Properties) == 1
+		var objectReturnType *schema.ObjectType
+		if fun.ReturnType != nil {
+			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				objectReturnType = objectType
+			} else {
+				return
+			}
+		}
+
+		liftReturn := mod.liftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1
 
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
@@ -961,10 +970,10 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 		var retty string
-		if fun.Outputs == nil {
+		if fun.ReturnType == nil {
 			retty = "void"
-		} else if shouldLiftReturn {
-			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(fun.Outputs.Properties[0].Type, false, nil))
+		} else if liftReturn {
+			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
 			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
 		}
@@ -981,8 +990,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 		// Now simply call the runtime function with the arguments, returning the results.
 		var ret string
-		if fun.Outputs != nil {
-			if shouldLiftReturn {
+		if fun.ReturnType != nil {
+			if liftReturn {
 				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
 			} else {
 				ret = "return "
@@ -1000,8 +1009,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 		fmt.Fprintf(w, "        }, this);\n")
-		if shouldLiftReturn {
-			fmt.Fprintf(w, "        return result.%s;\n", camel(fun.Outputs.Properties[0].Name))
+		if liftReturn {
+			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
@@ -1053,15 +1062,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				fmt.Fprintf(w, "\n")
 			}
 		}
-		if fun.Outputs != nil {
-			comment := fun.Inputs.Comment
-			if comment == "" {
-				comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
+
+		if fun.ReturnType != nil {
+			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				comment := fun.Inputs.Comment
+				if comment == "" {
+					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
+				}
+				if err := mod.genPlainType(w, methodName+"Result", comment, objectType.Properties, false, true, 1); err != nil {
+					return err
+				}
+				fmt.Fprintf(w, "\n")
 			}
-			if err := mod.genPlainType(w, methodName+"Result", comment, fun.Outputs.Properties, false, true, 1); err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "\n")
 		}
 		return nil
 	}
@@ -1079,6 +1091,46 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		info.methodsNamespaceName = name
 	}
 	return info, nil
+}
+
+func (mod *modContext) functionReturnType(fun *schema.Function) string {
+	name := tokenToFunctionName(fun.Token)
+	if fun.ReturnType == nil {
+		return "void"
+	}
+
+	if _, isObject := fun.ReturnType.(*schema.ObjectType); isObject && fun.InlineObjectAsReturnType {
+		return title(name) + "Result"
+	}
+
+	return mod.typeString(fun.ReturnType, false, nil)
+}
+
+// runtimeInvokeFunction returns the name of the Invoke function to use at runtime
+// from the SDK for the given provider function. This is necessary because some
+// functions have simple return types such as number, string, array<string> etc.
+// and the SDK's invoke function cannot handle these types since the engine expects
+// the result of invokes to be a dictionary.
+//
+// We use invoke for functions with object return types and invokeSingle for everything else.
+func runtimeInvokeFunction(fun *schema.Function) string {
+	switch fun.ReturnType.(type) {
+	// If the function has no return type, it is a void function.
+	case nil:
+		return "invoke"
+	// If the function has an object return type, it is a normal invoke function.
+	case *schema.ObjectType:
+		return "invoke"
+	// If the function has an object return type, it is also a normal invoke function.
+	// because the deserialization can handle it
+	case *schema.MapType:
+		return "invoke"
+	default:
+		// Anything else needs to be handled by InvokeSingle
+		// which expects an object with a single property to be returned
+		// then unwraps the value from that property
+		return "invokeSingle"
+	}
 }
 
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionFileInfo, error) {
@@ -1102,27 +1154,51 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
 	}
-	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): Promise<%s> {\n",
-		name, argsig, functionReturnType(fun))
+
+	funReturnType := mod.functionReturnType(fun)
+
+	fmt.Fprintf(w, "export function %s(", name)
+	if fun.MultiArgumentInputs {
+		for _, prop := range fun.Inputs.Properties {
+			if prop.IsRequired() {
+				fmt.Fprintf(w, "%s: ", prop.Name)
+				fmt.Fprintf(w, "%s, ", mod.typeString(prop.Type, false, nil))
+			} else {
+				fmt.Fprintf(w, "%s?: ", prop.Name)
+				// since we already applied the '?' to the type, we can simplify
+				// the optional-ness of the type
+				propType := prop.Type.(*schema.OptionalType)
+				fmt.Fprintf(w, "%s, ", mod.typeString(propType.ElementType, false, nil))
+			}
+		}
+	} else {
+		fmt.Fprintf(w, "%s", argsig)
+	}
+
+	fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): Promise<%s> {\n", funReturnType)
 	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(fun.DeprecationMessage))
 	}
 
 	// Zero initialize the args if empty and necessary.
-	if fun.Inputs != nil && argsOptional {
+	if fun.Inputs != nil && argsOptional && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "    args = args || {};\n")
 	}
 
+	fmt.Fprint(w, "\n")
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});\n")
-
+	invokeCall := runtimeInvokeFunction(fun)
 	// Now simply invoke the runtime function with the arguments, returning the results.
-	fmt.Fprintf(w, "    return pulumi.runtime.invoke(\"%s\", {\n", fun.Token)
+	fmt.Fprintf(w, "    return pulumi.runtime.%s(\"%s\", {\n", invokeCall, fun.Token)
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
 			// Pass the argument to the invocation.
 			body := fmt.Sprintf("args.%s", p.Name)
+			if fun.MultiArgumentInputs {
+				body = p.Name
+			}
+
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
 				if codegen.IsNOptionalInput(p.Type) {
 					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
@@ -1134,11 +1210,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 			fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 		}
 	}
-	fmt.Fprintf(w, "    }, opts);\n")
-	fmt.Fprintf(w, "}\n")
+
+	fmt.Fprint(w, "    }, opts);\n")
+	fmt.Fprint(w, "}\n")
 
 	// If there are argument and/or return types, emit them.
-	if fun.Inputs != nil {
+	if fun.Inputs != nil && !fun.MultiArgumentInputs {
 		fmt.Fprintf(w, "\n")
 		argsInterfaceName := title(name) + "Args"
 		if err := mod.genPlainType(w, argsInterfaceName, fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0); err != nil {
@@ -1146,13 +1223,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 		}
 		info.functionArgsInterfaceName = argsInterfaceName
 	}
-	if fun.Outputs != nil && len(fun.Outputs.Properties) > 0 {
-		fmt.Fprintf(w, "\n")
-		resultInterfaceName := title(name) + "Result"
-		if err := mod.genPlainType(w, resultInterfaceName, fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0); err != nil {
-			return info, err
+
+	// if the return type is an inline object definition (not a reference), emit it.
+	if fun.ReturnType != nil {
+		if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && fun.InlineObjectAsReturnType {
+			fmt.Fprintf(w, "\n")
+			resultInterfaceName := title(name) + "Result"
+			if err := mod.genPlainType(w, resultInterfaceName,
+				objectType.Comment, objectType.Properties, false, true, 0); err != nil {
+				return info, err
+			}
+			info.functionResultInterfaceName = resultInterfaceName
 		}
-		info.functionResultInterfaceName = resultInterfaceName
 	}
 
 	return mod.genFunctionOutputVersion(w, fun, info)
@@ -1169,13 +1251,6 @@ func functionArgsOptional(fun *schema.Function) bool {
 	return true
 }
 
-func functionReturnType(fun *schema.Function) string {
-	if fun.Outputs == nil || len(fun.Outputs.Properties) == 0 {
-		return "void"
-	}
-	return title(tokenToFunctionName(fun.Token)) + "Result"
-}
-
 // Generates `function ${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionOutputVersion(
@@ -1186,15 +1261,9 @@ func (mod *modContext) genFunctionOutputVersion(
 		return info, nil
 	}
 
-	// Write the TypeDoc/JSDoc for the data source function.
-	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
-
-	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
-	}
-
 	originalName := tokenToFunctionName(fun.Token)
 	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	returnType := mod.functionReturnType(fun)
 	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
@@ -1206,22 +1275,59 @@ func (mod *modContext) genFunctionOutputVersion(
 	}
 	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
-	fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+	// Write the TypeDoc/JSDoc for the data source function.
+	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
+
+	if fun.DeprecationMessage != "" {
+		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
+	}
+	if !fun.MultiArgumentInputs {
+		fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
-`, fnOutput, argsig, functionReturnType(fun), originalName)
-	fmt.Fprintf(w, "\n")
+`, fnOutput, argsig, returnType, originalName)
+	} else {
+		fmt.Fprintf(w, "export function %s(", fnOutput)
+		for _, prop := range fun.Inputs.Properties {
+			paramDeclaration := ""
+			propertyType := &schema.InputType{ElementType: prop.Type}
+			argumentType := mod.typeString(propertyType, true /* input */, nil)
+			if prop.IsRequired() {
+				paramDeclaration = fmt.Sprintf("%s: %s", prop.Name, argumentType)
+			} else {
+				paramDeclaration = fmt.Sprintf("%s?: %s", prop.Name, argumentType)
+			}
 
-	info.functionOutputVersionArgsInterfaceName = argTypeName
+			fmt.Fprintf(w, "%s, ", paramDeclaration)
+		}
 
-	if err := mod.genPlainType(w,
-		argTypeName,
-		fun.Inputs.Comment,
-		fun.Inputs.InputShape.Properties,
-		true,  /* input */
-		false, /* readonly */
-		0 /* level */); err != nil {
-		return info, err
+		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", returnType)
+		fmt.Fprint(w, "    var args = {\n")
+		for _, p := range fun.Inputs.Properties {
+			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
+		}
+		fmt.Fprint(w, "    };\n")
+		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
+		for _, p := range fun.Inputs.Properties {
+			// Pass the argument to the invocation.
+			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
+		}
+		fmt.Fprint(w, "opts))\n")
+		fmt.Fprint(w, "}\n")
+	}
+
+	if !fun.MultiArgumentInputs {
+		fmt.Fprintf(w, "\n")
+		info.functionOutputVersionArgsInterfaceName = argTypeName
+		if err := mod.genPlainType(w,
+			argTypeName,
+			fun.Inputs.Comment,
+			fun.Inputs.InputShape.Properties,
+			true,  /* input */
+			false, /* readonly */
+			0 /* level */); err != nil {
+			return info, err
+		}
 	}
 
 	return info, nil
@@ -1419,10 +1525,13 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 						mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
-			if method.Function.Outputs != nil {
-				for _, p := range method.Function.Outputs.Properties {
-					needsTypes =
-						mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+
+			if method.Function.ReturnType != nil {
+				if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+					for _, p := range objectType.Properties {
+						needsTypes =
+							mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+					}
 				}
 			}
 		}
@@ -1434,9 +1543,16 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 			}
 		}
-		if member.Outputs != nil {
-			for _, p := range member.Outputs.Properties {
-				needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+		if member.ReturnType != nil {
+			// for object return types that are defined inline,
+			// look through the properties to see if any of them need imports
+			if objectType, ok := member.ReturnType.(*schema.ObjectType); ok && member.InlineObjectAsReturnType {
+				for _, p := range objectType.Properties {
+					needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+				}
+			} else {
+				// all other cases mean we have a more generic type like a reference to other types
+				needsTypes = mod.getTypeImports(member.ReturnType, false, externalImports, imports, seen) || needsTypes
 			}
 		}
 		return needsTypes
@@ -2461,10 +2577,20 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 				})
 			}
 		}
-		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {
-				types.details(t).outputType = true
-			})
+		if f.ReturnType != nil {
+			// special case where the return type is defined inline with the function
+			if objectType, ok := f.ReturnType.(*schema.ObjectType); ok && f.InlineObjectAsReturnType {
+				visitObjectTypes(objectType.Properties, func(t *schema.ObjectType) {
+					types.details(t).outputType = true
+				})
+			} else {
+				// otherwise, the return type is or has a reference to a type defined elsewhere
+				codegen.VisitType(f.ReturnType, func(schemaType schema.Type) {
+					if t, ok := schemaType.(*schema.ObjectType); ok {
+						types.details(t).outputType = true
+					}
+				})
+			}
 		}
 	}
 
