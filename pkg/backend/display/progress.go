@@ -1236,7 +1236,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return opText
 		}
 
-		secondsElapsed := time.Now().Sub(start).Seconds()
+		secondsElapsed := time.Since(start).Seconds()
 		return fmt.Sprintf("%s (%ds)", opText, int(secondsElapsed))
 
 	}

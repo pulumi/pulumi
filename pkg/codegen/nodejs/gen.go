@@ -106,8 +106,7 @@ func camel(s string) string {
 // of uppercase characters, we cannot define pascal as title(camel(x)).
 func pascal(s string) string {
 	split := [][]rune{{}}
-	runes := []rune(s)
-	for _, r := range runes {
+	for _, r := range s {
 		if !isLegalIdentifierPart(r) && r != '.' {
 			split = append(split, []rune{})
 		} else {

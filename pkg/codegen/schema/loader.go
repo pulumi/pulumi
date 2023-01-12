@@ -113,7 +113,7 @@ var ErrGetSchemaNotImplemented = getSchemaNotImplemented{}
 type getSchemaNotImplemented struct{}
 
 func (f getSchemaNotImplemented) Error() string {
-	return fmt.Sprintf("it looks like GetSchema is not implemented")
+	return "it looks like GetSchema is not implemented"
 }
 
 func schemaIsEmpty(schemaBytes []byte) bool {

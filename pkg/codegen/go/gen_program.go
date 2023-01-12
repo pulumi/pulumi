@@ -481,15 +481,6 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 
 }
 
-func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
-	p, ok := g.contexts[pkg]
-	if !ok {
-		return nil, false
-	}
-	m, ok := p[mod]
-	return m, ok
-}
-
 func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 	p, ok := g.packages[pkg]
 	if !ok {
@@ -735,7 +726,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 	if zeroValueType != "" {
 		for _, t := range temps {
 			switch t.(type) {
-			case *spillTemp, *jsonTemp, *readDirTemp:
+			case *spillTemp, *readDirTemp:
 				genZeroValueDecl = true
 			default:
 			}
