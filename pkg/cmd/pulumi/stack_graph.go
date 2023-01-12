@@ -98,7 +98,7 @@ func newStackGraphCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&ignoreDependencyEdges, "ignore-dependency-edges", false,
 		"Ignores edges introduced by dependency resource relationships")
 	cmd.PersistentFlags().BoolVar(&showResourceName, "show-resource-name", false,
-		"Display the name of the resource instead of their urns")
+		"Display the name of resources instead of the URN")
 	cmd.PersistentFlags().StringVar(&dependencyEdgeColor, "dependency-edge-color", "#246C60",
 		"Sets the color of dependency edges in the graph")
 	cmd.PersistentFlags().StringVar(&parentEdgeColor, "parent-edge-color", "#AA6639",
