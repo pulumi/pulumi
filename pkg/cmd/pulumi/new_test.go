@@ -776,3 +776,51 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 		})
 	}
 }
+
+func TestReflowDesc(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc        string
+		prefixWidth int
+		termWidth   int
+	}{
+		{
+			desc:        "A minimal Javascript Pulumi program with the native Azure provider",
+			prefixWidth: 50,
+			termWidth:   120,
+		},
+		{
+			desc:        "A minimal Javascript Pulumi program with the native Azure provider",
+			prefixWidth: 50,
+			termWidth:   75,
+		},
+		{
+			desc:        "A minimal Javascript Pulumi program with the native Azure provider",
+			prefixWidth: 50,
+			termWidth:   70,
+		},
+		{
+			desc:        "A minimal Javascript Pulumi program with the native Azure provider",
+			prefixWidth: 50,
+			termWidth:   10,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+			curWidth := tt.prefixWidth + len(tt.desc)
+			descWidth := tt.termWidth - tt.prefixWidth
+			if tt.termWidth < curWidth {
+				reflowedDesc := reflowDesc(tt.prefixWidth, tt.termWidth, tt.desc)
+				if descWidth <= 0 {
+					assert.Equal(t, tt.desc, reflowedDesc)
+				}
+				// lines := strings.Split(reflowedDesc, strings.Repeat(" ", tt.prefixWidth))
+				// assert.Equal(t, len(lines), math.Ceil(float64(curWidth)/float64(tt.termWidth)))
+			}
+		})
+	}
+}

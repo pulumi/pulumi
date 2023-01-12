@@ -31,7 +31,7 @@ import (
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -1069,7 +1069,7 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		// 2 spaces before the template name, 4 spaces between template name and description = 6
 		curWidth := maxNameLength + len(desc) + 6
 		if termWidth < curWidth {
-			desc = formatDesc(maxNameLength+6, termWidth, desc)
+			desc = reflowDesc(maxNameLength+6, termWidth, desc)
 		}
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
@@ -1093,19 +1093,29 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	return options, nameToTemplateMap
 }
 
-// formatDesc formats the template description nicely if the term width requires it to wrap around.
-func formatDesc(prefixWidth int, maxWidth int, desc string) string {
-	descFormatted := ""
-	descWidth := maxWidth - prefixWidth
+// reflowDesc reflows the template description nicely if the term width requires it to wrap around.
+func reflowDesc(prefixWidth int, termWidth int, desc string) string {
+	var descFormatted strings.Builder
+	// number of description chars on each line
+	descWidth := termWidth - prefixWidth
+	// super small terminal where template name also wraps around: let description wrap around
+	if descWidth <= 0 {
+		return desc
+	}
+	prevIdx := 0
 	for idx := descWidth; idx < len(desc); idx += descWidth {
 		buffer := prefixWidth
-		if lastSpace := strings.LastIndex(desc[:idx], " "); lastSpace != -1 {
-			idx = lastSpace
-			buffer += (descWidth - idx - 1)
+		if eowIdx := strings.LastIndex(desc[:idx], " "); eowIdx != -1 && eowIdx >= prevIdx {
+			buffer += (idx - eowIdx - 1)
+			idx = eowIdx + 1
 		}
-		descFormatted = fmt.Sprintf("%s%s%s", desc[:idx], strings.Repeat(" ", buffer), desc[idx:])
+		fmt.Fprintf(&descFormatted, "%s%s", desc[prevIdx:idx], strings.Repeat(" ", buffer))
+		prevIdx = idx
 	}
-	return descFormatted
+	if prevIdx < len(desc) {
+		fmt.Fprint(&descFormatted, desc[prevIdx:])
+	}
+	return descFormatted.String()
 }
 
 // containsWhiteSpace returns true if the string contains whitespace.
