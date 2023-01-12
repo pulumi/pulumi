@@ -897,7 +897,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	}
 
 	// We perform at least three appends before iterating over input types.
-	params := make([]formalParam, 0, 3+len(mod.inputTypes))
+	params := make([]formalParam, 0, 3+len(r.InputProperties))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
