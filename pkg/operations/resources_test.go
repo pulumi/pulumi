@@ -33,7 +33,7 @@ func getPulumiResources(t *testing.T, path string) *Resource {
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
 	assert.NoError(t, err)
-	snapshot, err := stack.DeserializeCheckpoint(ctx, &checkpoint)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, stack.DefaultSecretsProvider, &checkpoint)
 	assert.NoError(t, err)
 	resources := NewResourceTree(snapshot.Resources)
 	return resources
