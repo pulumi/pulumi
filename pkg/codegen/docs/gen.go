@@ -130,6 +130,7 @@ func titleLookup(shortName string) (string, bool) {
 		"opsgenie":                             "Opsgenie",
 		"packet":                               "Packet",
 		"pagerduty":                            "PagerDuty",
+		"pulumi-std":                           "Pulumi Standard Library",
 		"postgresql":                           "PostgreSQL",
 		"prometheus-helm":                      "Prometheus (Helm)",
 		"rabbitmq":                             "RabbitMQ",
