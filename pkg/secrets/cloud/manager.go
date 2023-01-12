@@ -34,8 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -135,19 +133,8 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 	return newCloudSecretsManager(s.URL, s.EncryptedKey)
 }
 
-func NewCloudSecretsManager(stackName tokens.Name, configFile,
+func NewCloudSecretsManager(info *workspace.ProjectStack,
 	secretsProvider string, rotateSecretsProvider bool) (secrets.Manager, error) {
-
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
-	proj, _, err := workspace.DetectProjectStackPath(stackName.Q())
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := workspace.LoadProjectStack(proj, configFile)
-	if err != nil {
-		return nil, err
-	}
 
 	// Only a passphrase provider has an encryption salt. So changing a secrets provider
 	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
@@ -178,9 +165,6 @@ func NewCloudSecretsManager(stackName tokens.Name, configFile,
 		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
 	}
 	info.SecretsProvider = secretsProvider
-	if err = info.Save(configFile); err != nil {
-		return nil, err
-	}
 
 	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
 	if err != nil {

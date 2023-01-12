@@ -189,8 +189,8 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
-func (s *cloudStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
-	return service.NewServiceSecretsManager(s.b.Client(), s.StackIdentifier(), s.Ref().Name(), configFile)
+func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+	return service.NewServiceSecretsManager(s.b.Client(), s.StackIdentifier(), info)
 }
 
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping

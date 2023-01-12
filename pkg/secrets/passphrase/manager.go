@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -216,20 +215,8 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 	}
 }
 
-func NewPromptingPassphraseSecretsManager(stackName tokens.Name, configFile string,
+func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 	rotateSecretsProvider bool) (secrets.Manager, error) {
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
-
-	project, _, err := workspace.DetectProjectStackPath(stackName.Q())
-	if err != nil {
-		return nil, err
-	}
-
-	info, err := workspace.LoadProjectStack(project, configFile)
-	if err != nil {
-		return nil, err
-	}
-
 	if rotateSecretsProvider {
 		info.EncryptionSalt = ""
 	}
@@ -245,23 +232,20 @@ func NewPromptingPassphraseSecretsManager(stackName tokens.Name, configFile stri
 	}
 
 	// Otherwise, prompt the user for a new passphrase.
-	salt, sm, err := PromptForNewPassphrase(rotateSecretsProvider)
+	salt, sm, err := promptForNewPassphrase(rotateSecretsProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	// Store the salt and save it.
 	info.EncryptionSalt = salt
-	if err = info.Save(configFile); err != nil {
-		return nil, err
-	}
 
 	// Return the passphrase secrets manager.
 	return sm, nil
 }
 
-// PromptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
-func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
+// promptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
+func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 	var phrase string
 
 	// Get a the passphrase from the user, ensuring that they match.
