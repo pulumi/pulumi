@@ -213,7 +213,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		o.ApplyOption(preOpts)
 	}
 
-	var sharedArgs []string
+	var bufferSizeHint = len(preOpts.Replace) + len(preOpts.Target) +
+		len(preOpts.PolicyPacks) + len(preOpts.PolicyPackConfigs)
+	sharedArgs := make([]string, 0, bufferSizeHint)
 
 	sharedArgs = debug.AddArgs(&preOpts.DebugLogOpts, sharedArgs)
 	if preOpts.Message != "" {
@@ -334,7 +336,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		o.ApplyOption(upOpts)
 	}
 
-	var sharedArgs []string
+	var bufferSizeHint = len(upOpts.Replace) + len(upOpts.Target) + len(upOpts.PolicyPacks) + len(upOpts.PolicyPackConfigs)
+	sharedArgs := make([]string, 0, bufferSizeHint)
 
 	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
 	if upOpts.Message != "" {
@@ -447,7 +450,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	var args []string
+	args := make([]string, 0, len(refreshOpts.Target))
 
 	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
 	args = append(args, "refresh", "--yes", "--skip-preview")
@@ -535,7 +538,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
-	var args []string
+	args := make([]string, 0, len(destroyOpts.Target))
 
 	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
 	args = append(args, "destroy", "--yes", "--skip-preview")
@@ -956,7 +959,7 @@ func (s *Stack) remoteArgs() []string {
 		return nil
 	}
 
-	var args []string
+	args := make([]string, 0, len(envvars)+len(preRunCommands))
 	args = append(args, "--remote")
 	if repo != nil {
 		if repo.URL != "" {

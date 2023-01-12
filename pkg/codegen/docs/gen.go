@@ -424,7 +424,7 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	copy := *mod
 	copy.docGenContext = dctx
-	var children []*modContext
+	var children = make([]*modContext, 0, len(copy.children))
 	for _, c := range copy.children {
 		children = append(children, c.withDocGenContext(dctx))
 	}
@@ -896,7 +896,8 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		return getDockerImagePythonFormalParams()
 	}
 
-	var params []formalParam
+	// We perform at least three appends before iterating over input types.
+	params := make([]formalParam, 0, 3+len(r.InputProperties))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
@@ -980,7 +981,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var sortedTokens []string
+	sortedTokens := make([]string, 0, len(tokens))
 	for token := range tokens {
 		sortedTokens = append(sortedTokens, token)
 	}

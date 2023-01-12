@@ -23,7 +23,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		return nil, err
 	}
 
-	var pkgMods []string
+	pkgMods := make([]string, 0, len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}

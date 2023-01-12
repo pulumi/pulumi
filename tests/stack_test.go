@@ -661,7 +661,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 }
 
 func getFileNames(infos []os.DirEntry) []string {
-	var result []string
+	result := make([]string, 0, len(infos))
 	for _, i := range infos {
 		result = append(result, i.Name())
 	}

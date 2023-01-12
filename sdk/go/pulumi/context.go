@@ -1012,7 +1012,7 @@ func getPackage(t string) string {
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
-	var aliasURNs []URNOutput
+	aliasURNs := make([]URNOutput, 0, len(aliases))
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)

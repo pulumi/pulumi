@@ -499,7 +499,7 @@ func ExampleLocalWorkspace_RemoveAllConfig() {
 	stackName := FullyQualifiedStackName("org", "proj", "stackA")
 	// get all config currently set in the workspace
 	cfg, _ := w.GetAllConfig(ctx, stackName)
-	var keys []string
+	keys := make([]string, 0, len(cfg))
 	for k := range cfg {
 		keys = append(keys, k)
 	}

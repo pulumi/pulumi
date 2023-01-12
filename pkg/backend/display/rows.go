@@ -453,7 +453,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 				}
 				return keys
 			}
-			if include := step.Diffs; include != nil {
+			if include := step.Diffs; len(include) > 0 {
 				includeSet := make(map[resource.PropertyKey]bool)
 				for _, k := range include {
 					includeSet[k] = true

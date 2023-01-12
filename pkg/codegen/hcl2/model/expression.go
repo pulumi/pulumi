@@ -1509,7 +1509,7 @@ func (x *ObjectConsExpression) WithType(updateType func(Type) *ObjectConsExpress
 func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	var keys []Expression
+	keys := make([]Expression, 0, len(x.Items))
 	for _, item := range x.Items {
 		if typecheckOperands {
 			keyDiags := item.Key.Typecheck(true)

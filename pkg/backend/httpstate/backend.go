@@ -880,7 +880,7 @@ func (b *cloudBackend) ListStacks(
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
-	var backendSummaries []backend.StackSummary
+	var backendSummaries = make([]backend.StackSummary, 0, len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
 			summary: apiSummary,
@@ -1253,7 +1253,7 @@ func (b *cloudBackend) GetHistory(
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
-	var beUpdates []backend.UpdateInfo
+	var beUpdates = make([]backend.UpdateInfo, 0, len(updates))
 	for _, update := range updates {
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)

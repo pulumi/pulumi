@@ -671,7 +671,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}{
 		{
 			input:    "",
-			expected: nil,
+			expected: pluginDownloadOverrideArray{},
 		},
 		{
 			input: "^foo.*=https://foo",

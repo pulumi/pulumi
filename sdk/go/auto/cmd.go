@@ -58,7 +58,7 @@ func runPulumiCommandSync(
 }
 
 func withNonInteractiveArg(args []string) []string {
-	var out []string
+	out := make([]string, 0, len(args))
 	seen := false
 	for _, a := range args {
 		out = append(out, a)

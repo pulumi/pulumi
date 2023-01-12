@@ -3564,7 +3564,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	}
 
 	// emit each package
-	var pkgMods []string
+	pkgMods := make([]string, 0, len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}
@@ -3647,7 +3647,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	// emit each package
-	var pkgMods []string
+	pkgMods := make([]string, 0, len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}

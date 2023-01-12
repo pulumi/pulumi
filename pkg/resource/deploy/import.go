@@ -185,7 +185,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	//
 	// NOTE: what if the configuration for an existing default provider has changed? If it has, we should diff it and
 	// replace it appropriately or we should not use the ambient config at all.
-	var defaultProviderRequests []providers.ProviderRequest
+	var defaultProviderRequests = make([]providers.ProviderRequest, 0, len(i.deployment.imports))
 	defaultProviders := map[resource.URN]struct{}{}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider != "" {

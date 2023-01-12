@@ -211,7 +211,7 @@ var funcs = template.FuncMap{
 
 func makeBuiltins(primitives []*builtin) []*builtin {
 	// Augment primitives with array and map types.
-	var builtins []*builtin
+	var builtins = make([]*builtin, 0, len(primitives))
 	for _, p := range primitives {
 		p.Strategy = "primitive"
 		name := ""

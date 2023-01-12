@@ -341,7 +341,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	}
 
 	// And now any properties that failed verification.
-	var failures []CheckFailure
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -442,15 +442,15 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		return DiffResult{}, nil
 	}
 
-	var replaces []resource.PropertyKey
+	var replaces = make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables []resource.PropertyKey
+	var stables = make([]resource.PropertyKey, 0, len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	var diffs []resource.PropertyKey
+	var diffs = make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -701,7 +701,7 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	// And now any properties that failed verification.
-	var failures []CheckFailure
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -772,15 +772,15 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, rpcError
 	}
 
-	var replaces []resource.PropertyKey
+	var replaces = make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables []resource.PropertyKey
+	var stables = make([]resource.PropertyKey, 0, len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	var diffs []resource.PropertyKey
+	var diffs = make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -1350,7 +1350,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	// And now any properties that failed verification.
-	var failures []CheckFailure
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1525,7 +1525,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	}
 
 	// And now any properties that failed verification.
-	var failures []CheckFailure
+	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}

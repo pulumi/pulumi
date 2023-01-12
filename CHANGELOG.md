@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.51.1 (2023-01-11)
+
+
+### Features
+
+- [sdk/go] Add JSONUnmarshal to go sdk.
+  [#11745](https://github.com/pulumi/pulumi/pull/11745)
+
+- [sdk/python] Add output json_loads using json.loads.
+  [#11741](https://github.com/pulumi/pulumi/pull/11741)
+
+
+### Bug Fixes
+
+- [cli/new] Allow running inside new VCS repositories.
+  [#11804](https://github.com/pulumi/pulumi/pull/11804)
+
+- [auto/python] Fix issue specifying log_verbosity
+  [#11778](https://github.com/pulumi/pulumi/pull/11778)
+
+- [protobuf] Downstream implementers of the RPC server interfaces must embed UnimplementedServer structs or opt out of forward compatibility.
+  [#11652](https://github.com/pulumi/pulumi/pull/11652)
+
 ## 3.51.0 (2023-01-04)
 
 Happy New Years from the Pulumi team!  This is our first release of 2023, and we're very excited for all the things to come this year.

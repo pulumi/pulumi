@@ -29,13 +29,7 @@ import (
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.
-var DefaultSecretsProvider SecretsProvider = &defaultSecretsProvider{}
-
-// SecretsProvider allows for the creation of secrets managers based on a well-known type name.
-type SecretsProvider interface {
-	// OfType returns a secrets manager for the given type, initialized with its previous state.
-	OfType(ty string, state json.RawMessage) (secrets.Manager, error)
-}
+var DefaultSecretsProvider secrets.Provider = &defaultSecretsProvider{}
 
 // defaultSecretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
 // it is the global location where new secrets managers can be registered for use when

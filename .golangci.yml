@@ -12,6 +12,7 @@ linters:
   enable-all: false
   enable:
     - errcheck
+    - prealloc
     - goconst
     - gofmt
     - revive

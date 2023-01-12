@@ -1108,7 +1108,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
-	var aliases []AliasSpec
+	aliases := make([]AliasSpec, 0, len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
 			Name:    a.Name,
