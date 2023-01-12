@@ -896,7 +896,8 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		return getDockerImagePythonFormalParams()
 	}
 
-	params := make([]formalParam, 0, len(mod.inputTypes))
+	// We perform at least three appends before iterating over input types.
+	params := make([]formalParam, 0, 3+len(mod.inputTypes))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
