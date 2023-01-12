@@ -220,7 +220,7 @@ func (dg *dependencyGraph) Roots() []graph.Edge {
 }
 
 // Display resource label on the graph vertex. If show-resource-name is passed to the
-// command line, the graph will only display the resource name in the vertex label instead of the URNS.
+// command line, the graph will only display the resource name in the vertex label instead of the URN.
 func paintVertexLabel(vertex *dependencyVertex) string {
 	if !showResourceName {
 		return string(vertex.resource.URN)
