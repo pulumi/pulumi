@@ -155,12 +155,12 @@ type typeTokenKind string
 
 const (
 	openParen  typeTokenKind = "("
-	closeParen               = ")"
-	openMap                  = "{[key: string]: "
-	closeMap                 = "}"
-	identifier               = "x"
-	array                    = "[]"
-	union                    = " | "
+	closeParen typeTokenKind = ")"
+	openMap    typeTokenKind = "{[key: string]: "
+	closeMap   typeTokenKind = "}"
+	identifier typeTokenKind = "x"
+	array      typeTokenKind = "[]"
+	union      typeTokenKind = " | "
 )
 
 type typeToken struct {
