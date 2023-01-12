@@ -775,7 +775,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables = make([]resource.PropertyKey, len(resp.GetStables()))
+	var stables = make([]resource.PropertyKey, 0, len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
