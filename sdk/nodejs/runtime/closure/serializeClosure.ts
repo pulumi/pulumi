@@ -207,7 +207,7 @@ function serializeJavaScriptText(
             if (valEntry.module !== undefined) {
                 if(!emittedRequires.has(keyEntry.json)) {
                     emittedRequires.add(keyEntry.json);
-                    functionText += `const ${keyEntry.json} = require("${valEntry.module}");\n`;
+                    functionText += `var ${keyEntry.json} = require("${valEntry.module}");\n`;
                 }
                 delete capturedValues[keyEntry.json];
             }
