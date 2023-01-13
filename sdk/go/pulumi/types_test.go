@@ -1294,3 +1294,64 @@ func TestNewApplier_errors(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyTCoerce(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ID-string", func(t *testing.T) {
+		t.Parallel()
+
+		o := ID("hello").ToIDOutput()
+		assertApplied(t, o.ApplyT(func(s string) (interface{}, error) {
+			assert.Equal(t, "hello", s)
+			return nil, nil
+		}))
+	})
+
+	t.Run("string-ID", func(t *testing.T) {
+		t.Parallel()
+
+		o := String("world").ToStringOutput()
+		assertApplied(t, o.ApplyT(func(id ID) (interface{}, error) {
+			assert.Equal(t, "world", string(id))
+			return nil, nil
+		}))
+	})
+
+	t.Run("custom", func(t *testing.T) {
+		t.Parallel()
+
+		type Foo struct{ v int }
+		type Bar Foo
+
+		type FooOutput struct{ *OutputState }
+
+		o := FooOutput{newOutputState(nil, reflect.TypeOf(Foo{}))}
+		go o.resolve(Foo{v: 42}, true, false, nil)
+
+		assertApplied(t, o.ApplyT(func(b Bar) (interface{}, error) {
+			assert.Equal(t, 42, b.v)
+			return nil, nil
+		}))
+	})
+}
+
+// Verifies that ApplyT does not allow applierse where the conversion
+// would change the undedrlying representation.
+func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
+	t.Parallel()
+
+	assert.Panics(t, func() {
+		String("foo").ToStringOutput().ApplyT(func([]byte) int {
+			t.Error("Should not be called")
+			return 42
+		})
+	}, "string-[]byte should not be allowed")
+
+	assert.Panics(t, func() {
+		Int(42).ToIntOutput().ApplyT(func(string) int {
+			t.Error("Should not be called")
+			return 42
+		})
+	}, "int-string should not be allowed")
+}
