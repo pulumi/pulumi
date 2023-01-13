@@ -433,7 +433,7 @@ func relPathToRelImport(relPath string) string {
 func (mod *modContext) genUtilitiesFile() ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	genStandardHeader(buffer, mod.tool)
-	fmt.Fprintf(buffer, utilitiesFile)
+	fmt.Fprint(buffer, utilitiesFile)
 	optionalURL := "None"
 	pkg, err := mod.pkg.Definition()
 	if err != nil {
@@ -1858,7 +1858,7 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 	if len(args) > 0 {
 		indent = strings.Repeat(" ", len(def))
 	}
-	fmt.Fprintf(w, def)
+	fmt.Fprint(w, def)
 	for i, arg := range args {
 		var ind string
 		if i != 0 {

@@ -2257,7 +2257,7 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 
 	code = strings.ReplaceAll(code, "${fn}", originalName)
 	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
-	fmt.Fprintf(w, code)
+	fmt.Fprint(w, code)
 
 	pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape)
 
@@ -2285,7 +2285,7 @@ func init() {
 
 `
 	initCode = strings.ReplaceAll(initCode, "${outputType}", resultTypeName)
-	fmt.Fprintf(w, initCode)
+	fmt.Fprint(w, initCode)
 }
 
 type objectProperty struct {

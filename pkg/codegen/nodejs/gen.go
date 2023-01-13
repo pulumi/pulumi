@@ -1085,8 +1085,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	typesString := types.String()
 	if typesString != "" {
 		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
-		fmt.Fprintf(w, typesString)
-		fmt.Fprintf(w, "}\n")
+		fmt.Fprint(w, typesString)
+		fmt.Fprint(w, "}\n")
 		info.methodsNamespaceName = name
 	}
 	return info, nil
