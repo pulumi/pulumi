@@ -339,13 +339,7 @@ func main() {
 			log.Fatalf("code generation failed: %v", err.Error())
 		}
 
-		parts := strings.Split(t.Name(), "-")
-		filename := strings.TrimRight(parts[len(parts)-1], ".template")
-		parts[len(parts)-1] = filename
-
-		paths := append([]string{pwd}, parts...)
-
-		fullname := filepath.Join(paths...)
+		fullname := filepath.Join(pwd, templateFilePath(t.Name()))
 		f, err := os.Create(fullname)
 		if err != nil {
 			log.Fatalf("failed to create %v: %v", fullname, err)
@@ -370,4 +364,23 @@ func main() {
 			log.Fatalf("failed to gofmt %v: %v", fullname, err)
 		}
 	}
+}
+
+// Determines the relative file path for a templated file
+// given the name of the template.
+//
+// Dashes in template names are converted to directory separators
+// and the .template suffix is removed.
+//
+// For example:
+//
+//	foo-bar.go.template      => foo/bar.go
+//	bar.go.template          => bar.go
+//	fizz-buz-bar.go.template => fizz/buz/bar.go
+func templateFilePath(name string) string {
+	parts := strings.Split(name, "-")
+	filename := strings.TrimSuffix(parts[len(parts)-1], ".template")
+	parts[len(parts)-1] = filename
+	return filepath.Join(parts...)
+
 }
