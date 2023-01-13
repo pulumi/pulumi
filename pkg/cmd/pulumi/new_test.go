@@ -814,7 +814,7 @@ func TestReflowDesc(t *testing.T) {
 			curWidth := tt.prefixWidth + len(tt.desc)
 			descWidth := tt.termWidth - tt.prefixWidth
 			if tt.termWidth < curWidth {
-				reflowedDesc := reflowDesc(tt.prefixWidth, tt.termWidth, tt.desc)
+				reflowedDesc, _ := reflowDesc(tt.prefixWidth, tt.termWidth, tt.desc)
 				if descWidth <= 0 {
 					assert.Equal(t, tt.desc, reflowedDesc)
 				}
