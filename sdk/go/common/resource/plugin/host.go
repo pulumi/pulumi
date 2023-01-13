@@ -164,6 +164,13 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 }
 
 func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKind) (workspace.ProjectPlugin, error) {
+	handleErr := func(msg string, a ...interface{}) (workspace.ProjectPlugin, error) {
+		return workspace.ProjectPlugin{},
+			fmt.Errorf("parsing plugin options for '%s': %w", providerOpts.Name, fmt.Errorf(msg, a...))
+	}
+	if providerOpts.Name == "" {
+		return handleErr("name must not be empty")
+	}
 	var v *semver.Version
 	if providerOpts.Version != "" {
 		ver, err := semver.Parse(providerOpts.Version)
@@ -173,9 +180,13 @@ func parsePluginOpts(providerOpts workspace.PluginOptions, k workspace.PluginKin
 		v = &ver
 	}
 
-	_, err := os.Stat(providerOpts.Path)
-	if err != nil {
-		return workspace.ProjectPlugin{}, fmt.Errorf("could not find provider folder at path %s", providerOpts.Path)
+	stat, err := os.Stat(providerOpts.Path)
+	if os.IsNotExist(err) {
+		return handleErr("no folder at path '%s'", providerOpts.Path)
+	} else if err != nil {
+		return handleErr("checking provider folder: %w", err)
+	} else if !stat.IsDir() {
+		return handleErr("provider folder '%s' is not a directory", providerOpts.Path)
 	}
 
 	pluginInfo := workspace.ProjectPlugin{
