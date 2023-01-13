@@ -384,11 +384,12 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 
 	// unmarshal return deps
 	deps := make(map[resource.PropertyKey][]resource.URN)
-	for _, p := range resp.ReturnDependencies {
+	for k, p := range resp.ReturnDependencies {
 		var urns []resource.URN
 		for _, urn := range p.Urns {
 			urns = append(urns, resource.URN(urn))
 		}
+		deps[resource.PropertyKey(k)] = urns
 	}
 
 	return outs, deps, nil, nil

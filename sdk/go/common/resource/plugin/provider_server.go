@@ -230,6 +230,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 		inputs = args
 	} else {
+		inputs = make(resource.PropertyMap)
 		for k, v := range req.GetVariables() {
 			key, err := config.ParseKey(k)
 			if err != nil {
