@@ -58,6 +58,7 @@ func TestRunningUnderMocks(t *testing.T) {
 	t.Parallel()
 
 	t.Run("With mocks", func(t *testing.T) {
+		t.Parallel()
 		testCtx := &Context{
 			monitor: &mockMonitor{},
 		}
@@ -65,6 +66,7 @@ func TestRunningUnderMocks(t *testing.T) {
 	})
 
 	t.Run("Without mocks", func(t *testing.T) {
+		t.Parallel()
 		testCtx := &Context{
 			monitor: nil,
 		}
