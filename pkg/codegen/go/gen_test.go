@@ -211,13 +211,11 @@ func TestPackageNaming(t *testing.T) {
 			}
 			files, err := GeneratePackage("test", schema)
 			require.NoError(t, err)
-			ordering := make([]string, len(files))
-			var i int
+			ordering := make([]string, 0, len(files))
 			for k := range files {
-				ordering[i] = k
-				i++
+				ordering = append(ordering, k)
 			}
-			ordering = sort.StringSlice(ordering)
+			sort.Strings(ordering)
 			require.NotEmpty(t, files, "This test only works when files are generated")
 			for _, k := range ordering {
 				root := strings.Split(k, "/")[0]
