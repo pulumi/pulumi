@@ -14,11 +14,10 @@ func ReadMemoryStoreFromFile(file string) (*appdash.MemoryStore, error) {
 	store := appdash.NewMemoryStore()
 
 	traceFile, err := os.Open(file)
-	defer traceFile.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer traceFile.Close()
 
 	_, err = store.ReadFrom(traceFile)
 	if err != nil {
