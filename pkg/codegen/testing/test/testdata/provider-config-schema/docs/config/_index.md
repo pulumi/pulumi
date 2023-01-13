@@ -14,7 +14,7 @@ Explore the resources and functions of the configstation.config module.
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href="">configstation </a></dd>
+	<dd><a href=""></a></dd>
 	<dt>License</dt>
 	<dd></dd>
 	<dt>Version</dt>

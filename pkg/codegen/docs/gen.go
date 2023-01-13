@@ -130,7 +130,6 @@ func titleLookup(shortName string) (string, bool) {
 		"opsgenie":                             "Opsgenie",
 		"packet":                               "Packet",
 		"pagerduty":                            "PagerDuty",
-		"pulumi-std":                           "Pulumi Standard Library",
 		"postgresql":                           "PostgreSQL",
 		"prometheus-helm":                      "Prometheus (Helm)",
 		"rabbitmq":                             "RabbitMQ",
@@ -300,12 +299,10 @@ type formalParam struct {
 }
 
 type packageDetails struct {
-	DisplayName    string
-	Repository     string
-	RepositoryName string
-	License        string
-	Notes          string
-	Version        string
+	Repository string
+	License    string
+	Notes      string
+	Version    string
 }
 
 type resourceDocArgs struct {
@@ -1636,6 +1633,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	def, err := mod.pkg.Definition()
 	contract.AssertNoError(err)
+
 	packageDetails := packageDetails{
 		Repository: def.Repository,
 		License:    def.License,
@@ -1915,12 +1913,10 @@ func (mod *modContext) genIndex() indexData {
 	}
 
 	packageDetails := packageDetails{
-		DisplayName:    getPackageDisplayName(def.Name),
-		Repository:     def.Repository,
-		RepositoryName: getRepositoryName(def.Repository),
-		License:        def.License,
-		Notes:          def.Attribution,
-		Version:        version,
+		Repository: def.Repository,
+		License:    def.License,
+		Notes:      def.Attribution,
+		Version:    version,
 	}
 
 	var titleTag string
@@ -1963,11 +1959,6 @@ func getPackageDisplayName(title string) string {
 		return val
 	}
 	return title
-}
-
-// getRepositoryName returns the repository name based on the repository's URL.
-func getRepositoryName(repoURL string) string {
-	return strings.TrimPrefix(repoURL, "https://github.com/")
 }
 
 func (dctx *docGenContext) getMod(
