@@ -15,11 +15,16 @@
 // Terminal detection utilities.
 package main
 
-import "golang.org/x/term"
+import (
+	"math"
+
+	"golang.org/x/term"
+)
 
 type optimalPageSizeOpts struct {
 	nopts          int
 	terminalHeight int
+	linesAdded     int
 }
 
 // Computes how many options to display in a Terminal UI multi-select.
@@ -34,8 +39,10 @@ func optimalPageSize(opts optimalPageSizeOpts) int {
 	if pageSize > opts.nopts {
 		pageSize = opts.nopts
 	}
-	const buffer = 5
+	buffer := 5
 	if pageSize > buffer {
+		// estimate for how many additional buffer lines to add due to wrap-around lines
+		buffer += int(math.Ceil(float64(pageSize) / float64(opts.nopts) * float64(opts.linesAdded) / 2))
 		pageSize = pageSize - buffer
 	}
 	return pageSize

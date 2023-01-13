@@ -434,7 +434,7 @@ func newNewCmd() *cobra.Command {
 					logging.Warningf("could not list templates: %v", err)
 					return err
 				}
-				available, _ := templatesToOptionArrayAndMap(templates, true)
+				available, _, _ := templatesToOptionArrayAndMap(templates, true)
 				fmt.Println("")
 				fmt.Println("Available Templates:")
 				for _, t := range available {
@@ -800,9 +800,9 @@ func chooseTemplate(templates []workspace.Template, opts display.Options) (works
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates, true)
+	options, optionToTemplateMap, totalLines := templatesToOptionArrayAndMap(templates, true)
 	nopts := len(options)
-	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts})
+	pageSize := optimalPageSize(optimalPageSizeOpts{nopts: nopts, linesAdded: totalLines - nopts})
 	message := fmt.Sprintf("\rPlease choose a template (%d/%d shown):\n", pageSize, nopts)
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
@@ -1036,7 +1036,7 @@ func promptForValue(
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
 func templatesToOptionArrayAndMap(templates []workspace.Template,
-	showAll bool) ([]string, map[string]workspace.Template) {
+	showAll bool) ([]string, map[string]workspace.Template, int) {
 
 	termWidth, _, err := terminal.GetSize(0)
 	if err != nil {
@@ -1054,6 +1054,7 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 	var options []string
 	var brokenOptions []string
 	nameToTemplateMap := make(map[string]workspace.Template)
+	totalLines := 0
 	for _, template := range templates {
 		// If showAll is false, then only include templates marked Important
 		if !showAll && !template.Important {
@@ -1069,7 +1070,11 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		// 2 spaces before the template name, 4 spaces between template name and description = 6
 		curWidth := maxNameLength + len(desc) + 6
 		if termWidth < curWidth {
-			desc = reflowDesc(maxNameLength+6, termWidth, desc)
+			reflowedDesc, numLines := reflowDesc(maxNameLength+6, termWidth, desc)
+			totalLines += numLines
+			desc = reflowedDesc
+		} else {
+			totalLines += 1
 		}
 		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.Name, desc)
 
@@ -1090,19 +1095,21 @@ func templatesToOptionArrayAndMap(templates []workspace.Template,
 		options = append(options, option)
 	}
 
-	return options, nameToTemplateMap
+	return options, nameToTemplateMap, totalLines
 }
 
 // reflowDesc reflows the template description nicely if the term width requires it to wrap around.
-func reflowDesc(prefixWidth int, termWidth int, desc string) string {
+// returns the updated description and number of lines it spans.
+func reflowDesc(prefixWidth int, termWidth int, desc string) (string, int) {
 	var descFormatted strings.Builder
 	// number of description chars on each line
 	descWidth := termWidth - prefixWidth
 	// super small terminal where template name also wraps around: let description wrap around
 	if descWidth <= 0 {
-		return desc
+		return desc, 0
 	}
 	prevIdx := 0
+	numLines := 0
 	for idx := descWidth; idx < len(desc); idx += descWidth {
 		buffer := prefixWidth
 		if eowIdx := strings.LastIndex(desc[:idx], " "); eowIdx != -1 && eowIdx >= prevIdx {
@@ -1111,11 +1118,13 @@ func reflowDesc(prefixWidth int, termWidth int, desc string) string {
 		}
 		fmt.Fprintf(&descFormatted, "%s%s", desc[prevIdx:idx], strings.Repeat(" ", buffer))
 		prevIdx = idx
+		numLines += 1
 	}
 	if prevIdx < len(desc) {
 		fmt.Fprint(&descFormatted, desc[prevIdx:])
+		numLines += 1
 	}
-	return descFormatted.String()
+	return descFormatted.String(), numLines
 }
 
 // containsWhiteSpace returns true if the string contains whitespace.
