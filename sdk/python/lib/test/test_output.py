@@ -197,6 +197,15 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertIsInstance(x_val.nested, OutputFromInputTests.NestedArgs)
         self.assertEqual(x_val.nested.hello, "world")
 
+    @pulumi.input_type
+    class EmptyArgs: pass
+
+    @pulumi_test
+    async def test_unwrap_empty_input_type(self):
+        x = Output.from_input(OutputFromInputTests.EmptyArgs())
+        x_val = cast(OutputFromInputTests.EmptyArgs, await x.future())
+        self.assertIsInstance(x_val, OutputFromInputTests.EmptyArgs)
+
 class Obj:
     def __init__(self, x: str):
         self.x = x
