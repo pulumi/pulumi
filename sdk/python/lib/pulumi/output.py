@@ -292,9 +292,16 @@ class Output(Generic[T_co]):
         typ = type(val)
         if _types.is_input_type(typ):
             # We know that any input type can safely be decomposed into it's `__dict__`, and then reconstructed
-            # via `type(**d)` from the (unwrapped) properties.
-            o_typ: Output[typ] = Output.all(**val.__dict__).apply(  # type:ignore
+            # via `type(**d)` from the (unwrapped) properties (bar empty input types, see next comment).
+            o_typ = Output.all(**val.__dict__).apply(
+                # if __dict__ was empty `all` will return an empty list object rather than a dict object,
+                # there isn't really a good way to express this in mypy so the type checker doesn't pickup on
+                # this. If we get an empty list we can't splat it as that results in a type error, so check
+                # that we have some values before splatting. If it's empty just call the `typ` constructor
+                # directly with no arguments.
                 lambda d: typ(**d)
+                if d
+                else typ()
             )
             return cast(Output[T_co], o_typ)
 
