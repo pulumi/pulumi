@@ -298,7 +298,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
-		tracingToFile:   cmdutil.TracingToFile,
 		logFlow:         logging.LogFlow,
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
@@ -411,10 +410,10 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 }
 
 type pluginArgumentOptions struct {
-	pluginArgs                          []string
-	tracingEndpoint                     string
-	tracingToFile, logFlow, logToStderr bool
-	verbose                             int
+	pluginArgs           []string
+	tracingEndpoint      string
+	logFlow, logToStderr bool
+	verbose              int
 }
 
 func buildPluginArguments(opts pluginArgumentOptions) []string {
