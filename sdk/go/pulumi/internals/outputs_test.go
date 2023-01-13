@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error) {
@@ -32,9 +33,15 @@ func await(out pulumi.Output) (interface{}, bool, bool, []pulumi.Resource, error
 func TestBasicOutputs(t *testing.T) {
 	t.Parallel()
 
+	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		Project: "proj",
+		Stack:   "stack",
+	})
+	require.NoError(t, err)
+
 	// Just test basic resolve and reject functionality.
 	{
-		out, resolve, _ := pulumi.NewOutput()
+		out, resolve, _ := ctx.NewOutput()
 		go func() {
 			resolve(42)
 		}()
@@ -47,7 +54,7 @@ func TestBasicOutputs(t *testing.T) {
 		assert.Equal(t, 42, v.(int))
 	}
 	{
-		out, _, reject := pulumi.NewOutput()
+		out, _, reject := ctx.NewOutput()
 		go func() {
 			reject(errors.New("boom"))
 		}()
