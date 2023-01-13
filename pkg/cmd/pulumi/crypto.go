@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -63,11 +64,13 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 
 		//nolint:goconst
 		if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
-			return newCloudSecretsManager(s.Ref().Name(), configFile, ps.SecretsProvider, false /* rotateSecretsProvider */)
+			return cloud.NewCloudSecretsManager(
+				s.Ref().Name(), configFile, ps.SecretsProvider, false /* rotateSecretsProvider */)
 		}
 
 		if ps.EncryptionSalt != "" {
-			return passphrase.NewPromptingPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
+			return passphrase.NewPromptingPassphraseSecretsManager(
+				s.Ref().Name(), configFile, false /* rotateSecretsProvider */)
 		}
 
 		return s.DefaultSecretManager(configFile)

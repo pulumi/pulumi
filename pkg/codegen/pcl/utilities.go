@@ -145,7 +145,6 @@ func Linearize(p *Program) []Node {
 //
 // The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
 func MapProvidersAsResources(p *Program) {
-	nodes := make([]Node, 0, len(p.Nodes))
 	for _, n := range p.Nodes {
 		if r, ok := n.(*Resource); ok {
 			pkg, mod, name, _ := r.DecomposeToken()
@@ -154,8 +153,6 @@ func MapProvidersAsResources(p *Program) {
 				r.Token = name + "::Provider"
 			}
 		}
-
-		nodes = append(nodes, n)
 	}
 }
 

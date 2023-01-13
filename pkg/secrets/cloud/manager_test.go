@@ -17,14 +17,20 @@ package cloud
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"net/url"
+	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"gocloud.dev/secrets"
+	"gocloud.dev/secrets/driver"
 )
 
 func assertNoError(t *testing.T, err error) {
@@ -36,10 +42,10 @@ func assertNoError(t *testing.T, err error) {
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and
 // decrypt data
 func testURL(ctx context.Context, t *testing.T, url string) {
-	dataKey, err := GenerateNewDataKey(url)
+	dataKey, err := generateNewDataKey(url)
 	assertNoError(t, err)
 
-	manager, err := NewCloudSecretsManager(url, dataKey)
+	manager, err := newCloudSecretsManager(url, dataKey)
 	assertNoError(t, err)
 
 	enc, err := manager.Encrypter()
@@ -129,4 +135,90 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	t.Setenv("AWS_SECRET_ACCESS_KEY", creds.SecretAccessKey)
 	t.Setenv("AWS_SESSION_TOKEN", creds.SessionToken)
 	testURL(ctx, t, url)
+}
+
+func deleteFiles(t *testing.T, files map[string]string) {
+	for file := range files {
+		err := os.Remove(file)
+		assert.Nil(t, err, "Should be able to remove the file directory")
+	}
+}
+
+func createTempFiles(t *testing.T, files map[string]string, f func()) {
+	for file, content := range files {
+		fileError := os.WriteFile(file, []byte(content), 0600)
+		assert.Nil(t, fileError, "should be able to write the file contents")
+	}
+
+	defer deleteFiles(t, files)
+	f()
+}
+
+//nolint:paralleltest
+func TestSecretsProviderOverride(t *testing.T) {
+	// Don't call t.Parallel because we temporarily modify
+	// PULUMI_CLOUD_SECRET_OVERRIDE env var and it may interfere with other
+	// tests.
+
+	stackConfigFileName := "Pulumi.TestSecretsProviderOverride.yaml"
+	files := make(map[string]string)
+	files["Pulumi.yaml"] = "{\"name\":\"test\", \"runtime\":\"dotnet\"}"
+	files[stackConfigFileName] = ""
+
+	var stackName = tokens.Name("TestSecretsProviderOverride")
+
+	opener := &mockSecretsKeeperOpener{}
+	secrets.DefaultURLMux().RegisterKeeper("test", opener)
+
+	//nolint:paralleltest
+	t.Run("without override", func(t *testing.T) {
+		createTempFiles(t, files, func() {
+			opener.wantURL = "test://foo"
+			_, createSecretsManagerError := NewCloudSecretsManager(stackName, stackConfigFileName, "test://foo", false)
+			assert.Nil(t, createSecretsManagerError, "Creating the cloud secret manager should succeed")
+
+			_, createSecretsManagerError = NewCloudSecretsManager(stackName, stackConfigFileName, "test://bar", false)
+			msg := "NewCloudSecretsManager with unexpected secretsProvider URL succeeded, expected an error"
+			assert.NotNil(t, createSecretsManagerError, msg)
+		})
+	})
+
+	//nolint:paralleltest
+	t.Run("with override", func(t *testing.T) {
+		createTempFiles(t, files, func() {
+			opener.wantURL = "test://bar"
+			t.Setenv("PULUMI_CLOUD_SECRET_OVERRIDE", "test://bar")
+
+			// Last argument here shouldn't matter anymore, since it gets overridden
+			// by the env var. Both calls should succeed.
+			msg := "creating the secrets manager should succeed regardless of secrets provider"
+			_, createSecretsManagerError := NewCloudSecretsManager(stackName, stackConfigFileName, "test://foo", false)
+			assert.Nil(t, createSecretsManagerError, msg)
+			_, createSecretsManagerError = NewCloudSecretsManager(stackName, stackConfigFileName, "test://bar", false)
+			assert.Nil(t, createSecretsManagerError, msg)
+		})
+	})
+}
+
+type mockSecretsKeeperOpener struct {
+	wantURL string
+}
+
+func (m *mockSecretsKeeperOpener) OpenKeeperURL(ctx context.Context, u *url.URL) (*secrets.Keeper, error) {
+	if m.wantURL != u.String() {
+		return nil, fmt.Errorf("got keeper URL: %q, want: %q", u, m.wantURL)
+	}
+	return secrets.NewKeeper(dummySecretsKeeper{}), nil
+}
+
+type dummySecretsKeeper struct {
+	driver.Keeper
+}
+
+func (k dummySecretsKeeper) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
+	return ciphertext, nil
+}
+
+func (k dummySecretsKeeper) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
+	return plaintext, nil
 }

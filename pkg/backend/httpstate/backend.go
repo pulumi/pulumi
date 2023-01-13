@@ -1624,7 +1624,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 	}
 	id := resp.ID
 
-	fmt.Printf(opts.Color.Colorize(colors.SpecHeadline + "Preparing deployment..." + colors.Reset + "\n\n"))
+	fmt.Print(opts.Color.Colorize(colors.SpecHeadline + "Preparing deployment..." + colors.Reset + "\n\n"))
 
 	if !opts.SuppressPermalink && !opts.JSONDisplay && resp.ConsoleURL != "" {
 		fmt.Printf(opts.Color.Colorize(
@@ -1641,7 +1641,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 
 		for _, l := range logs.Lines {
 			if l.Header != "" {
-				fmt.Printf(opts.Color.Colorize(
+				fmt.Print(opts.Color.Colorize(
 					"\n" + colors.SpecHeadline + l.Header + ":" + colors.Reset + "\n"))
 
 				// If we see it's a Pulumi operation, rather than outputting the deployment logs,
