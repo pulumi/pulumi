@@ -46,9 +46,9 @@ func (t *TupleType) Pretty() pretty.Formatter {
 	for i, el := range t.ElementTypes {
 		elements[i] = el.Pretty()
 	}
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix: "(",
-		Value: pretty.List{
+		Value: &pretty.List{
 			AdjoinSeparator: true,
 			Separator:       ", ",
 			Elements:        elements,

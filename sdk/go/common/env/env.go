@@ -68,5 +68,3 @@ fail without a --force parameter.`)
 
 var DebugGRPC = env.String("DEBUG_GRPC", `Enables debug tracing of Pulumi gRPC internals.
 The variable should be set to the log file to which gRPC debug traces will be sent.`)
-
-var PrettyPrintPCL = env.Bool("PRETTY_PRINT_PCL", "Print PCL type errors across multiple lines")

@@ -55,7 +55,7 @@ func (t *ObjectType) Pretty() pretty.Formatter {
 	for k, v := range t.Properties {
 		m[k] = v.Pretty()
 	}
-	return pretty.Object{Properties: m}
+	return &pretty.Object{Properties: m}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of

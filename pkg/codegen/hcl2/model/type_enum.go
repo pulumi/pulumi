@@ -84,10 +84,10 @@ func (t *EnumType) Pretty() pretty.Formatter {
 			NewConstType(ctyTypeToType(c.Type(), false), c).Pretty(),
 		)
 	}
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "enum(",
 		Postfix: ")",
-		Value: pretty.List{
+		Value: &pretty.List{
 			Separator: " | ",
 			Elements:  types,
 		},

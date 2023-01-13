@@ -116,12 +116,12 @@ func (t *UnionType) Pretty() pretty.Formatter {
 		}
 		elements = append(elements, el.Pretty())
 	}
-	var v pretty.Formatter = pretty.List{
+	var v pretty.Formatter = &pretty.List{
 		Separator: " | ",
 		Elements:  elements,
 	}
 	if isOptional {
-		v = pretty.Wrap{
+		v = &pretty.Wrap{
 			Value:           v,
 			Postfix:         "?",
 			PostfixSameline: true,
