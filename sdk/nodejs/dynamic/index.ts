@@ -199,15 +199,17 @@ export abstract class Resource extends resource.CustomResource {
      * @param props The arguments to use to populate the new resource. Must not define the reserved
      *              property "__provider".
      * @param opts A bag of options that control this resource's behavior.
+     * @param module The module of the resource.
+     * @param type The type of the resource.
      */
     constructor(provider: ResourceProvider, name: string, props: Inputs,
-                opts?: resource.CustomResourceOptions) {
+                opts?: resource.CustomResourceOptions, module?: string, type: string = "Resource") {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");
         }
         props[providerKey] = serializeProvider(provider);
 
-        super("pulumi-nodejs:dynamic:Resource", name, props, opts);
+        super(`pulumi-nodejs:dynamic${module ? `/${module}` : ""}:${type}`, name, props, opts);
     }
 }
