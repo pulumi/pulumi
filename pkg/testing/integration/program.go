@@ -2187,9 +2187,9 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 		repoName := splitPkg[2]
 		basePath := splitPkg[len(splitPkg)-1]
 		if basePath == repoName {
-			depParts = append([]string{depRoot, repoName})
+			depParts = []string{depRoot, repoName}
 		} else {
-			depParts = append([]string{depRoot, repoName, basePath})
+			depParts = []string{depRoot, repoName, basePath}
 		}
 		return filepath.Join(depParts...)
 	}
