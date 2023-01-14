@@ -135,9 +135,6 @@ type UpdateOptions struct {
 	// true if the engine should disable provider previews.
 	DisableProviderPreview bool
 
-	// true if the engine should disable resource reference support.
-	DisableResourceReferences bool
-
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 

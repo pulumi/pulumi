@@ -238,16 +238,15 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:                  parallel,
-				Debug:                     debug,
-				Refresh:                   refreshOption,
-				DestroyTargets:            deploy.NewUrnTargets(targetUrns),
-				TargetDependents:          targetDependents,
-				UseLegacyDiff:             useLegacyDiff(),
-				DisableProviderPreview:    disableProviderPreview(),
-				DisableResourceReferences: disableResourceReferences(),
-				DisableOutputValues:       disableOutputValues(),
-				Experimental:              hasExperimentalCommands(),
+				Parallel:               parallel,
+				Debug:                  debug,
+				Refresh:                refreshOption,
+				DestroyTargets:         deploy.NewUrnTargets(targetUrns),
+				TargetDependents:       targetDependents,
+				UseLegacyDiff:          useLegacyDiff(),
+				DisableProviderPreview: disableProviderPreview(),
+				DisableOutputValues:    disableOutputValues(),
+				Experimental:           hasExperimentalCommands(),
 			}
 
 			_, res := s.Destroy(ctx, backend.UpdateOperation{

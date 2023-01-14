@@ -213,17 +213,16 @@ func newPreviewCmd() *cobra.Command {
 
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
-					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-					Parallel:                  parallel,
-					Debug:                     debug,
-					Refresh:                   refreshOption,
-					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-					UseLegacyDiff:             useLegacyDiff(),
-					DisableProviderPreview:    disableProviderPreview(),
-					DisableResourceReferences: disableResourceReferences(),
-					DisableOutputValues:       disableOutputValues(),
-					UpdateTargets:             deploy.NewUrnTargets(targetURNs),
-					TargetDependents:          targetDependents,
+					LocalPolicyPacks:       engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+					Parallel:               parallel,
+					Debug:                  debug,
+					Refresh:                refreshOption,
+					ReplaceTargets:         deploy.NewUrnTargets(replaceURNs),
+					UseLegacyDiff:          useLegacyDiff(),
+					DisableProviderPreview: disableProviderPreview(),
+					DisableOutputValues:    disableOutputValues(),
+					UpdateTargets:          deploy.NewUrnTargets(targetURNs),
+					TargetDependents:       targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan: hasExperimentalCommands() || planFilePath != "",

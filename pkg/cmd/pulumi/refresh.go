@@ -248,14 +248,13 @@ func newRefreshCmd() *cobra.Command {
 			targetUrns = append(targetUrns, *targets...)
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:                  parallel,
-				Debug:                     debug,
-				UseLegacyDiff:             useLegacyDiff(),
-				DisableProviderPreview:    disableProviderPreview(),
-				DisableResourceReferences: disableResourceReferences(),
-				DisableOutputValues:       disableOutputValues(),
-				RefreshTargets:            deploy.NewUrnTargets(targetUrns),
-				Experimental:              hasExperimentalCommands(),
+				Parallel:               parallel,
+				Debug:                  debug,
+				UseLegacyDiff:          useLegacyDiff(),
+				DisableProviderPreview: disableProviderPreview(),
+				DisableOutputValues:    disableOutputValues(),
+				RefreshTargets:         deploy.NewUrnTargets(targetUrns),
+				Experimental:           hasExperimentalCommands(),
 			}
 
 			changes, res := s.Refresh(ctx, backend.UpdateOperation{

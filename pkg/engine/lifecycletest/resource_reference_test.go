@@ -224,7 +224,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
 
 	p := &TestPlan{
-		Options: UpdateOptions{Host: host, DisableResourceReferences: true},
+		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)

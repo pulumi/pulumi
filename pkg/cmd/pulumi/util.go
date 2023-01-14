@@ -76,10 +76,6 @@ func disableProviderPreview() bool {
 	return env.DisableProviderPreview.Value()
 }
 
-func disableResourceReferences() bool {
-	return env.DisableResourceReferences.Value()
-}
-
 func disableOutputValues() bool {
 	return env.DisableOutputValues.Value()
 }

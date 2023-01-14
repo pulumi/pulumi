@@ -139,18 +139,17 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(err)
 		}
 		opts.Engine = engine.UpdateOptions{
-			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:                  parallel,
-			Debug:                     debug,
-			Refresh:                   refreshOption,
-			RefreshTargets:            deploy.NewUrnTargets(targetURNs),
-			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-			UseLegacyDiff:             useLegacyDiff(),
-			DisableProviderPreview:    disableProviderPreview(),
-			DisableResourceReferences: disableResourceReferences(),
-			DisableOutputValues:       disableOutputValues(),
-			UpdateTargets:             deploy.NewUrnTargets(targetURNs),
-			TargetDependents:          targetDependents,
+			LocalPolicyPacks:       engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:               parallel,
+			Debug:                  debug,
+			Refresh:                refreshOption,
+			RefreshTargets:         deploy.NewUrnTargets(targetURNs),
+			ReplaceTargets:         deploy.NewUrnTargets(replaceURNs),
+			UseLegacyDiff:          useLegacyDiff(),
+			DisableProviderPreview: disableProviderPreview(),
+			DisableOutputValues:    disableOutputValues(),
+			UpdateTargets:          deploy.NewUrnTargets(targetURNs),
+			TargetDependents:       targetDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
 			GeneratePlan: true,
