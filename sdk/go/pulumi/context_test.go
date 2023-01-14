@@ -90,7 +90,7 @@ func NewLoggingTestResource(
 	}
 
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
-		time.Sleep(10)
+		time.Sleep(10 * time.Nanosecond)
 		err := ctx.Log.Debug("Zzz", &LogArgs{})
 		assert.NoError(t, err)
 		return inputValue, nil
