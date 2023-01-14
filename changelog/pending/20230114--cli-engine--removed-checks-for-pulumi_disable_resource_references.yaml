@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/engine
+  description: removed checks for PULUMI_DISABLE_RESOURCE_REFERENCES
