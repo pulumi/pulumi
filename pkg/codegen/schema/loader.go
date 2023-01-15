@@ -249,10 +249,7 @@ func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]b
 	}
 
 	if version == nil {
-		info, err := provider.GetPluginInfo()
-		if err != nil {
-			// Nonfatal
-		}
+		info, _ := provider.GetPluginInfo() // nonfatal error
 		version = info.Version
 	}
 
