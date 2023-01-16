@@ -1006,3 +1006,17 @@ func TestResourceRefsGetResourcePython(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// TestDeletedWithPython tests the DeletedWith resource option.
+func TestDeletedWithPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("deleted_with", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+		},
+		Quick: true,
+	})
+}

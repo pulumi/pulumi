@@ -1285,3 +1285,15 @@ func TestResourceRefsGetResourceNode(t *testing.T) {
 		Quick:        true,
 	})
 }
+
+// TestDeletedWithNode tests the DeletedWith resource option.
+func TestDeletedWithNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("deleted_with", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+		},
+		Quick: true,
+	})
+}
