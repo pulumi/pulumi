@@ -826,3 +826,17 @@ func TestResourceRefsGetResourceGo(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// TestDeletedWithGo tests the DeletedWith resource option.
+func TestDeletedWithGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("deleted_with", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+		},
+		Quick: true,
+	})
+}

@@ -604,7 +604,7 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
-	if options.DeletedWith != "" && !ctx.supportsDeletedWith {
+	if options.DeletedWith != nil && !ctx.supportsDeletedWith {
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
@@ -1332,6 +1332,15 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases[i] = string(urn)
 	}
 
+	var deletedWithURN URN
+	if opts.DeletedWith != nil {
+		urn, _, _, err := opts.DeletedWith.URN().awaitURN(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("error waiting for DeletedWith URN to resolve: %w", err)
+		}
+		deletedWithURN = urn
+	}
+
 	return &resourceInputs{
 		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
@@ -1351,7 +1360,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
-		deletedWith:             string(opts.DeletedWith),
+		deletedWith:             string(deletedWithURN),
 	}, nil
 }
 

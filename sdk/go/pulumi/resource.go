@@ -313,7 +313,7 @@ type resourceOptions struct {
 	RetainOnDelete bool
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
-	DeletedWith URN
+	DeletedWith Resource
 }
 
 type invokeOptions struct {
@@ -597,8 +597,8 @@ func RetainOnDelete(b bool) ResourceOption {
 
 // If set, the providers Delete method will not be called for this resource
 // if specified resource is being deleted as well.
-func DeletedWith(dw URN) ResourceOption {
+func DeletedWith(r Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DeletedWith = dw
+		ro.DeletedWith = r
 	})
 }
