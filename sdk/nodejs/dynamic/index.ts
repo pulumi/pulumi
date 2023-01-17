@@ -21,11 +21,11 @@ import * as serializeClosure from "../runtime/closure/serializeClosure";
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
  */
-export interface CheckResult {
+export interface CheckResult<Inputs = any> {
     /**
      * The inputs to use, if any.
      */
-    readonly inputs?: any;
+    readonly inputs?: Inputs;
 
     /**
      * Any validation failures that occurred.
@@ -77,7 +77,7 @@ export interface DiffResult {
 /**
  * CreateResult represents the results of a call to `ResourceProvider.create`.
  */
-export interface CreateResult {
+export interface CreateResult<Outputs = any> {
     /**
      * The ID of the created resource.
      */
@@ -86,10 +86,10 @@ export interface CreateResult {
     /**
      * Any properties that were computed during creation.
      */
-    readonly outs?: any;
+    readonly outs?: Outputs;
 }
 
-export interface ReadResult {
+export interface ReadResult<Outputs = any> {
     /**
      * The ID of the resource ready back (or blank if missing).
      */
@@ -97,30 +97,30 @@ export interface ReadResult {
     /**
      * The current property state read from the live environment.
      */
-    readonly props?: any;
+    readonly props?: Outputs;
 }
 
 /**
  * UpdateResult represents the results of a call to `ResourceProvider.update`.
  */
-export interface UpdateResult {
+export interface UpdateResult<Outputs = any> {
     /**
      * Any properties that were computed during updating.
      */
-    readonly outs?: any;
+    readonly outs?: Outputs;
 }
 
 /**
  * ResourceProvider represents an object that provides CRUD operations for a particular type of resource.
  */
-export interface ResourceProvider {
+export interface ResourceProvider<Inputs = any, Outputs = any> {
     /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
      * @param olds The old input properties to use for validation.
      * @param news The new input properties to use for validation.
      */
-    check?: (olds: any, news: any) => Promise<CheckResult>;
+    check?: (olds: Inputs, news: Inputs) => Promise<CheckResult<Inputs>>;
 
     /**
      * Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -129,7 +129,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to diff.
      * @param news The new values of properties to diff.
      */
-    diff?: (id: resource.ID, olds: any, news: any) => Promise<DiffResult>;
+    diff?: (id: resource.ID, olds: Outputs, news: Inputs) => Promise<DiffResult>;
 
     /**
      * Create allocates a new instance of the provided resource and returns its unique ID afterwards.
@@ -137,13 +137,13 @@ export interface ResourceProvider {
      *
      * @param inputs The properties to set during creation.
      */
-    create: (inputs: any) => Promise<CreateResult>;
+    create: (inputs: Inputs) => Promise<CreateResult<Outputs>>;
 
     /**
      * Reads the current live state associated with a resource.  Enough state must be included in the inputs to uniquely
      * identify the resource; this is typically just the resource ID, but it may also include some properties.
      */
-    read?: (id: resource.ID, props?: any) => Promise<ReadResult>;
+    read?: (id: resource.ID, props?: Outputs) => Promise<ReadResult<Outputs>>;
 
     /**
      * Update updates an existing resource with new values.
@@ -152,7 +152,7 @@ export interface ResourceProvider {
      * @param olds The old values of properties to update.
      * @param news The new values of properties to update.
      */
-    update?: (id: resource.ID, olds: any, news: any) => Promise<UpdateResult>;
+    update?: (id: resource.ID, olds: Outputs, news: Inputs) => Promise<UpdateResult<Outputs>>;
 
     /**
      * Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -160,7 +160,7 @@ export interface ResourceProvider {
      * @param id The ID of the resource to delete.
      * @param props The current properties on the resource.
      */
-    delete?: (id: resource.ID, props: any) => Promise<void>;
+    delete?: (id: resource.ID, props: Outputs) => Promise<void>;
 }
 
 const providerCache = new WeakMap<ResourceProvider, Promise<string>>();

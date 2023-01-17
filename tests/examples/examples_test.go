@@ -154,6 +154,16 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 }
 
 //nolint:paralleltest // uses parallel programtest
+func TestDynamicProviderGenericTypes(t *testing.T) {
+	test := getBaseOptions().
+		With(integration.ProgramTestOptions{
+			Dir: filepath.Join(getCwd(t), "dynamic-provider/generic-types"),
+		})
+
+	integration.ProgramTest(t, &test)
+}
+
+//nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
