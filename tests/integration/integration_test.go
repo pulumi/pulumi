@@ -644,3 +644,37 @@ func TestExcludeProtected(t *testing.T) {
 	stdout, _ = e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "--exclude-protected")
 	assert.Contains(t, stdout, "There were no unprotected resources to destroy. There are still 7")
 }
+
+func TestInvalidPluginError(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: invalid-plugin
+runtime: yaml
+description: A Pulumi program referencing an invalid plugin.
+plugins:
+  providers:
+    - name: fakeplugin
+      bin: ./does/not/exist/bin # key should be 'path'
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	{
+		_, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "invalid-resources")
+		assert.NotContains(t, stderr, "panic: ")
+		assert.Contains(t, stderr, "error: ")
+	}
+	{
+		_, stderr := e.RunCommandExpectError("pulumi", "pre")
+		assert.NotContains(t, stderr, "panic: ")
+		assert.Contains(t, stderr, "error: ")
+	}
+}
