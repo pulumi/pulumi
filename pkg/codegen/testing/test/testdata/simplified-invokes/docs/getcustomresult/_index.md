@@ -376,7 +376,7 @@ The following output properties are available:
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href="https://github.com/pulumi/pulumi-std"> </a></dd>
+	<dd><a href="https://github.com/pulumi/pulumi-std">std pulumi/pulumi-std</a></dd>
 	<dt>License</dt>
 	<dd></dd>
 </dl>
