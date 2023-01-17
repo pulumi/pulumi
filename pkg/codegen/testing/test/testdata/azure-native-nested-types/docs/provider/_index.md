@@ -359,7 +359,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href="https://github.com/pulumi/pulumi-azure-native"> </a></dd>
+	<dd><a href="https://github.com/pulumi/pulumi-azure-native">Azure Native pulumi/pulumi-azure-native</a></dd>
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>

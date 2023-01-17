@@ -1637,9 +1637,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	def, err := mod.pkg.Definition()
 	contract.AssertNoError(err)
 	packageDetails := packageDetails{
-		Repository: def.Repository,
-		License:    def.License,
-		Notes:      def.Attribution,
+		DisplayName:    getPackageDisplayName(def.Name),
+		Repository:     def.Repository,
+		RepositoryName: getRepositoryName(def.Repository),
+		License:        def.License,
+		Notes:          def.Attribution,
 	}
 
 	renderedCtorParams, typedCtorParams := mod.genConstructors(r, allOptionalInputs)
