@@ -1297,3 +1297,17 @@ func TestDeletedWithNode(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// Tests custom resource type name of dynamic provider.
+func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "nodejs-resource-type-name"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urnOut := stack.Outputs["urn"].(string)
+			urn := resource.URN(urnOut)
+			typ := urn.Type().String()
+			assert.Equal(t, "pulumi-nodejs:dynamic/custom-provider:CustomResource", typ)
+		},
+	})
+}
