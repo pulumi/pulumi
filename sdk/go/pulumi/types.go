@@ -368,66 +368,93 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
-	fv := reflect.ValueOf(fn)
-	if fv.Kind() != reflect.Func {
-		panic(errors.New("applier must be a function"))
-	}
+// applier is a normalized version of a function
+// passed into either ApplyT or ApplyTWithContext.
+//
+// Use its Call method instead of calling the fn directly.
+type applier struct {
+	// Out is the type of output produced by this applier.
+	Out reflect.Type
 
-	ft := fv.Type()
-	if ft.NumIn() != 1 || !elementType.AssignableTo(ft.In(0)) {
-		panic(fmt.Errorf("applier must have 1 input parameter assignable from %v", elementType))
-	}
-
-	var outs []reflect.Type
-	switch ft.NumOut() {
-	case 1:
-		// Okay
-		outs = []reflect.Type{ft.Out(0)}
-	case 2:
-		// Second out parameter must be of type error
-		if !ft.Out(1).AssignableTo(errorType) {
-			panic(errors.New("applier's second return type must be assignable to error"))
-		}
-		outs = []reflect.Type{ft.Out(0), ft.Out(1)}
-	default:
-		panic(errors.New("applier must return exactly one or two values"))
-	}
-
-	ins := []reflect.Type{contextType, ft.In(0)}
-	contextfulType := reflect.FuncOf(ins, outs, ft.IsVariadic())
-	contextfulFunc := reflect.MakeFunc(contextfulType, func(args []reflect.Value) []reflect.Value {
-		// Slice off the context argument and call the applier.
-		return fv.Call(args[1:])
-	})
-	return contextfulFunc.Interface()
+	fn  reflect.Value
+	ctx bool // whether fn accepts a context as its first input
+	err bool // whether fn return an err as its last result
 }
 
-func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
+func newApplier(fn interface{}, elemType reflect.Type) (*applier, error) {
 	fv := reflect.ValueOf(fn)
 	if fv.Kind() != reflect.Func {
-		panic(errors.New("applier must be a function"))
+		return nil, errors.New("applier must be a function")
 	}
 
+	ap := applier{fn: fv}
 	ft := fv.Type()
-	if ft.NumIn() != 2 || !contextType.AssignableTo(ft.In(0)) || !elementType.AssignableTo(ft.In(1)) {
-		panic(fmt.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
-	}
 
-	switch ft.NumOut() {
-	case 1:
-		// Okay
+	// The function parameters must be in one of the following forms:
+	//	(E)
+	//	(context.Context, E)
+	// Everything else is invalid.
+	var elemIdx int
+	elemName := "first"
+	switch numIn := ft.NumIn(); numIn {
 	case 2:
-		// Second out parameter must be of type error
-		if !ft.Out(1).AssignableTo(errorType) {
-			panic(errors.New("applier's second return type must be assignable to error"))
+		if t := ft.In(0); !contextType.AssignableTo(t) {
+			return nil, fmt.Errorf("applier's first input parameter must be assignable from %v, got %v", contextType, t)
+		}
+		ap.ctx = true
+		elemIdx = 1
+		elemName = "second"
+		fallthrough // validate element type
+	case 1:
+		if t := ft.In(elemIdx); !elemType.AssignableTo(t) {
+			return nil, fmt.Errorf("applier's %s input parameter must be assignable from %v, got %v", elemName, elemType, t)
 		}
 	default:
-		panic(errors.New("applier must return exactly one or two values"))
+		return nil, fmt.Errorf("applier must accept exactly one or two parameters, got %d", numIn)
 	}
 
-	// Okay
-	return fv
+	// The function results must be in one of the following forms:
+	//	(O)
+	//	(O, error)
+	// Everything else is invalid.
+	switch numOut := ft.NumOut(); numOut {
+	case 2:
+		if t := ft.Out(1); !t.AssignableTo(errorType) {
+			return nil, fmt.Errorf("applier's second return type must be assignable to error, got %v", t)
+		}
+		ap.err = true
+		fallthrough // extract output type
+	case 1:
+		ap.Out = ft.Out(0)
+	default:
+		return nil, fmt.Errorf("applier must return exactly one or two values, got %d", numOut)
+	}
+
+	return &ap, nil
+}
+
+// Call executes the applier on the provided value and returns the result.
+func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, error) {
+	args := make([]reflect.Value, 0, 2) // ([ctx], in)
+	if ap.ctx {
+		args = append(args, reflect.ValueOf(ctx))
+	}
+	args = append(args, in)
+
+	var (
+		out reflect.Value
+		err error
+	)
+	results := ap.fn.Call(args)
+	out = results[0]
+	if ap.err {
+		// Using the 'x, ok' form for cast here
+		// gracefully handles the case when results[1]
+		// is nil.
+		err, _ = results[1].Interface().(error)
+	}
+
+	return out, err
 }
 
 // ApplyT transforms the data of the output property using the applier func. The result remains an output
@@ -454,7 +481,11 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyT(applier interface{}) Output {
-	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
+	ap, err := newApplier(applier, o.elementType())
+	if err != nil {
+		panic(err)
+	}
+	return o.applyTWithApplier(context.Background(), ap)
 }
 
 var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
@@ -484,10 +515,16 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
-	fn := checkApplier(applier, o.elementType())
+	ap, err := newApplier(applier, o.elementType())
+	if err != nil {
+		panic(err)
+	}
+	return o.applyTWithApplier(ctx, ap)
+}
 
+func (o *OutputState) applyTWithApplier(ctx context.Context, ap *applier) Output {
 	resultType := anyOutputType
-	applierReturnType := fn.Type().Out(0)
+	applierReturnType := ap.Out
 
 	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
@@ -519,18 +556,19 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		if !val.IsValid() {
 			val = reflect.Zero(o.elementType())
 		}
-		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
-		if len(results) == 2 && !results[1].IsNil() {
-			result.getState().reject(results[1].Interface().(error))
+
+		out, err := ap.Call(ctx, val)
+		if err != nil {
+			result.getState().reject(err)
 			return
 		}
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := results[0].Interface().(Output); ok {
+		if resultOutput, ok := out.Interface().(Output); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.
-		result.getState().fulfillValue(results[0], true, secret, fulfilledDeps, nil)
+		result.getState().fulfillValue(out, true, secret, fulfilledDeps, nil)
 	}()
 	return result
 }
