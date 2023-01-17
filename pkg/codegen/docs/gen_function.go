@@ -464,9 +464,11 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	contract.AssertNoError(err)
 
 	packageDetails := packageDetails{
-		Repository: def.Repository,
-		License:    def.License,
-		Notes:      def.Attribution,
+		DisplayName:    getPackageDisplayName(def.Name),
+		Repository:     def.Repository,
+		RepositoryName: getRepositoryName(def.Repository),
+		License:        def.License,
+		Notes:          def.Attribution,
 	}
 
 	docInfo := dctx.decomposeDocstring(f.Comment)
