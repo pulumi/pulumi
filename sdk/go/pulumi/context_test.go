@@ -20,8 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // The test is extracted from a panic using pulumi-docker and minified
@@ -51,6 +52,26 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		}, WithMocks("project", "stack", mocks))
 		assert.NoError(t, err)
 	}
+}
+
+func TestRunningUnderMocks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With mocks", func(t *testing.T) {
+		t.Parallel()
+		testCtx := &Context{
+			monitor: &mockMonitor{},
+		}
+		assert.True(t, testCtx.RunningWithMocks())
+	})
+
+	t.Run("Without mocks", func(t *testing.T) {
+		t.Parallel()
+		testCtx := &Context{
+			monitor: nil,
+		}
+		assert.False(t, testCtx.RunningWithMocks())
+	})
 }
 
 // An extended version of `TestLoggingFromApplyCausesNoPanics`, more

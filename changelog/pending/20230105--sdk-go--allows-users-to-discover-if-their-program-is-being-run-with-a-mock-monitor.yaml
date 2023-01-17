@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Allows users to discover if their program is being run with a mock monitor
