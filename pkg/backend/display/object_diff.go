@@ -233,7 +233,7 @@ func (p *propertyPrinter) printObject(props resource.PropertyMap) {
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; !resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(v, p.planning) {
+		if v := props[k]; !resource.IsInternalPropertyKey(k) {
 			p.printObjectProperty(k, v, maxkey)
 		}
 	}
@@ -473,9 +473,6 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 	}
 	if v.IsArray() && len(v.ArrayValue()) == 0 {
 		return false // skip empty arrays, since they are often uninteresting default values.
-	}
-	if v.IsObject() && len(v.ObjectValue()) == 0 {
-		return false // skip objects with no properties, since they are also uninteresting.
 	}
 	if v.IsObject() && len(v.ObjectValue()) == 0 {
 		return false // skip objects with no properties, since they are also uninteresting.
@@ -1180,10 +1177,13 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 		return false
 	}
 
-	if oldKind == newKind {
-		p.write("(%s) ", oldKind)
-	} else {
+	if oldKind != newKind {
 		p.write("(%s => %s) ", oldKind, newKind)
+	} else if old != new {
+		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
+		return true
+	} else {
+		p.write("(%s) ", oldKind)
 	}
 
 	diff := oldValue.Diff(newValue, resource.IsInternalPropertyKey)

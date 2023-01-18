@@ -59,6 +59,8 @@
  <{%bold%}><{%reset%}>  <{%reset%}> aws:ec2:LaunchConfiguration cluster-nodeLaunchConfiguration <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> aws:cloudformation:Stack cluster-nodes <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~templateBody<{%reset%}><{%reset%}>]
  <{%fg 3%}>~ <{%reset%}> aws:cloudformation:Stack cluster-nodes <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~templateBody<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> aws:cloudformation:Stack cluster-nodes <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~templateBody<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> aws:cloudformation:Stack cluster-nodes <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~templateBody<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:kubernetes cluster-provider <{%bold%}><{%reset%}><{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack aws-ts-eks-dev <{%reset%}><{%reset%}> 
 
