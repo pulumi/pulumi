@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.52.0 (2023-01-18)
+
+
+### Features
+
+- [sdk/go] Allows users to discover if their program is being run with a mock monitor
+  [#11788](https://github.com/pulumi/pulumi/pull/11788)
+
+- [sdk/nodejs] Add support for custom naming of dynamic provider resource.
+  [#11873](https://github.com/pulumi/pulumi/pull/11873)
+
+- [sdkgen/{dotnet,nodejs}] Initial implementation of simplified invokes for dotnet and nodejs.
+  [#11753](https://github.com/pulumi/pulumi/pull/11753)
+
+
+### Bug Fixes
+
+- [cli/display] Fixes #11864. Pulumi panics before main when Pulumi.yaml provider plugin does not have a path provided.
+  [#11892](https://github.com/pulumi/pulumi/pull/11892)
+
+- [sdk/{go,nodejs,python}] Fix DeletedWith resource option
+  [#11883](https://github.com/pulumi/pulumi/pull/11883)
+
+- [sdk/python] Fix a TypeError in Output.from_input.
+  [#11852](https://github.com/pulumi/pulumi/pull/11852)
+
 ## 3.51.1 (2023-01-11)
 
 
