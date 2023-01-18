@@ -133,6 +133,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	if wrap := info.wrapResourceMonitorClient; wrap != nil {
+		monitor = wrap(monitor)
+	}
+
 	context := &Context{
 		ctx:                 ctx,
 		info:                info,

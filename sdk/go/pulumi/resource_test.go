@@ -533,9 +533,8 @@ func TestDependsOnInputs(t *testing.T) {
 	t.Run("known", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			dep1 := newTestRes(t, ctx, "dep1")
 			dep2 := newTestRes(t, ctx, "dep2")
 
@@ -547,16 +546,15 @@ func TestDependsOnInputs(t *testing.T) {
 			res := newTestRes(t, ctx, "res", opts)
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
-		}, WithMocks("project", "stack", &testMonitor{}))
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
 		assert.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			checkDeps := func(name string, dependsOn ResourceArrayInput, expectedDeps ...Resource) {
 				res := newTestRes(t, ctx, name, DependsOnInputs(dependsOn))
 				assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
@@ -579,7 +577,7 @@ func TestDependsOnInputs(t *testing.T) {
 			checkDeps("r4", out4, dep1, dep2, dep4)
 
 			return nil
-		}, WithMocks("project", "stack", &testMonitor{}))
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
 		assert.NoError(t, err)
 	})
 }
@@ -629,8 +627,32 @@ func urn(t *testing.T, ctx *Context, res Resource) URN {
 	return urn
 }
 
+// dependenciesTracker tracks dependencies for registered resources.
+//
+// The zero value of dependenciesTracker is ready to use.
 type dependenciesTracker struct {
-	dependsOn *sync.Map
+	dependsOn sync.Map
+}
+
+// Wrap wraps a ResourceMonitorClient to start tracking RegisterResource calls
+// sent through it.
+//
+// Use this with the WrapResourceMonitorClient option.
+//
+//	var dt dependenciesTracker
+//	RunErr(..., WrapResourceMonitorClient(dt.Wrap))
+func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
+	m := newInterceptingResourceMonitor(cl)
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
+		resp *pulumirpc.RegisterResourceResponse,
+		err error) {
+		var deps []URN
+		for _, dep := range in.GetDependencies() {
+			deps = append(deps, URN(dep))
+		}
+		dt.dependsOn.Store(URN(resp.Urn), deps)
+	}
+	return m
 }
 
 func (dt *dependenciesTracker) dependencies(resource URN) []URN {
@@ -643,22 +665,6 @@ func (dt *dependenciesTracker) dependencies(resource URN) []URN {
 		return nil
 	}
 	return urns
-}
-
-func trackDependencies(ctx *Context) *dependenciesTracker {
-	dependsOn := &sync.Map{}
-	m := newInterceptingResourceMonitor(ctx.monitor)
-	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
-		resp *pulumirpc.RegisterResourceResponse,
-		err error) {
-		var deps []URN
-		for _, dep := range in.GetDependencies() {
-			deps = append(deps, URN(dep))
-		}
-		dependsOn.Store(URN(resp.Urn), deps)
-	}
-	ctx.monitor = m
-	return &dependenciesTracker{dependsOn}
 }
 
 type interceptingResourceMonitor struct {
