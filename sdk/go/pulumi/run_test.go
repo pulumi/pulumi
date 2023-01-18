@@ -10,6 +10,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +19,16 @@ import (
 func WithDryRun(dryRun bool) RunOption {
 	return func(r *RunInfo) {
 		r.DryRun = dryRun
+	}
+}
+
+// WrapResourceMonitorClient is an internal, test-only option
+// that wraps the ResourceMonitorClient used by Context.
+func WrapResourceMonitorClient(
+	wrap func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient,
+) RunOption {
+	return func(ri *RunInfo) {
+		ri.wrapResourceMonitorClient = wrap
 	}
 }
 
