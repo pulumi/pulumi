@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -381,11 +382,30 @@ type applier struct {
 	err bool // whether fn return an err as its last result
 }
 
-func newApplier(fn interface{}, elemType reflect.Type) (*applier, error) {
+func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
 	fv := reflect.ValueOf(fn)
 	if fv.Kind() != reflect.Func {
 		return nil, errors.New("applier must be a function")
 	}
+
+	defer func() {
+		// The named return above is necessary
+		// to augment the error message in a defer.
+		if err == nil {
+			return
+		}
+
+		f := runtime.FuncForPC(fv.Pointer())
+		// Defensively guard against the possibility that
+		// fv.Pointer returns an invalid program counter.
+		// This will never happen in practice.
+		if f == nil {
+			return
+		}
+
+		file, line := f.FileLine(f.Entry())
+		err = fmt.Errorf("%w\napplier defined at %v:%v", err, file, line)
+	}()
 
 	ap := applier{fn: fv}
 	ft := fv.Type()
