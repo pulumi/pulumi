@@ -1771,7 +1771,16 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 			return err
 		}
 
-		addFile(strings.ToLower(title), buffer.String())
+		resourceFileName := strings.ToLower(title)
+		// Handle file generation for resources named `index`. We prepend a double underscore
+		// here, since this ends up resulting in route of .../<module>/index which has trouble
+		// resolving and returns a 404 in the browser, likely due to `index` being some sort
+		// of reserved keyword.
+		if resourceFileName == "index" {
+			resourceFileName = "__index"
+		}
+
+		addFile(resourceFileName, buffer.String())
 	}
 
 	// Functions
