@@ -630,10 +630,8 @@ func Unsecret(input Output) Output {
 
 // UnsecretWithContext will unwrap a secret output as a new output with a resolved value and no secretness
 func UnsecretWithContext(ctx context.Context, input Output) Output {
-	var x bool
-	o := toOutputWithContext(ctx, input.getState().join, input, &x)
-	// set immediate secretness ahead of resolution/fulfillment
-	o.getState().secret = false
+	secret := false
+	o := toOutputWithContext(ctx, input.getState().join, input, &secret)
 	return o
 }
 
