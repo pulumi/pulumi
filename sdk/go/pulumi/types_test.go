@@ -1148,6 +1148,24 @@ func TestJSONUnmarshalBasic(t *testing.T) {
 	assert.Equal(t, []interface{}{0.0, 1.0}, v.([]interface{}))
 }
 
+func TestApplyTSignatureMismatch(t *testing.T) {
+	t.Parallel()
+
+	var pval interface{}
+	func() {
+		defer func() { pval = recover() }()
+
+		Int(42).ToIntOutput().ApplyT(func(string) string {
+			t.Errorf("This function should not be called")
+			return ""
+		})
+	}()
+	require.NotNil(t, pval, "function did not panic")
+
+	msg := fmt.Sprint(pval)
+	assert.Regexp(t, `applier defined at .+?types_test\.go:\d+`, msg)
+}
+
 func TestApplier_Call(t *testing.T) {
 	t.Parallel()
 
