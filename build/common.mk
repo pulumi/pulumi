@@ -107,11 +107,13 @@ GO_TEST_PARALLELISM     ?= 10   # -parallel, number of parallel tests to run wit
 GO_TEST_PKG_PARALLELISM ?= 2    # -p flag, number of parallel packages to test
 GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests within a package
 GO_TEST_TAGS            ?= all
+GO_TEST_RACE            ?= true
 
 GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-parallel=${GO_TEST_PARALLELISM} \
 	-shuffle=${GO_TEST_SHUFFLE} \
 	-p=${GO_TEST_PKG_PARALLELISM} \
+	-race=${GO_TEST_RACE} \
 	${GO_TEST_OPTIONS}
 GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
 GOPROXY = 'https://proxy.golang.org'
