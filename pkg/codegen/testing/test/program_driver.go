@@ -165,6 +165,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Functions",
 	},
 	{
+		Directory:   "comments",
+		Description: "Comments",
+	},
+	{
 		Directory:   "output-funcs-aws",
 		Description: "Output Versioned Functions",
 	},
