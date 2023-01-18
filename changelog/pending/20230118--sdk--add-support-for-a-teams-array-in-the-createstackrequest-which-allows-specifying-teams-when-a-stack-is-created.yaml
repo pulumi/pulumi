@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk
-  description: Add support for a Teams array in the CreateStackRequest which allows specifying Teams when a Stack is created.
