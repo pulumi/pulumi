@@ -13,6 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// WithDryRun is an internal, test-only option
+// that controls whether a Context is in dryRun mode.
+func WithDryRun(dryRun bool) RunOption {
+	return func(r *RunInfo) {
+		r.DryRun = dryRun
+	}
+}
+
 type testMonitor struct {
 	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(args MockResourceArgs) (string, resource.PropertyMap, error)
