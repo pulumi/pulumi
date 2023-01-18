@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -37,9 +38,19 @@ func newPulumiPackage() *Package {
 		},
 	}
 
-	pkg, err := ImportSpec(spec, nil)
+	pkg, diags, err := bindSpec(spec, nil, nullLoader{}, false)
+	if err == nil && diags.HasErrors() {
+		err = diags
+	}
 	contract.AssertNoError(err)
 	return pkg
+}
+
+type nullLoader struct{}
+
+func (nullLoader) LoadPackage(pkg string, version *semver.Version) (*Package, error) {
+	contract.Failf("nullLoader invoked on %s,%s", pkg, version)
+	return nil, nil
 }
 
 var DefaultPulumiPackage = newPulumiPackage()
