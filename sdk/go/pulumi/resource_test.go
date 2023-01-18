@@ -21,7 +21,6 @@ import (
 	"sync"
 	"testing"
 
-	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/assert"
 	grpc "google.golang.org/grpc"
 
@@ -663,59 +662,25 @@ func trackDependencies(ctx *Context) *dependenciesTracker {
 }
 
 type interceptingResourceMonitor struct {
-	inner                 pulumirpc.ResourceMonitorClient
+	pulumirpc.ResourceMonitorClient
+
 	afterRegisterResource func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
 }
 
 func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *interceptingResourceMonitor {
-	m := &interceptingResourceMonitor{}
-	m.inner = inner
-	return m
+	return &interceptingResourceMonitor{
+		ResourceMonitorClient: inner,
+	}
 }
 
-func (i *interceptingResourceMonitor) Call(
-	ctx context.Context, req *pulumirpc.CallRequest, options ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
-	return i.inner.Call(ctx, req, options...)
-}
-
-func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
-	in *pulumirpc.SupportsFeatureRequest,
-	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
-	return i.inner.SupportsFeature(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
-	return i.inner.Invoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
-	return i.inner.StreamInvoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) ReadResource(ctx context.Context,
-	in *pulumirpc.ReadResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
-	return i.inner.ReadResource(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) RegisterResource(ctx context.Context,
+func (i *interceptingResourceMonitor) RegisterResource(
+	ctx context.Context,
 	in *pulumirpc.RegisterResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.RegisterResourceResponse, error) {
-	resp, err := i.inner.RegisterResource(ctx, in, opts...)
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	resp, err := i.ResourceMonitorClient.RegisterResource(ctx, in, opts...)
 	if i.afterRegisterResource != nil {
 		i.afterRegisterResource(in, resp, err)
 	}
 	return resp, err
 }
-
-func (i *interceptingResourceMonitor) RegisterResourceOutputs(ctx context.Context,
-	in *pulumirpc.RegisterResourceOutputsRequest,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
-	return i.inner.RegisterResourceOutputs(ctx, in, opts...)
-}
-
-var _ pulumirpc.ResourceMonitorClient = &interceptingResourceMonitor{}
