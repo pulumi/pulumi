@@ -267,6 +267,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 		}
 		portString += string(b[:n])
 	}
+	// Trim any whitespace from the first line (this is to handle things like windows that will write
+	// "1234\r\n", or slightly odd providers that might add whitespace like "1234 ")
+	portString = strings.TrimSpace(portString)
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	var port int
