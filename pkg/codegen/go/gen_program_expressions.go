@@ -764,16 +764,8 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
 }
 
-var typeNameID = 0
-
 // argumentTypeName computes the go type for the given expression and model type.
 func (g *generator) argumentTypeName(expr model.Expression, destType model.Type, isInput bool) (result string) {
-	//	defer func(id int, t model.Type) {
-	//		schemaType, _ := pcl.GetSchemaForType(destType)
-	//		log.Printf("%v: argumentTypeName(%v, %v, %v) = %v", id, t, isInput, schemaType, result)
-	//	}(typeNameID, destType)
-	typeNameID++
-
 	if cns, ok := destType.(*model.ConstType); ok {
 		destType = cns.Type
 	}
