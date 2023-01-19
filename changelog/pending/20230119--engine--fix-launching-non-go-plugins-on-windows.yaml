@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix launching non-Go plugins on Windows.
