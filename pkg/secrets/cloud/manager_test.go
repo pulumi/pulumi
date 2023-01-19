@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gocloud.dev/secrets"
 	"gocloud.dev/secrets/driver"
 )
@@ -207,17 +208,31 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	})
 	assertNoError(t, err)
 
-	// Sleep for a bit otherwise the following AssumeRole fails
-	time.Sleep(10 * time.Second)
+	// AssumeRole takes about 10 seconds to take effect.
+	// We'll try for up to 20.
+	const (
+		MaxAttempts = 10
+		Delay       = 2 * time.Second
+	)
 
 	// Now assume that role and try and use the secret manager
 	stsClient := sts.NewFromConfig(cfg)
-	sessionName := "test-session-" + randomName(t)
-	assume, err := stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
-		RoleArn:         role.Role.Arn,
-		RoleSessionName: &sessionName,
-	})
-	assertNoError(t, err)
+	var assume *sts.AssumeRoleOutput
+	for i := 0; i < MaxAttempts; i++ {
+		sessionName := "test-session-" + randomName(t)
+		assume, err = stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
+			RoleArn:         role.Role.Arn,
+			RoleSessionName: &sessionName,
+		})
+		if err == nil {
+			break
+
+		}
+		assume = nil
+		t.Logf("AssumeRole failed: %v", err)
+		time.Sleep(Delay)
+	}
+	require.NotNil(t, assume, "Could not AssumeRole after %d attempts", MaxAttempts)
 
 	creds := assume.Credentials
 	t.Setenv("AWS_PROFILE", "")
