@@ -58,6 +58,15 @@ Happy New Years from the Pulumi team!  This is our first release of 2023, and we
 - [sdk/nodejs] Add output jsonParse using JSON.parse.
   [#11735](https://github.com/pulumi/pulumi/pull/11735)
 
+## 3.50.2 (2022-12-21)
+
+Happy holidays! The Pulumi team thanks grpc maintainers for addressing build issues and publishing wheels on macOS.
+
+### Miscellaneous
+
+- [sdk/python] Fix error installing SDK when using Python 3.11, bumping `grpcio` dependency.
+  [#11431](https://github.com/pulumi/pulumi/pull/11431)
+
 ## 3.50.1 (2022-12-21)
 
 
