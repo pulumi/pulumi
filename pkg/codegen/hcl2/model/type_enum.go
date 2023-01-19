@@ -17,6 +17,7 @@ package model
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -52,7 +53,7 @@ type EnumType struct {
 	// Annotations records any annotations associated with the object type.
 	Annotations []interface{}
 
-	s string
+	s atomic.Value // Value<string>
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
@@ -166,16 +167,19 @@ func (t *EnumType) String() string {
 }
 
 func (t *EnumType) string(seen map[Type]struct{}) string {
-	if t.s == "" {
-		underlying := t.Type.string(seen)
-		elements := make([]string, len(t.Elements))
-		for i, e := range t.Elements {
-			elements[i] = e.GoString()
-		}
-
-		t.s = fmt.Sprintf("enum(%s(%s): %s)", t.Token, underlying, strings.Join(elements, ","))
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
-	return t.s
+
+	underlying := t.Type.string(seen)
+	elements := make([]string, len(t.Elements))
+	for i, e := range t.Elements {
+		elements[i] = e.GoString()
+	}
+
+	s := fmt.Sprintf("enum(%s(%s): %s)", t.Token, underlying, strings.Join(elements, ","))
+	t.s.Store(s)
+	return s
 }
 
 func (t *EnumType) unify(other Type) (Type, ConversionKind) {

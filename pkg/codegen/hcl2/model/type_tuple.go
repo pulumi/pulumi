@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -33,7 +34,7 @@ type TupleType struct {
 	ElementTypes []Type
 
 	elementUnion Type
-	s            string
+	s            atomic.Value // Value<string>
 }
 
 // NewTupleType creates a new tuple type with the given element types.
@@ -241,14 +242,18 @@ func (t *TupleType) String() string {
 }
 
 func (t *TupleType) string(seen map[Type]struct{}) string {
-	if t.s == "" {
-		elements := make([]string, len(t.ElementTypes))
-		for i, e := range t.ElementTypes {
-			elements[i] = e.string(seen)
-		}
-		t.s = fmt.Sprintf("tuple(%s)", strings.Join(elements, ", "))
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
-	return t.s
+
+	elements := make([]string, len(t.ElementTypes))
+	for i, e := range t.ElementTypes {
+		elements[i] = e.string(seen)
+	}
+
+	s := fmt.Sprintf("tuple(%s)", strings.Join(elements, ", "))
+	t.s.Store(s)
+	return s
 }
 
 func (t *TupleType) unify(other Type) (Type, ConversionKind) {
