@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -38,7 +39,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -335,7 +335,7 @@ func (source *githubSource) Download(
 	if assetURL == "" {
 		logging.V(9).Infof("github json response: %s", jsonBody)
 		logging.V(9).Infof("plugin asset '%s' not found", assetName)
-		return nil, -1, errors.Errorf("plugin asset '%s' not found", assetName)
+		return nil, -1, fmt.Errorf("plugin asset '%s' not found", assetName)
 	}
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
@@ -746,19 +746,19 @@ func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
 	case "darwin", "linux", "windows":
 		opSy = runtime.GOOS
 	default:
-		return nil, -1, errors.Errorf("unsupported plugin OS: %s", runtime.GOOS)
+		return nil, -1, fmt.Errorf("unsupported plugin OS: %s", runtime.GOOS)
 	}
 	var arch string
 	switch runtime.GOARCH {
 	case "amd64", "arm64":
 		arch = runtime.GOARCH
 	default:
-		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
+		return nil, -1, fmt.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
 	}
 
 	// The plugin version is necessary for the endpoint. If it's not present, return an error.
 	if spec.Version == nil {
-		return nil, -1, errors.Errorf("unknown version for plugin %s", spec.Name)
+		return nil, -1, fmt.Errorf("unknown version for plugin %s", spec.Name)
 	}
 
 	source, err := spec.GetSource()
@@ -852,7 +852,7 @@ func (spec PluginSpec) installLock() (unlock func(), err error) {
 	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
 
 	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0700); err != nil {
-		return nil, errors.Wrap(err, "creating plugin root")
+		return nil, fmt.Errorf("creating plugin root: %w", err)
 	}
 
 	mutex := fsutil.NewFileMutex(lockFilePath)
@@ -1187,7 +1187,7 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "loading PulumiPlugin.yaml")
+		return fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
 	}
 	if proj != nil {
 		runtime := strings.ToLower(proj.Runtime.Name())
@@ -1200,11 +1200,11 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 			var b bytes.Buffer
 			if _, err := npm.Install(ctx, finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
-				return errors.Wrap(err, "installing plugin dependencies")
+				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		case "python":
 			if err := python.InstallDependencies(ctx, finalDir, "venv", false /*showOutput*/); err != nil {
-				return errors.Wrap(err, "installing plugin dependencies")
+				return fmt.Errorf("installing plugin dependencies: %w", err)
 			}
 		}
 	}
@@ -1228,7 +1228,7 @@ func cleanupTempDirs(finalDir string) error {
 		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
 			path := filepath.Join(dir, info.Name())
 			if err := os.RemoveAll(path); err != nil {
-				return errors.Wrapf(err, "cleaning up temp dir %s", path)
+				return fmt.Errorf("cleaning up temp dir %s: %w", path, err)
 			}
 		}
 	}
@@ -1625,7 +1625,7 @@ func getPluginInfoAndPath(
 		plugins, err = GetPluginsWithMetadata()
 	}
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "loading plugin list")
+		return nil, "", fmt.Errorf("loading plugin list: %w", err)
 	}
 
 	var match *PluginInfo

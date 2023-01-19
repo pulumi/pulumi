@@ -17,11 +17,11 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -133,14 +133,14 @@ func getCredsFilePath() (string, error) {
 	if pulumiFolder == "" {
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get the home path")
+			return "", fmt.Errorf("failed to get the home path: %w", err)
 		}
 		pulumiFolder = folder
 	}
 
 	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
 
 	return filepath.Join(pulumiFolder, "credentials.json"), nil
@@ -161,7 +161,7 @@ func GetCurrentCloudURL() (string, error) {
 	if err == nil && projPath != "" {
 		proj, err := LoadProject(projPath)
 		if err != nil {
-			return "", errors.Wrap(err, "could not load current project")
+			return "", fmt.Errorf("could not load current project: %w", err)
 		}
 
 		if proj.Backend != nil {
@@ -192,13 +192,13 @@ func GetStoredCredentials() (Credentials, error) {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
 		}
-		return Credentials{}, errors.Wrapf(err, "reading '%s'", credsFile)
+		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
 	}
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, errors.Wrapf(err, "failed to read Pulumi credentials file. Please re-run "+
-			"`pulumi login` to reset your credentials file")
+		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please re-run "+
+			"`pulumi login` to reset your credentials file: %w", err)
 	}
 
 	secrets := make([]string, 0, len(creds.AccessTokens))
@@ -229,7 +229,7 @@ func StoreCredentials(creds Credentials) error {
 
 	raw, err := json.MarshalIndent(creds, "", "    ")
 	if err != nil {
-		return errors.Wrapf(err, "marshalling credentials object")
+		return fmt.Errorf("marshalling credentials object: %w", err)
 	}
 
 	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0600); err != nil {
@@ -253,14 +253,14 @@ func getConfigFilePath() (string, error) {
 	if pulumiFolder == "" {
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get the home path")
+			return "", fmt.Errorf("failed to get the home path: %w", err)
 		}
 		pulumiFolder = folder
 	}
 
 	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
 
 	return filepath.Join(pulumiFolder, "config.json"), nil
@@ -277,12 +277,12 @@ func GetPulumiConfig() (PulumiConfig, error) {
 		if os.IsNotExist(err) {
 			return PulumiConfig{}, nil
 		}
-		return PulumiConfig{}, errors.Wrapf(err, "reading '%s'", configFile)
+		return PulumiConfig{}, fmt.Errorf("reading '%s': %w", configFile, err)
 	}
 
 	var config PulumiConfig
 	if err = json.Unmarshal(c, &config); err != nil {
-		return PulumiConfig{}, errors.Wrapf(err, "failed to read Pulumi config file")
+		return PulumiConfig{}, fmt.Errorf("failed to read Pulumi config file: %w", err)
 	}
 
 	return config, nil
@@ -296,7 +296,7 @@ func StorePulumiConfig(config PulumiConfig) error {
 
 	raw, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
-		return errors.Wrapf(err, "marshalling config object")
+		return fmt.Errorf("marshalling config object: %w", err)
 	}
 
 	// Use a temporary file and atomic os.Rename to ensure the file contents are
