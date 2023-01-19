@@ -40,7 +40,6 @@ describe("LocalWorkspace", () => {
             assert(settings.name, "testproj");
             assert(settings.runtime, "go");
             assert(settings.description, "A minimal Go Pulumi program");
-
         }
     });
 
@@ -88,6 +87,45 @@ describe("LocalWorkspace", () => {
         await Stack.select(stackName, ws);
         await Stack.createOrSelect(stackName, ws);
         await ws.removeStack(stackName);
+    });
+    describe("Tag methods: get/set/remove/list", () => {
+        const projectName = "testProjectName";
+        const runtime = "nodejs";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, "testStack");
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime,
+        };
+        let workspace: LocalWorkspace;
+        beforeEach(async () => {
+            workspace = await LocalWorkspace.create({
+                projectSettings: projectSettings,
+            });
+            await workspace.createStack(stackName);
+        });
+        it("lists tag values", async () => {
+            const result = await workspace.listTags(stackName);
+            assert.strictEqual(result["pulumi:project"], projectName);
+            assert.strictEqual(result["pulumi:runtime"], runtime);
+        });
+        it("sets and removes tag values", async () => {
+            // sets
+            await workspace.setTag(stackName, "foo", "bar");
+            const actualValue = await workspace.getTag(stackName, "foo");
+            assert.strictEqual(actualValue, "bar");
+            // removes
+            await workspace.removeTag(stackName, "foo");
+            const actualTags = await workspace.listTags(stackName);
+            assert.strictEqual(actualTags["foo"], undefined);
+        });
+        it("gets a single tag value", async () => {
+            const actualValue = await workspace.getTag(stackName, "pulumi:project");
+            assert.strictEqual(actualValue, actualValue.trim());
+            assert.strictEqual(actualValue, projectName);
+        });
+        afterEach(async () => {
+            await workspace.removeStack(stackName);
+        });
     });
     it(`Config`, async () => {
         const projectName = "node_test";

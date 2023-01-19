@@ -29,6 +29,7 @@ import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { LocalWorkspace } from "./localWorkspace";
+import { TagMap } from "./tag";
 
 const langrpc = require("../proto/language_grpc_pb.js");
 
@@ -567,6 +568,37 @@ Event: ${line}\n${e.toString()}`);
      */
     async refreshConfig(): Promise<ConfigMap> {
         return this.workspace.refreshConfig(this.name);
+    }
+    /**
+     * Returns the tag value associated with specified key.
+     *
+     * @param key The key to use for the tag lookup.
+     */
+    async getTag(key: string): Promise<string> {
+        return this.workspace.getTag(this.name, key);
+    }
+    /**
+     * Sets a tag key-value pair on the Stack in the associated Workspace.
+     *
+     * @param key The tag key to set.
+     * @param value The tag value to set.
+     */
+    async setTag(key: string, value: string): Promise<void> {
+        await this.workspace.setTag(this.name, key, value);
+    }
+    /**
+     * Removes the specified tag key-value pair from the Stack in the associated Workspace.
+     *
+     * @param key The tag key to remove.
+     */
+    async removeTag(key: string): Promise<void> {
+        await this.workspace.removeTag(this.name, key);
+    }
+    /**
+     * Returns the full tag map associated with the stack in the Workspace.
+     */
+    async listTags(): Promise<TagMap> {
+        return this.workspace.listTags(this.name);
     }
     /**
      * Gets the current set of Stack outputs from the last Stack.up().
