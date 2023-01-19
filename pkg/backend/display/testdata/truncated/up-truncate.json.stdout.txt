@@ -17,6 +17,7 @@
 <{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Sid      : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
@@ -36,6 +37,7 @@
 <{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Sid      : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
@@ -45,6 +47,8 @@
 <{%reset%}><{%reset%}>        id                 : <{%reset%}><{%reset%}>"eks-role-24b1266"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        inlinePolicies     : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                name  : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                policy: <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        managedPolicyArns  : <{%reset%}><{%reset%}>[
@@ -105,8 +109,12 @@
 <{%reset%}><{%reset%}>                cidrBlocks    : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                description   : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                fromPort      : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                ipv6CidrBlocks: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                prefixListIds : <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                protocol      : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                securityGroups: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                toPort        : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
@@ -117,8 +125,12 @@
 <{%reset%}><{%reset%}>                cidrBlocks    : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                description   : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                fromPort      : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                ipv6CidrBlocks: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                prefixListIds : <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                protocol      : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                securityGroups: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                toPort        : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>

@@ -380,6 +380,10 @@ type applier struct {
 	fn  reflect.Value
 	ctx bool // whether fn accepts a context as its first input
 	err bool // whether fn return an err as its last result
+
+	// This is non-nil if the input value should be converted
+	// with Value.Convert first.
+	convertTo reflect.Type
 }
 
 func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
@@ -426,7 +430,20 @@ func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
 		elemName = "second"
 		fallthrough // validate element type
 	case 1:
-		if t := ft.In(elemIdx); !elemType.AssignableTo(t) {
+		switch t := ft.In(elemIdx); {
+		case elemType.AssignableTo(t):
+			// Do nothing.
+		case elemType.ConvertibleTo(t) && elemType.Kind() == t.Kind():
+			// We only support coercion if the types are the same kind.
+			//
+			// Types with different internal representations
+			// do not coerce for "free"
+			// (e.g. string([]byte{..}) allocates)
+			// and may not match user expectations
+			// (e.g. string(42) is "*", not "42"),
+			// so we reject those.
+			ap.convertTo = t
+		default:
 			return nil, fmt.Errorf("applier's %s input parameter must be assignable from %v, got %v", elemName, elemType, t)
 		}
 	default:
@@ -458,6 +475,9 @@ func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, e
 	args := make([]reflect.Value, 0, 2) // ([ctx], in)
 	if ap.ctx {
 		args = append(args, reflect.ValueOf(ctx))
+	}
+	if ap.convertTo != nil {
+		in = in.Convert(ap.convertTo)
 	}
 	args = append(args, in)
 

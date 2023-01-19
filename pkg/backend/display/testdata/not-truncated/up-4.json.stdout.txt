@@ -14,6 +14,7 @@
 <{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Sid      : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
@@ -33,6 +34,7 @@
 <{%reset%}><{%reset%}>                    Principal: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>                        Service: <{%reset%}><{%reset%}>"eks.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    Sid      : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            Version  : <{%reset%}><{%reset%}>"2008-10-17"<{%reset%}><{%reset%}>
@@ -42,6 +44,8 @@
 <{%reset%}><{%reset%}>        id                 : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        inlinePolicies     : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                name  : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                policy: <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        uniqueId           : <{%reset%}><{%reset%}>"AROAY65FYVYPY5QOJG3Q3"<{%reset%}><{%reset%}>
@@ -83,8 +87,12 @@
 <{%reset%}><{%reset%}>                cidrBlocks    : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>                    [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                description   : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                fromPort      : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                ipv6CidrBlocks: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                prefixListIds : <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                protocol      : <{%reset%}><{%reset%}>"-1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                securityGroups: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                toPort        : <{%reset%}><{%reset%}>0<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
@@ -95,8 +103,12 @@
 <{%reset%}><{%reset%}>                    cidrBlocks    : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>                        [0]: <{%reset%}><{%reset%}>"0.0.0.0/0"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    description   : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    fromPort      : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    ipv6CidrBlocks: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    prefixListIds : <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    protocol      : <{%reset%}><{%reset%}>"tcp"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    securityGroups: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    self          : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                    toPort        : <{%reset%}><{%reset%}>80<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
@@ -104,8 +116,12 @@
 <{%reset%}><{%fg 2%}>                  + cidrBlocks    : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>                  +     [0]: <{%reset%}><{%fg 2%}>"0.0.0.0/0"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + description   : <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                  + fromPort      : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + ipv6CidrBlocks: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + prefixListIds : <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                  + protocol      : <{%reset%}><{%fg 2%}>"tcp"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + securityGroups: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                  + self          : <{%reset%}><{%fg 2%}>false<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                  + toPort        : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>

@@ -359,7 +359,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">example </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 </dl>

@@ -19,7 +19,7 @@ no_edit_this_page: true
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">foo </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 	<dt>Version</dt>

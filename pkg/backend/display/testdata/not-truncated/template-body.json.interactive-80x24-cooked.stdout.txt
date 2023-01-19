@@ -2437,6 +2437,52 @@
  <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-1                     [K
  <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:Route                  vpc-private-1-nat-1               [K
                                                                           more⬇ [K[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                                    <{%underline%}><{%fg 12%}>Name<{%reset%}>                              [K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                     aws-ts-eks-dev                    [K
+ <{%reset%}>  <{%reset%}>  ├─ awsx:x:ec2:Vpc                       vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:NatGateway             vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Eip                    vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:NatGateway             vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Route                  vpc-public-0-ig                   [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:RouteTableAssociation  vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:Route                  vpc-private-0-nat-0               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:InternetGateway        vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:InternetGateway        vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:Route                  vpc-private-1-nat-1               [K
+                                                                          more⬇ [K[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                                    <{%underline%}><{%fg 12%}>Name<{%reset%}>                              [K
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                     aws-ts-eks-dev                    [K
+ <{%reset%}>  <{%reset%}>  ├─ awsx:x:ec2:Vpc                       vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:NatGateway             vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Eip                    vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:NatGateway             vpc-0                             [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Route                  vpc-public-0-ig                   [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:RouteTableAssociation  vpc-public-0                      [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-0                     [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:Route                  vpc-private-0-nat-0               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:InternetGateway        vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:InternetGateway        vpc                               [K
+ <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:Subnet                 vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTable             vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:Subnet                 vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  ├─ aws:ec2:RouteTableAssociation  vpc-private-1                     [K
+ <{%reset%}>  <{%reset%}>  │  │  └─ aws:ec2:Route                  vpc-private-1-nat-1               [K
+                                                                          more⬇ [K[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A[1A     <{%underline%}><{%fg 12%}>Type<{%reset%}>                                    <{%underline%}><{%fg 12%}>Name<{%reset%}>                              [K
  <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack                     aws-ts-eks-dev                    [K
  <{%reset%}>  <{%reset%}>  ├─ awsx:x:ec2:Vpc                       vpc                               [K
  <{%reset%}>  <{%reset%}>  │  ├─ awsx:x:ec2:NatGateway             vpc-0                             [K
