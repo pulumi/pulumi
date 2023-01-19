@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -31,7 +32,6 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
@@ -54,25 +54,25 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
-		return "", errors.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
+		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
 	}
 
 	if outfile == "" {
 		// If no outfile is supplied, write the Go binary to a temporary file.
 		f, err := os.CreateTemp("", "pulumi-go.*")
 		if err != nil {
-			return "", errors.Wrap(err, "unable to create go program temp file")
+			return "", fmt.Errorf("unable to create go program temp file: %w", err)
 		}
 
 		if err := f.Close(); err != nil {
-			return "", errors.Wrap(err, "unable to close go program temp file")
+			return "", fmt.Errorf("unable to close go program temp file: %w", err)
 		}
 		outfile = f.Name()
 	}
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return "", errors.Wrap(err, "unable to find 'go' executable")
+		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
 	buildCmd := exec.Command(gobin, "build", "-o", outfile)
@@ -80,7 +80,7 @@ func compileProgram(programDirectory string, outfile string) (string, error) {
 	buildCmd.Stdout, buildCmd.Stderr = os.Stdout, os.Stderr
 
 	if err := buildCmd.Run(); err != nil {
-		return "", errors.Wrap(err, "unable to run `go build`")
+		return "", fmt.Errorf("unable to run `go build`: %w", err)
 	}
 
 	return outfile, nil
@@ -117,11 +117,11 @@ func main() {
 	}()
 	err := rpcutil.Healthcheck(ctx, engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start health check host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
 	}
 
 	if binary != "" && buildTarget != "" {
-		cmdutil.Exit(errors.Errorf("binary and buildTarget cannot both be specified"))
+		cmdutil.Exit(fmt.Errorf("binary and buildTarget cannot both be specified"))
 	}
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
@@ -135,7 +135,7 @@ func main() {
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "could not start language host RPC server"))
+		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
 	}
 
 	// Otherwise, print out the port so that the spawner knows how to reach us.
@@ -143,12 +143,14 @@ func main() {
 
 	// And finally wait for the server to stop serving.
 	if err := <-handle.Done; err != nil {
-		cmdutil.Exit(errors.Wrapf(err, "language host RPC stopped serving"))
+		cmdutil.Exit(fmt.Errorf("language host RPC stopped serving: %w", err))
 	}
 }
 
 // goLanguageHost implements the LanguageRuntimeServer interface for use as an API endpoint.
 type goLanguageHost struct {
+	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
+
 	engineAddress string
 	tracing       string
 	binary        string
@@ -287,7 +289,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return nil, errors.Wrap(err, "couldn't find go binary")
+		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
 	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
@@ -351,17 +353,22 @@ func runCmdStatus(cmd *exec.Cmd, env []string) (int, error) {
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	err := cmd.Run()
+	// The returned error is nil if the command runs, has no problems copying stdin, stdout, and stderr, and
+	// exits with a zero exit status.
+	if err == nil {
+		return 0, nil
+	}
 
 	// error handling
 	exiterr, ok := err.(*exec.ExitError)
 	if !ok {
-		return 0, errors.Wrapf(err, "command errored unexpectedly")
+		return 0, fmt.Errorf("command errored unexpectedly: %w", err)
 	}
 
 	// retrieve the status code
 	status, ok := exiterr.Sys().(syscall.WaitStatus)
 	if !ok {
-		return 0, errors.Wrapf(err, "program exited unexpectedly")
+		return 0, fmt.Errorf("program exited unexpectedly: %w", err)
 	}
 
 	return status.ExitStatus(), nil
@@ -403,7 +410,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// Go program runtime, to avoid needing any sort of program interface other than just a main entrypoint.
 	env, err := host.constructEnv(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to prepare environment")
+		return nil, fmt.Errorf("failed to prepare environment: %w", err)
 	}
 
 	// the user can explicitly opt in to using a binary executable by specifying
@@ -411,7 +418,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	if host.binary != "" {
 		bin, err := executable.FindExecutable(host.binary)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to find '%s' executable", host.binary)
+			return nil, fmt.Errorf("unable to find '%s' executable: %w", host.binary, err)
 		}
 		return runProgram(req.Pwd, bin, env), nil
 	}
@@ -420,7 +427,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	if os.Getenv("PULUMI_GO_USE_RUN") != "" {
 		gobin, err := executable.FindExecutable("go")
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to find 'go' executable")
+			return nil, fmt.Errorf("unable to find 'go' executable: %w", err)
 		}
 
 		cmd := exec.Command(gobin, "run", req.Program)
@@ -449,7 +456,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	program, err := compileProgram(req.Program, host.buildTarget)
 	if err != nil {
-		return nil, errors.Wrap(err, "error in compiling Go")
+		return nil, fmt.Errorf("error in compiling Go: %w", err)
 	}
 	if host.buildTarget == "" {
 		// If there is no specified buildTarget, delete the temporary program after running it.
@@ -661,7 +668,7 @@ func (host *goLanguageHost) RunPlugin(
 
 	program, err := compileProgram(req.Program, "")
 	if err != nil {
-		return errors.Wrap(err, "error in compiling Go")
+		return fmt.Errorf("error in compiling Go: %w", err)
 	}
 	defer os.Remove(program)
 
@@ -684,7 +691,7 @@ func (host *goLanguageHost) RunPlugin(
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
 			} else {
-				err = errors.Wrapf(exiterr, "program exited unexpectedly")
+				err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
 			}
 		} else {
 			return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)

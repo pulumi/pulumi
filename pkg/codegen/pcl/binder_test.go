@@ -2,7 +2,6 @@ package pcl_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -55,7 +54,7 @@ func TestBindProgram(t *testing.T) {
 				t.Parallel()
 
 				path := filepath.Join(folderPath, fileName)
-				contents, err := ioutil.ReadFile(path)
+				contents, err := os.ReadFile(path)
 				require.NoErrorf(t, err, "could not read %v", path)
 
 				parser := syntax.NewParser()

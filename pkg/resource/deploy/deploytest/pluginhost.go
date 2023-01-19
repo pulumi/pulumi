@@ -26,6 +26,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -169,7 +170,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	}
 	conn, err := grpc.Dial(
 		fmt.Sprintf("127.0.0.1:%v", handle.Port),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
 		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
@@ -183,6 +184,8 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 }
 
 type hostEngine struct {
+	pulumirpc.UnsafeEngineServer // opt out of forward compat
+
 	sink       diag.Sink
 	statusSink diag.Sink
 

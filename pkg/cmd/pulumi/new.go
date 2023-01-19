@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: goconst
+//nolint:goconst
 package main
 
 import (
@@ -366,7 +366,8 @@ func useSpecifiedDir(dir string) (string, error) {
 
 // newNewCmd creates a New command with default dependencies.
 // Intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newNewCmd() *cobra.Command {
 	var args = newArgs{
 		interactive: cmdutil.Interactive(),
@@ -505,6 +506,14 @@ func newNewCmd() *cobra.Command {
 	return cmd
 }
 
+// File or directory names that are considered invisible
+// when considering whether a directory is empty.
+var invisibleDirEntries = map[string]struct{}{
+	".git": {},
+	".hg":  {},
+	".bzr": {},
+}
+
 // errorIfNotEmptyDirectory returns an error if path is not empty.
 func errorIfNotEmptyDirectory(path string) error {
 	infos, err := os.ReadDir(path)
@@ -512,7 +521,16 @@ func errorIfNotEmptyDirectory(path string) error {
 		return err
 	}
 
-	if len(infos) > 0 {
+	var nonEmpty bool
+	for _, info := range infos {
+		if _, ignore := invisibleDirEntries[info.Name()]; ignore {
+			continue
+		}
+		nonEmpty = true
+		break
+	}
+
+	if nonEmpty {
 		return fmt.Errorf("%s is not empty; "+
 			"rerun in an empty directory, pass the path to an empty directory to --dir, or use --force", path)
 	}

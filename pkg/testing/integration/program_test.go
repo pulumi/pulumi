@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,7 +51,7 @@ func TestRunCommandLog(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(matches))
 
-	output, err := ioutil.ReadFile(matches[0])
+	output, err := os.ReadFile(matches[0])
 	assert.Nil(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }
@@ -97,11 +96,11 @@ func TestDepRootCalc(t *testing.T) {
 func TestGoModEdits(t *testing.T) {
 	t.Parallel()
 
-	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
-	gopath, err := GoPath()
-	require.NoError(t, err)
-
 	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	depRoot := filepath.Clean(filepath.Join(cwd, "../../../.."))
+
+	gopath, err := GoPath()
 	require.NoError(t, err)
 
 	// Were we to commit this go.mod file, `make tidy` would fail, and we should keep the complexity

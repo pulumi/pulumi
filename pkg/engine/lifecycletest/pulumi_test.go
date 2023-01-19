@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: goconst
+//nolint:goconst
 package lifecycletest
 
 import (
@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -2879,6 +2879,8 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 }
 
 type updateContext struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	*deploytest.ResourceMonitor
 
 	resmon       chan *deploytest.ResourceMonitor
@@ -2943,7 +2945,7 @@ func (ctx *updateContext) Run(_ context.Context, req *pulumirpc.RunRequest) (*pu
 	// Connect to the resource monitor and create an appropriate client.
 	conn, err := grpc.Dial(
 		req.MonitorAddress,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -2972,21 +2974,6 @@ func (ctx *updateContext) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
 	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
 	return nil
-}
-
-func (ctx *updateContext) About(_ context.Context, _ *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
-}
-
-func (ctx *updateContext) GetProgramDependencies(
-	_ context.Context, _ *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
-}
-
-func (ctx *updateContext) RunPlugin(
-	req *pulumirpc.RunPluginRequest,
-	server pulumirpc.LanguageRuntime_RunPluginServer) error {
-	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
 }
 
 func TestLanguageClient(t *testing.T) {
@@ -3572,9 +3559,9 @@ func TestProtect(t *testing.T) {
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete
-	expectedMessage = "<{%reset%}>unable to delete resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
-		"as it is currently marked for protection. To unprotect the resource, either remove the `protect` flag " +
-		"from the resource in your Pulumi program and run `pulumi up` or use the command:\n" +
+	expectedMessage = "<{%reset%}>resource \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted\n" +
+		"because it is protected. To unprotect the resource, either remove the `protect` flag " +
+		"from the resource in your Pulumi program and run `pulumi up`, or use the command:\n" +
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate)
@@ -4222,10 +4209,10 @@ func TestPendingDeleteOrder(t *testing.T) {
 				DeleteF: func(urn resource.URN,
 					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
-					for _, res := range cloudState {
+					for other, res := range cloudState {
 						for _, v := range res {
 							if v.IsString() && v.StringValue() == string(id) {
-								return resource.StatusOK, fmt.Errorf("Can not delete %s", id)
+								return resource.StatusOK, fmt.Errorf("Can not delete %s used by %s", id, other)
 							}
 						}
 					}
@@ -4282,7 +4269,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 		"foo": "bar",
 	})
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		urnA, idA, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
 		assert.NoError(t, err)
@@ -4291,6 +4278,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"parent": idA,
 			}),
+			Dependencies: []resource.URN{urnA},
 		})
 		assert.NoError(t, err)
 

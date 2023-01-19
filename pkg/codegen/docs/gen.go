@@ -17,7 +17,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package docs
 
 import (
@@ -86,7 +86,8 @@ func titleLookup(shortName string) (string, bool) {
 		"cloudamqp":                            "CloudAMQP",
 		"cloudflare":                           "Cloudflare",
 		"cloudinit":                            "cloud-init",
-		"confluent":                            "Confluent Cloud",
+		"confluentcloud":                       "Confluent Cloud",
+		"confluent":                            "Confluent Cloud (Deprecated)",
 		"consul":                               "HashiCorp Consul",
 		"coredns-helm":                         "CoreDNS (Helm)",
 		"datadog":                              "Datadog",
@@ -423,7 +424,7 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	copy := *mod
 	copy.docGenContext = dctx
-	var children []*modContext
+	var children = make([]*modContext, 0, len(copy.children))
 	for _, c := range copy.children {
 		children = append(children, c.withDocGenContext(dctx))
 	}
@@ -895,7 +896,8 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		return getDockerImagePythonFormalParams()
 	}
 
-	var params []formalParam
+	// We perform at least three appends before iterating over input types.
+	params := make([]formalParam, 0, 3+len(r.InputProperties))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
@@ -979,7 +981,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	var sortedTokens []string
+	sortedTokens := make([]string, 0, len(tokens))
 	for token := range tokens {
 		sortedTokens = append(sortedTokens, token)
 	}
@@ -1721,11 +1723,14 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 			mod.getTypes(m.Function, types)
 		}
 	case *schema.Function:
-		if t.Inputs != nil {
+		if t.Inputs != nil && !t.MultiArgumentInputs {
 			mod.getNestedTypes(t.Inputs, types, true)
 		}
-		if t.Outputs != nil {
-			mod.getNestedTypes(t.Outputs, types, false)
+
+		if t.ReturnType != nil {
+			if objectType, ok := t.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				mod.getNestedTypes(objectType, types, false)
+			}
 		}
 	}
 }
@@ -2093,7 +2098,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			// Markdown fragments in the templates need to be rendered as-is,
 			// so that html/template package doesn't try to inject data into it,
 			// which will most certainly fail.
-			// nolint gosec
+			//nolint:gosec
 			return template.HTML(html)
 		},
 		"markdownify": func(html string) template.HTML {
@@ -2102,7 +2107,7 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			if err := goldmark.Convert([]byte(html), &buf); err != nil {
 				glog.Fatalf("rendering Markdown: %v", err)
 			}
-			// nolint gosec
+			//nolint:gosec
 			return template.HTML(buf.String())
 		},
 	})

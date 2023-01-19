@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -108,7 +109,8 @@ func (s *localStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 }
 
 func (s *localStack) DefaultSecretManager(configFile string) (secrets.Manager, error) {
-	return NewPassphraseSecretsManager(s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
+	return passphrase.NewPromptingPassphraseSecretsManager(
+		s.Ref().Name(), configFile, false /* rotatePassphraseSecretsProvider */)
 }
 
 type localStackSummary struct {

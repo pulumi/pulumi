@@ -138,7 +138,7 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 			if _, hasParent := sg.urns[parent]; !hasParent {
 				return "", result.Errorf("could not find parent resource %v", parent)
 			}
-		} else {
+		} else { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/10950
 			// Else try and set it to the root stack
 
 			// TODO: It looks like this currently has some issues with state ordering (see
@@ -1639,7 +1639,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 		return diff, nil
 	}
 
-	var replaceOnChangePaths []resource.PropertyPath
+	var replaceOnChangePaths = make([]resource.PropertyPath, 0, len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
 		path, err := resource.ParsePropertyPath(p)
 		if err != nil {
@@ -1687,7 +1687,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 			}
 		}
 	}
-	var modifiedReplaceKeys []resource.PropertyKey
+	var modifiedReplaceKeys = make([]resource.PropertyKey, 0, len(modifiedReplaceKeysMap))
 	for k := range modifiedReplaceKeysMap {
 		modifiedReplaceKeys = append(modifiedReplaceKeys, k)
 	}

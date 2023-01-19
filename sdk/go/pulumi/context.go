@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
@@ -73,7 +74,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	if addr := info.MonitorAddr; addr != "" {
 		conn, err := grpc.Dial(
 			info.MonitorAddr,
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
@@ -91,7 +92,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	} else if addr := info.EngineAddr; addr != "" {
 		conn, err := grpc.Dial(
 			info.EngineAddr,
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
@@ -130,6 +131,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	supportsDeletedWith, err := supportsFeature("deletedWith")
 	if err != nil {
 		return nil, err
+	}
+
+	if wrap := info.wrapResourceMonitorClient; wrap != nil {
+		monitor = wrap(monitor)
 	}
 
 	context := &Context{
@@ -218,6 +223,12 @@ func (ctx *Context) Parallel() int { return ctx.info.Parallel }
 
 // DryRun is true when evaluating a program for purposes of planning, instead of performing a true deployment.
 func (ctx *Context) DryRun() bool { return ctx.info.DryRun }
+
+// RunningWithMocks is true if the program is running using a Mock monitor instead of a real Pulumi engine.
+func (ctx *Context) RunningWithMocks() bool {
+	_, isMockMonitor := ctx.monitor.(*mockMonitor)
+	return isMockMonitor
+}
 
 // GetConfig returns the config value, as a string, and a bool indicating whether it exists or not.
 func (ctx *Context) GetConfig(key string) (string, bool) {
@@ -603,7 +614,7 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
-	if options.DeletedWith != "" && !ctx.supportsDeletedWith {
+	if options.DeletedWith != nil && !ctx.supportsDeletedWith {
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
@@ -1011,7 +1022,7 @@ func getPackage(t string) string {
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
-	var aliasURNs []URNOutput
+	aliasURNs := make([]URNOutput, 0, len(aliases))
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
@@ -1331,6 +1342,15 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		aliases[i] = string(urn)
 	}
 
+	var deletedWithURN URN
+	if opts.DeletedWith != nil {
+		urn, _, _, err := opts.DeletedWith.URN().awaitURN(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("error waiting for DeletedWith URN to resolve: %w", err)
+		}
+		deletedWithURN = urn
+	}
+
 	return &resourceInputs{
 		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
@@ -1350,7 +1370,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		pluginDownloadURL:       state.pluginDownloadURL,
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
-		deletedWith:             string(opts.DeletedWith),
+		deletedWith:             string(deletedWithURN),
 	}, nil
 }
 

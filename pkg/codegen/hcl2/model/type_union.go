@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -32,7 +33,7 @@ type UnionType struct {
 	// Annotations records any annotations associated with the object type.
 	Annotations []interface{}
 
-	s string
+	s atomic.Value // Value<string>
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -116,12 +117,12 @@ func (t *UnionType) Pretty() pretty.Formatter {
 		}
 		elements = append(elements, el.Pretty())
 	}
-	var v pretty.Formatter = pretty.List{
+	var v pretty.Formatter = &pretty.List{
 		Separator: " | ",
 		Elements:  elements,
 	}
 	if isOptional {
-		v = pretty.Wrap{
+		v = &pretty.Wrap{
 			Value:           v,
 			Postfix:         "?",
 			PostfixSameline: true,
@@ -274,20 +275,23 @@ func (t *UnionType) String() string {
 }
 
 func (t *UnionType) string(seen map[Type]struct{}) string {
-	if t.s == "" {
-		elements := make([]string, len(t.ElementTypes))
-		for i, e := range t.ElementTypes {
-			elements[i] = e.string(seen)
-		}
-
-		annotations := ""
-		if len(t.Annotations) != 0 {
-			annotations = fmt.Sprintf(", annotated(%p)", t)
-		}
-
-		t.s = fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
-	return t.s
+
+	elements := make([]string, len(t.ElementTypes))
+	for i, e := range t.ElementTypes {
+		elements[i] = e.string(seen)
+	}
+
+	annotations := ""
+	if len(t.Annotations) != 0 {
+		annotations = fmt.Sprintf(", annotated(%p)", t)
+	}
+
+	s := fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
+	t.s.Store(s)
+	return s
 }
 
 func (t *UnionType) unify(other Type) (Type, ConversionKind) {

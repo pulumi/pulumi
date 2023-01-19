@@ -18,9 +18,11 @@ package cloud
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	netUrl "net/url"
+	"os"
 
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
@@ -32,6 +34,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Type is the type of secrets managed by this secrets provider
@@ -40,18 +45,6 @@ const Type = "cloud"
 type cloudSecretsManagerState struct {
 	URL          string `json:"url"`
 	EncryptedKey []byte `json:"encryptedkey"`
-}
-
-// NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
-// manager that uses the target cloud key management service to encrypt/decrypt a data key used for
-// envelope encryption of secrets values.
-func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
-	var s cloudSecretsManagerState
-	if err := json.Unmarshal(state, &s); err != nil {
-		return nil, fmt.Errorf("unmarshalling state: %w", err)
-	}
-
-	return NewCloudSecretsManager(s.URL, s.EncryptedKey)
 }
 
 // openKeeper opens the keeper, handling pulumi-specifc cases in the URL.
@@ -82,9 +75,9 @@ func openKeeper(ctx context.Context, url string) (*gosecrets.Keeper, error) {
 	}
 }
 
-// GenerateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
+// generateNewDataKey generates a new DataKey seeded by a fresh random 32-byte key and encrypted
 // using the target cloud key management service.
-func GenerateNewDataKey(url string) ([]byte, error) {
+func generateNewDataKey(url string) ([]byte, error) {
 	plaintextDataKey := make([]byte, 32)
 	_, err := rand.Read(plaintextDataKey)
 	if err != nil {
@@ -97,9 +90,9 @@ func GenerateNewDataKey(url string) ([]byte, error) {
 	return keeper.Encrypt(context.Background(), plaintextDataKey)
 }
 
-// NewCloudSecretsManager returns a secrets manager that uses the target cloud key management
+// newCloudSecretsManager returns a secrets manager that uses the target cloud key management
 // service to encrypt/decrypt a data key used for envelope encryption of secrets values.
-func NewCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
+func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, error) {
 	keeper, err := openKeeper(context.Background(), url)
 	if err != nil {
 		return nil, err
@@ -129,3 +122,74 @@ func (m *Manager) State() interface{}                   { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
 func (m *Manager) EncryptedKey() []byte                 { return m.state.EncryptedKey }
+
+// NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
+// manager that uses the target cloud key management service to encrypt/decrypt a data key used for
+// envelope encryption of secrets values.
+func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
+	var s cloudSecretsManagerState
+	if err := json.Unmarshal(state, &s); err != nil {
+		return nil, fmt.Errorf("unmarshalling state: %w", err)
+	}
+
+	return newCloudSecretsManager(s.URL, s.EncryptedKey)
+}
+
+func NewCloudSecretsManager(stackName tokens.Name, configFile,
+	secretsProvider string, rotateSecretsProvider bool) (secrets.Manager, error) {
+
+	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+	proj, _, err := workspace.DetectProjectStackPath(stackName.Q())
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := workspace.LoadProjectStack(proj, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only a passphrase provider has an encryption salt. So changing a secrets provider
+	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
+	// as it's a legacy artifact and needs to be removed
+	info.EncryptionSalt = ""
+
+	var secretsManager *Manager
+
+	// Allow per-execution override of the secrets provider via an environment
+	// variable. This allows a temporary replacement without updating the stack
+	// config, such a during CI.
+	if override := os.Getenv("PULUMI_CLOUD_SECRET_OVERRIDE"); override != "" {
+		secretsProvider = override
+	}
+
+	// If we're rotating then just clear the key so we create a fresh one below
+	if rotateSecretsProvider {
+		info.EncryptedKey = ""
+	}
+
+	// if there is no key OR the secrets provider is changing
+	// then we need to generate the new key based on the new secrets provider
+	if info.EncryptedKey == "" || info.SecretsProvider != secretsProvider {
+		dataKey, err := generateNewDataKey(secretsProvider)
+		if err != nil {
+			return nil, err
+		}
+		info.EncryptedKey = base64.StdEncoding.EncodeToString(dataKey)
+	}
+	info.SecretsProvider = secretsProvider
+	if err = info.Save(configFile); err != nil {
+		return nil, err
+	}
+
+	dataKey, err := base64.StdEncoding.DecodeString(info.EncryptedKey)
+	if err != nil {
+		return nil, err
+	}
+	secretsManager, err = newCloudSecretsManager(secretsProvider, dataKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return secretsManager, nil
+}

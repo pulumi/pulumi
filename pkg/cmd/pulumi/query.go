@@ -27,7 +27,8 @@ import (
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newQueryCmd() *cobra.Command {
 	var stack string
 

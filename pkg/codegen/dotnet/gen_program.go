@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -229,7 +229,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := ioutil.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -250,14 +250,6 @@ func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 			g.genComment(w, c)
 		}
 	}
-}
-
-func (g *generator) warnf(location *hcl.Range, reason string, args ...interface{}) {
-	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagWarning,
-		Summary:  fmt.Sprintf(reason, args...),
-		Subject:  location,
-	})
 }
 
 func (g *generator) findFunctionSchema(token string, location *hcl.Range) (*schema.Function, bool) {
@@ -512,7 +504,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 }
 
 func (g *generator) toSchemaType(destType model.Type) (schema.Type, bool) {
-	schemaType, ok := pcl.GetSchemaForType(destType.(model.Type))
+	schemaType, ok := pcl.GetSchemaForType(destType)
 	if !ok {
 		return nil, false
 	}

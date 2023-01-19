@@ -70,7 +70,18 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
             log.debug(
                 f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding"
             )
-            await RPC_MANAGER.rpcs.pop()
+            try:
+                await RPC_MANAGER.rpcs.pop()
+            except Exception as exn:
+                # If the RPC failed, re-raise the original traceback
+                # instead of the await above.
+                if RPC_MANAGER.unhandled_exception is not None:
+                    cause = RPC_MANAGER.unhandled_exception.with_traceback(
+                        RPC_MANAGER.exception_traceback,
+                    )
+                    raise exn from cause
+
+                raise
 
         if RPC_MANAGER.unhandled_exception is not None:
             raise RPC_MANAGER.unhandled_exception.with_traceback(

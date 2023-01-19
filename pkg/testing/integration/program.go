@@ -24,7 +24,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -454,9 +453,7 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 		opts.Secrets[k] = v
 	}
 	if overrides.OrderedConfig != nil {
-		for _, cv := range overrides.OrderedConfig {
-			opts.OrderedConfig = append(opts.OrderedConfig, cv)
-		}
+		opts.OrderedConfig = append(opts.OrderedConfig, overrides.OrderedConfig...)
 	}
 	if overrides.SecretsProvider != "" {
 		opts.SecretsProvider = overrides.SecretsProvider
@@ -688,7 +685,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 
 	// If we have a matcher, ensure that this test matches its pattern.
 	if directoryMatcher.re != nil && !directoryMatcher.re.Match([]byte(opts.Dir)) {
-		t.Skip(fmt.Sprintf("Skipping: '%v' does not match '%v'", opts.Dir, directoryMatcher.re))
+		t.Skipf("Skipping: '%v' does not match '%v'", opts.Dir, directoryMatcher.re)
 	}
 
 	// Disable stack backups for tests to avoid filling up ~/.pulumi/backups with unnecessary
@@ -1436,7 +1433,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	}
 
 	if f := pt.opts.ExportStateValidator; f != nil {
-		bytes, err := ioutil.ReadFile(filepath.Join(dir, "stack.json"))
+		bytes, err := os.ReadFile(filepath.Join(dir, "stack.json"))
 		if err != nil {
 			pt.t.Logf("Failed to read stack.json: %s", err.Error())
 			return err
@@ -1557,7 +1554,7 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		}
 	} else {
 		// Create a new temporary directory
-		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
+		newDir, err := os.MkdirTemp("", pt.opts.StackName+"-")
 		if err != nil {
 			return fmt.Errorf("Couldn't create new temporary directory: %w", err)
 		}
@@ -1663,7 +1660,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	stackName := pt.opts.GetStackName()
 
 	// Create a temporary file name for the stack export
-	tempDir, err := ioutil.TempDir("", string(stackName))
+	tempDir, err := os.MkdirTemp("", string(stackName))
 	if err != nil {
 		return err
 	}
@@ -1798,7 +1795,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	} else {
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+		targetDir, tempErr := os.MkdirTemp("", stackName+"-")
 		if tempErr != nil {
 			return "", "", fmt.Errorf("Couldn't create temporary directory: %w", tempErr)
 		}
@@ -1824,39 +1821,52 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 
 	if pt.opts.LocalProviders != nil {
 		for _, provider := range pt.opts.LocalProviders {
+			// LocalProviders are relative to the working directory when running tests, NOT relative to the
+			// Pulumi.yaml. This is a bit odd, but makes it easier to construct the required paths in each
+			// test.
+			absPath, err := filepath.Abs(provider.Path)
+			if err != nil {
+				return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
+			}
+
 			projinfo.Proj.Plugins.Providers = append(projinfo.Proj.Plugins.Providers, workspace.PluginOptions{
 				Name: provider.Package,
-				Path: provider.Path,
+				Path: absPath,
 			})
 		}
 	}
 
+	// Absolute path of the source directory, for fixupPath to use below
+	absSource, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return "", "", fmt.Errorf("could not get absolute path for source directory %s: %w", sourceDir, err)
+	}
+
+	// Return a fixed up path if it's relative to sourceDir but not beneath it, else just returns the input
+	fixupPath := func(path string) (string, error) {
+		if filepath.IsAbs(path) {
+			return path, nil
+		}
+		absPlugin := filepath.Join(absSource, path)
+		if !strings.HasPrefix(absPlugin, absSource+string(filepath.Separator)) {
+			return absPlugin, nil
+		}
+		return path, nil
+	}
+
 	if projinfo.Proj.Plugins != nil {
-		for i, provider := range projinfo.Proj.Plugins.Providers {
-			if !filepath.IsAbs(provider.Path) {
-				path, err := filepath.Abs(provider.Path)
-				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", provider.Path, err)
-				}
-				projinfo.Proj.Plugins.Providers[i].Path = path
-			}
+		optionSets := [][]workspace.PluginOptions{
+			projinfo.Proj.Plugins.Providers,
+			projinfo.Proj.Plugins.Languages,
+			projinfo.Proj.Plugins.Analyzers,
 		}
-		for i, language := range projinfo.Proj.Plugins.Languages {
-			if !filepath.IsAbs(language.Path) {
-				path, err := filepath.Abs(language.Path)
+		for _, options := range optionSets {
+			for i, opt := range options {
+				path, err := fixupPath(opt.Path)
 				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", language.Path, err)
+					return "", "", fmt.Errorf("could not get fixed path for plugin %s: %w", opt.Path, err)
 				}
-				projinfo.Proj.Plugins.Languages[i].Path = path
-			}
-		}
-		for i, analyzer := range projinfo.Proj.Plugins.Analyzers {
-			if !filepath.IsAbs(analyzer.Path) {
-				path, err := filepath.Abs(analyzer.Path)
-				if err != nil {
-					return "", "", fmt.Errorf("could not get absolute path for plugin %s: %w", analyzer.Path, err)
-				}
-				projinfo.Proj.Plugins.Analyzers[i].Path = path
+				options[i].Path = path
 			}
 		}
 	}
@@ -1866,7 +1876,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
 
-	if err := ioutil.WriteFile(projfile, bytes, 0600); err != nil {
+	if err := os.WriteFile(projfile, bytes, 0600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
 	}
 
@@ -1894,7 +1904,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 				"@pulumi/pulumi": "latest"
 			}
 		}`
-		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
 		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
@@ -2190,9 +2200,9 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 		repoName := splitPkg[2]
 		basePath := splitPkg[len(splitPkg)-1]
 		if basePath == repoName {
-			depParts = append([]string{depRoot, repoName})
+			depParts = []string{depRoot, repoName}
 		} else {
-			depParts = append([]string{depRoot, repoName, basePath})
+			depParts = []string{depRoot, repoName, basePath}
 		}
 		return filepath.Join(depParts...)
 	}

@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package docs
 
 import (
@@ -48,18 +48,14 @@ var (
 			},
 		},
 	}
-
-	// testPackageSpec represents a fake package spec for a Provider used for testing.
-	testPackageSpec schema.PackageSpec
 )
 
-func initTestPackageSpec(t *testing.T) {
-	t.Helper()
-
+// newTestPackageSpec returns a new fake package spec for a Provider used for testing.
+func newTestPackageSpec() schema.PackageSpec {
 	pythonMapCase := map[string]schema.RawMessage{
 		"python": schema.RawMessage(`{"mapCase":false}`),
 	}
-	testPackageSpec = schema.PackageSpec{
+	return schema.PackageSpec{
 		Name:        providerPackage,
 		Version:     "0.0.1",
 		Description: "A fake provider package used for testing.",
@@ -376,7 +372,7 @@ func TestFunctionHeaders(t *testing.T) {
 	t.Parallel()
 
 	dctx := newDocGenContext()
-	initTestPackageSpec(t)
+	testPackageSpec := newTestPackageSpec()
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
@@ -428,7 +424,7 @@ func TestResourceDocHeader(t *testing.T) {
 	t.Parallel()
 
 	dctx := newDocGenContext()
-	initTestPackageSpec(t)
+	testPackageSpec := newTestPackageSpec()
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")
@@ -482,7 +478,7 @@ func TestResourceDocHeader(t *testing.T) {
 func TestExamplesProcessing(t *testing.T) {
 	t.Parallel()
 
-	initTestPackageSpec(t)
+	testPackageSpec := newTestPackageSpec()
 	dctx := newDocGenContext()
 
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description

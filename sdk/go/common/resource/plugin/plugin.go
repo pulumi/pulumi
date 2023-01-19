@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,7 +68,7 @@ func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
 }
 
 func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		// Deliberately not wrapping the error here so that os.IsNotExist checks can be used to determine
 		// if the file could not be opened due to it not existing.
@@ -268,6 +267,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 		}
 		portString += string(b[:n])
 	}
+	// Trim any whitespace from the first line (this is to handle things like windows that will write
+	// "1234\r\n", or slightly odd providers that might add whitespace like "1234 ")
+	portString = strings.TrimSpace(portString)
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	var port int
@@ -299,7 +301,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
-		tracingToFile:   cmdutil.TracingToFile,
 		logFlow:         logging.LogFlow,
 		logToStderr:     logging.LogToStderr,
 		verbose:         logging.Verbose,
@@ -412,10 +413,10 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 }
 
 type pluginArgumentOptions struct {
-	pluginArgs                          []string
-	tracingEndpoint                     string
-	tracingToFile, logFlow, logToStderr bool
-	verbose                             int
+	pluginArgs           []string
+	tracingEndpoint      string
+	logFlow, logToStderr bool
+	verbose              int
 }
 
 func buildPluginArguments(opts pluginArgumentOptions) []string {

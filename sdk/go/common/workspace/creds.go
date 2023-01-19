@@ -17,12 +17,11 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -32,7 +31,8 @@ import (
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
 // We use this in testing so that tests which log in and out do not impact the local developer's
 // credentials or tests interacting with one another
-// nolint: gosec
+//
+//nolint:gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
 // PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
@@ -133,14 +133,14 @@ func getCredsFilePath() (string, error) {
 	if pulumiFolder == "" {
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get the home path")
+			return "", fmt.Errorf("failed to get the home path: %w", err)
 		}
 		pulumiFolder = folder
 	}
 
 	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
 
 	return filepath.Join(pulumiFolder, "credentials.json"), nil
@@ -161,7 +161,7 @@ func GetCurrentCloudURL() (string, error) {
 	if err == nil && projPath != "" {
 		proj, err := LoadProject(projPath)
 		if err != nil {
-			return "", errors.Wrap(err, "could not load current project")
+			return "", fmt.Errorf("could not load current project: %w", err)
 		}
 
 		if proj.Backend != nil {
@@ -192,16 +192,16 @@ func GetStoredCredentials() (Credentials, error) {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
 		}
-		return Credentials{}, errors.Wrapf(err, "reading '%s'", credsFile)
+		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
 	}
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, errors.Wrapf(err, "failed to read Pulumi credentials file. Please re-run "+
-			"`pulumi login` to reset your credentials file")
+		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please re-run "+
+			"`pulumi login` to reset your credentials file: %w", err)
 	}
 
-	var secrets []string
+	secrets := make([]string, 0, len(creds.AccessTokens))
 	for _, v := range creds.AccessTokens {
 		secrets = append(secrets, v)
 	}
@@ -229,7 +229,7 @@ func StoreCredentials(creds Credentials) error {
 
 	raw, err := json.MarshalIndent(creds, "", "    ")
 	if err != nil {
-		return errors.Wrapf(err, "marshalling credentials object")
+		return fmt.Errorf("marshalling credentials object: %w", err)
 	}
 
 	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0600); err != nil {
@@ -253,14 +253,14 @@ func getConfigFilePath() (string, error) {
 	if pulumiFolder == "" {
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
-			return "", errors.Wrapf(err, "failed to get the home path")
+			return "", fmt.Errorf("failed to get the home path: %w", err)
 		}
 		pulumiFolder = folder
 	}
 
 	err := os.MkdirAll(pulumiFolder, 0700)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to create '%s'", pulumiFolder)
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
 
 	return filepath.Join(pulumiFolder, "config.json"), nil
@@ -272,17 +272,17 @@ func GetPulumiConfig() (PulumiConfig, error) {
 		return PulumiConfig{}, err
 	}
 
-	c, err := ioutil.ReadFile(configFile)
+	c, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return PulumiConfig{}, nil
 		}
-		return PulumiConfig{}, errors.Wrapf(err, "reading '%s'", configFile)
+		return PulumiConfig{}, fmt.Errorf("reading '%s': %w", configFile, err)
 	}
 
 	var config PulumiConfig
 	if err = json.Unmarshal(c, &config); err != nil {
-		return PulumiConfig{}, errors.Wrapf(err, "failed to read Pulumi config file")
+		return PulumiConfig{}, fmt.Errorf("failed to read Pulumi config file: %w", err)
 	}
 
 	return config, nil
@@ -296,12 +296,12 @@ func StorePulumiConfig(config PulumiConfig) error {
 
 	raw, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
-		return errors.Wrapf(err, "marshalling config object")
+		return fmt.Errorf("marshalling config object: %w", err)
 	}
 
 	// Use a temporary file and atomic os.Rename to ensure the file contents are
 	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
-	tempConfigFile, err := ioutil.TempFile(filepath.Dir(configFile), "config-*.json")
+	tempConfigFile, err := os.CreateTemp(filepath.Dir(configFile), "config-*.json")
 	if err != nil {
 		return err
 	}

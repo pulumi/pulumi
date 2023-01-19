@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -145,7 +144,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				reader, err := gzip.NewReader(req.Body)
 				assert.NoError(t, err)
 				defer reader.Close()
-				rbytes, err := ioutil.ReadAll(reader)
+				rbytes, err := io.ReadAll(reader)
 				assert.NoError(t, err)
 				_, err = rw.Write([]byte(message))
 				assert.NoError(t, err)

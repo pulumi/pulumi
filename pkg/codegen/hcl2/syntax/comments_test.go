@@ -2,7 +2,7 @@ package syntax
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -214,7 +214,7 @@ func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
 func TestComments(t *testing.T) {
 	t.Parallel()
 
-	contents, err := ioutil.ReadFile("./testdata/comments_all.hcl")
+	contents, err := os.ReadFile("./testdata/comments_all.hcl")
 	if err != nil {
 		t.Fatalf("failed to read test data: %v", err)
 	}

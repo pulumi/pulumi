@@ -27,6 +27,8 @@ import (
 )
 
 type componentProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
 	host      *HostClient
 	name      string
 	version   string
@@ -114,73 +116,6 @@ func (p *componentProvider) Construct(ctx context.Context,
 		return provider.Construct(ctx, req, p.host.conn, p.construct)
 	}
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
-}
-
-// CheckConfig validates the configuration for this provider.
-func (p *componentProvider) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
-}
-
-// DiffConfig diffs the configuration for this provider.
-func (p *componentProvider) DiffConfig(ctx context.Context,
-	req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
-}
-
-// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
-// back as a series of messages.
-func (p *componentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
-	return status.Error(codes.Unimplemented, "StreamInvoke is not yet implemented")
-}
-
-// Check validates that the given property bag is valid for a resource of the given type and returns
-// the inputs that should be passed to successive calls to Diff, Create, or Update for this
-// resource. As a rule, the provider inputs returned by a call to Check should preserve the original
-// representation of the properties as present in the program inputs. Though this rule is not
-// required for correctness, violations thereof can negatively impact the end-user experience, as
-// the provider inputs are using for detecting and rendering diffs.
-func (p *componentProvider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Check is not yet implemented")
-}
-
-// Diff checks what impacts a hypothetical update will have on the resource's properties.
-func (p *componentProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Diff is not yet implemented")
-}
-
-// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-// (The input ID must be blank.)  If this call fails, the resource must not have been created (i.e.,
-// it is "transactional").
-func (p *componentProvider) Create(ctx context.Context,
-	req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Create is not yet implemented")
-}
-
-// Read the current live state associated with a resource.  Enough state must be include in the
-// inputs to uniquely identify the resource; this is typically just the resource ID, but may also
-// include some properties.
-func (p *componentProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Read is not yet implemented")
-}
-
-// Update updates an existing resource with new values.
-func (p *componentProvider) Update(ctx context.Context,
-	req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Update is not yet implemented")
-}
-
-// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed
-// to still exist.
-func (p *componentProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "Delete is not yet implemented")
-}
-
-// Invoke dynamically executes a built-in function in the provider.
-func (p *componentProvider) Invoke(ctx context.Context,
-	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

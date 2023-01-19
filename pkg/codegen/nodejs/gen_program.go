@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -242,7 +242,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := ioutil.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -327,8 +327,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		contract.Assert(len(diags) == 0)
 	}
 
-	var imports []string
-	for _, pkg := range importSet.SortedValues() {
+	var sortedVals = importSet.SortedValues()
+	imports := make([]string, 0, len(sortedVals))
+	for _, pkg := range sortedVals {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
@@ -378,11 +379,7 @@ func resourceRequiresAsyncMain(r *pcl.Resource) bool {
 
 func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 	outputName := ov.LogicalName()
-	if makeValidIdentifier(outputName) != outputName {
-		return true
-	}
-
-	return false
+	return makeValidIdentifier(outputName) != outputName
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.

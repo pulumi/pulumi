@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+//nolint:lll
 package pulumi
 
 import (
@@ -441,8 +441,7 @@ func TestToOutputAnyDeps(t *testing.T) {
 	assert.Equal(t, true, bo.value)
 	assert.ElementsMatch(t, []Resource{boolDep1, boolDep2}, bo.deps)
 
-	ro, ok := argsV.R.(Resource)
-	assert.True(t, ok)
+	ro := argsV.R
 	urn, known, secret, deps, err := await(ro.URN())
 	assert.Equal(t, URN("foo"), urn)
 	assert.True(t, known)
@@ -901,11 +900,11 @@ func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKno
 	assert.Equal(t, expectedValue, v, "values do not match")
 	assert.Equal(t, expectedKnown, known, "known-ness does not match")
 	assert.Equal(t, expectedSecret, secret, "secret-ness does not match")
-	var depUrns []URN
+	depUrns := make([]URN, 0, len(deps))
 	for _, v := range deps {
 		depUrns = append(depUrns, v.URN().value.(URN))
 	}
-	var expectedUrns []URN
+	var expectedUrns = make([]URN, 0, len(expectedDeps))
 	for _, v := range expectedDeps {
 		expectedUrns = append(expectedUrns, v.URN().value.(URN))
 	}
@@ -1127,4 +1126,171 @@ func TestJSONMarshalNested(t *testing.T) {
 	assert.False(t, secret)
 	assert.Nil(t, deps)
 	assert.Nil(t, v)
+}
+
+func TestJSONUnmarshalBasic(t *testing.T) {
+	t.Parallel()
+
+	out, resolve, _ := NewOutput()
+	go func() {
+		resolve("[0, 1]")
+	}()
+	str := out.ApplyT(func(str interface{}) (string, error) {
+		return str.(string), nil
+	}).(StringOutput)
+	json := JSONUnmarshal(str)
+	v, known, secret, deps, err := await(json)
+	assert.Nil(t, err)
+	assert.True(t, known)
+	assert.False(t, secret)
+	assert.Nil(t, deps)
+	assert.NotNil(t, v)
+	assert.Equal(t, []interface{}{0.0, 1.0}, v.([]interface{}))
+}
+
+func TestApplyTSignatureMismatch(t *testing.T) {
+	t.Parallel()
+
+	var pval interface{}
+	func() {
+		defer func() { pval = recover() }()
+
+		Int(42).ToIntOutput().ApplyT(func(string) string {
+			t.Errorf("This function should not be called")
+			return ""
+		})
+	}()
+	require.NotNil(t, pval, "function did not panic")
+
+	msg := fmt.Sprint(pval)
+	assert.Regexp(t, `applier defined at .+?types_test\.go:\d+`, msg)
+}
+
+func TestApplier_Call(t *testing.T) {
+	t.Parallel()
+
+	stringType := reflect.TypeOf("")
+
+	t.Run("minimal", func(t *testing.T) {
+		t.Parallel()
+
+		ap, err := newApplier(func(s string) int {
+			assert.Equal(t, "hello", s)
+			return 42
+		}, stringType)
+		require.NoError(t, err)
+
+		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), o.Int())
+	})
+
+	t.Run("context", func(t *testing.T) {
+		t.Parallel()
+
+		giveCtx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		ap, err := newApplier(func(ctx context.Context, s string) int {
+			// == check because we want an exact reference match,
+			// not a deep equals.
+			assert.True(t, ctx == giveCtx, "context must match")
+			assert.Equal(t, "hello", s)
+			return 42
+		}, stringType)
+		require.NoError(t, err)
+
+		o, err := ap.Call(giveCtx, reflect.ValueOf("hello"))
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), o.Int())
+	})
+
+	t.Run("error/success", func(t *testing.T) {
+		t.Parallel()
+
+		ap, err := newApplier(func(string) (int, error) {
+			return 42, nil
+		}, stringType)
+		require.NoError(t, err)
+
+		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), o.Int())
+	})
+
+	t.Run("error/failure", func(t *testing.T) {
+		t.Parallel()
+
+		giveErr := errors.New("great sadness")
+
+		ap, err := newApplier(func(string) (int, error) {
+			return 0, giveErr
+		}, stringType)
+		require.NoError(t, err)
+
+		_, err = ap.Call(context.Background(), reflect.ValueOf("hello"))
+		// == check because we want an exact reference match,
+		// not a deep equals.
+		assert.True(t, err == giveErr, "error must match")
+	})
+}
+
+func TestNewApplier_errors(t *testing.T) {
+	t.Parallel()
+
+	stringType := reflect.TypeOf("")
+	tests := []struct {
+		desc string
+		give interface{}
+
+		// Part of the error message expected in return.
+		wantErr string
+	}{
+		{
+			desc:    "no params",
+			give:    func() int { return 0 },
+			wantErr: "applier must accept exactly one or two parameters, got 0",
+		},
+		{
+			desc:    "single param bad input",
+			give:    func(int) int { return 0 },
+			wantErr: "applier's first input parameter must be assignable from string, got int",
+		},
+		{
+			desc:    "two params bad context",
+			give:    func(int, string) int { return 0 },
+			wantErr: "applier's first input parameter must be assignable from context.Context, got int",
+		},
+		{
+			desc:    "two params bad input",
+			give:    func(context.Context, int) int { return 0 },
+			wantErr: "applier's second input parameter must be assignable from string, got int",
+		},
+		{
+			desc:    "three params",
+			give:    func(context.Context, string, int) int { return 0 },
+			wantErr: "applier must accept exactly one or two parameters, got 3",
+		},
+		{
+			desc:    "no returns",
+			give:    func(string) {},
+			wantErr: "applier must return exactly one or two values, got 0",
+		},
+		{
+			desc:    "two returns bad error",
+			give:    func(string) (int, int) { return 0, 0 },
+			wantErr: "applier's second return type must be assignable to error, got int",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := newApplier(tt.give, stringType)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
 }

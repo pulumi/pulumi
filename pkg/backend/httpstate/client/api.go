@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -380,7 +379,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 	defer contract.IgnoreClose(resp.Body)
 	if !ok {
 		// No header implies that there's no additional encoding on this response.
-		return ioutil.ReadAll(resp.Body)
+		return io.ReadAll(resp.Body)
 	}
 
 	if len(contentEncoding) > 1 {
@@ -402,7 +401,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
 
-		return ioutil.ReadAll(reader)
+		return io.ReadAll(reader)
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}

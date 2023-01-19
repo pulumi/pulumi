@@ -42,7 +42,7 @@ func (*PromiseType) SyntaxNode() hclsyntax.Node {
 }
 
 func (t *PromiseType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "promise(",
 		Value:   t.ElementType.Pretty(),
 		Postfix: ")",

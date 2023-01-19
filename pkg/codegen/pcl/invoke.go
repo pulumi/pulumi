@@ -94,8 +94,7 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 			annotateObjectProperties(arg.ElementTypes[1], schemaType)
 		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
 			annotateObjectProperties(arg.ElementTypes[0], schemaType)
-		} else {
-			// TODO https://github.com/pulumi/pulumi/issues/10993
+		} else { //nolint:staticcheck // TODO https://github.com/pulumi/pulumi/issues/10993
 			// We need to handle the case where the schema type is a union type.
 		}
 	}
@@ -155,6 +154,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		}
 	}
 
+	sig.MultiArgumentInputs = fn.MultiArgumentInputs
 	return sig, nil
 }
 
@@ -221,10 +221,10 @@ func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSigna
 	}
 
 	var returnType model.Type
-	if fn.Outputs == nil {
+	if fn.ReturnType == nil {
 		returnType = model.NewObjectType(map[string]model.Type{})
 	} else {
-		returnType = b.schemaTypeToType(fn.Outputs)
+		returnType = b.schemaTypeToType(fn.ReturnType)
 	}
 
 	return b.makeSignature(argsType, model.NewPromiseType(returnType))
@@ -235,9 +235,9 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.Outputs != nil`.
+	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
 	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
-	returnType := b.schemaTypeToType(fn.Outputs)
+	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
 

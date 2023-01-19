@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"strings"
 
@@ -59,7 +58,6 @@ var (
 )
 
 var deploymentSchema *jsonschema.Schema
-var resourceSchema *jsonschema.Schema
 var propertyValueSchema *jsonschema.Schema
 
 func init() {
@@ -76,10 +74,9 @@ func init() {
 		default:
 			return jsonschema.LoadURL(s)
 		}
-		return ioutil.NopCloser(strings.NewReader(schema)), nil
+		return io.NopCloser(strings.NewReader(schema)), nil
 	}
 	deploymentSchema = compiler.MustCompile(apitype.DeploymentSchemaID)
-	resourceSchema = compiler.MustCompile(apitype.ResourceSchemaID)
 	propertyValueSchema = compiler.MustCompile(apitype.PropertyValueSchemaID)
 }
 
@@ -122,7 +119,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resources []apitype.ResourceV3
+	var resources = make([]apitype.ResourceV3, 0, len(snap.Resources))
 	for _, res := range snap.Resources {
 		sres, err := SerializeResource(res, enc, showSecrets)
 		if err != nil {
@@ -131,7 +128,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 		resources = append(resources, sres)
 	}
 
-	var operations []apitype.OperationV2
+	var operations = make([]apitype.OperationV2, 0, len(snap.PendingOperations))
 	for _, op := range snap.PendingOperations {
 		sop, err := SerializeOperation(op, enc, showSecrets)
 		if err != nil {
@@ -168,7 +165,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 func DeserializeUntypedDeployment(
 	ctx context.Context,
 	deployment *apitype.UntypedDeployment,
-	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	secretsProv secrets.Provider) (*deploy.Snapshot, error) {
 
 	contract.Require(deployment != nil, "deployment")
 	switch {
@@ -208,7 +205,7 @@ func DeserializeUntypedDeployment(
 func DeserializeDeploymentV3(
 	ctx context.Context,
 	deployment apitype.DeploymentV3,
-	secretsProv SecretsProvider) (*deploy.Snapshot, error) {
+	secretsProv secrets.Provider) (*deploy.Snapshot, error) {
 
 	// Unpack the versions.
 	manifest, err := deploy.DeserializeManifest(deployment.Manifest)
@@ -265,7 +262,7 @@ func DeserializeDeploymentV3(
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
-	var resources []*resource.State
+	var resources = make([]*resource.State, 0, len(deployment.Resources))
 	for _, res := range deployment.Resources {
 		desres, err := DeserializeResource(res, dec, enc)
 		if err != nil {
@@ -274,7 +271,7 @@ func DeserializeDeploymentV3(
 		resources = append(resources, desres)
 	}
 
-	var ops []resource.Operation
+	var ops = make([]resource.Operation, 0, len(deployment.PendingOperations))
 	for _, op := range deployment.PendingOperations {
 		desop, err := DeserializeOperation(op, dec, enc)
 		if err != nil {

@@ -17,7 +17,7 @@ package rpcutil
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -77,11 +77,11 @@ func TestWriter_NoTerminal(t *testing.T) {
 	err = closer.Close()
 	assert.NoError(t, err)
 
-	outBytes, err := ioutil.ReadAll(&server.stdout)
+	outBytes, err := io.ReadAll(&server.stdout)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello"), outBytes)
 
-	errBytes, err := ioutil.ReadAll(&server.stderr)
+	errBytes, err := io.ReadAll(&server.stderr)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("world"), errBytes)
 }
@@ -132,13 +132,13 @@ func TestWriter_Terminal(t *testing.T) {
 		err = closer.Close()
 		assert.NoError(t, err)
 
-		outBytes, err := ioutil.ReadAll(&server.stdout)
+		outBytes, err := io.ReadAll(&server.stdout)
 		assert.NoError(t, err)
 		// echo adds an extra \n at the end, and line discipline will cause \n to come back as \r\n
 		expected := strings.Replace(text+"\n", "\n", "\r\n", -1)
 		assert.Equal(t, []byte(expected), outBytes)
 
-		errBytes, err := ioutil.ReadAll(&server.stderr)
+		errBytes, err := io.ReadAll(&server.stderr)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{}, errBytes)
 	} else {
@@ -154,11 +154,11 @@ func TestWriter_Terminal(t *testing.T) {
 		err = closer.Close()
 		assert.NoError(t, err)
 
-		outBytes, err := ioutil.ReadAll(&server.stdout)
+		outBytes, err := io.ReadAll(&server.stdout)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("hello"), outBytes)
 
-		errBytes, err := ioutil.ReadAll(&server.stderr)
+		errBytes, err := io.ReadAll(&server.stderr)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("world"), errBytes)
 	}

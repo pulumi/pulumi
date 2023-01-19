@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
@@ -191,14 +192,14 @@ func createSecretsManager(
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, phraseErr := filestate.NewPassphraseSecretsManager(stack.Ref().Name(),
+		if _, phraseErr := passphrase.NewPromptingPassphraseSecretsManager(stack.Ref().Name(),
 			configFile, rotateSecretsProvider); phraseErr != nil {
 			return phraseErr
 		}
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-		if _, secretsErr := newCloudSecretsManager(stack.Ref().Name(),
+		if _, secretsErr := cloud.NewCloudSecretsManager(stack.Ref().Name(),
 			configFile, secretsProvider, rotateSecretsProvider); secretsErr != nil {
 			return secretsErr
 		}
@@ -342,7 +343,7 @@ func chooseStack(ctx context.Context,
 		inContToken = outContToken
 	}
 
-	var options []string
+	options := make([]string, 0, len(allSummaries))
 	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)

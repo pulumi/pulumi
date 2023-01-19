@@ -36,7 +36,7 @@ func NewMapType(elementType Type) *MapType {
 }
 
 func (t *MapType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "map(",
 		Value:   t.ElementType.Pretty(),
 		Postfix: ")",

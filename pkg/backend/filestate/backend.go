@@ -370,7 +370,7 @@ func (b *localBackend) ListStacks(
 
 	// Note that the provided stack filter is not honored, since fields like
 	// organizations and tags aren't persisted in the local backend.
-	var results []backend.StackSummary
+	var results = make([]backend.StackSummary, 0, len(stacks))
 	for _, stackName := range stacks {
 		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
@@ -846,8 +846,6 @@ func (b *localBackend) CurrentUser() (string, []string, error) {
 }
 
 func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
-	var stacks []tokens.Name
-
 	// Read the stack directory.
 	path := b.stackPath("")
 
@@ -855,6 +853,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
+	var stacks = make([]tokens.Name, 0, len(files))
 
 	for _, file := range files {
 		// Ignore directories.

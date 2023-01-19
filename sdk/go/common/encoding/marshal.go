@@ -19,7 +19,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/yamlutil"
@@ -155,7 +155,7 @@ func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {
 		return err
 	}
 	defer reader.Close()
-	inflated, err := ioutil.ReadAll(reader)
+	inflated, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}

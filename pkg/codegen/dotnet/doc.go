@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+//nolint:lll
 package dotnet
 
 import (
@@ -85,7 +85,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		namespaces:    d.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
-	qualifier := "Inputs" // nolint: goconst
+	qualifier := "Inputs" //nolint:goconst
 	if !input {
 		qualifier = "Outputs"
 	}
@@ -110,8 +110,24 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
 	m *schema.Method) string {
 
+	var returnType *schema.ObjectType
+	if m.Function.ReturnType != nil {
+		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok {
+			returnType = objectType
+		} else {
+			typeDetails := map[*schema.ObjectType]*typeDetails{}
+			mod := &modContext{
+				pkg:         pkg.Reference(),
+				mod:         modName,
+				typeDetails: typeDetails,
+				namespaces:  d.Namespaces,
+			}
+			return mod.typeString(m.Function.ReturnType, "", false, false, false)
+		}
+	}
+
 	if info, ok := pkg.Language["csharp"].(CSharpPackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
+		if info.LiftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1 {
 			typeDetails := map[*schema.ObjectType]*typeDetails{}
 			mod := &modContext{
 				pkg:           pkg.Reference(),
@@ -120,7 +136,7 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 				namespaces:    d.Namespaces,
 				rootNamespace: info.GetRootNamespace(),
 			}
-			return mod.typeString(m.Function.Outputs.Properties[0].Type, "", false, false, false)
+			return mod.typeString(returnType.Properties[0].Type, "", false, false, false)
 		}
 	}
 	return fmt.Sprintf("%s.%sResult", resourceName(r), d.GetMethodName(m))

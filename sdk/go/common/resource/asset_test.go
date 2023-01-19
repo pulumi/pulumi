@@ -388,6 +388,7 @@ func TestArchiveJar(t *testing.T) {
 	validateTestDirArchive(t, arch, 4)
 }
 
+//nolint:unused // Used by tests that are currently skipped
 func findRepositoryRoot() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -439,7 +440,7 @@ func TestArchiveZipFiles(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-// nolint: gosec
+//nolint:gosec
 func TestNestedArchive(t *testing.T) {
 	t.Parallel()
 
@@ -481,7 +482,7 @@ func TestNestedArchive(t *testing.T) {
 	assert.Equal(t, "fake.txt", filepath.ToSlash(files[2].Name))
 }
 
-// nolint: gosec
+//nolint:gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	t.Parallel()
 

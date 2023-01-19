@@ -17,26 +17,25 @@ import json
 from functools import reduce
 from inspect import isawaitable
 from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Set,
     Tuple,
     Type,
     TypeVar,
-    Generic,
-    Set,
-    Callable,
-    Awaitable,
     Union,
     cast,
-    Mapping,
-    Any,
-    List,
-    Dict,
-    Optional,
-    TYPE_CHECKING,
     overload,
 )
 
-from . import _types
-from . import runtime
+from . import _types, runtime
 from .runtime import rpc
 from .runtime.sync_await import _sync_await
 
@@ -293,9 +292,16 @@ class Output(Generic[T_co]):
         typ = type(val)
         if _types.is_input_type(typ):
             # We know that any input type can safely be decomposed into it's `__dict__`, and then reconstructed
-            # via `type(**d)` from the (unwrapped) properties.
-            o_typ: Output[typ] = Output.all(**val.__dict__).apply(  # type:ignore
+            # via `type(**d)` from the (unwrapped) properties (bar empty input types, see next comment).
+            o_typ = Output.all(**val.__dict__).apply(
+                # if __dict__ was empty `all` will return an empty list object rather than a dict object,
+                # there isn't really a good way to express this in mypy so the type checker doesn't pickup on
+                # this. If we get an empty list we can't splat it as that results in a type error, so check
+                # that we have some values before splatting. If it's empty just call the `typ` constructor
+                # directly with no arguments.
                 lambda d: typ(**d)
+                if d
+                else typ()
             )
             return cast(Output[T_co], o_typ)
 
@@ -553,7 +559,7 @@ class Output(Generic[T_co]):
         separators: Optional[Tuple[str, str]] = None,
         default: Optional[Callable[[Any], Any]] = None,
         sort_keys: bool = False,
-        **kw: Any
+        **kw: Any,
     ) -> "Output[str]":
         """
         Uses json.dumps to serialize the given Input[object] value into a JSON string.
@@ -631,7 +637,7 @@ class Output(Generic[T_co]):
                     separators=separators,
                     default=default,
                     sort_keys=sort_keys,
-                    **kw
+                    **kw,
                 )
 
                 # Update the final resources and secret flag based on what we saw while dumping
@@ -663,6 +669,41 @@ class Output(Generic[T_co]):
 
         run_fut = asyncio.ensure_future(run())
         return Output(result_resources, run_fut, result_is_known, result_is_secret)
+
+    @staticmethod
+    def json_loads(
+        s: Input[Union[str, bytes, bytearray]],
+        *,
+        cls: Optional[Type[json.JSONDecoder]] = None,
+        object_hook: Optional[Callable[[Dict[Any, Any]], Any]] = None,
+        parse_float: Optional[Callable[[str], Any]] = None,
+        parse_int: Optional[Callable[[str], Any]] = None,
+        parse_constant: Optional[Callable[[str], Any]] = None,
+        object_pairs_hook: Optional[Callable[[List[Tuple[Any, Any]]], Any]] = None,
+        **kwds: Any,
+    ) -> "Output[Any]":
+        """
+        Uses json.loads to deserialize the given JSON Input[str] value into a value.
+
+        The arguments have the same meaning as in `json.loads` except s is an Input.
+        """
+
+        def loads(s: Union[str, bytes, bytearray]) -> Any:
+            return json.loads(
+                s,
+                cls=cls,
+                object_hook=object_hook,
+                parse_float=parse_float,
+                parse_int=parse_int,
+                parse_constant=parse_constant,
+                object_pairs_hook=object_pairs_hook,
+                **kwds,
+            )
+
+        # You'd think this could all be on one line but mypy seems to think `s` is a `Sequence[object]` if you
+        # do.
+        os: Output[Union[str, bytes, bytearray]] = Output.from_input(s)
+        return os.apply(loads)
 
     def __str__(self) -> str:
         return """Calling __str__ on an Output[T] is not supported.

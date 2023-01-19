@@ -545,7 +545,6 @@ func TestConstructPlainGo(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t,
@@ -822,6 +821,20 @@ func TestResourceRefsGetResourceGo(t *testing.T) {
 		Dir: filepath.Join("resource_refs_get_resource", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick: true,
+	})
+}
+
+// TestDeletedWithGo tests the DeletedWith resource option.
+func TestDeletedWithGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("deleted_with", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
 	})

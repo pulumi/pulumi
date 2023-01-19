@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -154,10 +153,10 @@ func TestProjectLoadJSON(t *testing.T) {
 	t.Parallel()
 
 	writeAndLoad := func(str string) (*Project, error) {
-		tmp, err := ioutil.TempFile("", "*.json")
+		tmp, err := os.CreateTemp("", "*.json")
 		assert.NoError(t, err)
 		path := tmp.Name()
-		err = ioutil.WriteFile(path, []byte(str), 0600)
+		err = os.WriteFile(path, []byte(str), 0600)
 		assert.NoError(t, err)
 		return LoadProject(path)
 	}
@@ -221,20 +220,20 @@ func deleteFile(t *testing.T, file *os.File) {
 }
 
 func loadProjectFromText(t *testing.T, content string) (*Project, error) {
-	tmp, err := ioutil.TempFile("", "*.yaml")
+	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
-	err = ioutil.WriteFile(path, []byte(content), 0600)
+	err = os.WriteFile(path, []byte(content), 0600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProject(path)
 }
 
 func loadProjectStackFromText(t *testing.T, project *Project, content string) (*ProjectStack, error) {
-	tmp, err := ioutil.TempFile("", "*.yaml")
+	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
-	err = ioutil.WriteFile(path, []byte(content), 0600)
+	err = os.WriteFile(path, []byte(content), 0600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProjectStack(project, path)

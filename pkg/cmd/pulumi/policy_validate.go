@@ -67,7 +67,7 @@ func newPolicyValidateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&argConfig, "config", "",
 		"The file path for the Policy Pack configuration file")
-	cmd.MarkFlagRequired("config") // nolint: errcheck
+	cmd.MarkFlagRequired("config") //nolint:errcheck
 
 	return cmd
 }

@@ -739,7 +739,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/", handler)
-	contract.IgnoreError(http.Serve(l, mux)) // nolint gosec
+	contract.IgnoreError(http.Serve(l, mux)) //nolint:gosec
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
@@ -880,7 +880,7 @@ func (b *cloudBackend) ListStacks(
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
-	var backendSummaries []backend.StackSummary
+	var backendSummaries = make([]backend.StackSummary, 0, len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
 			summary: apiSummary,
@@ -1253,7 +1253,7 @@ func (b *cloudBackend) GetHistory(
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
-	var beUpdates []backend.UpdateInfo
+	var beUpdates = make([]backend.UpdateInfo, 0, len(updates))
 	for _, update := range updates {
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)
@@ -1624,7 +1624,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 	}
 	id := resp.ID
 
-	fmt.Printf(opts.Color.Colorize(colors.SpecHeadline + "Preparing deployment..." + colors.Reset + "\n\n"))
+	fmt.Print(opts.Color.Colorize(colors.SpecHeadline + "Preparing deployment..." + colors.Reset + "\n\n"))
 
 	if !opts.SuppressPermalink && !opts.JSONDisplay && resp.ConsoleURL != "" {
 		fmt.Printf(opts.Color.Colorize(
@@ -1641,7 +1641,7 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 
 		for _, l := range logs.Lines {
 			if l.Header != "" {
-				fmt.Printf(opts.Color.Colorize(
+				fmt.Print(opts.Color.Colorize(
 					"\n" + colors.SpecHeadline + l.Header + ":" + colors.Reset + "\n"))
 
 				// If we see it's a Pulumi operation, rather than outputting the deployment logs,
@@ -1768,7 +1768,7 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 // Represents feature-detected capabilities of the service the backend is connected to.
 type capabilities struct {
 	// If non-nil, indicates that delta checkpoint updates are supported.
-	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV1
+	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.
@@ -1817,10 +1817,21 @@ func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, 
 		case apitype.DeltaCheckpointUploads:
 			var cap apitype.DeltaCheckpointUploadsConfigV1
 			if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
-				msg := "decoding DeltaCheckpointUploadsConfigV1 returned %w"
+				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
 				return capabilities{}, fmt.Errorf(msg, err)
 			}
-			parsed.deltaCheckpointUpdates = &cap
+			parsed.deltaCheckpointUpdates = &apitype.DeltaCheckpointUploadsConfigV2{
+				CheckpointCutoffSizeBytes: cap.CheckpointCutoffSizeBytes,
+			}
+		case apitype.DeltaCheckpointUploadsV2:
+			if entry.Version == 2 {
+				var cap apitype.DeltaCheckpointUploadsConfigV2
+				if err := json.Unmarshal(entry.Configuration, &cap); err != nil {
+					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
+					return capabilities{}, fmt.Errorf(msg, err)
+				}
+				parsed.deltaCheckpointUpdates = &cap
+			}
 		default:
 			continue
 		}

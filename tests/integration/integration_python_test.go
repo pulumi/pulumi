@@ -620,7 +620,6 @@ func TestConstructPlainPython(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t,
@@ -1002,6 +1001,20 @@ func TestResourceRefsGetResourcePython(t *testing.T) {
 		Dir: filepath.Join("resource_refs_get_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+	})
+}
+
+// TestDeletedWithPython tests the DeletedWith resource option.
+func TestDeletedWithPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("deleted_with", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
 	})

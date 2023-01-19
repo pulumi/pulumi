@@ -80,7 +80,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
-	var options []string
+	options := make([]string, 0, len(candidateResources))
 	optionMap := make(map[string]*resource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.

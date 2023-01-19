@@ -90,6 +90,12 @@ class ResourceResolverOperations(NamedTuple):
     A list of aliases applied to this resource.
     """
 
+    deleted_with_urn: Optional[str]
+    """
+    If set, the providers Delete method will not be called for this resource
+    if specified resource is being deleted as well.
+    """
+
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
@@ -181,6 +187,10 @@ async def prepare_resource(
         if not alias_val in aliases:
             aliases.append(alias_val)
 
+    deleted_with_urn: Optional[str] = ""
+    if opts is not None and opts.deleted_with is not None:
+        deleted_with_urn = await opts.deleted_with.urn.future()
+
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
@@ -189,6 +199,7 @@ async def prepare_resource(
         provider_refs,
         property_dependencies,
         aliases,
+        deleted_with_urn,
     )
 
 
@@ -562,7 +573,10 @@ def register_resource(
                         "Expected custom_timeouts to be a CustomTimeouts object"
                     )
 
-            if opts.deleted_with and not await settings.monitor_supports_deleted_with():
+            if (
+                resolver.deleted_with_urn
+                and not await settings.monitor_supports_deleted_with()
+            ):
                 raise Exception(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
                 )
@@ -598,7 +612,7 @@ def register_resource(
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
                 retainOnDelete=opts.retain_on_delete or False,
-                deletedWith=opts.deleted_with,
+                deletedWith=resolver.deleted_with_urn,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

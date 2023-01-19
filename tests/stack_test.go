@@ -20,7 +20,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -245,7 +244,7 @@ func TestStackCommands(t *testing.T) {
 
 				stackFile := path.Join(e.RootPath, "stack.json")
 				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
-				stackJSON, err := ioutil.ReadFile(stackFile)
+				stackJSON, err := os.ReadFile(stackFile)
 				if !assert.NoError(t, err) {
 					t.FailNow()
 				}
@@ -259,7 +258,7 @@ func TestStackCommands(t *testing.T) {
 				deployment.Version = deploymentVersion
 				bytes, err := json.Marshal(deployment)
 				assert.NoError(t, err)
-				err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+				err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 				if !assert.NoError(t, err) {
 					t.FailNow()
 				}
@@ -295,7 +294,7 @@ func TestStackCommands(t *testing.T) {
 		// becomes invalid.
 		stackFile := path.Join(e.RootPath, "stack.json")
 		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
-		stackJSON, err := ioutil.ReadFile(stackFile)
+		stackJSON, err := os.ReadFile(stackFile)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -331,7 +330,7 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+		err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -662,7 +661,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 }
 
 func getFileNames(infos []os.DirEntry) []string {
-	var result []string
+	result := make([]string, 0, len(infos))
 	for _, i := range infos {
 		result = append(result, i.Name())
 	}

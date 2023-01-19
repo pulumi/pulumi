@@ -1,4 +1,4 @@
-package httpstate
+package service
 
 import (
 	"testing"

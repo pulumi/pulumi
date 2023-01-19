@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/rivo/uniseg"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
@@ -59,8 +59,8 @@ func InteractiveTerminal() bool {
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.
-	return terminal.IsTerminal(int(os.Stdin.Fd())) &&
-		terminal.IsTerminal(int(os.Stdout.Fd()))
+	return term.IsTerminal(int(os.Stdin.Fd())) &&
+		term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 // ReadConsole reads the console with the given prompt text.

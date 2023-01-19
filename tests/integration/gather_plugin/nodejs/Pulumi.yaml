@@ -1,3 +1,7 @@
 name: test-provider-url
 runtime: nodejs
 description: A minimal Go Pulumi program
+plugins:
+  providers:
+    - name: testprovider
+      path: ../../../testprovider

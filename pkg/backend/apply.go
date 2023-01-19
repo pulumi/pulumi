@@ -158,15 +158,15 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 
 		choices := []string{string(yes), string(no)}
 
-		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
-		// If we're in experimental mode we don't add this because "yes" will also use the plan
-		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.Experimental {
-			choices = append([]string{string(yesPlan)}, choices...)
-		}
-
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
 			choices = append(choices, string(details))
+		}
+
+		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
+		// If we're in experimental mode we don't add this because "yes" will also use the plan
+		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.Experimental {
+			choices = append(choices, string(yesPlan))
 		}
 
 		var previewWarning string

@@ -14,7 +14,7 @@
 
 // The linter doesn't see the uses since the consumers are conditionally compiled tests.
 //
-// nolint:unused,deadcode,varcheck
+//nolint:unused,deadcode,varcheck
 package ints
 
 import (
@@ -22,13 +22,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +40,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const WindowsOS = "windows"
@@ -123,7 +122,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			assert.NoError(t, err)
 			defer func() {
 				// Ignore the error as it may fail with access denied on Windows.
-				cmd.Process.Kill() // nolint: errcheck
+				cmd.Process.Kill() //nolint:errcheck
 			}()
 
 			// Read the port from standard output.
@@ -133,7 +132,11 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
-			conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+			conn, err := grpc.Dial(
+				"127.0.0.1:"+port,
+				grpc.WithTransportCredentials(insecure.NewCredentials()),
+				rpcutil.GrpcChannelOptions(),
+			)
 			assert.NoError(t, err)
 			client := pulumirpc.NewResourceProviderClient(conn)
 
@@ -174,7 +177,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -217,7 +219,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -233,37 +234,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 			})
 		})
 	}
-}
-
-func buildTestProvider(t *testing.T, providerDir string) string {
-	fn := func() {
-		providerName := "pulumi-resource-testprovider"
-		if runtime.GOOS == "windows" {
-			providerName += ".exe"
-		}
-
-		_, err := os.Stat(filepath.Join(providerDir, providerName))
-		if err == nil {
-			return
-		} else if errors.Is(err, os.ErrNotExist) {
-			// Not built yet, continue.
-		} else {
-			t.Fatalf("Unexpected error building test provider: %v", err)
-		}
-
-		cmd := exec.Command("go", "build", "-o", providerName)
-		cmd.Dir = providerDir
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
-	}
-	lockfile := filepath.Join(providerDir, ".lock")
-	timeout := 10 * time.Minute
-	synchronouslyDo(t, lockfile, timeout, fn)
-
-	// Allows us to drop this in in places where providerDir was used:
-	return providerDir
 }
 
 func runComponentSetup(t *testing.T, testDir string) {
@@ -341,7 +311,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -439,7 +408,6 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{

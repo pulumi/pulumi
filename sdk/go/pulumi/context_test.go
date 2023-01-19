@@ -20,8 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // The test is extracted from a panic using pulumi-docker and minified
@@ -51,6 +52,26 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		}, WithMocks("project", "stack", mocks))
 		assert.NoError(t, err)
 	}
+}
+
+func TestRunningUnderMocks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With mocks", func(t *testing.T) {
+		t.Parallel()
+		testCtx := &Context{
+			monitor: &mockMonitor{},
+		}
+		assert.True(t, testCtx.RunningWithMocks())
+	})
+
+	t.Run("Without mocks", func(t *testing.T) {
+		t.Parallel()
+		testCtx := &Context{
+			monitor: nil,
+		}
+		assert.False(t, testCtx.RunningWithMocks())
+	})
 }
 
 // An extended version of `TestLoggingFromApplyCausesNoPanics`, more
@@ -90,7 +111,7 @@ func NewLoggingTestResource(
 	}
 
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
-		time.Sleep(10)
+		time.Sleep(10 * time.Nanosecond)
 		err := ctx.Log.Debug("Zzz", &LogArgs{})
 		assert.NoError(t, err)
 		return inputValue, nil
@@ -321,7 +342,7 @@ func TestMergeProviders(t *testing.T) {
 			expected:  []string{"t2"},
 		},
 	}
-	// nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
+	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for i, tt := range tests {
 		i, tt := i, tt
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {

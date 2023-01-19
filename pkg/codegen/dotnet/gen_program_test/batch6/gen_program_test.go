@@ -17,14 +17,14 @@
 package batch6
 
 import (
-  "os"
-  "testing"
+	"os"
+	"testing"
 
-  codegen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-  "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {
-  os.Chdir("../../../dotnet") // chdir into codegen/dotnet
-  codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(6, 6))
+	os.Chdir("../../../dotnet") // chdir into codegen/dotnet
+	codegen.GenerateProgramBatchTest(t, test.ProgramTestBatch(6, 6))
 }

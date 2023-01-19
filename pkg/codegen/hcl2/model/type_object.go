@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -37,7 +38,7 @@ type ObjectType struct {
 	Annotations []interface{}
 
 	propertyUnion Type
-	s             string
+	s             atomic.Value // Value<string>
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -55,7 +56,7 @@ func (t *ObjectType) Pretty() pretty.Formatter {
 	for k, v := range t.Properties {
 		m[k] = v.Pretty()
 	}
-	return pretty.Object{Properties: m}
+	return &pretty.Object{Properties: m}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of
@@ -273,8 +274,8 @@ func (t *ObjectType) String() string {
 }
 
 func (t *ObjectType) string(seen map[Type]struct{}) string {
-	if t.s != "" {
-		return t.s
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
 
 	if seen != nil {
@@ -286,7 +287,7 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	}
 	seen[t] = struct{}{}
 
-	var properties []string
+	properties := make([]string, 0, len(t.Properties))
 	for k, v := range t.Properties {
 		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
 	}
@@ -297,8 +298,9 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 		annotations = fmt.Sprintf(", annotated(%p)", t)
 	}
 
-	t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
-	return t.s
+	s := fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
+	t.s.Store(s)
+	return s
 }
 
 func (t *ObjectType) unify(other Type) (Type, ConversionKind) {

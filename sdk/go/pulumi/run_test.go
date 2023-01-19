@@ -1,4 +1,4 @@
-// nolint: goconst
+//nolint:goconst
 package pulumi
 
 import (
@@ -9,10 +9,28 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
+
+// WithDryRun is an internal, test-only option
+// that controls whether a Context is in dryRun mode.
+func WithDryRun(dryRun bool) RunOption {
+	return func(r *RunInfo) {
+		r.DryRun = dryRun
+	}
+}
+
+// WrapResourceMonitorClient is an internal, test-only option
+// that wraps the ResourceMonitorClient used by Context.
+func WrapResourceMonitorClient(
+	wrap func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient,
+) RunOption {
+	return func(ri *RunInfo) {
+		ri.wrapResourceMonitorClient = wrap
+	}
+}
 
 type testMonitor struct {
 	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
@@ -387,7 +405,7 @@ func (module) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
 		var instance testInstanceResource
 		return &instance, nil
 	default:
-		return nil, errors.Errorf("unknown resource type %s", typ)
+		return nil, fmt.Errorf("unknown resource type %s", typ)
 	}
 }
 
@@ -411,7 +429,7 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 			case "pkg:index:MyCustom":
 				return args.Name + "_id", args.Inputs, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
 		},
 	}
@@ -470,7 +488,7 @@ func TestRemoteComponent(t *testing.T) {
 					"outprop": outprop,
 				}, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
 		},
 	}
@@ -994,7 +1012,7 @@ func TestResourceInput(t *testing.T) {
 					"outprop": resource.NewStringProperty("bar"),
 				}, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
 
 		},

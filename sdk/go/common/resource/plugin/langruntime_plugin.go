@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -83,7 +84,7 @@ func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
 	dialOpts := append(
 		rpcutil.OpenTracingInterceptorDialOptions(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
 
@@ -106,7 +107,7 @@ func buildArgsForNewPlugin(host Host, root string, options map[string]interface{
 	if err != nil {
 		return nil, err
 	}
-	var args []string
+	args := make([]string, 0, len(options))
 
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
@@ -154,7 +155,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 		return nil, rpcError
 	}
 
-	var results []workspace.PluginSpec
+	var results = make([]workspace.PluginSpec, 0, len(resp.GetPlugins()))
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -349,7 +350,7 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 		return nil, rpcError
 	}
 
-	var results []DependencyInfo
+	results := make([]DependencyInfo, 0, len(resp.GetDependencies()))
 	for _, dep := range resp.GetDependencies() {
 		var version semver.Version
 		if v := dep.Version; v != "" {

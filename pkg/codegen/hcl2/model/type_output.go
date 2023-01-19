@@ -41,7 +41,7 @@ func (*OutputType) SyntaxNode() hclsyntax.Node {
 }
 
 func (t *OutputType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "output(",
 		Value:   t.ElementType.Pretty(),
 		Postfix: ")",

@@ -141,10 +141,8 @@ func (ctx *Context) Close() error {
 func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
 	copy := *ctx
 	go func() {
-		select {
-		case _, _ = <-c:
-			copy.Close()
-		}
+		<-c
+		copy.Close()
 	}()
 	return &copy
 }

@@ -1,4 +1,4 @@
-// nolint: lll
+//nolint:lll
 package nodejs
 
 import (

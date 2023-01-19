@@ -5,7 +5,7 @@ import (
 	"fmt"
 	gofmt "go/format"
 	"io"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 	"sync"
@@ -252,7 +252,7 @@ require (
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := ioutil.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -479,15 +479,6 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 
 	return "", fmt.Errorf("could not find package version information for pkg: %s", pkg)
 
-}
-
-func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
-	p, ok := g.contexts[pkg]
-	if !ok {
-		return nil, false
-	}
-	m, ok := p[mod]
-	return m, ok
 }
 
 func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
@@ -735,7 +726,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 	if zeroValueType != "" {
 		for _, t := range temps {
 			switch t.(type) {
-			case *spillTemp, *jsonTemp, *readDirTemp:
+			case *spillTemp, *readDirTemp:
 				genZeroValueDecl = true
 			default:
 			}
@@ -936,13 +927,14 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 }
 
-// nolint: lll
 // useLookupInvokeForm takes a token for an invoke and determines whether to use the
 // .Get or .Lookup form. The Go SDK has collisions in .Get methods that require renaming.
 // For instance, gen.go creates a resource getter for AWS VPCs that collides with a function:
 // GetVPC resource getter: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
 // LookupVPC function: https://github.com/pulumi/pulumi-aws/blob/7835df354694e2f9f23371602a9febebc6b45be8/sdk/go/aws/ec2/getVpc.go#L15
 // Given that the naming here is not consisten, we must reverse the process from gen.go.
+//
+//nolint:lll
 func (g *generator) useLookupInvokeForm(token string) bool {
 	pkg, module, member, _ := pcl.DecomposeToken(token, *new(hcl.Range))
 	modSplit := strings.Split(module, "/")

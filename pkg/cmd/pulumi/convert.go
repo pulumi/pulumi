@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -109,7 +108,7 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
 	for file, source := range p.Source() {
 		outputFile := path.Join(directory, file)
-		err := ioutil.WriteFile(outputFile, []byte(source), 0600)
+		err := os.WriteFile(outputFile, []byte(source), 0600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -172,11 +171,11 @@ func runConvert(
 		projectGenerator = gogen.GenerateProject
 	case "typescript":
 		projectGenerator = nodejs.GenerateProject
-	case "python": // nolint: goconst
+	case "python": //nolint:goconst
 		projectGenerator = python.GenerateProject
-	case "java": // nolint: goconst
+	case "java": //nolint:goconst
 		projectGenerator = javagen.GenerateProject
-	case "yaml": // nolint: goconst
+	case "yaml": //nolint:goconst
 		projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
 		if e.GetBool(env.Dev) {

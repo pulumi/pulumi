@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll, interfacer
+//nolint:lll, interfacer
 package pulumi
 
 import (
@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -238,41 +239,49 @@ func (o *OutputState) reject(err error) {
 	o.fulfill(nil, true, false, nil, err)
 }
 
+// awaitOnce is a single iteration of the "await" loop, using the condition variable as a lock to
+// guard accessing the fields to avoid tearing reads and writes.
+func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	if o == nil {
+		// If the state is nil, treat its value as resolved and unknown.
+		return nil, false, false, nil, nil
+	}
+
+	o.cond.L.Lock()
+	defer o.cond.L.Unlock()
+	for o.state == outputPending {
+		if ctx.Err() != nil {
+			return nil, true, false, nil, ctx.Err()
+		}
+		o.cond.Wait()
+	}
+
+	return o.value, o.known, o.secret, o.deps, o.err
+}
+
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
 
 	for {
-		if o == nil {
-			// If the state is nil, treat its value as resolved and unknown.
-			return nil, false, false, nil, nil
-		}
-
-		o.cond.L.Lock()
-		for o.state == outputPending {
-			if ctx.Err() != nil {
-				return nil, true, false, nil, ctx.Err()
-			}
-			o.cond.Wait()
-		}
-		o.cond.L.Unlock()
-
-		deps = mergeDependencies(deps, o.deps)
-		known = known && o.known
-		secret = secret || o.secret
-		if !o.known || o.err != nil {
-			return nil, known, secret, deps, o.err
+		v, k, s, d, err := o.awaitOnce(ctx)
+		value := v
+		known = known && k
+		secret = secret || s
+		deps = mergeDependencies(deps, d)
+		if !known || err != nil {
+			return nil, known, secret, deps, err
 		}
 
 		// If the result is an Output, await it in turn.
 		//
 		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
 		// the element type of the outer output. We should reconsider this.
-		if ov, ok := o.value.(Output); ok {
+		if ov, ok := value.(Output); ok {
 			o = ov.getState()
 		} else {
-			return o.value, true, secret, deps, nil
+			return value, known, secret, deps, nil
 		}
 	}
 }
@@ -282,6 +291,10 @@ func (o *OutputState) getState() *OutputState {
 }
 
 func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
+	if deps == nil && len(deps) != 0 {
+		panic(fmt.Sprintf("data race detected - please report to https://github.com/pulumi/pulumi/issues: deps is nil with len %d", len(deps)))
+	}
+
 	if join != nil {
 		join.Add(1)
 	}
@@ -356,66 +369,112 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
-	fv := reflect.ValueOf(fn)
-	if fv.Kind() != reflect.Func {
-		panic(errors.New("applier must be a function"))
-	}
+// applier is a normalized version of a function
+// passed into either ApplyT or ApplyTWithContext.
+//
+// Use its Call method instead of calling the fn directly.
+type applier struct {
+	// Out is the type of output produced by this applier.
+	Out reflect.Type
 
-	ft := fv.Type()
-	if ft.NumIn() != 1 || !elementType.AssignableTo(ft.In(0)) {
-		panic(fmt.Errorf("applier must have 1 input parameter assignable from %v", elementType))
-	}
-
-	var outs []reflect.Type
-	switch ft.NumOut() {
-	case 1:
-		// Okay
-		outs = []reflect.Type{ft.Out(0)}
-	case 2:
-		// Second out parameter must be of type error
-		if !ft.Out(1).AssignableTo(errorType) {
-			panic(errors.New("applier's second return type must be assignable to error"))
-		}
-		outs = []reflect.Type{ft.Out(0), ft.Out(1)}
-	default:
-		panic(errors.New("applier must return exactly one or two values"))
-	}
-
-	ins := []reflect.Type{contextType, ft.In(0)}
-	contextfulType := reflect.FuncOf(ins, outs, ft.IsVariadic())
-	contextfulFunc := reflect.MakeFunc(contextfulType, func(args []reflect.Value) []reflect.Value {
-		// Slice off the context argument and call the applier.
-		return fv.Call(args[1:])
-	})
-	return contextfulFunc.Interface()
+	fn  reflect.Value
+	ctx bool // whether fn accepts a context as its first input
+	err bool // whether fn return an err as its last result
 }
 
-func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
+func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
 	fv := reflect.ValueOf(fn)
 	if fv.Kind() != reflect.Func {
-		panic(errors.New("applier must be a function"))
+		return nil, errors.New("applier must be a function")
 	}
 
+	defer func() {
+		// The named return above is necessary
+		// to augment the error message in a defer.
+		if err == nil {
+			return
+		}
+
+		f := runtime.FuncForPC(fv.Pointer())
+		// Defensively guard against the possibility that
+		// fv.Pointer returns an invalid program counter.
+		// This will never happen in practice.
+		if f == nil {
+			return
+		}
+
+		file, line := f.FileLine(f.Entry())
+		err = fmt.Errorf("%w\napplier defined at %v:%v", err, file, line)
+	}()
+
+	ap := applier{fn: fv}
 	ft := fv.Type()
-	if ft.NumIn() != 2 || !contextType.AssignableTo(ft.In(0)) || !elementType.AssignableTo(ft.In(1)) {
-		panic(fmt.Errorf("applier's input parameters must be assignable from %v and %v", contextType, elementType))
-	}
 
-	switch ft.NumOut() {
-	case 1:
-		// Okay
+	// The function parameters must be in one of the following forms:
+	//	(E)
+	//	(context.Context, E)
+	// Everything else is invalid.
+	var elemIdx int
+	elemName := "first"
+	switch numIn := ft.NumIn(); numIn {
 	case 2:
-		// Second out parameter must be of type error
-		if !ft.Out(1).AssignableTo(errorType) {
-			panic(errors.New("applier's second return type must be assignable to error"))
+		if t := ft.In(0); !contextType.AssignableTo(t) {
+			return nil, fmt.Errorf("applier's first input parameter must be assignable from %v, got %v", contextType, t)
+		}
+		ap.ctx = true
+		elemIdx = 1
+		elemName = "second"
+		fallthrough // validate element type
+	case 1:
+		if t := ft.In(elemIdx); !elemType.AssignableTo(t) {
+			return nil, fmt.Errorf("applier's %s input parameter must be assignable from %v, got %v", elemName, elemType, t)
 		}
 	default:
-		panic(errors.New("applier must return exactly one or two values"))
+		return nil, fmt.Errorf("applier must accept exactly one or two parameters, got %d", numIn)
 	}
 
-	// Okay
-	return fv
+	// The function results must be in one of the following forms:
+	//	(O)
+	//	(O, error)
+	// Everything else is invalid.
+	switch numOut := ft.NumOut(); numOut {
+	case 2:
+		if t := ft.Out(1); !t.AssignableTo(errorType) {
+			return nil, fmt.Errorf("applier's second return type must be assignable to error, got %v", t)
+		}
+		ap.err = true
+		fallthrough // extract output type
+	case 1:
+		ap.Out = ft.Out(0)
+	default:
+		return nil, fmt.Errorf("applier must return exactly one or two values, got %d", numOut)
+	}
+
+	return &ap, nil
+}
+
+// Call executes the applier on the provided value and returns the result.
+func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, error) {
+	args := make([]reflect.Value, 0, 2) // ([ctx], in)
+	if ap.ctx {
+		args = append(args, reflect.ValueOf(ctx))
+	}
+	args = append(args, in)
+
+	var (
+		out reflect.Value
+		err error
+	)
+	results := ap.fn.Call(args)
+	out = results[0]
+	if ap.err {
+		// Using the 'x, ok' form for cast here
+		// gracefully handles the case when results[1]
+		// is nil.
+		err, _ = results[1].Interface().(error)
+	}
+
+	return out, err
 }
 
 // ApplyT transforms the data of the output property using the applier func. The result remains an output
@@ -442,7 +501,11 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyT(applier interface{}) Output {
-	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
+	ap, err := newApplier(applier, o.elementType())
+	if err != nil {
+		panic(err)
+	}
+	return o.applyTWithApplier(context.Background(), ap)
 }
 
 var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
@@ -472,10 +535,16 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
 func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
-	fn := checkApplier(applier, o.elementType())
+	ap, err := newApplier(applier, o.elementType())
+	if err != nil {
+		panic(err)
+	}
+	return o.applyTWithApplier(ctx, ap)
+}
 
+func (o *OutputState) applyTWithApplier(ctx context.Context, ap *applier) Output {
 	resultType := anyOutputType
-	applierReturnType := fn.Type().Out(0)
+	applierReturnType := ap.Out
 
 	if ot, ok := concreteTypeToOutputType.Load(applierReturnType); ok {
 		resultType = ot.(reflect.Type)
@@ -507,18 +576,19 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		if !val.IsValid() {
 			val = reflect.Zero(o.elementType())
 		}
-		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
-		if len(results) == 2 && !results[1].IsNil() {
-			result.getState().reject(results[1].Interface().(error))
+
+		out, err := ap.Call(ctx, val)
+		if err != nil {
+			result.getState().reject(err)
 			return
 		}
 		var fulfilledDeps []Resource
 		fulfilledDeps = append(fulfilledDeps, deps...)
-		if resultOutput, ok := results[0].Interface().(Output); ok {
+		if resultOutput, ok := out.Interface().(Output); ok {
 			fulfilledDeps = append(fulfilledDeps, resultOutput.getState().dependencies()...)
 		}
 		// Fulfill the result.
-		result.getState().fulfillValue(results[0], true, secret, fulfilledDeps, nil)
+		result.getState().fulfillValue(out, true, secret, fulfilledDeps, nil)
 	}()
 	return result
 }
@@ -560,10 +630,8 @@ func Unsecret(input Output) Output {
 
 // UnsecretWithContext will unwrap a secret output as a new output with a resolved value and no secretness
 func UnsecretWithContext(ctx context.Context, input Output) Output {
-	var x bool
-	o := toOutputWithContext(ctx, input.getState().join, input, &x)
-	// set immediate secretness ahead of resolution/fulfillment
-	o.getState().secret = false
+	secret := false
+	o := toOutputWithContext(ctx, input.getState().join, input, &secret)
 	return o
 }
 
@@ -618,6 +686,24 @@ func JSONMarshalWithContext(ctx context.Context, v interface{}) StringOutput {
 		}
 		return string(json), nil
 	}).(StringOutput)
+}
+
+// JSONUnmarshal uses "encoding/json".Unmarshal to deserialize the given Input JSON string into a value.
+func JSONUnmarshal(data StringInput) AnyOutput {
+	return JSONUnmarshalWithContext(context.Background(), data)
+}
+
+// JSONUnmarshalWithContext uses "encoding/json".Unmarshal to deserialize the given Input JSON string into a value.
+func JSONUnmarshalWithContext(ctx context.Context, data StringInput) AnyOutput {
+	o := ToOutputWithContext(ctx, data)
+	return o.ApplyTWithContext(ctx, func(_ context.Context, data string) (interface{}, error) {
+		var v interface{}
+		err := json.Unmarshal([]byte(data), &v)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}).(AnyOutput)
 }
 
 func gatherJoins(v interface{}) workGroups {

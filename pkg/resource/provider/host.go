@@ -15,7 +15,7 @@
 package provider
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -26,6 +26,7 @@ import (
 	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -39,10 +40,10 @@ type HostClient struct {
 func NewHostClient(addr string) (*HostClient, error) {
 	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
 	// See https://github.com/pulumi/pulumi/issues/7156
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
 	conn, err := grpc.Dial(
 		addr,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
 		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),

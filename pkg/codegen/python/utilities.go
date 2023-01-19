@@ -112,7 +112,7 @@ var pypiPost = regexp.MustCompile("^post[0-9]+$")
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
 func pypiVersion(v semver.Version) string {
-	var localList []string
+	localList := make([]string, 0, len(pypiReleaseTranslations))
 
 	getRelease := func(maybeRelease string) string {
 		for _, tup := range pypiReleaseTranslations {

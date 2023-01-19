@@ -705,7 +705,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
 			assert.NoError(t, err)
 
 			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
@@ -722,7 +722,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.NotNil(t, secretsProvider)
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
-			_, err := passphrase.NewPromptingPassphaseSecretsManagerFromState(secretsProvider.State)
+			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
 			assert.Error(t, err)
 		},
 	})
@@ -885,7 +885,6 @@ func TestConstructPlainNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t,
@@ -1283,5 +1282,31 @@ func TestResourceRefsGetResourceNode(t *testing.T) {
 		Dir:          filepath.Join("resource_refs_get_resource", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+	})
+}
+
+// TestDeletedWithNode tests the DeletedWith resource option.
+func TestDeletedWithNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("deleted_with", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		Quick: true,
+	})
+}
+
+// Tests custom resource type name of dynamic provider.
+func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-resource-type-name"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			urnOut := stack.Outputs["urn"].(string)
+			urn := resource.URN(urnOut)
+			typ := urn.Type().String()
+			assert.Equal(t, "pulumi-nodejs:dynamic/custom-provider:CustomResource", typ)
+		},
 	})
 }

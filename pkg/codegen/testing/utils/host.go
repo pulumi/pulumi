@@ -27,7 +27,7 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
-	var pluginLoaders []*deploytest.PluginLoader
+	var pluginLoaders = make([]*deploytest.PluginLoader, 0, len(providers))
 
 	for _, v := range providers {
 		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))
@@ -65,6 +65,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"google-native", "0.18.2"},
 		SchemaProvider{"aws-native", "0.13.0"},
 		SchemaProvider{"docker", "3.1.0"},
+		SchemaProvider{"std", "1.0.0"},
 		// PCL examples in 'testing/test/testdata/transpiled_examples require these versions
 		SchemaProvider{"aws", "5.4.0"},
 		SchemaProvider{"azure-native", "1.56.0"},

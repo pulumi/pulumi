@@ -30,6 +30,8 @@ import (
 )
 
 type providerServer struct {
+	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
+
 	provider      Provider
 	keepSecrets   bool
 	keepResources bool
@@ -228,6 +230,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 		inputs = args
 	} else {
+		inputs = make(resource.PropertyMap)
 		for k, v := range req.GetVariables() {
 			key, err := config.ParseKey(k)
 			if err != nil {

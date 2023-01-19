@@ -11,8 +11,8 @@ run:
 linters:
   enable-all: false
   enable:
-    - deadcode
     - errcheck
+    - prealloc
     - goconst
     - gofmt
     - revive
@@ -21,11 +21,26 @@ linters:
     - ineffassign
     - lll
     - misspell
+    - nolintlint
     - nakedret
-    - structcheck
     - unconvert
-    - varcheck
+    - unused
     - paralleltest
-  disable:
-    - staticcheck # Disabled due to OOM errors in golangci-lint@v1.18.0
-    - megacheck # Disabled due to OOM errors in golangci-lint@v1.18.0
+
+linters-settings:
+  nolintlint:
+    # Some linter exclusions are added to generated or templated files
+    # pre-emptively.
+    # Don't complain about these.
+    allow-unused: true
+
+issues:
+  exclude:
+    # https://github.com/pulumi/pulumi/issues/9469
+    - 'Name is deprecated: Name returns the variable or declaration name of the resource'
+
+    # https://github.com/pulumi/pulumi/issues/11869
+    - '"github.com/golang/protobuf/[\w/]+" is deprecated'
+
+    # https://github.com/pulumi/pulumi/issues/11870
+    - 'strings.Title has been deprecated'

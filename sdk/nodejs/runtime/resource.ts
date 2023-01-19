@@ -93,6 +93,9 @@ interface ResourceResolverOperation {
     import: ID | undefined;
     // Any important feature support from the monitor.
     monitorSupportsStructuredAliases: boolean;
+    // If set, the providers Delete method will not be called for this resource
+    // if specified is being deleted as well.
+    deletedWithURN: URN | undefined;
 }
 
 /**
@@ -366,9 +369,9 @@ export function registerResource(res: Resource, parent: Resource | undefined, t:
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setRetainondelete(opts.retainOnDelete || false);
-        req.setDeletedwith(opts.deletedWith);
+        req.setDeletedwith(resop.deletedWithURN || "");
 
-        if (opts.deletedWith && !(await monitorSupportsDeletedWith())) {
+        if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
             throw new Error("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.");
         }
 
@@ -647,6 +650,8 @@ async function prepareResource(label: string, res: Resource, parent: Resource | 
             }
         }
 
+        const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
+
         return {
             resolveURN: resolveURN,
             resolveID: resolveID,
@@ -660,6 +665,7 @@ async function prepareResource(label: string, res: Resource, parent: Resource | 
             aliases: aliases,
             import: importID,
             monitorSupportsStructuredAliases,
+            deletedWithURN,
         };
 
     } finally {

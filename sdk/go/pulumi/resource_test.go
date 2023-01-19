@@ -21,7 +21,6 @@ import (
 	"sync"
 	"testing"
 
-	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/assert"
 	grpc "google.golang.org/grpc"
 
@@ -534,9 +533,8 @@ func TestDependsOnInputs(t *testing.T) {
 	t.Run("known", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			dep1 := newTestRes(t, ctx, "dep1")
 			dep2 := newTestRes(t, ctx, "dep2")
 
@@ -548,16 +546,15 @@ func TestDependsOnInputs(t *testing.T) {
 			res := newTestRes(t, ctx, "res", opts)
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
-		}, WithMocks("project", "stack", &testMonitor{}))
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
 		assert.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			checkDeps := func(name string, dependsOn ResourceArrayInput, expectedDeps ...Resource) {
 				res := newTestRes(t, ctx, name, DependsOnInputs(dependsOn))
 				assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
@@ -580,7 +577,7 @@ func TestDependsOnInputs(t *testing.T) {
 			checkDeps("r4", out4, dep1, dep2, dep4)
 
 			return nil
-		}, WithMocks("project", "stack", &testMonitor{}))
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
 		assert.NoError(t, err)
 	})
 }
@@ -595,7 +592,7 @@ func assertHasDeps(
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
-	var expDeps []URN
+	expDeps := make([]URN, 0, len(expectedDeps))
 	for _, expDepRes := range expectedDeps {
 		expDep := urn(t, ctx, expDepRes)
 		expDeps = append(expDeps, expDep)
@@ -630,8 +627,32 @@ func urn(t *testing.T, ctx *Context, res Resource) URN {
 	return urn
 }
 
+// dependenciesTracker tracks dependencies for registered resources.
+//
+// The zero value of dependenciesTracker is ready to use.
 type dependenciesTracker struct {
-	dependsOn *sync.Map
+	dependsOn sync.Map
+}
+
+// Wrap wraps a ResourceMonitorClient to start tracking RegisterResource calls
+// sent through it.
+//
+// Use this with the WrapResourceMonitorClient option.
+//
+//	var dt dependenciesTracker
+//	RunErr(..., WrapResourceMonitorClient(dt.Wrap))
+func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
+	m := newInterceptingResourceMonitor(cl)
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
+		resp *pulumirpc.RegisterResourceResponse,
+		err error) {
+		var deps []URN
+		for _, dep := range in.GetDependencies() {
+			deps = append(deps, URN(dep))
+		}
+		dt.dependsOn.Store(URN(resp.Urn), deps)
+	}
+	return m
 }
 
 func (dt *dependenciesTracker) dependencies(resource URN) []URN {
@@ -646,76 +667,26 @@ func (dt *dependenciesTracker) dependencies(resource URN) []URN {
 	return urns
 }
 
-func trackDependencies(ctx *Context) *dependenciesTracker {
-	dependsOn := &sync.Map{}
-	m := newInterceptingResourceMonitor(ctx.monitor)
-	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
-		resp *pulumirpc.RegisterResourceResponse,
-		err error) {
-		var deps []URN
-		for _, dep := range in.GetDependencies() {
-			deps = append(deps, URN(dep))
-		}
-		dependsOn.Store(URN(resp.Urn), deps)
-	}
-	ctx.monitor = m
-	return &dependenciesTracker{dependsOn}
-}
-
 type interceptingResourceMonitor struct {
-	inner                 pulumirpc.ResourceMonitorClient
+	pulumirpc.ResourceMonitorClient
+
 	afterRegisterResource func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
 }
 
 func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *interceptingResourceMonitor {
-	m := &interceptingResourceMonitor{}
-	m.inner = inner
-	return m
+	return &interceptingResourceMonitor{
+		ResourceMonitorClient: inner,
+	}
 }
 
-func (i *interceptingResourceMonitor) Call(
-	ctx context.Context, req *pulumirpc.CallRequest, options ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
-	return i.inner.Call(ctx, req, options...)
-}
-
-func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
-	in *pulumirpc.SupportsFeatureRequest,
-	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
-	return i.inner.SupportsFeature(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
-	return i.inner.Invoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
-	return i.inner.StreamInvoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) ReadResource(ctx context.Context,
-	in *pulumirpc.ReadResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
-	return i.inner.ReadResource(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) RegisterResource(ctx context.Context,
+func (i *interceptingResourceMonitor) RegisterResource(
+	ctx context.Context,
 	in *pulumirpc.RegisterResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.RegisterResourceResponse, error) {
-	resp, err := i.inner.RegisterResource(ctx, in, opts...)
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	resp, err := i.ResourceMonitorClient.RegisterResource(ctx, in, opts...)
 	if i.afterRegisterResource != nil {
 		i.afterRegisterResource(in, resp, err)
 	}
 	return resp, err
 }
-
-func (i *interceptingResourceMonitor) RegisterResourceOutputs(ctx context.Context,
-	in *pulumirpc.RegisterResourceOutputsRequest,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
-	return i.inner.RegisterResourceOutputs(ctx, in, opts...)
-}
-
-var _ pulumirpc.ResourceMonitorClient = &interceptingResourceMonitor{}

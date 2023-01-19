@@ -2,7 +2,7 @@ package gen
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 
 	"path/filepath"
 	"testing"
@@ -96,7 +96,7 @@ func TestCollectImports(t *testing.T) {
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
 	path := filepath.Join(testdataPath, testFile)
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	require.NoErrorf(t, err, "could not read %v: %v", path, err)
 
 	parser := syntax.NewParser()

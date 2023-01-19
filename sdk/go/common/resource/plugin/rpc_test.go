@@ -44,7 +44,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
 	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 	assert.Nil(t, err)
-	fmt.Printf("%v\n", assetProps)
+	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Nil(t, err)
 	assert.True(t, assetValue.IsAsset())

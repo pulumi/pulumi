@@ -264,6 +264,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
 	case pcl.Invoke:
+		if expr.Signature.MultiArgumentInputs {
+			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",
+				expr.Args[0]))
+		}
 
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
@@ -500,7 +504,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	// first lower all inner expressions and emit temps
 	for i, item := range expr.Items {
 		// don't treat keys as inputs
-		//nolint: revive
+		//nolint:revive
 		k, kTemps := g.lowerExpression(item.Key, item.Key.Type())
 		temps = append(temps, kTemps...)
 		item.Key = k
@@ -537,24 +541,6 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	}
 
 	g.Fgenf(w, "}")
-}
-
-func (g *generator) genRelativeTraversalExpression(
-	w io.Writer, expr *model.RelativeTraversalExpression, isInput bool) {
-
-	if _, ok := expr.Parts[0].(*model.PromiseType); ok {
-		isInput = false
-	}
-	if _, ok := expr.Parts[0].(*pcl.Resource); ok {
-		isInput = false
-	}
-	if isInput {
-		g.Fgenf(w, "%s(", g.argumentTypeName(expr, expr.Type(), isInput))
-	}
-	g.GenRelativeTraversalExpression(w, expr)
-	if isInput {
-		g.Fgenf(w, ")")
-	}
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
@@ -994,7 +980,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
-	var temps []interface{}
+	var bufferSize = len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
+	var temps = make([]interface{}, 0, bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}
@@ -1080,7 +1067,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 func (g *generator) rewriteThenForAllApply(
 	then *model.AnonymousFunctionExpression,
 ) (*model.AnonymousFunctionExpression, []string) {
-	var typeConvDecls []string
+	typeConvDecls := make([]string, 0, len(then.Parameters))
 	for i, v := range then.Parameters {
 		typ := g.argumentTypeName(nil, v.VariableType, false)
 		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)
@@ -1128,7 +1115,7 @@ func (g *generator) escapeString(v string) string {
 	return builder.String()
 }
 
-// nolint: lll
+//nolint:lll
 func isInputty(destType model.Type) bool {
 	// TODO this needs to be more robust, likely the inverse of:
 	// https://github.com/pulumi/pulumi/blob/5330c97684cad78bcc60d8867f1b28704bd8a555/pkg/codegen/hcl2/model/type_eventuals.go#L244
@@ -1192,13 +1179,13 @@ var functionPackages = map[string][]string{
 	"join":             {"strings"},
 	"mimeType":         {"mime", "path"},
 	"readDir":          {"os"},
-	"readFile":         {"io/ioutil"},
-	"filebase64":       {"io/ioutil", "encoding/base64"},
+	"readFile":         {"os"},
+	"filebase64":       {"encoding/base64", "os"},
 	"toBase64":         {"encoding/base64"},
 	"fromBase64":       {"encoding/base64"},
 	"toJSON":           {"encoding/json"},
 	"sha1":             {"fmt", "crypto/sha1"},
-	"filebase64sha256": {"fmt", "io/ioutil", "crypto/sha256"},
+	"filebase64sha256": {"fmt", "crypto/sha256", "os"},
 	"cwd":              {"os"},
 }
 

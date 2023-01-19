@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -54,7 +54,7 @@ func newSchemaCheckCommand() *cobra.Command {
 				}
 				reader = f
 			}
-			schemaBytes, err := ioutil.ReadAll(reader)
+			schemaBytes, err := io.ReadAll(reader)
 			if err != nil {
 				return fmt.Errorf("failed to read schema: %w", err)
 			}

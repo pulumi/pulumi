@@ -17,6 +17,7 @@ package workspace
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -26,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -458,7 +458,7 @@ func (proj *Project) Validate() error {
 	projectName := proj.Name.String()
 	for configKey, configType := range proj.Config {
 		if configType.Default != nil && configType.Value != nil {
-			return errors.Errorf("project config '%v' cannot have both a 'default' and 'value' attribute", configKey)
+			return fmt.Errorf("project config '%v' cannot have both a 'default' and 'value' attribute", configKey)
 		}
 
 		configTypeName := configType.TypeName()
@@ -466,7 +466,7 @@ func (proj *Project) Validate() error {
 		if configKeyIsNamespacedByProject(projectName, configKey) {
 			// namespaced by project
 			if configType.IsExplicitlyTyped() && configType.TypeName() == arrayTypeName && configType.Items == nil {
-				return errors.Errorf("The configuration key '%v' declares an array "+
+				return fmt.Errorf("The configuration key '%v' declares an array "+
 					"but does not specify the underlying type via the 'items' attribute", configKey)
 			}
 
@@ -474,7 +474,7 @@ func (proj *Project) Validate() error {
 			if configType.IsExplicitlyTyped() && configType.Default != nil {
 				if !ValidateConfigValue(configTypeName, configType.Items, configType.Default) {
 					inferredTypeName := InferFullTypeName(configTypeName, configType.Items)
-					return errors.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
+					return fmt.Errorf("The default value specified for configuration key '%v' is not of the expected type '%v'",
 						configKey,
 						inferredTypeName)
 				}
@@ -483,21 +483,21 @@ func (proj *Project) Validate() error {
 		} else {
 			// when not namespaced by project, there shouldn't be a type, only a value
 			if configType.IsExplicitlyTyped() {
-				return errors.Errorf("Configuration key '%v' is not namespaced by the project and should not define a type",
+				return fmt.Errorf("Configuration key '%v' is not namespaced by the project and should not define a type",
 					configKey)
 			}
 
 			// default values are part of a type schema
 			// when not namespaced by project, there is no type schema, only a value
 			if configType.Default != nil {
-				return errors.Errorf("Configuration key '%v' is not namespaced by the project and "+
+				return fmt.Errorf("Configuration key '%v' is not namespaced by the project and "+
 					"should not define a default value. "+
 					"Did you mean to use the 'value' attribute instead of 'default'?", configKey)
 			}
 
 			// when not namespaced by project, there should be a value
 			if configType.Value == nil {
-				return errors.Errorf("Configuration key '%v' is namespaced and must provide an attribute 'value'", configKey)
+				return fmt.Errorf("Configuration key '%v' is namespaced and must provide an attribute 'value'", configKey)
 			}
 		}
 	}
@@ -695,7 +695,7 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	ext := filepath.Ext(path)
 	m, has := encoding.Marshalers[ext]
 	if !has {
-		return nil, errors.Errorf("no marshaler found for file format '%v'", ext)
+		return nil, fmt.Errorf("no marshaler found for file format '%v'", ext)
 	}
 
 	return m, nil
@@ -721,6 +721,6 @@ func save(path string, value interface{}, mkDirAll bool) error {
 		}
 	}
 
-	//nolint: gosec
+	//nolint:gosec
 	return os.WriteFile(path, b, 0644)
 }

@@ -54,8 +54,6 @@ func (t *ConstType) Pretty() pretty.Formatter {
 	case cty.Number:
 		return pretty.FromStringer(t.Value.AsBigFloat())
 	}
-	if t.Value.Type() == cty.String {
-	}
 	return pretty.FromStringer(t)
 }
 

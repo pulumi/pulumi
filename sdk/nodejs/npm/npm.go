@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -72,7 +71,7 @@ func Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 
 	defer os.Remove(packfile)
 
-	packTarball, err := ioutil.ReadFile(packfile)
+	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
 		return nil, fmt.Errorf("%s pack completed successfully but the packed .tgz file was not generated", bin)
 	}

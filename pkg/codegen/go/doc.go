@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package gen
 
 import (
@@ -146,8 +146,15 @@ func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName stri
 	m *schema.Method) string {
 
 	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
-			t := m.Function.Outputs.Properties[0].Type
+		var objectReturnType *schema.ObjectType
+		if m.Function.ReturnType != nil {
+			if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				objectReturnType = objectType
+			}
+		}
+
+		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+			t := objectReturnType.Properties[0].Type
 			modPkg, ok := d.packages[modName]
 			if !ok {
 				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",

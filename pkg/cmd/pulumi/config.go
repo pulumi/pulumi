@@ -19,16 +19,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 
 	zxcvbn "github.com/nbutton23/zxcvbn-go"
-
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -528,8 +527,8 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			switch {
 			case len(args) == 2:
 				value = args[1]
-			case !terminal.IsTerminal(int(os.Stdin.Fd())):
-				b, readerr := ioutil.ReadAll(os.Stdin)
+			case !term.IsTerminal(int(os.Stdin.Fd())):
+				b, readerr := io.ReadAll(os.Stdin)
 				if readerr != nil {
 					return readerr
 				}

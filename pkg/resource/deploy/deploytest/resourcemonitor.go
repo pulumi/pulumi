@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ResourceMonitor struct {
@@ -39,7 +40,7 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	// Connect to the resource monitor and create an appropriate client.
 	conn, err := grpc.Dial(
 		endpoint,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -383,11 +384,12 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 
 	// unmarshal return deps
 	deps := make(map[resource.PropertyKey][]resource.URN)
-	for _, p := range resp.ReturnDependencies {
+	for k, p := range resp.ReturnDependencies {
 		var urns []resource.URN
 		for _, urn := range p.Urns {
 			urns = append(urns, resource.URN(urn))
 		}
+		deps[resource.PropertyKey(k)] = urns
 	}
 
 	return outs, deps, nil, nil

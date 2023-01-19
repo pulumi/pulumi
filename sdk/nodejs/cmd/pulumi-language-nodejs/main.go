@@ -33,7 +33,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +45,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -68,7 +68,7 @@ const (
 	pulumiConfigVar = "PULUMI_CONFIG"
 
 	// The runtime expects the array of secret config keys to be saved to this environment variable.
-	//nolint: gosec
+	//nolint:gosec
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
@@ -165,6 +165,8 @@ func locateModule(ctx context.Context, mod string, nodeBin string) (string, erro
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
 	engineAddress string
 	tracing       string
 	typescript    bool
@@ -292,7 +294,7 @@ func getPluginsFromDir(
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
-			b, err := ioutil.ReadFile(curr)
+			b, err := os.ReadFile(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("reading package.json %s: %w", curr, err))
 				continue
@@ -443,7 +445,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	// Make a connection to the real monitor that we will forward messages to.
 	conn, err := grpc.Dial(
 		req.GetMonitorAddress(),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -465,7 +467,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: serverCancel,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target})
+			pulumirpc.RegisterResourceMonitorServer(srv, &monitorProxy{target: target})
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(tracingSpan),
@@ -949,7 +951,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("could not get node dependency data: %w", err)
 	}
 	if !req.TransitiveDependencies {
-		file, err := ioutil.ReadFile(packageFile)
+		file, err := os.ReadFile(packageFile)
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("could not find %s. "+
 				"Please include this in your report and run "+

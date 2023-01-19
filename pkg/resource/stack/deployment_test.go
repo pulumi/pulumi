@@ -352,7 +352,7 @@ func TestCustomSerialization(t *testing.T) {
 			`"map-empty":{"V":{}}`,
 
 			// Specialized resource types
-			// nolint: lll
+			//nolint:lll
 			`"asset-text":{"V":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}}`,
 
 			`"computed":{"V":{"Element":{"V":"strProp"}}}`,
@@ -404,7 +404,7 @@ func TestCustomSerialization(t *testing.T) {
 			`"map-empty":{}`,
 
 			// Specialized resource types
-			// nolint: lll
+			//nolint:lll
 			`"asset-text":{"4dabf18193072939515e22adb298388d":"c44067f5952c0a294b673a41bacd8c17","hash":"64989ccbf3efa9c84e2afe7cee9bc5828bf0fcb91e44f8c1e591638a2c2e90e3","text":"alpha beta gamma"}`,
 
 			// Computed values are replaced with a magic constant.

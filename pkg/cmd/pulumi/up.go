@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 
@@ -43,7 +42,8 @@ const (
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
@@ -126,14 +126,8 @@ func newUpCmd() *cobra.Command {
 		}
 
 		targetURNs, replaceURNs := []string{}, []string{}
-
-		for _, t := range targets {
-			targetURNs = append(targetURNs, t)
-		}
-
-		for _, r := range replaces {
-			replaceURNs = append(replaceURNs, r)
-		}
+		targetURNs = append(targetURNs, targets...)
+		replaceURNs = append(replaceURNs, replaces...)
 
 		for _, tr := range targetReplaces {
 			targetURNs = append(targetURNs, tr)
@@ -235,7 +229,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Create temp directory for the "virtual workspace".
-		temp, err := ioutil.TempDir("", "pulumi-up-")
+		temp, err := os.MkdirTemp("", "pulumi-up-")
 		if err != nil {
 			return result.FromError(err)
 		}

@@ -238,7 +238,7 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 		return false
 	})
 
-	var plugins = make([]pluginAbout, len(pluginSpec))
+	plugins := make([]pluginAbout, len(pluginSpec))
 	for i, p := range pluginSpec {
 		plugins[i] = pluginAbout{
 			Name:    p.Name,
@@ -372,7 +372,7 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 	var resources []*resource.State = snapshot.Resources
 	var pendingOps []resource.Operation = snapshot.PendingOperations
 
-	var aboutResources = make([]aboutState, len(resources))
+	aboutResources := make([]aboutState, len(resources))
 	for i, r := range resources {
 		aboutResources[i] = aboutState{
 			Type: string(r.Type),
@@ -532,7 +532,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	var params []string
+	params := make([]string, 0, len(runtime.other))
 
 	if r := runtime.Executable; r != "" {
 		params = append(params, fmt.Sprintf("executable='%s'", r))

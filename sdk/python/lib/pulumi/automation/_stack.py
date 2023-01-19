@@ -773,21 +773,21 @@ class Stack:
 def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
-    message = kwargs.get("message")
-    expect_no_changes = kwargs.get("expect_no_changes")
-    diff = kwargs.get("diff")
-    replace = kwargs.get("replace")
-    target = kwargs.get("target")
-    policy_packs = kwargs.get("policy_packs")
-    policy_pack_configs = kwargs.get("policy_pack_configs")
-    target_dependents = kwargs.get("target_dependents")
-    parallel = kwargs.get("parallel")
-    color = kwargs.get("color")
-    log_flow = kwargs.get("log_flow")
-    log_verbosity = kwargs.get("log_verbosity")
-    log_to_std_err = kwargs.get("log_to_std_err")
-    tracing = kwargs.get("tracing")
-    debug = kwargs.get("debug")
+    message: Optional[str] = kwargs.get("message")
+    expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
+    diff: Optional[bool] = kwargs.get("diff")
+    replace: Optional[List[str]] = kwargs.get("replace")
+    target: Optional[List[str]] = kwargs.get("target")
+    policy_packs: Optional[List[str]] = kwargs.get("policy_packs")
+    policy_pack_configs: Optional[List[str]] = kwargs.get("policy_pack_configs")
+    target_dependents: Optional[bool] = kwargs.get("target_dependents")
+    parallel: Optional[int] = kwargs.get("parallel")
+    color: Optional[str] = kwargs.get("color")
+    log_flow: Optional[bool] = kwargs.get("log_flow")
+    log_verbosity: Optional[int] = kwargs.get("log_verbosity")
+    log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
+    tracing: Optional[str] = kwargs.get("tracing")
+    debug: Optional[bool] = kwargs.get("debug")
 
     if message:
         extra_args.extend(["--message", message])
@@ -816,7 +816,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     if log_flow:
         extra_args.extend(["--logflow"])
     if log_verbosity:
-        extra_args.extend(["--verbose", log_verbosity])
+        extra_args.extend(["--verbose", str(log_verbosity)])
     if log_to_std_err:
         extra_args.extend(["--logtostderr"])
     if tracing:

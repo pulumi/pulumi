@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package docs
 
 import (
@@ -443,8 +443,11 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		if f.Inputs != nil {
 			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false)
 		}
-		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false)
+		if f.ReturnType != nil {
+			if objectObject, ok := f.ReturnType.(*schema.ObjectType); ok {
+				outputProps[lang] = mod.getProperties(objectObject.Properties,
+					lang, false, false, false)
+			}
 		}
 	}
 

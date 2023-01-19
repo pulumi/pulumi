@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -322,7 +322,7 @@ func TestPluginDownload(t *testing.T) {
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
+		readBytes, err := io.ReadAll(r)
 		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
@@ -349,7 +349,7 @@ func TestPluginDownload(t *testing.T) {
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
+		readBytes, err := io.ReadAll(r)
 		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
@@ -373,7 +373,7 @@ func TestPluginDownload(t *testing.T) {
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
+		readBytes, err := io.ReadAll(r)
 		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
@@ -416,7 +416,7 @@ func TestPluginDownload(t *testing.T) {
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
+		readBytes, err := io.ReadAll(r)
 		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
@@ -464,7 +464,7 @@ func TestPluginDownload(t *testing.T) {
 		}
 		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 		assert.NoError(t, err)
-		readBytes, err := ioutil.ReadAll(r)
+		readBytes, err := io.ReadAll(r)
 		assert.NoError(t, err)
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
@@ -512,7 +512,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.NoError(t, err)
 			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 			assert.NoError(t, err)
-			readBytes, err := ioutil.ReadAll(r)
+			readBytes, err := io.ReadAll(r)
 			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
@@ -535,7 +535,7 @@ func TestPluginDownload(t *testing.T) {
 			assert.NoError(t, err)
 			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
 			assert.NoError(t, err)
-			readBytes, err := ioutil.ReadAll(r)
+			readBytes, err := io.ReadAll(r)
 			assert.NoError(t, err)
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
@@ -671,7 +671,7 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}{
 		{
 			input:    "",
-			expected: nil,
+			expected: pluginDownloadOverrideArray{},
 		},
 		{
 			input: "^foo.*=https://foo",
@@ -816,7 +816,7 @@ func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
 
 	//write to pyaml
-	err := ioutil.WriteFile(pyaml, []byte(`name: test-yaml
+	err := os.WriteFile(pyaml, []byte(`name: test-yaml
 runtime: yaml
 description: "Test Pulumi YAML"
 plugins:

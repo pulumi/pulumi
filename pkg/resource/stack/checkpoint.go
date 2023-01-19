@@ -110,10 +110,11 @@ func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 // if there have been no deployments performed on this checkpoint.
 func DeserializeCheckpoint(
 	ctx context.Context,
+	secretsProvider secrets.Provider,
 	chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, error) {
 	contract.Require(chkpoint != nil, "chkpoint")
 	if chkpoint.Latest != nil {
-		return DeserializeDeploymentV3(ctx, *chkpoint.Latest, DefaultSecretsProvider)
+		return DeserializeDeploymentV3(ctx, *chkpoint.Latest, secretsProvider)
 	}
 
 	return nil, nil

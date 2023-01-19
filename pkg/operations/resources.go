@@ -196,9 +196,9 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
 	// Remove duplicates
-	var retLogs []LogEntry
+	retLogs := make([]LogEntry, 0, len(logs))
 	var lastLogTimestamp int64
-	var lastLogs []LogEntry
+	var lastLogs = make([]LogEntry, 0, len(logs))
 	for _, log := range logs {
 		shouldContinue := false
 		if log.Timestamp == lastLogTimestamp {

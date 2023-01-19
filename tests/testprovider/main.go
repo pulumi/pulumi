@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,8 +45,9 @@ type resourceProvider interface {
 }
 
 var resourceProviders = map[string]resourceProvider{
-	"testprovider:index:Random": &randomResourceProvider{},
-	"testprovider:index:Echo":   &echoResourceProvider{},
+	"testprovider:index:Random":        &randomResourceProvider{},
+	"testprovider:index:Echo":          &echoResourceProvider{},
+	"testprovider:index:FailsOnDelete": &failsOnDeleteResourceProvider{},
 }
 
 func providerForURN(urn string) (resourceProvider, string, bool) {
@@ -55,7 +56,7 @@ func providerForURN(urn string) (resourceProvider, string, bool) {
 	return provider, ty, ok
 }
 
-// nolint: unused,deadcode
+//nolint:unused,deadcode
 func main() {
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
@@ -65,6 +66,8 @@ func main() {
 }
 
 type testproviderProvider struct {
+	rpc.UnimplementedResourceProviderServer
+
 	host    *provider.HostClient
 	name    string
 	version string

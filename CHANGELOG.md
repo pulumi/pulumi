@@ -1,6 +1,66 @@
 # Changelog
 
+
+## 3.52.0 (2023-01-18)
+
+
+### Features
+
+- [sdk/go] Allows users to discover if their program is being run with a mock monitor
+  [#11788](https://github.com/pulumi/pulumi/pull/11788)
+
+- [sdk/nodejs] Add support for custom naming of dynamic provider resource.
+  [#11873](https://github.com/pulumi/pulumi/pull/11873)
+
+- [sdkgen/{dotnet,nodejs}] Initial implementation of simplified invokes for dotnet and nodejs.
+  [#11753](https://github.com/pulumi/pulumi/pull/11753)
+
+
+### Bug Fixes
+
+- [cli/display] Fixes #11864. Pulumi panics before main when Pulumi.yaml provider plugin does not have a path provided.
+  [#11892](https://github.com/pulumi/pulumi/pull/11892)
+
+- [sdk/{go,nodejs,python}] Fix DeletedWith resource option
+  [#11883](https://github.com/pulumi/pulumi/pull/11883)
+
+- [sdk/python] Fix a TypeError in Output.from_input.
+  [#11852](https://github.com/pulumi/pulumi/pull/11852)
+
+## 3.51.1 (2023-01-11)
+
+
+### Features
+
+- [sdk/go] Add JSONUnmarshal to go sdk.
+  [#11745](https://github.com/pulumi/pulumi/pull/11745)
+
+- [sdk/python] Add output json_loads using json.loads.
+  [#11741](https://github.com/pulumi/pulumi/pull/11741)
+
+
+### Bug Fixes
+
+- [cli/new] Allow running inside new VCS repositories.
+  [#11804](https://github.com/pulumi/pulumi/pull/11804)
+
+- [auto/python] Fix issue specifying log_verbosity
+  [#11778](https://github.com/pulumi/pulumi/pull/11778)
+
+- [protobuf] Downstream implementers of the RPC server interfaces must embed UnimplementedServer structs or opt out of forward compatibility.
+  [#11652](https://github.com/pulumi/pulumi/pull/11652)
+
+## 3.51.0 (2023-01-04)
+
+Happy New Years from the Pulumi team!  This is our first release of 2023, and we're very excited for all the things to come this year.
+
+### Features
+
+- [sdk/nodejs] Add output jsonParse using JSON.parse.
+  [#11735](https://github.com/pulumi/pulumi/pull/11735)
+
 ## 3.50.2 (2022-12-21)
+
 
 Happy holidays! The Pulumi team thanks grpc maintainers for addressing build issues and publishing wheels on macOS.
 
@@ -8,6 +68,20 @@ Happy holidays! The Pulumi team thanks grpc maintainers for addressing build iss
 
 - [sdk/python] Fix error installing SDK when using Python 3.11, bumping `grpcio` dependency.
   [#11431](https://github.com/pulumi/pulumi/pull/11431)
+
+## 3.50.1 (2022-12-21)
+
+
+### Bug Fixes
+
+- [cli/display] Fix flickering in the interactive display
+  [#11695](https://github.com/pulumi/pulumi/pull/11695)
+
+- [cli/plugin] Fix check of executable bits on Windows.
+  [#11692](https://github.com/pulumi/pulumi/pull/11692)
+
+- [codegen] Revert change to codegen schema spec.
+   [#11701](https://github.com/pulumi/pulumi/pull/11701)
 
 ## 3.50.0 (2022-12-19)
 

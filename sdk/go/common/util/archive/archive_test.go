@@ -20,7 +20,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -149,7 +148,7 @@ func archiveContents(t *testing.T, prefixPathInsideTar, path string, files ...fi
 			return nil, err
 		}
 
-		err = ioutil.WriteFile(filepath.Join(dir, name), file.contents, 0600)
+		err = os.WriteFile(filepath.Join(dir, name), file.contents, 0600)
 		if err != nil {
 			return nil, err
 		}

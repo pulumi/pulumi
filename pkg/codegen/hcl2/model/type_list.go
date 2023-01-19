@@ -41,7 +41,7 @@ func (*ListType) SyntaxNode() hclsyntax.Node {
 }
 
 func (t *ListType) Pretty() pretty.Formatter {
-	return pretty.Wrap{
+	return &pretty.Wrap{
 		Prefix:  "list(",
 		Postfix: ")",
 		Value:   t.ElementType.Pretty(),
