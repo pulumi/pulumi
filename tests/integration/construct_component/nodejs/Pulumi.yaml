@@ -1,3 +1,7 @@
 name: construct_component_nodejs
 description: A program that constructs remote component resources.
 runtime: nodejs
+plugins:
+  providers:
+    - name: testprovider
+      path: ../../../testprovider

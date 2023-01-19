@@ -4,3 +4,7 @@ runtime:
   options:
     virtualenv: venv
 description: A minimal Python Pulumi program
+plugins:
+  providers:
+    - name: testprovider
+      path: ../../../testprovider

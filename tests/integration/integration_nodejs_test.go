@@ -885,7 +885,6 @@ func TestConstructPlainNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders :=
 				[]integration.LocalDependency{
-					{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
 					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
 				}
 			integration.ProgramTest(t,
@@ -1292,7 +1291,7 @@ func TestDeletedWithNode(t *testing.T) {
 		Dir:          filepath.Join("deleted_with", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: buildTestProvider(t, filepath.Join("..", "testprovider"))},
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
 		Quick: true,
 	})
@@ -1301,7 +1300,7 @@ func TestDeletedWithNode(t *testing.T) {
 // Tests custom resource type name of dynamic provider.
 func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "nodejs-resource-type-name"),
+		Dir:          filepath.Join("dynamic", "nodejs-resource-type-name"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			urnOut := stack.Outputs["urn"].(string)
