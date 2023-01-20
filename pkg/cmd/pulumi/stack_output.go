@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -27,10 +28,7 @@ import (
 )
 
 func newStackOutputCmd() *cobra.Command {
-	var jsonOut bool
-	var showSecrets bool
-	var stackName string
-
+	var socmd stackOutputCmd
 	cmd := &cobra.Command{
 		Use:   "output [property-name]",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -40,68 +38,77 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			// Fetch the current stack and its output properties.
-			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
-			if err != nil {
-				return err
-			}
-			snap, err := s.Snapshot(ctx)
-			if err != nil {
-				return err
-			}
-
-			outputs, err := getStackOutputs(snap, showSecrets)
-			if err != nil {
-				return fmt.Errorf("getting outputs: %w", err)
-			}
-			if outputs == nil {
-				outputs = make(map[string]interface{})
-			}
-
-			// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).
-			if len(args) > 0 {
-				name := args[0]
-				v, has := outputs[name]
-				if has {
-					if jsonOut {
-						if err := printJSON(v); err != nil {
-							return err
-						}
-					} else {
-						fmt.Printf("%v\n", stringifyOutput(v))
-					}
-				} else {
-					return fmt.Errorf("current stack does not have output property '%v'", name)
-				}
-			} else if jsonOut {
-				if err := printJSON(outputs); err != nil {
-					return err
-				}
-			} else {
-				printStackOutputs(outputs)
-			}
-
-			if showSecrets {
-				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack output")
-			}
-
-			return nil
+			return socmd.Run(commandContext(), args)
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(
-		&showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
+		&socmd.showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 
 	return cmd
+}
+
+type stackOutputCmd struct {
+	stackName   string
+	showSecrets bool
+	jsonOut     bool
+}
+
+func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	// Fetch the current stack and its output properties.
+	s, err := requireStack(ctx, cmd.stackName, stackLoadOnly, opts)
+	if err != nil {
+		return err
+	}
+	snap, err := s.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+
+	outputs, err := getStackOutputs(snap, cmd.showSecrets)
+	if err != nil {
+		return fmt.Errorf("getting outputs: %w", err)
+	}
+	if outputs == nil {
+		outputs = make(map[string]interface{})
+	}
+
+	// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).
+	if len(args) > 0 {
+		name := args[0]
+		v, has := outputs[name]
+		if has {
+			if cmd.jsonOut {
+				if err := printJSON(v); err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("%v\n", stringifyOutput(v))
+			}
+		} else {
+			return fmt.Errorf("current stack does not have output property '%v'", name)
+		}
+	} else if cmd.jsonOut {
+		if err := printJSON(outputs); err != nil {
+			return err
+		}
+	} else {
+		printStackOutputs(outputs)
+	}
+
+	if cmd.showSecrets {
+		log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack output")
+	}
+
+	return nil
 }
 
 func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
