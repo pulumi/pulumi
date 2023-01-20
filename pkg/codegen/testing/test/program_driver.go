@@ -381,7 +381,7 @@ func TestProgramCodegen(
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
 		t.Run(tt.Directory, func(t *testing.T) {
-			t.Parallel()
+			// t.Parallel()
 			var err error
 			if tt.Skip.Has(testcase.Language) {
 				t.Skip()
