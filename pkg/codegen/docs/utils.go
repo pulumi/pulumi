@@ -83,7 +83,14 @@ func getModuleLink(name string) string {
 }
 
 func getResourceLink(name string) string {
-	return strings.ToLower(name)
+	link := strings.ToLower(name)
+	// Handle URL generation for resources named `index`. We prepend a double underscore
+	// here, since a link of .../<module>/index has trouble resolving and returns a 404 in
+	// the browser, likely due to `index` being some sort of reserved keyword.
+	if link == "index" {
+		return "--" + link
+	}
+	return link
 }
 
 func getFunctionLink(name string) string {
