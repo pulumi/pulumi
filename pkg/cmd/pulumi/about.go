@@ -531,6 +531,8 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+var unused_variable = 1
+
 func (runtime projectRuntimeAbout) String() string {
 	params := make([]string, 0, len(runtime.other))
 
