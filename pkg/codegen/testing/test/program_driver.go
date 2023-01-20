@@ -381,7 +381,10 @@ func TestProgramCodegen(
 	for _, tt := range testcase.TestCases {
 		tt := tt // avoid capturing loop variable
 		t.Run(tt.Directory, func(t *testing.T) {
-			t.Parallel()
+			// These tests should not run in parallel.
+			// They take up a fair bit of memory
+			// and can OOM in CI with too many running.
+
 			var err error
 			if tt.Skip.Has(testcase.Language) {
 				t.Skip()
