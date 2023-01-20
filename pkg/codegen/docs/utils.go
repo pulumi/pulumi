@@ -88,7 +88,7 @@ func getResourceLink(name string) string {
 	// here, since a link of .../<module>/index has trouble resolving and returns a 404 in
 	// the browser, likely due to `index` being some sort of reserved keyword.
 	if link == "index" {
-		return "__" + link
+		return "--" + link
 	}
 	return link
 }

@@ -1777,7 +1777,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		// resolving and returns a 404 in the browser, likely due to `index` being some sort
 		// of reserved keyword.
 		if resourceFileName == "index" {
-			resourceFileName = "__index"
+			resourceFileName = "--index"
 		}
 
 		addFile(resourceFileName, buffer.String())
