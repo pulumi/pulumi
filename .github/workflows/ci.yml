@@ -242,7 +242,7 @@ jobs:
     # To this:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-11/current
     name: Unit Test${{ matrix.platform && '' }}
-    needs: [matrix]
+    needs: [matrix, lint]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
@@ -267,7 +267,7 @@ jobs:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name. See: unit test.
     name: Integration Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
+    needs: [matrix, build-binaries, build-sdks, lint]
     if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.integration-test-matrix, 'macos') }}
@@ -292,7 +292,7 @@ jobs:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name. See: unit test.
     name: Smoke Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
+    needs: [matrix, build-binaries, build-sdks, lint]
     if: ${{ needs.matrix.outputs.smoke-test-matrix != '{}' }}
     # alow jobs to fail if the platform contains windows
     strategy:
