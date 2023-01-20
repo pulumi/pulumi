@@ -150,7 +150,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, true, displayOpts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, stackOfferNew, displayOpts)
 			if err != nil {
 				return result.FromError(err)
 			}

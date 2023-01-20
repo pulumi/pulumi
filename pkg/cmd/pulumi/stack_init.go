@@ -131,7 +131,7 @@ func newStackInitCmd() *cobra.Command {
 				}
 
 				// load the old stack and its project
-				copyStack, err := requireStack(ctx, stackToCopy, false, opts, false /*setCurrent*/)
+				copyStack, err := requireStack(ctx, stackToCopy, stackLoadOnly, opts)
 				if err != nil {
 					return err
 				}

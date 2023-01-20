@@ -14,6 +14,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -321,6 +322,35 @@ func TestGetRefreshOption(t *testing.T) {
 			if shouldRefresh != tt.expectedRefreshState {
 				t.Errorf("getRefreshOption got = %t, expected %t", shouldRefresh, tt.expectedRefreshState)
 			}
+		})
+	}
+}
+
+func TestStackLoadOption(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		give       stackLoadOption
+		offerNew   bool
+		setCurrent bool
+	}{
+		{stackLoadOnly, false, false},
+		{stackOfferNew, true, false},
+		{stackSetCurrent, false, true},
+		{stackOfferNew | stackSetCurrent, true, true},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t,
+				tt.offerNew, tt.give.OfferNew(),
+				"OfferNew did not match")
+			assert.Equal(t,
+				tt.setCurrent, tt.give.SetCurrent(),
+				"SetCurrent did not match")
 		})
 	}
 }

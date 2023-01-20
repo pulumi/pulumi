@@ -239,13 +239,38 @@ func createStack(ctx context.Context,
 	return stack, nil
 }
 
+type stackLoadOption int
+
+const (
+	// stackLoadOnly specifies that we should stop after loading the stack.
+	stackLoadOnly stackLoadOption = 1 << iota
+
+	// stackOfferNew is set if we want to allow the user
+	// to create a stack if one was not found.
+	stackOfferNew
+
+	// stackSetCurrent is set if we want to change the current stack
+	// once one is found or created.
+	stackSetCurrent
+)
+
+// OfferNew reports whether the stackOfferNew flag is set.
+func (o stackLoadOption) OfferNew() bool {
+	return o&stackOfferNew != 0
+}
+
+// SetCurrent reports whether the stackSetCurrent flag is set.
+func (o stackLoadOption) SetCurrent() bool {
+	return o&stackSetCurrent != 0
+}
+
 // requireStack will require that a stack exists.  If stackName is blank, the currently selected stack from
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
 func requireStack(ctx context.Context,
-	stackName string, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
+	stackName string, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(ctx, offerNew, opts, setCurrent)
+		return requireCurrentStack(ctx, lopt, opts)
 	}
 
 	b, err := currentBackend(ctx, opts)
@@ -267,7 +292,7 @@ func requireStack(ctx context.Context,
 	}
 
 	// No stack was found.  If we're in a terminal, prompt to create one.
-	if offerNew && cmdutil.Interactive() {
+	if lopt.OfferNew() && cmdutil.Interactive() {
 		fmt.Printf("The stack '%s' does not exist.\n", stackName)
 		fmt.Printf("\n")
 		_, err = cmdutil.ReadConsole("If you would like to create this stack now, please press <ENTER>, otherwise " +
@@ -276,15 +301,13 @@ func requireStack(ctx context.Context,
 			return nil, err
 		}
 
-		return createStack(ctx, b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, lopt.SetCurrent(), "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
 }
 
-func requireCurrentStack(
-	ctx context.Context, offerNew bool,
-	opts display.Options, setCurrent bool) (backend.Stack, error) {
+func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
 	// Search for the current stack.
 	b, err := currentBackend(ctx, opts)
 	if err != nil {
@@ -298,17 +321,16 @@ func requireCurrentStack(
 	}
 
 	// If no current stack exists, and we are interactive, prompt to select or create one.
-	return chooseStack(ctx, b, offerNew, opts, setCurrent)
+	return chooseStack(ctx, b, lopt, opts)
 }
 
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(ctx context.Context,
-	b backend.Backend, offerNew bool, opts display.Options, setCurrent bool) (backend.Stack, error) {
-
+	b backend.Backend, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
-	if offerNew {
+	if lopt.OfferNew() {
 		chooseStackErr = "no stack selected; please use `pulumi stack select` or `pulumi stack init` to choose one"
 	} else {
 		chooseStackErr = "no stack selected; please use `pulumi stack select` to choose one"
@@ -362,7 +384,7 @@ func chooseStack(ctx context.Context,
 	// Otherwise, default to a stack if one exists – otherwise pressing enter will result in
 	// the empty string being passed (see https://github.com/go-survey/survey/issues/342).
 	const newOption = "<create a new stack>"
-	if offerNew {
+	if lopt.OfferNew() {
 		options = append(options, newOption)
 		// If we're offering the option to make a new stack AND we don't have a default current stack then
 		// make the new option the default
@@ -379,7 +401,7 @@ func chooseStack(ctx context.Context,
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 	message := "\rPlease choose a stack"
-	if offerNew {
+	if lopt.OfferNew() {
 		message += ", or create a new one:"
 	} else {
 		message += ":"
@@ -411,7 +433,7 @@ func chooseStack(ctx context.Context,
 			return nil, parseErr
 		}
 
-		return createStack(ctx, b, stackRef, nil, setCurrent, "")
+		return createStack(ctx, b, stackRef, nil, lopt.SetCurrent(), "")
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -429,7 +451,7 @@ func chooseStack(ctx context.Context,
 	}
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
-	if setCurrent {
+	if lopt.SetCurrent() {
 		if err = state.SetCurrentStack(stackRef.String()); err != nil {
 			return nil, err
 		}

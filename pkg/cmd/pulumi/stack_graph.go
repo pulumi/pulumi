@@ -61,7 +61,7 @@ func newStackGraphCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}

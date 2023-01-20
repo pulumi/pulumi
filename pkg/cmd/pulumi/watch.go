@@ -88,7 +88,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, stackOfferNew, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}

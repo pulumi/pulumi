@@ -509,7 +509,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(ctx, stack, false, opts.Display, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, stackLoadOnly, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}

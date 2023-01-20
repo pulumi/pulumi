@@ -84,7 +84,7 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions) result.Result {
-		s, err := requireStack(ctx, stack, true, opts.Display, false /*setCurrent*/)
+		s, err := requireStack(ctx, stack, stackOfferNew, opts.Display)
 		if err != nil {
 			return result.FromError(err)
 		}

@@ -62,7 +62,7 @@ func newConfigCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, stack, true, opts, true /*setCurrent*/)
+			stack, err := requireStack(ctx, stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get current stack and ensure that it is a different stack to the destination stack
-			currentStack, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			currentStack, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -131,7 +131,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			// Get the destination stack
-			destinationStack, err := requireStack(ctx, destinationStackName, false, opts, false /*setCurrent*/)
+			destinationStack, err := requireStack(ctx, destinationStackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -271,7 +271,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -318,7 +318,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
+			stack, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -372,7 +372,7 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			stack, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -422,7 +422,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -513,7 +513,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(ctx, *stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -629,7 +629,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			stack, err := requireStack(ctx, *stack, true, opts, false /*setCurrent*/)
+			stack, err := requireStack(ctx, *stack, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}

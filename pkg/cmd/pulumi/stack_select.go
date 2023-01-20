@@ -87,7 +87,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(ctx, b, true, opts, true /*setCurrent*/)
+			stack, err := chooseStack(ctx, b, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}

@@ -46,7 +46,7 @@ func newStackOutputCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and its output properties.
-			s, err := requireStack(ctx, stackName, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
