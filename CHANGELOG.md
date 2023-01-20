@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.52.1 (2023-01-19)
+
+
+### Bug Fixes
+
+- [engine] Fix launching non-Go plugins on Windows.
+  [#11915](https://github.com/pulumi/pulumi/pull/11915)
+
 ## 3.52.0 (2023-01-18)
 
 
