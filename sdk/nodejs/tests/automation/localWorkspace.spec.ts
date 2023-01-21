@@ -262,6 +262,35 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
+    it(`runs through the stack lifecycle with a local dotnet program`, async () => {
+        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj_dotnet", `int_test${getTestSuffix()}`);
+        const workDir = upath.joinSafe(__dirname, "data", "testproj_dotnet");
+        const stack = await LocalWorkspace.createStack({ stackName, workDir });
+
+        // pulumi up
+        const upRes = await stack.up({ userAgent });
+        assert.strictEqual(Object.keys(upRes.outputs).length, 1);
+        assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
+        assert.strictEqual(upRes.outputs["exp_static"].secret, false);
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        const preRes = await stack.preview({ userAgent });
+        assert.strictEqual(preRes.changeSummary.same, 1);
+
+        // pulumi refresh
+        const refRes = await stack.refresh({ userAgent });
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
     it(`runs through the stack lifecycle with an inline program`, async () => {
         const program = async () => {
             const config = new Config();

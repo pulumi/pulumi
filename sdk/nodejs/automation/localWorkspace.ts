@@ -24,7 +24,6 @@ import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
-import * as localState from "../runtime/state";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
@@ -246,8 +245,6 @@ export class LocalWorkspace implements Workspace {
     private constructor(opts?: LocalWorkspaceOptions) {
         let dir = "";
         let envs = {};
-        const store = new localState.LocalStore();
-        localState.asyncLocalStorage.enterWith(store);
 
         if (opts) {
             const { workDir, pulumiHome, program, envVars, secretsProvider,
