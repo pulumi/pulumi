@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Adds a --shell flag to 'pulumi stack output' to print outputs as a shell script.

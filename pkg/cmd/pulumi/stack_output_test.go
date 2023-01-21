@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -269,6 +270,190 @@ func TestStackOutputCmd_json(t *testing.T) {
 				"output is not valid JSON:\n%s", stdout)
 
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// Tests the output of 'pulumi stack output --shell'
+// under different conditions.
+//
+//nolint:paralleltest // hijacks os.Stdout
+func TestStackOutputCmd_shell(t *testing.T) {
+	// This test temporarily hijacks os.Stdout
+	// so that we can read the output printed to it.
+	// This will not be necessary once the relevant functions
+	// are modified to accept io.Writers.
+
+	outputsWithSecret := resource.PropertyMap{
+		"bucketName": resource.NewStringProperty("mybucket-1234"),
+		"password": resource.NewSecretProperty(&resource.Secret{
+			Element: resource.NewStringProperty("hunter2"),
+		}),
+	}
+
+	tests := []struct {
+		desc string
+
+		// Map of stack outputs.
+		outputs resource.PropertyMap
+
+		// Whether the --show-secrets flag is set.
+		showSecrets bool
+
+		// Any additional command line arguments.
+		args []string
+
+		// Lines expected in the output.
+		want []string
+	}{
+		{
+			desc:    "default",
+			outputs: outputsWithSecret,
+			want: []string{
+				"bucketName=mybucket-1234",
+				`password=\[secret]`,
+			},
+		},
+		{
+			desc:        "show-secrets",
+			outputs:     outputsWithSecret,
+			showSecrets: true,
+			want: []string{
+				"bucketName=mybucket-1234",
+				"password=hunter2",
+			},
+		},
+		{
+			desc:    "single property",
+			outputs: outputsWithSecret,
+			args:    []string{"bucketName"},
+			want:    []string{"bucketName=mybucket-1234"},
+		},
+		{
+			// Should not show the secret even if requested
+			// if --show-secrets is not set.
+			desc:    "single hidden property",
+			outputs: outputsWithSecret,
+			args:    []string{"password"},
+			want:    []string{`password=\[secret]`},
+		},
+		{
+			desc:        "single property with show-secrets",
+			outputs:     outputsWithSecret,
+			showSecrets: true,
+			args:        []string{"password"},
+			want:        []string{"password=hunter2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			getStdout := hijackStdout(t)
+
+			snap := deploy.Snapshot{
+				Resources: []*resource.State{
+					{
+						Type:    resource.RootStackType,
+						Outputs: tt.outputs,
+					},
+				},
+			}
+			requireStack := func(context.Context,
+				string, stackLoadOption, display.Options) (backend.Stack, error) {
+				return &backend.MockStack{
+					SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
+						return &snap, nil
+					},
+				}, nil
+			}
+
+			cmd := stackOutputCmd{
+				requireStack: requireStack,
+				showSecrets:  tt.showSecrets,
+				shellOut:     true,
+			}
+			require.NoError(t, cmd.Run(context.Background(), tt.args))
+
+			// Drop trailing "\n" from stdout
+			// rather than add a "" at the end of every tt.want.
+			stdout := strings.TrimSuffix(string(getStdout()), "\n")
+			got := strings.Split(stdout, "\n")
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
+	t.Parallel()
+
+	cmd := stackOutputCmd{
+		requireStack: func(context.Context, string, stackLoadOption, display.Options) (backend.Stack, error) {
+			t.Fatal("This function should not be called")
+			return nil, errors.New("should not be called")
+		},
+		shellOut: true,
+		jsonOut:  true,
+	}
+
+	err := cmd.Run(context.Background(), nil)
+	assert.ErrorContains(t, err, "only one of --json and --shell may be set")
+}
+
+func TestShellStackOutputWriter_quoting(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give interface{}
+		want string // lines expected in the output
+	}{
+		{
+			desc: "string",
+			give: "foo",
+			want: "foo",
+		},
+		{
+			desc: "number",
+			give: 42,
+			want: "42",
+		},
+		{
+			desc: "string/spaces",
+			give: "foo bar",
+			want: "'foo bar'",
+		},
+		{
+			desc: "string/double quotes",
+			give: `foo "bar" baz`,
+			want: `'foo "bar" baz'`,
+		},
+		{
+			desc: "string/single quotes",
+			give: "foo 'bar' baz",
+			want: `'foo '\''bar'\'' baz'`,
+		},
+		{
+			desc: "string/single and double quotes",
+			give: `foo "bar" 'baz' qux`,
+			want: `'foo "bar" '\''baz'\'' qux'`,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got bytes.Buffer
+			writer := shellStackOutputWriter{W: &got}
+
+			err := writer.WriteMany(map[string]interface{}{
+				"myoutput": tt.give,
+			})
+			require.NoError(t, err)
+
+			want := "myoutput=" + tt.want + "\n"
+			assert.Equal(t, want, got.String())
 		})
 	}
 }
