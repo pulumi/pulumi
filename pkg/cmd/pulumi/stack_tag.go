@@ -64,7 +64,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -154,7 +154,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -185,7 +185,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(ctx, *stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}

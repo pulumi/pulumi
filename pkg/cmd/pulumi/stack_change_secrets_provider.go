@@ -71,7 +71,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			// Get the current stack and its project
-			currentStack, err := requireStack(ctx, stack, false, opts, false /*setCurrent*/)
+			currentStack, err := requireStack(ctx, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
