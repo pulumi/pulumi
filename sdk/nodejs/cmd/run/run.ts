@@ -26,6 +26,7 @@ import * as settings from "../../runtime/settings";
 import * as tracing from "./tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
+const inclusion = require('inclusion');
 
 import * as mod from ".";
 
@@ -53,12 +54,13 @@ function pulumiProjectRootFromProgramPath(programPath: string): string {
 }
 
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    // using dynamic import() syntax to import ESM module (pkg-dir) since we are in a CJS module.
-    const { packageDirectory: getPackageDirectory } = await import("pkg-dir");
+    const pkgDir: any = await inclusion('pkg-dir');
+     // using dynamic import() syntax to import ESM module (pkg-dir) since we are in a CJS module.
+    // const { packageDirectory: getPackageDirectory } = await import("pkg-dir");
 
     const programDirectory = path.dirname(programPath);
 
-    const packageDirectory = await getPackageDirectory({
+    const packageDirectory = await pkgDir.packageDirectory({
         cwd: programDirectory,
     });
     if (packageDirectory === undefined) {

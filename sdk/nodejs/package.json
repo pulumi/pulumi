@@ -21,6 +21,7 @@
         "@pulumi/query": "^0.3.0",
         "execa": "^5.1.0",
         "google-protobuf": "^3.5.0",
+        "inclusion": "^1.0.1",
         "ini": "^2.0.0",
         "js-yaml": "^3.14.0",
         "minimist": "^1.2.6",
