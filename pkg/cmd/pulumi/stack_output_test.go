@@ -19,10 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
-	"os"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -56,13 +53,8 @@ func TestStringifyOutput(t *testing.T) {
 
 // Tests the output of 'pulumi stack output'
 // under different conditions.
-//
-//nolint:paralleltest // hijacks os.Stdout
 func TestStackOutputCmd_plainText(t *testing.T) {
-	// This test temporarily hijacks os.Stdout
-	// so that we can read the output printed to it.
-	// This will not be necessary once the relevant functions
-	// are modified to accept io.Writers.
+	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
 		"bucketName": resource.NewStringProperty("mybucket-1234"),
@@ -124,8 +116,9 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			getStdout := hijackStdout(t)
+			t.Parallel()
 
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
@@ -144,12 +137,14 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				}, nil
 			}
 
+			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
+				Stdout:       &stdoutBuff,
 				requireStack: requireStack,
 				showSecrets:  tt.showSecrets,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
-			stdout := string(getStdout())
+			stdout := stdoutBuff.String()
 
 			if tt.equals != "" {
 				assert.Equal(t, tt.equals, stdout)
@@ -166,13 +161,8 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 
 // Tests the output of 'pulumi stack output --json'
 // under different conditions.
-//
-//nolint:paralleltest // hijacks os.Stdout
 func TestStackOutputCmd_json(t *testing.T) {
-	// This test temporarily hijacks os.Stdout
-	// so that we can read the output printed to it.
-	// This will not be necessary once the relevant functions
-	// are modified to accept io.Writers.
+	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
 		"bucketName": resource.NewStringProperty("mybucket-1234"),
@@ -237,8 +227,9 @@ func TestStackOutputCmd_json(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			getStdout := hijackStdout(t)
+			t.Parallel()
 
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
@@ -257,14 +248,16 @@ func TestStackOutputCmd_json(t *testing.T) {
 				}, nil
 			}
 
+			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
 				showSecrets:  tt.showSecrets,
 				jsonOut:      true,
+				Stdout:       &stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
-			stdout := getStdout()
+			stdout := stdoutBuff.Bytes()
 			var got interface{}
 			require.NoError(t, json.Unmarshal(stdout, &got),
 				"output is not valid JSON:\n%s", stdout)
@@ -276,13 +269,8 @@ func TestStackOutputCmd_json(t *testing.T) {
 
 // Tests the output of 'pulumi stack output --shell'
 // under different conditions.
-//
-//nolint:paralleltest // hijacks os.Stdout
 func TestStackOutputCmd_shell(t *testing.T) {
-	// This test temporarily hijacks os.Stdout
-	// so that we can read the output printed to it.
-	// This will not be necessary once the relevant functions
-	// are modified to accept io.Writers.
+	t.Parallel()
 
 	outputsWithSecret := resource.PropertyMap{
 		"bucketName": resource.NewStringProperty("mybucket-1234"),
@@ -360,8 +348,9 @@ func TestStackOutputCmd_shell(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			getStdout := hijackStdout(t)
+			t.Parallel()
 
 			snap := deploy.Snapshot{
 				Resources: []*resource.State{
@@ -385,17 +374,19 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				osys = "linux"
 			}
 
+			var stdoutBuff bytes.Buffer
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
 				showSecrets:  tt.showSecrets,
 				shellOut:     true,
 				OS:           osys,
+				Stdout:       &stdoutBuff,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
 			// Drop trailing "\n" from stdout
 			// rather than add a "" at the end of every tt.want.
-			stdout := strings.TrimSuffix(string(getStdout()), "\n")
+			stdout := strings.TrimSuffix(stdoutBuff.String(), "\n")
 			got := strings.Split(stdout, "\n")
 			assert.Equal(t, tt.want, got)
 		})
@@ -488,47 +479,5 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 				assert.Equal(t, want, got.String())
 			})
 		})
-	}
-}
-
-// hijackStdout replaces os.Stdout and captures anything written to it.
-// It returns a function that:
-//
-//   - restores the original stdout
-//   - reports what was written to our hijacked stdout
-//   - is safe to call multiple times
-//
-// Use of this function is techincal debt.
-// Pay it by updating relevant printing functions
-// to accept an io.Writer.
-func hijackStdout(t *testing.T) (restore func() []byte) {
-	oldStdout := os.Stdout
-	stdoutReader, newStdout, err := os.Pipe()
-	require.NoError(t, err)
-
-	done := make(chan struct{})
-	var buff bytes.Buffer
-	go func() {
-		defer close(done)
-		_, err := io.Copy(&buff, stdoutReader)
-		if errors.Is(err, io.EOF) {
-			err = nil
-		}
-		assert.NoError(t, err, "Error reading stdout")
-	}()
-
-	// Always enqueue a restore so that
-	// if the caller fails to do it,
-	// the test doesn't go silent.
-	t.Cleanup(func() { os.Stdout = oldStdout })
-	os.Stdout = newStdout
-	var once sync.Once
-	return func() []byte {
-		once.Do(func() {
-			os.Stdout = oldStdout
-			assert.NoError(t, newStdout.Close(), "Error closing fake stdout")
-			<-done
-		})
-		return buff.Bytes()
 	}
 }
