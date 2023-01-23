@@ -661,6 +661,17 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 
 	hasSupport := false
 
+	// NOTE: DO NOT ADD ANY MORE FEATURES TO THIS LIST
+	//
+	// Context: https://github.com/pulumi/pulumi-dotnet/pull/88#pullrequestreview-1265714090
+	//
+	// We shouldn't add any more features to this list, copying strings around codebases is prone to bugs.
+	// Rather than adding a new feature here, setup a new SupportsFeatureV2 method, that takes a grpc enum
+	// instead. That can then be safely code generated out to each language with no risk of typos.
+	//
+	// These old features have to stay as is because old engines DO support them, but wouldn't support the new
+	// SupportsFeatureV2 method.
+
 	switch req.Id {
 	case "secrets":
 		hasSupport = true
