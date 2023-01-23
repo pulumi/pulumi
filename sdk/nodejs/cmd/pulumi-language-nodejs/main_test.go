@@ -197,9 +197,9 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 	}
 	for _, file := range files {
 		err := os.MkdirAll(filepath.Dir(file.path), 0755)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = os.WriteFile(file.path, []byte(file.content), 0600)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Add a symlink cycle in
