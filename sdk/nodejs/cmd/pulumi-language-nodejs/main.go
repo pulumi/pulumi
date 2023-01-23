@@ -229,7 +229,11 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// Keep track of the versions of @pulumi/pulumi that are pulled in.  If they differ on
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
-	plugins, err := getPluginsFromDir(req.GetProgram(), pulumiPackagePathToVersionMap, false /*inNodeModules*/, make(map[string]struct{}))
+	plugins, err := getPluginsFromDir(
+		req.GetProgram(),
+		pulumiPackagePathToVersionMap,
+		false, /*inNodeModules*/
+		make(map[string]struct{}))
 
 	if err == nil {
 		first := true
