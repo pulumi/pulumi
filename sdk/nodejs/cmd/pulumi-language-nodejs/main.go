@@ -296,7 +296,7 @@ func getPluginsFromDir(
 
 		// if this is a symlink resolve it so our visitedPaths can track recursion
 		if (file.Type() & fs.ModeSymlink) != 0 {
-			symlink, err := os.Readlink(curr)
+			symlink, err := filepath.EvalSymlinks(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, fmt.Errorf("resolving link in plugin dir %s: %w", curr, err))
 				continue
