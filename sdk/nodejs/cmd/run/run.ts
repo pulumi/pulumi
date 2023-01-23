@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as fspromises from "fs/promises";
 import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
@@ -26,9 +27,18 @@ import * as settings from "../../runtime/settings";
 import * as tracing from "./tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
-const inclusion = require('inclusion');
 
 import * as mod from ".";
+
+// Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
+// Follow this issue for progress on when we can remove this:
+// https://github.com/microsoft/TypeScript/issues/43329
+//
+// Workaround inspired by es-module-shims:
+// https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
+// eslint-disable-next-line no-eval
+/** @internal */
+const dynamicImport = (0, eval)("u=>import(u)");
 
 /**
  * Attempts to provide a detailed error message for module load failure if the
@@ -54,12 +64,17 @@ function pulumiProjectRootFromProgramPath(programPath: string): string {
 }
 
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    const pkgDir: any = await inclusion('pkg-dir');
-     // using dynamic import() syntax to import ESM module (pkg-dir) since we are in a CJS module.
-    // const { packageDirectory: getPackageDirectory } = await import("pkg-dir");
-
-    const programDirectory = path.dirname(programPath);
-
+    // pkgDir is an ESM module which we use to find the location of package.json
+    // Because it's an ESM module, we cannot import it directly.
+    const pkgDir = await dynamicImport('pkg-dir');
+    // Check if programPath is a directory. If not, then we
+    // look at it's parent dir for the package root.
+    let isDirectory = false;
+    if(fs.existsSync(programPath)) {
+        const fileStat = await fspromises.lstat(programPath);
+        isDirectory = fileStat.isDirectory();
+    }
+    const programDirectory = isDirectory ? programPath : path.dirname(programPath); 
     const packageDirectory = await pkgDir.packageDirectory({
         cwd: programDirectory,
     });
@@ -359,20 +374,13 @@ ${defaultMessage}`);
 
             let programExport: any;
 
+            console.log("Importing pulumi package: ", packageObject["type"]);
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
                 // Use the same behavior for loading the main entrypoint as `node <program>`.
                 // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
                 const mainPath: string = require("module").Module._findPath(path.resolve(program), null, true) || program;
                 const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
-                // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
-                // Follow this issue for progress on when we can remove this:
-                // https://github.com/microsoft/TypeScript/issues/43329
-                //
-                // Workaround inspired by es-module-shims:
-                // https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
-                // eslint-disable-next-line no-eval
-                const dynamicImport = (0, eval)("u=>import(u)");
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
