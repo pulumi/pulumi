@@ -1,0 +1,19 @@
+{
+    "name": "@pulumi/providerType",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc",
+        "install": "node scripts/install-pulumi-plugin.js resource providerType ${VERSION}"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+    },
+    "devDependencies": {
+        "@types/node": "^14",
+        "typescript": "^3.7.0"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "providerType"
+    }
+}

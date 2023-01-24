@@ -485,15 +485,21 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 	diags := hcl.Diagnostics{}
 
 	path := memberPath(section, token)
-	var packageName string
-	if i := strings.Index(token, ":"); i != -1 {
-		packageName = token[:i]
+	parts := strings.Split(token, ":")
+	if len(parts) < 3 || len(parts) > 3 {
+		err := errorf(path, "invalid token '%s' (should have three parts)", token)
+		diags = diags.Append(err)
+		// Early return because the other two error checks panic if len(parts) < 3
+		return diags
 	}
-	if !allowedPackageNames[packageName] {
-		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
-		diags = diags.Append(error)
+	if !allowedPackageNames[parts[0]] {
+		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		diags = diags.Append(err)
 	}
-
+	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
+		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
 	return diags
 }
 

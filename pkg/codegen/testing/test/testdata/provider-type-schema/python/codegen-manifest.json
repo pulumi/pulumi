@@ -1,0 +1,13 @@
+{
+  "emittedFiles": [
+    "pulumi_providerType/README.md",
+    "pulumi_providerType/__init__.py",
+    "pulumi_providerType/_utilities.py",
+    "pulumi_providerType/provider.py",
+    "pulumi_providerType/pulumi-plugin.json",
+    "pulumi_providerType/py.typed",
+    "pulumi_providerType/submod/__init__.py",
+    "pulumi_providerType/submod/provider.py",
+    "setup.py"
+  ]
+}
