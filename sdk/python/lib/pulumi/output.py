@@ -307,7 +307,17 @@ class Output(Generic[T_co]):
 
         # Is a (non-empty) dict or list? Recurse into the values within them.
         if val and isinstance(val, dict):
-            o_dict: Output[dict] = Output.all(**val)
+            # The keys themselves might be outputs, so we can't just pass `**val` to all.
+
+            # keys() and values() will be in the same order: https://docs.python.org/3/library/stdtypes.html#dictionary-view-objects
+            keys = list(val.keys())
+            values = list(val.values())
+
+            def liftValues(keys: List[Any]):
+                d = {keys[i]: values[i] for i in range(len(keys))}
+                return Output.all(**d)
+
+            o_dict: Output[dict] = Output.all(*keys).apply(liftValues)
             return cast(Output[T_co], o_dict)
 
         if val and isinstance(val, list):

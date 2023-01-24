@@ -70,6 +70,12 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertEqual(x_val, {"hello": "world"})
 
     @pulumi_test
+    async def test_unwrap_dict_output_key(self):
+        x = Output.from_input({Output.from_input("hello"): Output.from_input("world")})
+        x_val = await x.future()
+        self.assertEqual(x_val, {"hello": "world"})
+
+    @pulumi_test
     async def test_unwrap_dict_secret(self):
         x = Output.from_input({"hello": Output.secret("world")})
         x_val = await x.future()
@@ -379,6 +385,14 @@ class OutputJsonDumpsTests(unittest.TestCase):
         self.assertEqual(await x.is_secret(), False)
         self.assertEqual(await x.is_known(), True)
         self.assertIn(resource, await x.resources())
+
+    @pulumi_test
+    async def test_output_keys(self):
+        i = {Output.from_input("hello"): Output.from_input(1)}
+        x = Output.json_dumps(i)
+        self.assertEqual(await x.future(), "{\"hello\": 1}")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
 
 class OutputJsonLoadsTests(unittest.TestCase):
     @pulumi_test
