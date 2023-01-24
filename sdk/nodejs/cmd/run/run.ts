@@ -36,8 +36,8 @@ import * as mod from ".";
 //
 // Workaround inspired by es-module-shims:
 // https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
-// eslint-disable-next-line no-eval
 /** @internal */
+// eslint-disable-next-line no-eval
 const dynamicImport = (0, eval)("u=>import(u)");
 
 /**
@@ -66,7 +66,7 @@ function pulumiProjectRootFromProgramPath(programPath: string): string {
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
     // pkgDir is an ESM module which we use to find the location of package.json
     // Because it's an ESM module, we cannot import it directly.
-    const pkgDir = await dynamicImport('pkg-dir');
+    const { packageDirectory } = await dynamicImport("pkg-dir");
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;
@@ -74,15 +74,15 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         const fileStat = await fspromises.lstat(programPath);
         isDirectory = fileStat.isDirectory();
     }
-    const programDirectory = isDirectory ? programPath : path.dirname(programPath); 
-    const packageDirectory = await pkgDir.packageDirectory({
+    const programDirectory = isDirectory ? programPath : path.dirname(programPath);
+    const pkgDir = await packageDirectory({
         cwd: programDirectory,
     });
-    if (packageDirectory === undefined) {
+    if (pkgDir === undefined) {
         log.warn("Could not find a package.json file for the program. Using the pulumi program directory as the project root.");
         return programDirectory;
     }
-    return packageDirectory;
+    return pkgDir;
 }
 
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
