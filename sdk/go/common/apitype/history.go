@@ -113,6 +113,7 @@ type UpdateInfo struct {
 	Version         int             `json:"version"`
 	Deployment      json.RawMessage `json:"deployment,omitempty"`
 	ResourceChanges map[OpType]int  `json:"resourceChanges,omitempty"`
+	ResourceCount   int             `json:"resourceCount,omitempty"`
 }
 
 // GetHistoryResponse is the response from the Pulumi Service when requesting
