@@ -33,6 +33,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -228,7 +229,11 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// Keep track of the versions of @pulumi/pulumi that are pulled in.  If they differ on
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
-	plugins, err := getPluginsFromDir(req.GetProgram(), pulumiPackagePathToVersionMap, false /*inNodeModules*/)
+	plugins, err := getPluginsFromDir(
+		req.GetProgram(),
+		pulumiPackagePathToVersionMap,
+		false, /*inNodeModules*/
+		make(map[string]struct{}))
 
 	if err == nil {
 		first := true
@@ -264,7 +269,18 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 // getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
 func getPluginsFromDir(
 	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
-	inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
+	inNodeModules bool, visitedPaths map[string]struct{}) ([]*pulumirpc.PluginDependency, error) {
+
+	// try to absolute the input path so visitedPaths can track it correctly
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, fmt.Errorf("getting full path for plugin dir %s: %w", dir, err)
+	}
+
+	if _, has := visitedPaths[dir]; has {
+		return nil, nil
+	}
+	visitedPaths[dir] = struct{}{}
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -276,17 +292,33 @@ func getPluginsFromDir(
 	for _, file := range files {
 		name := file.Name()
 		curr := filepath.Join(dir, name)
+		isDir := file.IsDir()
 
-		// Re-stat the directory, in case it is a symlink.
-		fi, err := os.Stat(curr)
-		if err != nil {
-			allErrors = multierror.Append(allErrors, err)
-			continue
+		// if this is a symlink resolve it so our visitedPaths can track recursion
+		if (file.Type() & fs.ModeSymlink) != 0 {
+			symlink, err := filepath.EvalSymlinks(curr)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, fmt.Errorf("resolving link in plugin dir %s: %w", curr, err))
+				continue
+			}
+			curr = symlink
+
+			// And re-stat the directory to get the resolved mode bits
+			fi, err := os.Stat(curr)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, err)
+				continue
+			}
+			isDir = fi.IsDir()
 		}
-		if fi.IsDir() {
+
+		if isDir {
 			// if a directory, recurse.
 			more, err := getPluginsFromDir(
-				curr, pulumiPackagePathToVersionMap, inNodeModules || filepath.Base(dir) == "node_modules")
+				curr,
+				pulumiPackagePathToVersionMap,
+				inNodeModules || filepath.Base(dir) == "node_modules",
+				visitedPaths)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, err)
 			}
