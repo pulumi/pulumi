@@ -36,32 +36,26 @@ import (
 	"gocloud.dev/secrets/driver"
 )
 
-func assertNoError(t *testing.T, err error) {
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-}
-
 // the main testing function, takes a kms url and tries to make a new secret manager out of it and encrypt and
 // decrypt data
 func testURL(ctx context.Context, t *testing.T, url string) {
 	dataKey, err := generateNewDataKey(url)
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	manager, err := newCloudSecretsManager(url, dataKey)
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	enc, err := manager.Encrypter()
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	dec, err := manager.Decrypter()
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	ciphertext, err := enc.EncryptValue(ctx, "plaintext")
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	plaintext, err := dec.DecryptValue(ctx, ciphertext)
-	assertNoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "plaintext", plaintext)
 }
 
@@ -70,7 +64,7 @@ func randomName(t *testing.T) string {
 	letters := "abcdefghijklmnopqrstuvwxyz"
 	for i := 0; i < 32; i++ {
 		j, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
-		assertNoError(t, err)
+		require.NoError(t, err)
 
 		char := letters[j.Int64()]
 		name = name + string(char)
@@ -100,7 +94,7 @@ func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKey
 	kmsClient := kms.NewFromConfig(cfg)
 	keyName := "test-key-" + randomName(t)
 	key, err := kmsClient.CreateKey(ctx, &kms.CreateKeyInput{Description: &keyName})
-	assertNoError(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, err := kmsClient.ScheduleKeyDeletion(ctx, &kms.ScheduleKeyDeletionInput{
 			KeyId: key.KeyMetadata.KeyId,
@@ -131,7 +125,7 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	url := "awskms://" + *key.KeyMetadata.KeyId + "?awssdk=v2"
 
 	creds, err := cfg.Credentials.Retrieve(ctx)
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	t.Setenv("AWS_PROFILE", "")
 	t.Setenv("AWS_ACCESS_KEY_ID", creds.AccessKeyID)
@@ -166,7 +160,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		RoleName:                 &roleName,
 		AssumeRolePolicyDocument: &assumeRolePolicyDocument,
 	})
-	assertNoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		_, err := iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
 			RoleName: &roleName,
@@ -190,7 +184,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		PolicyName:     &policyName,
 		PolicyDocument: &policyDocument,
 	})
-	assertNoError(t, err)
+	require.NoError(t, err)
 	defer func() {
 		_, err := iamClient.DetachRolePolicy(ctx, &iam.DetachRolePolicyInput{
 			PolicyArn: policy.Policy.Arn,
@@ -206,7 +200,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		PolicyArn: policy.Policy.Arn,
 		RoleName:  &roleName,
 	})
-	assertNoError(t, err)
+	require.NoError(t, err)
 
 	// AssumeRole takes about 10 seconds to take effect.
 	// We'll try for up to 20.
