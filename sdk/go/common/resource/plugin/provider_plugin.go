@@ -1146,18 +1146,18 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return resource.StatusOK, err
+	}
+
 	mprops, err := MarshalProperties(props, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
 		KeepSecrets:        p.acceptSecrets,
 		KeepResources:      p.acceptResources,
 	})
-	if err != nil {
-		return resource.StatusOK, err
-	}
-
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
 	if err != nil {
 		return resource.StatusOK, err
 	}

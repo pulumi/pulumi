@@ -1,12 +1,21 @@
 package plugin
 
 import (
+	"context"
+	"os"
 	"reflect"
 	"testing"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestAnnotateSecrets(t *testing.T) {
@@ -224,4 +233,110 @@ func TestNestedSecret(t *testing.T) {
 	annotateSecrets(to, from)
 
 	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+}
+
+// This test detects a data race between Configure and Delete
+// reported in https://github.com/pulumi/pulumi/issues/11971.
+//
+// The root cause of the data race was that
+// Delete read properties from provider
+// before they were set by Configure.
+//
+// To simulate the data race, we won't send the Configure request
+// until after Delete.
+func TestProvider_ConfigureDeleteRace(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	sink := diag.DefaultSink(
+		os.Stdout,
+		os.Stderr,
+		diag.FormatOptions{
+			Color: colors.Never,
+		},
+	)
+	ctx, err := NewContext(sink, sink, nil /* host */, nil /* source */, cwd, nil /* options */, false, nil /* span */)
+	require.NoError(t, err)
+
+	var gotSecret *structpb.Value
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{
+				AcceptSecrets: true,
+			}, nil
+		},
+		DeleteF: func(req *pulumirpc.DeleteRequest) error {
+			gotSecret = req.Properties.Fields["foo"]
+			return nil
+		},
+	}
+
+	p := NewProviderWithClient(ctx, "foo", client, false)
+
+	props := resource.PropertyMap{
+		"foo": resource.NewSecretProperty(&resource.Secret{
+			Element: resource.NewStringProperty("bar"),
+		}),
+	}
+
+	// Signal to specify that the Delete request was sent
+	// and we should Configure now.
+	deleting := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		close(deleting)
+		_, err := p.Delete(
+			resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux"),
+			"whatever",
+			props,
+			1000,
+		)
+		assert.NoError(t, err, "Delete failed")
+	}()
+
+	// Wait until delete request has been sent to Configure
+	// and then wait until Delete has finished.
+	<-deleting
+	assert.NoError(t, p.Configure(props))
+	<-done
+
+	s, ok := gotSecret.Kind.(*structpb.Value_StructValue)
+	require.True(t, ok, "must be a strongly typed secret, got %v", gotSecret.Kind)
+	assert.Equal(t, &structpb.Value_StringValue{
+		StringValue: "bar",
+	}, s.StructValue.Fields["value"].GetKind())
+}
+
+type stubClient struct {
+	pulumirpc.ResourceProviderClient
+
+	ConfigureF func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
+	DeleteF    func(*pulumirpc.DeleteRequest) error
+}
+
+func (c *stubClient) Configure(
+	ctx context.Context,
+	req *pulumirpc.ConfigureRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ConfigureResponse, error) {
+	if f := c.ConfigureF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Configure(ctx, req, opts...)
+}
+
+func (c *stubClient) Delete(
+	ctx context.Context,
+	req *pulumirpc.DeleteRequest,
+	opts ...grpc.CallOption,
+) (*emptypb.Empty, error) {
+	if f := c.DeleteF; f != nil {
+		err := f(req)
+		return &emptypb.Empty{}, err
+	}
+	return c.ResourceProviderClient.Delete(ctx, req, opts...)
 }
