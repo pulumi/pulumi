@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Enable programmatic tagging of stacks (Nodejs only)

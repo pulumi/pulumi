@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Fix NodeJS automation api always setting the PULUMI_CONFIG environment variable.

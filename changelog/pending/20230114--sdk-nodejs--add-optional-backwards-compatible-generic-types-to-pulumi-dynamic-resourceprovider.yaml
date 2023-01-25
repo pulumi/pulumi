@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Add optional / backwards compatible generic types to pulumi.dynamic.ResourceProvider.
