@@ -2,8 +2,6 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.17
 
-replace golang.org/x/text => golang.org/x/text v0.3.6
-
 require (
 	github.com/Microsoft/go-winio v0.5.2
 	github.com/blang/semver v3.5.1+incompatible
@@ -29,7 +27,7 @@ require (
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503
-	golang.org/x/mod v0.3.0
+	golang.org/x/mod v0.7.0
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 	golang.org/x/sys v0.0.0-20220823224334-20c2bfdbfe24
 	google.golang.org/grpc v1.51.0
@@ -76,10 +74,10 @@ require (
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
-	github.com/xanzy/ssh-agent v0.3.2 // indirect
+	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.uber.org/atomic v1.6.0 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20200608115520-7c474a2e3482 // indirect
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
