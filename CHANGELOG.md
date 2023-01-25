@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.53.1 (2023-01-25)
+
+
+### Bug Fixes
+
+- [engine] Revert go-cloud upgrade to fix issues with Azure secrets.
+  [#11984](https://github.com/pulumi/pulumi/pull/11984)
+
 ## v3.53.0 (2023-01-25)
 
 
