@@ -2,8 +2,10 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -233,6 +235,97 @@ func TestNestedSecret(t *testing.T) {
 	annotateSecrets(to, from)
 
 	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+}
+
+func TestPluginConfigPromise(t *testing.T) {
+	t.Parallel()
+
+	t.Run("many gets", func(t *testing.T) {
+		t.Parallel()
+
+		prom := newPluginConfigPromise()
+		ctx := context.Background()
+
+		cfg := pluginConfig{
+			known:           true,
+			acceptSecrets:   true,
+			acceptResources: true,
+			acceptOutputs:   true,
+			supportsPreview: true,
+		}
+
+		var wg sync.WaitGroup
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				got, err := prom.Await(ctx)
+				assert.NoError(t, err)
+				assert.Equal(t, cfg, got)
+			}()
+		}
+
+		prom.Fulfill(cfg, nil)
+		wg.Wait()
+	})
+
+	t.Run("error", func(t *testing.T) {
+		t.Parallel()
+
+		giveErr := errors.New("great sadness")
+		prom := newPluginConfigPromise()
+		ctx := context.Background()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+
+			_, err := prom.Await(ctx)
+			assert.ErrorIs(t, err, giveErr)
+		}()
+
+		prom.Fulfill(pluginConfig{}, giveErr)
+		<-done
+	})
+
+	t.Run("set twice", func(t *testing.T) {
+		t.Parallel()
+
+		prom := newPluginConfigPromise()
+		ctx := context.Background()
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			got, err := prom.Await(ctx)
+			assert.NoError(t, err)
+			assert.Equal(t, pluginConfig{acceptSecrets: true}, got)
+		}()
+
+		prom.Fulfill(pluginConfig{acceptSecrets: true}, nil)
+		prom.Fulfill(pluginConfig{acceptOutputs: true}, errors.New("ignored"))
+
+		// Should still see the first configuration.
+		got, err := prom.Await(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, pluginConfig{acceptSecrets: true}, got)
+
+		wg.Wait()
+	})
+
+	t.Run("await cancelled", func(t *testing.T) {
+		t.Parallel()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		prom := newPluginConfigPromise()
+		_, err := prom.Await(ctx)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
 }
 
 // This test detects a data race between Configure and Delete

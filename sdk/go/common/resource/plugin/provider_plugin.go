@@ -22,6 +22,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -65,15 +66,63 @@ type provider struct {
 	pkg                    tokens.Package                   // the Pulumi package containing this provider's resources.
 	plug                   *plugin                          // the actual plugin process wrapper.
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
-	cfgerr                 error                            // non-nil if a configure call fails.
-	cfgknown               bool                             // true if all configuration values are known.
-	cfgdone                chan bool                        // closed when configuration has completed.
-	acceptSecrets          bool                             // true if this plugin accepts strongly-typed secrets.
-	acceptResources        bool                             // true if this plugin accepts strongly-typed resource refs.
-	acceptOutputs          bool                             // true if this plugin accepts output values.
-	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
+
+	// Await and provide configuration values.
+	// Use of closures here prevents unintentional unguarded access
+	// to the configuration values.
+	awaitConfig   func(context.Context) (pluginConfig, error)
+	provideConfig func(pluginConfig, error)
+}
+
+// pluginConfig holds the configuration of the provider
+// as specified by the Configure call.
+type pluginConfig struct {
+	known bool // true if all configuration values are known.
+
+	acceptSecrets   bool // true if this plugin accepts strongly-typed secrets.
+	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
+	acceptOutputs   bool // true if this plugin accepts output values.
+	supportsPreview bool // true if this plugin supports previews for Create and Update.
+}
+
+// pluginConfigPromise is an asynchronously filled value for pluginConfig.
+type pluginConfigPromise struct {
+	done chan struct{} // closed on set
+	once sync.Once     // only one set
+	cfg  pluginConfig
+	err  error // non-nil if the operation failed
+}
+
+func newPluginConfigPromise() *pluginConfigPromise {
+	return &pluginConfigPromise{
+		done: make(chan struct{}),
+	}
+}
+
+// Await blocks until the value in the promise has resolved
+// or the given context expires.
+func (p *pluginConfigPromise) Await(ctx context.Context) (pluginConfig, error) {
+	select {
+	case <-ctx.Done():
+		return pluginConfig{}, ctx.Err()
+	case <-p.done:
+		return p.cfg, p.err
+	}
+}
+
+// Fulfill provides values to the promise.
+// A non-nil error indicates failure.
+//
+// Fulfill can be called only once.
+// Any calls after that will be ignored.
+func (p *pluginConfigPromise) Fulfill(cfg pluginConfig, err error) {
+	p.once.Do(func() {
+		defer close(p.done)
+		p.cfg = cfg
+		p.err = err
+	})
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -143,14 +192,16 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
+	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		plug:                   plug,
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
-		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
 		legacyPreview:          legacyPreview,
+		awaitConfig:            cfgPromise.Await,
+		provideConfig:          cfgPromise.Fulfill,
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -201,12 +252,14 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 
 	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
 
+	cfgPromise := newPluginConfigPromise()
 	p := &provider{
 		ctx:           ctx,
 		plug:          plug,
 		clientRaw:     pulumirpc.NewResourceProviderClient(plug.Conn),
-		cfgdone:       make(chan bool),
 		legacyPreview: legacyPreview,
+		awaitConfig:   cfgPromise.Await,
+		provideConfig: cfgPromise.Fulfill,
 	}
 
 	// If we just attached (i.e. plugin bin is nil) we need to call attach
@@ -222,12 +275,14 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
 	disableProviderPreview bool) Provider {
 
+	cfgPromise := newPluginConfigPromise()
 	return &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
 		clientRaw:              client,
-		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
+		awaitConfig:            cfgPromise.Await,
+		provideConfig:          cfgPromise.Fulfill,
 	}
 }
 
@@ -288,20 +343,16 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:         fmt.Sprintf("%s.olds", label),
-		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: allowUnknowns,
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
-		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: allowUnknowns,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -392,20 +443,16 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:         fmt.Sprintf("%s.olds", label),
-		KeepUnknowns:  true,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		Label:        fmt.Sprintf("%s.olds", label),
+		KeepUnknowns: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
 	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
-		KeepUnknowns:  true,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		Label:        fmt.Sprintf("%s.news", label),
+		KeepUnknowns: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -468,23 +515,6 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
 	}, nil
-}
-
-// getClient returns the client, and ensures that the target provider has been configured.  This just makes it safer
-// to use without forgetting to call ensureConfigured manually.
-func (p *provider) getClient() (pulumirpc.ResourceProviderClient, error) {
-	if err := p.ensureConfigured(); err != nil {
-		return nil, err
-	}
-	return p.clientRaw, nil
-}
-
-// ensureConfigured blocks waiting for the plugin to be configured.  To improve parallelism, all Configure RPCs
-// occur in parallel, and we await the completion of them at the last possible moment.  This does mean, however, that
-// we might discover failures later than we would have otherwise, but the caller of ensureConfigured will get them.
-func (p *provider) ensureConfigured() error {
-	<-p.cfgdone
-	return p.cfgerr
 }
 
 // annotateSecrets copies the "secretness" from the ins to the outs. If there are values with the same keys for the
@@ -568,8 +598,11 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		}
 
 		if v.ContainsUnknowns() {
-			p.cfgknown, p.acceptSecrets, p.acceptResources = false, false, false
-			close(p.cfgdone)
+			p.provideConfig(pluginConfig{
+				known:           false,
+				acceptSecrets:   false,
+				acceptResources: false,
+			}, nil)
 			return nil
 		}
 
@@ -577,9 +610,9 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		if _, isString := mapped.(string); !isString {
 			marshalled, err := json.Marshal(mapped)
 			if err != nil {
-				p.cfgerr = errors.Wrapf(err, "marshaling configuration property '%v'", k)
-				close(p.cfgdone)
-				return p.cfgerr
+				err := errors.Wrapf(err, "marshaling configuration property '%v'", k)
+				p.provideConfig(pluginConfig{}, err)
+				return err
 			}
 			mapped = string(marshalled)
 		}
@@ -596,9 +629,9 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		KeepResources: true,
 	})
 	if err != nil {
-		p.cfgerr = errors.Wrapf(err, "marshaling provider inputs")
-		close(p.cfgdone)
-		return p.cfgerr
+		err := errors.Wrapf(err, "marshaling provider inputs")
+		p.provideConfig(pluginConfig{}, err)
+		return err
 	}
 
 	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
@@ -615,14 +648,14 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
 			err = createConfigureError(rpcError)
 		}
-		// Acquire the lock, publish the results, and notify any waiters.
-		p.acceptSecrets = resp.GetAcceptSecrets()
-		p.acceptResources = resp.GetAcceptResources()
-		p.supportsPreview = resp.GetSupportsPreview()
-		p.acceptOutputs = resp.GetAcceptOutputs()
 
-		p.cfgknown, p.cfgerr = true, err
-		close(p.cfgdone)
+		p.provideConfig(pluginConfig{
+			known:           true,
+			acceptSecrets:   resp.GetAcceptSecrets(),
+			acceptResources: resp.GetAcceptResources(),
+			supportsPreview: resp.GetSupportsPreview(),
+			acceptOutputs:   resp.GetAcceptOutputs(),
+		}, err)
 	}()
 
 	return nil
@@ -635,23 +668,24 @@ func (p *provider) Check(urn resource.URN,
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
 	// property was sourced from another resource's output properties--don't call into the underlying provider.
-	if !p.cfgknown {
+	if !pcfg.known {
 		return news, nil, nil
 	}
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:         fmt.Sprintf("%s.olds", label),
 		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -659,8 +693,8 @@ func (p *provider) Check(urn resource.URN,
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:         fmt.Sprintf("%s.news", label),
 		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -696,7 +730,7 @@ func (p *provider) Check(urn resource.URN,
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !p.acceptSecrets {
+	if !pcfg.acceptSecrets {
 		annotateSecrets(inputs, news)
 	}
 
@@ -723,8 +757,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -732,7 +767,7 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
 	// property was sourced from another resource's output properties--don't call into the underlying provider.
 	// Instead, indicate that the diff is unavailable and write a message
-	if !p.cfgknown {
+	if !pcfg.known {
 		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
 		const message = "The provider for this resource has inputs that are not known during preview.\n" +
 			"This preview may not correctly represent the changes that will be applied during an update."
@@ -743,8 +778,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		Label:              fmt.Sprintf("%s.olds", label),
 		ElideAssetContents: true,
 		KeepUnknowns:       allowUnknowns,
-		KeepSecrets:        p.acceptSecrets,
-		KeepResources:      p.acceptResources,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -752,8 +787,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:         fmt.Sprintf("%s.news", label),
 		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -809,8 +844,9 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return "", nil, resource.StatusOK, err
 	}
@@ -827,25 +863,25 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
 		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
-		if !p.cfgknown {
+		if !pcfg.known {
 			if p.legacyPreview {
 				return "", props, resource.StatusOK, nil
 			}
 			return "", resource.PropertyMap{}, resource.StatusOK, nil
 		}
-		if !p.supportsPreview || p.disableProviderPreview {
+		if !pcfg.supportsPreview || p.disableProviderPreview {
 			return "", props, resource.StatusOK, nil
 		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(p.cfgknown)
+	contract.Assert(pcfg.known)
 
 	mprops, err := MarshalProperties(props, MarshalOptions{
 		Label:         fmt.Sprintf("%s.inputs", label),
 		KeepUnknowns:  preview,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return "", nil, resource.StatusOK, err
@@ -893,7 +929,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !p.acceptSecrets {
+	if !pcfg.acceptSecrets {
 		annotateSecrets(outs, props)
 	}
 
@@ -915,14 +951,15 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(inputs), len(state))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
 	}
 
 	// If the provider is not fully configured, return an empty bag.
-	if !p.cfgknown {
+	if !pcfg.known {
 		return ReadResult{
 			Outputs: resource.PropertyMap{},
 			Inputs:  resource.PropertyMap{},
@@ -935,8 +972,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 		m, err := MarshalProperties(inputs, MarshalOptions{
 			Label:              label,
 			ElideAssetContents: true,
-			KeepSecrets:        p.acceptSecrets,
-			KeepResources:      p.acceptResources,
+			KeepSecrets:        pcfg.acceptSecrets,
+			KeepResources:      pcfg.acceptResources,
 		})
 		if err != nil {
 			return ReadResult{}, resource.StatusUnknown, err
@@ -946,8 +983,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	mstate, err := MarshalProperties(state, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
-		KeepSecrets:        p.acceptSecrets,
-		KeepResources:      p.acceptResources,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return ReadResult{}, resource.StatusUnknown, err
@@ -1011,7 +1048,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !p.acceptSecrets {
+	if !pcfg.acceptSecrets {
 		annotateSecrets(newInputs, inputs)
 		annotateSecrets(newState, state)
 	}
@@ -1037,8 +1074,9 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return news, resource.StatusOK, err
 	}
@@ -1055,25 +1093,25 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
 		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
-		if !p.cfgknown {
+		if !pcfg.known {
 			if p.legacyPreview {
 				return news, resource.StatusOK, nil
 			}
 			return resource.PropertyMap{}, resource.StatusOK, nil
 		}
-		if !p.supportsPreview || p.disableProviderPreview {
+		if !pcfg.supportsPreview || p.disableProviderPreview {
 			return news, resource.StatusOK, nil
 		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(p.cfgknown)
+	contract.Assert(pcfg.known)
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:              fmt.Sprintf("%s.olds", label),
 		ElideAssetContents: true,
-		KeepSecrets:        p.acceptSecrets,
-		KeepResources:      p.acceptResources,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -1081,8 +1119,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	mnews, err := MarshalProperties(news, MarshalOptions{
 		Label:         fmt.Sprintf("%s.news", label),
 		KeepUnknowns:  preview,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, resource.StatusOK, err
@@ -1126,7 +1164,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
-	if !p.acceptSecrets {
+	if !pcfg.acceptSecrets {
 		annotateSecrets(outs, news)
 	}
 
@@ -1146,8 +1184,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return resource.StatusOK, err
 	}
@@ -1155,15 +1194,15 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	mprops, err := MarshalProperties(props, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
-		KeepSecrets:        p.acceptSecrets,
-		KeepResources:      p.acceptResources,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return resource.StatusOK, err
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(p.cfgknown)
+	contract.Assert(pcfg.known)
 
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
@@ -1192,16 +1231,17 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), typ, name, parent)
 	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(inputs))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return ConstructResult{}, err
 	}
 
 	// We should only be calling Construct if the provider is fully configured.
-	contract.Assert(p.cfgknown)
+	contract.Assert(pcfg.known)
 
-	if !p.acceptSecrets {
+	if !pcfg.acceptSecrets {
 		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
 	}
 
@@ -1209,11 +1249,11 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	minputs, err := MarshalProperties(inputs, MarshalOptions{
 		Label:         fmt.Sprintf("%s.inputs", label),
 		KeepUnknowns:  true,
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: p.acceptOutputs,
+		KeepOutputValues: pcfg.acceptOutputs,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1308,21 +1348,22 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// If the provider is not fully configured, return an empty property map.
-	if !p.cfgknown {
+	if !pcfg.known {
 		return resource.PropertyMap{}, nil, nil
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
 		Label:         fmt.Sprintf("%s.args", label),
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -1371,21 +1412,22 @@ func (p *provider) StreamInvoke(
 	label := fmt.Sprintf("%s.StreamInvoke(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
 	// If the provider is not fully configured, return an empty property map.
-	if !p.cfgknown {
+	if !pcfg.known {
 		return nil, onNext(resource.PropertyMap{})
 	}
 
 	margs, err := MarshalProperties(args, MarshalOptions{
 		Label:         fmt.Sprintf("%s.args", label),
-		KeepSecrets:   p.acceptSecrets,
-		KeepResources: p.acceptResources,
+		KeepSecrets:   pcfg.acceptSecrets,
+		KeepResources: pcfg.acceptResources,
 	})
 	if err != nil {
 		return nil, err
@@ -1447,14 +1489,15 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
 
-	// Get the RPC client and ensure it's configured.
-	client, err := p.getClient()
+	// Ensure that the plugin is configured.
+	client := p.clientRaw
+	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
 		return CallResult{}, err
 	}
 
 	// If the provider is not fully configured, return an empty property map.
-	if !p.cfgknown {
+	if !pcfg.known {
 		return CallResult{}, nil
 	}
 
@@ -1465,7 +1508,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 		KeepResources: true,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues: p.acceptOutputs,
+		KeepOutputValues: pcfg.acceptOutputs,
 	})
 	if err != nil {
 		return CallResult{}, err
