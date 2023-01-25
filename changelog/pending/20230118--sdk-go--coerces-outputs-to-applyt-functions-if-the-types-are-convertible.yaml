@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Coerces output values in ApplyT calls if the types are equivalent.

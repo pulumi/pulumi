@@ -1,5 +1,34 @@
 # Changelog
 
+## v3.53.0 (2023-01-25)
+
+
+### Features
+
+- [auto/nodejs] Enable programmatic tagging of stacks (Nodejs only)
+  [#11659](https://github.com/pulumi/pulumi/pull/11659)
+
+- [sdk/go] Coerces output values in ApplyT calls if the types are equivalent.
+  [#11903](https://github.com/pulumi/pulumi/pull/11903)
+
+- [sdk/nodejs] Add optional / backwards compatible generic types to pulumi.dynamic.ResourceProvider.
+  [#11881](https://github.com/pulumi/pulumi/pull/11881)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Fix NodeJS automation api always setting the PULUMI_CONFIG environment variable.
+  [#11943](https://github.com/pulumi/pulumi/pull/11943)
+
+- [cli/display] Display text-based diff if yaml/json diff is semantically equal
+  [#11803](https://github.com/pulumi/pulumi/pull/11803)
+
+- [sdk/go] Fixes data race in provider plugin resulting in weakly typed secrets.
+  [#11975](https://github.com/pulumi/pulumi/pull/11975)
+
+- [sdk/nodejs] Fix handling of recursive symlinks in node_modules.
+  [#11950](https://github.com/pulumi/pulumi/pull/11950)
+
 ## 3.52.1 (2023-01-19)
 
 

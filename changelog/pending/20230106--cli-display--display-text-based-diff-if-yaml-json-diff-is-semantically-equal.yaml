@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Display text-based diff if yaml/json diff is semantically equal
