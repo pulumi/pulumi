@@ -45,6 +45,8 @@ go_mod_update() (
     echo "updating and tidying '${DIR}'"
     go mod edit -replace "github.com/pulumi/pulumi/sdk/v3=$(relpath . "${SDK_DIR}")"
     go mod edit -replace "github.com/pulumi/pulumi/pkg/v3=$(relpath . "${PKG_DIR}")"
+    go get -u github.com/pulumi/pulumi/sdk/v3 >/dev/null 2>&1
+    go get -u github.com/pulumi/pulumi/pkg/v3 >/dev/null 2>&1
     go mod tidy -compat=1.18
     go mod edit -dropreplace "github.com/pulumi/pulumi/sdk/v3"
     go mod edit -dropreplace "github.com/pulumi/pulumi/pkg/v3"
@@ -59,6 +61,8 @@ go_mod_update pkg
 go_mod_update tests
 go_mod_update developer-docs
 
+# Update integration and automation tests, which must be at least one directory deeper.
 for f in $(git ls-files '*/**/go.mod'); do
-  go_mod_update "$(dirname "${f}")"
+  go_mod_update "$(dirname "${f}")" &
 done
+wait
