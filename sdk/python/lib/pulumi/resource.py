@@ -189,8 +189,15 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
+    parent_urn: Optional["Input[str]"] = None
+    if parent is not None:
+        if isinstance(parent, Resource):
+            parent_urn = parent.urn
+        else:
+            parent_urn = parent
+
     return create_urn_internal(
-        name=name, type_=type_, parent=parent, project=project, stack=stack
+        name=name, type_=type_, parent=parent_urn, project=project, stack=stack
     )
 
 

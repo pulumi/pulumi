@@ -99,7 +99,7 @@ class ResourceResolverOperations(NamedTuple):
 def create_urn(
     name: "Input[str]",
     type_: "Input[str]",
-    parent: Optional[Union["Resource", "Input[str]"]] = None,
+    parent: Optional["Input[str]"] = None,
     project: Optional[str] = None,
     stack: Optional[str] = None,
 ) -> "Output[str]":
@@ -109,12 +109,7 @@ def create_urn(
     """
     parent_prefix: Optional[Output[str]] = None
     if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
+        parent_urn = Output.from_input(parent)
         parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
     else:
         if stack is None:
