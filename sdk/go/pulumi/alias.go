@@ -134,17 +134,3 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 		return createURN(a[0].(string), a[1].(string), a[2].(string), a[3].(string), a[4].(string))
 	}).(URNOutput)
 }
-
-// inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
-// This may involve changing the name of the resource in cases where the resource has a named derived from the name of
-// the parent, and the parent name changed.
-func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
-	aliasName := StringInput(String(childName))
-	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentURN.ApplyT(func(urn URN) string {
-			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
-			return string(parentPrefix) + childName[len(parentName):]
-		}).(StringOutput)
-	}
-	return CreateURN(aliasName, String(childType), parentURN.ToStringOutput(), String(project), String(stack))
-}

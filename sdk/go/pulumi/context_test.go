@@ -15,14 +15,17 @@
 package pulumi
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 // The test is extracted from a panic using pulumi-docker and minified
@@ -149,105 +152,6 @@ func TestWaitingCausesNoPanics(t *testing.T) {
 	}
 }
 
-func TestCollapseAliases(t *testing.T) {
-	t.Parallel()
-
-	mocks := &testMonitor{
-		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-			assert.Equal(t, "test:resource:type", args.TypeToken)
-			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
-		},
-	}
-
-	testCases := []struct {
-		parentAliases  []Alias
-		childAliases   []Alias
-		totalAliasUrns int
-		results        []URN
-	}{
-		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{},
-			totalAliasUrns: 0,
-			results:        []URN{},
-		},
-		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{{Type: String("test:resource:child2")}},
-			totalAliasUrns: 1,
-			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child"},
-		},
-		{
-			parentAliases:  []Alias{},
-			childAliases:   []Alias{{Name: String("child2")}},
-			totalAliasUrns: 1,
-			results:        []URN{"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2"},
-		},
-		{
-			parentAliases:  []Alias{{Type: String("test:resource:type3")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}},
-			totalAliasUrns: 3,
-			results: []URN{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
-				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
-				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
-			},
-		},
-		{
-			parentAliases:  []Alias{{Name: String("myres2")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}},
-			totalAliasUrns: 3,
-			results: []URN{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
-			},
-		},
-		{
-			parentAliases:  []Alias{{Name: String("myres2")}, {Type: String("test:resource:type3")}, {Name: String("myres3")}},
-			childAliases:   []Alias{{Name: String("myres-child2")}, {Type: String("test:resource:child2")}},
-			totalAliasUrns: 11,
-			results: []URN{
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres2-child",
-				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
-				"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
-				"urn:pulumi:stack::project::test:resource:type3$test:resource:child2::myres-child",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres3-child2",
-				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres3-child",
-			},
-		},
-	}
-
-	for i := range testCases {
-		testCase := testCases[i]
-		err := RunErr(func(ctx *Context) error {
-			var res testResource2
-			err := ctx.RegisterResource("test:resource:type", "myres", &testResource2Inputs{}, &res,
-				Aliases(testCase.parentAliases))
-			assert.NoError(t, err)
-			urns, err := ctx.collapseAliases(testCase.childAliases, "test:resource:child", "myres-child", &res)
-			assert.NoError(t, err)
-			assert.Len(t, urns, testCase.totalAliasUrns)
-			var items []interface{}
-			for _, item := range urns {
-				items = append(items, item)
-			}
-			All(items...).ApplyT(func(urns interface{}) bool {
-				assert.ElementsMatch(t, urns, testCase.results)
-				return true
-			})
-			return nil
-		}, WithMocks("project", "stack", mocks))
-		assert.NoError(t, err)
-	}
-
-}
-
 // Context with which to create a ProviderResource.
 type Prov struct {
 	name string
@@ -372,4 +276,204 @@ func TestMergeProviders(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestRegisterResource_aliasesSpecs(t *testing.T) {
+	t.Parallel()
+
+	parentURN := CreateURN(
+		String("parent"),
+		String("test:resource:parentType"),
+		String(""),
+		String("project"),
+		String("stack"),
+	)
+
+	tests := []struct {
+		desc string
+		give []Alias
+
+		// Whether the monitor supports aliasSpecs.
+		supportsAliasSpecs bool
+
+		// Specifies what we expect on the RegisterResourceRequest.
+		// Typically, if a server supports AliasSpecs,
+		// we won't send AliasURNs.
+		wantAliases   []*pulumirpc.Alias
+		wantAliasURNs []string
+	}{
+		{
+			desc: "no parent/before alias specs",
+			give: []Alias{
+				{Name: String("resA"), NoParent: Bool(true)},
+				{Name: String("resB"), NoParent: Bool(true)},
+			},
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Urn{
+						Urn: "urn:pulumi:stack::project::test:resource:type::resA",
+					},
+				},
+				{
+					Alias: &pulumirpc.Alias_Urn{
+						Urn: "urn:pulumi:stack::project::test:resource:type::resB",
+					},
+				},
+			},
+			wantAliasURNs: []string{
+				"urn:pulumi:stack::project::test:resource:type::resA",
+				"urn:pulumi:stack::project::test:resource:type::resB",
+			},
+		},
+		{
+			desc:               "no parent/with alias specs",
+			supportsAliasSpecs: true,
+			give: []Alias{
+				{Name: String("resA"), NoParent: Bool(true)},
+				{Name: String("resB"), NoParent: Bool(true)},
+			},
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name:   "resA",
+							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+						},
+					},
+				},
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name:   "resB",
+							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "parent urn/no alias specs",
+			give: []Alias{
+				{Name: String("child"), ParentURN: parentURN},
+			},
+			wantAliasURNs: []string{
+				"urn:pulumi:stack::project::test:resource:parentType$test:resource:type::child",
+			},
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Urn{
+						Urn: "urn:pulumi:stack::project::test:resource:parentType$test:resource:type::child",
+					},
+				},
+			},
+		},
+		{
+			desc: "parent urn/alias specs",
+			give: []Alias{
+				{Name: String("child"), ParentURN: parentURN},
+			},
+			supportsAliasSpecs: true,
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name: "child",
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: "urn:pulumi:stack::project::test:resource:parentType::parent",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				gotAliases   []*pulumirpc.Alias
+				gotAliasURNS []string
+			)
+			monitor := &testMonitor{
+				NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+					gotAliases = append(gotAliases, args.RegisterRPC.Aliases...)
+					gotAliasURNS = append(gotAliasURNS, args.RegisterRPC.AliasURNs...)
+					return args.Name, resource.PropertyMap{}, nil
+				},
+			}
+
+			opts := []RunOption{
+				WithMocks("project", "stack", monitor),
+			}
+
+			// The mock resource monitor client does not support
+			// alias specs.
+			// So if that's needed, wrap the monitor to claim it
+			// does.
+			if tt.supportsAliasSpecs {
+				opts = append(opts, WrapResourceMonitorClient(
+					func(rmc pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
+						return resourceMonitorClientWithFeatures(rmc, "aliasSpecs")
+					}))
+			}
+
+			err := RunErr(func(ctx *Context) error {
+				var res testResource2
+				err := ctx.RegisterResource(
+					"test:resource:type",
+					"resNew",
+					&testResource2Inputs{Foo: String("oof")},
+					&res,
+					Aliases(tt.give),
+				)
+				require.NoError(t, err)
+				return nil
+			}, opts...)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantAliases, gotAliases, "Aliases did not match")
+			assert.Equal(t, tt.wantAliasURNs, gotAliasURNS, "AliasURNs did not match")
+		})
+	}
+}
+
+// resmonClientWithFeatures wraps a ResourceMonitorClient
+// to report various additional features as supported.
+type resmonClientWithFeatures struct {
+	pulumirpc.ResourceMonitorClient
+
+	features map[string]struct{}
+}
+
+// resourceMonitorClientWithFeatures builds a ResourceMonitorClient
+// that reports the provided feature names as supported
+// in addition to those already supported by the client.
+func resourceMonitorClientWithFeatures(
+	cl pulumirpc.ResourceMonitorClient,
+	features ...string,
+) pulumirpc.ResourceMonitorClient {
+	featureSet := make(map[string]struct{}, len(features))
+	for _, f := range features {
+		featureSet[f] = struct{}{}
+	}
+	return &resmonClientWithFeatures{
+		ResourceMonitorClient: cl,
+		features:              featureSet,
+	}
+}
+
+func (c *resmonClientWithFeatures) SupportsFeature(
+	ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.SupportsFeatureResponse, error) {
+	if _, ok := c.features[req.GetId()]; ok {
+		return &pulumirpc.SupportsFeatureResponse{
+			HasSupport: ok,
+		}, nil
+	}
+	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
 }
