@@ -13,12 +13,12 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="mymodule/" title="myModule"><span class="api-symbol api-symbol--module"></span>myModule</a></li>
+    <li><a href="mymodule/" title="myModule">myModule</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

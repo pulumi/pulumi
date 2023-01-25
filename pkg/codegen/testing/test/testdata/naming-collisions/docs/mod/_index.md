@@ -13,8 +13,8 @@ Explore the resources and functions of the example.mod module.
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="component/" title="Component"><span class="api-symbol api-symbol--resource"></span>Component</a></li>
-    <li><a href="component2/" title="Component2"><span class="api-symbol api-symbol--resource"></span>Component2</a></li>
+    <li><a href="component/" title="Component">Component</a></li>
+    <li><a href="component2/" title="Component2">Component2</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

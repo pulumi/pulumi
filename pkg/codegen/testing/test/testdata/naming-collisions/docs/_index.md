@@ -13,15 +13,15 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="mod/" title="mod"><span class="api-symbol api-symbol--module"></span>mod</a></li>
+    <li><a href="mod/" title="mod">mod</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="maincomponent/" title="MainComponent"><span class="api-symbol api-symbol--resource"></span>MainComponent</a></li>
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
-    <li><a href="resource/" title="Resource"><span class="api-symbol api-symbol--resource"></span>Resource</a></li>
-    <li><a href="resourceinput/" title="ResourceInput"><span class="api-symbol api-symbol--resource"></span>ResourceInput</a></li>
+    <li><a href="maincomponent/" title="MainComponent">MainComponent</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
+    <li><a href="resource/" title="Resource">Resource</a></li>
+    <li><a href="resourceinput/" title="ResourceInput">ResourceInput</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>
