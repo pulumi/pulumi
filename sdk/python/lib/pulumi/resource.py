@@ -39,7 +39,7 @@ from .runtime.resource import (
     register_resource_outputs,
     read_resource,
     convert_providers,
-    create_urn,
+    create_urn as create_urn_internal,
 )
 from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
@@ -189,7 +189,7 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-    return create_urn(
+    return create_urn_internal(
         name=name, type_=type_, parent=parent, project=project, stack=stack
     )
 
