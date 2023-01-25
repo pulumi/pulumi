@@ -20,6 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -56,11 +57,21 @@ type stackOutputCmd struct {
 	stackName   string
 	showSecrets bool
 	jsonOut     bool
+
+	// requireStack is a reference to the top-level requireStack function.
+	// This is a field on stackOutputCmd so that we can replace it
+	// from tests.
+	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
 }
 
 func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	requireStack := requireStack
+	if cmd.requireStack != nil {
+		requireStack = cmd.requireStack
 	}
 
 	// Fetch the current stack and its output properties.
