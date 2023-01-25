@@ -1118,14 +1118,6 @@ func TestESMJS(t *testing.T) {
 	})
 }
 
-func TestESMJSWithPackageJsonInParentDir(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("nodejs", "esm-js-with-package-json-in-parent-dir", "myprogram"),
-		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-	})
-}
-
 func TestESMJSMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-js-main"),

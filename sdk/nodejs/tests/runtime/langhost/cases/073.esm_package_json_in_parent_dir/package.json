@@ -1,0 +1,14 @@
+{
+    "name": "esm-js-with-package-json-in-parent-dir",
+    "main": "entrypoint.js",
+    "license": "Apache-2.0",
+    "type": "module",
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "//": [
+        "By specifying a custom 'main' field, this program will fail to",
+        "load unless module resolution correctly looks up the directory",
+        "tree from /myprogram to find package.json"
+    ]
+}

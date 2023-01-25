@@ -1256,6 +1256,10 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "esm_package_json_in_parent_dir": {
+            pwd: path.join(base, "073.esm_package_json_in_parent_dir/myprogram"),
+            program: path.join(base, "073.esm_package_json_in_parent_dir/myprogram"),
+        },
     };
 
     for (const casename of Object.keys(cases)) {
