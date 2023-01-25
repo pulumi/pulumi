@@ -39,6 +39,7 @@ from .runtime.resource import (
     register_resource_outputs,
     read_resource,
     convert_providers,
+    create_urn,
 )
 from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
@@ -175,6 +176,22 @@ class Alias:
         self.parent = parent
         self.stack = stack
         self.project = project
+
+
+def create_urn(
+    name: "Input[str]",
+    type_: "Input[str]",
+    parent: Optional[Union["Resource", "Input[str]"]] = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+) -> "Output[str]":
+    """
+    create_urn computes a URN from the combination of a resource name, resource type, optional
+    parent, optional project and optional stack.
+    """
+    return create_urn(
+        name=name, type_=type_, parent=parent, project=project, stack=stack
+    )
 
 
 class ResourceTransformationArgs:

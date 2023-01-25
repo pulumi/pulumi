@@ -59,13 +59,12 @@ from .resource import (
     ProviderResource,
     ResourceOptions,
     export,
+    create_urn,
     ROOT_STACK_RESOURCE,
     ResourceTransformation,
     ResourceTransformationArgs,
     ResourceTransformationResult,
 )
-
-from .runtime.resource import create_urn
 
 from .output import (
     Output,
