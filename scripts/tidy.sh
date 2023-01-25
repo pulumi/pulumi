@@ -50,6 +50,7 @@ go_mod_update() (
     go mod tidy -compat=1.18
     go mod edit -dropreplace "github.com/pulumi/pulumi/sdk/v3"
     go mod edit -dropreplace "github.com/pulumi/pulumi/pkg/v3"
+    go mod tidy -compat=1.18
     ;;
   esac
   popd >/dev/null
