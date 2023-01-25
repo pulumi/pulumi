@@ -177,38 +177,6 @@ class Alias:
         self.project = project
 
 
-def collapse_alias_to_urn(
-    alias: "Input[Union[Alias, str]]",
-    defaultName: str,
-    defaultType: str,
-    defaultParent: Optional["Resource"],
-) -> "Output[str]":
-    """
-    collapse_alias_to_urn turns an Alias into a URN given a set of default data
-    """
-
-    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
-        if isinstance(inner, str):
-            return Output.from_input(inner)
-
-        name = inner.name if inner.name is not ... else defaultName  # type: ignore
-        type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
-        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: str = inner.project if inner.project is not ... else get_project()  # type: ignore
-        stack: str = inner.stack if inner.stack is not ... else get_stack()  # type: ignore
-
-        if name is None:
-            raise Exception("No valid 'name' passed in for alias.")
-
-        if type_ is None:
-            raise Exception("No valid 'type_' passed in for alias.")
-
-        return create_urn(name, type_, parent, project, stack)
-
-    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
-    return inputAlias.apply(collapse_alias_to_urn_worker)
-
-
 class ResourceTransformationArgs:
     """
     ResourceTransformationArgs is the argument bag passed to a resource transformation.
