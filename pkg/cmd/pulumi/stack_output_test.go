@@ -300,6 +300,10 @@ func TestStackOutputCmd_shell(t *testing.T) {
 		// Whether the --show-secrets flag is set.
 		showSecrets bool
 
+		// Current operating system.
+		// Defaults to "linux".
+		os string
+
 		// Any additional command line arguments.
 		args []string
 
@@ -344,6 +348,15 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			args:        []string{"password"},
 			want:        []string{"password=hunter2"},
 		},
+		{
+			desc:    "powershell on windows",
+			outputs: outputsWithSecret,
+			os:      "windows",
+			want: []string{
+				"$bucketName = 'mybucket-1234'",
+				"$password = '[secret]'",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -367,10 +380,16 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				}, nil
 			}
 
+			osys := tt.os
+			if len(osys) == 0 {
+				osys = "linux"
+			}
+
 			cmd := stackOutputCmd{
 				requireStack: requireStack,
 				showSecrets:  tt.showSecrets,
 				shellOut:     true,
+				OS:           osys,
 			}
 			require.NoError(t, cmd.Run(context.Background(), tt.args))
 
@@ -403,39 +422,46 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
-		give interface{}
-		want string // lines expected in the output
+		desc     string
+		give     interface{}
+		wantBash string
+		wantPwsh string
 	}{
 		{
-			desc: "string",
-			give: "foo",
-			want: "foo",
+			desc:     "string",
+			give:     "foo",
+			wantBash: "foo",
+			wantPwsh: "'foo'",
 		},
 		{
-			desc: "number",
-			give: 42,
-			want: "42",
+			desc:     "number",
+			give:     42,
+			wantBash: "42",
+			wantPwsh: "'42'",
 		},
 		{
-			desc: "string/spaces",
-			give: "foo bar",
-			want: "'foo bar'",
+			desc:     "string/spaces",
+			give:     "foo bar",
+			wantBash: "'foo bar'",
+			wantPwsh: "'foo bar'",
 		},
 		{
-			desc: "string/double quotes",
-			give: `foo "bar" baz`,
-			want: `'foo "bar" baz'`,
+			desc:     "string/double quotes",
+			give:     `foo "bar" baz`,
+			wantBash: `'foo "bar" baz'`,
+			wantPwsh: `'foo "bar" baz'`,
 		},
 		{
-			desc: "string/single quotes",
-			give: "foo 'bar' baz",
-			want: `'foo '\''bar'\'' baz'`,
+			desc:     "string/single quotes",
+			give:     "foo 'bar' baz",
+			wantBash: `'foo '\''bar'\'' baz'`,
+			wantPwsh: `'foo ''bar'' baz'`,
 		},
 		{
-			desc: "string/single and double quotes",
-			give: `foo "bar" 'baz' qux`,
-			want: `'foo "bar" '\''baz'\'' qux'`,
+			desc:     "string/single and double quotes",
+			give:     `foo "bar" 'baz' qux`,
+			wantBash: `'foo "bar" '\''baz'\'' qux'`,
+			wantPwsh: `'foo "bar" ''baz'' qux'`,
 		},
 	}
 
@@ -444,16 +470,23 @@ func TestShellStackOutputWriter_quoting(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
-			var got bytes.Buffer
-			writer := shellStackOutputWriter{W: &got}
+			t.Run("bash", func(t *testing.T) {
+				var got bytes.Buffer
+				writer := bashStackOutputWriter{W: &got}
+				require.NoError(t, writer.WriteOne("myoutput", tt.give))
 
-			err := writer.WriteMany(map[string]interface{}{
-				"myoutput": tt.give,
+				want := "myoutput=" + tt.wantBash + "\n"
+				assert.Equal(t, want, got.String())
 			})
-			require.NoError(t, err)
 
-			want := "myoutput=" + tt.want + "\n"
-			assert.Equal(t, want, got.String())
+			t.Run("pwsh", func(t *testing.T) {
+				var got bytes.Buffer
+				writer := powershellStackOutputWriter{W: &got}
+				require.NoError(t, writer.WriteOne("myoutput", tt.give))
+
+				want := "$myoutput = " + tt.wantPwsh + "\n"
+				assert.Equal(t, want, got.String())
+			})
 		})
 	}
 }
