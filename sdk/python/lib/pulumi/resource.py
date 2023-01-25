@@ -1195,41 +1195,6 @@ def export(name: str, value: Any):
             "Failed to export output. Root resource is not an instance of 'Stack'"
         )
 
-
-def create_urn(
-    name: "Input[str]",
-    type_: "Input[str]",
-    parent: Optional[Union["Resource", "Input[str]"]] = None,
-    project: Optional[str] = None,
-    stack: Optional[str] = None,
-) -> "Output[str]":
-    """
-    create_urn computes a URN from the combination of a resource name, resource type, optional
-    parent, optional project and optional stack.
-    """
-    parent_prefix: Optional[Output[str]] = None
-    if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
-        parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
-    else:
-        if stack is None:
-            stack = get_stack()
-
-        if project is None:
-            project = get_project()
-
-        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
-
-    all_args = [parent_prefix, type_, name]
-    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
-    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2])  # type: ignore
-
-
 def _parse_resource_reference(ref: str) -> Tuple[str, str]:
     """
     Parses the URN and ID out of the provider reference.

@@ -43,12 +43,10 @@ from .resource_cycle_breaker import declare_dependency
 from ..output import Input, Output
 from .. import _types
 from .. import urn as urn_util
-from ..resource import collapse_alias_to_urn
 
 if TYPE_CHECKING:
     from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
-    from ..resource import ResourceOptions
-
+    from ..resource import ResourceOptions, Alias
 
 class ResourceResolverOperations(NamedTuple):
     """
@@ -95,6 +93,71 @@ class ResourceResolverOperations(NamedTuple):
     If set, the providers Delete method will not be called for this resource
     if specified resource is being deleted as well.
     """
+
+def create_urn(
+    name: "Input[str]",
+    type_: "Input[str]",
+    parent: Optional[Union["Resource", "Input[str]"]] = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+) -> "Output[str]":
+    """
+    create_urn computes a URN from the combination of a resource name, resource type, optional
+    parent, optional project and optional stack.
+    """
+    parent_prefix: Optional[Output[str]] = None
+    if parent is not None:
+        parent_urn = None
+        if isinstance(parent, Resource):
+            parent_urn = parent.urn
+        else:
+            parent_urn = Output.from_input(parent)
+
+        parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
+    else:
+        if stack is None:
+            stack = settings.get_stack()
+
+        if project is None:
+            project = settings.get_project()
+
+        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
+
+    all_args = [parent_prefix, type_, name]
+    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2])  # type: ignore
+
+
+def collapse_alias_to_urn(
+    alias: "Input[Union[Alias, str]]",
+    defaultName: str,
+    defaultType: str,
+    defaultParent: Optional["Resource"],
+) -> "Output[str]":
+    """
+    collapse_alias_to_urn turns an Alias into a URN given a set of default data
+    """
+
+    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
+        if isinstance(inner, str):
+            return Output.from_input(inner)
+
+        name = inner.name if inner.name is not ... else defaultName  # type: ignore
+        type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
+        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
+        project: str = inner.project if inner.project is not ... else get_project()  # type: ignore
+        stack: str = inner.stack if inner.stack is not ... else get_stack()  # type: ignore
+
+        if name is None:
+            raise Exception("No valid 'name' passed in for alias.")
+
+        if type_ is None:
+            raise Exception("No valid 'type_' passed in for alias.")
+
+        return create_urn(name, type_, parent, project, stack)
+
+    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
+    return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
