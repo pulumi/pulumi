@@ -74,6 +74,13 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		requireStack = cmd.requireStack
 	}
 
+	var outw stackOutputWriter
+	if cmd.jsonOut {
+		outw = &jsonStackOutputWriter{}
+	} else {
+		outw = &consoleStackOutputWriter{}
+	}
+
 	// Fetch the current stack and its output properties.
 	s, err := requireStack(ctx, cmd.stackName, stackLoadOnly, opts)
 	if err != nil {
@@ -97,22 +104,16 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		name := args[0]
 		v, has := outputs[name]
 		if has {
-			if cmd.jsonOut {
-				if err := printJSON(v); err != nil {
-					return err
-				}
-			} else {
-				fmt.Printf("%v\n", stringifyOutput(v))
+			if err := outw.WriteOne(v); err != nil {
+				return err
 			}
 		} else {
 			return fmt.Errorf("current stack does not have output property '%v'", name)
 		}
-	} else if cmd.jsonOut {
-		if err := printJSON(outputs); err != nil {
+	} else {
+		if err := outw.WriteMany(outputs); err != nil {
 			return err
 		}
-	} else {
-		printStackOutputs(outputs)
 	}
 
 	if cmd.showSecrets {
@@ -120,6 +121,45 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+// stackOutputWriter writes one or more properties to stdout
+// on behalf of 'pulumi stack output'.
+type stackOutputWriter interface {
+	WriteOne(value interface{}) error
+	WriteMany(outputs map[string]interface{}) error
+}
+
+// consoleStackOutputWriter writes human-readable stack output to stdout.
+type consoleStackOutputWriter struct {
+	// TODO Use an io.Writer here.
+}
+
+var _ stackOutputWriter = (*consoleStackOutputWriter)(nil)
+
+func (*consoleStackOutputWriter) WriteOne(v interface{}) error {
+	_, err := fmt.Printf("%v\n", stringifyOutput(v))
+	return err
+}
+
+func (*consoleStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	printStackOutputs(outputs)
+	return nil
+}
+
+// jsonStackOutputWriter writes stack outputs as machine-parseable JSON.
+type jsonStackOutputWriter struct {
+	// TODO Use an io.Writer here.
+}
+
+var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
+
+func (*jsonStackOutputWriter) WriteOne(v interface{}) error {
+	return printJSON(v)
+}
+
+func (*jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	return printJSON(outputs)
 }
 
 func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
