@@ -40,10 +40,10 @@ from ..runtime.proto import provider_pb2, resource_pb2, alias_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
 from .resource_cycle_breaker import declare_dependency
-from ..output import Output
+from ..output import Input, Output
 from .. import _types
 from .. import urn as urn_util
-
+from ..resource import collapse_alias_to_urn
 
 if TYPE_CHECKING:
     from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
@@ -85,7 +85,7 @@ class ResourceResolverOperations(NamedTuple):
     A map from property name to the URNs of the resources the property depends on.
     """
 
-    aliases: List[Optional[str]]
+    aliases: List[alias_pb2.Alias]
     """
     A list of aliases applied to this resource.
     """
@@ -177,15 +177,47 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
-    # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
-    # former has been processed in the Resource constructor prior to calling
-    # `register_resource` - both adding new inherited aliases and simplifying aliases down
-    # to URNs.
-    aliases: List[Optional[str]] = []
-    for alias in res._aliases:
-        alias_val = await Output.from_input(alias).future()
-        if not alias_val in aliases:
-            aliases.append(alias_val)
+    # Wait for all aliases.
+    aliases: List[alias_pb2.Alias] = []
+    if opts is not None and opts.aliases is not None:
+        for alias in opts.aliases:
+            resolved_alias = await Output.from_input(alias).future()
+            if resolved_alias is None:
+                continue
+            
+            if isinstance(resolved_alias, str):
+                aliases.append(alias_pb2.Alias(urn=resolved_alias))
+                continue
+
+            if await settings.monitor_supports_alias_specs():
+                alias_spec = alias_pb2.Alias.Spec()
+                if resolved_alias.name is not None:
+                    alias_spec.name = resolved_alias.name
+                if resolved_alias.type_ is not None:
+                    alias_spec.type = resolved_alias.type_
+                if resolved_alias.stack is not None:
+                    alias_spec.stack = resolved_alias.stack
+                if resolved_alias.project is not None:
+                    alias_spec.project = resolved_alias.project
+                
+                if alias.parent is not None:
+                    if isinstance(alias.parent, Resource):
+                        alias_spec.parent = await alias.parent.urn.future()
+                    elif isinstance(alias.parent, Input[str]):
+                        alias_spec.parent = await alias.parent.future()
+                    else:
+                        alias_spec.noParent = True
+
+                aliases.append(alias_pb2.Alias(spec=alias_spec))
+            else:
+                urn = await collapse_alias_to_urn(
+                    alias=resolved_alias,
+                    defaultName=res._name, 
+                    defaultType=ty,
+                    defaultParent=parent
+                ).future()
+
+                aliases.append(alias_pb2.Alias(urn=urn))
 
     deleted_with_urn: Optional[str] = ""
     if opts is not None and opts.deleted_with is not None:
@@ -607,7 +639,7 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=[alias_pb2.Alias(urn=alias) for alias in resolver.aliases],
+                aliases=resolver.aliases,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
