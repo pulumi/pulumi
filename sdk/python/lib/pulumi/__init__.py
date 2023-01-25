@@ -58,13 +58,14 @@ from .resource import (
     ComponentResource,
     ProviderResource,
     ResourceOptions,
-    create_urn,
     export,
     ROOT_STACK_RESOURCE,
     ResourceTransformation,
     ResourceTransformationArgs,
     ResourceTransformationResult,
 )
+
+from .runtime.resource import create_urn
 
 from .output import (
     Output,
