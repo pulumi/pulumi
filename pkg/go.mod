@@ -4,11 +4,6 @@ go 1.17
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
-// Working around https://github.com/sergi/go-diff/issues/123
-replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
-
-replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
-
 require (
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.28.0
@@ -38,7 +33,7 @@ require (
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/pulumi/sdk/v3 v3.53.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	github.com/sergi/go-diff v1.2.0
+	github.com/sergi/go-diff v1.3.1
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
@@ -79,7 +74,7 @@ require (
 	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
-	golang.org/x/mod v0.6.0
+	golang.org/x/mod v0.7.0
 	golang.org/x/term v0.3.0
 	google.golang.org/protobuf v1.28.1
 )
@@ -224,14 +219,14 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
-	github.com/xanzy/ssh-agent v0.3.2 // indirect
+	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
