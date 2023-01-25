@@ -77,11 +77,13 @@ class CustomTimeouts:
         self.update = update
         self.delete = delete
 
+
 # Extract the type and name parts of a URN
 def urn_type_and_name(urn: str) -> Tuple[str, str]:
     parts = urn.split("::")
     type_parts = parts[2].split("$")
     return (parts[3], type_parts[-1])
+
 
 ROOT_STACK_RESOURCE = None
 """
@@ -1194,6 +1196,7 @@ def export(name: str, value: Any):
         raise Exception(
             "Failed to export output. Root resource is not an instance of 'Stack'"
         )
+
 
 def _parse_resource_reference(ref: str) -> Tuple[str, str]:
     """

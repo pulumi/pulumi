@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
     from ..resource import ResourceOptions, Alias
 
+
 class ResourceResolverOperations(NamedTuple):
     """
     The set of properties resulting from a successful call to prepare_resource.
@@ -93,6 +94,7 @@ class ResourceResolverOperations(NamedTuple):
     If set, the providers Delete method will not be called for this resource
     if specified resource is being deleted as well.
     """
+
 
 def create_urn(
     name: "Input[str]",
@@ -247,7 +249,7 @@ async def prepare_resource(
             resolved_alias = await Output.from_input(alias).future()
             if resolved_alias is None:
                 continue
-            
+
             if isinstance(resolved_alias, str):
                 aliases.append(alias_pb2.Alias(urn=resolved_alias))
                 continue
@@ -262,7 +264,7 @@ async def prepare_resource(
                     alias_spec.stack = resolved_alias.stack
                 if resolved_alias.project is not None:
                     alias_spec.project = resolved_alias.project
-                
+
                 if alias.parent is not None:
                     if isinstance(alias.parent, Resource):
                         alias_spec.parent = await alias.parent.urn.future()
@@ -275,9 +277,9 @@ async def prepare_resource(
             else:
                 urn = await collapse_alias_to_urn(
                     alias=resolved_alias,
-                    defaultName=res._name, 
+                    defaultName=res._name,
                     defaultType=ty,
-                    defaultParent=parent
+                    defaultParent=parent,
                 ).future()
 
                 aliases.append(alias_pb2.Alias(urn=urn))
