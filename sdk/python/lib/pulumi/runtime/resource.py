@@ -952,9 +952,9 @@ async def _add_dependency(
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
 
+    # pylint: disable-next=import-outside-toplevel
     from .. import ComponentResource
 
-    # pylint: disable-next=used-before-assignment
     if isinstance(res, ComponentResource) and not res._remote:
         # Copy the set before iterating so that any concurrent child additions during
         # the dependency computation (which is async, so can be interleaved with other
