@@ -185,12 +185,16 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
         alias_spec_type = resolved_alias.type_
 
     if resolved_alias.stack is not None:
-        stack = await Output.from_input(resolved_alias.stack).future(with_unknowns=False)
+        stack = await Output.from_input(resolved_alias.stack).future(
+            with_unknowns=False
+        )
         if stack is not None:
             alias_spec_stack = stack
 
     if resolved_alias.project is not None:
-        project = await Output.from_input(resolved_alias.project).future(with_unknowns=False)
+        project = await Output.from_input(resolved_alias.project).future(
+            with_unknowns=False
+        )
         if project is not None:
             alias_spec_project = project
 
@@ -200,7 +204,9 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
             if parent_urn is not None:
                 alias_spec_parent_urn = parent_urn
         elif resolved_alias.parent is Input:
-            parent_urn = await Output.from_input(resolved_alias.parent).future(with_unknowns=False)
+            parent_urn = await Output.from_input(resolved_alias.parent).future(
+                with_unknowns=False
+            )
             if parent_urn is not None:
                 alias_spec_parent_urn = parent_urn
         else:
