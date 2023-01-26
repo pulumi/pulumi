@@ -173,9 +173,19 @@ def collapse_alias_to_urn(
 async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
     alias_spec = alias_pb2.Alias.Spec()
     if resolved_alias.name is not None:
-        alias_spec.name = resolved_alias.name
+        if isinstance(resolved_alias.name, str):
+            alias_spec.name = resolved_alias.name
+        else:
+            alias_spec_name = await Output.from_input(resolved_alias.name).future()
+            if alias_spec_name is not None:
+                alias_spec.name = alias_spec_name
     if resolved_alias.type_ is not None:
-        alias_spec.type = resolved_alias.type_
+        if isinstance(resolved_alias.type_, str):
+            alias_spec.type = resolved_alias.type_
+        else:
+            alias_spec_type = await Output.from_input(resolved_alias.type_).future()
+            if alias_spec_type is not None:
+                alias_spec.type = alias_spec_type
     if resolved_alias.stack is not None:
         stack = await Output.from_input(resolved_alias.stack).future()
         if stack is not None:
