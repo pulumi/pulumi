@@ -23,6 +23,8 @@ import (
 
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 )
@@ -111,11 +113,25 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 		cloneOptions.ReferenceName = refName
 	}
 
+	// Azure DevOps requires multi_ack and multi_ack_detailed capabilities, which go-git doesn't
+	// implement. But: it's possible to do a full clone by saying it's _not_ _un_supported, in which
+	// case the library happily functions so long as it doesn't _actually_ get a multi_ack packet. See
+	// https://github.com/go-git/go-git/blob/v5.5.1/_examples/azure_devops/main.go.
+	oldUnsupportedCaps := transport.UnsupportedCapabilities
+	// This check is crude, but avoids having another dependency to parse the git URL.
+	if strings.Contains(repoArgs.URL, "dev.azure.com") {
+		transport.UnsupportedCapabilities = []capability.Capability{
+			capability.ThinPack,
+		}
+	}
+
 	// clone
 	repo, err := git.PlainCloneContext(ctx, workDir, false, cloneOptions)
 	if err != nil {
 		return "", fmt.Errorf("unable to clone repo: %w", err)
 	}
+
+	transport.UnsupportedCapabilities = oldUnsupportedCaps
 
 	if repoArgs.CommitHash != "" {
 		// checkout commit if specified

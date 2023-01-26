@@ -40,7 +40,7 @@ require (
 )
 
 require (
-	github.com/go-git/go-git/v5 v5.4.2
+	github.com/go-git/go-git/v5 v5.5.1
 	github.com/pkg/term v1.1.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
