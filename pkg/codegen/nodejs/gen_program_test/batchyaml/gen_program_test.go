@@ -24,7 +24,7 @@ func TestGenerateProgram(t *testing.T) {
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				codegenNode.Check(t, path, dependencies, true)
+				codegenNode.Check(t, path, dependencies, false)
 			},
 			GenProgram: codegenNode.GenerateProgram,
 			TestCases:  test.PulumiPulumiYAMLProgramTests,

@@ -46,7 +46,7 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 		GenPackage: GeneratePackage,
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": func(t *testing.T, pwd string) {
-				typeCheckGeneratedPackage(t, pwd, true)
+				typeCheckGeneratedPackage(t, pwd, false)
 			},
 			"nodejs/test": testGeneratedPackage,
 		},

@@ -163,8 +163,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -264,16 +262,6 @@ jobs:
         run: |
           command -v pulumi || echo "no pulumi"
           pulumi version    || echo "no pulumi"
-      - name: Ensure dependencies for the Node SDK
-        run: |
-          cd sdk/nodejs
-          make ensure
-      - name: Build the Node SDK
-        run: |
-          cd sdk/nodejs
-          make build_package
-          cd bin
-          yarn link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python
@@ -291,11 +279,6 @@ jobs:
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Convert Node coverage data
-        if: ${{ inputs.platform != 'windows-latest' }}
-        run: |
-          cd sdk/nodejs
-          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
       - name: Merge Go coverage data
         if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
         run: |

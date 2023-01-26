@@ -37,7 +37,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("untargeted_create")
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "add", "@pulumi/pulumi")
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 	urn, _ := e.RunCommand("pulumi", "stack", "output", "urn")
@@ -76,7 +76,7 @@ func TestDeleteManyTargets(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.ImportDirectory(projName)
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "add", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 

@@ -70,12 +70,6 @@ jobs:
               mv -vT "$file" "sdk-python-$file"
             done
           )
-          (
-            cd artifacts.tmp/artifacts-nodejs-sdk
-            for file in *.tgz ; do
-              mv -vT "$file" "sdk-nodejs-$file"
-            done
-          )
       - name: Flatten artifact directories
         run: |
           mkdir -p ./artifacts
@@ -152,12 +146,6 @@ jobs:
             cd artifacts.tmp/artifacts-python-sdk
             for file in *.whl ; do
               mv -vT "$file" "sdk-python-$file"
-            done
-          )
-          (
-            cd artifacts.tmp/artifacts-nodejs-sdk
-            for file in *.tgz ; do
-              mv -vT "$file" "sdk-nodejs-$file"
             done
           )
       - name: Flatten artifact directories

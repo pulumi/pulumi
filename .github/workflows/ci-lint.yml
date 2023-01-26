@@ -69,8 +69,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -90,9 +88,6 @@ jobs:
       - name: Ensure
         run: |
           make ensure
-      - name: Lint Node
-        run: |
-          cd sdk/nodejs && make lint
       - name: Lint Python
         run: |
           cd sdk/python && make lint

@@ -71,6 +71,8 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string, linkLocal bool) {
 
 	if linkLocal {
 		test.RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+	} else {
+		test.RunCommand(t, "yarn_link", pwd, "yarn", "add", "@pulumi/pulumi")
 	}
 	test.RunCommand(t, "yarn_install", pwd, "yarn", "install")
 	tscOptions := &integration.ProgramTestOptions{
@@ -117,7 +119,7 @@ func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
 			Extension:  "ts",
 			OutputFile: "index.ts",
 			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				Check(t, path, dependencies, true)
+				Check(t, path, dependencies, false)
 			},
 			GenProgram: GenerateProgram,
 			TestCases:  testCases,
