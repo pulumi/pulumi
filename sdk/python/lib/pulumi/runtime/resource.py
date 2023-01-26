@@ -44,9 +44,8 @@ from ..output import Input, Output
 from .. import _types
 from .. import urn as urn_util
 
-if TYPE_CHECKING:
-    from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
-    from ..resource import ResourceOptions, Alias
+from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
+from ..resource import ResourceOptions, Alias
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -151,7 +150,13 @@ def collapse_alias_to_urn(
         if type_ is None:
             raise Exception("No valid 'type_' passed in for alias.")
 
-        return create_urn(name, type_, parent, project, stack)
+        parent_urn: Optional["Input[str]"] = None
+        if parent is not None:
+            if isinstance(parent, Resource):
+                parent_urn = parent.urn
+            else:
+                parent_urn = parent
+        return create_urn(name, type_, parent_urn, project, stack)
 
     inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
@@ -241,7 +246,7 @@ async def prepare_resource(
     aliases: List[alias_pb2.Alias] = []
     if opts is not None and opts.aliases is not None:
         for alias in opts.aliases:
-            resolved_alias = await Output.from_input(alias).future()
+            resolved_alias: str | Alias | None = await Output.from_input(alias).future()
             if resolved_alias is None:
                 continue
 
@@ -256,15 +261,25 @@ async def prepare_resource(
                 if resolved_alias.type_ is not None:
                     alias_spec.type = resolved_alias.type_
                 if resolved_alias.stack is not None:
-                    alias_spec.stack = resolved_alias.stack
+                    stack = await Output.from_input(resolved_alias.stack).future()
+                    if stack is not None:
+                        alias_spec.stack = stack
                 if resolved_alias.project is not None:
-                    alias_spec.project = resolved_alias.project
+                    project = await Output.from_input(resolved_alias.project).future()
+                    if project is not None:
+                        alias_spec.project = project
 
-                if alias.parent is not None:
-                    if isinstance(alias.parent, Resource):
-                        alias_spec.parent = await alias.parent.urn.future()
-                    elif isinstance(alias.parent, Input[str]):
-                        alias_spec.parent = await alias.parent.future()
+                if resolved_alias.parent is not None:
+                    if isinstance(resolved_alias.parent, Resource):
+                        parent_urn = await resolved_alias.parent.urn.future()
+                        if parent_urn is not None:
+                            alias_spec.parentUrn = parent_urn
+                    elif resolved_alias.parent is Input:
+                        parent_urn = await Output.from_input(
+                            resolved_alias.parent
+                        ).future()
+                        if parent_urn is not None:
+                            alias_spec.parentUrn = parent_urn
                     else:
                         alias_spec.noParent = True
 
@@ -277,7 +292,8 @@ async def prepare_resource(
                     defaultParent=parent,
                 ).future()
 
-                aliases.append(alias_pb2.Alias(urn=urn))
+                if urn is not None:
+                    aliases.append(alias_pb2.Alias(urn=urn))
 
     deleted_with_urn: Optional[str] = ""
     if opts is not None and opts.deleted_with is not None:
@@ -534,8 +550,6 @@ def read_resource(
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
-
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -706,8 +720,6 @@ def register_resource(
                 retainOnDelete=opts.retain_on_delete or False,
                 deletedWith=resolver.deleted_with_urn,
             )
-
-            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
