@@ -141,8 +141,8 @@ def collapse_alias_to_urn(
         name = inner.name if inner.name is not ... else defaultName  # type: ignore
         type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
         parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: str = inner.project if inner.project is not ... else get_project()  # type: ignore
-        stack: str = inner.stack if inner.stack is not ... else get_stack()  # type: ignore
+        project: str = inner.project if inner.project is not ... else settings.get_project()  # type: ignore
+        stack: str = inner.stack if inner.stack is not ... else settings.get_stack()  # type: ignore
 
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
@@ -160,6 +160,35 @@ def collapse_alias_to_urn(
 
     inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
+
+
+async def create_alias_spec(resolved_alias: Alias) -> alias_pb2.Alias.Spec:
+    alias_spec = alias_pb2.Alias.Spec()
+    if resolved_alias.name is not None:
+        alias_spec.name = resolved_alias.name
+    if resolved_alias.type_ is not None:
+        alias_spec.type = resolved_alias.type_
+    if resolved_alias.stack is not None:
+        stack = await Output.from_input(resolved_alias.stack).future()
+        if stack is not None:
+            alias_spec.stack = stack
+    if resolved_alias.project is not None:
+        project = await Output.from_input(resolved_alias.project).future()
+        if project is not None:
+            alias_spec.project = project
+    if resolved_alias.parent is not None:
+        if isinstance(resolved_alias.parent, Resource):
+            parent_urn = await resolved_alias.parent.urn.future()
+            if parent_urn is not None:
+                alias_spec.parentUrn = parent_urn
+        elif resolved_alias.parent is Input:
+            parent_urn = await Output.from_input(resolved_alias.parent).future()
+            if parent_urn is not None:
+                alias_spec.parentUrn = parent_urn
+        else:
+            alias_spec.noParent = True
+
+    return alias_spec
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
@@ -246,7 +275,7 @@ async def prepare_resource(
     aliases: List[alias_pb2.Alias] = []
     if opts is not None and opts.aliases is not None:
         for alias in opts.aliases:
-            resolved_alias: str | Alias | None = await Output.from_input(alias).future()
+            resolved_alias: str | Alias | None = await Output.from_input(alias).future()  # type: ignore
             if resolved_alias is None:
                 continue
 
@@ -255,34 +284,7 @@ async def prepare_resource(
                 continue
 
             if await settings.monitor_supports_alias_specs():
-                alias_spec = alias_pb2.Alias.Spec()
-                if resolved_alias.name is not None:
-                    alias_spec.name = resolved_alias.name
-                if resolved_alias.type_ is not None:
-                    alias_spec.type = resolved_alias.type_
-                if resolved_alias.stack is not None:
-                    stack = await Output.from_input(resolved_alias.stack).future()
-                    if stack is not None:
-                        alias_spec.stack = stack
-                if resolved_alias.project is not None:
-                    project = await Output.from_input(resolved_alias.project).future()
-                    if project is not None:
-                        alias_spec.project = project
-
-                if resolved_alias.parent is not None:
-                    if isinstance(resolved_alias.parent, Resource):
-                        parent_urn = await resolved_alias.parent.urn.future()
-                        if parent_urn is not None:
-                            alias_spec.parentUrn = parent_urn
-                    elif resolved_alias.parent is Input:
-                        parent_urn = await Output.from_input(
-                            resolved_alias.parent
-                        ).future()
-                        if parent_urn is not None:
-                            alias_spec.parentUrn = parent_urn
-                    else:
-                        alias_spec.noParent = True
-
+                alias_spec = await create_alias_spec(resolved_alias)
                 aliases.append(alias_pb2.Alias(spec=alias_spec))
             else:
                 urn = await collapse_alias_to_urn(
@@ -931,8 +933,6 @@ async def _add_dependency(
     * Comp2 because it is a non-remote component resoruce
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
-
-    from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
     if isinstance(res, ComponentResource) and not res._remote:
         # Copy the set before iterating so that any concurrent child additions during
