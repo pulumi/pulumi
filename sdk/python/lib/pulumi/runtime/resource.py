@@ -171,42 +171,49 @@ def collapse_alias_to_urn(
 
 
 async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
-    alias_spec = alias_pb2.Alias.Spec()
+    alias_spec_name = ""
+    alias_spec_type = ""
+    alias_spec_parent_urn = ""
+    alias_spec_project = ""
+    alias_spec_stack = ""
+    alias_spec_no_parent = False
+
     if resolved_alias.name is not None:
-        if isinstance(resolved_alias.name, str):
-            alias_spec.name = resolved_alias.name
-        else:
-            alias_spec_name = await Output.from_input(resolved_alias.name).future()
-            if alias_spec_name is not None:
-                alias_spec.name = alias_spec_name
+        alias_spec_name = resolved_alias.name
+
     if resolved_alias.type_ is not None:
-        if isinstance(resolved_alias.type_, str):
-            alias_spec.type = resolved_alias.type_
-        else:
-            alias_spec_type = await Output.from_input(resolved_alias.type_).future()
-            if alias_spec_type is not None:
-                alias_spec.type = alias_spec_type
+        alias_spec_type = resolved_alias.type_
+
     if resolved_alias.stack is not None:
         stack = await Output.from_input(resolved_alias.stack).future()
         if stack is not None:
-            alias_spec.stack = stack
+            alias_spec_stack = stack
+
     if resolved_alias.project is not None:
         project = await Output.from_input(resolved_alias.project).future()
         if project is not None:
-            alias_spec.project = project
+            alias_spec_project = project
+
     if resolved_alias.parent is not None:
         if isinstance(resolved_alias.parent, Resource):
             parent_urn = await resolved_alias.parent.urn.future()
             if parent_urn is not None:
-                alias_spec.parentUrn = parent_urn
+                alias_spec_parent_urn = parent_urn
         elif resolved_alias.parent is Input:
             parent_urn = await Output.from_input(resolved_alias.parent).future()
             if parent_urn is not None:
-                alias_spec.parentUrn = parent_urn
+                alias_spec_parent_urn = parent_urn
         else:
-            alias_spec.noParent = True
+            alias_spec_no_parent = True
 
-    return alias_spec
+    return alias_pb2.Alias.Spec(
+        name=alias_spec_name,
+        type=alias_spec_type,
+        stack=alias_spec_stack,
+        project=alias_spec_project,
+        parentUrn=alias_spec_parent_urn,
+        noParent=alias_spec_no_parent,
+    )
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
