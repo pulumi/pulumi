@@ -1258,7 +1258,6 @@ describe("rpc", () => {
         },
         "esm_package_json_in_parent_dir": {
             pwd: path.join(base, "073.esm_package_json_in_parent_dir/myprogram"),
-            program: path.join(base, "073.esm_package_json_in_parent_dir/myprogram"),
         },
     };
 
