@@ -199,6 +199,9 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
             alias_spec_project = project
 
     if resolved_alias.parent is not None:
+        # pylint: disable-next=import-outside-toplevel
+        from .. import Resource
+
         if isinstance(resolved_alias.parent, Resource):
             parent_urn = await resolved_alias.parent.urn.future(with_unknowns=False)
             if parent_urn is not None:
