@@ -94,6 +94,11 @@ class ResourceResolverOperations(NamedTuple):
     If set, the providers Delete method will not be called for this resource
     if specified resource is being deleted as well.
     """
+    supports_alias_specs: bool
+    """
+    Returns whether the resource monitor supports alias specs which allows sending full alias specifications
+    to the engine.
+    """
 
 
 def create_urn(
@@ -150,7 +155,7 @@ def collapse_alias_to_urn(
             raise Exception("No valid 'name' passed in for alias.")
 
         if type_ is None:
-            raise Exception("No valid 'type_' passed in for alias.")
+            raise Exception("No valid 'type' passed in for alias.")
 
         parent_urn: Optional["Input[str]"] = None
         if parent is not None:
@@ -275,6 +280,7 @@ async def prepare_resource(
         property_dependencies[key] = list(urns)
 
     # Wait for all aliases.
+    supports_alias_specs = await settings.monitor_supports_alias_specs()
     aliases: List[alias_pb2.Alias] = []
     if opts is not None and opts.aliases is not None:
         for alias in opts.aliases:
@@ -286,7 +292,7 @@ async def prepare_resource(
                 aliases.append(alias_pb2.Alias(urn=resolved_alias))
                 continue
 
-            if await settings.monitor_supports_alias_specs():
+            if supports_alias_specs:
                 alias_spec = await create_alias_spec(resolved_alias)
                 aliases.append(alias_pb2.Alias(spec=alias_spec))
             else:
@@ -313,6 +319,7 @@ async def prepare_resource(
         property_dependencies,
         aliases,
         deleted_with_urn,
+        supports_alias_specs
     )
 
 
@@ -697,6 +704,13 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
+            aliasURNs : List[str] | None = None
+            aliases: List[alias_pb2.Alias] | None = None
+            if resolver.supports_alias_specs:
+                aliases = resolver.aliases
+            else:
+                aliasURNs = [alias.urn for alias in resolver.aliases]
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -718,7 +732,8 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=resolver.aliases,
+                aliases=aliases,
+                aliasURNs=aliasURNs,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
