@@ -44,8 +44,9 @@ from ..output import Input, Output
 from .. import _types
 from .. import urn as urn_util
 
-from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
-from ..resource import ResourceOptions, Alias
+if TYPE_CHECKING:
+    from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
+    from ..resource import ResourceOptions, Alias
 
 
 class ResourceResolverOperations(NamedTuple):
