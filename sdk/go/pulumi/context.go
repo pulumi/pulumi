@@ -52,14 +52,14 @@ type Context struct {
 	engine      pulumirpc.EngineClient
 	engineConn  *grpc.ClientConn
 
-	keepResources       bool // true if resources should be marshaled as strongly-typed references.
-	keepOutputValues    bool // true if outputs should be marshaled as strongly-type output values.
-	supportsDeletedWith bool // true if deletedWith supported by pulumi
-
-	rpcs     int        // the number of outstanding RPC requests.
-	rpcsDone *sync.Cond // an event signaling completion of RPCs.
-	rpcsLock sync.Mutex // a lock protecting the RPC count and event.
-	rpcError error      // the first error (if any) encountered during an RPC.
+	keepResources       bool       // true if resources should be marshaled as strongly-typed references.
+	keepOutputValues    bool       // true if outputs should be marshaled as strongly-type output values.
+	supportsDeletedWith bool       // true if deletedWith supported by pulumi
+	supportsAliasSpec   bool       // true if full alias specification is supported by pulumi
+	rpcs                int        // the number of outstanding RPC requests.
+	rpcsDone            *sync.Cond // an event signaling completion of RPCs.
+	rpcsLock            sync.Mutex // a lock protecting the RPC count and event.
+	rpcError            error      // the first error (if any) encountered during an RPC.
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
@@ -106,6 +106,9 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor = &mockMonitor{project: info.Project, stack: info.Stack, mocks: info.Mocks}
 		engine = &mockEngine{}
 	}
+	if wrap := info.wrapResourceMonitorClient; wrap != nil {
+		monitor = wrap(monitor)
+	}
 
 	supportsFeature := func(id string) (bool, error) {
 		if monitor != nil {
@@ -133,8 +136,9 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
-	if wrap := info.wrapResourceMonitorClient; wrap != nil {
-		monitor = wrap(monitor)
+	supportsAliasSpec, err := supportsFeature("aliasSpecs")
+	if err != nil {
+		return nil, err
 	}
 
 	context := &Context{
@@ -148,6 +152,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepResources:       keepResources,
 		keepOutputValues:    keepOutputValues,
 		supportsDeletedWith: supportsDeletedWith,
+		supportsAliasSpec:   supportsAliasSpec,
 	}
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
@@ -596,7 +601,6 @@ func (ctx *Context) ReadResource(
 	}
 
 	options := merge(opts...)
-	aliasParent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -604,12 +608,6 @@ func (ctx *Context) ReadResource(
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
 	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, aliasParent)
 	if err != nil {
 		return err
 	}
@@ -634,7 +632,7 @@ func (ctx *Context) ReadResource(
 
 	// Create resolvers for the resource's outputs.
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
-		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
+		options.Version, options.PluginDownloadURL, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -789,7 +787,6 @@ func (ctx *Context) registerResource(
 	}
 
 	options := merge(opts...)
-	parent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -797,12 +794,6 @@ func (ctx *Context) registerResource(
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
 	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, parent)
 	if err != nil {
 		return err
 	}
@@ -823,7 +814,7 @@ func (ctx *Context) registerResource(
 
 	// Create resolvers for the resource's outputs.
 	resState := ctx.makeResourceState(t, name, resource, providers, provider,
-		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
+		options.Version, options.PluginDownloadURL, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -843,6 +834,14 @@ func (ctx *Context) registerResource(
 		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom)
 		if err != nil {
 			return
+		}
+
+		var aliasURNs []string
+		if !ctx.supportsAliasSpec {
+			aliasURNs = make([]string, len(inputs.aliases))
+			for i, alias := range inputs.aliases {
+				aliasURNs[i] = alias.GetUrn()
+			}
 		}
 
 		var resp *pulumirpc.RegisterResourceResponse
@@ -870,7 +869,8 @@ func (ctx *Context) registerResource(
 				ImportId:                inputs.importID,
 				CustomTimeouts:          inputs.customTimeouts,
 				IgnoreChanges:           inputs.ignoreChanges,
-				AliasURNs:               inputs.aliasURNs,
+				AliasURNs:               aliasURNs,
+				Aliases:                 inputs.aliases,
 				AcceptSecrets:           true,
 				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
@@ -924,7 +924,6 @@ type resourceState struct {
 	provider          ProviderResource
 	version           string
 	pluginDownloadURL string
-	aliases           []URNOutput
 	name              string
 	transformations   []ResourceTransformation
 }
@@ -1016,47 +1015,163 @@ func getPackage(t string) string {
 	return components[0]
 }
 
-// collapseAliases collapses a list of Aliases into a list of URNs. Parent aliases
-// are also included. If there are N child aliases, and M parent aliases, there will
-// be (M+1)*(N+1)-1 total aliases, or, as calculated in the logic below, N+(M*(1+N)).
-func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
-	project, stack := ctx.Project(), ctx.Stack()
+func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
+	var parentURN URNOutput
+	if alias.ParentURN != nil {
+		parentURN = alias.ParentURN.ToURNOutput()
+	} else if alias.Parent != nil {
+		parentURN = alias.Parent.URN()
+	} else {
+		// alias has no original parent
+		spec.Parent = &pulumirpc.Alias_Spec_NoParent{
+			NoParent: true,
+		}
+		// We're done here.
+		return nil
+	}
 
-	aliasURNs := make([]URNOutput, 0, len(aliases))
+	resolvedParentURN, known, secret, err := parentURN.awaitURN(ctx.Context())
+	if err != nil {
+		return fmt.Errorf("alias parent could not be resolved: %w", err)
+	}
 
-	for _, alias := range aliases {
-		urn, err := alias.collapseToURN(name, t, parent, project, stack)
+	if !known {
+		return errors.New("alias parent urn must be known")
+	}
+
+	if secret {
+		return errors.New("alias parent urn must not be secret")
+	}
+
+	spec.Parent = &pulumirpc.Alias_Spec_ParentUrn{
+		ParentUrn: string(resolvedParentURN),
+	}
+
+	return nil
+}
+
+// mapAliases maps a list of aliases coming from resource options
+// to their RPC representation which the engine understands.
+func (ctx *Context) mapAliases(aliases []Alias,
+	resourceType string,
+	name string,
+	parent Resource) ([]*pulumirpc.Alias, error) {
+
+	aliasSpecs := make([]*pulumirpc.Alias, 0, len(aliases))
+	await := func(input StringInput) (string, error) {
+		if input == nil {
+			return "", nil
+		}
+		content, known, secret, _, err := input.ToStringOutput().await(ctx.Context())
 		if err != nil {
-			return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
+			return "", err
 		}
-		aliasURNs = append(aliasURNs, urn)
+
+		if !known {
+			return "", errors.New("must be known")
+		}
+
+		if secret {
+			return "", errors.New("must not be secret")
+		}
+
+		if content == nil {
+			// it is fine if the value is nil, we just return an empty string
+			// the engine can fill this in
+			return "", nil
+		}
+
+		value, ok := content.(string)
+		if !ok {
+			return "", errors.New("must be a string")
+		}
+		return value, nil
 	}
 
-	if parent != nil {
-		parentAliases := parent.getAliases()
-		for i := range parentAliases {
-			parentAlias := parentAliases[i]
-			urn := inheritedChildAlias(name, parent.getName(), t, project, stack, parentAlias)
-			aliasURNs = append(aliasURNs, urn)
-			for j := range aliases {
-				childAlias := aliases[j]
-				urn, err := childAlias.collapseToURN(name, t, parent, project, stack)
+	if ctx.supportsAliasSpec {
+		for _, alias := range aliases {
+			if alias.URN != nil {
+				// fully specified URN, map it as is
+				aliasUrn, _, _, err := alias.URN.ToURNOutput().awaitURN(ctx.Context())
 				if err != nil {
-					return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
+					return nil, fmt.Errorf("alias urn could not be resolved: %w", err)
 				}
-				inheritedAlias := urn.ApplyT(func(urn URN) URNOutput {
-					aliasedChildName := string(resource.URN(urn).Name())
-					aliasedChildType := string(resource.URN(urn).Type())
-					return inheritedChildAlias(aliasedChildName, parent.getName(), aliasedChildType, project, stack, parentAlias)
-				}).ApplyT(func(urn interface{}) URN {
-					return urn.(URN)
-				}).(URNOutput)
-				aliasURNs = append(aliasURNs, inheritedAlias)
+				newAliasSpec := &pulumirpc.Alias{
+					Alias: &pulumirpc.Alias_Urn{
+						Urn: string(aliasUrn),
+					},
+				}
+
+				aliasSpecs = append(aliasSpecs, newAliasSpec)
+				continue
 			}
+
+			aliasName, err := await(alias.Name)
+			if err != nil {
+				return nil, fmt.Errorf("alias name could not be resolved: %w", err)
+			}
+
+			aliasType, err := await(alias.Type)
+			if err != nil {
+				return nil, fmt.Errorf("alias type could not be resolved: %w", err)
+			}
+
+			aliasProject, err := await(alias.Project)
+			if err != nil {
+				return nil, fmt.Errorf("alias project could not be resolved: %w", err)
+			}
+
+			aliasStack, err := await(alias.Stack)
+			if err != nil {
+				return nil, fmt.Errorf("alias stack could not be resolved: %w", err)
+			}
+
+			spec := &pulumirpc.Alias_Spec{
+				Name:    aliasName,
+				Type:    aliasType,
+				Project: aliasProject,
+				Stack:   aliasStack,
+			}
+
+			if err := ctx.resolveAliasParent(alias, spec); err != nil {
+				return nil, fmt.Errorf("alias parent could not be resolved: %w", err)
+			}
+
+			newAliasSpec := &pulumirpc.Alias{
+				Alias: &pulumirpc.Alias_Spec_{
+					Spec: spec,
+				},
+			}
+
+			aliasSpecs = append(aliasSpecs, newAliasSpec)
+		}
+	} else {
+		// If the engine does not support full alias specs, we will use the URN format
+		// Collapse top level aliases into urns
+		// this populates the aliasURNs of the resourceInputs
+		// which is then used in RegisterResourceRequest
+		for _, alias := range aliases {
+			urnToAwait, err := alias.collapseToURN(name, resourceType, parent, ctx.Project(), ctx.Stack())
+			if err != nil {
+				return nil, fmt.Errorf("error collapsing alias to URN: %w", err)
+			}
+
+			urn, _, _, err := urnToAwait.awaitURN(ctx.Context())
+			if err != nil {
+				return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
+			}
+
+			newAliasSpec := &pulumirpc.Alias{
+				Alias: &pulumirpc.Alias_Urn{
+					Urn: string(urn),
+				},
+			}
+
+			aliasSpecs = append(aliasSpecs, newAliasSpec)
 		}
 	}
 
-	return aliasURNs, nil
+	return aliasSpecs, nil
 }
 
 var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
@@ -1064,7 +1179,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
+	provider ProviderResource, version, pluginDownloadURL string,
 	transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -1162,8 +1277,6 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
-		state.aliases = aliases
-		rs.aliases = aliases
 		state.transformations = transformations
 		rs.transformations = transformations
 	}
@@ -1267,7 +1380,7 @@ type resourceInputs struct {
 	importID                string
 	customTimeouts          *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	ignoreChanges           []string
-	aliasURNs               []string
+	aliases                 []*pulumirpc.Alias
 	additionalSecretOutputs []string
 	version                 string
 	pluginDownloadURL       string
@@ -1332,14 +1445,9 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	}
 	sort.Strings(deps)
 
-	// Await alias URNs
-	aliases := make([]string, len(state.aliases))
-	for i, alias := range state.aliases {
-		urn, _, _, err := alias.awaitURN(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
-		}
-		aliases[i] = string(urn)
+	aliases, err := ctx.mapAliases(opts.Aliases, t, state.name, opts.Parent)
+	if err != nil {
+		return nil, fmt.Errorf("mapping aliases: %w", err)
 	}
 
 	var deletedWithURN URN
@@ -1364,7 +1472,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
-		aliasURNs:               aliases,
+		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
 		pluginDownloadURL:       state.pluginDownloadURL,
