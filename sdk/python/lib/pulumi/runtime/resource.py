@@ -166,11 +166,11 @@ def collapse_alias_to_urn(
                 parent_urn = parent
         return create_urn(name, type_, parent_urn, project, stack)
 
-    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
+    inputAlias: Output[Union["Alias", str]] = Output.from_input(alias)
     return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
-async def create_alias_spec(resolved_alias: Alias) -> alias_pb2.Alias.Spec:
+async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
     alias_spec = alias_pb2.Alias.Spec()
     if resolved_alias.name is not None:
         alias_spec.name = resolved_alias.name
@@ -284,7 +284,7 @@ async def prepare_resource(
     aliases: List[alias_pb2.Alias] = []
     if opts is not None and opts.aliases is not None:
         for alias in opts.aliases:
-            resolved_alias: str | Alias | None = await Output.from_input(alias).future()  # type: ignore
+            resolved_alias: str | "Alias" | None = await Output.from_input(alias).future()  # type: ignore
             if resolved_alias is None:
                 continue
 
