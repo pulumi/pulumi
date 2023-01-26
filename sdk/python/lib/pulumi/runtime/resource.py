@@ -319,7 +319,7 @@ async def prepare_resource(
         property_dependencies,
         aliases,
         deleted_with_urn,
-        supports_alias_specs
+        supports_alias_specs,
     )
 
 
@@ -704,7 +704,7 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
-            aliasURNs : List[str] | None = None
+            aliasURNs: List[str] | None = None
             aliases: List[alias_pb2.Alias] | None = None
             if resolver.supports_alias_specs:
                 aliases = resolver.aliases
