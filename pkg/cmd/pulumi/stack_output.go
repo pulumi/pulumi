@@ -16,8 +16,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"runtime"
+	"sort"
+	"strings"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -45,6 +52,8 @@ func newStackOutputCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().BoolVar(
+		&socmd.shellOut, "shell", false, "Emit output as a shell script")
 	cmd.PersistentFlags().StringVarP(
 		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().BoolVar(
@@ -57,6 +66,9 @@ type stackOutputCmd struct {
 	stackName   string
 	showSecrets bool
 	jsonOut     bool
+	shellOut    bool
+
+	OS string // defaults to runtime.GOOS
 
 	// requireStack is a reference to the top-level requireStack function.
 	// This is a field on stackOutputCmd so that we can replace it
@@ -74,9 +86,18 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		requireStack = cmd.requireStack
 	}
 
+	osys := runtime.GOOS
+	if cmd.OS != "" {
+		osys = cmd.OS
+	}
+
 	var outw stackOutputWriter
-	if cmd.jsonOut {
+	if cmd.shellOut && cmd.jsonOut {
+		return errors.New("only one of --json and --shell may be set")
+	} else if cmd.jsonOut {
 		outw = &jsonStackOutputWriter{}
+	} else if cmd.shellOut {
+		outw = newShellStackOutputWriter(os.Stdout, osys)
 	} else {
 		outw = &consoleStackOutputWriter{}
 	}
@@ -104,7 +125,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		name := args[0]
 		v, has := outputs[name]
 		if has {
-			if err := outw.WriteOne(v); err != nil {
+			if err := outw.WriteOne(name, v); err != nil {
 				return err
 			}
 		} else {
@@ -126,7 +147,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 // stackOutputWriter writes one or more properties to stdout
 // on behalf of 'pulumi stack output'.
 type stackOutputWriter interface {
-	WriteOne(value interface{}) error
+	WriteOne(name string, value interface{}) error
 	WriteMany(outputs map[string]interface{}) error
 }
 
@@ -137,7 +158,7 @@ type consoleStackOutputWriter struct {
 
 var _ stackOutputWriter = (*consoleStackOutputWriter)(nil)
 
-func (*consoleStackOutputWriter) WriteOne(v interface{}) error {
+func (*consoleStackOutputWriter) WriteOne(_ string, v interface{}) error {
 	_, err := fmt.Printf("%v\n", stringifyOutput(v))
 	return err
 }
@@ -154,12 +175,82 @@ type jsonStackOutputWriter struct {
 
 var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
 
-func (*jsonStackOutputWriter) WriteOne(v interface{}) error {
+func (*jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
 	return printJSON(v)
 }
 
 func (*jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
 	return printJSON(outputs)
+}
+
+// newShellStackOutputWriter builds a stackOutputWriter
+// that generates shell scripts for the given operating system.
+func newShellStackOutputWriter(w io.Writer, os string) stackOutputWriter {
+	switch os {
+	case "windows":
+		return &powershellStackOutputWriter{W: w}
+	default:
+		return &bashStackOutputWriter{W: w}
+	}
+}
+
+// bashStackOutputWriter prints stack outputs as a bash shell script.
+type bashStackOutputWriter struct {
+	W io.Writer
+}
+
+var _ stackOutputWriter = (*bashStackOutputWriter)(nil)
+
+func (w *bashStackOutputWriter) WriteOne(k string, v interface{}) error {
+	s := shellquote.Join(stringifyOutput(v))
+	_, err := fmt.Fprintf(w.W, "%v=%v\n", k, s)
+	return err
+}
+
+func (w *bashStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	keys := make([]string, 0, len(outputs))
+	for v := range outputs {
+		keys = append(keys, v)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		if err := w.WriteOne(k, outputs[k]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// powershellStackOutputWriter prints stack outputs as a powershell script.
+type powershellStackOutputWriter struct {
+	W io.Writer
+}
+
+var _ stackOutputWriter = (*powershellStackOutputWriter)(nil)
+
+func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
+	// In Powershell, single-quoted strings are taken verbatim.
+	// The only escaping necessary is to ' itself:
+	// replace each instance with two to escape.
+	s := strings.ReplaceAll(stringifyOutput(v), "'", "''")
+	_, err := fmt.Fprintf(w.W, "$%v = '%v'\n", k, s)
+	return err
+}
+
+func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	keys := make([]string, 0, len(outputs))
+	for v := range outputs {
+		keys = append(keys, v)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		if err := w.WriteOne(k, outputs[k]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {

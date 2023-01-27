@@ -71,6 +71,7 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/json-iterator/go v1.1.12
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
 	github.com/pulumi/pulumi-java/pkg v0.7.1
@@ -187,7 +188,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
 	github.com/klauspost/compress v1.15.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
