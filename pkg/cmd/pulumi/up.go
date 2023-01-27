@@ -50,7 +50,7 @@ func newUpCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
-	var stack string
+	var stackName string
 	var configArray []string
 	var path bool
 	var client string
@@ -84,7 +84,7 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions) result.Result {
-		s, err := requireStack(ctx, stack, stackOfferNew, opts.Display)
+		s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -180,6 +180,7 @@ func newUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
+			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             cancellationScopes,
 		})
 		switch {
@@ -246,8 +247,8 @@ func newUpCmd() *cobra.Command {
 		var name string
 		var description string
 		var s backend.Stack
-		if stack != "" {
-			if s, name, description, err = getStack(ctx, stack, opts.Display); err != nil {
+		if stackName != "" {
+			if s, name, description, err = getStack(ctx, stackName, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
@@ -292,7 +293,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, promptForValue, stack, name, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(ctx, promptForValue, stackName, name, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}
@@ -372,6 +373,7 @@ func newUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
+			SecretsProvider:    stack.DefaultSecretsProvider,
 			Scopes:             cancellationScopes,
 		})
 		switch {
@@ -469,7 +471,7 @@ func newUpCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Update, stack, args[0], remoteArgs)
+				return runDeployment(ctx, opts.Display, apitype.Update, stackName, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -498,7 +500,7 @@ func newUpCmd() *cobra.Command {
 		&expectNop, "expect-no-changes", false,
 		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
@@ -654,7 +656,7 @@ func handleConfig(
 	}
 
 	// Get the existing snapshot.
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

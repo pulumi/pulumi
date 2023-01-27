@@ -155,7 +155,8 @@ type deploymentSourceFunc func(
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
-func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions, dryRun bool) (*deployment, error) {
+func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
+	dryRun bool) (*deployment, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Update != nil)
 	contract.Assert(opts.SourceFunc != nil)
@@ -187,7 +188,8 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, target, target.Snapshot, opts.Plan, source,
+			localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)

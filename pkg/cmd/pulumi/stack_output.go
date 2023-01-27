@@ -114,7 +114,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return err
 	}

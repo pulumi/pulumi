@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -488,7 +489,6 @@ func (b *localBackend) PackPolicies(
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -551,9 +551,9 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
-func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
+func (b *localBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply, paths)
+	return backend.Watch(ctx, stack.DefaultSecretsProvider, b, stk, op, b.apply, paths)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
@@ -611,7 +611,7 @@ func (b *localBackend) apply(
 		Cancel:          scope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b),
+		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
 	}
 
 	// Perform the update
@@ -741,7 +741,8 @@ func (b *localBackend) GetHistory(
 	return updates, nil
 }
 
-func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
+func (b *localBackend) GetLogs(ctx context.Context,
+	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
 
 	stackName := stack.Ref().Name()

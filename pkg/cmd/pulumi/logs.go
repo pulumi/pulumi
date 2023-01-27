@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -37,7 +38,7 @@ import (
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 func newLogsCmd() *cobra.Command {
-	var stack string
+	var stackName string
 	var follow bool
 	var since string
 	var resource string
@@ -64,7 +65,7 @@ func newLogsCmd() *cobra.Command {
 				return err
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -116,7 +117,7 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(ctx, cfg, operations.LogQuery{
+				logs, err := s.GetLogs(ctx, stack.DefaultSecretsProvider, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})
@@ -181,7 +182,7 @@ func newLogsCmd() *cobra.Command {
 	}
 
 	logsCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

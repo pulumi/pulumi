@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -986,9 +987,9 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
+func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply, paths)
+	return backend.Watch(ctx, stack.DefaultSecretsProvider, b, stk, op, b.apply, paths)
 }
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
@@ -1164,7 +1165,7 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
-		BackendClient:   httpstateBackendClient{backend: b},
+		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
@@ -1330,10 +1331,11 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
+func (b *cloudBackend) GetLogs(ctx context.Context,
+	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
 	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
 
-	target, targetErr := b.getTarget(ctx, stack.Ref(), cfg.Config, cfg.Decrypter)
+	target, targetErr := b.getTarget(ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter)
 	if targetErr != nil {
 		return nil, targetErr
 	}
@@ -1746,7 +1748,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 }
 
 type httpstateBackendClient struct {
-	backend Backend
+	backend deploy.BackendClient
 }
 
 func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
@@ -1757,12 +1759,12 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
 	}
 
-	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
+	return c.backend.GetStackOutputs(ctx, name)
 }
 
 func (c httpstateBackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string) (resource.PropertyMap, error) {
-	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
+	return c.backend.GetStackResourceOutputs(ctx, name)
 }
 
 // Represents feature-detected capabilities of the service the backend is connected to.

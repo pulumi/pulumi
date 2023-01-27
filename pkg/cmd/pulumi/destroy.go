@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,7 +40,7 @@ import (
 func newDestroyCmd() *cobra.Command {
 	var debug bool
 	var remove bool
-	var stack string
+	var stackName string
 
 	var message string
 	var execKind string
@@ -146,7 +147,7 @@ func newDestroyCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Destroy, stack, args[0], remoteArgs)
+				return runDeployment(ctx, opts.Display, apitype.Destroy, stackName, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -161,7 +162,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stack, stackLoadOnly, opts.Display)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -181,7 +182,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
 
-			snap, err := s.Snapshot(ctx)
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -257,6 +258,7 @@ func newDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             cancellationScopes,
 			})
 
@@ -297,7 +299,7 @@ func newDestroyCmd() *cobra.Command {
 		&remove, "remove", false,
 		"Remove the stack and its config file after all resources in the stack have been deleted")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",
@@ -410,7 +412,7 @@ func separateProtected(resources []*resource.State) (
 // Returns the number of protected resources that remain. Appends all unprotected resources to `targetUrns`.
 func handleExcludeProtected(ctx context.Context, s backend.Stack) ([]string, int, error) {
 	// Get snapshot
-	snapshot, err := s.Snapshot(ctx)
+	snapshot, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return nil, 0, err
 	} else if snapshot == nil {

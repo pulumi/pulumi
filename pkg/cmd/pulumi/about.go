@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -342,28 +343,28 @@ type aboutState struct {
 }
 
 func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
-	var stack backend.Stack
+	var s backend.Stack
 	var err error
 	if selectedStack == "" {
-		stack, err = state.CurrentStack(ctx, b)
+		s, err = state.CurrentStack(ctx, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
 		if err != nil {
 			return currentStackAbout{}, err
 		}
-		stack, err = b.GetStack(ctx, ref)
+		s, err = b.GetStack(ctx, ref)
 	}
 	if err != nil {
 		return currentStackAbout{}, err
 	}
-	if stack == nil {
+	if s == nil {
 		return currentStackAbout{}, errors.New("No current stack")
 	}
 
-	name := stack.Ref().String()
+	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = stack.Snapshot(ctx)
+	snapshot, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
@@ -388,7 +389,7 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 	}
 	return currentStackAbout{
 		Name:               name,
-		FullyQualifiedName: stack.Ref().FullyQualifiedName().String(),
+		FullyQualifiedName: s.Ref().FullyQualifiedName().String(),
 		Resources:          aboutResources,
 		PendingOps:         aboutPending,
 	}, nil

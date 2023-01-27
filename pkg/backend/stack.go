@@ -34,11 +34,14 @@ import (
 
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
-	Ref() StackReference                                    // this stack's identity.
-	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.
-	Backend() Backend                                       // the backend this stack belongs to.
-	Tags() map[apitype.StackTagName]string                  // the stack's existing tags.
-
+	// this stack's identity.
+	Ref() StackReference
+	// the latest deployment snapshot.
+	Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
+	// the backend this stack belongs to.
+	Backend() Backend
+	// the stack's existing tags.
+	Tags() map[apitype.StackTagName]string
 	// Preview changes to this stack.
 	Preview(ctx context.Context, op UpdateOperation) (*deploy.Plan, display.ResourceChanges, result.Result)
 	// Update this stack.
@@ -57,7 +60,8 @@ type Stack interface {
 	// rename this stack.
 	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
 	// list log entries for this stack.
-	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
+	GetLogs(ctx context.Context, secretsProvider secrets.Provider,
+		cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
 	ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error)
 	// import the given deployment into this stack.
@@ -120,9 +124,9 @@ func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 }
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx context.Context, s Stack, cfg StackConfiguration,
+func GetStackLogs(ctx context.Context, secretsProvider secrets.Provider, s Stack, cfg StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, s, cfg, query)
+	return s.Backend().GetLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.

@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -197,7 +198,8 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}
 
 	// Construct the deployment target.
-	target, err := b.getTarget(ctx, stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+	target, err := b.getTarget(ctx, op.SecretsProvider, stackRef,
+		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -214,13 +216,14 @@ func (b *cloudBackend) newUpdate(ctx context.Context, stackRef backend.StackRefe
 	}, nil
 }
 
-func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackReference) (*deploy.Snapshot, error) {
+func (b *cloudBackend) getSnapshot(ctx context.Context,
+	secretsProvider secrets.Provider, stackRef backend.StackReference) (*deploy.Snapshot, error) {
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, stack.DefaultSecretsProvider)
+	snapshot, err := stack.DeserializeUntypedDeployment(ctx, untypedDeployment, secretsProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -228,14 +231,14 @@ func (b *cloudBackend) getSnapshot(ctx context.Context, stackRef backend.StackRe
 	return snapshot, nil
 }
 
-func (b *cloudBackend) getTarget(ctx context.Context, stackRef backend.StackReference,
+func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,
 	cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshot, err := b.getSnapshot(ctx, stackRef)
+	snapshot, err := b.getSnapshot(ctx, secretsProvider, stackRef)
 	if err != nil {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:

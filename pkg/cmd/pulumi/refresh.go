@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -43,7 +44,7 @@ func newRefreshCmd() *cobra.Command {
 	var message string
 	var execKind string
 	var execAgent string
-	var stack string
+	var stackName string
 
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
@@ -144,7 +145,7 @@ func newRefreshCmd() *cobra.Command {
 					return result.FromError(err)
 				}
 
-				return runDeployment(ctx, opts.Display, apitype.Refresh, stack, args[0], remoteArgs)
+				return runDeployment(ctx, opts.Display, apitype.Refresh, stackName, args[0], remoteArgs)
 			}
 
 			filestateBackend, err := isFilestateBackend(opts.Display)
@@ -158,7 +159,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = true
 			}
 
-			s, err := requireStack(ctx, stack, stackOfferNew, opts.Display)
+			s, err := requireStack(ctx, stackName, stackOfferNew, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -219,7 +220,7 @@ func newRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx)
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting snapshot: %w", err))
 			}
@@ -265,6 +266,7 @@ func newRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
+				SecretsProvider:    stack.DefaultSecretsProvider,
 				Scopes:             cancellationScopes,
 			})
 
@@ -288,7 +290,7 @@ func newRefreshCmd() *cobra.Command {
 		&expectNop, "expect-no-changes", false,
 		"Return an error if any changes occur during this update")
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -65,7 +66,7 @@ func newStackCmd() *cobra.Command {
 				return nil
 			}
 
-			snap, err := s.Snapshot(ctx)
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return err
 			}
