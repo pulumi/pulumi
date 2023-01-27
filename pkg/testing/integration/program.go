@@ -36,6 +36,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
@@ -2292,18 +2293,18 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 func getEditStr(dep string, gopath string, depRoot string) (string, error) {
 	checkModName := true
 	var err error
-	var modName string
-	var modDir string
+	var replacedModName string
+	var targetModDir string
 	if strings.ContainsRune(dep, '=') {
 		parts := strings.Split(dep, "=")
-		modName = parts[0]
-		modDir = parts[1]
+		replacedModName = parts[0]
+		targetModDir = parts[1]
 	} else if !modfile.IsDirectoryPath(dep) {
-		modName = dep
-		modDir = getRewritePath(dep, gopath, depRoot)
+		replacedModName = dep
+		targetModDir = getRewritePath(dep, gopath, depRoot)
 	} else {
-		modDir = dep
-		modName, err = getModName(modDir)
+		targetModDir = dep
+		replacedModName, err = getModName(targetModDir)
 		if err != nil {
 			return "", err
 		}
@@ -2311,23 +2312,31 @@ func getEditStr(dep string, gopath string, depRoot string) (string, error) {
 		checkModName = false
 	}
 
-	modDir, err = filepath.Abs(modDir)
+	targetModDir, err = filepath.Abs(targetModDir)
 	if err != nil {
 		return "", err
 	}
 
 	if checkModName {
-		actualModName, err := getModName(modDir)
+		targetModName, err := getModName(targetModDir)
 		if err != nil {
 			return "", fmt.Errorf("no go.mod at directory, set the path to the module explicitly or place "+
 				"the dependency in the path specified by PULUMI_GO_DEP_ROOT or the default GOPATH: %w", err)
 		}
-		if actualModName != modName {
-			return "", fmt.Errorf("found module %s, expected %s", actualModName, modName)
+		targetPrefix, _, ok := module.SplitPathVersion(targetModName)
+		if !ok {
+			return "", fmt.Errorf("invalid module path for target module %q", targetModName)
+		}
+		replacedPrefix, _, ok := module.SplitPathVersion(replacedModName)
+		if !ok {
+			return "", fmt.Errorf("invalid module path for replaced module %q", replacedModName)
+		}
+		if targetPrefix != replacedPrefix {
+			return "", fmt.Errorf("found module path with prefix %s, expected %s", targetPrefix, replacedPrefix)
 		}
 	}
 
-	editStr := fmt.Sprintf("%s=%s", modName, modDir)
+	editStr := fmt.Sprintf("%s=%s", replacedModName, targetModDir)
 	return editStr, nil
 }
 
