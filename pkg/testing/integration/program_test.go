@@ -148,9 +148,9 @@ func TestGoModEdits(t *testing.T) {
 			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
 		},
 		{
-			name:          "invalid-module-name",
-			dep:           "github.com/pulumi/pulumi/sdk/v2", // v2 not v3
-			expectedError: "found module github.com/pulumi/pulumi/sdk/v3, expected github.com/pulumi/pulumi/sdk/v2",
+			name:          "valid-module-name-version-skew",
+			dep:           "github.com/pulumi/pulumi/sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
 		},
 		{
 			name:          "valid-rel-path",
@@ -158,9 +158,14 @@ func TestGoModEdits(t *testing.T) {
 			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
 		},
 		{
+			name:          "valid-rel-path-version-skew",
+			dep:           "github.com/pulumi/pulumi/sdk=../../../sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
 			name:          "invalid-rel-path",
-			dep:           "github.com/pulumi/pulumi/sdk/v2=../../../sdk",
-			expectedError: "found module github.com/pulumi/pulumi/sdk/v3, expected github.com/pulumi/pulumi/sdk/v2",
+			dep:           "github.com/pulumi/pulumi/pkg=../../../sdk",
+			expectedError: "found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg",
 		},
 	}
 
