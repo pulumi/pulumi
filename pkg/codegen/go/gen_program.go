@@ -801,6 +801,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []interface{}, zeroVa
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
+	v.LogicalName()
 	expr, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 	name := makeValidIdentifier(v.Name())
@@ -829,10 +830,11 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 				g.Fgenf(w, "return err\n")
 				g.Fgenf(w, "}\n")
 			}
-		case "call":
+		case "method":
 			// g.Fgenf(w, "%s, err %s %.3v;\n", name, assignment, expr.Res)
 			g.Fgenf(w, "%s, err %s n", name, assignment)
-			g.Fprintf(w, "%s.%v\n", expr.Res, expr)
+			g.Fprintf(w, "%s.", expr.Res)
+			g.Fgenf(w, "%v", expr)
 			g.isErrAssigned = true
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")

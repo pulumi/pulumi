@@ -158,7 +158,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	return sig, nil
 }
 
-func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+func (b *binder) bindMethodCallSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
 	}
@@ -171,6 +171,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	if !ok || model.StringType.ConversionFrom(lit.Type()) == model.NoConversion {
 		return b.zeroSignature(), hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
 	}
+	fmt.Println(template)
 
 	token, tokenRange := lit.Value.AsString(), args[0].SyntaxNode().Range()
 	pkg, _, _, diagnostics := DecomposeToken(token, tokenRange)
@@ -201,7 +202,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	}
 	sig, err := b.signatureForArgs(fn, args[1])
 	if err != nil {
-		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
+		diag := hcl.Diagnostics{errorf(tokenRange, "Method binding error: %v", err)}
 		return b.zeroSignature(), diag
 	}
 

@@ -263,8 +263,41 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64sha256":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
-	case "call":
-		g.Fgenf(w, "%s.%s(%v)", expr.Res, expr.Name, expr.Args[0])
+	case "method":
+		_, _, fn, diags := g.functionName(expr.Args[0])
+		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
+
+		res := expr.Res
+		fnTok := strings.Split(fn, "/")
+		fn = fnTok[len(fnTok)-1]
+		fmt.Println("here", res, fn, expr.Args[0])
+
+		// g.Fgenf(w, "%s(%.v)", res+"."+fn, expr.Args[1])
+		// g.Fgenf(w, "%s.%s(", res, fn)
+		// fmt.Printf("args type: %T\n", expr.Args[1])
+		// if a, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
+		// 	for _, b := range a.Args {
+		// 		if c, ok := b.(*model.ObjectConsExpression); ok {
+
+		// 		}
+		// 	}
+		// }
+		// for _, a := range expr.Args[1]. {
+
+		// }
+		g.Fgenf(w, "%v", fn)
+		if len(expr.Args) == 2 {
+			g.Fgenf(w, "(%.v", expr.Args[1])
+		}
+		optionsBag := ""
+		var buf bytes.Buffer
+		if len(expr.Args) == 3 {
+			g.Fgenf(&buf, ", %.v", expr.Args[2])
+		} else {
+			g.Fgenf(&buf, "")
+		}
+		optionsBag = buf.String()
+		g.Fgenf(w, "%v)\n", optionsBag)
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",

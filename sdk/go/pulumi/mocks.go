@@ -162,6 +162,24 @@ func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
 		return nil, err
 	}
 
+	if in.GetTok() == "pulumi:pulumi:getResource" {
+		urn := args["urn"].StringValue()
+		registeredResourceV, ok := m.resources.Load(urn)
+		if !ok {
+			return nil, fmt.Errorf("unknown resource %s", urn)
+		}
+		registeredResource := registeredResourceV.(resource.PropertyMap)
+		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.CallResponse{
+			Return: result,
+		}, nil
+	}
 	resultV, err := m.mocks.Call(MockCallArgs{
 		Token:    in.GetTok(),
 		Args:     args,
@@ -179,7 +197,6 @@ func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
 	return &pulumirpc.CallResponse{
 		Return: result,
 	}, nil
-
 }
 
 func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResourceRequest,
