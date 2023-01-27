@@ -145,11 +145,11 @@ def collapse_alias_to_urn(
         if isinstance(inner, str):
             return Output.from_input(inner)
 
-        name = inner.name if inner.name is not ... else defaultName  # type: ignore
-        type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
-        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: str = inner.project if inner.project is not ... else settings.get_project()  # type: ignore
-        stack: str = inner.stack if inner.stack is not ... else settings.get_stack()  # type: ignore
+        name = inner.name if inner.name is not None else defaultName
+        type_ = inner.type_ if inner.type_ is not None else defaultType
+        parent = inner.parent if inner.parent is not None else defaultParent
+        project: str = inner.project if inner.project is not None else settings.get_project()  # type: ignore
+        stack: str = inner.stack if inner.stack is not None else settings.get_stack()  # type: ignore
 
         if name is None:
             raise Exception("No valid 'name' passed in for alias.")
@@ -214,6 +214,8 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
                 alias_spec_parent_urn = parent_urn
         else:
             alias_spec_no_parent = True
+    else:
+        alias_spec_no_parent = True
 
     return alias_pb2.Alias.Spec(
         name=alias_spec_name,

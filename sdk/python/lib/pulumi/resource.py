@@ -164,11 +164,11 @@ class Alias:
     # https://docs.python.org/3/library/constants.html#Ellipsis
     def __init__(
         self,
-        name: Optional[str] = ...,  # type: ignore
-        type_: Optional[str] = ...,  # type: ignore
-        parent: Optional[Union["Resource", "Input[str]"]] = ...,  # type: ignore
-        stack: Optional["Input[str]"] = ...,  # type: ignore
-        project: Optional["Input[str]"] = ...,  # type: ignore
+        name: Optional[str] = None,
+        type_: Optional[str] = None,
+        parent: Optional[Union["Resource", "Input[str]"]] = None,
+        stack: Optional["Input[str]"] = None,
+        project: Optional["Input[str]"] = None,
     ) -> None:
 
         self.name = name
