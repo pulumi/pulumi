@@ -311,7 +311,6 @@ jobs:
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
       version-set: ${{ toJson(matrix.version-set) }}
-      continue-on-error: ${{ contains(matrix.platform, 'windows') }}
     secrets: inherit
 
   test-collect-reports:
