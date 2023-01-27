@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -858,12 +859,17 @@ func makeJSONString(v interface{}) (string, error) {
 
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
+	return fprintJSON(os.Stdout, v)
+}
+
+// fprintJSON simply prints out some object, formatted as JSON, using standard indentation.
+func fprintJSON(w io.Writer, v interface{}) error {
 	jsonStr, err := makeJSONString(v)
 	if err != nil {
 		return err
 	}
-	fmt.Print(jsonStr)
-	return nil
+	_, err = fmt.Fprint(w, jsonStr)
+	return err
 }
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions

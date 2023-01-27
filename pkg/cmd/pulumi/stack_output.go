@@ -74,6 +74,8 @@ type stackOutputCmd struct {
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
 	requireStack func(ctx context.Context, name string, lopt stackLoadOption, opts display.Options) (backend.Stack, error)
+
+	Stdout io.Writer // defaults to os.Stdout
 }
 
 func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
@@ -91,15 +93,20 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		osys = cmd.OS
 	}
 
+	stdout := io.Writer(os.Stdout)
+	if cmd.Stdout != nil {
+		stdout = cmd.Stdout
+	}
+
 	var outw stackOutputWriter
 	if cmd.shellOut && cmd.jsonOut {
 		return errors.New("only one of --json and --shell may be set")
 	} else if cmd.jsonOut {
-		outw = &jsonStackOutputWriter{}
+		outw = &jsonStackOutputWriter{W: stdout}
 	} else if cmd.shellOut {
-		outw = newShellStackOutputWriter(os.Stdout, osys)
+		outw = newShellStackOutputWriter(stdout, osys)
 	} else {
-		outw = &consoleStackOutputWriter{}
+		outw = &consoleStackOutputWriter{W: stdout}
 	}
 
 	// Fetch the current stack and its output properties.
@@ -153,34 +160,33 @@ type stackOutputWriter interface {
 
 // consoleStackOutputWriter writes human-readable stack output to stdout.
 type consoleStackOutputWriter struct {
-	// TODO Use an io.Writer here.
+	W io.Writer
 }
 
 var _ stackOutputWriter = (*consoleStackOutputWriter)(nil)
 
-func (*consoleStackOutputWriter) WriteOne(_ string, v interface{}) error {
-	_, err := fmt.Printf("%v\n", stringifyOutput(v))
+func (w *consoleStackOutputWriter) WriteOne(_ string, v interface{}) error {
+	_, err := fmt.Fprintf(w.W, "%v\n", stringifyOutput(v))
 	return err
 }
 
-func (*consoleStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
-	printStackOutputs(outputs)
-	return nil
+func (w *consoleStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	return fprintStackOutputs(w.W, outputs)
 }
 
 // jsonStackOutputWriter writes stack outputs as machine-parseable JSON.
 type jsonStackOutputWriter struct {
-	// TODO Use an io.Writer here.
+	W io.Writer
 }
 
 var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
 
-func (*jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
-	return printJSON(v)
+func (w *jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
+	return fprintJSON(w.W, v)
 }
 
-func (*jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
-	return printJSON(outputs)
+func (w *jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+	return fprintJSON(w.W, outputs)
 }
 
 // newShellStackOutputWriter builds a stackOutputWriter

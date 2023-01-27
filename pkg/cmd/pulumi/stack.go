@@ -17,6 +17,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"time"
 
@@ -140,7 +142,8 @@ func newStackCmd() *cobra.Command {
 				outputs, err := getStackOutputs(snap, showSecrets)
 				if err == nil {
 					fmt.Printf("\n")
-					printStackOutputs(outputs)
+					_ = fprintStackOutputs(os.Stdout, outputs)
+					// stdout error ignored
 				}
 
 				if showSecrets {
@@ -192,29 +195,33 @@ func newStackCmd() *cobra.Command {
 	return cmd
 }
 
-func printStackOutputs(outputs map[string]interface{}) {
-	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
-	if len(outputs) == 0 {
-		fmt.Printf("    No output values currently in this stack\n")
-	} else {
-		var outKeys []string
-		for v := range outputs {
-			outKeys = append(outKeys, v)
-		}
-		sort.Strings(outKeys)
-
-		rows := []cmdutil.TableRow{}
-
-		for _, key := range outKeys {
-			rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
-		}
-
-		cmdutil.PrintTable(cmdutil.Table{
-			Headers: []string{"OUTPUT", "VALUE"},
-			Rows:    rows,
-			Prefix:  "    ",
-		})
+func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
+	_, err := fmt.Fprintf(w, "Current stack outputs (%d):\n", len(outputs))
+	if err != nil {
+		return err
 	}
+
+	if len(outputs) == 0 {
+		_, err = fmt.Fprintf(w, "    No output values currently in this stack\n")
+		return err
+	}
+
+	outKeys := make([]string, 0, len(outputs))
+	for v := range outputs {
+		outKeys = append(outKeys, v)
+	}
+	sort.Strings(outKeys)
+
+	rows := []cmdutil.TableRow{}
+	for _, key := range outKeys {
+		rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
+	}
+
+	return cmdutil.FprintTable(w, cmdutil.Table{
+		Headers: []string{"OUTPUT", "VALUE"},
+		Rows:    rows,
+		Prefix:  "    ",
+	})
 }
 
 // stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case

@@ -16,6 +16,7 @@ package cmdutil
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime"
@@ -123,11 +124,19 @@ type TableRow struct {
 	AdditionalInfo string   // an optional line of information to print after the row
 }
 
-// PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
+// FprintTable prints a grid of rows and columns.  Width of columns is automatically determined by
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
+func FprintTable(w io.Writer, table Table) error {
+	_, err := fmt.Fprint(w, table)
+	return err
+}
+
+// PrintTable prints the table to stdout.
+// See [FprintTable] for details.
 func PrintTable(table Table) {
-	fmt.Print(table)
+	_ = FprintTable(os.Stdout, table)
+	// Ignore error for stdout.
 }
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
