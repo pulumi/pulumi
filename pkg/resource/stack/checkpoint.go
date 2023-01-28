@@ -80,13 +80,13 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes 
 }
 
 func MarshalUntypedDeploymentToVersionedCheckpoint(
-	stack tokens.Name, deployment *apitype.UntypedDeployment) (*apitype.VersionedCheckpoint, error) {
+	stack tokens.QName, deployment *apitype.UntypedDeployment) (*apitype.VersionedCheckpoint, error) {
 
 	chk := struct {
 		Stack  tokens.QName
 		Latest json.RawMessage
 	}{
-		Stack:  stack.Q(),
+		Stack:  stack,
 		Latest: deployment.Deployment,
 	}
 
