@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: The filestate backend now supports project scoped stacks. Unlike the service backend, the CLI will not automatically name stacks with the current project - users must opt in explicitly in order to continue supporting stacks that are not scoped to a project. To create a project scoped stack, use the full name in the `init` command, e.g. `pulumi stack init project/stack`.
