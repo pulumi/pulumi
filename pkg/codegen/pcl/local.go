@@ -28,6 +28,9 @@ type LocalVariable struct {
 
 	// The variable definition.
 	Definition *model.Attribute
+
+	// The resource name
+	resName string
 }
 
 // SyntaxNode returns the syntax node associated with the local variable.
@@ -54,6 +57,10 @@ func (lv *LocalVariable) LogicalName() string {
 // Type returns the type of the local variable.
 func (lv *LocalVariable) Type() model.Type {
 	return lv.Definition.Type()
+}
+
+func (lv *LocalVariable) ResName() string {
+	return lv.resName
 }
 
 func (*LocalVariable) isNode() {}

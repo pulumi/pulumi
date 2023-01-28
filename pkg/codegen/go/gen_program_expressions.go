@@ -288,6 +288,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%v", fn)
 		if len(expr.Args) == 2 {
 			g.Fgenf(w, "(%.v", expr.Args[1])
+		} else {
+			g.Fgen(w, "(")
 		}
 		optionsBag := ""
 		var buf bytes.Buffer
