@@ -83,6 +83,7 @@ func IntoQName(s string) QName {
 	if result == "" {
 		result = "_"
 	}
+
 	return QName(result)
 }
 

@@ -23,7 +23,7 @@ import (
 // localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
 // to disk on the local machine.
 type localSnapshotPersister struct {
-	name    tokens.Name
+	name    tokens.QName
 	backend *localBackend
 	sm      secrets.Manager
 }
@@ -38,6 +38,6 @@ func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 }
 
-func (b *localBackend) newSnapshotPersister(stackName tokens.Name, sm secrets.Manager) *localSnapshotPersister {
+func (b *localBackend) newSnapshotPersister(stackName tokens.QName, sm secrets.Manager) *localSnapshotPersister {
 	return &localSnapshotPersister{name: stackName, backend: b, sm: sm}
 }
