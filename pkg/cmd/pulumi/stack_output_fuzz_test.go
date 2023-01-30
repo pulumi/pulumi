@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,16 +50,20 @@ func FuzzBashStackOutputWriter(f *testing.F) {
 		require.NoError(t, file.Close())
 
 		got, err := exec.Command(bash, file.Name()).Output()
-		require.NoError(t, err, "Failed script:\n%s", buff.String())
-
+		if !assert.NoError(t, err, "Failed script:\n%s", buff.String()) {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+				t.Logf("stderr:\n%s", exitErr.Stderr)
+			}
+		}
 		assert.Equal(t, give+"\n", string(got))
 	})
 }
 
 func FuzzPowershellStackOutputWriter(f *testing.F) {
-	pwsh, err := exec.LookPath("pwsh")
+	pwsh, err := exec.LookPath("powershell")
 	if err != nil {
-		f.Skipf("Skipping: no 'pwsh' found: %v", err)
+		f.Skipf("Skipping: no 'powershell' found: %v", err)
 	}
 
 	dir := f.TempDir()
@@ -74,7 +79,9 @@ func FuzzPowershellStackOutputWriter(f *testing.F) {
 			t.Skip()
 		}
 
-		file, err := os.CreateTemp(dir, "script.ps1")
+		// It's important that this file's name end with .ps1
+		// or Powershell will refuse to run it.
+		file, err := os.CreateTemp(dir, "script.*.ps1")
 		require.NoError(t, err)
 		defer os.Remove(file.Name())
 
@@ -87,8 +94,17 @@ func FuzzPowershellStackOutputWriter(f *testing.F) {
 		require.NoError(t, file.Close())
 
 		got, err := exec.Command(pwsh, "-File", file.Name()).Output()
-		require.NoError(t, err, "Failed script:\n%s", buff.String())
+		if !assert.NoError(t, err, "Failed script:\n%s", buff.String()) {
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+				t.Logf("stderr:\n%s", exitErr.Stderr)
+			}
+		}
 
-		assert.Equal(t, give+"\n", string(got))
+		// Strip CRLF separately so that we handle both cases:
+		// ends with CRLF and ends with LF.
+		got = bytes.TrimSuffix(got, []byte{'\n'})
+		got = bytes.TrimSuffix(got, []byte{'\r'})
+		assert.Equal(t, give, string(got))
 	})
 }
