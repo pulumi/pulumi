@@ -843,6 +843,13 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
+            full_aliases_specs : List[alias_pb2.Alias] | None = None
+            alias_urns: List[str] | None = None
+            if resolver.supports_alias_specs:
+                full_aliases_specs = resolver.aliases
+            else:
+                alias_urns = [alias.urn for alias in resolver.aliases]
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -864,7 +871,8 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=[alias_pb2.Alias(urn=alias) for alias in resolver.aliases],
+                aliases = full_aliases_specs,
+                aliasURNs = alias_urns,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
