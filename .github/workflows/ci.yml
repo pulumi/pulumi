@@ -72,14 +72,12 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v3
-        with:
-          repository: dnephin/gotestsum
-          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
-          path: vendor/gotestsum
-      # This source code should be cached by actions/setup-go above.
       - name: Install gotestsum
-        run: go install gotest.tools/gotestsum@1.9.0
+        uses: jaxxstorm/action-install-gh-release@v1.7.1
+        with:
+          repo: gotestyourself/gotestsum
+          tag: v1.8.1
+          cache: enable
       - uses: actions/cache@v3
         with:
           path: test-results
