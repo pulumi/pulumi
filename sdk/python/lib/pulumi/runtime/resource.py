@@ -299,7 +299,7 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
             no_parent = False
         else:
             # assume parent is Input[str] where str is the URN of the parent
-            parent_urn_value = await Output.from_input(resolved_alias.parent).future()
+            parent_urn_value = await Output.from_input(resolved_alias.parent).future()  # type: ignore
             if parent_urn_value is not None:
                 parent_urn = parent_urn_value
                 no_parent = False
@@ -312,14 +312,14 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
             project=project,
             noParent=no_parent,
         )
-    else:
-        return alias_pb2.Alias.Spec(
-            name=name,
-            type=resource_type,
-            stack=stack,
-            project=project,
-            parentUrn=parent_urn,
-        )
+
+    return alias_pb2.Alias.Spec(
+        name=name,
+        type=resource_type,
+        stack=stack,
+        project=project,
+        parentUrn=parent_urn,
+    )
 
 
 def inherited_child_alias(
