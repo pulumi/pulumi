@@ -4,9 +4,9 @@ run:
   skip-dirs:
     - Godeps$
     - builtin$
+    - node_modules
     - testdata$
     - third_party$
-    - node_modules
     - vendor$
   skip-dirs-use-default: false
 linters:
