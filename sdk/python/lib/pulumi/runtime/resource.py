@@ -294,6 +294,9 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
             if parent_urn_value is not None:
                 parent_urn = parent_urn_value
                 no_parent = False
+        elif isinstance(resolved_alias.parent, str):
+            parent_urn = resolved_alias.parent
+            no_parent = False
         else:
             # assume parent is Input[str] where str is the URN of the parent
             parent_urn_value = await Output.from_input(resolved_alias.parent).future()
@@ -301,14 +304,22 @@ async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
                 parent_urn = parent_urn_value
                 no_parent = False
 
-    return alias_pb2.Alias.Spec(
-        name=name,
-        type=resource_type,
-        stack=stack,
-        project=project,
-        parentUrn=parent_urn,
-        noParent=no_parent,
-    )
+    if no_parent:
+        return alias_pb2.Alias.Spec(
+            name=name,
+            type=resource_type,
+            stack=stack,
+            project=project,
+            noParent=no_parent,
+        )
+    else:
+        return alias_pb2.Alias.Spec(
+            name=name,
+            type=resource_type,
+            stack=stack,
+            project=project,
+            parentUrn=parent_urn,
+        )
 
 
 def inherited_child_alias(
@@ -430,7 +441,8 @@ def collapse_alias_to_urn(
         if type_ is None:
             raise Exception("No valid 'type_' passed in for alias.")
 
-        return Output.all(project, stack).apply(
+        all_args = [project, stack]
+        return Output.all(*all_args).apply(
             lambda args: create_urn(name, type_, parent, args[0], args[1])
         )
 
