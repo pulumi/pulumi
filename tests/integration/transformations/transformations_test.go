@@ -1,5 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
-//go:build !smoke
+//go:build !xplatform-acceptance
 
 package ints
 
