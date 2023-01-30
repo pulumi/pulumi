@@ -29,7 +29,7 @@ class JobKind(str, Enum):
     """Output kinds supported with this utility."""
 
     INTEGRATION_TEST = "integration-test"
-    SMOKE_TEST = "smoke-test"
+    ACCEPTANCE_TEST = "acceptance-test"
     UNIT_TEST = "unit-test"
     ALL_TEST = "all-test"
 
@@ -354,7 +354,7 @@ def get_matrix(
         makefile_tests = MAKEFILE_INTEGRATION_TESTS
     elif kind == JobKind.UNIT_TEST:
         makefile_tests = MAKEFILE_UNIT_TESTS
-    elif kind == JobKind.SMOKE_TEST:
+    elif kind == JobKind.ACCEPTANCE_TEST:
         makefile_tests = []
     elif kind == JobKind.ALL_TEST:
         makefile_tests = MAKEFILE_INTEGRATION_TESTS + MAKEFILE_UNIT_TESTS
@@ -375,7 +375,7 @@ def get_matrix(
         go_packages = run_list_packages(item.module_dir, tags)
         go_packages = set(go_packages) - partitioned_packages
 
-        if kind == JobKind.INTEGRATION_TEST or kind == JobKind.SMOKE_TEST:
+        if kind == JobKind.INTEGRATION_TEST or kind == JobKind.ACCEPTANCE_TEST:
             go_packages = {pkg for pkg in go_packages if not is_unit_test(pkg)}
         elif kind == JobKind.UNIT_TEST:
             go_packages = {pkg for pkg in go_packages if is_unit_test(pkg)}
@@ -389,7 +389,7 @@ def get_matrix(
 
         test_suites += run_gotestsum_ci_matrix_single_package(item, pkg_tests, tags)
 
-    if kind == JobKind.SMOKE_TEST:
+    if kind == JobKind.ACCEPTANCE_TEST:
         platforms = list(map(lambda p: "windows-8core-2022" if p == "windows-latest" else p, platforms))
 
     return {

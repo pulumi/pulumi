@@ -1,4 +1,4 @@
-//go:build (python || all) && !smoke
+//go:build (python || all) && !xplatform_acceptance
 
 package ints
 
