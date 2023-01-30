@@ -38,6 +38,8 @@ from .runtime.resource import (
     register_resource,
     register_resource_outputs,
     read_resource,
+    collapse_alias_to_urn,
+    create_urn as create_urn_internal,
     convert_providers,
 )
 from .runtime.settings import get_root_resource
@@ -76,95 +78,6 @@ class CustomTimeouts:
         self.create = create
         self.update = update
         self.delete = delete
-
-
-def inherited_child_alias(
-    child_name: str, parent_name: str, parent_alias: "Input[str]", child_type: str
-) -> "Output[str]":
-    """
-    inherited_child_alias computes the alias that should be applied to a child based on an alias
-    applied to it's parent. This may involve changing the name of the resource in cases where the
-    resource has a named derived from the name of the parent, and the parent name changed.
-    """
-
-    #   If the child name has the parent name as a prefix, then we make the assumption that it was
-    #   constructed from the convention of using `{name}-details` as the name of the child resource.  To
-    #   ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
-    #   the child resource name.
-    #
-    #   For example:
-    #   * name: "newapp-function"
-    #   * opts.parent.__name: "newapp"
-    #   * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-    #   * parentAliasName: "app"
-    #   * aliasName: "app-function"
-    #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    alias_name = Output.from_input(child_name)
-    if child_name.startswith(parent_name):
-        alias_name = Output.from_input(parent_alias).apply(
-            lambda u: u[u.rfind("::") + 2 :] + child_name[len(parent_name) :]
-        )
-
-    return create_urn(alias_name, child_type, parent_alias)
-
-
-# Extract the type and name parts of a URN
-def urn_type_and_name(urn: str) -> Tuple[str, str]:
-    parts = urn.split("::")
-    type_parts = parts[2].split("$")
-    return (parts[3], type_parts[-1])
-
-
-def all_aliases(
-    child_aliases: Optional[Sequence["Input[Union[str, Alias]]"]],
-    child_name: str,
-    child_type: str,
-    parent: Optional["Resource"],
-) -> "List[Input[str]]":
-    """
-    Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
-    If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
-    or, as calculated in the logic below, N+(M*(1+N)).
-    """
-    aliases: "List[Input[str]]" = []
-
-    for child_alias in child_aliases or []:
-        aliases.append(
-            collapse_alias_to_urn(child_alias, child_name, child_type, parent)
-        )
-
-    if parent is not None:
-        parent_name = parent._name
-        for parent_alias in parent._aliases:
-            aliases.append(
-                inherited_child_alias(
-                    child_name, parent._name, parent_alias, child_type
-                )
-            )
-            for child_alias in child_aliases or []:
-                child_alias_urn = collapse_alias_to_urn(
-                    child_alias, child_name, child_type, parent
-                )
-
-                def inherited_alias_for_child_urn(
-                    child_alias_urn: str, parent_alias=parent_alias
-                ) -> "Output[str]":
-                    aliased_child_name, aliased_child_type = urn_type_and_name(
-                        child_alias_urn
-                    )
-                    return inherited_child_alias(
-                        aliased_child_name,
-                        parent_name,
-                        parent_alias,
-                        aliased_child_type,
-                    )
-
-                inherited_alias: Output[str] = child_alias_urn.apply(
-                    inherited_alias_for_child_urn
-                )
-                aliases.append(inherited_alias)
-
-    return aliases
 
 
 ROOT_STACK_RESOURCE = None
@@ -257,38 +170,6 @@ class Alias:
         self.parent = parent
         self.stack = stack
         self.project = project
-
-
-def collapse_alias_to_urn(
-    alias: "Input[Union[Alias, str]]",
-    defaultName: str,
-    defaultType: str,
-    defaultParent: Optional["Resource"],
-) -> "Output[str]":
-    """
-    collapse_alias_to_urn turns an Alias into a URN given a set of default data
-    """
-
-    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
-        if isinstance(inner, str):
-            return Output.from_input(inner)
-
-        name = inner.name if inner.name is not ... else defaultName  # type: ignore
-        type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
-        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: str = inner.project if inner.project is not ... else get_project()  # type: ignore
-        stack: str = inner.stack if inner.stack is not ... else get_stack()  # type: ignore
-
-        if name is None:
-            raise Exception("No valid 'name' passed in for alias.")
-
-        if type_ is None:
-            raise Exception("No valid 'type_' passed in for alias.")
-
-        return create_urn(name, type_, parent, project, stack)
-
-    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
-    return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
 class ResourceTransformationArgs:
@@ -838,6 +719,11 @@ class Resource:
     The name assigned to the resource at construction.
     """
 
+    _type: str
+    """
+    The type of the resource.
+    """
+
     _plugin_download_url: Optional[str]
     """
     The specified download URL associated with the provider or None.
@@ -932,9 +818,15 @@ class Resource:
                 opts = tres.opts
 
         self._name = name
+        self._type = t
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = opts._copy()
+
+        self._aliases = []
+        if opts is not None and opts.aliases is not None:
+            for alias in opts.aliases:
+                self._aliases.append(collapse_alias_to_urn(alias, name, t, opts.parent))
 
         self._providers = {}
         self._childResources = set()
@@ -977,8 +869,6 @@ class Resource:
         self._providers = providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
-        self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
-
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
             get_resource(self, props, custom, opts.urn, typ)
@@ -1297,27 +1187,7 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-    parent_prefix: Optional[Output[str]] = None
-    if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
-        parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
-    else:
-        if stack is None:
-            stack = get_stack()
-
-        if project is None:
-            project = get_project()
-
-        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
-
-    all_args = [parent_prefix, type_, name]
-    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
-    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2])  # type: ignore
+    return create_urn_internal(name, type_, parent, project, stack)
 
 
 def _parse_resource_reference(ref: str) -> Tuple[str, str]:
