@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !xplatform-acceptance
+//go:build !xplatform_acceptance
 
 package main
 

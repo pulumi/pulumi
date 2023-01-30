@@ -62,7 +62,7 @@ jobs:
       build-all-targets: false
       test-version-sets: current
       integration-test-platforms: ubuntu-latest
-      smoke-test-platforms: ''
+      acceptance-test-platforms: ''
       enable-coverage: true
     secrets:
       # Scope secrets to the minimum required:

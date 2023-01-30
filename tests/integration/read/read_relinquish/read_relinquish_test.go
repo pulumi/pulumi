@@ -1,5 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
-//go:build (nodejs || all) && !xplatform-acceptance
+//go:build (nodejs || all) && !xplatform_acceptance
 
 package ints
 

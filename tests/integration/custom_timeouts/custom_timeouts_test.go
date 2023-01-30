@@ -1,4 +1,4 @@
-//go:build (python || all) && !xplatform-acceptance
+//go:build (python || all) && !xplatform_acceptance
 
 package ints
 

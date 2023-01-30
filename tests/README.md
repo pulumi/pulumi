@@ -14,8 +14,8 @@ In order to speed up integration tests in GitHub actions, Go build tags are used
 
 ```go
 // integration_nodejs_test.go
-//go:build (nodejs || all) && !smoke
+//go:build (nodejs || all) && !xplatform-acceptance
 
-// integration_nodejs_smoke_test.go
+// integration_nodejs_acceptance_test.go
 //go:build nodejs || all
 ```

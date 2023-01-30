@@ -1,5 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.
-//go:build (nodejs || all) && !xplatform-acceptance
+//go:build (nodejs || all) && !xplatform_acceptance
 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
