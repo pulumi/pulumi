@@ -843,7 +843,7 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
-            full_aliases_specs : List[alias_pb2.Alias] | None = None
+            full_aliases_specs: List[alias_pb2.Alias] | None = None
             alias_urns: List[str] | None = None
             if resolver.supports_alias_specs:
                 full_aliases_specs = resolver.aliases
@@ -871,8 +871,8 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases = full_aliases_specs,
-                aliasURNs = alias_urns,
+                aliases=full_aliases_specs,
+                aliasURNs=alias_urns,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
