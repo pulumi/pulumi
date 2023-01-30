@@ -36,7 +36,7 @@ jobs:
             exit 1
           fi
       - name: Lint
-        run: make lint
+        run: make lint -j5
 
   protobuf-lint:
     name: Lint Protobufs
