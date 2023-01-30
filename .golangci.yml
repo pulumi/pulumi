@@ -2,11 +2,12 @@ run:
   timeout: 10m
   # Enable checking the by default skipped "examples" dirs
   skip-dirs:
-    - vendor$
-    - third_party$
-    - testdata$
     - Godeps$
     - builtin$
+    - testdata$
+    - third_party$
+    - node_modules
+    - vendor$
   skip-dirs-use-default: false
 linters:
   enable-all: false
