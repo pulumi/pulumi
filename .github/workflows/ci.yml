@@ -146,12 +146,12 @@ jobs:
             --partition-package github.com/pulumi/pulumi/tests/integration tests/integration 8
           )
 
-          acceptance_TEST_MATRIX=$(
+          ACCEPTANCE_TEST_MATRIX=$(
             ./scripts/get-job-matrix.py \
             -vvv \
             generate-matrix \
             --kind acceptance-test \
-            --tags all acceptance \
+            --tags all xplatform_acceptance \
             --platform "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
             --partition-module pkg 1 \
@@ -291,7 +291,7 @@ jobs:
   acceptance-test:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name. See: unit test.
-    name: acceptance Test${{ matrix.platform && '' }}
+    name: Acceptance Test${{ matrix.platform && '' }}
     needs: [matrix, build-binaries, build-sdks]
     if: ${{ needs.matrix.outputs.acceptance-test-matrix != '{}' }}
     # alow jobs to fail if the platform contains windows
