@@ -95,23 +95,10 @@ dist:: build
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
 brew::
 	./scripts/brew.sh "${PROJECT}"
-	
-lint_fast: golangci-lint.ensure
-	golangci-lint run -v ./pkg/... ./sdk/... ./tests/... --timeout 15m
-
-lint_slow: golangci-lint.ensure
-	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
-	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
-	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
-lint_pkg: lint_deps
-	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_sdk: lint_deps
-	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_tests: lint_deps
-	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint:: golangci-lint.ensure lint_deps
+	golangci-lint run ./pkg/... ./sdk/... ./tests/... --timeout 7m
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
 lint_actions:
