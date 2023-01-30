@@ -254,48 +254,61 @@ async def prepare_resource(
 
 
 async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
-    alias_spec = alias_pb2.Alias.Spec()
+    name: str = ""
+    resource_type: str = ""
+    stack: str = ""
+    project: str = ""
+    parent_urn: str = ""
+    no_parent: bool = False
+
     if resolved_alias.name is not ... and resolved_alias.name is not None:
-        alias_spec.name = resolved_alias.name
+        name = resolved_alias.name
 
     if resolved_alias.type_ is not ... and resolved_alias.type_ is not None:
-        alias_spec.type = resolved_alias.type_
+        resource_type = resolved_alias.type_
 
     if resolved_alias.stack is not ...:
         stack_value = await Output.from_input(resolved_alias.stack).future()
         if stack_value is not None:
-            alias_spec.stack = stack_value
+            stack = stack_value
 
     if resolved_alias.project is not ...:
         project_value = await Output.from_input(resolved_alias.project).future()
         if project_value is not None:
-            alias_spec.project = project_value
+            project = project_value
 
     if resolved_alias.parent is ...:
         # parent is not specified (e.g. Alias(name="Foo")),
         # default to current parent
-        alias_spec.noParent = False
+        no_parent = False
     elif resolved_alias.parent is None:
         # parent is explicitly set to None (e.g. Alias(name="Foo", parent=None))
         # this means that the resource previously had no parent
-        alias_spec.noParent = True
+        no_parent = True
     else:
         # pylint: disable-next=import-outside-toplevel
         from .. import Resource
 
         if isinstance(resolved_alias.parent, Resource):
-            parent_urn = await resolved_alias.parent.urn.future()
-            if parent_urn is not None:
-                alias_spec.parentUrn = parent_urn
-                alias_spec.noParent = False
+            parent_urn_value = await resolved_alias.parent.urn.future()
+            if parent_urn_value is not None:
+                parent_urn = parent_urn_value
+                no_parent = False
         else:
             # assume parent is Input[str] where str is the URN of the parent
-            parent_urn = await Output.from_input(resolved_alias.parent).future()
-            if parent_urn is not None:
-                alias_spec.parentUrn = parent_urn
-                alias_spec.noParent = False
+            parent_urn_value = await Output.from_input(resolved_alias.parent).future()
+            if parent_urn_value is not None:
+                parent_urn = parent_urn_value
+                no_parent = False
 
-    return alias_spec
+    return alias_pb2.Alias.Spec(
+        name=name,
+        type=resource_type,
+        stack=stack,
+        project=project,
+        parentUrn=parent_urn,
+        noParent=no_parent,
+    )
 
 
 def inherited_child_alias(
