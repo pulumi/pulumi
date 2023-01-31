@@ -27,6 +27,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           ref: ${{ inputs.ref }}
+      - name: Cache golangci-lint
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/golangci-lint
+            ~/.cache/go-build
+            ~/go/pkg
+          key: golangci-lint-${{ runner.os }}-${{ hashFiles('**/go.mod') }}
       - name: Tidy
         run: make tidy
       - name: Fail if go mod not tidy
