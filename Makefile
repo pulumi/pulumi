@@ -97,7 +97,16 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
+lint:: golangci-lint.ensure
+
+# If we're in a Go workspace, assume that pkg, sdk, and tests are all covered.
+ifeq ($(shell go env GOWORK),)
+lint:: lint_pkg lint_sdk lint_tests
+else
+lint::
+	golangci-lint run ./pkg/... ./sdk/... ./tests/... --timeout 7m
+endif
+
 lint_pkg: lint_deps
 	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_sdk: lint_deps
