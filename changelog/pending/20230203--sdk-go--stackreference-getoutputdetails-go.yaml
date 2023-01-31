@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Adds StackReference.GetOutputDetails to retrieve outputs from StackReferences as plain objects.
