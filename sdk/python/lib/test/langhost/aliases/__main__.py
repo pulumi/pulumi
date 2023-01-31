@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from pulumi import Output, ResourceOptions
-from pulumi.resource import Alias, CustomResource, all_aliases
+from pulumi.resource import Alias, CustomResource
+from pulumi.runtime.resource import all_aliases
 
 class MyResource(CustomResource):
     def __init__(self, name, opts=None):

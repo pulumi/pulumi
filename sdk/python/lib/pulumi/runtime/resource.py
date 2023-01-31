@@ -40,13 +40,19 @@ from ..runtime.proto import provider_pb2, resource_pb2, alias_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
 from .resource_cycle_breaker import declare_dependency
-from ..output import Output
+from ..output import Input, Output
 from .. import _types
 from .. import urn as urn_util
 
-
 if TYPE_CHECKING:
-    from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
+    from .. import (
+        Resource,
+        ComponentResource,
+        CustomResource,
+        Inputs,
+        ProviderResource,
+        Alias,
+    )
     from ..resource import ResourceOptions
 
 
@@ -85,7 +91,7 @@ class ResourceResolverOperations(NamedTuple):
     A map from property name to the URNs of the resources the property depends on.
     """
 
-    aliases: List[Optional[str]]
+    aliases: List[alias_pb2.Alias]
     """
     A list of aliases applied to this resource.
     """
@@ -95,6 +101,57 @@ class ResourceResolverOperations(NamedTuple):
     If set, the providers Delete method will not be called for this resource
     if specified resource is being deleted as well.
     """
+
+    supports_alias_specs: bool
+    """
+    Returns whether the resource monitor supports alias specs which allows sending full alias specifications
+    to the engine.
+    """
+
+
+async def prepare_aliases(
+    resource: "Resource",
+    resource_options: Optional["ResourceOptions"],
+    supports_alias_specs: bool,
+) -> List[alias_pb2.Alias]:
+
+    aliases: List[alias_pb2.Alias] = []
+    if resource_options is None or resource_options.aliases is None:
+        return aliases
+
+    if supports_alias_specs:
+        for alias in resource_options.aliases:
+            resolved_alias = await Output.from_input(alias).future()
+            if resolved_alias is None:
+                continue
+            if isinstance(resolved_alias, str):
+                aliases.append(alias_pb2.Alias(urn=resolved_alias))
+            else:
+                alias_spec = await create_alias_spec(resolved_alias)  # type: ignore
+                aliases.append(alias_pb2.Alias(spec=alias_spec))
+    else:
+        # Using an version of the engine that does not support alias specs.  We will need to
+        # compute the aliases ourselves as full URNs and sent them to the engine as such.
+        alias_urns = all_aliases(
+            resource_options.aliases,
+            resource._name,
+            resource._type,
+            resource_options.parent,
+        )
+
+        distinct_alias_urns = set()
+        for alias_urn in alias_urns:
+            alias_urn_value = await Output.from_input(alias_urn).future()
+            if (
+                alias_urn_value is not None
+                and alias_urn_value not in distinct_alias_urns
+            ):
+                distinct_alias_urns.add(alias_urn_value)
+
+        for alias_urn in distinct_alias_urns:
+            aliases.append(alias_pb2.Alias(urn=alias_urn))
+
+    return aliases
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
@@ -177,16 +234,8 @@ async def prepare_resource(
         dependencies |= urns
         property_dependencies[key] = list(urns)
 
-    # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
-    # former has been processed in the Resource constructor prior to calling
-    # `register_resource` - both adding new inherited aliases and simplifying aliases down
-    # to URNs.
-    aliases: List[Optional[str]] = []
-    for alias in res._aliases:
-        alias_val = await Output.from_input(alias).future()
-        if not alias_val in aliases:
-            aliases.append(alias_val)
-
+    supports_alias_specs = await settings.monitor_supports_alias_specs()
+    aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
     if opts is not None and opts.deleted_with is not None:
         deleted_with_urn = await opts.deleted_with.urn.future()
@@ -200,7 +249,242 @@ async def prepare_resource(
         property_dependencies,
         aliases,
         deleted_with_urn,
+        supports_alias_specs,
     )
+
+
+async def create_alias_spec(resolved_alias: "Alias") -> alias_pb2.Alias.Spec:
+    name: str = ""
+    resource_type: str = ""
+    stack: str = ""
+    project: str = ""
+    parent_urn: str = ""
+    no_parent: bool = False
+
+    if resolved_alias.name is not ... and resolved_alias.name is not None:
+        name = resolved_alias.name
+
+    if resolved_alias.type_ is not ... and resolved_alias.type_ is not None:
+        resource_type = resolved_alias.type_
+
+    if resolved_alias.stack is not ...:
+        stack_value = await Output.from_input(resolved_alias.stack).future()
+        if stack_value is not None:
+            stack = stack_value
+
+    if resolved_alias.project is not ...:
+        project_value = await Output.from_input(resolved_alias.project).future()
+        if project_value is not None:
+            project = project_value
+
+    if resolved_alias.parent is ...:
+        # parent is not specified (e.g. Alias(name="Foo")),
+        # default to current parent
+        no_parent = False
+    elif resolved_alias.parent is None:
+        # parent is explicitly set to None (e.g. Alias(name="Foo", parent=None))
+        # this means that the resource previously had no parent
+        no_parent = True
+    else:
+        # pylint: disable-next=import-outside-toplevel
+        from .. import Resource
+
+        if isinstance(resolved_alias.parent, Resource):
+            parent_urn_value = await resolved_alias.parent.urn.future()
+            if parent_urn_value is not None:
+                parent_urn = parent_urn_value
+                no_parent = False
+        elif isinstance(resolved_alias.parent, str):
+            parent_urn = resolved_alias.parent
+            no_parent = False
+        else:
+            # assume parent is Input[str] where str is the URN of the parent
+            parent_urn_value = await Output.from_input(resolved_alias.parent).future()  # type: ignore
+            if parent_urn_value is not None:
+                parent_urn = parent_urn_value
+                no_parent = False
+
+    if no_parent:
+        return alias_pb2.Alias.Spec(
+            name=name,
+            type=resource_type,
+            stack=stack,
+            project=project,
+            noParent=no_parent,
+        )
+
+    return alias_pb2.Alias.Spec(
+        name=name,
+        type=resource_type,
+        stack=stack,
+        project=project,
+        parentUrn=parent_urn,
+    )
+
+
+def inherited_child_alias(
+    child_name: str, parent_name: str, parent_alias: "Input[str]", child_type: str
+) -> "Output[str]":
+    """
+    inherited_child_alias computes the alias that should be applied to a child based on an alias
+    applied to it's parent. This may involve changing the name of the resource in cases where the
+    resource has a named derived from the name of the parent, and the parent name changed.
+    """
+
+    #   If the child name has the parent name as a prefix, then we make the assumption that it was
+    #   constructed from the convention of using `{name}-details` as the name of the child resource.  To
+    #   ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
+    #   the child resource name.
+    #
+    #   For example:
+    #   * name: "newapp-function"
+    #   * opts.parent.__name: "newapp"
+    #   * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
+    #   * parentAliasName: "app"
+    #   * aliasName: "app-function"
+    #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
+    alias_name = Output.from_input(child_name)
+    if child_name.startswith(parent_name):
+        alias_name = Output.from_input(parent_alias).apply(
+            lambda u: u[u.rfind("::") + 2 :] + child_name[len(parent_name) :]
+        )
+
+    return create_urn(alias_name, child_type, parent_alias)
+
+
+# Extract the type and name parts of a URN
+def urn_type_and_name(urn: str) -> Tuple[str, str]:
+    parts = urn.split("::")
+    type_parts = parts[2].split("$")
+    return (parts[3], type_parts[-1])
+
+
+def all_aliases(
+    child_aliases: Optional[Sequence["Input[Union[str, Alias]]"]],
+    child_name: str,
+    child_type: str,
+    parent: Optional["Resource"],
+) -> "List[Input[str]]":
+    """
+    Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
+    If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
+    or, as calculated in the logic below, N+(M*(1+N)).
+    """
+    aliases: "List[Input[str]]" = []
+
+    for child_alias in child_aliases or []:
+        aliases.append(
+            collapse_alias_to_urn(child_alias, child_name, child_type, parent)
+        )
+
+    if parent is not None:
+        parent_name = parent._name
+        for parent_alias in parent._aliases:
+            aliases.append(
+                inherited_child_alias(
+                    child_name, parent._name, parent_alias, child_type
+                )
+            )
+            for child_alias in child_aliases or []:
+                child_alias_urn = collapse_alias_to_urn(
+                    child_alias, child_name, child_type, parent
+                )
+
+                def inherited_alias_for_child_urn(
+                    child_alias_urn: str, parent_alias=parent_alias
+                ) -> "Output[str]":
+                    aliased_child_name, aliased_child_type = urn_type_and_name(
+                        child_alias_urn
+                    )
+                    return inherited_child_alias(
+                        aliased_child_name,
+                        parent_name,
+                        parent_alias,
+                        aliased_child_type,
+                    )
+
+                inherited_alias: Output[str] = child_alias_urn.apply(
+                    inherited_alias_for_child_urn
+                )
+                aliases.append(inherited_alias)
+
+    return aliases
+
+
+def collapse_alias_to_urn(
+    alias: "Input[Union[Alias, str]]",
+    defaultName: str,
+    defaultType: str,
+    defaultParent: Optional["Resource"],
+) -> "Output[str]":
+    """
+    collapse_alias_to_urn turns an Alias into a URN given a set of default data
+    """
+
+    def collapse_alias_to_urn_worker(inner: "Union[Alias, str]") -> Output[str]:
+        if isinstance(inner, str):
+            return Output.from_input(inner)
+
+        name: str = inner.name if inner.name is not ... else defaultName  # type: ignore
+        type_: str = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
+        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
+        project: "Input[str]" = settings.get_project()
+        if inner.project is not ... and inner.project is not None:
+            project = inner.project
+        stack: "Input[str]" = settings.get_stack()
+        if inner.stack is not ... and inner.stack is not None:
+            stack = inner.stack
+
+        if name is None:
+            raise Exception("No valid 'name' passed in for alias.")
+
+        if type_ is None:
+            raise Exception("No valid 'type_' passed in for alias.")
+
+        all_args = [project, stack]
+        return Output.all(*all_args).apply(
+            lambda args: create_urn(name, type_, parent, args[0], args[1])
+        )
+
+    inputAlias: "Output[Union[Alias, str]]" = Output.from_input(alias)
+    return inputAlias.apply(collapse_alias_to_urn_worker)
+
+
+def create_urn(
+    name: "Input[str]",
+    type_: "Input[str]",
+    parent: Optional[Union["Resource", "Input[str]"]] = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+) -> "Output[str]":
+    """
+    create_urn computes a URN from the combination of a resource name, resource type, optional
+    parent, optional project and optional stack.
+    """
+    parent_prefix: Optional[Output[str]] = None
+    if parent is not None:
+        parent_urn = None
+        # pylint: disable=import-outside-toplevel
+        from .. import Resource
+
+        if isinstance(parent, Resource):
+            parent_urn = parent.urn
+        else:
+            parent_urn = Output.from_input(parent)
+
+        parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
+    else:
+        if stack is None:
+            stack = settings.get_stack()
+
+        if project is None:
+            project = settings.get_project()
+
+        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
+
+    all_args = [parent_prefix, type_, name]
+    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2])  # type: ignore
 
 
 def resource_output(
@@ -442,8 +726,6 @@ def read_resource(
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
-            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
-
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -586,6 +868,13 @@ def register_resource(
                 in {"TRUE", "1"}
             )
 
+            full_aliases_specs: List[alias_pb2.Alias] | None = None
+            alias_urns: List[str] | None = None
+            if resolver.supports_alias_specs:
+                full_aliases_specs = resolver.aliases
+            else:
+                alias_urns = [alias.urn for alias in resolver.aliases]
+
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -607,15 +896,14 @@ def register_resource(
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
-                aliases=[alias_pb2.Alias(urn=alias) for alias in resolver.aliases],
+                aliases=full_aliases_specs,
+                aliasURNs=alias_urns,
                 supportsPartialValues=True,
                 remote=remote,
                 replaceOnChanges=replace_on_changes,
                 retainOnDelete=opts.retain_on_delete or False,
                 deletedWith=resolver.deleted_with_urn,
             )
-
-            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
