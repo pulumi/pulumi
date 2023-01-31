@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: Adds StackReference.get_output_details to retrieve outputs from StackReferences as plain objects.
