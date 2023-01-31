@@ -38,6 +38,8 @@ func main() {
 			value, _ := base64.StdEncoding.DecodeString(id)
 			return pulumi.String(value), nil
 		}).(pulumi.StringOutput)
+		secretValue := pulumi.ToSecret("hello").(pulumi.StringOutput)
+		_ = pulumi.Unsecret(secretValue).(pulumi.StringOutput)
 		return nil
 	})
 }

@@ -13,3 +13,5 @@ const zone2 = aws.getAvailabilityZones({});
 const bucket = new aws.s3.Bucket("bucket", {});
 const encoded2 = bucket.id.apply(id => Buffer.from(id).toString("base64"));
 const decoded2 = bucket.id.apply(id => Buffer.from(id, "base64").toString("utf8"));
+const secretValue = pulumi.secret("hello");
+const plainValue = pulumi.unsecret(secretValue);

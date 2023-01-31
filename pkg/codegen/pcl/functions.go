@@ -266,6 +266,21 @@ var pulumiBuiltins = map[string]*model.Function{
 				ReturnType: model.NewOutputType(valueType),
 			}, nil
 		})),
+	"unsecret": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			valueType := model.Type(model.DynamicType)
+			if len(args) == 1 {
+				valueType = args[0].Type()
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{{
+					Name: "value",
+					Type: valueType,
+				}},
+				ReturnType: model.NewOutputType(valueType),
+			}, nil
+		})),
 	"sha1": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "input",

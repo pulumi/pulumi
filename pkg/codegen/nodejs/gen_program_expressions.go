@@ -452,6 +452,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
+	case "unsecret":
+		g.Fgenf(w, "pulumi.unsecret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
