@@ -226,6 +226,33 @@ outputs:
 	assert.Equal(t, expectedYAML, data)
 }
 
+func TestInvalidTypes(t *testing.T) {
+	t.Parallel()
+
+	var tests = []struct {
+		filename string
+		expected string
+	}{
+		{"bad-type-1.json", "invalid token 'fake-provider:index:provider' (provider is a reserved word for the root module)"},
+		{"bad-type-2.json", "invalid token 'fake-provider::provider' (provider is a reserved word for the root module)"},
+		{"bad-type-3.json", "invalid token 'fake-provider:noModulePart' (should have three parts)"},
+		{"bad-type-4.json", "invalid token 'noParts' (should have three parts); "},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expected)
+		})
+	}
+}
+
 func TestEnums(t *testing.T) {
 	t.Parallel()
 

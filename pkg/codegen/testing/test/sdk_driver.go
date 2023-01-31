@@ -320,6 +320,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Test that types can have names with hyphens in them",
 		Skip:        allLanguages.Except("go/any").Except("python/any"),
 	},
+	{
+		Directory:   "provider-type-schema",
+		Description: "A schema with a type called Provider schema",
+	},
 }
 
 var genSDKOnly bool
