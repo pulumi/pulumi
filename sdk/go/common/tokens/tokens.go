@@ -16,9 +16,8 @@
 package tokens
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -183,7 +182,7 @@ func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 // ParseModuleMember attempts to turn the string s into a module member, returning an error if it isn't a valid one.
 func ParseModuleMember(s string) (ModuleMember, error) {
 	if !Token(s).HasModuleMember() {
-		return "", errors.Errorf("String '%v' is not a valid module member", s)
+		return "", fmt.Errorf("String '%v' is not a valid module member", s)
 	}
 	return ModuleMember(s), nil
 }
@@ -220,7 +219,7 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 func ParseTypeToken(s string) (Type, error) {
 	tok := Token(s)
 	if !tok.HasModuleMember() {
-		return "", errors.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
 	}
 
 	return Type(tok), nil
