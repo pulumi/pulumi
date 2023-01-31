@@ -36,7 +36,9 @@ jobs:
             exit 1
           fi
       - name: Lint
-        run: make lint
+        run: |
+          go work init ./pkg ./sdk ./tests
+          make lint
 
   protobuf-lint:
     name: Lint Protobufs

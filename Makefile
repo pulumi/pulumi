@@ -97,17 +97,27 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_deps
-	stat go.work || go work init ./pkg ./sdk/ ./tests
+lint:: golangci-lint.ensure
+
+# If we're in a Go workspace, assume that pkg, sdk, and tests are all covered.
+ifeq ($(shell go env GOWORK),)
+lint:: lint_pkg lint_sdk lint_tests
+else
+lint::
 	golangci-lint run ./pkg/... ./sdk/... ./tests/... --timeout 7m
+endif
+
+lint_pkg: lint_deps
+	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint_sdk: lint_deps
+	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint_tests: lint_deps
+	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
 lint_actions:
 	go run github.com/rhysd/actionlint/cmd/actionlint@v1.6.17 \
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
-
-ensure_gowork:
-	stat go.work || go work init ./pkg ./sdk ./tests
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
