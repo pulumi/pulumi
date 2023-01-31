@@ -517,7 +517,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "join":
 		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
 	case "length":
-		g.Fgenf(w, "%.20v.Length", expr.Args[0])
+		switch expr.Signature.Parameters[0].Type.(type) {
+		case *model.MapType:
+			g.Fgenf(w, "%.20v.Count", expr.Args[0])
+		default:
+			g.Fgenf(w, "%.20v.Length", expr.Args[0])
+		}
 	case "lookup":
 		g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
 		if len(expr.Args) == 3 {
@@ -529,6 +534,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "File.ReadAllText(%v)", expr.Args[0])
 	case "readDir":
 		g.Fgenf(w, "Directory.GetFiles(%.v).Select(Path.GetFileName)", expr.Args[0])
+	case "keys":
+		g.Fgenf(w, "(%v).Keys", expr.Args[0])
+	case "values":
+		g.Fgenf(w, "(%v).Values", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "Output.CreateSecret(%v)", expr.Args[0])
 	case "unsecret":

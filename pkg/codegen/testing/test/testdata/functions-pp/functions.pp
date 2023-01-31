@@ -1,3 +1,8 @@
+aMap = {key: "value", otherKey: "otherValue"}
+mapsKeys = keys(aMap)
+mapsValues = values(aMap)
+mapsLength = length(aMap)
+
 encoded = toBase64("haha business")
 
 decoded = fromBase64(encoded)

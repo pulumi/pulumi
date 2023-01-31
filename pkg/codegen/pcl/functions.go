@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
@@ -201,6 +203,94 @@ var pulumiBuiltins = map[string]*model.Function{
 					},
 				},
 				ReturnType: elementType,
+			}, diagnostics
+		})),
+	"keys": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diagnostics hcl.Diagnostics
+
+			mapType := model.Type(model.DynamicType)
+			if len(args) > 0 {
+				switch model.ResolveOutputs(args[0].Type()).(type) {
+				case *model.MapType:
+					mapType = args[0].Type()
+				default:
+					rng := args[0].SyntaxNode().Range()
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "the first argument to 'keys' must be a map",
+						Subject:  &rng,
+					}}
+				}
+			}
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{
+					{
+						Name: "map",
+						Type: mapType,
+					},
+				},
+				ReturnType: model.NewListType(model.StringType),
+			}, diagnostics
+		})),
+	"values": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diagnostics hcl.Diagnostics
+
+			mapType, elementType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+			if len(args) > 0 {
+				switch t := model.ResolveOutputs(args[0].Type()).(type) {
+				case *model.MapType:
+					mapType, elementType = args[0].Type(), t.ElementType
+				default:
+					rng := args[0].SyntaxNode().Range()
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "the first argument to 'values' must be a map",
+						Subject:  &rng,
+					}}
+				}
+			}
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{
+					{
+						Name: "map",
+						Type: mapType,
+					},
+				},
+				ReturnType: model.NewListType(elementType),
+			}, diagnostics
+		})),
+	"merge": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diagnostics hcl.Diagnostics
+
+			var returnType model.Type
+			parameters := make([]model.Parameter, len(args))
+			for i := range args {
+				argumentType := model.Type(model.DynamicType)
+
+				switch t := model.ResolveOutputs(args[i].Type()).(type) {
+				case *model.MapType:
+					_, returnType = model.UnifyTypes(returnType, t.ElementType)
+					argumentType = args[i].Type()
+				default:
+					rng := args[0].SyntaxNode().Range()
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "the arguments to 'merge' must be maps",
+						Subject:  &rng,
+					}}
+				}
+
+				parameters[i] = model.Parameter{
+					Name: fmt.Sprintf("arg%d", i),
+					Type: argumentType,
+				}
+			}
+			return model.StaticFunctionSignature{
+				Parameters: parameters,
+				ReturnType: model.NewMapType(returnType),
 			}, diagnostics
 		})),
 	"mimeType": model.NewFunction(model.StaticFunctionSignature{
