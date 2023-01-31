@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Delegate alias computation to the engine
