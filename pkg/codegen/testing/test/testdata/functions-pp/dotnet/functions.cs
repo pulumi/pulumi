@@ -26,5 +26,9 @@ return await Deployment.RunAsync(() =>
 
     var decoded2 = bucket.Id.Apply(id => System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(id)));
 
+    var secretValue = Output.CreateSecret("hello");
+
+    var plainValue = Output.Unsecret(secretValue);
+
 });
 
