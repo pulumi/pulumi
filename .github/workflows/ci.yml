@@ -72,12 +72,14 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - name: Install gotestsum
-        uses: jaxxstorm/action-install-gh-release@v1.7.1
+      - uses: actions/checkout@v3
         with:
-          repo: gotestyourself/gotestsum
-          tag: v1.8.1
-          cache: enable
+          repository: dnephin/gotestsum
+          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+          path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
       - uses: actions/cache@v3
         with:
           path: test-results
