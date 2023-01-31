@@ -320,6 +320,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Test that types can have names with hyphens in them",
 		Skip:        allLanguages.Except("go/any").Except("python/any"),
 	},
+	{
+		Directory:   "regress-node-11699",
+		Description: "Regress pulumi/pulumi#11699 affecting Nodejs",
+		Skip:        allLanguages.Except("nodejs/any"),
+	},
 }
 
 var genSDKOnly bool
