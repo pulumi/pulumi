@@ -90,6 +90,7 @@
         "tests/options.spec.ts",
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
+        "tests/stackReference.spec.ts",
         "tests/provider.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",

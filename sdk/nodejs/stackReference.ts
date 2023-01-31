@@ -94,6 +94,25 @@ export class StackReference extends CustomResource {
     }
 
     /**
+     * Fetches the value of the named stack output
+     * and builds a StackReferenceOutputDetails with it.
+     *
+     * The returned object has its `value` or `secretValue` fields set
+     * depending on wehther the output is a secret.
+     * Neither field is set if the output was not found.
+     *
+     * @param name The name of the stack output to fetch.
+     */
+    public async getOutputDetails(name: string): Promise<StackReferenceOutputDetails> {
+        const [out, isSecret] = await this.readOutputValue("getOutputValueDetails", name, false /*required*/);
+        if (isSecret) {
+            return {secretValue: out};
+        } else {
+            return {value: out};
+        }
+    }
+
+    /**
      * Fetches the value promptly of the named stack output. May return undefined if the value is
      * not known for some reason.
      *
@@ -139,6 +158,23 @@ export interface StackReferenceArgs {
      * The name of the stack to reference.
      */
     readonly name?: Input<string>;
+}
+
+/**
+ * Records the output of a StackReference.
+ * At most one of th evalue and secretValue fields will be set.
+ */
+export interface StackReferenceOutputDetails {
+    /**
+     * Output value returned by the StackReference.
+     * This is null if the value is a secret or it does not exist.
+     */
+    readonly value?: any;
+    /**
+     * Secret value returned by the StackReference.
+     * This is null if the value is not a secret or it does not exist.
+     */
+    readonly secretValue?: any;
 }
 
 async function isSecretOutputName(sr: StackReference, name: Input<string>): Promise<boolean> {
