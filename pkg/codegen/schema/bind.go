@@ -486,7 +486,7 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 
 	path := memberPath(section, token)
 	parts := strings.Split(token, ":")
-	if len(parts) < 3 || len(parts) > 3 {
+	if len(parts) != 3 {
 		err := errorf(path, "invalid token '%s' (should have three parts)", token)
 		diags = diags.Append(err)
 		// Early return because the other two error checks panic if len(parts) < 3
