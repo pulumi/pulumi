@@ -187,7 +187,6 @@ def _create_local_workspace(
     auth: Optional[RemoteGitAuth] = None,
     opts: Optional[RemoteWorkspaceOptions] = None,
 ) -> LocalWorkspace:
-
     if not url:
         raise Exception("url is required.")
     if branch and commit_hash:

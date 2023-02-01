@@ -74,7 +74,6 @@ class CustomTimeouts:
         update: Optional[str] = None,
         delete: Optional[str] = None,
     ) -> None:
-
         self.create = create
         self.update = update
         self.delete = delete
@@ -164,7 +163,6 @@ class Alias:
         stack: Optional["Input[str]"] = ...,  # type: ignore
         project: Optional["Input[str]"] = ...,  # type: ignore
     ) -> None:
-
         self.name = name
         self.type_ = type_
         self.parent = parent
@@ -484,7 +482,6 @@ class ResourceOptions:
         return ResourceOptions.merge(self, opts)
 
     def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
-
         if self.depends_on is None:
             return []
 
