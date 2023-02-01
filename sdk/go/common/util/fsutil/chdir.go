@@ -15,9 +15,9 @@
 package fsutil
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -32,7 +32,7 @@ func Chdir(pwd string) (func(), error) {
 		return nil, err
 	}
 	if err = os.Chdir(pwd); err != nil {
-		return nil, errors.Wrapf(err, "could not change to the project working directory")
+		return nil, fmt.Errorf("could not change to the project working directory: %w", err)
 	}
 	return func() {
 		// Restore the working directory after planning completes.

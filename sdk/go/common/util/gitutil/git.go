@@ -15,6 +15,7 @@
 package gitutil
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -30,7 +31,6 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -77,7 +77,7 @@ type VCSInfo struct {
 func GetGitRepository(dir string) (*git.Repository, error) {
 	gitRoot, err := fsutil.WalkUp(dir, func(s string) bool { return filepath.Base(s) == ".git" }, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "searching for git repository from %v", dir)
+		return nil, fmt.Errorf("searching for git repository from %v: %w", dir, err)
 	}
 	if gitRoot == "" {
 		return nil, nil
@@ -89,7 +89,7 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "reading git repository")
+		return nil, fmt.Errorf("reading git repository: %w", err)
 	}
 	return repo, nil
 }
@@ -115,7 +115,7 @@ func GetGitHubProjectForOrigin(dir string) (*VCSInfo, error) {
 func GetGitRemoteURL(repo *git.Repository, remoteName string) (string, error) {
 	remote, err := repo.Remote(remoteName)
 	if err != nil {
-		return "", errors.Wrap(err, "could not read origin information")
+		return "", fmt.Errorf("could not read origin information: %w", err)
 	}
 
 	remoteURL := ""
@@ -169,7 +169,7 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	}
 
 	if project == "" {
-		return nil, errors.Errorf("detecting the VCS info from the remote URL %v", remoteURL)
+		return nil, fmt.Errorf("detecting the VCS info from the remote URL %v", remoteURL)
 	}
 
 	// For Azure, we will have more than 2 parts in the array.
@@ -213,7 +213,7 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 	// subgroups.
 	split := strings.SplitN(project, "/", 2)
 	if len(split) != 2 {
-		return nil, errors.Errorf("could not detect VCS project from url: %v", remoteURL)
+		return nil, fmt.Errorf("could not detect VCS project from url: %v", remoteURL)
 	}
 
 	return &VCSInfo{

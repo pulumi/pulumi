@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -240,7 +238,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				val = reflect.ValueOf(target).Elem()
 			} else {
 				return val, NewTypeFieldError(ty, key,
-					errors.Errorf(
+					fmt.Errorf(
 						"Cannot decode Object{} to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
 		} else if val.Type().Kind() == reflect.String {

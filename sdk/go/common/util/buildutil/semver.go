@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/mod/semver"
 )
@@ -97,7 +96,7 @@ func PyPiVersionFromNpmVersion(s string) (string, error) {
 		return b.String(), nil
 	}
 
-	return "", errors.Errorf("can not parse version string '%s'", s)
+	return "", fmt.Errorf("can not parse version string '%s'", s)
 }
 
 func captureToMap(r *regexp.Regexp, s string) map[string]string {
