@@ -312,19 +312,19 @@ func TestInvokeOptionComposite(t *testing.T) {
 	tests := []struct {
 		name  string
 		input []InvokeOption
-		want  *invokeOptions
+		want  *InvokeOptions
 	}{
 		{
 			name:  "no options",
 			input: []InvokeOption{},
-			want:  &invokeOptions{},
+			want:  &InvokeOptions{},
 		},
 		{
 			name: "single option",
 			input: []InvokeOption{
 				Version("test"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test",
 			},
 		},
@@ -334,7 +334,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test1"),
 				Version("test2"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test2",
 			},
 		},
@@ -345,7 +345,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test2"),
 				Version("test1"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test1",
 			},
 		},
@@ -355,7 +355,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test"),
 				PluginDownloadURL("url"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version:           "test",
 				PluginDownloadURL: "url",
 			},
@@ -367,7 +367,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			opts := &invokeOptions{}
+			opts := &InvokeOptions{}
 			CompositeInvoke(tt.input...).applyInvokeOption(opts)
 			assert.Equal(t, tt.want, opts)
 		})
@@ -1097,6 +1097,52 @@ func TestNewResourceOptions(t *testing.T) {
 		ropts.Transformations[0](&ResourceTransformationArgs{})
 		assert.True(t, called, "Transformation function was not called")
 	})
+}
+
+func TestNewInvokeOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give InvokeOption
+		want InvokeOptions
+	}{
+		{
+			desc: "Parent",
+			give: Parent(&testRes{foo: "foo"}),
+			want: InvokeOptions{
+				Parent: &testRes{foo: "foo"},
+			},
+		},
+		{
+			desc: "Provider",
+			give: Provider(&testProv{foo: "bar"}),
+			want: InvokeOptions{
+				Provider: &testProv{foo: "bar"},
+			},
+		},
+		{
+			desc: "Version",
+			give: Version("1.2.3"),
+			want: InvokeOptions{Version: "1.2.3"},
+		},
+		{
+			desc: "PluginDownloadURL",
+			give: PluginDownloadURL("https://example.com/whatever"),
+			want: InvokeOptions{PluginDownloadURL: "https://example.com/whatever"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewInvokeOptions(tt.give)
+			require.NoError(t, err)
+			assert.Equal(t, &tt.want, got)
+		})
+	}
 }
 
 func assertHasDeps(
