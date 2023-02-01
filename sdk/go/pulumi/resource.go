@@ -18,9 +18,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type (
@@ -284,7 +286,11 @@ type CustomTimeouts struct {
 	Delete string
 }
 
-type resourceOptions struct {
+// ResourceOptions is a snapshot of one or more [ResourceOption]s.
+//
+// It provides a preview of the collective effect of options
+// passed to a resource.
+type ResourceOptions struct {
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
 	// Aliases is an optional list of identifiers used to find and use existing resources.
@@ -294,7 +300,8 @@ type resourceOptions struct {
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
 	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []dependencySet
+	DependsOn       []Resource
+	DependsOnInputs []ResourceArrayInput
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -309,7 +316,7 @@ type resourceOptions struct {
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
 	Provider ProviderResource
 	// Providers is an optional map of package to provider resource for a component resource.
-	Providers map[string]ProviderResource
+	Providers []ProviderResource
 	// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
 	// changes to any properties will force a replacement.  Initialization errors from previous deployments will
 	// require replacement instead of update only if `"*"` is passed.
@@ -333,6 +340,101 @@ type resourceOptions struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith Resource
+}
+
+// NewResourceOptions builds a preview of the effect of the provided options.
+//
+// Use this to get a read-only snapshot of a list of options
+// inside mocks and component resources.
+func NewResourceOptions(opts ...ResourceOption) (*ResourceOptions, error) {
+	// The error return is currently unused,
+	// but it's foreseeable that we'll need it
+	// if we begin doing option validation at option merge time.
+	return resourceOptionsSnapshot(merge(opts...)), nil
+}
+
+// resourceOptions is the internal representation of the effect of
+// [ResourceOption]s.
+type resourceOptions struct {
+	AdditionalSecretOutputs []string
+	Aliases                 []Alias
+	CustomTimeouts          *CustomTimeouts
+	DeleteBeforeReplace     bool
+	DependsOn               []dependencySet
+	IgnoreChanges           []string
+	Import                  IDInput
+	Parent                  Resource
+	Protect                 bool
+	Provider                ProviderResource
+	Providers               map[string]ProviderResource
+	ReplaceOnChanges        []string
+	Transformations         []ResourceTransformation
+	URN                     string
+	Version                 string
+	PluginDownloadURL       string
+	RetainOnDelete          bool
+	DeletedWith             Resource
+}
+
+func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
+	var (
+		dependsOn       []Resource
+		dependsOnInputs []ResourceArrayInput
+	)
+	for _, d := range ro.DependsOn {
+		switch d := d.(type) {
+		case urnDependencySet:
+			// There is no user-facing option
+			// to specify URN dependencies directly.
+			// This is only used internally,
+			// so omit this from the snapshot.
+		case resourceDependencySet:
+			dependsOn = append(dependsOn, []Resource(d)...)
+		case *resourceArrayInputDependencySet:
+			dependsOnInputs = append(dependsOnInputs, d.input)
+		default:
+			// Unreachable.
+			// We control all implementations of dependencySet.
+			contract.Failf("Unknown dependencySet %T", d)
+		}
+	}
+
+	sort.Slice(dependsOn, func(i, j int) bool {
+		return dependsOn[i].getName() < dependsOn[j].getName()
+	})
+
+	var providers []ProviderResource
+	if len(ro.Providers) > 0 {
+		providers = make([]ProviderResource, 0, len(ro.Providers))
+		for _, p := range ro.Providers {
+			providers = append(providers, p)
+		}
+		sort.Slice(providers, func(i, j int) bool {
+			return providers[i].getPackage() < providers[j].getPackage()
+		})
+	}
+
+	return &ResourceOptions{
+		AdditionalSecretOutputs: ro.AdditionalSecretOutputs,
+		Aliases:                 ro.Aliases,
+		CustomTimeouts:          ro.CustomTimeouts,
+		DeleteBeforeReplace:     ro.DeleteBeforeReplace,
+		DependsOn:               dependsOn,
+		DependsOnInputs:         dependsOnInputs,
+		IgnoreChanges:           ro.IgnoreChanges,
+		Import:                  ro.Import,
+		Parent:                  ro.Parent,
+		Protect:                 ro.Protect,
+		Provider:                ro.Provider,
+		Providers:               providers,
+		ReplaceOnChanges:        ro.ReplaceOnChanges,
+		Transformations:         ro.Transformations,
+		URN:                     ro.URN,
+		Version:                 ro.Version,
+		PluginDownloadURL:       ro.PluginDownloadURL,
+		RetainOnDelete:          ro.RetainOnDelete,
+		DeletedWith:             ro.DeletedWith,
+	}
 }
 
 type invokeOptions struct {

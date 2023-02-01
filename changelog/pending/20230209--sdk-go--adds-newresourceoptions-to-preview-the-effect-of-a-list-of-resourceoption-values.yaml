@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Adds `NewResourceOptions` to preview the effect of a list of `ResourceOption` values.
