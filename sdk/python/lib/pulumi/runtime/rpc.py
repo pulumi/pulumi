@@ -751,7 +751,6 @@ def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]
             deps: Set["Resource"],
             failed: Optional[Exception],
         ):
-
             # Create a union of deps and the resource.
             deps_union = set(deps) if deps else set()
             deps_union.add(r)
@@ -1011,7 +1010,6 @@ def resolve_outputs(
     resolvers: Dict[str, Resolver],
     transform_using_type_metadata: bool = False,
 ):
-
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}

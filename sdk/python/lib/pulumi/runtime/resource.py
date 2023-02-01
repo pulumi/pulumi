@@ -114,7 +114,6 @@ async def prepare_aliases(
     resource_options: Optional["ResourceOptions"],
     supports_alias_specs: bool,
 ) -> List[alias_pb2.Alias]:
-
     aliases: List[alias_pb2.Alias] = []
     if resource_options is None or resource_options.aliases is None:
         return aliases
@@ -165,7 +164,6 @@ async def prepare_resource(
     opts: Optional["ResourceOptions"],
     typ: Optional[type] = None,
 ) -> ResourceResolverOperations:
-
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies: Set[str] = set()
     if opts is not None and opts.depends_on is not None:
@@ -490,7 +488,6 @@ def create_urn(
 def resource_output(
     res: "Resource",
 ) -> Tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
-
     value_future: asyncio.Future[Any] = asyncio.Future()
     known_future: asyncio.Future[bool] = asyncio.Future()
     secret_future: asyncio.Future[bool] = asyncio.Future()

@@ -92,7 +92,6 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-
             outstanding_tasks = _get_running_tasks()
             if len(outstanding_tasks) == 0:
                 log.debug("No outstanding tasks to complete")

@@ -116,7 +116,7 @@ class StackReference(CustomResource):
         # determine if this output should be secret. Names could be None here in cases where we are
         # using an older CLI that did not return this information (in this case we again fallback to
         # the secretness of outputs value).
-        names = await (self.secret_output_names.future())
+        names = await self.secret_output_names.future()
         if names is None:
             return await self.outputs.is_secret()
 
