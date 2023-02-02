@@ -340,37 +340,8 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 	return false, nil
 }
 
-// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project. If the CWD
-// is not in a Pulumi project, does not contradict. If the project name in Pulumi.yaml is "foo", a stack with a
-// name of bar/foo should not work.
-func currentProjectContradictsWorkspace(stack localBackendReference) bool {
-	if stack.project == "" {
-		return false
-	}
-
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return false
-	}
-
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.project.String()
-}
-
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
-	localStackRef, is := stackRef.(localBackendReference)
-	if !is {
-		return nil, fmt.Errorf("bad stack reference type")
-	}
 
 	err := b.Lock(ctx, stackRef)
 	if err != nil {
@@ -378,13 +349,9 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 	defer b.Unlock(ctx, stackRef)
 
-	if currentProjectContradictsWorkspace(localStackRef) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
-	}
-
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	stackName := localStackRef.FullyQualifiedName()
+	stackName := stackRef.FullyQualifiedName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
@@ -406,19 +373,14 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 
-	stack := newStack(localStackRef, file, nil, b)
+	stack := newStack(stackRef, file, nil, b)
 	fmt.Printf("Created stack '%s'\n", stack.Ref())
 
 	return stack, nil
 }
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
-	localStackRef, is := stackRef.(localBackendReference)
-	if !is {
-		return nil, fmt.Errorf("bad stack reference type")
-	}
-
-	stackName := localStackRef.FullyQualifiedName()
+	stackName := stackRef.FullyQualifiedName()
 	snapshot, path, err := b.getStack(ctx, stackName)
 
 	switch {
@@ -427,7 +389,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	case err != nil:
 		return nil, err
 	default:
-		return newStack(localStackRef, path, snapshot, b), nil
+		return newStack(stackRef, path, snapshot, b), nil
 	}
 }
 
@@ -634,15 +596,6 @@ func (b *localBackend) apply(
 	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 
 	stackRef := stack.Ref()
-	localStackRef, is := stackRef.(localBackendReference)
-	if !is {
-		return nil, nil, result.Error("bad stack reference type")
-	}
-
-	if currentProjectContradictsWorkspace(localStackRef) {
-		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
-	}
-
 	stackName := stackRef.FullyQualifiedName()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 

@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -565,59 +564,4 @@ func TestCanRenameStack(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "testproj/b", newBStack.String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "testproj", "b.json"))
-}
-
-func chdir(t *testing.T, dir string) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir)) // Set directory
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(cwd)) // Restore directory
-		restoredDir, err := os.Getwd()
-		require.NoError(t, err)
-		require.Equal(t, cwd, restoredDir)
-	})
-}
-
-//nolint:paralleltest // mutates cwd
-func TestProjectNameMustMatch(t *testing.T) {
-	// Login to a temp dir filestate backend
-	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
-	require.NoError(t, err)
-	ctx := context.Background()
-
-	// Create a new project
-	projectDir := t.TempDir()
-	pyaml := filepath.Join(projectDir, "Pulumi.yaml")
-	err = os.WriteFile(pyaml, []byte("name: my-project\nruntime: test"), 0600)
-	require.NoError(t, err)
-
-	chdir(t, projectDir)
-
-	// Create a new non-project stack
-	aRef, err := b.ParseStackReference("a")
-	assert.NoError(t, err)
-	assert.Equal(t, "a", aRef.String())
-	aStack, err := b.CreateStack(ctx, aRef, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "a", aStack.Ref().String())
-	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "a.json"))
-
-	// Create a new project stack with the wrong project name
-	bRef, err := b.ParseStackReference("not-my-project/b")
-	assert.NoError(t, err)
-	assert.Equal(t, "not-my-project/b", bRef.String())
-	bStack, err := b.CreateStack(ctx, bRef, nil)
-	assert.Error(t, err)
-	assert.Nil(t, bStack)
-
-	// Create a new project stack with the right project name
-	cRef, err := b.ParseStackReference("my-project/c")
-	assert.NoError(t, err)
-	assert.Equal(t, "my-project/c", cRef.String())
-	cStack, err := b.CreateStack(ctx, cRef, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, "my-project/c", cStack.Ref().String())
-	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "c.json"))
 }
