@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto
+  description: Adds support for cloning from Azure DevOps
