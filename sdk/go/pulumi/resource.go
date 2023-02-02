@@ -419,8 +419,9 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 // dependencySet unifies types that can provide dependencies for a
 // resource.
 type dependencySet interface {
-	// Returns the URNs for this dependencySet.
-	dependencies(context.Context) (urnSet, error)
+	// Adds URNs for addURNs from this set
+	// into the given urnSet.
+	addURNs(context.Context, urnSet) error
 }
 
 // urnDependencySet is a dependencySet built from a constant set of URNs.
@@ -428,8 +429,9 @@ type urnDependencySet urnSet
 
 var _ dependencySet = (urnDependencySet)(nil)
 
-func (us urnDependencySet) dependencies(ctx context.Context) (urnSet, error) {
-	return urnSet(us), nil
+func (us urnDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+	urns.union(urnSet(us))
+	return nil
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
@@ -445,8 +447,13 @@ type resourceDependencySet []Resource
 
 var _ dependencySet = (resourceDependencySet)(nil)
 
-func (rs resourceDependencySet) dependencies(ctx context.Context) (urnSet, error) {
-	return expandDependencies(ctx, []Resource(rs))
+func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+	for _, r := range rs {
+		if err := addDependency(ctx, urns, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Declares explicit dependencies on other resources. Similar to
@@ -469,24 +476,29 @@ type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
 
 var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 
-func (ra *resourceArrayInputDependencySet) dependencies(ctx context.Context) (urnSet, error) {
+func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet) error {
 	out := ra.input.ToResourceArrayOutput()
 
 	value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
 	if err != nil || !known {
-		return nil, err
+		return err
 	}
 
 	resources, ok := value.([]Resource)
 	if !ok {
-		return nil, fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+		return fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
 			reflect.TypeOf(value))
 	}
 
 	// For some reason, deps returned above are incorrect; instead:
 	toplevelDeps := out.dependencies()
 
-	return expandDependencies(ctx, append(resources, toplevelDeps...))
+	for _, r := range append(resources, toplevelDeps...) {
+		if err := addDependency(ctx, urns, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Ignore changes to any of the specified properties.
