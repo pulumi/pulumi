@@ -58,8 +58,7 @@ func newLockContent() (*lockContent, error) {
 
 // checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
 func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
-	stackName := stackRef.FullyQualifiedName()
-	allFiles, err := listBucket(b.bucket, stackLockDir(stackName))
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
 	if err != nil {
 		return err
 	}
@@ -69,7 +68,7 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 		if file.IsDir {
 			continue
 		}
-		if file.Key != b.lockPath(stackName) {
+		if file.Key != b.lockPath(stackRef.Name()) {
 			lockKeys = append(lockKeys, file.Key)
 		}
 	}
@@ -117,7 +116,7 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		return err
 	}
-	err = b.bucket.WriteAll(ctx, b.lockPath(stackRef.FullyQualifiedName()), content, nil)
+	err = b.bucket.WriteAll(ctx, b.lockPath(stackRef.Name()), content, nil)
 	if err != nil {
 		return err
 	}
@@ -130,11 +129,11 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 }
 
 func (b *localBackend) Unlock(ctx context.Context, stackRef backend.StackReference) {
-	err := b.bucket.Delete(ctx, b.lockPath(stackRef.FullyQualifiedName()))
+	err := b.bucket.Delete(ctx, b.lockPath(stackRef.Name()))
 	if err != nil {
 		b.d.Errorf(
 			diag.Message("", "there was a problem deleting the lock at %v, manual clean up may be required: %v"),
-			path.Join(b.url, b.lockPath(stackRef.FullyQualifiedName())),
+			path.Join(b.url, b.lockPath(stackRef.Name())),
 			err)
 	}
 }
@@ -143,12 +142,12 @@ func lockDir() string {
 	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
 }
 
-func stackLockDir(stack tokens.QName) string {
+func stackLockDir(stack tokens.Name) string {
 	contract.Require(stack != "", "stack")
-	return path.Join(lockDir(), fsutil.QnamePath(stack))
+	return path.Join(lockDir(), fsutil.NamePath(stack))
 }
 
-func (b *localBackend) lockPath(stack tokens.QName) string {
+func (b *localBackend) lockPath(stack tokens.Name) string {
 	contract.Require(stack != "", "stack")
 	return path.Join(stackLockDir(stack), b.lockID+".json")
 }
