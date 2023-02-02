@@ -108,11 +108,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
-		ro.DependsOn = []func(ctx context.Context) (urnSet, error){
-			func(ctx context.Context) (urnSet, error) {
-				return dependencyURNs, nil
-			},
-		}
+		ro.DependsOn = []dependencySet{urnDependencySet(dependencyURNs)}
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
 		ro.Parent = parent

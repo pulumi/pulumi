@@ -149,8 +149,8 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := urnSet{}
-		for _, f := range opts.DependsOn {
-			deps, err := f(context.TODO())
+		for _, ds := range opts.DependsOn {
+			deps, err := ds.dependencies(context.TODO())
 			if err != nil {
 				t.Fatal(err)
 			}

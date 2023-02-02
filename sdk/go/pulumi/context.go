@@ -1427,8 +1427,8 @@ func (ctx *Context) getOpts(
 	var depURNs []URN
 	if opts.DependsOn != nil {
 		depSet := urnSet{}
-		for _, r := range opts.DependsOn {
-			dependsOn, err := r(ctx.ctx)
+		for _, ds := range opts.DependsOn {
+			dependsOn, err := ds.dependencies(ctx.ctx)
 			if err != nil {
 				return resourceOpts{}, err
 			}
