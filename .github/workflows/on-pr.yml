@@ -69,7 +69,7 @@ jobs:
       acceptance-test-platforms: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
-          && 'macos-11 windows-latest'
+          && 'macos-latest windows-latest'
           || ''
         }}
       enable-coverage: true
