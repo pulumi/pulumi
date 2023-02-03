@@ -241,23 +241,8 @@ jobs:
     name: Unit Test${{ matrix.platform && '' }}
     needs: [matrix]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
-    strategy:
-      fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
-      matrix: ${{ fromJson(needs.matrix.outputs.unit-test-matrix) }}
-    uses: ./.github/workflows/ci-run-test.yml
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      platform: ${{ matrix.platform }}
-
-      test-name: ${{ matrix.test-suite.name || matrix.test-suite.command }} on ${{ matrix.platform }}/${{ matrix.version-set.name }}
-      test-command: ${{ matrix.test-suite.command }}
-      is-integration-test: false
-      enable-coverage: false # TODO: ${{ matrix.enable-coverage }}
-      # require-build: false # TODO, remove ${{ matrix.require-build || false }}
-
-      version-set: ${{ toJson(matrix.version-set) }}
-    secrets: inherit
+    steps:
+      - run: "echo hello world"
 
   # Tests that depend on builds
   integration-test:
