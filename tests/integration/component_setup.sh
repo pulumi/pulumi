@@ -47,6 +47,9 @@ setup_python() (
     python3 -m venv venv --clear
     # shellcheck disable=SC1090
     . venv/*/activate
+    if [[ -n "$WHEEL_DIR" ]]; then
+      python3 -m pip install "$WHEEL_DIR"/*.whl
+    fi
     python3 -m pip install -e ../../../../sdk/python/env/src
   fi
 )

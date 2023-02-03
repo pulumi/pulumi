@@ -186,6 +186,12 @@ jobs:
         run: |
           git config --global user.email "you@example.com"
           git config --global user.name "Your Name"
+      - name: Pre-build shared wheels
+        id: wheel
+        run: |
+          WHEEL_DIR=$(mktemp -d)
+          python -m pip wheel -w "$WHEEL_DIR" grpcio==1.51.1
+          echo "dir=$WHEEL_DIR" >> $GITHUB_OUTPUT
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" | tee -a "${GITHUB_ENV}"
@@ -295,6 +301,7 @@ jobs:
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          WHEEL_DIR: ${{ steps.wheel.outputs.dir }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
         run: |
