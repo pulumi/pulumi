@@ -266,7 +266,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	lockWait := make(chan struct{})
+	lockWait := make(chan bool)
 	go func() {
 		mutex := fsutil.NewFileMutex(lockfile)
 
@@ -287,17 +287,19 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 		// Context may hav expired
 		// by the time we acquired the lock.
 		if ctx.Err() == nil {
+			defer (func() { lockWait <- false })()
 			fn()
-			close(lockWait)
+		} else {
+			lockWait <- true
 		}
+		close(lockWait)
 	}()
 
-	select {
-	case <-ctx.Done():
+	timedOut := <-lockWait
+	if timedOut {
 		t.Fatalf("timed out waiting for lock on %s", lockfile)
-	case <-lockWait:
-		// waited for fn, success.
 	}
+	// waited for fn, success.
 }
 
 // Verifies that if a file lock is already acquired,
