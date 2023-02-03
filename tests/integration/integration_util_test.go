@@ -247,7 +247,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 	setupFilename = filepath.ToSlash(setupFilename)
 
 	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func(ctx context.Context) {
-		cmd := exec.CommandContext(ctx, "bash", setupFilename)
+		cmd := exec.CommandContext(ctx, "bash", "-x", setupFilename)
 		cmd.Dir = testDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
