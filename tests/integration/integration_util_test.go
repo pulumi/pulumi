@@ -34,11 +34,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -241,20 +241,24 @@ func runComponentSetup(t *testing.T, testDir string) {
 	defer ptesting.YarnInstallMutex.Unlock()
 
 	setupFilename, err := filepath.Abs("component_setup.sh")
-	contract.AssertNoError(err)
-	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
+	require.NoError(t, err, "could not determine absolute path")
+	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
-	fn := func() {
+
+	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
 		cmd := exec.Command("bash", setupFilename)
 		cmd.Dir = testDir
 		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
-	}
-	lockfile := filepath.Join(testDir, ".lock")
-	timeout := 10 * time.Minute
-	synchronouslyDo(t, lockfile, timeout, fn)
+
+		// This runs in a separate goroutine, so don't use 'require'.
+		assert.NoError(t, err, "failed to run setup script: %s", string(output))
+	})
+
+	// The function above runs in a separate goroutine
+	// so it can't halt test execution.
+	// Verify that it didn't fail separately
+	// and halt execution if it did.
+	require.False(t, t.Failed(), "component setup failed")
 }
 
 func synchronouslyDo(t *testing.T, lockfile string, timeout time.Duration, fn func()) {
