@@ -246,8 +246,8 @@ func runComponentSetup(t *testing.T, testDir string) {
 	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
 
-	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
-		cmd := exec.Command("bash", setupFilename)
+	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func(ctx context.Context) {
+		cmd := exec.CommandContext(ctx, "bash", setupFilename)
 		cmd.Dir = testDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -264,12 +264,14 @@ func runComponentSetup(t *testing.T, testDir string) {
 	require.False(t, t.Failed(), "component setup failed")
 }
 
-func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
+func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func(ctx context.Context)) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	lockWait := make(chan bool)
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
+
 		mutex := fsutil.NewFileMutex(lockfile)
 
 		// ctx.Err will be non-nil when the context finishes
@@ -278,30 +280,31 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 			if err := mutex.Lock(); err != nil {
 				time.Sleep(1 * time.Second)
 				continue
-			} else {
-				defer func() {
-					assert.NoError(t, mutex.Unlock())
-				}()
-				break
 			}
+
+			defer func() {
+				assert.NoError(t, mutex.Unlock())
+			}()
+			break
 		}
 
 		// Context may hav expired
 		// by the time we acquired the lock.
-		defer (func() { close(lockWait) })()
 		if ctx.Err() == nil {
-			defer (func() { lockWait <- false })()
-			fn()
-		} else {
-			lockWait <- true
+			fn(ctx)
 		}
 	}()
 
-	timedOut := <-lockWait
-	if timedOut {
+	// The above is run synchronouly,
+	// but we're running it in a separate goroutine
+	// so that if fn takes longer than the timeout,
+	// we don't freeze forever.
+	select {
+	case <-done:
+		// waited for fn, success.
+	case <-ctx.Done():
 		t.Fatalf("timed out waiting for lock on %s", lockfile)
 	}
-	// waited for fn, success.
 }
 
 // Verifies that if a file lock is already acquired,
@@ -317,7 +320,7 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	}()
 
 	fakeT := nonfatalT{T: t}
-	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func() {
+	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func(context.Context) {
 		t.Errorf("timed-out operation should not be called")
 	})
 
