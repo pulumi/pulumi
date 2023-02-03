@@ -76,7 +76,7 @@ type StackReference interface {
 	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.Name
 
-	// Fully qualified name of the stack, including any organization, project, or other information.
+	// Fully qualified name of the stack.
 	FullyQualifiedName() tokens.QName
 }
 

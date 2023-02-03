@@ -38,13 +38,13 @@ type Stack interface {
 
 // localStack is a local stack descriptor.
 type localStack struct {
-	ref      localBackendReference // the stack's reference (qualified name).
-	path     string                // a path to the stack's checkpoint file on disk.
-	snapshot *deploy.Snapshot      // a snapshot representing the latest deployment state.
-	b        *localBackend         // a pointer to the backend this stack belongs to.
+	ref      backend.StackReference // the stack's reference (qualified name).
+	path     string                 // a path to the stack's checkpoint file on disk.
+	snapshot *deploy.Snapshot       // a snapshot representing the latest deployment state.
+	b        *localBackend          // a pointer to the backend this stack belongs to.
 }
 
-func newStack(ref localBackendReference, path string, snapshot *deploy.Snapshot, b *localBackend) Stack {
+func newStack(ref backend.StackReference, path string, snapshot *deploy.Snapshot, b *localBackend) Stack {
 	return &localStack{
 		ref:      ref,
 		path:     path,
