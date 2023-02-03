@@ -287,13 +287,13 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 
 		// Context may hav expired
 		// by the time we acquired the lock.
+		defer (func() { close(lockWait) })()
 		if ctx.Err() == nil {
 			defer (func() { lockWait <- false })()
 			fn()
 		} else {
 			lockWait <- true
 		}
-		close(lockWait)
 	}()
 
 	timedOut := <-lockWait
