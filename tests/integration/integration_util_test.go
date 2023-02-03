@@ -253,10 +253,9 @@ func runComponentSetup(t *testing.T, testDir string) {
 	fn := func() {
 		cmd := exec.Command("bash", setupFilename)
 		cmd.Dir = testDir
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
+		err := cmd.Run()
+		//output, err := cmd.CombinedOutput()
+		contract.AssertNoErrorf(err, "failed to run setup script")
 	}
 
 	once, has := runComponentSetupOnce[testDir]
