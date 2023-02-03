@@ -63,7 +63,7 @@ jobs:
         current
       integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: >- # No newlines or trailing newline.
-        macos-11 windows-latest
+        macos-latest windows-latest
       enable-coverage: true
     secrets: inherit
 

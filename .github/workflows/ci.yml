@@ -37,7 +37,7 @@ on:
         type: string
       acceptance-test-platforms:
         required: false
-        default: windows-latest macos-11
+        default: windows-latest macos-latest
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
@@ -117,8 +117,8 @@ jobs:
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-11" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-11" }
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-latest" }
             ]'
           fi
 
