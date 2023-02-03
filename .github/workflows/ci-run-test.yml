@@ -87,6 +87,10 @@ jobs:
       TEST_ALL_DEPS: ""
 
     runs-on: ${{ inputs.platform }}
+    if: >-
+      ${{ contains(inputs.platform, 'macos')
+      &&  inputs.is-integration-test
+      &&  contains(inputs.test-name, 'integration') }}
 
     timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}

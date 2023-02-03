@@ -44,6 +44,7 @@ jobs:
   build:
     name: ${{ inputs.os }}-${{ inputs.arch }}
     runs-on: ${{ inputs.build-platform }}
+    if: ${{ contains(inputs.build-platform, 'macos') }}
 
     env:
       PULUMI_VERSION: ${{ inputs.version }}
