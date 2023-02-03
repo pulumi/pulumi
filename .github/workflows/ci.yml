@@ -241,6 +241,7 @@ jobs:
     name: Unit Test${{ matrix.platform && '' }}
     needs: [matrix]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
+    runs-on: ubuntu-latest
     steps:
       - run: "echo hello world"
 
