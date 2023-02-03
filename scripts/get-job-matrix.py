@@ -88,7 +88,7 @@ MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
 ]
 
-ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-11"]
+ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 
 MINIMUM_SUPPORTED_VERSION_SET = {

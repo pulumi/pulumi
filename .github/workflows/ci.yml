@@ -37,7 +37,7 @@ on:
         type: string
       acceptance-test-platforms:
         required: false
-        default: windows-latest macos-11
+        default: windows-latest macos-latest
         description: Platforms on which to run integration tests, as a space delimited list
         type: string
       enable-coverage:
