@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -244,46 +243,10 @@ func runComponentSetup(t *testing.T, testDir string) {
 	contract.AssertNoError(err)
 	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
-	fn := func() {
-		cmd := exec.Command("bash", setupFilename)
-		cmd.Dir = testDir
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
-	}
-	lockfile := filepath.Join(testDir, ".lock")
-	timeout := 10 * time.Minute
-	synchronouslyDo(t, lockfile, timeout, fn)
-}
-
-func synchronouslyDo(t *testing.T, lockfile string, timeout time.Duration, fn func()) {
-	mutex := fsutil.NewFileMutex(lockfile)
-	defer func() {
-		assert.NoError(t, mutex.Unlock())
-	}()
-
-	lockWait := make(chan struct{}, 1)
-	go func() {
-		for {
-			if err := mutex.Lock(); err != nil {
-				time.Sleep(1 * time.Second)
-				continue
-			} else {
-				break
-			}
-		}
-
-		fn()
-		lockWait <- struct{}{}
-	}()
-
-	select {
-	case <-time.After(timeout):
-		t.Fatalf("timed out waiting for lock on %s", lockfile)
-	case <-lockWait:
-		// waited for fn, success.
-	}
+	cmd := exec.Command("bash", setupFilename)
+	cmd.Dir = testDir
+	output, err := cmd.CombinedOutput()
+	contract.AssertNoErrorf(err, "failed to run setup script: %s", string(output))
 }
 
 // Test methods that create resources.
