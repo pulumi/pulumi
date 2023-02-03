@@ -249,7 +249,8 @@ func runComponentSetup(t *testing.T, testDir string) {
 	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
 		cmd := exec.Command("bash", setupFilename)
 		cmd.Dir = testDir
-		//output, err := cmd.CombinedOutput()
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		err := cmd.Run()
 
 		// Runs in a separate goroutine, so require.
