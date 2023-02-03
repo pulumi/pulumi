@@ -247,10 +247,10 @@ func runComponentSetup(t *testing.T, testDir string) {
 	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
 
-	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
+	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func(ctx context.Context) {
 		out := newTestLogWriter(t)
 
-		cmd := exec.Command("bash", "-x", setupFilename)
+		cmd := exec.CommandContext(ctx, "bash", "-x", setupFilename)
 		cmd.Dir = testDir
 		cmd.Stdout = out
 		cmd.Stderr = out
@@ -267,7 +267,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 	require.False(t, t.Failed(), "component setup failed")
 }
 
-func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
+func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func(context.Context)) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -292,7 +292,7 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 		// Context may hav expired
 		// by the time we acquired the lock.
 		if ctx.Err() == nil {
-			fn()
+			fn(ctx)
 			close(lockWait)
 		}
 	}()
@@ -318,7 +318,7 @@ func TestSynchronouslyDo_timeout(t *testing.T) {
 	}()
 
 	fakeT := nonfatalT{T: t}
-	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func() {
+	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func(context.Context) {
 		t.Errorf("timed-out operation should not be called")
 	})
 
