@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+set +x
+
 DONEFILE=".done"
 EXPECTED_HASH="$(git rev-parse HEAD:./)"
 

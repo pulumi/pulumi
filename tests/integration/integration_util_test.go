@@ -253,6 +253,8 @@ func runComponentSetup(t *testing.T, testDir string) {
 	fn := func() {
 		cmd := exec.Command("bash", setupFilename)
 		cmd.Dir = testDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		err := cmd.Run()
 		//output, err := cmd.CombinedOutput()
 		contract.AssertNoErrorf(err, "failed to run setup script")
