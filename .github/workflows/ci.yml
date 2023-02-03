@@ -117,8 +117,7 @@ jobs:
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-11" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-11" }
+              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-11" }
             ]'
           fi
 
