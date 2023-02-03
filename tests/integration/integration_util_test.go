@@ -253,7 +253,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 		err := cmd.Run()
 
 		// Runs in a separate goroutine, so require.
-		assert.NoError(t, err, "failed to run setup script: %s", err.Error())
+		assert.NoError(t, err, "failed to run setup script")
 	})
 
 	// The function above runs in a separate goroutine
