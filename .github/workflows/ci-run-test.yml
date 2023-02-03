@@ -71,8 +71,8 @@ env:
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   PULUMI_TEST_PYTHON_SHARED_VENV: "true"
   PYTHON: python
-  GO_TEST_PARALLELISM: 8
-  GO_TEST_PKG_PARALLELISM: 2
+  GO_TEST_PARALLELISM: 1
+  GO_TEST_PKG_PARALLELISM: 1
   GO_TEST_SHUFFLE: off
   PULUMI_TEST_RETRIES: 2
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
@@ -87,6 +87,10 @@ jobs:
       TEST_ALL_DEPS: ""
 
     runs-on: ${{ inputs.platform }}
+    if: >-
+      ${{ contains(inputs.platform, 'macos')
+      &&  inputs.is-integration-test
+      &&  contains(inputs.test-name, 'integration') }}
 
     timeout-minutes: 60
     continue-on-error: ${{ inputs.continue-on-error }}

@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -236,9 +236,15 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
+var runComponentSetupMutex sync.Mutex
+var runComponentSetupOnce = make(map[string]*sync.Once)
+
 func runComponentSetup(t *testing.T, testDir string) {
 	ptesting.YarnInstallMutex.Lock()
 	defer ptesting.YarnInstallMutex.Unlock()
+
+	runComponentSetupMutex.Lock()
+	defer runComponentSetupMutex.Unlock()
 
 	setupFilename, err := filepath.Abs("component_setup.sh")
 	contract.AssertNoError(err)
@@ -252,38 +258,13 @@ func runComponentSetup(t *testing.T, testDir string) {
 			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
 		}
 	}
-	lockfile := filepath.Join(testDir, ".lock")
-	timeout := 10 * time.Minute
-	synchronouslyDo(t, lockfile, timeout, fn)
-}
 
-func synchronouslyDo(t *testing.T, lockfile string, timeout time.Duration, fn func()) {
-	mutex := fsutil.NewFileMutex(lockfile)
-	defer func() {
-		assert.NoError(t, mutex.Unlock())
-	}()
-
-	lockWait := make(chan struct{}, 1)
-	go func() {
-		for {
-			if err := mutex.Lock(); err != nil {
-				time.Sleep(1 * time.Second)
-				continue
-			} else {
-				break
-			}
-		}
-
-		fn()
-		lockWait <- struct{}{}
-	}()
-
-	select {
-	case <-time.After(timeout):
-		t.Fatalf("timed out waiting for lock on %s", lockfile)
-	case <-lockWait:
-		// waited for fn, success.
+	once, has := runComponentSetupOnce[testDir]
+	if !has {
+		once = &sync.Once{}
+		runComponentSetupOnce[testDir] = once
 	}
+	once.Do(fn)
 }
 
 // Test methods that create resources.
