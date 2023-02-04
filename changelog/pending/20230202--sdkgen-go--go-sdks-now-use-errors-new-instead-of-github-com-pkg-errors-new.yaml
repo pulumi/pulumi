@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/go
+  description: Go SDKs now use `errors.New` instead of `github.com/pkg/errors.New`.

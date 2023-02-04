@@ -28,17 +28,18 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -241,49 +242,102 @@ func runComponentSetup(t *testing.T, testDir string) {
 	defer ptesting.YarnInstallMutex.Unlock()
 
 	setupFilename, err := filepath.Abs("component_setup.sh")
-	contract.AssertNoError(err)
-	// even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
+	require.NoError(t, err, "could not determine absolute path")
+	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
 	setupFilename = filepath.ToSlash(setupFilename)
-	fn := func() {
+
+	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
 		cmd := exec.Command("bash", setupFilename)
 		cmd.Dir = testDir
 		output, err := cmd.CombinedOutput()
-		if err != nil {
-			contract.AssertNoErrorf(err, "failed to run setup script: %v", string(output))
-		}
-	}
-	lockfile := filepath.Join(testDir, ".lock")
-	timeout := 10 * time.Minute
-	synchronouslyDo(t, lockfile, timeout, fn)
+
+		// This runs in a separate goroutine, so don't use 'require'.
+		assert.NoError(t, err, "failed to run setup script: %s", string(output))
+	})
+
+	// The function above runs in a separate goroutine
+	// so it can't halt test execution.
+	// Verify that it didn't fail separately
+	// and halt execution if it did.
+	require.False(t, t.Failed(), "component setup failed")
 }
 
-func synchronouslyDo(t *testing.T, lockfile string, timeout time.Duration, fn func()) {
-	mutex := fsutil.NewFileMutex(lockfile)
-	defer func() {
-		assert.NoError(t, mutex.Unlock())
-	}()
+func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	lockWait := make(chan struct{}, 1)
+	lockWait := make(chan struct{})
 	go func() {
-		for {
+		mutex := fsutil.NewFileMutex(lockfile)
+
+		// ctx.Err will be non-nil when the context finishes
+		// either because it timed out or because it got canceled.
+		for ctx.Err() == nil {
 			if err := mutex.Lock(); err != nil {
 				time.Sleep(1 * time.Second)
 				continue
 			} else {
+				defer func() {
+					assert.NoError(t, mutex.Unlock())
+				}()
 				break
 			}
 		}
 
-		fn()
-		lockWait <- struct{}{}
+		// Context may hav expired
+		// by the time we acquired the lock.
+		if ctx.Err() == nil {
+			fn()
+			close(lockWait)
+		}
 	}()
 
 	select {
-	case <-time.After(timeout):
+	case <-ctx.Done():
 		t.Fatalf("timed out waiting for lock on %s", lockfile)
 	case <-lockWait:
 		// waited for fn, success.
 	}
+}
+
+// Verifies that if a file lock is already acquired,
+// synchronouslyDo is able to time out properly.
+func TestSynchronouslyDo_timeout(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "foo")
+	mu := fsutil.NewFileMutex(path)
+	require.NoError(t, mu.Lock())
+	defer func() {
+		assert.NoError(t, mu.Unlock())
+	}()
+
+	fakeT := nonfatalT{T: t}
+	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func() {
+		t.Errorf("timed-out operation should not be called")
+	})
+
+	assert.True(t, fakeT.fatal, "must have a fatal failure")
+	if assert.Len(t, fakeT.messages, 1) {
+		assert.Contains(t, fakeT.messages[0], "timed out waiting")
+	}
+}
+
+// nonfatalT wraps a testing.T to capture fatal errors.
+type nonfatalT struct {
+	*testing.T
+
+	mu       sync.Mutex
+	fatal    bool
+	messages []string
+}
+
+func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.fatal = true
+	t.messages = append(t.messages, fmt.Sprintf(msg, args...))
 }
 
 // Test methods that create resources.
