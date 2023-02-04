@@ -65,6 +65,15 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.RunPluginResponse,
     ]
     """RunPlugin executes a plugin program and returns its result asynchronously."""
+    PublishPackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.PublishPackageRequest,
+        pulumi.language_pb2.PublishPackageResponse,
+    ]
+    """PublishPackage attempts to publish a given package to the languages package registry."""
+    PackPackage: grpc.UnaryUnaryMultiCallable[
+        pulumi.language_pb2.PackPackageRequest,
+        pulumi.language_pb2.PackPackageResponse,
+    ]
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     """LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
@@ -120,5 +129,18 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: grpc.ServicerContext,
     ) -> collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse]:
         """RunPlugin executes a plugin program and returns its result asynchronously."""
+    
+    def PublishPackage(
+        self,
+        request: pulumi.language_pb2.PublishPackageRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.PublishPackageResponse:
+        """PublishPackage attempts to publish a given package to the languages package registry."""
+    
+    def PackPackage(
+        self,
+        request: pulumi.language_pb2.PackPackageRequest,
+        context: grpc.ServicerContext,
+    ) -> pulumi.language_pb2.PackPackageResponse: ...
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

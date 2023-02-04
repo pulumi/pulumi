@@ -53,6 +53,16 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.RunPluginRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.RunPluginResponse.FromString,
                 )
+        self.PublishPackage = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/PublishPackage',
+                request_serializer=pulumi_dot_language__pb2.PublishPackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.PublishPackageResponse.FromString,
+                )
+        self.PackPackage = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/PackPackage',
+                request_serializer=pulumi_dot_language__pb2.PackPackageRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.PackPackageResponse.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
@@ -109,6 +119,19 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PublishPackage(self, request, context):
+        """PublishPackage attempts to publish a given package to the languages package registry.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PackPackage(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -146,6 +169,16 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.RunPlugin,
                     request_deserializer=pulumi_dot_language__pb2.RunPluginRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.RunPluginResponse.SerializeToString,
+            ),
+            'PublishPackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.PublishPackage,
+                    request_deserializer=pulumi_dot_language__pb2.PublishPackageRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.PublishPackageResponse.SerializeToString,
+            ),
+            'PackPackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.PackPackage,
+                    request_deserializer=pulumi_dot_language__pb2.PackPackageRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.PackPackageResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -275,5 +308,39 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_stream(request, target, '/pulumirpc.LanguageRuntime/RunPlugin',
             pulumi_dot_language__pb2.RunPluginRequest.SerializeToString,
             pulumi_dot_language__pb2.RunPluginResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def PublishPackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/PublishPackage',
+            pulumi_dot_language__pb2.PublishPackageRequest.SerializeToString,
+            pulumi_dot_language__pb2.PublishPackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def PackPackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/PackPackage',
+            pulumi_dot_language__pb2.PackPackageRequest.SerializeToString,
+            pulumi_dot_language__pb2.PackPackageResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"io"
+	"os"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -52,6 +53,11 @@ type LanguageRuntime interface {
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+
+	// PublishPackage attempts to publish a given package to the languages package registry.
+	PublishPackage(ctx context.Context, artifactPath string, stderr *os.File) error
+
+	PackPackage(ctx context.Context, packagePath, outPath string, stderr *os.File) (string, error)
 }
 
 type DependencyInfo struct {

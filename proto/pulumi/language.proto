@@ -42,6 +42,11 @@ service LanguageRuntime {
 
     // RunPlugin executes a plugin program and returns its result asynchronously.
     rpc RunPlugin(RunPluginRequest) returns (stream RunPluginResponse) {}
+
+    // PublishPackage attempts to publish a given package to the languages package registry.
+    rpc PublishPackage(PublishPackageRequest) returns (PublishPackageResponse) {}
+
+    rpc PackPackage(PackPackageRequest) returns (PackPackageResponse) {}
 }
 
 // AboutResponse returns runtime information about the language.
@@ -127,4 +132,23 @@ message RunPluginResponse {
         bytes stderr = 2; // a line of stderr text.
         int32 exitcode = 3; // the exit code of the provider.
     }
+}
+
+message PackPackageRequest {
+    string package_path = 1;
+    string out_path = 2;
+    uint64 stderr = 3;
+}
+
+message PackPackageResponse {
+    string artifact_path = 1;
+}
+
+message PublishPackageRequest {
+    string artifact_path = 1;
+    uint64 stderr = 2;
+}
+
+message PublishPackageResponse {
+
 }

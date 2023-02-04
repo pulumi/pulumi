@@ -37,6 +37,9 @@ type LanguageRuntimeClient interface {
 	GetProgramDependencies(ctx context.Context, in *GetProgramDependenciesRequest, opts ...grpc.CallOption) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error)
+	// PublishPackage attempts to publish a given package to the languages package registry.
+	PublishPackage(ctx context.Context, in *PublishPackageRequest, opts ...grpc.CallOption) (*PublishPackageResponse, error)
+	PackPackage(ctx context.Context, in *PackPackageRequest, opts ...grpc.CallOption) (*PackPackageResponse, error)
 }
 
 type languageRuntimeClient struct {
@@ -156,6 +159,24 @@ func (x *languageRuntimeRunPluginClient) Recv() (*RunPluginResponse, error) {
 	return m, nil
 }
 
+func (c *languageRuntimeClient) PublishPackage(ctx context.Context, in *PublishPackageRequest, opts ...grpc.CallOption) (*PublishPackageResponse, error) {
+	out := new(PublishPackageResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/PublishPackage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *languageRuntimeClient) PackPackage(ctx context.Context, in *PackPackageRequest, opts ...grpc.CallOption) (*PackPackageResponse, error) {
+	out := new(PackPackageResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/PackPackage", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LanguageRuntimeServer is the server API for LanguageRuntime service.
 // All implementations must embed UnimplementedLanguageRuntimeServer
 // for forward compatibility
@@ -174,6 +195,9 @@ type LanguageRuntimeServer interface {
 	GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
 	RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error
+	// PublishPackage attempts to publish a given package to the languages package registry.
+	PublishPackage(context.Context, *PublishPackageRequest) (*PublishPackageResponse, error)
+	PackPackage(context.Context, *PackPackageRequest) (*PackPackageResponse, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -201,6 +225,12 @@ func (UnimplementedLanguageRuntimeServer) GetProgramDependencies(context.Context
 }
 func (UnimplementedLanguageRuntimeServer) RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error {
 	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) PublishPackage(context.Context, *PublishPackageRequest) (*PublishPackageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PublishPackage not implemented")
+}
+func (UnimplementedLanguageRuntimeServer) PackPackage(context.Context, *PackPackageRequest) (*PackPackageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PackPackage not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
 
@@ -347,6 +377,42 @@ func (x *languageRuntimeRunPluginServer) Send(m *RunPluginResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _LanguageRuntime_PublishPackage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishPackageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).PublishPackage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/PublishPackage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).PublishPackage(ctx, req.(*PublishPackageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LanguageRuntime_PackPackage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PackPackageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).PackPackage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/PackPackage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).PackPackage(ctx, req.(*PackPackageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LanguageRuntime_ServiceDesc is the grpc.ServiceDesc for LanguageRuntime service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -373,6 +439,14 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProgramDependencies",
 			Handler:    _LanguageRuntime_GetProgramDependencies_Handler,
+		},
+		{
+			MethodName: "PublishPackage",
+			Handler:    _LanguageRuntime_PublishPackage_Handler,
+		},
+		{
+			MethodName: "PackPackage",
+			Handler:    _LanguageRuntime_PackPackage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

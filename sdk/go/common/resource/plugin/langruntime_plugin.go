@@ -420,3 +420,38 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 
 	return outr, errr, kill, nil
 }
+
+func (h *langhost) PublishPackage(ctx context.Context, artifactPath string, stderr *os.File) error {
+	logging.V(7).Infof("langhost[%v].PublishPackage(%s) executing", h.runtime, artifactPath)
+	_, err := h.client.PublishPackage(h.ctx.Request(), &pulumirpc.PublishPackageRequest{
+		ArtifactPath: artifactPath,
+		Stderr:       uint64(stderr.Fd()),
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].PublishPackage(%s) failed: err=%v", h.runtime, artifactPath, rpcError)
+
+		return rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].PublishPackage(%s) success", h.runtime, artifactPath)
+	return nil
+}
+
+func (h *langhost) PackPackage(ctx context.Context, packagePath, outPath string, stderr *os.File) (string, error) {
+	logging.V(7).Infof("langhost[%v].PackPackage(%s, %s) executing", h.runtime, packagePath, outPath)
+	resp, err := h.client.PackPackage(h.ctx.Request(), &pulumirpc.PackPackageRequest{
+		PackagePath: packagePath,
+		OutPath:     outPath,
+		Stderr:      uint64(stderr.Fd()),
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].PackPackage(%s, %s) failed: err=%v", h.runtime, packagePath, outPath, rpcError)
+
+		return "", rpcError
+	}
+
+	logging.V(7).Infof("langhost[%v].PackPackage(%s, %s) success", h.runtime, packagePath, outPath)
+	return resp.ArtifactPath, nil
+}

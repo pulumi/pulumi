@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -84,4 +85,12 @@ func (p *languageRuntime) GetProgramDependencies(
 
 func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
 	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
+}
+
+func (p *languageRuntime) PublishPackage(ctx context.Context, artifactPath string, stderr *os.File) error {
+	return nil
+}
+
+func (p *languageRuntime) PackPackage(ctx context.Context, packagePath, outPath string, stderr *os.File) (string, error) {
+	return "", nil
 }

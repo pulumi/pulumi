@@ -44,6 +44,8 @@ Subcommands of this command are useful to package authors during development.`,
 	cmd.AddCommand(
 		newExtractSchemaCommand(),
 		newGenSdkCommand(),
+		newPackagePublishCmd(),
+		newPackagePackCmd(),
 	)
 	return cmd
 }

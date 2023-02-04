@@ -28,11 +28,15 @@
 package main
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -1005,4 +1009,161 @@ func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	return errors.New("not supported")
+}
+
+func (host *nodeLanguageHost) PackPackage(
+	ctx context.Context, req *pulumirpc.PackPackageRequest) (*pulumirpc.PackPackageResponse, error) {
+	// PackPackage runs npm pack to create a .tgz for PublishPackage
+
+	ex, err := executable.FindExecutable("npm")
+	if err != nil {
+		return nil, fmt.Errorf("could not find npm: %w", err)
+	}
+
+	stderr := os.NewFile(uintptr(req.Stderr), "stderr")
+
+	args := []string{"pack", "--pack-destination", req.OutPath}
+	cmd := exec.Command(ex, args...)
+	cmd.Dir = req.PackagePath
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = stderr
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to run \"npm %s\": %w", strings.Join(args, " "), err)
+	}
+
+	return &pulumirpc.PackPackageResponse{
+		ArtifactPath: stdout.String(),
+	}, nil
+}
+
+func (host *nodeLanguageHost) PublishPackage(
+	ctx context.Context, req *pulumirpc.PublishPackageRequest) (*pulumirpc.PublishPackageResponse, error) {
+	// PublishPackage uploads a package to npm
+
+	// req.Artifact should point to a .tgz file from "npm pack"
+	artifact, err := os.Open(req.ArtifactPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not open artifact for reading: %w", err)
+	}
+
+	uncompressedArtifact, err := gzip.NewReader(artifact)
+	if err != nil {
+		return nil, fmt.Errorf("could not decompress artifact: %w", err)
+	}
+
+	tarReader := tar.NewReader(uncompressedArtifact)
+
+	// Look for the package.json
+	var info packageJSON
+	for {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			return nil, fmt.Errorf("could not find package.json file in artifact")
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("could not list files in artifact: %w", err)
+		}
+
+		if header.Typeflag == tar.TypeReg && header.Name == "package/package.json" {
+			var file bytes.Buffer
+			if _, err := io.Copy(&file, tarReader); err != nil {
+				return nil, fmt.Errorf("could not read package.json file in artifact: %w", err)
+			}
+			err = json.Unmarshal(file.Bytes(), &info)
+			if err != nil {
+				return nil, fmt.Errorf("could not read package.json as json: %w", err)
+			}
+			break
+		}
+	}
+
+	if info.Name == "" {
+		return nil, fmt.Errorf("could not publish package, name not set in package.json")
+	}
+
+	if info.Version == "" {
+		return nil, fmt.Errorf("could not publish package, version not set in package.json")
+	}
+
+	npmTag := "latest"
+
+	// If the package doesn't have an alpha tag, use the tag of latest instead of dev. NPM uses this tag as
+	// the default version to add, so we want it to mean the newest released version.
+	if strings.Contains(info.Version, "-alpha") {
+		npmTag = "dev"
+	}
+
+	// we need to set explicit beta and rc tags to ensure that we don't mutate to use the latest tag
+	if strings.Contains(info.Version, "-beta") {
+		npmTag = "beta"
+	}
+
+	if strings.Contains(info.Version, "-rc") {
+		npmTag = "rc"
+	}
+
+	// Now, perform the publish. The logic here is a little goofy because npm provides no way to say "if the
+	// package already exists, don't fail" but we want these semantics (so, for example, we can restart builds
+	// which may have failed after publishing, or so two builds can run concurrently, which is the case for
+	// when we tag master right after pushing a new commit and the push and tag travis jobs both get the same
+	// version.
+	//
+	// We exploit the fact that `npm info <package-name>@<package-version>` has no output when the package
+	// does not exist.
+	ex, err := executable.FindExecutable("npm")
+	if err != nil {
+		return nil, fmt.Errorf("could not find npm: %w", err)
+	}
+
+	npmInfo := func() ([]byte, error) {
+		infoArgs := []string{"info", info.Name + "@" + info.Version}
+		cmd := exec.Command(ex, infoArgs...)
+		out, err := cmd.Output()
+		if err != nil {
+			if _, ok := err.(*exec.ExitError); ok {
+				// We expect this to exit with a non-zero exit code, ignore it
+			} else {
+				// Any other error from cmd should be reported
+				return nil, fmt.Errorf(`failed to run "%s %s": %w`, ex, strings.Join(infoArgs, " "), err)
+			}
+		}
+		return out, nil
+	}
+
+	out, err := npmInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(out) != 0 {
+		// npm info printed something, so just exit out that the package is already published
+		return &pulumirpc.PublishPackageResponse{}, nil
+	}
+
+	stderr := os.NewFile(uintptr(req.Stderr), "stderr")
+
+	publishArgs := []string{"publish", "-tag", npmTag, req.ArtifactPath}
+	cmd := exec.Command(ex, publishArgs...)
+	cmd.Stderr = stderr
+	cmd.Stdout = stderr
+	publishErr := cmd.Run()
+	if publishErr != nil {
+		// if we get here, we have a TOCTOU issue, so check again to see if it published. If it didn't bail
+		// out.
+		out, err := npmInfo()
+		if err != nil {
+			return nil, err
+		}
+		if len(out) != 0 {
+			// npm info printed something, so just exit out that the package is already published
+			return &pulumirpc.PublishPackageResponse{}, nil
+		}
+		return nil, fmt.Errorf("failed to run \"%s %s\": %w", ex, strings.Join(publishArgs, " "), publishErr)
+	}
+
+	return &pulumirpc.PublishPackageResponse{}, nil
 }

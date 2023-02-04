@@ -109,6 +109,28 @@ function deserialize_pulumirpc_InstallDependenciesResponse(buffer_arg) {
   return pulumi_language_pb.InstallDependenciesResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_PackPackageRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.PackPackageRequest)) {
+    throw new Error('Expected argument of type pulumirpc.PackPackageRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PackPackageRequest(buffer_arg) {
+  return pulumi_language_pb.PackPackageRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_PackPackageResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.PackPackageResponse)) {
+    throw new Error('Expected argument of type pulumirpc.PackPackageResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PackPackageResponse(buffer_arg) {
+  return pulumi_language_pb.PackPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PluginInfo(arg) {
   if (!(arg instanceof pulumi_plugin_pb.PluginInfo)) {
     throw new Error('Expected argument of type pulumirpc.PluginInfo');
@@ -118,6 +140,28 @@ function serialize_pulumirpc_PluginInfo(arg) {
 
 function deserialize_pulumirpc_PluginInfo(buffer_arg) {
   return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_PublishPackageRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.PublishPackageRequest)) {
+    throw new Error('Expected argument of type pulumirpc.PublishPackageRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PublishPackageRequest(buffer_arg) {
+  return pulumi_language_pb.PublishPackageRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_PublishPackageResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.PublishPackageResponse)) {
+    throw new Error('Expected argument of type pulumirpc.PublishPackageResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_PublishPackageResponse(buffer_arg) {
+  return pulumi_language_pb.PublishPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RunPluginRequest(arg) {
@@ -251,6 +295,29 @@ runPlugin: {
     requestDeserialize: deserialize_pulumirpc_RunPluginRequest,
     responseSerialize: serialize_pulumirpc_RunPluginResponse,
     responseDeserialize: deserialize_pulumirpc_RunPluginResponse,
+  },
+  // PublishPackage attempts to publish a given package to the languages package registry.
+publishPackage: {
+    path: '/pulumirpc.LanguageRuntime/PublishPackage',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.PublishPackageRequest,
+    responseType: pulumi_language_pb.PublishPackageResponse,
+    requestSerialize: serialize_pulumirpc_PublishPackageRequest,
+    requestDeserialize: deserialize_pulumirpc_PublishPackageRequest,
+    responseSerialize: serialize_pulumirpc_PublishPackageResponse,
+    responseDeserialize: deserialize_pulumirpc_PublishPackageResponse,
+  },
+  packPackage: {
+    path: '/pulumirpc.LanguageRuntime/PackPackage',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.PackPackageRequest,
+    responseType: pulumi_language_pb.PackPackageResponse,
+    requestSerialize: serialize_pulumirpc_PackPackageRequest,
+    requestDeserialize: deserialize_pulumirpc_PackPackageRequest,
+    responseSerialize: serialize_pulumirpc_PackPackageResponse,
+    responseDeserialize: deserialize_pulumirpc_PackPackageResponse,
   },
 };
 

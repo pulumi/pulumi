@@ -380,3 +380,67 @@ class RunPluginResponse(google.protobuf.message.Message):
     def WhichOneof(self, oneof_group: typing_extensions.Literal["output", b"output"]) -> typing_extensions.Literal["stdout", "stderr", "exitcode"] | None: ...
 
 global___RunPluginResponse = RunPluginResponse
+
+@typing_extensions.final
+class PackPackageRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_PATH_FIELD_NUMBER: builtins.int
+    OUT_PATH_FIELD_NUMBER: builtins.int
+    STDERR_FIELD_NUMBER: builtins.int
+    package_path: builtins.str
+    out_path: builtins.str
+    stderr: builtins.int
+    def __init__(
+        self,
+        *,
+        package_path: builtins.str = ...,
+        out_path: builtins.str = ...,
+        stderr: builtins.int = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["out_path", b"out_path", "package_path", b"package_path", "stderr", b"stderr"]) -> None: ...
+
+global___PackPackageRequest = PackPackageRequest
+
+@typing_extensions.final
+class PackPackageResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARTIFACT_PATH_FIELD_NUMBER: builtins.int
+    artifact_path: builtins.str
+    def __init__(
+        self,
+        *,
+        artifact_path: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
+
+global___PackPackageResponse = PackPackageResponse
+
+@typing_extensions.final
+class PublishPackageRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARTIFACT_PATH_FIELD_NUMBER: builtins.int
+    STDERR_FIELD_NUMBER: builtins.int
+    artifact_path: builtins.str
+    stderr: builtins.int
+    def __init__(
+        self,
+        *,
+        artifact_path: builtins.str = ...,
+        stderr: builtins.int = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path", "stderr", b"stderr"]) -> None: ...
+
+global___PublishPackageRequest = PublishPackageRequest
+
+@typing_extensions.final
+class PublishPackageResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___PublishPackageResponse = PublishPackageResponse
