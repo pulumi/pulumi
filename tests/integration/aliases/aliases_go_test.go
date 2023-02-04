@@ -42,3 +42,24 @@ func TestGoAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestRetypeRemoteComponentAndChild(t *testing.T) {
+	dir := filepath.Join("go", "retype_remote_component_and_child")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(dir, "step1"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3=../../../sdk",
+		},
+		Quick: true,
+		LocalProviders: []integration.LocalDependency{
+			{Package: "wibble", Path: filepath.Join(dir, "provider")},
+		},
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             filepath.Join(dir, "step2"),
+				ExpectNoChanges: true,
+				Additive:        true,
+			},
+		},
+	})
+}
