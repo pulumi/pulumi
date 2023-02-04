@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -247,12 +248,16 @@ func runComponentSetup(t *testing.T, testDir string) {
 	setupFilename = filepath.ToSlash(setupFilename)
 
 	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
-		cmd := exec.Command("bash", setupFilename)
+		out := newTestLogWriter(t)
+
+		cmd := exec.Command("bash", "-x", setupFilename)
 		cmd.Dir = testDir
-		output, err := cmd.CombinedOutput()
+		cmd.Stdout = out
+		cmd.Stderr = out
+		err := cmd.Run()
 
 		// This runs in a separate goroutine, so don't use 'require'.
-		assert.NoError(t, err, "failed to run setup script: %s", string(output))
+		assert.NoError(t, err, "failed to run setup script")
 	})
 
 	// The function above runs in a separate goroutine
@@ -502,4 +507,133 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	}
 	assert.Equal(t, 11, foundStdout)
 	assert.Equal(t, 11, foundStderr)
+}
+
+// testLogWriter is an io.Writer
+// that writes to the provided testing.T.
+//
+// Use newTestLogWriter to ensure it is flushed
+// of any input when the test finishes.
+type testLogWriter struct {
+	logf func(string, ...interface{})
+
+	// Holds buffered text for the next write or flush
+	// if we haven't yet seen a newline.
+	buff bytes.Buffer
+}
+
+var _ io.Writer = (*testLogWriter)(nil)
+
+func newTestLogWriter(t testing.TB) *testLogWriter {
+	w := testLogWriter{logf: t.Logf}
+	t.Cleanup(w.Flush)
+	return &w
+}
+
+func (w *testLogWriter) Write(bs []byte) (int, error) {
+	// t.Logf adds a newline so we should not write bs as-is.
+	// Instead, we'll call t.Log one line at a time.
+	//
+	// To handle the case when Write is called with a partial line,
+	// we use a buffer.
+	total := len(bs)
+	for len(bs) > 0 {
+		idx := bytes.IndexByte(bs, '\n')
+		if idx < 0 {
+			// No newline. Buffer it for later.
+			w.buff.Write(bs)
+			break
+		}
+
+		var line []byte
+		line, bs = bs[:idx], bs[idx+1:]
+
+		if w.buff.Len() == 0 {
+			// Nothing buffered from a prior partial write.
+			// This is the majority case.
+			w.logf("%s", line)
+			continue
+		}
+
+		// There's a prior partial write. Join and flush.
+		w.buff.Write(line)
+		w.logf("%s", w.buff.String())
+		w.buff.Reset()
+	}
+	return total, nil
+}
+
+func (w *testLogWriter) Flush() {
+	if w.buff.Len() > 0 {
+		w.logf("%s", w.buff.String())
+	}
+}
+
+func TestTestLogWriter(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+
+		writes []string // individual write calls
+		want   []string // expected log output
+	}{
+		{
+			desc:   "empty strings",
+			writes: []string{"", "", ""},
+		},
+		{
+			desc:   "no newline",
+			writes: []string{"foo", "bar", "baz"},
+			want:   []string{"foobarbaz"},
+		},
+		{
+			desc: "newline separated",
+			writes: []string{
+				"foo\n",
+				"bar\n",
+				"baz\n\n",
+				"qux",
+			},
+			want: []string{
+				"foo",
+				"bar",
+				"baz",
+				"",
+				"qux",
+			},
+		},
+		{
+			desc:   "partial line",
+			writes: []string{"foo", "bar\nbazqux"},
+			want: []string{
+				"foobar",
+				"bazqux",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got []string
+			w := testLogWriter{
+				logf: func(msg string, args ...interface{}) {
+					got = append(got, fmt.Sprintf(msg, args...))
+				},
+			}
+
+			for _, input := range tt.writes {
+				n, err := w.Write([]byte(input))
+				assert.NoError(t, err)
+				assert.Equal(t, len(input), n)
+			}
+
+			w.Flush()
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

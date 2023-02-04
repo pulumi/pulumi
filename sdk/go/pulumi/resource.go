@@ -275,7 +275,7 @@ type resourceOptions struct {
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
 	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []func(ctx context.Context) (urnSet, error)
+	DependsOn []dependencySet
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -416,13 +416,44 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 	})
 }
 
+// dependencySet unifies types that can provide dependencies for a
+// resource.
+type dependencySet interface {
+	// Adds URNs for addURNs from this set
+	// into the given urnSet.
+	addURNs(context.Context, urnSet) error
+}
+
+// urnDependencySet is a dependencySet built from a constant set of URNs.
+type urnDependencySet urnSet
+
+var _ dependencySet = (urnDependencySet)(nil)
+
+func (us urnDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+	urns.union(urnSet(us))
+	return nil
+}
+
 // DependsOn is an optional array of explicit dependencies on other resources.
 func DependsOn(o []Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
-			return expandDependencies(ctx, o)
-		})
+		ro.DependsOn = append(ro.DependsOn, resourceDependencySet(o))
 	})
+}
+
+// resourceDependencySet is a dependencySet comprised of references to
+// resources.
+type resourceDependencySet []Resource
+
+var _ dependencySet = (resourceDependencySet)(nil)
+
+func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+	for _, r := range rs {
+		if err := addDependency(ctx, urns, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Declares explicit dependencies on other resources. Similar to
@@ -435,26 +466,39 @@ func DependsOn(o []Resource) ResourceOption {
 //	DependsOnInputs(allDeps)
 func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
-			out := o.ToResourceArrayOutput()
-
-			value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
-			if err != nil || !known {
-				return nil, err
-			}
-
-			resources, ok := value.([]Resource)
-			if !ok {
-				return nil, fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
-					reflect.TypeOf(value))
-			}
-
-			// For some reason, deps returned above are incorrect; instead:
-			toplevelDeps := out.dependencies()
-
-			return expandDependencies(ctx, append(resources, toplevelDeps...))
-		})
+		ro.DependsOn = append(ro.DependsOn, &resourceArrayInputDependencySet{o})
 	})
+}
+
+// resourceArrayInputDependencySet is a dependencySet built from
+// collections of resources that are not yet known.
+type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
+
+var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
+
+func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+	out := ra.input.ToResourceArrayOutput()
+
+	value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
+	if err != nil || !known {
+		return err
+	}
+
+	resources, ok := value.([]Resource)
+	if !ok {
+		return fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+			reflect.TypeOf(value))
+	}
+
+	// For some reason, deps returned above are incorrect; instead:
+	toplevelDeps := out.dependencies()
+
+	for _, r := range append(resources, toplevelDeps...) {
+		if err := addDependency(ctx, urns, r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Ignore changes to any of the specified properties.

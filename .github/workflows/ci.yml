@@ -117,8 +117,8 @@ jobs:
               { "os": "linux",   "arch": "arm64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
               { "os": "windows", "arch": "arm64", "build-platform": "ubuntu-latest" },
-              { "os": "darwin",  "arch": "amd64", "build-platform": "macos-11" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "macos-11" }
+              { "os": "darwin",  "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
             ]'
           fi
 
@@ -197,7 +197,7 @@ jobs:
       build-targets: "${{ fromJson(steps.matrix.outputs.build-targets) }}"
 
   lint:
-    name: lint
+    name: Lint
     needs: [matrix]
     if: ${{ inputs.lint }}
     uses: ./.github/workflows/ci-lint.yml
@@ -243,7 +243,7 @@ jobs:
     # To this:
     #   CI / Unit Test / sdk/dotnet dotnet_test on macos-11/current
     name: Unit Test${{ matrix.platform && '' }}
-    needs: [matrix]
+    needs: [matrix, lint]
     if: ${{ needs.matrix.outputs.unit-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.unit-test-matrix, 'macos') }}
@@ -268,7 +268,7 @@ jobs:
     # By putting a variable in the name, we remove GitHub's auto-generated matrix parameters from
     # appearing in the rendered title of the job name. See: unit test.
     name: Integration Test${{ matrix.platform && '' }}
-    needs: [matrix, build-binaries, build-sdks]
+    needs: [matrix, build-binaries, build-sdks, lint]
     if: ${{ needs.matrix.outputs.integration-test-matrix != '{}' }}
     strategy:
       fail-fast: ${{ contains(needs.matrix.outputs.integration-test-matrix, 'macos') }}
