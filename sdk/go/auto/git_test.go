@@ -33,6 +33,7 @@ func TestGitClone(t *testing.T) {
 			Name:  "testo",
 			Email: "testo@example.com",
 		},
+		AllowEmptyCommits: true,
 	})
 	assert.NoError(t, err)
 
@@ -63,6 +64,7 @@ func TestGitClone(t *testing.T) {
 			Name:  "testo",
 			Email: "testo@example.com",
 		},
+		AllowEmptyCommits: true,
 	})
 	assert.NoError(t, err)
 

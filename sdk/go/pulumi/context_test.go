@@ -15,14 +15,18 @@
 package pulumi
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // The test is extracted from a panic using pulumi-docker and minified
@@ -372,4 +376,188 @@ func TestMergeProviders(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestRegisterResource_aliasesSpecs(t *testing.T) {
+	t.Parallel()
+
+	parentURN := CreateURN(
+		String("parent"),
+		String("test:resource:parentType"),
+		String(""),
+		String("project"),
+		String("stack"),
+	)
+
+	tests := []struct {
+		desc string
+		give []Alias
+
+		// Whether the monitor supports aliasSpecs.
+		supportsAliasSpecs bool
+
+		// Specifies what we expect on the RegisterResourceRequest.
+		// Typically, if a server supports AliasSpecs,
+		// we won't send AliasURNs.
+		wantAliases   []*pulumirpc.Alias
+		wantAliasURNs []string
+	}{
+		{
+			desc: "no parent/before alias specs",
+			give: []Alias{
+				{Name: String("resA"), NoParent: Bool(true)},
+				{Name: String("resB"), NoParent: Bool(true)},
+			},
+			wantAliasURNs: []string{
+				"urn:pulumi:stack::project::test:resource:type::resA",
+				"urn:pulumi:stack::project::test:resource:type::resB",
+			},
+		},
+		{
+			desc:               "no parent/with alias specs",
+			supportsAliasSpecs: true,
+			give: []Alias{
+				{Name: String("resA"), NoParent: Bool(true)},
+				{Name: String("resB"), NoParent: Bool(true)},
+			},
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name:   "resA",
+							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+						},
+					},
+				},
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name:   "resB",
+							Parent: &pulumirpc.Alias_Spec_NoParent{NoParent: true},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "parent urn/no alias specs",
+			give: []Alias{
+				{Name: String("child"), ParentURN: parentURN},
+			},
+			wantAliasURNs: []string{
+				"urn:pulumi:stack::project::test:resource:parentType$test:resource:type::child",
+			},
+		},
+		{
+			desc: "parent urn/alias specs",
+			give: []Alias{
+				{Name: String("child"), ParentURN: parentURN},
+			},
+			supportsAliasSpecs: true,
+			wantAliases: []*pulumirpc.Alias{
+				{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Name: "child",
+							Parent: &pulumirpc.Alias_Spec_ParentUrn{
+								ParentUrn: "urn:pulumi:stack::project::test:resource:parentType::parent",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				gotAliases   []*pulumirpc.Alias
+				gotAliasURNS []string
+			)
+			monitor := &testMonitor{
+				NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+					gotAliases = append(gotAliases, args.RegisterRPC.Aliases...)
+					gotAliasURNS = append(gotAliasURNS, args.RegisterRPC.AliasURNs...)
+					return args.Name, resource.PropertyMap{}, nil
+				},
+			}
+
+			opts := []RunOption{
+				WithMocks("project", "stack", monitor),
+			}
+
+			// The mock resource monitor client does not support
+			// alias specs.
+			// So if that's needed, wrap the monitor to claim it
+			// does.
+			if tt.supportsAliasSpecs {
+				opts = append(opts, WrapResourceMonitorClient(
+					func(rmc pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
+						return resourceMonitorClientWithFeatures(rmc, "aliasSpecs")
+					}))
+			}
+
+			err := RunErr(func(ctx *Context) error {
+				var res testResource2
+				err := ctx.RegisterResource(
+					"test:resource:type",
+					"resNew",
+					&testResource2Inputs{Foo: String("oof")},
+					&res,
+					Aliases(tt.give),
+				)
+				require.NoError(t, err)
+				return nil
+			}, opts...)
+			require.NoError(t, err)
+
+			if tt.supportsAliasSpecs {
+				assert.Equal(t, tt.wantAliases, gotAliases, "Aliases did not match")
+			} else {
+				assert.Equal(t, tt.wantAliasURNs, gotAliasURNS, "AliasURNs did not match")
+			}
+		})
+	}
+}
+
+// resmonClientWithFeatures wraps a ResourceMonitorClient
+// to report various additional features as supported.
+type resmonClientWithFeatures struct {
+	pulumirpc.ResourceMonitorClient
+
+	features map[string]struct{}
+}
+
+// resourceMonitorClientWithFeatures builds a ResourceMonitorClient
+// that reports the provided feature names as supported
+// in addition to those already supported by the client.
+func resourceMonitorClientWithFeatures(
+	cl pulumirpc.ResourceMonitorClient,
+	features ...string,
+) pulumirpc.ResourceMonitorClient {
+	featureSet := make(map[string]struct{}, len(features))
+	for _, f := range features {
+		featureSet[f] = struct{}{}
+	}
+	return &resmonClientWithFeatures{
+		ResourceMonitorClient: cl,
+		features:              featureSet,
+	}
+}
+
+func (c *resmonClientWithFeatures) SupportsFeature(
+	ctx context.Context,
+	req *pulumirpc.SupportsFeatureRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.SupportsFeatureResponse, error) {
+	if _, ok := c.features[req.GetId()]; ok {
+		return &pulumirpc.SupportsFeatureResponse{
+			HasSupport: ok,
+		}, nil
+	}
+	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
 }
