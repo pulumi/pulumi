@@ -416,7 +416,7 @@ func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, err
 		return latest, oldest, err
 	}
 
-	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
+	client := client.NewClient(httpstate.DefaultURL(), "", false, cmdutil.Diag())
 	latest, oldest, err = client.GetCLIVersionInfo(ctx)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err

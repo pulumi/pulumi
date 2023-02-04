@@ -115,6 +115,7 @@ type Account struct {
 	Username        string    `json:"username,omitempty"`        // The username for this account.
 	Organizations   []string  `json:"organizations,omitempty"`   // The organizations for this account.
 	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"` // The last time this token was validated.
+	Insecure        bool      `json:"insecure,omitempty"`        // Allow insecure server connections when using SSL.
 }
 
 // Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
@@ -178,6 +179,19 @@ func GetCurrentCloudURL() (string, error) {
 	}
 
 	return url, nil
+}
+
+// GetCloudInsecure returns if this cloud url is saved as one that should use insecure transport.
+func GetCloudInsecure(cloudURL string) bool {
+	insecure := false
+	creds, err := GetStoredCredentials()
+	// If this errors just assume insecure == false
+	if err == nil {
+		if account, has := creds.Accounts[cloudURL]; has {
+			insecure = account.Insecure
+		}
+	}
+	return insecure
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.

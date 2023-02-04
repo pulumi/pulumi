@@ -35,6 +35,7 @@ func newLoginCmd() *cobra.Command {
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
+	var insecure bool
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
@@ -141,7 +142,7 @@ func newLoginCmd() *cobra.Command {
 					return fmt.Errorf("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, insecure, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
 					cloudURL, err := workspace.GetCurrentCloudURL()
@@ -171,6 +172,7 @@ func newLoginCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
+	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 
 	return cmd
 }

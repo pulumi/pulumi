@@ -78,7 +78,7 @@ func newLogoutCmd() *cobra.Command {
 				return workspace.DeleteAccount(cloudURL)
 			}
 
-			be, err = httpstate.New(cmdutil.Diag(), cloudURL)
+			be, err = httpstate.New(cmdutil.Diag(), cloudURL, workspace.GetCloudInsecure(cloudURL))
 			if err != nil {
 				return err
 			}
