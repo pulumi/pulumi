@@ -296,14 +296,13 @@ The following state arguments are supported:
 
 ## Supporting Types
 
-{{ if ge (len .NestedTypes) 200 }}
+{{- if ge (len .NestedTypes) 200 }}
 > **Note:** There are over 200 nested types for this resource.
 Only the first 200 types are included in this documentation.
 {{ end }}
 
 {{ range $index, $elem := .NestedTypes }}
 {{ if lt $index 200 }}
-
 <h4 id="{{ $elem.AnchorID }}">{{ htmlSafe $elem.Name }}</h4>
 
 {{- if $elem.Properties }}{{template "properties" $elem.Properties -}}{{ end -}}
