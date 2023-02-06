@@ -3,18 +3,19 @@
 
 import argparse
 import asyncio
-from typing import Optional
 import logging
 import os
+import runpy
 import sys
 import traceback
-import runpy
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
-    import pulumi
     import pulumi.runtime
+
+    import pulumi
 except ImportError:
     # For whatever reason, sys.stderr.write is not picked up by the engine as a message, but 'print' is. The Python
     # langhost automatically flushes stdout and stderr on shutdown, so we don't need to do it here - just trust that
@@ -73,6 +74,7 @@ if __name__ == "__main__":
     ap.add_argument('--engine', help='An RPC address for the engine to connect to')
     ap.add_argument('--tracing', help='A Zipkin-compatible endpoint to send tracing data to')
     ap.add_argument('--organization', help='Set the organization name')
+    ap.add_argument('--module', help='The python module to run')
     ap.add_argument('PROGRAM', help='The Python program to run')
     ap.add_argument('ARGS', help='Arguments to pass to the program', nargs='*')
     args = ap.parse_args()
@@ -135,7 +137,7 @@ if __name__ == "__main__":
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-    
+
     # Configure the event loop to respect the parallelism value provided as input.
     _set_default_executor(loop, settings.parallel)
 
@@ -158,35 +160,42 @@ if __name__ == "__main__":
     logging.getLogger("asyncio").setLevel(logging.CRITICAL)
     exit_code = 1
     try:
-        # record the location of the user's program to return user tracebacks
+        # Record the location of the user's program to return user tracebacks.
         user_program_abspath = os.path.abspath(args.PROGRAM)
+
         def run():
-            try:
-                return runpy.run_path(args.PROGRAM, run_name='__main__')
-            except ImportError as e:
-                # detect if the main pulumi python program does not exist
-                stack_modules = [f.filename for f in traceback.extract_tb(e.__traceback__)]
-                unique_modules = set(module for module in stack_modules)
-                last_module_name = stack_modules[-1]
+            if args.module:
+                # The users program directory needs to be on python path so we can find the modules within it,
+                # this _might_ be the same as the current working directory, but doesn't have to be.
+                sys.path.append(user_program_abspath)
+                return runpy.run_module(args.module, run_name='__main__')
+            else:
+                try:
+                    return runpy.run_path(user_program_abspath, run_name='__main__')
+                except ImportError as e:
+                    # detect if the main pulumi python program does not exist
+                    stack_modules = [f.filename for f in traceback.extract_tb(e.__traceback__)]
+                    unique_modules = set(module for module in stack_modules)
+                    last_module_name = stack_modules[-1]
 
-                # we identify a missing program error if
-                # 1. the only modules in the stack trace are
-                #   - `pulumi-language-python-exec`
-                #   - `runpy`
-                # 2. the last function in the stack trace is in the `runpy` module
-                if unique_modules == {
-                            __file__, # the language runtime itself
-                            runpy.__file__,
-                        } and last_module_name == runpy.__file__ :
-                    # this error will only be hit when the user provides a directory
-                    # the engine has a check to determine if the `main` file exists and will fail early
+                    # we identify a missing program error if
+                    # 1. the only modules in the stack trace are
+                    #   - `pulumi-language-python-exec`
+                    #   - `runpy`
+                    # 2. the last function in the stack trace is in the `runpy` module
+                    if unique_modules == {
+                                __file__, # the language runtime itself
+                                runpy.__file__,
+                            } and last_module_name == runpy.__file__ :
+                        # this error will only be hit when the user provides a directory
+                        # the engine has a check to determine if the `main` file exists and will fail early
 
-                    # if a language runtime receives a directory, it's the language's responsibility to determine
-                    # whether the provided directory has a pulumi program
-                    pulumi.log.error(f"unable to find main python program `__main__.py` in `{user_program_abspath}`")
-                    sys.exit(PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE)
-                else:
-                    raise e
+                        # if a language runtime receives a directory, it's the language's responsibility to determine
+                        # whether the provided directory has a pulumi program
+                        pulumi.log.error(f"unable to find main python program `__main__.py` in `{user_program_abspath}`")
+                        sys.exit(PYTHON_PROCESS_EXITED_AFTER_SHOWING_USER_ACTIONABLE_MESSAGE_CODE)
+                    else:
+                        raise e
 
         coro = pulumi.runtime.run_in_stack(run)
         loop.run_until_complete(coro)

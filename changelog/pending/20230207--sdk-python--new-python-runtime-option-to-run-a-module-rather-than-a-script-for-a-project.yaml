@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/python
+  description: New python runtime option to run a module rather than a script for a project.

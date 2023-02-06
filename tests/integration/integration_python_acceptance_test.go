@@ -290,3 +290,35 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		assert.NotContains(t, stderr, "fork/exec")
 	})
 }
+
+func TestPythonPackageModule(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "package"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Contains(t, stackInfo.Outputs, "foo")
+			foo := stackInfo.Outputs["foo"]
+			assert.Equal(t, "bar", foo)
+		},
+	})
+}
+
+func TestPythonPackageModuleMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "package-main"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Contains(t, stackInfo.Outputs, "foo")
+			foo := stackInfo.Outputs["foo"]
+			assert.Equal(t, "bar", foo)
+		},
+	})
+}

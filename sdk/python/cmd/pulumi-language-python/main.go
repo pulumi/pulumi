@@ -86,9 +86,11 @@ func main() {
 	var tracing string
 	var virtualenv string
 	var root string
+	var module string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
 	flag.StringVar(&root, "root", "", "Project root path to use")
+	flag.StringVar(&module, "module", "", "The python module to invoke")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -153,7 +155,7 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath, module)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -189,10 +191,13 @@ type pythonLanguageHost struct {
 
 	// if non-empty, points to the resolved directory path of the virtualenv
 	virtualenvPath string
+
+	// if non-empty the user specified to run in "module" mode and this is the module to invoke
+	module string
 }
 
 func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
-	virtualenvPath string) pulumirpc.LanguageRuntimeServer {
+	virtualenvPath, module string) pulumirpc.LanguageRuntimeServer {
 
 	return &pythonLanguageHost{
 		cwd:            cwd,
@@ -201,6 +206,7 @@ func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
 		tracing:        tracing,
 		virtualenv:     virtualenv,
 		virtualenvPath: virtualenvPath,
+		module:         module,
 	}
 }
 
@@ -766,6 +772,9 @@ func (host *pythonLanguageHost) constructArguments(req *pulumirpc.RunRequest) []
 	} else {
 		args = append(args, req.GetProgram())
 	}
+
+	// If a module is set, send that as the second argument
+	maybeAppendArg("module", host.module)
 
 	args = append(args, req.GetArgs()...)
 	return args
