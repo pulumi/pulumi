@@ -13,7 +13,7 @@
 # limitations under the License.
 import asyncio
 import sys
-from typing import Any, Awaitable
+from typing import TypeVar, Awaitable
 
 # If we are not running on Python 3.7 or later, we need to swap the Python implementation of Task in for the C
 # implementation in order to support synchronous invokes.
@@ -38,7 +38,10 @@ else:
     _get_current_task = asyncio.current_task  # type: ignore
 
 
-def _sync_await(awaitable: Awaitable[Any]) -> Any:
+T = TypeVar("T")
+
+
+def _sync_await(awaitable: Awaitable[T]) -> T:
     """
     _sync_await waits for the given future to complete by effectively yielding the current task and pumping the event
     loop.

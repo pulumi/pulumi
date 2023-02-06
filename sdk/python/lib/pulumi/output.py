@@ -54,6 +54,57 @@ Inputs = Mapping[str, Input[Any]]
 InputType = Union[T, Mapping[str, Any]]
 
 
+class Unknown:
+    """
+    Unknown represents a value that is unknown.
+    """
+
+    def __init__(self):
+        pass
+
+
+UNKNOWN = Unknown()
+"""
+UNKNOWN is the singleton unknown value.
+"""
+
+
+class OutputData(Generic[T]):
+    """
+    This is an advanced type used to report back internal details of an Output.
+    """
+
+    resources: Set["Resource"]
+    """
+    The list of resources that the output value depends on.
+    """
+    value: Union[T, Unknown]
+    """
+    The concrete value of the output if known; else UNKNOWN.
+
+    If Unknown the output should not actually perform .apply calls. During a preview, an output value may not
+    be known (because it would have to actually be computed by doing an 'update'). In that case, we don't
+    want to perform any .apply calls as the callbacks may not expect an undefined value. So, instead, we just
+    transition to another output value that itself knows it should not perform .apply calls.
+    """
+    secret: bool
+    """
+    Whether or not the output should be treated as containing secret data. Secret outputs are tagged when
+    flowing across the RPC interface to the resource monitor, such that when they are persisted to disk in our
+    state file, they are encrypted instead of being in plaintext.
+    """
+
+    def __init__(
+        self,
+        resources: Set["Resource"],
+        value: T | Unknown,
+        secret: Optional[bool] = None,
+    ) -> None:
+        self.resources = resources
+        self.value = value
+        self.secret = False if secret is None else secret
+
+
 class Output(Generic[T_co]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -63,80 +114,82 @@ class Output(Generic[T_co]):
     dependency graph' to be created, which properly tracks the relationship between resources.
     """
 
-    _is_known: Awaitable[bool]
+    _data: asyncio.Task[OutputData[T_co]]
     """
-    Whether or not this 'Output' should actually perform .apply calls.  During a preview,
-    an Output value may not be known (because it would have to actually be computed by doing an
-    'update').  In that case, we don't want to perform any .apply calls as the callbacks
-    may not expect an undefined value.  So, instead, we just transition to another Output
-    value that itself knows it should not perform .apply calls.
-    """
-
-    _is_secret: Awaitable[bool]
-    """
-    Whether or not this 'Output' should be treated as containing secret data. Secret outputs are tagged when
-    flowing across the RPC interface to the resource monitor, such that when they are persisted to disk in
-    our state file, they are encrypted instead of being in plaintext.
-    """
-
-    _future: Awaitable[T_co]
-    """
-    Future that actually produces the concrete value of this output.
-    """
-
-    _resources: Awaitable[Set["Resource"]]
-    """
-    The list of resources that this output value depends on.
+    The future internal data for this Output.
     """
 
     def __init__(
         self,
-        resources: Union[Awaitable[Set["Resource"]], Set["Resource"]],
-        future: Awaitable[T_co],
-        is_known: Awaitable[bool],
+        resources_or_data: Union[
+            Awaitable[OutputData], Awaitable[Set["Resource"]], Set["Resource"]
+        ],
+        future: Optional[Awaitable[T_co]] = None,
+        is_known: Optional[Awaitable[bool]] = None,
         is_secret: Optional[Awaitable[bool]] = None,
     ) -> None:
-        is_known = asyncio.ensure_future(is_known)
-        future = asyncio.ensure_future(future)
+        # Support old code that used to send 3/4 awaitables to set the output
+        if future is not None:
 
-        async def is_value_known() -> bool:
-            return await is_known and not contains_unknowns(await future)
+            async def get_data() -> OutputData:
+                if isinstance(resources_or_data, set):
+                    resources = resources_or_data
+                else:
+                    r = await resources_or_data
+                    assert isinstance(r, set)
+                    resources = r
 
-        if isinstance(resources, set):
-            self._resources = asyncio.Future()
-            self._resources.set_result(resources)
+                assert future is not None
+                value = await future
+
+                assert is_known is not None
+                known = await is_known
+
+                secret = False
+                if is_secret is not None:
+                    secret = await is_secret
+
+                return OutputData(resources, value if known else UNKNOWN, secret)
+
+            self._data = asyncio.ensure_future(get_data())
         else:
-            self._resources = asyncio.ensure_future(resources)
-
-        self._future = future
-        self._is_known = asyncio.ensure_future(is_value_known())
-
-        if is_secret is not None:
-            self._is_secret = asyncio.ensure_future(is_secret)
-        else:
-            self._is_secret = asyncio.Future()
-            self._is_secret.set_result(False)
+            # New style code just sends the one future which should be of OutputData
+            self._data = asyncio.ensure_future(
+                cast(Awaitable[OutputData], resources_or_data)
+            )
 
     # Private implementation details - do not document.
-    def resources(self) -> Awaitable[Set["Resource"]]:
-        return self._resources
+    async def resources(self) -> Set["Resource"]:
+        data = await self._data
+        return data.resources
 
-    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T_co]]:
-        # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
-        # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
-        async def get_value() -> Optional[T_co]:
-            val = await self._future
-            return None if not with_unknowns and contains_unknowns(val) else val
+    @overload
+    async def future(self) -> Optional[T_co]:
+        ...
 
-        return asyncio.ensure_future(get_value())
+    @overload
+    async def future(self, with_unknowns: bool) -> Optional[T_co] | Unknown:
+        ...
 
-    def is_known(self) -> Awaitable[bool]:
-        return self._is_known
+    async def future(
+        self, with_unknowns: Optional[bool] = None
+    ) -> Optional[T_co] | Unknown:
+        data = await self._data
+        if isinstance(data.value, Unknown):
+            # If the caller did not explicitly ask to see unknown values and the value of this output contains
+            # unknowns, return None. This preserves compatibility with earlier versions of the Pulumi SDK.
+            return UNKNOWN if with_unknowns else None
+        return data.value
+
+    async def is_known(self) -> bool:
+        data = await self._data
+        return not isinstance(data.value, Unknown)
 
     # End private implementation details.
 
-    def is_secret(self) -> Awaitable[bool]:
-        return self._is_secret
+    async def is_secret(self) -> bool:
+        data = await self._data
+        return data.secret
 
     def apply(
         self, func: Callable[[T_co], Input[U]], run_with_unknowns: Optional[bool] = None
@@ -159,82 +212,43 @@ class Output(Generic[T_co]):
         :return: A transformed Output obtained from running the transformation function on this Output's value.
         :rtype: Output[U]
         """
-        result_resources: asyncio.Future[Set["Resource"]] = asyncio.Future()
-        result_is_known: asyncio.Future[bool] = asyncio.Future()
-        result_is_secret: asyncio.Future[bool] = asyncio.Future()
 
         # The "run" coroutine actually runs the apply.
-        async def run() -> U:
-            resources: Set["Resource"] = set()
-            try:
-                # Await this output's details.
-                resources = await self._resources
-                is_known = await self._is_known
-                is_secret = await self._is_secret
-                value = await self._future
+        async def run() -> OutputData[U]:
+            # Await this output's details.
+            data = await self._data
 
-                if runtime.is_dry_run():
-                    # During previews only perform the apply if the engine was able to give us an actual value for this
-                    # Output or if the caller is able to tolerate unknown values.
-                    apply_during_preview = is_known or run_with_unknowns
+            if isinstance(data.value, Unknown) and not run_with_unknowns:
+                # We can't run the apply because the value isn't known
+                return OutputData(data.resources, UNKNOWN, data.secret)
 
-                    if not apply_during_preview:
-                        # We didn't actually run the function, our new Output is definitely
-                        # **not** known.
-                        result_resources.set_result(resources)
-                        result_is_known.set_result(False)
-                        result_is_secret.set_result(is_secret)
-                        return cast(U, None)
+            # Because of run_with_unknowns the value we pass to func might not actually be T_co, but this
+            # supports old SDKs that used this feature.
+            transformed = func(cast(T_co, data.value))
+            # Transformed is an Input, meaning there are three cases:
+            #  1. transformed is an Output[U]
+            if isinstance(transformed, Output):
+                # Forward along the inner output's resources, value, and secret values.
+                transformed_data = await transformed._data
 
-                    # If we are running with unknown values and the value is explicitly unknown but does not actually
-                    # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
-                    # that expect to see unknowns during preview in outputs that are not known will always do so.
-                    if (
-                        not is_known
-                        and run_with_unknowns
-                        and not contains_unknowns(value)
-                    ):
-                        value = cast(T_co, UNKNOWN)
+                result_resources = data.resources | transformed_data.resources
+                result_secret = data.secret | transformed_data.secret
+                return OutputData(
+                    result_resources,
+                    cast(U, transformed_data.value),
+                    result_secret,
+                )
 
-                transformed: Input[U] = func(value)
-                # Transformed is an Input, meaning there are three cases:
-                #  1. transformed is an Output[U]
-                if isinstance(transformed, Output):
-                    transformed_as_output = cast(Output[U], transformed)
-                    # Forward along the inner output's _resources, _is_known and _is_secret values.
-                    transformed_resources = await transformed_as_output._resources
-                    result_resources.set_result(resources | transformed_resources)
-                    result_is_known.set_result(await transformed_as_output._is_known)
-                    result_is_secret.set_result(
-                        await transformed_as_output._is_secret or is_secret
-                    )
-                    return await transformed.future(with_unknowns=True)
+            #  2. transformed is an Awaitable[U]
+            if isawaitable(transformed):
+                # Since transformed is not an Output, it is known.
+                transformed_value = cast(U, await transformed)
+                return OutputData(data.resources, transformed_value, data.secret)
 
-                #  2. transformed is an Awaitable[U]
-                if isawaitable(transformed):
-                    # Since transformed is not an Output, it is known.
-                    result_resources.set_result(resources)
-                    result_is_known.set_result(True)
-                    result_is_secret.set_result(is_secret)
-                    return await cast(Awaitable[U], transformed)
+            #  3. transformed is U. It is trivially known.
+            return OutputData(data.resources, cast(U, transformed), data.secret)
 
-                #  3. transformed is U. It is trivially known.
-                result_resources.set_result(resources)
-                result_is_known.set_result(True)
-                result_is_secret.set_result(is_secret)
-                return cast(U, transformed)
-            finally:
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_resources.set_result(resources)
-
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_is_known.set_result(False)
-
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_is_secret.set_result(False)
-
-        run_fut = asyncio.ensure_future(run())
-        return Output(result_resources, run_fut, result_is_known, result_is_secret)
+        return Output(asyncio.ensure_future(run()))
 
     def __getattr__(self, item: str) -> "Output[Any]":  # type: ignore
         """
@@ -244,11 +258,12 @@ class Output(Generic[T_co]):
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
-
-        def lift(v: Any) -> Any:
-            return UNKNOWN if isinstance(v, Unknown) else getattr(v, item)
-
-        return self.apply(lift, True)
+        # mypy warns about "Cannot use a covariant type variable as a parameter" for this use of apply, that's
+        # because Output is covariant so given Derived a subtype of Base this may be called on an Output[Base]
+        # but be an instance of Output[Derived]. In that case v is typed as Base, but is actually a Derived
+        # and it would be an error if we wrote any other derived type of Base to the variable. But we're not
+        # doing that here, we're only treating v purely as a readonly value.
+        return self.apply(lambda v: getattr(v, item))  # type: ignore
 
     def __getitem__(self, key: Any) -> "Output[Any]":
         """
@@ -258,11 +273,8 @@ class Output(Generic[T_co]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-
-        def lift(v: Any) -> Any:
-            return UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key]
-
-        return self.apply(lift, True)
+        # See the comment in __getattr__ for why we ignore the type here.
+        return self.apply(lambda v: v[key])  # type: ignore
 
     def __iter__(self) -> Any:
         """
@@ -286,7 +298,7 @@ class Output(Generic[T_co]):
 
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
-            return val.apply(Output.from_input, True)
+            return val.apply(Output.from_input)
 
         # Is it an input type (i.e. args class)? Recurse into the values within.
         typ = type(val)
@@ -325,24 +337,21 @@ class Output(Generic[T_co]):
             return cast(Output[T_co], o_list)
 
         # If it's not an output, list, or dict, it must be known and not secret
-        is_known_fut: asyncio.Future[bool] = asyncio.Future()
-        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
-        is_known_fut.set_result(True)
-        is_secret_fut.set_result(False)
 
         # Is it awaitable? If so, schedule it for execution and use the resulting future
         # as the value future for a new output.
         if isawaitable(val):
-            val_fut = cast(asyncio.Future, val)
-            promise_output = Output(
-                set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut
-            )
-            return promise_output.apply(Output.from_input, True)
+
+            async def get_data(val: Awaitable[T]) -> OutputData[T]:
+                o: Output[T] = Output.from_input(val)
+                return await o._data
+
+            return Output(get_data(val))
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
-        value_fut: asyncio.Future[Any] = asyncio.Future()
-        value_fut.set_result(val)
-        return Output(set(), value_fut, is_known_fut, is_secret_fut)
+        data_future: asyncio.Future[OutputData[T_co]] = asyncio.Future()
+        data_future.set_result(OutputData(set(), cast(T_co, val), False))
+        return Output(data_future)
 
     @staticmethod
     def _from_input_shallow(val: Input[T]) -> "Output[T]":
@@ -359,21 +368,18 @@ class Output(Generic[T_co]):
             return val
 
         # If it's not an output, it must be known and not secret
-        is_known_fut: asyncio.Future[bool] = asyncio.Future()
-        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
-        is_known_fut.set_result(True)
-        is_secret_fut.set_result(False)
-
         if isawaitable(val):
-            val_fut = cast(asyncio.Future, val)
-            return Output(
-                set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut
-            )
+
+            async def get_data(val: Awaitable[T]) -> OutputData[T]:
+                o: Output[T] = Output.from_input(await val)
+                return await o._data
+
+            return Output(get_data(val))
 
         # Is it a prompt value? Set up a new resolved future and use that as the value future.
-        value_fut: asyncio.Future[Any] = asyncio.Future()
-        value_fut.set_result(val)
-        return Output(set(), value_fut, is_known_fut, is_secret_fut)
+        data_future: asyncio.Future[OutputData[T_co]] = asyncio.Future()
+        data_future.set_result(OutputData(set(), cast(T_co, val), False))
+        return Output(data_future)
 
     @staticmethod
     def unsecret(val: "Output[T]") -> "Output[T]":
@@ -384,9 +390,12 @@ class Output(Generic[T_co]):
         :return: A deeply-unwrapped Output that is guaranteed to not contain any secret values.
         :rtype: Output[T]
         """
-        is_secret: asyncio.Future[bool] = asyncio.Future()
-        is_secret.set_result(False)
-        return Output(val._resources, val._future, val._is_known, is_secret)
+
+        async def get_data() -> OutputData[T]:
+            data = await val._data
+            return OutputData(data.resources, data.value, False)
+
+        return Output(get_data())
 
     @staticmethod
     def secret(val: Input[T]) -> "Output[T]":
@@ -400,10 +409,11 @@ class Output(Generic[T_co]):
         :rtype: Output[T]
         """
 
-        o = Output.from_input(val)
-        is_secret: asyncio.Future[bool] = asyncio.Future()
-        is_secret.set_result(True)
-        return Output(o._resources, o._future, o._is_known, is_secret)
+        async def get_data() -> OutputData[T]:
+            data = await Output.from_input(val)._data
+            return OutputData(data.resources, data.value, True)
+
+        return Output(get_data())
 
     # According to mypy these overloads unsafely overlap, so we ignore the type check.
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
@@ -437,68 +447,50 @@ class Output(Generic[T_co]):
         :return: An output of list or dict, converted from unnamed or named Inputs respectively.
         """
 
-        # Three asynchronous helper functions to assist in the implementation:
-        # is_known, which returns True if all of the input's values are known,
-        # and false if any of them are not known,
-        async def is_known(outputs: list):
-            is_known_futures = [o._is_known for o in outputs]
-            each_is_known = await asyncio.gather(*is_known_futures)
-            return all(each_is_known)
+        async def gather_dict(outputs: dict[str, Output[T]]) -> OutputData:
+            data_list: list[OutputData[T]] = await asyncio.gather(
+                *[o._data for o in outputs.values()]
+            )
 
-        # is_secret, which returns True if any of the input values are secret, and
-        # false if none of them are secret.
-        async def is_secret(outputs: list):
-            is_secret_futures = [o._is_secret for o in outputs]
-            each_is_secret = await asyncio.gather(*is_secret_futures)
-            return any(each_is_secret)
+            resources: Set["Resource"] = reduce(
+                lambda acc, d: acc.union(d.resources), data_list, set()
+            )
+            secret = any(data.secret for data in data_list)
+            known = all(not isinstance(data.value, Unknown) for data in data_list)
+            value = (
+                {k: v.value for (k, v) in zip(outputs.keys(), data_list)}
+                if known
+                else UNKNOWN
+            )
 
-        async def get_resources(outputs: list):
-            resources_futures = [o._resources for o in outputs]
-            resources_agg = await asyncio.gather(*resources_futures)
-            # Merge the list of resource dependencies across all inputs.
-            return reduce(lambda acc, r: acc.union(r), resources_agg, set())
+            return OutputData(resources, value, secret)
 
-        # gather_futures, which aggregates the list or dict of futures in each input to a future of a list or dict.
-        async def gather_futures(outputs: Union[dict, list]):
-            if isinstance(outputs, list):
-                value_futures_list = [
-                    asyncio.ensure_future(o.future(with_unknowns=True)) for o in outputs
-                ]
-                return await asyncio.gather(*value_futures_list)
-            value_futures_dict = {
-                k: asyncio.ensure_future(v.future(with_unknowns=True))
-                for k, v in outputs.items()
-            }
-            return await _gather_from_dict(value_futures_dict)
+        async def gather_list(outputs: list[Output[T]]) -> OutputData:
+            data_list: list[OutputData[T]] = await asyncio.gather(
+                *[o._data for o in outputs]
+            )
 
-        from_input = cast(
-            Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input
-        )
+            resources: Set["Resource"] = reduce(
+                lambda acc, d: acc.union(d.resources), data_list, set()
+            )
+            secret = any(data.secret for data in data_list)
+            known = all(not isinstance(data.value, Unknown) for data in data_list)
+            value = [data.value for data in data_list] if known else UNKNOWN
+
+            return OutputData(resources, value, secret)
 
         if args and kwargs:
             raise ValueError(
                 "Output.all() was supplied a mix of named and unnamed inputs"
             )
-        # First, map all inputs to outputs using `from_input`.
-        all_outputs: Union[list, dict] = (
-            {k: from_input(v) for k, v in kwargs.items()}
-            if kwargs
-            else [from_input(x) for x in args]
-        )
 
-        # Aggregate the list or dict of futures into a future of list or dict.
-        value_futures = asyncio.ensure_future(gather_futures(all_outputs))
-
-        # Aggregate whether or not this output is known.
-        output_values = (
-            [all_outputs[k] for k in all_outputs]
-            if isinstance(all_outputs, dict)
-            else all_outputs
-        )
-        resources_futures = asyncio.ensure_future(get_resources(output_values))
-        known_futures = asyncio.ensure_future(is_known(output_values))
-        secret_futures = asyncio.ensure_future(is_secret(output_values))
-        return Output(resources_futures, value_futures, known_futures, secret_futures)
+        # First, map all inputs to outputs using `from_input`, then aggregate the list or dict of futures into
+        # a future of list or dict.
+        if kwargs:
+            return Output(
+                gather_dict({k: Output.from_input(v) for k, v in kwargs.items()})
+            )
+        return Output(gather_list([Output.from_input(x) for x in args]))
 
     @staticmethod
     def concat(*args: Input[str]) -> "Output[str]":
@@ -515,7 +507,7 @@ class Output(Generic[T_co]):
         :rtype: Output[str]
         """
 
-        transformed_items: List[Input[Any]] = [Output.from_input(v) for v in args]
+        transformed_items: List[Output[str]] = [Output.from_input(v) for v in args]
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
         return Output.all(*transformed_items).apply("".join)  # type: ignore
 
@@ -580,105 +572,64 @@ class Output(Generic[T_co]):
         if cls is None:
             cls = json.JSONEncoder
 
-        output = Output.from_input(obj)
-        result_resources: asyncio.Future[Set["Resource"]] = asyncio.Future()
-        result_is_known: asyncio.Future[bool] = asyncio.Future()
-        result_is_secret: asyncio.Future[bool] = asyncio.Future()
+        async def run(output: "Output[Any]") -> OutputData[str]:
+            seen_unknown = False
+            seen_secret = False
+            seen_resources = set["Resource"]()
 
-        async def run() -> str:
-            resources: Set["Resource"] = set()
-            try:
-                seen_unknown = False
-                seen_secret = False
-                seen_resources = set()
-
-                class OutputEncoder(cls):  # type: ignore
-                    def default(self, o):
-                        if isinstance(o, Output):
-                            nonlocal seen_unknown
-                            nonlocal seen_secret
-                            nonlocal seen_resources
-
-                            # We need to synchronously wait for o to complete
-                            async def wait_output() -> Tuple[object, bool, bool, set]:
-                                return (
-                                    await o._future,
-                                    await o._is_known,
-                                    await o._is_secret,
-                                    await o._resources,
-                                )
-
-                            (result, known, secret, resources) = _sync_await(
-                                asyncio.ensure_future(wait_output())
-                            )
-                            # Update the secret flag and set of seen resources
-                            seen_secret = seen_secret or secret
-                            seen_resources.update(resources)
-                            if known:
-                                return result
+            class OutputEncoder(cls):  # type: ignore
+                def default(self, o) -> Optional[Any]:
+                    if isinstance(o, Output):
+                        nonlocal seen_unknown
+                        nonlocal seen_secret
+                        nonlocal seen_resources
+                        # We need to synchronously wait for o to complete
+                        data = _sync_await(o._data)
+                        # Update the secret flag and set of seen resources
+                        seen_secret = seen_secret or data.secret
+                        seen_resources.update(resources)
+                        if isinstance(data.value, Unknown):
                             # The value wasn't known set the local seenUnknown variable and just return None
                             # so the serialization doesn't raise an exception at this point
                             seen_unknown = True
                             return None
+                        return data.value
 
-                        return super().default(o)
+                    return super().default(o)
 
-                # Await the output's details.
-                resources = await output._resources
-                is_known = await output._is_known
-                is_secret = await output._is_secret
-                value = await output._future
+            # Await the output's details.
+            data = await output._data
 
-                if not is_known:
-                    result_resources.set_result(resources)
-                    result_is_known.set_result(is_known)
-                    result_is_secret.set_result(is_secret)
-                    return cast(str, None)
+            if isinstance(data.value, Unknown):
+                return OutputData(data.resources, UNKNOWN, data.secret)
 
-                # Try and dump using our special OutputEncoder to handle nested outputs
-                result = json.dumps(
-                    value,
-                    skipkeys=skipkeys,
-                    ensure_ascii=ensure_ascii,
-                    check_circular=check_circular,
-                    allow_nan=allow_nan,
-                    cls=OutputEncoder,
-                    indent=indent,
-                    separators=separators,
-                    default=default,
-                    sort_keys=sort_keys,
-                    **kw,
-                )
+            # Try and dump using our special OutputEncoder to handle nested outputs
+            result = json.dumps(
+                data.value,
+                skipkeys=skipkeys,
+                ensure_ascii=ensure_ascii,
+                check_circular=check_circular,
+                allow_nan=allow_nan,
+                cls=OutputEncoder,
+                indent=indent,
+                separators=separators,
+                default=default,
+                sort_keys=sort_keys,
+                **kw,
+            )
 
-                # Update the final resources and secret flag based on what we saw while dumping
-                is_secret = is_secret or seen_secret
-                resources = set(resources)
-                resources.update(seen_resources)
+            # Update the final resources and secret flag based on what we saw while dumping
+            is_secret = data.secret or seen_secret
+            resources = set(data.resources)
+            resources.update(seen_resources)
 
-                # If we saw an unknown during dumping then throw away the result and return not known
-                if seen_unknown:
-                    result_resources.set_result(resources)
-                    result_is_known.set_result(False)
-                    result_is_secret.set_result(is_secret)
-                    return cast(str, None)
+            # If we saw an unknown during dumping then throw away the result and return not known
+            if seen_unknown:
+                return OutputData(resources, UNKNOWN, is_secret)
 
-                result_resources.set_result(resources)
-                result_is_known.set_result(True)
-                result_is_secret.set_result(is_secret)
-                return result
+            return OutputData(resources, result, is_secret)
 
-            finally:
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_resources.set_result(resources)
-
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_is_known.set_result(False)
-
-                with contextlib.suppress(asyncio.InvalidStateError):
-                    result_is_secret.set_result(False)
-
-        run_fut = asyncio.ensure_future(run())
-        return Output(result_resources, run_fut, result_is_known, result_is_secret)
+        return Output(run(Output.from_input(obj)))
 
     @staticmethod
     def json_loads(
@@ -725,21 +676,6 @@ See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi."""
 
 
-class Unknown:
-    """
-    Unknown represents a value that is unknown.
-    """
-
-    def __init__(self):
-        pass
-
-
-UNKNOWN = Unknown()
-"""
-UNKNOWN is the singleton unknown value.
-"""
-
-
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)
 
@@ -753,16 +689,13 @@ def _is_prompt(value: Input[T]) -> bool:
 def _map_output(o: Output[T], transform: Callable[[T], U]) -> Output[U]:
     """Transforms an output's result value with a pure function."""
 
-    async def fut() -> U:
-        value = await o.future()
-        return transform(value) if value is not None else cast(U, UNKNOWN)
+    async def fut() -> OutputData[U]:
+        data = await o._data
+        if isinstance(data.value, Unknown):
+            return OutputData(data.resources, UNKNOWN, data.secret)
+        return OutputData(data.resources, transform(data.value), data.secret)
 
-    return Output(
-        resources=o.resources(),
-        future=asyncio.ensure_future(fut()),
-        is_known=o.is_known(),
-        is_secret=o.is_secret(),
-    )
+    return Output(fut())
 
 
 def _map2_output(
@@ -773,26 +706,19 @@ def _map2_output(
     Similar to `all` but does not deeply await.
     """
 
-    async def fut() -> U:
-        v1 = await o1.future()
-        v2 = await o2.future()
-        return (
-            transform(v1, v2)
-            if (v1 is not None) and (v2 is not None)
-            else cast(U, UNKNOWN)
-        )
+    async def fut() -> OutputData[U]:
+        data1 = await o1._data
+        data2 = await o2._data
 
-    async def res() -> Set["Resource"]:
-        r1 = await o1.resources()
-        r2 = await o2.resources()
-        return r1 | r2
+        resources = data1.resources | data2.resources
+        secret = data1.secret or data2.secret
 
-    return Output(
-        resources=asyncio.ensure_future(res()),
-        future=asyncio.ensure_future(fut()),
-        is_known=o1.is_known() and o2.is_known(),
-        is_secret=o2.is_secret() or o2.is_secret(),
-    )
+        if isinstance(data1.value, Unknown) or isinstance(data2.value, Unknown):
+            return OutputData(resources, UNKNOWN, secret)
+        result = transform(data1.value, data2.value)
+        return OutputData(resources, result, secret)
+
+    return Output(fut())
 
 
 def _map3_output(
@@ -803,28 +729,24 @@ def _map3_output(
     Similar to `all` but does not deeply await.
     """
 
-    async def fut() -> U:
-        v1 = await o1.future()
-        v2 = await o2.future()
-        v3 = await o3.future()
-        return (
-            transform(v1, v2, v3)
-            if (v1 is not None) and (v2 is not None) and (v3 is not None)
-            else cast(U, UNKNOWN)
-        )
+    async def fut() -> OutputData[U]:
+        data1 = await o1._data
+        data2 = await o2._data
+        data3 = await o3._data
 
-    async def res() -> Set["Resource"]:
-        r1 = await o1.resources()
-        r2 = await o2.resources()
-        r3 = await o3.resources()
-        return r1 | r2 | r3
+        resources = data1.resources | data2.resources | data3.resources
+        secret = data1.secret or data2.secret or data3.secret
 
-    return Output(
-        resources=asyncio.ensure_future(res()),
-        future=asyncio.ensure_future(fut()),
-        is_known=o1.is_known() and o2.is_known() and o3.is_known(),
-        is_secret=o2.is_secret() or o2.is_secret() or o3.is_secret(),
-    )
+        if (
+            isinstance(data1.value, Unknown)
+            or isinstance(data2.value, Unknown)
+            or isinstance(data3.value, Unknown)
+        ):
+            return OutputData(resources, UNKNOWN, secret)
+        result = transform(data1.value, data2.value, data3.value)
+        return OutputData(resources, result, secret)
+
+    return Output(fut())
 
 
 def _map_input(i: Input[T], transform: Callable[[T], U]) -> Input[U]:
@@ -873,8 +795,3 @@ def _map2_input(
     return _map2_output(
         Output._from_input_shallow(i1), Output._from_input_shallow(i2), transform
     )
-
-
-async def _gather_from_dict(tasks: dict) -> dict:
-    results = await asyncio.gather(*tasks.values())
-    return dict(zip(tasks.keys(), results))

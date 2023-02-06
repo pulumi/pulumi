@@ -366,15 +366,14 @@ async def serialize_property(
 
     if known_types.is_output(value):
         output = cast("Output", value)
-        value_resources: Set["Resource"] = await output.resources()
+        data = await output._data
+        value_resources: Set["Resource"] = data.resources
         deps.extend(value_resources)
 
         # When serializing an Output, we will either serialize it as its resolved value or the
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await output._is_known
-        is_secret = await output._is_secret
         promise_deps: List["Resource"] = []
         value = await serialize_property(
             output.future(),
@@ -399,18 +398,18 @@ async def serialize_property(
 
             output_value: Dict[str, Any] = {_special_sig_key: _special_output_value_sig}
 
-            if is_known:
+            if not known_types.is_unknown(data.value):
                 output_value["value"] = value
-            if is_secret:
-                output_value["secret"] = is_secret
+            if data.secret:
+                output_value["secret"] = data.secret
             if dependencies:
                 output_value["dependencies"] = sorted(dependencies)
 
             return output_value
 
-        if not is_known:
+        if known_types.is_unknown(data.value):
             return UNKNOWN
-        if is_secret and await settings.monitor_supports_secrets():
+        if data.secret and await settings.monitor_supports_secrets():
             # Serializing an output with a secret value requires the use of a magical signature key,
             # which the engine detects.
             return {_special_sig_key: _special_secret_sig, "value": value}
@@ -606,20 +605,16 @@ def deserialize_resource(
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
     is_known = "value" in ref_struct
-    is_known_future: "asyncio.Future" = asyncio.Future()
-    is_known_future.set_result(is_known)
 
-    value = None
+    from .. import UNKNOWN as UnknownValue  # pylint: disable=import-outside-toplevel
+
+    value = UnknownValue
     if is_known:
         value = deserialize_property(ref_struct["value"])
-    value_future: "asyncio.Future" = asyncio.Future()
-    value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
         is_secret = deserialize_property(ref_struct["secret"]) is True
-    is_secret_future: "asyncio.Future" = asyncio.Future()
-    is_secret_future.set_result(is_secret)
 
     resources: Set["Resource"] = set()
     if "dependencies" in ref_struct:
@@ -631,9 +626,12 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
         for urn in dependencies:
             resources.add(DependencyResource(urn))
 
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from ..output import Output, OutputData  # pylint: disable=import-outside-toplevel
 
-    return Output(resources, value_future, is_known_future, is_secret_future)
+    data: OutputData[Any] = OutputData(resources, value, is_secret)
+    data_future: asyncio.Future[Any] = asyncio.Future()
+    data_future.set_result(data)
+    return Output(data_future)
 
 
 def is_rpc_secret(value: Any) -> bool:
@@ -675,10 +673,12 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
     """
-    from ..output import Unknown  # pylint: disable=import-outside-toplevel
+    from ..output import (  # pylint: disable=import-outside-toplevel
+        UNKNOWN as UnknownValue,
+    )
 
     if value == UNKNOWN:
-        return Unknown() if settings.is_dry_run() or keep_unknowns else None
+        return UnknownValue if settings.is_dry_run() or keep_unknowns else None
 
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
@@ -725,7 +725,10 @@ result in the exception being re-thrown.
 
 
 def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]:
-    from .. import Output  # pylint: disable=import-outside-toplevel
+    from ..output import (  # pylint: disable=import-outside-toplevel
+        UNKNOWN as UnknownValue,
+    )
+    from ..output import Output, OutputData  # pylint: disable=import-outside-toplevel
 
     resolvers: Dict[str, Resolver] = {}
 
@@ -734,17 +737,11 @@ def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]
             # these properties are handled specially elsewhere.
             continue
 
-        resolve_value: "asyncio.Future" = asyncio.Future()
-        resolve_is_known: "asyncio.Future" = asyncio.Future()
-        resolve_is_secret: "asyncio.Future" = asyncio.Future()
-        resolve_deps: "asyncio.Future" = asyncio.Future()
+        resolve_data = asyncio.Future[OutputData]()
 
         def do_resolve(
             r: "Resource",
-            value_fut: "asyncio.Future",
-            known_fut: "asyncio.Future[bool]",
-            secret_fut: "asyncio.Future[bool]",
-            deps_fut: "asyncio.Future[Set[Resource]]",
+            data_fut: asyncio.Future[OutputData],
             value: Any,
             is_known: bool,
             is_secret: bool,
@@ -754,33 +751,23 @@ def transfer_properties(res: "Resource", props: "Inputs") -> Dict[str, Resolver]
             # Create a union of deps and the resource.
             deps_union = set(deps) if deps else set()
             deps_union.add(r)
-            deps_fut.set_result(deps_union)
 
             # Was an exception provided? If so, this is an abnormal (exceptional) resolution. Resolve the futures
             # using set_exception so that any attempts to wait for their resolution will also fail.
             if failed is not None:
-                value_fut.set_exception(failed)
-                known_fut.set_exception(failed)
-                secret_fut.set_exception(failed)
+                data_fut.set_exception(failed)
             else:
-                value_fut.set_result(value)
-                known_fut.set_result(is_known)
-                secret_fut.set_result(is_secret)
+                data_fut.set_result(
+                    OutputData(
+                        deps_union, value if is_known else UnknownValue, is_secret
+                    )
+                )
 
         # Important to note here is that the resolver's future is assigned to the resource object using the
         # name before translation. When properties are returned from the engine, we must first translate the name
         # from the Pulumi name to the Python name and then use *that* name to index into the resolvers table.
-        resolvers[name] = functools.partial(
-            do_resolve,
-            res,
-            resolve_value,
-            resolve_is_known,
-            resolve_is_secret,
-            resolve_deps,
-        )
-        res.__dict__[name] = Output(
-            resolve_deps, resolve_value, resolve_is_known, resolve_is_secret
-        )
+        resolvers[name] = functools.partial(do_resolve, res, resolve_data)
+        res.__dict__[name] = Output(resolve_data)
 
     return resolvers
 

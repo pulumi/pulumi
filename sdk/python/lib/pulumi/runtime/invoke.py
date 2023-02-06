@@ -159,17 +159,13 @@ def call(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    # Setup the futures for the output.
-    resolve_value: "asyncio.Future" = asyncio.Future()
-    resolve_is_known: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_is_secret: "asyncio.Future[bool]" = asyncio.Future()
-    resolve_deps: "asyncio.Future[Set[Resource]]" = asyncio.Future()
+    from ..output import (  # pylint: disable=import-outside-toplevel
+        UNKNOWN,
+        Output,
+        OutputData,
+    )
 
-    from .. import Output  # pylint: disable=import-outside-toplevel
-
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
-
-    async def do_call() -> None:
+    async def do_call() -> "OutputData[Any]":
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
             provider_ref, version, plugin_download_url = None, "", ""
@@ -194,7 +190,7 @@ def call(
 
             property_dependencies = {}
             for key, property_deps in property_dependencies_resources.items():
-                urns = set()
+                urns: set[str] = set()
                 for dep in property_deps:
                     urn = await dep.urn.future()
                     if urn is not None:
@@ -221,7 +217,8 @@ def call(
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
             if resp is None:
-                return
+                # Assuming that if call returned no response this is unknown
+                return OutputData(set(), UNKNOWN, False)
 
             if resp.failures:
                 raise Exception(
@@ -230,8 +227,7 @@ def call(
 
             log.debug(f"Call successful: tok={tok}")
 
-            value = None
-            is_known = True
+            value = UNKNOWN
             is_secret = False
             deps: Set["Resource"] = set()
             ret_obj = getattr(resp, "return")
@@ -267,21 +263,18 @@ def call(
                         else deserialized
                     )
 
-            resolve_value.set_result(value)
-            resolve_is_known.set_result(is_known)
-            resolve_is_secret.set_result(is_secret)
-            resolve_deps.set_result(deps)
+            return OutputData(deps, value, is_secret)
 
-        except Exception as exn:
+        except Exception:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
             )
-            resolve_value.set_exception(exn)
-            resolve_is_known.set_exception(exn)
-            resolve_is_secret.set_exception(exn)
-            resolve_deps.set_result(set())
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("call", do_call)())
+    async def do():
+        result, exn = await RPC_MANAGER.do_rpc("call", do_call)()
+        if exn:
+            raise exn
+        return result
 
-    return out
+    return Output(do())

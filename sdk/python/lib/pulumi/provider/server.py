@@ -152,14 +152,15 @@ class ProviderServicer(ResourceProviderServicer):
 
         # Otherwise, wrap it as an output so we can handle secrets
         # and/or track dependencies.
-        # Note: If the value is or contains an unknown value, the Output will mark its value as
-        # unknown automatically, so we just pass true for is_known here.
-        return pulumi.Output(
+        data: pulumi.output.OutputData[Any] = pulumi.output.OutputData(
             resources=set(DependencyResource(urn) for urn in deps),
-            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-            is_known=_as_future(True),
-            is_secret=_as_future(is_secret),
+            value=rpc.unwrap_rpc_secret(the_input),
+            secret=is_secret,
         )
+
+        data_future: asyncio.Future[pulumi.output.OutputData] = asyncio.Future()
+        data_future.set_result(data)
+        return pulumi.Output(data_future)
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
@@ -385,12 +386,6 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
 
 
 T = TypeVar("T")  # pylint: disable=invalid-name
-
-
-def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: "asyncio.Future[T]" = asyncio.Future()
-    fut.set_result(value)
-    return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:

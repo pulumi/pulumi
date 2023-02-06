@@ -43,7 +43,7 @@ from .runtime.resource import (
     convert_providers,
 )
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, T, Output
+from .output import _is_prompt, _map_input, _map2_input, T, Output, OutputData
 from . import urn as urn_util
 from . import log
 
@@ -1115,13 +1115,9 @@ class DependencyResource(CustomResource):
     def __init__(self, urn: str) -> None:
         super().__init__(t="", name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_future: asyncio.Future[OutputData] = asyncio.Future()
+        urn_future.set_result(OutputData({self}, urn, False))
+        self.__dict__["urn"] = Output(urn_future)
 
 
 class DependencyProviderResource(ProviderResource):
@@ -1140,21 +1136,13 @@ class DependencyProviderResource(ProviderResource):
 
         super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(ref_urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_future: asyncio.Future[OutputData] = asyncio.Future()
+        urn_future.set_result(OutputData({self}, ref_urn, False))
+        self.__dict__["urn"] = Output(urn_future)
 
-        id_future: asyncio.Future[str] = asyncio.Future()
-        id_known: asyncio.Future[bool] = asyncio.Future()
-        id_secret: asyncio.Future[bool] = asyncio.Future()
-        id_future.set_result(ref_id)
-        id_known.set_result(True)
-        id_secret.set_result(False)
-        self.__dict__["id"] = Output({self}, id_future, id_known, id_secret)
+        id_future: asyncio.Future[OutputData] = asyncio.Future()
+        id_future.set_result(OutputData({self}, ref_id, False))
+        self.__dict__["id"] = Output(id_future)
 
 
 def export(name: str, value: Any):

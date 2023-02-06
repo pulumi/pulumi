@@ -15,7 +15,7 @@ from asyncio import ensure_future
 from typing import Optional, Any, List, Callable
 from copy import deepcopy
 
-from .output import Output, Input
+from .output import Output, Input, OutputData, _map2_output
 from .resource import CustomResource, ResourceOptions
 
 
@@ -73,10 +73,16 @@ class StackReference(CustomResource):
 
         :param Input[str] name: The name of the stack output to fetch.
         """
-        value: Output[Any] = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1].get(l[0]))  # type: ignore
-        is_secret = ensure_future(self.__is_secret_name(name))
 
-        return Output(value.resources(), value.future(), value.is_known(), is_secret)
+        async def get_data() -> OutputData:
+            value = _map2_output(
+                Output.from_input(name), self.outputs, lambda k, v: v.get(k)
+            )
+            data = await value._data
+            is_secret = await self.__is_secret_name(name)
+            return OutputData(data.resources, data.value, is_secret)
+
+        return Output(get_data())
 
     def require_output(self, name: Input[str]) -> Output[Any]:
         """
@@ -86,10 +92,15 @@ class StackReference(CustomResource):
         :param Input[str] name: The name of the stack output to fetch.
         """
 
-        value = Output.all(Output.from_input(name), self.outputs).apply(lambda l: l[1][l[0]])  # type: ignore
-        is_secret = ensure_future(self.__is_secret_name(name))
+        async def get_data() -> OutputData:
+            value = _map2_output(
+                Output.from_input(name), self.outputs, lambda k, v: v[k]
+            )
+            data = await value._data
+            is_secret = await self.__is_secret_name(name)
+            return OutputData(data.resources, data.value, is_secret)
 
-        return Output(value.resources(), value.future(), value.is_known(), is_secret)
+        return Output(get_data())
 
     def translate_output_property(self, prop: str) -> str:
         """
