@@ -15,6 +15,8 @@
 package resource
 
 import (
+	"time"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -46,6 +48,8 @@ type State struct {
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
 	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
+	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
 }
 
 func (s *State) GetAliasURNs() []URN {
@@ -66,7 +70,7 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, retainOnDelete bool, deletedWith URN,
+	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
 ) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
@@ -93,6 +97,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		ImportID:                importID,
 		RetainOnDelete:          retainOnDelete,
 		DeletedWith:             deletedWith,
+		Created:                 created,
+		Modified:                modified,
 	}
 
 	if timeouts != nil {

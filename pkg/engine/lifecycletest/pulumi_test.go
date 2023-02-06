@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -4631,4 +4632,114 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
 	assert.False(t, snap.Resources[2].Delete)
+}
+
+func TestTimestampTracking(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", news, resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(_ resource.URN, _ resource.ID, _, _ resource.PropertyMap, _ float64,
+					_ []string, _ bool,
+				) (resource.PropertyMap, resource.Status, error) {
+					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+						"foo": "bar",
+					})
+					return outputs, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(
+			resource.RootStackType,
+			info.Project+"-"+info.Stack,
+			false,
+			deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource(
+			"pkgA:m:typA",
+			"resA",
+			true,
+			deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	// Run an update to create the resource -- created and updated should be set and equal.
+	p.Steps = []TestStep{{Op: Update, SkipPreview: true}}
+	snap := p.Run(t, nil)
+	require.NotEmpty(t, snap.Resources)
+
+	creationTimes := make(map[resource.URN]time.Time, len(snap.Resources))
+	for _, resource := range snap.Resources {
+		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		tz, _ := resource.Created.Zone()
+		assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
+		assert.Equal(t, resource.Created, resource.Modified,
+			"created time != modified time: %v", resource.URN)
+
+		creationTimes[resource.URN] = *resource.Created
+	}
+
+	// Run a refresh -- created and updated should be unchanged.
+	p.Steps = []TestStep{{Op: Refresh, SkipPreview: true}}
+	snap = p.Run(t, snap)
+	require.NotEmpty(t, snap.Resources)
+	for _, resource := range snap.Resources {
+		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		assert.Equal(t, *resource.Created, creationTimes[resource.URN],
+			"created time changed: %v", resource.URN)
+		assert.Equal(t, resource.Created, resource.Modified,
+			"modified time changed: %v", resource.URN)
+	}
+
+	// Run another update -- updated should be greater than created for resA,
+	// everything else should be untouched.
+	p.Steps = []TestStep{{Op: Update, SkipPreview: true}}
+	snap = p.Run(t, snap)
+	require.NotEmpty(t, snap.Resources)
+	for _, resource := range snap.Resources {
+		assert.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
+		assert.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
+		assert.Equal(t, creationTimes[resource.URN], *resource.Created,
+			"created time changed: %v", resource.URN)
+
+		switch resource.Type {
+		case "pkgA:m:typA":
+			tz, _ := resource.Modified.Zone()
+			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
+			assert.NotEqual(t, creationTimes[resource.URN], *resource.Modified,
+				"modified time did not update: %v", resource.URN)
+			assert.Greater(t, *resource.Modified, *resource.Created,
+				"modified time is too old: %v", resource.URN)
+		case "pulumi:providers:pkgA", "pulumi:pulumi:Stack":
+			tz, _ := resource.Modified.Zone()
+			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
+			assert.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
+			assert.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
+		default:
+			require.FailNow(t, "unrecognized resource type", resource.Type)
+		}
+	}
 }
