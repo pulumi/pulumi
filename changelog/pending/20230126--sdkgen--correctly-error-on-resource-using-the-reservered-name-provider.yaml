@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen
-  description: Correctly error on resource using the reserved name "provider".
