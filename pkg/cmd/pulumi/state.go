@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -51,6 +52,18 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	cmd.AddCommand(newStateUnprotectCommand())
 	cmd.AddCommand(newStateRenameCommand())
 	return cmd
+}
+
+func hasResourcesPendingDeletion(resources []*resource.State) bool {
+	for _, resource := range resources {
+		if resource == nil {
+			continue
+		}
+		if resource.Delete {
+			return true
+		}
+	}
+	return false
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
@@ -95,6 +108,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 		options = append(options, message)
 		optionMap[message] = ambiguousResource
+	}
+
+	// If candidateResources has pending deletes, suggest running `pulumi refresh` to clear them.
+	if hasResourcesPendingDeletion(candidateResources) {
+		cmdutil.Diag().Infof(diag.RawMessage("",
+			"Tip: Use `pulumi refresh` to clear pending deletions."))
 	}
 
 	var option string
