@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -182,28 +183,32 @@ func createSecretsManager(
 		}
 	}
 
-	configFile, err := getProjectStackPath(stack)
+	project, _, err := readProject()
+	if err != nil {
+		return err
+	}
+	ps, err := loadProjectStack(project, stack)
 	if err != nil {
 		return err
 	}
 
+	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 	if isDefaultSecretsProvider {
-		_, err = stack.DefaultSecretManager(configFile)
-		return err
-	}
-
-	if secretsProvider == passphrase.Type {
-		if _, phraseErr := passphrase.NewPromptingPassphraseSecretsManager(stack.Ref().Name(),
-			configFile, rotateSecretsProvider); phraseErr != nil {
-			return phraseErr
-		}
+		_, err = stack.DefaultSecretManager(ps)
+	} else if secretsProvider == passphrase.Type {
+		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
 	} else {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
 		// uses a URL schema to identify the provider
-		if _, secretsErr := cloud.NewCloudSecretsManager(stack.Ref().Name(),
-			configFile, secretsProvider, rotateSecretsProvider); secretsErr != nil {
-			return secretsErr
-		}
+		_, err = cloud.NewCloudSecretsManager(ps, secretsProvider, rotateSecretsProvider)
+	}
+	if err != nil {
+		return err
+	}
+
+	// Handle if the configuration changed any of EncryptedKey, etc
+	if err := saveProjectStackAfterSecretManger(stack, oldConfig, ps); err != nil {
+		return err
 	}
 
 	return nil
