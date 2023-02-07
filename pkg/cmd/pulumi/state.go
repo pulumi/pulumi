@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,9 +53,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 	return cmd
 }
 
-// locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
-// given URN is ambiguous and this is an interactive terminal, it prompts the user to select one of the resources in
-// the list of resources with identical URNs to operate upon.
+// locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot.
 func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
@@ -65,48 +63,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 		return candidateResources[0], nil
 	}
 
-	// If there exist multiple resources that have the requested URN, prompt the user to select one if we're running
-	// interactively. If we're not, early exit.
-	if !cmdutil.Interactive() {
-		errorMsg := "Resource URN ambiguously referred to multiple resources. Did you mean:\n"
-		for _, res := range candidateResources {
-			errorMsg += fmt.Sprintf("  %s\n", res.ID)
-		}
-		return nil, errors.New(errorMsg)
+	// Error: There exist multiple resources that have the requested URN.
+	errorMsg := "Resource URN ambiguously referred to multiple resources:\n"
+	for _, res := range candidateResources {
+		errorMsg += fmt.Sprintf("  %s\n", res.ID)
 	}
-
-	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
-	surveycore.DisableColor = true
-	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
-	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
-
-	options := make([]string, 0, len(candidateResources))
-	optionMap := make(map[string]*resource.State)
-	for _, ambiguousResource := range candidateResources {
-		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
-		message := fmt.Sprintf("%q", ambiguousResource.ID)
-		if ambiguousResource.Protect {
-			message += " (Protected)"
-		}
-
-		if ambiguousResource.Delete {
-			message += " (Pending Deletion)"
-		}
-
-		options = append(options, message)
-		optionMap[message] = ambiguousResource
-	}
-
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  prompt,
-		Options:  options,
-		PageSize: optimalPageSize(optimalPageSizeOpts{nopts: len(options)}),
-	}, &option, surveyIcons(opts.Color)); err != nil {
-		return nil, errors.New("no resource selected")
-	}
-
-	return optionMap[option], nil
+	return nil, errors.New(errorMsg)
 }
 
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
@@ -116,7 +78,10 @@ func runStateEdit(
 	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
-			return err
+			return fmt.Errorf("Unable to perform state edit.\n\n"+
+				"You can edit your stack's state using 'pulumi stack export' to export your stack to a file and editing it."+
+				" Once this is complete, you can use 'pulumi stack import' to import the edited stack.\n\n"+
+				"Error: %w", err)
 		}
 
 		return operation(snap, res)
