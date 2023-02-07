@@ -194,7 +194,7 @@
       "compatibility": "tfbridge20",
       "devDependencies": {
         "@types/mocha": "latest",
-        "@types/node": "latest",
+        "@types/node": "ts4.3",
         "mocha": "latest",
         "ts-node": "latest"
       },

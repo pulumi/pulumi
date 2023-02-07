@@ -46,7 +46,7 @@
     },
     "nodejs": {
       "devDependencies": {
-        "@types/node": "latest"
+        "@types/node": "ts4.3"
       },
       "liftSingleValueMethodReturns": true
     },

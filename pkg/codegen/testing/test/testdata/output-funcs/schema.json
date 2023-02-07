@@ -642,7 +642,7 @@
       "optimizeNodeModuleLoading": ["lazy-load-functions", "lazy-load-resources", "use-type-only-enums-references"],
       "devDependencies": {
         "@types/mocha": "latest",
-        "@types/node": "latest",
+        "@types/node": "ts4.3",
         "mocha": "latest",
         "ts-node": "latest"
       },

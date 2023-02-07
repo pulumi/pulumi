@@ -2,8 +2,8 @@
     "name": "pulumi-resource-testcomponent",
     "main": "index.js",
     "devDependencies": {
-        "typescript": "^3.0.0",
-        "@types/node": "latest"
+        "typescript": "~3.8.0",
+        "@types/node": "ts3.9"
     },
     "peerDependencies": {
         "@pulumi/pulumi": "latest"

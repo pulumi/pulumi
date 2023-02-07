@@ -10,7 +10,7 @@
         "@pulumi/pulumi": "^3.12"
     },
     "devDependencies": {
-        "@types/node": "latest",
+        "@types/node": "ts3.7",
         "typescript": "^3.7.0"
     },
     "pulumi": {
