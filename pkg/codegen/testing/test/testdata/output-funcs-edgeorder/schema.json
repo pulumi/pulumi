@@ -4,7 +4,7 @@
   "language": {
     "nodejs": {
       "devDependencies": {
-        "@types/node": "latest",
+        "@types/node": "ts4.3",
         "ts-node": "latest"
       }
     },

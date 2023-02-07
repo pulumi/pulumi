@@ -10,7 +10,7 @@
     },
     "devDependencies": {
         "@types/mocha": "latest",
-        "@types/node": "latest",
+        "@types/node": "ts4.3",
         "mocha": "latest",
         "ts-node": "latest",
         "typescript": "^4.3.5"
