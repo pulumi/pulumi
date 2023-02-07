@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix handling of Output keys in dicts passed to Output.from_input.

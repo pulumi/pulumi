@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.54.0 (2023-02-06)
+
+
+### Features
+
+- [cli] Add `--shell` flag to `pulumi stack output` to print outputs as a shell script.
+  [#11956](https://github.com/pulumi/pulumi/pull/11956)
+
+- [cli] Add `--insecure` flag to `pulumi login` which disables https certificate checks
+  [#9159](https://github.com/pulumi/pulumi/pull/9159)
+
+- [programgen] Add a new `unsecret` intrinsic function to PCL.
+  [#12026](https://github.com/pulumi/pulumi/pull/12026)
+
+- [sdkgen/go] Go SDKs now use `errors.New` instead of `github.com/pkg/errors.New`.
+  [#12046](https://github.com/pulumi/pulumi/pull/12046)
+
+
+### Bug Fixes
+
+- [auto] Add support for cloning from Azure DevOps
+  [#12001](https://github.com/pulumi/pulumi/pull/12001)
+
+- [sdkgen] Correctly error on resource using the reserved name "provider".
+  [#11996](https://github.com/pulumi/pulumi/pull/11996)
+
+- [sdk/python] Fix handling of Output keys in dicts passed to Output.from_input.
+  [#11968](https://github.com/pulumi/pulumi/pull/11968)
+
+
+### Miscellaneous
+
+- [sdk/go] Delegate alias computation to the engine
+  [#12025](https://github.com/pulumi/pulumi/pull/12025)
+
+- [sdk/python] Delegate alias computation to the engine
+  [#12015](https://github.com/pulumi/pulumi/pull/12015)
+
 ## 3.53.1 (2023-01-25)
 
 

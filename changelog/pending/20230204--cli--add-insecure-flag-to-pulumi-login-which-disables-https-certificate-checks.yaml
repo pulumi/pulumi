@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `--insecure` flag to `pulumi login` which disables https certificate checks
