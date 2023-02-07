@@ -14,12 +14,11 @@
 import asyncio
 import os
 import traceback
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from typing import Any, Dict, List, NamedTuple, Optional, Set, TYPE_CHECKING
 import grpc
 
-from .. import log
-from .. import _types
+from .. import _types, log
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
@@ -28,7 +27,7 @@ from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
-    from .. import Resource, Inputs, Output
+    from .. import Inputs, Output, Resource
 
 
 class InvokeResult:
@@ -170,7 +169,7 @@ def call(
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
-    async def do_call():
+    async def do_call() -> None:
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
             provider_ref, version, plugin_download_url = None, "", ""
@@ -198,7 +197,8 @@ def call(
                 urns = set()
                 for dep in property_deps:
                     urn = await dep.urn.future()
-                    urns.add(urn)
+                    if urn is not None:
+                        urns.add(urn)
                 property_dependencies[
                     key
                 ] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
@@ -207,7 +207,7 @@ def call(
                 tok=tok,
                 args=inputs,
                 argDependencies=property_dependencies,
-                provider=provider_ref,
+                provider="" if provider_ref is None else provider_ref,
                 version=version,
                 pluginDownloadURL=plugin_download_url,
             )

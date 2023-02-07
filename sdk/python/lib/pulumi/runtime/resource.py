@@ -14,45 +14,36 @@
 import asyncio
 import os
 import traceback
-
 from typing import (
-    Optional,
+    TYPE_CHECKING,
     Any,
     Callable,
-    List,
-    NamedTuple,
     Dict,
+    Iterable,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
     Set,
     Tuple,
     Union,
-    TYPE_CHECKING,
-    cast,
-    Mapping,
-    Sequence,
-    Iterable,
 )
-from google.protobuf import struct_pb2
-import grpc
 
-from . import rpc, settings, known_types
-from .. import log
-from ..runtime.proto import provider_pb2, resource_pb2, alias_pb2
+import grpc
+from google.protobuf import struct_pb2
+
+from .. import _types, log
+from .. import urn as urn_util
+from ..output import Input, Output
+from ..runtime.proto import alias_pb2, resource_pb2
+from . import known_types, rpc, settings
+from .resource_cycle_breaker import declare_dependency
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
-from .resource_cycle_breaker import declare_dependency
-from ..output import Input, Output
-from .. import _types
-from .. import urn as urn_util
 
 if TYPE_CHECKING:
-    from .. import (
-        Resource,
-        ComponentResource,
-        CustomResource,
-        Inputs,
-        ProviderResource,
-        Alias,
-    )
+    from .. import Alias, CustomResource, Inputs, ProviderResource, Resource
     from ..resource import ResourceOptions
 
 
@@ -81,12 +72,12 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
-    provider_refs: Dict[str, Optional[str]]
+    provider_refs: Dict[str, str]
     """
     An optional dict of references to providers that should be used for this resource's CRUD operations.
     """
 
-    property_dependencies: Dict[str, List[Optional[str]]]
+    property_dependencies: Dict[str, List[str]]
     """
     A map from property name to the URNs of the resources the property depends on.
     """
@@ -214,7 +205,7 @@ async def prepare_resource(
 
     # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
     # resolved provider refs.
-    provider_refs: Dict[str, Optional[str]] = {}
+    provider_refs: Dict[str, str] = {}
     if (remote or not custom) and opts is not None:
         providers = convert_providers(opts.provider, opts.providers)
         for name, provider in providers.items():
@@ -226,7 +217,7 @@ async def prepare_resource(
             provider_refs[name] = ref
 
     dependencies: Set[str] = set(explicit_urn_dependencies)
-    property_dependencies: Dict[str, List[Optional[str]]] = {}
+    property_dependencies: Dict[str, List[str]] = {}
     for key, deps in property_dependencies_resources.items():
         urns = await _expand_dependencies(deps, from_resource=res)
         dependencies |= urns
@@ -729,7 +720,7 @@ def read_resource(
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn, None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -808,8 +799,15 @@ def register_resource(
     # passed to.  However, those futures won't actually resolve until the RPC returns
     resolvers = rpc.transfer_properties(res, props)
 
-    async def do_register():
+    async def do_register() -> None:
         try:
+            from ..resource import (  # pylint: disable=import-outside-toplevel
+                ResourceOptions,
+            )
+
+            nonlocal opts
+            opts = opts if opts is not None else ResourceOptions()
+
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
@@ -875,15 +873,15 @@ def register_resource(
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
-                parent=resolver.parent_urn,
+                parent=resolver.parent_urn or "",
                 custom=custom,
                 object=resolver.serialized_props,
-                protect=opts.protect,
-                provider=resolver.provider_ref,
+                protect=opts.protect or False,
+                provider=resolver.provider_ref or "",
                 providers=resolver.provider_refs,
                 dependencies=resolver.dependencies,
                 propertyDependencies=property_dependencies,
-                deleteBeforeReplace=opts.delete_before_replace,
+                deleteBeforeReplace=opts.delete_before_replace or False,
                 deleteBeforeReplaceDefined=opts.delete_before_replace is not None,
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
@@ -891,24 +889,26 @@ def register_resource(
                 acceptSecrets=True,
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
-                importId=opts.import_,
+                importId=opts.import_ or "",
                 customTimeouts=custom_timeouts,
                 aliases=full_aliases_specs,
                 aliasURNs=alias_urns,
                 supportsPartialValues=True,
                 remote=remote,
-                replaceOnChanges=replace_on_changes,
+                replaceOnChanges=replace_on_changes or [],
                 retainOnDelete=opts.retain_on_delete or False,
-                deletedWith=resolver.deleted_with_urn,
+                deletedWith=resolver.deleted_with_urn or "",
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
-            def do_rpc_call():
+            def do_rpc_call() -> (
+                Optional[Union[RegisterResponse, resource_pb2.RegisterResourceResponse]]
+            ):
                 if monitor is None:
                     # If no monitor is available, we'll need to fake up a response, for testing.
                     return RegisterResponse(
-                        mock_urn, None, resolver.serialized_props, None
+                        mock_urn or "", None, resolver.serialized_props, None
                     )
 
                 # If there is a monitor available, make the true RPC request to the engine.
@@ -957,18 +957,18 @@ def register_resource(
                 resolve_id(resp.id, is_known, False, None)
                 resolve_id_called = True
 
-            deps = {}
+            property_deps = {}
             rpc_deps = resp.propertyDependencies
             if rpc_deps:
                 for k, v in rpc_deps.items():
                     urns = list(v.urns)
-                    deps[k] = set(map(new_dependency, urns))
+                    property_deps[k] = set(map(new_dependency, urns))
 
             rpc.resolve_outputs(
                 res,
                 resolver.serialized_props,
                 resp.object,
-                deps,
+                property_deps,
                 resolvers,
                 transform_using_type_metadata,
             )
