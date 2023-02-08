@@ -86,8 +86,8 @@ def list_configurations(configuration_filters: Optional[Sequence[pulumi.InputTyp
 
 @_utilities.lift_output_func(list_configurations)
 def list_configurations_output(configuration_filters: Optional[pulumi.Input[Sequence[pulumi.InputType['ConfigurationFilters']]]] = None,
-                               customer_subscription_details: Optional[pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetails']]]] = None,
-                               skip_token: Optional[pulumi.Input[Optional[str]]] = None,
+                               customer_subscription_details: pulumi.Input[Optional[pulumi.InputType['CustomerSubscriptionDetails']]] = None,
+                               skip_token: pulumi.Input[Optional[str]] = None,
                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListConfigurationsResult]:
     """
     The list of configurations.

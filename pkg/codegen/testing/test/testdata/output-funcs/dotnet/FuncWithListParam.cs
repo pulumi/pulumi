@@ -47,15 +47,10 @@ namespace Pulumi.Mypkg
     public sealed class FuncWithListParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
-        private InputList<string>? _a;
-        public InputList<string> A
-        {
-            get => _a ?? (_a = new InputList<string>());
-            set => _a = value;
-        }
+        public Input<ImmutableArray<Input<string>>>? A { get; set; }
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public Input<string?>? B { get; set; }
 
         public FuncWithListParamInvokeArgs()
         {

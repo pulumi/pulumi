@@ -32,7 +32,7 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-            <span class="nx">sizes</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, TreeSize]]</span> = None<span class="p">,</span>
+            <span class="nx">sizes</span><span class="p">:</span> <span class="nx">Optional[Optional[Mapping[str, TreeSize]]]</span> = None<span class="p">,</span>
             <span class="nx">varieties</span><span class="p">:</span> <span class="nx">Optional[Sequence[RubberTreeVariety]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
@@ -235,7 +235,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_csharp" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Plant.<wbr>Tree.<wbr>V1.<wbr>Tree<wbr>Size&gt;?</span>
     </dt>
     <dd><p>The sizes of trees available</p>
 </dd></dl>
@@ -307,7 +307,7 @@ The Nursery resource accepts the following [input](/docs/intro/concepts/inputs-o
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#sizes_nodejs" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">{[key: string]: Tree<wbr>Size}</span>
+        <span class="property-type">{[key: string]: Tree<wbr>Size} | undefined</span>
     </dt>
     <dd><p>The sizes of trees available</p>
 </dd></dl>

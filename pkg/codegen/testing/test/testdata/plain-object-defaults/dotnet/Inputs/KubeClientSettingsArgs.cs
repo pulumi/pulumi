@@ -19,21 +19,21 @@ namespace Pulumi.Example.Inputs
         /// Maximum burst for throttle. Default value is 10.
         /// </summary>
         [Input("burst")]
-        public Input<int>? Burst { get; set; }
+        public Input<int?>? Burst { get; set; }
 
         /// <summary>
         /// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         /// </summary>
         [Input("qps")]
-        public Input<double>? Qps { get; set; }
+        public Input<double?>? Qps { get; set; }
 
         [Input("recTest")]
-        public Input<Inputs.KubeClientSettingsArgs>? RecTest { get; set; }
+        public Input<Inputs.KubeClientSettingsArgs?>? RecTest { get; set; }
 
         public KubeClientSettingsArgs()
         {
-            Burst = Utilities.GetEnvInt32("PULUMI_K8S_CLIENT_BURST");
-            Qps = Utilities.GetEnvDouble("PULUMI_K8S_CLIENT_QPS");
+            Burst = Utilities.GetEnv("PULUMI_K8S_CLIENT_BURST");
+            Qps = Utilities.GetEnv("PULUMI_K8S_CLIENT_QPS");
         }
         public static new KubeClientSettingsArgs Empty => new KubeClientSettingsArgs();
     }

@@ -9,9 +9,9 @@ import * as enums from "../types/enums";
 import * as utilities from "../utilities";
 
 export interface ContainerArgs {
-    brightness?: pulumi.Input<enums.ContainerBrightness>;
-    color?: pulumi.Input<enums.ContainerColor | string>;
-    material?: pulumi.Input<string>;
+    brightness?: pulumi.Input<enums.ContainerBrightness | undefined>;
+    color?: pulumi.Input<enums.ContainerColor | string | undefined>;
+    material?: pulumi.Input<string | undefined>;
     size: pulumi.Input<enums.ContainerSize>;
 }
 /**
@@ -20,6 +20,6 @@ export interface ContainerArgs {
 export function containerArgsProvideDefaults(val: ContainerArgs): ContainerArgs {
     return {
         ...val,
-        brightness: (val.brightness) ?? 1,
+        brightness: val.brightness === undefined ? 1 : pulumi.output(val.brightness).apply(x => x ?? 1),
     };
 }

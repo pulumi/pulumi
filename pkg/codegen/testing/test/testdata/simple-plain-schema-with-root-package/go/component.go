@@ -62,7 +62,7 @@ type ComponentArgs struct {
 	D   *int
 	E   string
 	F   *string
-	Foo FooPtrInput
+	Foo *FooArgs
 }
 
 func (ComponentArgs) ElementType() reflect.Type {

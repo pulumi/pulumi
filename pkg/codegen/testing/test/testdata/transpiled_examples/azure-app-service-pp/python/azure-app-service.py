@@ -32,10 +32,10 @@ blob_access_token = pulumi.Output.secret(pulumi.Output.all(sa.name, appservicegr
 appserviceplan = azure_native.web.AppServicePlan("appserviceplan",
     resource_group_name=appservicegroup.name,
     kind="App",
-    sku=azure_native.web.SkuDescriptionArgs(
-        name="B1",
-        tier="Basic",
-    ))
+    sku={
+        "name": "B1",
+        "tier": "Basic",
+    })
 blob = azure_native.storage.Blob("blob",
     resource_group_name=appservicegroup.name,
     account_name=sa.name,
@@ -57,14 +57,14 @@ sql_server = azure_native.sql.Server("sqlServer",
 db = azure_native.sql.Database("db",
     resource_group_name=appservicegroup.name,
     server_name=sql_server.name,
-    sku=azure_native.sql.SkuArgs(
-        name="S0",
-    ))
+    sku={
+        "name": "S0",
+    })
 app = azure_native.web.WebApp("app",
     resource_group_name=appservicegroup.name,
     server_farm_id=appserviceplan.id,
-    site_config=azure_native.web.SiteConfigArgs(
-        app_settings=[
+    site_config={
+        "appSettings": [
             azure_native.web.NameValuePairArgs(
                 name="WEBSITE_RUN_FROM_PACKAGE",
                 value=pulumi.Output.all(sa.name, container.name, blob.name, blob_access_token).apply(lambda saName, containerName, blobName, blob_access_token: f"https://{sa_name}.blob.core.windows.net/{container_name}/{blob_name}?{blob_access_token}"),
@@ -82,10 +82,10 @@ app = azure_native.web.WebApp("app",
                 value="~2",
             ),
         ],
-        connection_strings=[azure_native.web.ConnStringInfoArgs(
+        "connectionStrings": [azure_native.web.ConnStringInfoArgs(
             name="db",
             type=azure_native.web.ConnectionStringType.SQL_AZURE,
             connection_string=pulumi.Output.all(sql_server.name, db.name, sql_password.result).apply(lambda sqlServerName, dbName, result: f"Server= tcp:{sql_server_name}.database.windows.net;initial catalog={db_name};userID={sql_admin};password={result};Min Pool Size=0;Max Pool Size=30;Persist Security Info=true;"),
         )],
-    ))
+    })
 pulumi.export("endpoint", app.default_host_name)

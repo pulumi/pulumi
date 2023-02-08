@@ -59,8 +59,8 @@ def func_with_all_optional_inputs(a: Optional[str] = None,
 
 
 @_utilities.lift_output_func(func_with_all_optional_inputs)
-def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[str]]] = None,
-                                         b: Optional[pulumi.Input[Optional[str]]] = None,
+def func_with_all_optional_inputs_output(a: pulumi.Input[Optional[str]] = None,
+                                         b: pulumi.Input[Optional[str]] = None,
                                          opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
     """
     Check codegen of functions with all optional inputs.

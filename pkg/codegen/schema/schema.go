@@ -1205,9 +1205,7 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 	specs = make(map[string]PropertySpec, len(props))
 	for _, p := range props {
 		typ := p.Type
-		if t, optional := typ.(*OptionalType); optional {
-			typ = t.ElementType
-		} else {
+		if _, optional := typ.(*OptionalType); !optional {
 			required = append(required, p.Name)
 		}
 
@@ -1252,6 +1250,10 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 // require `Plain` annotations (hence the odd-looking `Plain: !plain` fields below).
 func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 	switch t := t.(type) {
+	case *OptionalType:
+		// Schema's can't actually contain optional types but if they we're optional we will have marked it as
+		// such elsewhere and can just drop these parts.
+		return pkg.marshalType(t.ElementType, plain)
 	case *InputType:
 		el := pkg.marshalType(t.ElementType, plain)
 		el.Plain = false

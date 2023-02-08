@@ -15,17 +15,11 @@ namespace Pulumi.Myedgeorder.Inputs
     /// </summary>
     public sealed class ConfigurationFiltersArgs : global::Pulumi.ResourceArgs
     {
-        [Input("filterableProperty")]
-        private InputList<Inputs.FilterablePropertyArgs>? _filterableProperty;
-
         /// <summary>
         /// Filters specific to product
         /// </summary>
-        public InputList<Inputs.FilterablePropertyArgs> FilterableProperty
-        {
-            get => _filterableProperty ?? (_filterableProperty = new InputList<Inputs.FilterablePropertyArgs>());
-            set => _filterableProperty = value;
-        }
+        [Input("filterableProperty")]
+        public Input<ImmutableArray<Input<Inputs.FilterablePropertyArgs>>>? FilterableProperty { get; set; }
 
         /// <summary>
         /// Product hierarchy information

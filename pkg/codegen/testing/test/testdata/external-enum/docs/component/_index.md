@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[_local.MyEnum]</span> = None<span class="p">,</span>
-              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[_accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
+              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[Optional[_local.MyEnum]]</span> = None<span class="p">,</span>
+              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[Optional[_accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_csharp" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">Pulumi.<wbr>Example.<wbr>Local.<wbr>My<wbr>Enum</a></span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Local.<wbr>My<wbr>Enum?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_csharp" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type">Pulumi.<wbr>Google<wbr>Native.<wbr>Accesscontextmanager/v1.<wbr>Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -248,7 +248,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_go" style="color: inherit; text-decoration: inherit;">Local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type">My<wbr>Enum</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -256,7 +256,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_go" style="color: inherit; text-decoration: inherit;">Remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_java" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type">Optional&lt;My<wbr>Enum&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_java" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type">Optional&lt;Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_nodejs" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">local<wbr>My<wbr>Enum</a></span>
+        <span class="property-type">local<wbr>My<wbr>Enum | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_nodejs" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type">pulumi<wbr>Google<wbr>Nativeaccesscontextmanagerv1Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -314,7 +314,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_enum_python" style="color: inherit; text-decoration: inherit;">local_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">My<wbr>Enum</a></span>
+        <span class="property-type">My<wbr>Enum]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remote_enum_python" style="color: inherit; text-decoration: inherit;">remote_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item</a></span>
+        <span class="property-type">Device<wbr>Policy<wbr>Allowed<wbr>Device<wbr>Management<wbr>Levels<wbr>Item]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -336,7 +336,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#localenum_yaml" style="color: inherit; text-decoration: inherit;">local<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#myenum">3.1415 | 1e-07</a></span>
+        <span class="property-type">3.1415 | 1e-07</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -344,7 +344,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#remoteenum_yaml" style="color: inherit; text-decoration: inherit;">remote<wbr>Enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#devicepolicyalloweddevicemanagementlevelsitem">&#34;MANAGEMENT_UNSPECIFIED&#34; | &#34;NONE&#34; | &#34;BASIC&#34; | &#34;COMPLETE&#34;</a></span>
+        <span class="property-type">&#34;MANAGEMENT_UNSPECIFIED&#34; | &#34;NONE&#34; | &#34;BASIC&#34; | &#34;COMPLETE&#34;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

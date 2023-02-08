@@ -25,7 +25,7 @@ class ComponentArgs:
                  baz_map: Optional[Mapping[str, pulumi.Input['FooArgs']]] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input['FooArgs']] = None):
+                 foo: pulumi.Input[Optional['FooArgs']] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -130,11 +130,11 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['FooArgs']]:
+    def foo(self) -> pulumi.Input[Optional['FooArgs']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['FooArgs']]):
+    def foo(self, value: pulumi.Input[Optional['FooArgs']]):
         pulumi.set(self, "foo", value)
 
 
@@ -152,7 +152,7 @@ class Component(pulumi.ComponentResource):
                  d: Optional[int] = None,
                  e: Optional[str] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
+                 foo: pulumi.Input[Optional[pulumi.InputType['FooArgs']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -191,7 +191,7 @@ class Component(pulumi.ComponentResource):
                  d: Optional[int] = None,
                  e: Optional[str] = None,
                  f: Optional[str] = None,
-                 foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
+                 foo: pulumi.Input[Optional[pulumi.InputType['FooArgs']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

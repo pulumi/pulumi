@@ -10,9 +10,9 @@ return await Deployment.RunAsync(() =>
     // Create a bucket and expose a website index document
     var siteBucket = new Aws.S3.Bucket("siteBucket", new()
     {
-        Website = new Aws.S3.Inputs.BucketWebsiteArgs
+        Website = 
         {
-            IndexDocument = "index.html",
+            { "indexDocument", "index.html" },
         },
     });
 

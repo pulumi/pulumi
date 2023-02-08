@@ -18,9 +18,9 @@ __all__ = [
 class ContainerArgs:
     def __init__(__self__, *,
                  size: pulumi.Input['ContainerSize'],
-                 brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
-                 color: Optional[pulumi.Input[Union['ContainerColor', str]]] = None,
-                 material: Optional[pulumi.Input[str]] = None):
+                 brightness: pulumi.Input[Optional['ContainerBrightness']] = None,
+                 color: pulumi.Input[Optional[Union['ContainerColor', str]]] = None,
+                 material: pulumi.Input[Optional[str]] = None):
         pulumi.set(__self__, "size", size)
         if brightness is None:
             brightness = 1
@@ -42,29 +42,29 @@ class ContainerArgs:
 
     @property
     @pulumi.getter
-    def brightness(self) -> Optional[pulumi.Input['ContainerBrightness']]:
+    def brightness(self) -> pulumi.Input[Optional['ContainerBrightness']]:
         return pulumi.get(self, "brightness")
 
     @brightness.setter
-    def brightness(self, value: Optional[pulumi.Input['ContainerBrightness']]):
+    def brightness(self, value: pulumi.Input[Optional['ContainerBrightness']]):
         pulumi.set(self, "brightness", value)
 
     @property
     @pulumi.getter
-    def color(self) -> Optional[pulumi.Input[Union['ContainerColor', str]]]:
+    def color(self) -> pulumi.Input[Optional[Union['ContainerColor', str]]]:
         return pulumi.get(self, "color")
 
     @color.setter
-    def color(self, value: Optional[pulumi.Input[Union['ContainerColor', str]]]):
+    def color(self, value: pulumi.Input[Optional[Union['ContainerColor', str]]]):
         pulumi.set(self, "color", value)
 
     @property
     @pulumi.getter
-    def material(self) -> Optional[pulumi.Input[str]]:
+    def material(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "material")
 
     @material.setter
-    def material(self, value: Optional[pulumi.Input[str]]):
+    def material(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "material", value)
 
 

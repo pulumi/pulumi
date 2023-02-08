@@ -66,7 +66,7 @@ type nurseryArgs struct {
 // The set of arguments for constructing a Nursery resource.
 type NurseryArgs struct {
 	// The sizes of trees available
-	Sizes TreeSizeMapInput
+	Sizes map[string]TreeSizeInput
 	// The varieties available
 	Varieties RubberTreeVarietyArrayInput
 }

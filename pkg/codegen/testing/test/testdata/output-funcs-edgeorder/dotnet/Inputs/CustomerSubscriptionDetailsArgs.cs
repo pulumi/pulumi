@@ -19,7 +19,7 @@ namespace Pulumi.Myedgeorder.Inputs
         /// Location placement Id of a subscription
         /// </summary>
         [Input("locationPlacementId")]
-        public Input<string>? LocationPlacementId { get; set; }
+        public Input<string?>? LocationPlacementId { get; set; }
 
         /// <summary>
         /// Quota ID of a subscription
@@ -27,17 +27,11 @@ namespace Pulumi.Myedgeorder.Inputs
         [Input("quotaId", required: true)]
         public Input<string> QuotaId { get; set; } = null!;
 
-        [Input("registeredFeatures")]
-        private InputList<Inputs.CustomerSubscriptionRegisteredFeaturesArgs>? _registeredFeatures;
-
         /// <summary>
         /// List of registered feature flags for subscription
         /// </summary>
-        public InputList<Inputs.CustomerSubscriptionRegisteredFeaturesArgs> RegisteredFeatures
-        {
-            get => _registeredFeatures ?? (_registeredFeatures = new InputList<Inputs.CustomerSubscriptionRegisteredFeaturesArgs>());
-            set => _registeredFeatures = value;
-        }
+        [Input("registeredFeatures")]
+        public Input<ImmutableArray<Input<Inputs.CustomerSubscriptionRegisteredFeaturesArgs>>>? RegisteredFeatures { get; set; }
 
         public CustomerSubscriptionDetailsArgs()
         {

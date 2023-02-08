@@ -85,8 +85,8 @@ class Foo(pulumi.ComponentResource):
             return pulumi.get(self, "kubeconfig")
 
     def get_kubeconfig(__self__, *,
-                       profile_name: Optional[pulumi.Input[str]] = None,
-                       role_arn: Optional[pulumi.Input[str]] = None) -> pulumi.Output['str']:
+                       profile_name: pulumi.Input[Optional[str]] = None,
+                       role_arn: pulumi.Input[Optional[str]] = None) -> pulumi.Output['str']:
         __args__ = dict()
         __args__['__self__'] = __self__
         __args__['profileName'] = profile_name

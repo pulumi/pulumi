@@ -52,7 +52,7 @@ function </span>getBastionShareableLinkOutput<span class="p">(</span><span class
 ><span class="k">
 def </span>get_bastion_shareable_link_output<span class="p">(</span><span class="nx">bastion_host_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-                               <span class="nx">vms</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[BastionShareableLinkArgs]]]]</span> = None<span class="p">,</span>
+                               <span class="nx">vms</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[Sequence[pulumi.Input[BastionShareableLinkArgs]]]]</span> = None<span class="p">,</span>
                                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetBastionShareableLinkResult]</span
 ></code></pre></div>
 </pulumi-choosable>

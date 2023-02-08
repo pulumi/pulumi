@@ -45,7 +45,7 @@ function </span>getArrayCustomResultOutput<span class="p">(</span><span class="n
 ><span class="k">def </span>get_array_custom_result<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetArrayCustomResultResult</span
 ><span class="k">
-def </span>get_array_custom_result_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
+def </span>get_array_custom_result_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[float]]</span> = None<span class="p">,</span>
                             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetArrayCustomResultResult]</span
 ></code></pre></div>
 </pulumi-choosable>

@@ -16,11 +16,11 @@ __all__ = ['NurseryArgs', 'Nursery']
 class NurseryArgs:
     def __init__(__self__, *,
                  varieties: pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]],
-                 sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None):
+                 sizes: pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]] = None):
         """
         The set of arguments for constructing a Nursery resource.
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
-        :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
+        :param pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]] sizes: The sizes of trees available
         """
         pulumi.set(__self__, "varieties", varieties)
         if sizes is not None:
@@ -40,14 +40,14 @@ class NurseryArgs:
 
     @property
     @pulumi.getter
-    def sizes(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]]:
+    def sizes(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]]:
         """
         The sizes of trees available
         """
         return pulumi.get(self, "sizes")
 
     @sizes.setter
-    def sizes(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]]):
+    def sizes(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]]):
         pulumi.set(self, "sizes", value)
 
 
@@ -56,14 +56,14 @@ class Nursery(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
+                 sizes: pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]] = None,
                  varieties: Optional[pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]] = None,
                  __props__=None):
         """
         Create a Nursery resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
-        :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
+        :param pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]] sizes: The sizes of trees available
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
         """
         ...
@@ -89,7 +89,7 @@ class Nursery(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
+                 sizes: pulumi.Input[Optional[Mapping[str, pulumi.Input['TreeSize']]]] = None,
                  varieties: Optional[pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)

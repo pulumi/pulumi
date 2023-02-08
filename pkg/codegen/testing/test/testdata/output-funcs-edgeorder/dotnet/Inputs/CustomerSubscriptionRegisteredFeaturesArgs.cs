@@ -19,13 +19,13 @@ namespace Pulumi.Myedgeorder.Inputs
         /// Name of subscription registered feature
         /// </summary>
         [Input("name")]
-        public Input<string>? Name { get; set; }
+        public Input<string?>? Name { get; set; }
 
         /// <summary>
         /// State of subscription registered feature
         /// </summary>
         [Input("state")]
-        public Input<string>? State { get; set; }
+        public Input<string?>? State { get; set; }
 
         public CustomerSubscriptionRegisteredFeaturesArgs()
         {

@@ -60,8 +60,8 @@ type componentArgs struct {
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Local Component2Input
-	Main  example.MainComponentInput
+	Local *Component2
+	Main  *example.MainComponent
 }
 
 func (ComponentArgs) ElementType() reflect.Type {

@@ -48,8 +48,8 @@ function </span>funcWithAllOptionalInputsOutput<span class="p">(</span><span cla
                                   <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>FuncWithAllOptionalInputsResult</span
 ><span class="k">
-def </span>func_with_all_optional_inputs_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-                                  <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+def </span>func_with_all_optional_inputs_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
+                                  <span class="nx">b</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[FuncWithAllOptionalInputsResult]</span
 ></code></pre></div>
 </pulumi-choosable>

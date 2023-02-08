@@ -32,7 +32,7 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
+             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[Optional[str]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ResourceArgs]</a></span> = None<span class="p">,</span>
@@ -225,7 +225,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -253,7 +253,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String</span>
+        <span class="property-type">Optional&lt;String&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,7 +267,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -281,7 +281,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str</span>
+        <span class="property-type">Optional[str]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -50,7 +50,7 @@ function </span>absReducedOutputOutput<span class="p">(</span><span class="nx">a
                        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>AbsReducedOutputResult</span
 ><span class="k">
 def </span>abs_reduced_output_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
-                       <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
+                       <span class="nx">b</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[float]]</span> = None<span class="p">,</span>
                        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[AbsReducedOutputResult]</span
 ></code></pre></div>
 </pulumi-choosable>

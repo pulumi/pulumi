@@ -59,8 +59,8 @@ type consumerArgs struct {
 
 // The set of arguments for constructing a Consumer resource.
 type ConsumerArgs struct {
-	Typ  SomeTypeMapInput
-	TypM SomeTypeMapInput
+	Typ  map[string]SomeTypeInput
+	TypM *SomeTypeMap
 }
 
 func (ConsumerArgs) ElementType() reflect.Type {

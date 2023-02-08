@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-        <span class="nx">age</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
-        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[PetArgs]</span> = None<span class="p">)</span>
+        <span class="nx">age</span><span class="p">:</span> <span class="nx">Optional[Optional[int]]</span> = None<span class="p">,</span>
+        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[Optional[PetArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[CatArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">int</span>
+        <span class="property-type">int?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_csharp" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type">Pet<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -256,7 +256,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_go" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type">Pet<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_java" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Integer</span>
+        <span class="property-type">Optional&lt;Integer&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_java" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Pet<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">number</span>
+        <span class="property-type">number | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_nodejs" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type">Pet<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -314,7 +314,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">int</span>
+        <span class="property-type">Optional[int]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_python" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
+        <span class="property-type">Pet<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -344,7 +344,7 @@ The Cat resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pet_yaml" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

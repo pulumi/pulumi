@@ -9,38 +9,38 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		bar, err := corev1.NewPod(ctx, "bar", &corev1.PodArgs{
-			ApiVersion: pulumi.String("v1"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Namespace: pulumi.String("foo"),
-				Name:      pulumi.String("bar"),
+			ApiVersion: "v1",
+			Metadata: &*metav1.ObjectMetaArgs{
+				Namespace: "foo",
+				Name:      "bar",
 			},
-			Spec: &corev1.PodSpecArgs{
-				Containers: []corev1.ContainerArgs{
-					{
+			Spec: &*corev1.PodSpecArgs{
+				Containers: corev1.ContainerArray{
+					&corev1.ContainerArgs{
 						Name:  pulumi.String("nginx"),
-						Image: pulumi.String("nginx:1.14-alpine"),
-						Ports: corev1.ContainerPortArray{
+						Image: "nginx:1.14-alpine",
+						Ports: []corev1.ContainerPortArgs{
 							{
 								ContainerPort: pulumi.Int(80),
 							},
 						},
-						Resources: {
-							Limits: {
+						Resources: &*corev1.ResourceRequirementsArgs{
+							Limits: map[string]pulumi.String{
 								"memory": pulumi.String("20Mi"),
 								"cpu":    pulumi.String("0.2"),
 							},
 						},
 					},
-					{
+					&corev1.ContainerArgs{
 						Name:  pulumi.String("nginx2"),
-						Image: pulumi.String("nginx:1.14-alpine"),
-						Ports: corev1.ContainerPortArray{
+						Image: "nginx:1.14-alpine",
+						Ports: []corev1.ContainerPortArgs{
 							{
 								ContainerPort: pulumi.Int(80),
 							},
 						},
-						Resources: {
-							Limits: {
+						Resources: &*corev1.ResourceRequirementsArgs{
+							Limits: map[string]pulumi.String{
 								"memory": pulumi.String("20Mi"),
 								"cpu":    pulumi.String("0.2"),
 							},

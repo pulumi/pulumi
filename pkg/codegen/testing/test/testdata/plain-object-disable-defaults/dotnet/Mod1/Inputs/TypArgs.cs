@@ -16,7 +16,7 @@ namespace Pulumi.Example.Mod1.Inputs
     public sealed class TypArgs : global::Pulumi.ResourceArgs
     {
         [Input("val")]
-        public Input<string>? Val { get; set; }
+        public Input<string?>? Val { get; set; }
 
         public TypArgs()
         {

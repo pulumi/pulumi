@@ -46,7 +46,7 @@ namespace Pulumi.Example
         /// BETA FEATURE - Options to configure the Helm Release resource.
         /// </summary>
         [Input("helmReleaseSettings", json: true)]
-        public Input<Inputs.HelmReleaseSettingsArgs>? HelmReleaseSettings { get; set; }
+        public Input<Inputs.HelmReleaseSettingsArgs?>? HelmReleaseSettings { get; set; }
 
         public ProviderArgs()
         {

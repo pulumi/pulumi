@@ -22,12 +22,6 @@ func NewModuleTest(ctx *pulumi.Context,
 		args = &ModuleTestArgs{}
 	}
 
-	if args.Mod1 != nil {
-		args.Mod1 = args.Mod1.ToTypPtrOutput().ApplyT(func(v *mod1.Typ) *mod1.Typ { return v.Defaults() }).(mod1.TypPtrOutput)
-	}
-	if args.Val != nil {
-		args.Val = args.Val.ToTypPtrOutput().ApplyT(func(v *Typ) *Typ { return v.Defaults() }).(TypPtrOutput)
-	}
 	var resource ModuleTest
 	err := ctx.RegisterResource("example:index:moduleTest", name, args, &resource, opts...)
 	if err != nil {
@@ -66,8 +60,8 @@ type moduleTestArgs struct {
 
 // The set of arguments for constructing a ModuleTest resource.
 type ModuleTestArgs struct {
-	Mod1 mod1.TypPtrInput
-	Val  TypPtrInput
+	Mod1 *mod1.TypArgs
+	Val  *TypArgs
 }
 
 func (ModuleTestArgs) ElementType() reflect.Type {

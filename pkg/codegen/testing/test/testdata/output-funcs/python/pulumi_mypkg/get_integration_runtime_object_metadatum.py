@@ -88,7 +88,7 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[str] = None,
 @_utilities.lift_output_func(get_integration_runtime_object_metadatum)
 def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulumi.Input[str]] = None,
                                                     integration_runtime_name: Optional[pulumi.Input[str]] = None,
-                                                    metadata_path: Optional[pulumi.Input[Optional[str]]] = None,
+                                                    metadata_path: pulumi.Input[Optional[str]] = None,
                                                     resource_group_name: Optional[pulumi.Input[str]] = None,
                                                     opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
     """

@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">local</span><span class="p">:</span> <span class="nx">Optional[Component2]</span> = None<span class="p">,</span>
-              <span class="nx">main</span><span class="p">:</span> <span class="nx">Optional[MainComponent]</span> = None<span class="p">)</span>
+              <span class="nx">local</span><span class="p">:</span> <span class="nx">Optional[Optional[Component2]]</span> = None<span class="p">,</span>
+              <span class="nx">main</span><span class="p">:</span> <span class="nx">Optional[Optional[MainComponent]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_csharp" style="color: inherit; text-decoration: inherit;">Local</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Mod.<wbr>Component2</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Mod.<wbr>Component2?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#main_csharp" style="color: inherit; text-decoration: inherit;">Main</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Main<wbr>Component</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Main<wbr>Component?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_java" style="color: inherit; text-decoration: inherit;">local</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Component2</span>
+        <span class="property-type">Optional&lt;Component2&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#main_java" style="color: inherit; text-decoration: inherit;">main</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Main<wbr>Component</span>
+        <span class="property-type">Optional&lt;Main<wbr>Component&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#local_nodejs" style="color: inherit; text-decoration: inherit;">local</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Component2</span>
+        <span class="property-type">Component2 | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#main_nodejs" style="color: inherit; text-decoration: inherit;">main</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Main<wbr>Component</span>
+        <span class="property-type">Main<wbr>Component | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

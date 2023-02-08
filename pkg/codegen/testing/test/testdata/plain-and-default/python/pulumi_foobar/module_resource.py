@@ -23,11 +23,11 @@ class ModuleResourceArgs:
                  required_enum: pulumi.Input['EnumThing'],
                  required_number: pulumi.Input[float],
                  required_string: pulumi.Input[str],
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
-                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
+                 optional_bool: pulumi.Input[Optional[bool]] = None,
+                 optional_const: pulumi.Input[Optional[str]] = None,
+                 optional_enum: pulumi.Input[Optional['EnumThing']] = None,
+                 optional_number: pulumi.Input[Optional[float]] = None,
+                 optional_string: pulumi.Input[Optional[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
                  plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,
@@ -170,47 +170,47 @@ class ModuleResourceArgs:
 
     @property
     @pulumi.getter
-    def optional_bool(self) -> Optional[pulumi.Input[bool]]:
+    def optional_bool(self) -> pulumi.Input[Optional[bool]]:
         return pulumi.get(self, "optional_bool")
 
     @optional_bool.setter
-    def optional_bool(self, value: Optional[pulumi.Input[bool]]):
+    def optional_bool(self, value: pulumi.Input[Optional[bool]]):
         pulumi.set(self, "optional_bool", value)
 
     @property
     @pulumi.getter
-    def optional_const(self) -> Optional[pulumi.Input[str]]:
+    def optional_const(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "optional_const")
 
     @optional_const.setter
-    def optional_const(self, value: Optional[pulumi.Input[str]]):
+    def optional_const(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "optional_const", value)
 
     @property
     @pulumi.getter
-    def optional_enum(self) -> Optional[pulumi.Input['EnumThing']]:
+    def optional_enum(self) -> pulumi.Input[Optional['EnumThing']]:
         return pulumi.get(self, "optional_enum")
 
     @optional_enum.setter
-    def optional_enum(self, value: Optional[pulumi.Input['EnumThing']]):
+    def optional_enum(self, value: pulumi.Input[Optional['EnumThing']]):
         pulumi.set(self, "optional_enum", value)
 
     @property
     @pulumi.getter
-    def optional_number(self) -> Optional[pulumi.Input[float]]:
+    def optional_number(self) -> pulumi.Input[Optional[float]]:
         return pulumi.get(self, "optional_number")
 
     @optional_number.setter
-    def optional_number(self, value: Optional[pulumi.Input[float]]):
+    def optional_number(self, value: pulumi.Input[Optional[float]]):
         pulumi.set(self, "optional_number", value)
 
     @property
     @pulumi.getter
-    def optional_string(self) -> Optional[pulumi.Input[str]]:
+    def optional_string(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "optional_string")
 
     @optional_string.setter
-    def optional_string(self, value: Optional[pulumi.Input[str]]):
+    def optional_string(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "optional_string", value)
 
     @property
@@ -255,11 +255,11 @@ class ModuleResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
-                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
+                 optional_bool: pulumi.Input[Optional[bool]] = None,
+                 optional_const: pulumi.Input[Optional[str]] = None,
+                 optional_enum: pulumi.Input[Optional['EnumThing']] = None,
+                 optional_number: pulumi.Input[Optional[float]] = None,
+                 optional_string: pulumi.Input[Optional[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
                  plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,
@@ -301,11 +301,11 @@ class ModuleResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 optional_bool: Optional[pulumi.Input[bool]] = None,
-                 optional_const: Optional[pulumi.Input[str]] = None,
-                 optional_enum: Optional[pulumi.Input['EnumThing']] = None,
-                 optional_number: Optional[pulumi.Input[float]] = None,
-                 optional_string: Optional[pulumi.Input[str]] = None,
+                 optional_bool: pulumi.Input[Optional[bool]] = None,
+                 optional_const: pulumi.Input[Optional[str]] = None,
+                 optional_enum: pulumi.Input[Optional['EnumThing']] = None,
+                 optional_number: pulumi.Input[Optional[float]] = None,
+                 optional_string: pulumi.Input[Optional[str]] = None,
                  plain_optional_bool: Optional[bool] = None,
                  plain_optional_const: Optional[str] = None,
                  plain_optional_number: Optional[float] = None,

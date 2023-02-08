@@ -8,40 +8,40 @@ return await Deployment.RunAsync(() =>
     {
         ApiVersion = "apps/v1",
         Kind = "Deployment",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            Name = "pulumi-kubernetes-operator",
+            { "name", "pulumi-kubernetes-operator" },
         },
-        Spec = new Kubernetes.Types.Inputs.Apps.V1.DeploymentSpecArgs
+        Spec = 
         {
-            Replicas = 1,
-            Selector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
+            { "replicas", 1 },
+            { "selector", new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
             {
                 MatchLabels = 
                 {
                     { "name", "pulumi-kubernetes-operator" },
                 },
-            },
-            Template = new Kubernetes.Types.Inputs.Core.V1.PodTemplateSpecArgs
+            } },
+            { "template", new Kubernetes.Types.Inputs.Core.V1.PodTemplateSpecArgs
             {
-                Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+                Metadata = 
                 {
-                    Labels = 
+                    { "labels", 
                     {
                         { "name", "pulumi-kubernetes-operator" },
-                    },
+                    } },
                 },
-                Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
+                Spec = 
                 {
-                    ServiceAccountName = "pulumi-kubernetes-operator",
-                    ImagePullSecrets = new[]
+                    { "serviceAccountName", "pulumi-kubernetes-operator" },
+                    { "imagePullSecrets", new[]
                     {
                         new Kubernetes.Types.Inputs.Core.V1.LocalObjectReferenceArgs
                         {
                             Name = "pulumi-kubernetes-operator",
                         },
-                    },
-                    Containers = new[]
+                    } },
+                    { "containers", new[]
                     {
                         new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                         {
@@ -61,23 +61,23 @@ return await Deployment.RunAsync(() =>
                                 new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
                                 {
                                     Name = "WATCH_NAMESPACE",
-                                    ValueFrom = new Kubernetes.Types.Inputs.Core.V1.EnvVarSourceArgs
+                                    ValueFrom = 
                                     {
-                                        FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
+                                        { "fieldRef", 
                                         {
-                                            FieldPath = "metadata.namespace",
-                                        },
+                                            { "fieldPath", "metadata.namespace" },
+                                        } },
                                     },
                                 },
                                 new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
                                 {
                                     Name = "POD_NAME",
-                                    ValueFrom = new Kubernetes.Types.Inputs.Core.V1.EnvVarSourceArgs
+                                    ValueFrom = 
                                     {
-                                        FieldRef = new Kubernetes.Types.Inputs.Core.V1.ObjectFieldSelectorArgs
+                                        { "fieldRef", 
                                         {
-                                            FieldPath = "metadata.name",
-                                        },
+                                            { "fieldPath", "metadata.name" },
+                                        } },
                                     },
                                 },
                                 new Kubernetes.Types.Inputs.Core.V1.EnvVarArgs
@@ -87,9 +87,9 @@ return await Deployment.RunAsync(() =>
                                 },
                             },
                         },
-                    },
+                    } },
                 },
-            },
+            } },
         },
     });
 
@@ -97,10 +97,10 @@ return await Deployment.RunAsync(() =>
     {
         ApiVersion = "rbac.authorization.k8s.io/v1",
         Kind = "Role",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            CreationTimestamp = null,
-            Name = "pulumi-kubernetes-operator",
+            { "creationTimestamp", null },
+            { "name", "pulumi-kubernetes-operator" },
         },
         Rules = new[]
         {
@@ -250,9 +250,9 @@ return await Deployment.RunAsync(() =>
     {
         Kind = "RoleBinding",
         ApiVersion = "rbac.authorization.k8s.io/v1",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            Name = "pulumi-kubernetes-operator",
+            { "name", "pulumi-kubernetes-operator" },
         },
         Subjects = new[]
         {
@@ -274,9 +274,9 @@ return await Deployment.RunAsync(() =>
     {
         ApiVersion = "v1",
         Kind = "ServiceAccount",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            Name = "pulumi-kubernetes-operator",
+            { "name", "pulumi-kubernetes-operator" },
         },
     });
 

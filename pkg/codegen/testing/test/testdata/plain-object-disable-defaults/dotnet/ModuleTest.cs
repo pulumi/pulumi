@@ -57,10 +57,10 @@ namespace Pulumi.Example
     public sealed class ModuleTestArgs : global::Pulumi.ResourceArgs
     {
         [Input("mod1")]
-        public Input<Pulumi.Example.Mod1.Inputs.TypArgs>? Mod1 { get; set; }
+        public Input<Pulumi.Example.Mod1.Inputs.TypArgs?>? Mod1 { get; set; }
 
         [Input("val")]
-        public Input<Inputs.TypArgs>? Val { get; set; }
+        public Input<Inputs.TypArgs?>? Val { get; set; }
 
         public ModuleTestArgs()
         {

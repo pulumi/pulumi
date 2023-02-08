@@ -75,16 +75,16 @@ export class RubberTree extends pulumi.CustomResource {
 }
 
 export interface RubberTreeState {
-    farm?: pulumi.Input<enums.tree.v1.Farm | string>;
+    farm?: pulumi.Input<pulumi.Input<enums.tree.v1.Farm> | pulumi.Input<string> | undefined>;
 }
 
 /**
  * The set of arguments for constructing a RubberTree resource.
  */
 export interface RubberTreeArgs {
-    container?: pulumi.Input<inputs.ContainerArgs>;
+    container?: pulumi.Input<inputs.ContainerArgs | undefined>;
     diameter: pulumi.Input<enums.tree.v1.Diameter>;
-    farm?: pulumi.Input<enums.tree.v1.Farm | string>;
-    size?: pulumi.Input<enums.tree.v1.TreeSize>;
+    farm?: pulumi.Input<pulumi.Input<enums.tree.v1.Farm> | pulumi.Input<string> | undefined>;
+    size?: pulumi.Input<enums.tree.v1.TreeSize | undefined>;
     type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

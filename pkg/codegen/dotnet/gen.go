@@ -333,7 +333,8 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.InputType:
 		inputType := "Input"
 		elem := t.ElementType
-		switch e := t.ElementType.(type) {
+
+		switch e := elem.(type) {
 		case *schema.ArrayType:
 			inputType, elem = "InputList", codegen.PlainType(e.ElementType)
 		case *schema.MapType:

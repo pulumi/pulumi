@@ -16,17 +16,17 @@ __all__ = [
 @pulumi.input_type
 class FooArgs:
     def __init__(__self__, *,
-                 a: Optional[pulumi.Input[bool]] = None):
+                 a: pulumi.Input[Optional[bool]] = None):
         if a is not None:
             pulumi.set(__self__, "a", a)
 
     @property
     @pulumi.getter
-    def a(self) -> Optional[pulumi.Input[bool]]:
+    def a(self) -> pulumi.Input[Optional[bool]]:
         return pulumi.get(self, "a")
 
     @a.setter
-    def a(self, value: Optional[pulumi.Input[bool]]):
+    def a(self, value: pulumi.Input[Optional[bool]]):
         pulumi.set(self, "a", value)
 
 

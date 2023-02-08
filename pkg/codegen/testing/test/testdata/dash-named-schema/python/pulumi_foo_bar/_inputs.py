@@ -16,17 +16,17 @@ __all__ = [
 @pulumi.input_type
 class TopLevelArgs:
     def __init__(__self__, *,
-                 buzz: Optional[pulumi.Input[str]] = None):
+                 buzz: pulumi.Input[Optional[str]] = None):
         if buzz is not None:
             pulumi.set(__self__, "buzz", buzz)
 
     @property
     @pulumi.getter
-    def buzz(self) -> Optional[pulumi.Input[str]]:
+    def buzz(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "buzz")
 
     @buzz.setter
-    def buzz(self, value: Optional[pulumi.Input[str]]):
+    def buzz(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "buzz", value)
 
 

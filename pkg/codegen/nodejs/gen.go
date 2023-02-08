@@ -451,19 +451,24 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+
+			if codegen.IsNOptionalInput(p.Type) {
+				defaults = append(defaults, fmt.Sprintf("%s: val.%s === undefined ? %s : pulumi.output(val.%s).apply(x => x ?? %s)", p.Name, p.Name, dv, p.Name, dv))
+			} else {
+				defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
+			}
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
 			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
 			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
 			// because val.%arg existed in the input (type system enforced).
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
-				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				compositeObject = fmt.Sprintf("%s === undefined ? undefined : pulumi.output(%s).apply(x => x === undefined ? undefined : %s(x))", p.Name, p.Name, funcName)
 			} else {
 				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
 			}
 			if !p.IsRequired() {
-				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				compositeObject = fmt.Sprintf("(val.%s !== undefined ? %s : undefined)", p.Name, compositeObject)
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
 		}
@@ -767,7 +772,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				if name := mod.provideDefaultsFuncName(prop.Type, true /*input*/); name != "" {
 					var body string
 					if codegen.IsNOptionalInput(prop.Type) {
-						body = fmt.Sprintf("pulumi.output(%[2]s).apply(%[1]s)", name, arg)
+						body = fmt.Sprintf("%s === undefined ? undefined : pulumi.output(%s).apply(x => x === undefined ? undefined : %s(x))", arg, arg, name)
 					} else {
 						body = fmt.Sprintf("%s(%s)", name, arg)
 					}
@@ -1200,7 +1205,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) (functionF
 
 			if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
 				if codegen.IsNOptionalInput(p.Type) {
-					body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+					body = fmt.Sprintf("%s === undefined ? undefined : pulumi.output(%s).apply(x => x === undefined ? undefined : %s(x))", body, body, name)
 				} else {
 					body = fmt.Sprintf("%s(%s)", name, body)
 				}

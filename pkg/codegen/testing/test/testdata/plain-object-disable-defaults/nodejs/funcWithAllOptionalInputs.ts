@@ -44,9 +44,9 @@ export interface FuncWithAllOptionalInputsOutputArgs {
     /**
      * Property A
      */
-    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs | undefined>;
     /**
      * Property B
      */
-    b?: pulumi.Input<string>;
+    b?: pulumi.Input<string | undefined>;
 }

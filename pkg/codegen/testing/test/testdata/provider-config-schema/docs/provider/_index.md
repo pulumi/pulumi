@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Union[str, Color]]</span> = None<span class="p">,</span>
-             <span class="nx">secret_sandwiches</span><span class="p">:</span> <span class="nx">Optional[Sequence[_config.SandwichArgs]]</span> = None<span class="p">)</span>
+             <span class="nx">favorite_color</span><span class="p">:</span> <span class="nx">Optional[Optional[Union[str, Color]]]</span> = None<span class="p">,</span>
+             <span class="nx">secret_sandwiches</span><span class="p">:</span> <span class="nx">Optional[Optional[Sequence[_config.SandwichArgs]]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_csharp" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color</a></span>
+        <span class="property-type">Union&lt;string, Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Color&gt;?</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -235,7 +235,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_csharp" style="color: inherit; text-decoration: inherit;">Secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">List&lt;Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Config.<wbr>Inputs.<wbr>Sandwich<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Configstation.<wbr>Pulumi.<wbr>Configstation.<wbr>Config.<wbr>Inputs.<wbr>Sandwich<wbr>Args&gt;?</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
@@ -250,7 +250,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_go" style="color: inherit; text-decoration: inherit;">Favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Color</a></span>
+        <span class="property-type">string</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -259,7 +259,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_go" style="color: inherit; text-decoration: inherit;">Secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args</a></span>
+        <span class="property-type">Sandwich<wbr>Args</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
@@ -274,7 +274,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_java" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#color">Color</a></span>
+        <span class="property-type">Optional&lt;Either&lt;String,Color&gt;&gt;</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -283,7 +283,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_java" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">List&lt;Sandwich<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Sandwich<wbr>Args&gt;</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
@@ -298,7 +298,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_nodejs" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string | <a href="#color">Color</a></span>
+        <span class="property-type">string | Color | undefined</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -307,7 +307,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_nodejs" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">config<wbr>Sandwich<wbr>Args[]</a></span>
+        <span class="property-type">config<wbr>Sandwich<wbr>Args[] | undefined</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
@@ -322,7 +322,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favorite_color_python" style="color: inherit; text-decoration: inherit;">favorite_<wbr>color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str | <a href="#color">Color</a></span>
+        <span class="property-type">Union[str, Color]</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -331,7 +331,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secret_sandwiches_python" style="color: inherit; text-decoration: inherit;">secret_<wbr>sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">Sandwich<wbr>Args]</a></span>
+        <span class="property-type">Sandwich<wbr>Args]]</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>
@@ -346,7 +346,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#favoritecolor_yaml" style="color: inherit; text-decoration: inherit;">favorite<wbr>Color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String | <a href="#color">&#34;blue&#34; | &#34;red&#34;</a></span>
+        <span class="property-type">String | &#34;blue&#34; | &#34;red&#34;</span>
     </dt>
     <dd><p>this is a relaxed string enum which can also be set via env var It can also be sourced from the following environment variable: <code>FAVE_COLOR</code></p>
 </dd><dt class="property-optional"
@@ -355,7 +355,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#secretsandwiches_yaml" style="color: inherit; text-decoration: inherit;">secret<wbr>Sandwiches</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#sandwich">List&lt;Property Map&gt;</a></span>
+        <span class="property-type">List&lt;Property Map&gt;</span>
     </dt>
     <dd><p>Super duper secret sandwiches.</p>
 </dd></dl>

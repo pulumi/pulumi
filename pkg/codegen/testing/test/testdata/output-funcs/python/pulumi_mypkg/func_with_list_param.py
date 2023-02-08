@@ -55,8 +55,8 @@ def func_with_list_param(a: Optional[Sequence[str]] = None,
 
 
 @_utilities.lift_output_func(func_with_list_param)
-def func_with_list_param_output(a: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
-                                b: Optional[pulumi.Input[Optional[str]]] = None,
+def func_with_list_param_output(a: pulumi.Input[Optional[Sequence[str]]] = None,
+                                b: pulumi.Input[Optional[str]] = None,
                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithListParamResult]:
     """
     Check codegen of functions with a List parameter.

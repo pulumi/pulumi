@@ -20,17 +20,17 @@ __all__ = [
 @pulumi.input_type
 class ConfigMapArgs:
     def __init__(__self__, *,
-                 config: Optional[pulumi.Input[str]] = None):
+                 config: pulumi.Input[Optional[str]] = None):
         if config is not None:
             pulumi.set(__self__, "config", config)
 
     @property
     @pulumi.getter
-    def config(self) -> Optional[pulumi.Input[str]]:
+    def config(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "config")
 
     @config.setter
-    def config(self, value: Optional[pulumi.Input[str]]):
+    def config(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "config", value)
 
 
@@ -38,7 +38,7 @@ class ConfigMapArgs:
 class ObjectWithNodeOptionalInputsArgs:
     def __init__(__self__, *,
                  foo: pulumi.Input[str],
-                 bar: Optional[pulumi.Input[int]] = None):
+                 bar: pulumi.Input[Optional[int]] = None):
         pulumi.set(__self__, "foo", foo)
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
@@ -54,25 +54,25 @@ class ObjectWithNodeOptionalInputsArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input[int]]:
+    def bar(self) -> pulumi.Input[Optional[int]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input[int]]):
+    def bar(self, value: pulumi.Input[Optional[int]]):
         pulumi.set(self, "bar", value)
 
 
 @pulumi.input_type
 class ObjectArgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input[str]] = None,
-                 configs: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]] = None,
-                 foo: Optional[pulumi.Input['Resource']] = None,
-                 others: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
-                 still_others: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None):
+                 bar: pulumi.Input[Optional[str]] = None,
+                 configs: pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]] = None,
+                 foo: pulumi.Input[Optional['Resource']] = None,
+                 others: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None,
+                 still_others: pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] = None):
         """
-        :param pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] others: List of lists of other objects
-        :param pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]] still_others: Mapping from string to list of some other object
+        :param pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] others: List of lists of other objects
+        :param pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]] still_others: Mapping from string to list of some other object
         """
         if bar is not None:
             pulumi.set(__self__, "bar", bar)
@@ -87,70 +87,70 @@ class ObjectArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input[str]]:
+    def bar(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input[str]]):
+    def bar(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "bar", value)
 
     @property
     @pulumi.getter
-    def configs(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]:
+    def configs(self) -> pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]:
         return pulumi.get(self, "configs")
 
     @configs.setter
-    def configs(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['ConfigMapArgs']]]]):
+    def configs(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]):
         pulumi.set(self, "configs", value)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input['Resource']]:
+    def foo(self) -> pulumi.Input[Optional['Resource']]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input['Resource']]):
+    def foo(self, value: pulumi.Input[Optional['Resource']]):
         pulumi.set(self, "foo", value)
 
     @property
     @pulumi.getter
-    def others(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def others(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
         """
         List of lists of other objects
         """
         return pulumi.get(self, "others")
 
     @others.setter
-    def others(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def others(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
         pulumi.set(self, "others", value)
 
     @property
     @pulumi.getter(name="stillOthers")
-    def still_others(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
+    def still_others(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]:
         """
         Mapping from string to list of some other object
         """
         return pulumi.get(self, "still_others")
 
     @still_others.setter
-    def still_others(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
+    def still_others(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
         pulumi.set(self, "still_others", value)
 
 
 @pulumi.input_type
 class SomeOtherObjectArgs:
     def __init__(__self__, *,
-                 baz: Optional[pulumi.Input[str]] = None):
+                 baz: pulumi.Input[Optional[str]] = None):
         if baz is not None:
             pulumi.set(__self__, "baz", baz)
 
     @property
     @pulumi.getter
-    def baz(self) -> Optional[pulumi.Input[str]]:
+    def baz(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "baz")
 
     @baz.setter
-    def baz(self, value: Optional[pulumi.Input[str]]):
+    def baz(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "baz", value)
 
 

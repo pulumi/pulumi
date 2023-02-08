@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                     <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-                    <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[EnumOverlay]</span> = None<span class="p">,</span>
-                    <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[ConfigMapOverlayArgs]</span> = None<span class="p">)</span>
+                    <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[Optional[EnumOverlay]]</span> = None<span class="p">,</span>
+                    <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Optional[ConfigMapOverlayArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OverlayResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                     <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[OverlayResourceArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Pulumi.<wbr>Example.<wbr>Enum<wbr>Overlay</a></span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Enum<wbr>Overlay?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type">Config<wbr>Map<wbr>Overlay<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -248,7 +248,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type">Enum<wbr>Overlay</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -256,7 +256,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type">Config<wbr>Map<wbr>Overlay<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type">Optional&lt;Enum<wbr>Overlay&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Config<wbr>Map<wbr>Overlay<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type">Enum<wbr>Overlay | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type">Config<wbr>Map<wbr>Overlay<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -314,7 +314,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">Enum<wbr>Overlay</a></span>
+        <span class="property-type">Enum<wbr>Overlay</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type">Config<wbr>Map<wbr>Overlay<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -336,7 +336,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumoverlay">&#34;SOME_ENUM_VALUE&#34;</a></span>
+        <span class="property-type">&#34;SOME_ENUM_VALUE&#34;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -344,7 +344,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

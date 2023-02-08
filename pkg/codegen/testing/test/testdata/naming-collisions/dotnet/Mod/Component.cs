@@ -57,10 +57,10 @@ namespace Pulumi.Example.Mod
     public sealed class ComponentArgs : global::Pulumi.ResourceArgs
     {
         [Input("local")]
-        public Input<Pulumi.Example.Mod.Component2>? Local { get; set; }
+        public Input<Pulumi.Example.Mod.Component2?>? Local { get; set; }
 
         [Input("main")]
-        public Input<Pulumi.Example.MainComponent>? Main { get; set; }
+        public Input<Pulumi.Example.MainComponent?>? Main { get; set; }
 
         public ComponentArgs()
         {

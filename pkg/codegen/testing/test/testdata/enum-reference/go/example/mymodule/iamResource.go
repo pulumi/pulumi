@@ -36,7 +36,7 @@ type iamResourceArgs struct {
 
 // The set of arguments for constructing a IamResource resource.
 type IamResourceArgs struct {
-	Config *iam.AuditConfigInput
+	Config *iam.AuditConfigArgs
 }
 
 func (IamResourceArgs) ElementType() reflect.Type {

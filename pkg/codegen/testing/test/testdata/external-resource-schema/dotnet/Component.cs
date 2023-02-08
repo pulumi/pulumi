@@ -67,23 +67,13 @@ namespace Pulumi.Example
     public sealed class ComponentArgs : global::Pulumi.ResourceArgs
     {
         [Input("metadata")]
-        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }
+        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs?>? Metadata { get; set; }
 
         [Input("metadataArray")]
-        private InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _metadataArray;
-        public InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> MetadataArray
-        {
-            get => _metadataArray ?? (_metadataArray = new InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
-            set => _metadataArray = value;
-        }
+        public Input<ImmutableArray<Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>>>? MetadataArray { get; set; }
 
         [Input("metadataMap")]
-        private InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _metadataMap;
-        public InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> MetadataMap
-        {
-            get => _metadataMap ?? (_metadataMap = new InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
-            set => _metadataMap = value;
-        }
+        public Input<ImmutableDictionary<string, Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>>?>? MetadataMap { get; set; }
 
         [Input("requiredMetadata", required: true)]
         public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> RequiredMetadata { get; set; } = null!;

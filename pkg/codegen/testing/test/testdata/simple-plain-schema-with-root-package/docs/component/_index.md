@@ -40,7 +40,7 @@ no_edit_this_page: true
               <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
               <span class="nx">f</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span>
+              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Optional[FooArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
@@ -297,7 +297,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type">Foo<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -375,7 +375,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type">Foo<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -453,7 +453,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Foo<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -531,7 +531,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type">Foo<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -609,7 +609,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type">Foo<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -687,7 +687,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

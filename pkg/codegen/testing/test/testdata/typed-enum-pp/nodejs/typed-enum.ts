@@ -19,7 +19,7 @@ const _404html = new azure_native.storage.Blob("_404html", {
     resourceGroupName: someString,
     accountName: someString,
     containerName: someString,
-    type: staticwebsite.indexDocument.apply((x) => azure_native.storage.BlobType[x]),
+    type: staticwebsite.indexDocument,
 });
 // Unsafe enum
 const another = new azure_native.storage.Blob("another", {

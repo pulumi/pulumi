@@ -14,7 +14,7 @@ __all__ = ['PetInitArgs', 'Pet']
 @pulumi.input_type
 class PetInitArgs:
     def __init__(__self__, *,
-                 name: Optional[pulumi.Input[str]] = None):
+                 name: pulumi.Input[Optional[str]] = None):
         """
         The set of arguments for constructing a Pet resource.
         """
@@ -23,11 +23,11 @@ class PetInitArgs:
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input[str]]:
+    def name(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input[str]]):
+    def name(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "name", value)
 
 
@@ -36,7 +36,7 @@ class Pet(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[str]] = None,
+                 name: pulumi.Input[Optional[str]] = None,
                  __props__=None):
         """
         Create a Pet resource with the given unique name, props, and options.
@@ -66,7 +66,7 @@ class Pet(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 name: Optional[pulumi.Input[str]] = None,
+                 name: pulumi.Input[Optional[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

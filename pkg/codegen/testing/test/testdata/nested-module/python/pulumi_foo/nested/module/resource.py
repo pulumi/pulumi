@@ -14,7 +14,7 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 bar: Optional[pulumi.Input[str]] = None):
+                 bar: pulumi.Input[Optional[str]] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
@@ -23,11 +23,11 @@ class ResourceArgs:
 
     @property
     @pulumi.getter
-    def bar(self) -> Optional[pulumi.Input[str]]:
+    def bar(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "bar")
 
     @bar.setter
-    def bar(self, value: Optional[pulumi.Input[str]]):
+    def bar(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "bar", value)
 
 
@@ -36,7 +36,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[str]] = None,
+                 bar: pulumi.Input[Optional[str]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -66,7 +66,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 bar: Optional[pulumi.Input[str]] = None,
+                 bar: pulumi.Input[Optional[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

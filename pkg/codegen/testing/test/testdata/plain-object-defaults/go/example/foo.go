@@ -30,12 +30,6 @@ func NewFoo(ctx *pulumi.Context,
 		return nil, errors.New("invalid value for required argument 'BackupKubeClientSettings'")
 	}
 	args.BackupKubeClientSettings = args.BackupKubeClientSettings.ToKubeClientSettingsOutput().ApplyT(func(v KubeClientSettings) KubeClientSettings { return *v.Defaults() }).(KubeClientSettingsOutput)
-	if args.KubeClientSettings != nil {
-		args.KubeClientSettings = args.KubeClientSettings.ToKubeClientSettingsPtrOutput().ApplyT(func(v *KubeClientSettings) *KubeClientSettings { return v.Defaults() }).(KubeClientSettingsPtrOutput)
-	}
-	if args.Settings != nil {
-		args.Settings = args.Settings.ToLayeredTypePtrOutput().ApplyT(func(v *LayeredType) *LayeredType { return v.Defaults() }).(LayeredTypePtrOutput)
-	}
 	var resource Foo
 	err := ctx.RegisterResource("example:index:Foo", name, args, &resource, opts...)
 	if err != nil {
@@ -83,9 +77,9 @@ type FooArgs struct {
 	// Options for tuning the Kubernetes client used by a Provider.
 	BackupKubeClientSettings KubeClientSettingsInput
 	// Options for tuning the Kubernetes client used by a Provider.
-	KubeClientSettings KubeClientSettingsPtrInput
+	KubeClientSettings *KubeClientSettingsArgs
 	// describing things
-	Settings LayeredTypePtrInput
+	Settings *LayeredTypeArgs
 }
 
 func (FooArgs) ElementType() reflect.Type {

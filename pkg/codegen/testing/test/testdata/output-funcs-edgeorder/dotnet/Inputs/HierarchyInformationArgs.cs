@@ -19,25 +19,25 @@ namespace Pulumi.Myedgeorder.Inputs
         /// Represents configuration name that uniquely identifies configuration
         /// </summary>
         [Input("configurationName")]
-        public Input<string>? ConfigurationName { get; set; }
+        public Input<string?>? ConfigurationName { get; set; }
 
         /// <summary>
         /// Represents product family name that uniquely identifies product family
         /// </summary>
         [Input("productFamilyName")]
-        public Input<string>? ProductFamilyName { get; set; }
+        public Input<string?>? ProductFamilyName { get; set; }
 
         /// <summary>
         /// Represents product line name that uniquely identifies product line
         /// </summary>
         [Input("productLineName")]
-        public Input<string>? ProductLineName { get; set; }
+        public Input<string?>? ProductLineName { get; set; }
 
         /// <summary>
         /// Represents product name that uniquely identifies product
         /// </summary>
         [Input("productName")]
-        public Input<string>? ProductName { get; set; }
+        public Input<string?>? ProductName { get; set; }
 
         public HierarchyInformationArgs()
         {

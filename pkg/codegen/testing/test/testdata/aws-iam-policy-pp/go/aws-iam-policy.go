@@ -37,8 +37,8 @@ func main() {
 		}
 		json0 := string(tmpJSON0)
 		policy, err := iam.NewPolicy(ctx, "policy", &iam.PolicyArgs{
-			Path:        pulumi.String("/"),
-			Description: pulumi.String("My test policy"),
+			Path:        "/",
+			Description: "My test policy",
 			Policy:      pulumi.String(json0),
 		})
 		if err != nil {

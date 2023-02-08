@@ -70,10 +70,10 @@ type typeUsesArgs struct {
 
 // The set of arguments for constructing a TypeUses resource.
 type TypeUsesArgs struct {
-	Bar SomeOtherObjectPtrInput
-	Baz ObjectWithNodeOptionalInputsPtrInput
-	Foo ObjectPtrInput
-	Qux RubberTreeVarietyPtrInput
+	Bar *SomeOtherObjectArgs
+	Baz *ObjectWithNodeOptionalInputsArgs
+	Foo *ObjectArgs
+	Qux *RubberTreeVariety
 }
 
 func (TypeUsesArgs) ElementType() reflect.Type {

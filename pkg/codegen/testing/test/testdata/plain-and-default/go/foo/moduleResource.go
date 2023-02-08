@@ -25,17 +25,17 @@ func NewModuleResource(ctx *pulumi.Context,
 	}
 
 	if args.Optional_bool == nil {
-		args.Optional_bool = pulumi.BoolPtr(true)
+		args.Optional_bool = *bool(true)
 	}
-	args.Optional_const = pulumi.StringPtr("val")
+	args.Optional_const = *string("val")
 	if args.Optional_enum == nil {
-		args.Optional_enum = EnumThing(8)
+		args.Optional_enum = *EnumThing(8)
 	}
 	if args.Optional_number == nil {
-		args.Optional_number = pulumi.Float64Ptr(42.0)
+		args.Optional_number = *float64(42.0)
 	}
 	if args.Optional_string == nil {
-		args.Optional_string = pulumi.StringPtr("buzzer")
+		args.Optional_string = *string("buzzer")
 	}
 	if args.Plain_optional_bool == nil {
 		plain_optional_bool_ := true
@@ -62,16 +62,20 @@ func NewModuleResource(ctx *pulumi.Context,
 		args.Plain_required_string = "buzzer"
 	}
 	if args.Required_bool == nil {
-		args.Required_bool = pulumi.Bool(true)
+		required_bool_ := true
+		args.Required_bool = &required_bool_
 	}
 	if args.Required_enum == nil {
-		args.Required_enum = EnumThing(4)
+		required_enum_ := EnumThing(4)
+		args.Required_enum = &required_enum_
 	}
 	if args.Required_number == nil {
-		args.Required_number = pulumi.Float64(42.0)
+		required_number_ := 42.0
+		args.Required_number = &required_number_
 	}
 	if args.Required_string == nil {
-		args.Required_string = pulumi.String("buzzer")
+		required_string_ := "buzzer"
+		args.Required_string = &required_string_
 	}
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
@@ -126,11 +130,11 @@ type moduleResourceArgs struct {
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Optional_bool         pulumi.BoolPtrInput
-	Optional_const        pulumi.StringPtrInput
-	Optional_enum         EnumThingPtrInput
-	Optional_number       pulumi.Float64PtrInput
-	Optional_string       pulumi.StringPtrInput
+	Optional_bool         *bool
+	Optional_const        *string
+	Optional_enum         *EnumThing
+	Optional_number       *float64
+	Optional_string       *string
 	Plain_optional_bool   *bool
 	Plain_optional_const  *string
 	Plain_optional_number *float64

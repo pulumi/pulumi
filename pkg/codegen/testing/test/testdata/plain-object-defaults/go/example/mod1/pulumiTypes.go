@@ -41,7 +41,7 @@ type TypInput interface {
 
 // A test for namespaces (mod 1)
 type TypArgs struct {
-	Val pulumi.StringPtrInput `pulumi:"val"`
+	Val *string `pulumi:"val"`
 }
 
 // Defaults sets the appropriate defaults for TypArgs
@@ -51,7 +51,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 	}
 	tmp := *val
 	if tmp.Val == nil {
-		tmp.Val = pulumi.StringPtr(getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string))
+		tmp.Val = *string(getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string))
 	}
 	return &tmp
 }

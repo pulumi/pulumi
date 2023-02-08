@@ -147,14 +147,14 @@ return await Deployment.RunAsync(() =>
         DesiredCount = 5,
         LaunchType = "FARGATE",
         TaskDefinition = appTask.Arn,
-        NetworkConfiguration = new Aws.Ecs.Inputs.ServiceNetworkConfigurationArgs
+        NetworkConfiguration = 
         {
-            AssignPublicIp = true,
-            Subnets = subnets.Apply(getSubnetIdsResult => getSubnetIdsResult.Ids),
-            SecurityGroups = new[]
+            { "assignPublicIp", true },
+            { "subnets", subnets.Apply(getSubnetIdsResult => getSubnetIdsResult.Ids) },
+            { "securityGroups", new[]
             {
                 webSecurityGroup.Id,
-            },
+            } },
         },
         LoadBalancers = new[]
         {

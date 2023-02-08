@@ -45,8 +45,8 @@ type TypInput interface {
 
 // A test for namespaces (mod 2)
 type TypArgs struct {
-	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
-	Val  pulumi.StringPtrInput `pulumi:"val"`
+	Mod1 *mod1.TypArgs `pulumi:"mod1"`
+	Val  *string       `pulumi:"val"`
 }
 
 // Defaults sets the appropriate defaults for TypArgs
@@ -55,9 +55,8 @@ func (val *TypArgs) Defaults() *TypArgs {
 		return nil
 	}
 	tmp := *val
-
 	if tmp.Val == nil {
-		tmp.Val = pulumi.StringPtr("mod2")
+		tmp.Val = *string("mod2")
 	}
 	return &tmp
 }

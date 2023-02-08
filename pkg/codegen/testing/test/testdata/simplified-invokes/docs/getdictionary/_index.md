@@ -45,7 +45,7 @@ function </span>getDictionaryOutput<span class="p">(</span><span class="nx">args
 ><span class="k">def </span>get_dictionary<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetDictionaryResult</span
 ><span class="k">
-def </span>get_dictionary_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
+def </span>get_dictionary_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[float]]</span> = None<span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetDictionaryResult]</span
 ></code></pre></div>
 </pulumi-choosable>

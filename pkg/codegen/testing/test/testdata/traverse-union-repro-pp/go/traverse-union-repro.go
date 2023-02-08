@@ -8,7 +8,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := fsx.NewOpenZfsFileSystem(ctx, "test", &fsx.OpenZfsFileSystemArgs{
-			StorageCapacity: pulumi.Int(64),
+			StorageCapacity: 64,
 			SubnetIds: pulumi.String{
 				aws_subnet.Test1.Id,
 			},

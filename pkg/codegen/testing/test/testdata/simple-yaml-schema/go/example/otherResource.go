@@ -39,7 +39,7 @@ type otherResourceArgs struct {
 // The set of arguments for constructing a OtherResource resource.
 type OtherResourceArgs struct {
 	Bar []pulumi.StringInput
-	Foo ResourceInput
+	Foo *Resource
 }
 
 func (OtherResourceArgs) ElementType() reflect.Type {

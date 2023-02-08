@@ -23,10 +23,10 @@ func NewProvider(ctx *pulumi.Context,
 	}
 
 	if args.FavoriteColor == nil {
-		args.FavoriteColor = pulumi.StringPtr(getEnvOrDefault("", nil, "FAVE_COLOR").(string))
+		args.FavoriteColor = *string(getEnvOrDefault("", nil, "FAVE_COLOR").(string))
 	}
 	if args.SecretSandwiches != nil {
-		args.SecretSandwiches = pulumi.ToSecret(args.SecretSandwiches).(config.SandwichArrayInput)
+		args.SecretSandwiches = pulumi.ToSecret(args.SecretSandwiches).([]config.SandwichInput)
 	}
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:configstation", name, args, &resource, opts...)
@@ -46,9 +46,9 @@ type providerArgs struct {
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
 	// this is a relaxed string enum which can also be set via env var
-	FavoriteColor pulumi.StringPtrInput
+	FavoriteColor *string
 	// Super duper secret sandwiches.
-	SecretSandwiches config.SandwichArrayInput
+	SecretSandwiches []config.SandwichInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

@@ -4,17 +4,17 @@ import pulumi_azure_native as azure_native
 front_door = azure_native.network.FrontDoor("frontDoor",
     resource_group_name="someGroupName",
     routing_rules=[azure_native.network.RoutingRuleArgs(
-        route_configuration=azure_native.network.ForwardingConfigurationArgs(
-            odata_type="#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-            backend_pool=azure_native.network.SubResourceArgs(
-                id="/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
-            ),
-        ),
+        route_configuration={
+            "odataType": "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
+            "backendPool": {
+                "id": "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
+            },
+        },
     )])
 endpoint = azure_native.cdn.Endpoint("endpoint",
     origins=[],
-    delivery_policy=azure_native.cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs(
-        rules=[azure_native.cdn.DeliveryRuleArgs(
+    delivery_policy={
+        "rules": [azure_native.cdn.DeliveryRuleArgs(
             actions=[
                 azure_native.cdn.DeliveryRuleCacheExpirationActionArgs(
                     name="CacheExpiration",
@@ -59,7 +59,7 @@ endpoint = azure_native.cdn.Endpoint("endpoint",
             name="rule1",
             order=1,
         )],
-    ),
+    },
     endpoint_name="endpoint1",
     is_compression_enabled=True,
     is_http_allowed=True,

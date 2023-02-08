@@ -60,7 +60,7 @@ type resourceArgs struct {
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Bar pulumi.StringPtrInput
+	Bar *string
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

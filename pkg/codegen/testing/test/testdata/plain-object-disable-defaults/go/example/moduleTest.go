@@ -60,8 +60,8 @@ type moduleTestArgs struct {
 
 // The set of arguments for constructing a ModuleTest resource.
 type ModuleTestArgs struct {
-	Mod1 mod1.TypPtrInput
-	Val  TypPtrInput
+	Mod1 *mod1.TypArgs
+	Val  *TypArgs
 }
 
 func (ModuleTestArgs) ElementType() reflect.Type {

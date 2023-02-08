@@ -13,8 +13,8 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		siteBucket, err := s3.NewBucket(ctx, "siteBucket", &s3.BucketArgs{
-			Website: &s3.BucketWebsiteArgs{
-				IndexDocument: pulumi.String("index.html"),
+			Website: &*s3.BucketWebsiteArgs{
+				IndexDocument: "index.html",
 			},
 		})
 		if err != nil {

@@ -16,8 +16,8 @@ __all__ = [
 @pulumi.input_type
 class SandwichArgs:
     def __init__(__self__, *,
-                 bread: Optional[pulumi.Input[str]] = None,
-                 veggies: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]] = None):
+                 bread: pulumi.Input[Optional[str]] = None,
+                 veggies: pulumi.Input[Optional[Sequence[pulumi.Input[str]]]] = None):
         if bread is not None:
             pulumi.set(__self__, "bread", bread)
         if veggies is not None:
@@ -25,20 +25,20 @@ class SandwichArgs:
 
     @property
     @pulumi.getter
-    def bread(self) -> Optional[pulumi.Input[str]]:
+    def bread(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "bread")
 
     @bread.setter
-    def bread(self, value: Optional[pulumi.Input[str]]):
+    def bread(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "bread", value)
 
     @property
     @pulumi.getter
-    def veggies(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]:
+    def veggies(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[str]]]]:
         return pulumi.get(self, "veggies")
 
     @veggies.setter
-    def veggies(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]):
+    def veggies(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[str]]]]):
         pulumi.set(self, "veggies", value)
 
 

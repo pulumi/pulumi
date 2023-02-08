@@ -62,8 +62,8 @@ type personArgs struct {
 
 // The set of arguments for constructing a Person resource.
 type PersonArgs struct {
-	Name pulumi.StringPtrInput
-	Pets PetTypeArrayInput
+	Name *string
+	Pets []PetTypeInput
 }
 
 func (PersonArgs) ElementType() reflect.Type {

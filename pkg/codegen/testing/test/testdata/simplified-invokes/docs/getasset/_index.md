@@ -45,7 +45,7 @@ function </span>getAssetOutput<span class="p">(</span><span class="nx">args</spa
 ><span class="k">def </span>get_asset<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetAssetResult</span
 ><span class="k">
-def </span>get_asset_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
+def </span>get_asset_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[float]]</span> = None<span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetAssetResult]</span
 ></code></pre></div>
 </pulumi-choosable>

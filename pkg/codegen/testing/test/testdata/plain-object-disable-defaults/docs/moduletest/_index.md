@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleTest</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-               <span class="nx">mod1</span><span class="p">:</span> <span class="nx">Optional[_mod1.TypArgs]</span> = None<span class="p">,</span>
-               <span class="nx">val</span><span class="p">:</span> <span class="nx">Optional[TypArgs]</span> = None<span class="p">)</span>
+               <span class="nx">mod1</span><span class="p">:</span> <span class="nx">Optional[Optional[_mod1.TypArgs]]</span> = None<span class="p">,</span>
+               <span class="nx">val</span><span class="p">:</span> <span class="nx">Optional[Optional[TypArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleTest</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ModuleTestArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_csharp" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Pulumi.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ<wbr>Args</a></span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Mod1.<wbr>Inputs.<wbr>Typ<wbr>Args?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_csharp" style="color: inherit; text-decoration: inherit;">Val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -248,7 +248,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_go" style="color: inherit; text-decoration: inherit;">Mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -256,7 +256,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_go" style="color: inherit; text-decoration: inherit;">Val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_java" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Typ<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_java" style="color: inherit; text-decoration: inherit;">val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Typ<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_nodejs" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">mod1Typ<wbr>Args</a></span>
+        <span class="property-type">mod1Typ<wbr>Args | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_nodejs" style="color: inherit; text-decoration: inherit;">val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -314,7 +314,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_python" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_python" style="color: inherit; text-decoration: inherit;">val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Typ<wbr>Args</a></span>
+        <span class="property-type">Typ<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -336,7 +336,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#mod1_yaml" style="color: inherit; text-decoration: inherit;">mod1</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -344,7 +344,7 @@ The ModuleTest resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#val_yaml" style="color: inherit; text-decoration: inherit;">val</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#typ">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

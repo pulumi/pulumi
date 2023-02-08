@@ -33,7 +33,7 @@ no_edit_this_page: true
 <span class="k">def </span><span class="nx">OtherResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                   <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
                   <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[Sequence[str]]</span> = None<span class="p">,</span>
-                  <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Resource]</span> = None<span class="p">)</span>
+                  <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Optional[Resource]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">OtherResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                   <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[OtherResourceArgs]</a></span> = None<span class="p">,</span>
@@ -234,7 +234,7 @@ The OtherResource resource accepts the following [input](/docs/intro/concepts/in
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource</span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Resource?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -278,7 +278,7 @@ The OtherResource resource accepts the following [input](/docs/intro/concepts/in
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Resource</span>
+        <span class="property-type">Optional&lt;Resource&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -300,7 +300,7 @@ The OtherResource resource accepts the following [input](/docs/intro/concepts/in
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Resource</span>
+        <span class="property-type">Resource | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -26,7 +26,7 @@ type ConfigMapInput interface {
 }
 
 type ConfigMapArgs struct {
-	Config pulumi.StringPtrInput `pulumi:"config"`
+	Config *string `pulumi:"config"`
 }
 
 func (ConfigMapArgs) ElementType() reflect.Type {
@@ -126,13 +126,13 @@ type ObjectInput interface {
 }
 
 type ObjectArgs struct {
-	Bar     pulumi.StringPtrInput `pulumi:"bar"`
-	Configs ConfigMapArrayInput   `pulumi:"configs"`
-	Foo     ResourceInput         `pulumi:"foo"`
+	Bar     *string          `pulumi:"bar"`
+	Configs []ConfigMapInput `pulumi:"configs"`
+	Foo     *Resource        `pulumi:"foo"`
 	// List of lists of other objects
-	Others SomeOtherObjectArrayArrayInput `pulumi:"others"`
+	Others []SomeOtherObjectArrayInput `pulumi:"others"`
 	// Mapping from string to list of some other object
-	StillOthers SomeOtherObjectArrayMapInput `pulumi:"stillOthers"`
+	StillOthers map[string]SomeOtherObjectArrayInput `pulumi:"stillOthers"`
 }
 
 func (ObjectArgs) ElementType() reflect.Type {
@@ -199,7 +199,7 @@ type OtherResourceOutputTypeInput interface {
 }
 
 type OtherResourceOutputTypeArgs struct {
-	Foo pulumi.StringPtrInput `pulumi:"foo"`
+	Foo *string `pulumi:"foo"`
 }
 
 func (OtherResourceOutputTypeArgs) ElementType() reflect.Type {
@@ -248,7 +248,7 @@ type SomeOtherObjectInput interface {
 }
 
 type SomeOtherObjectArgs struct {
-	Baz pulumi.StringPtrInput `pulumi:"baz"`
+	Baz *string `pulumi:"baz"`
 }
 
 func (SomeOtherObjectArgs) ElementType() reflect.Type {

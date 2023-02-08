@@ -76,9 +76,9 @@ type FooArgs struct {
 	// Options for tuning the Kubernetes client used by a Provider.
 	BackupKubeClientSettings KubeClientSettingsInput
 	// Options for tuning the Kubernetes client used by a Provider.
-	KubeClientSettings KubeClientSettingsPtrInput
+	KubeClientSettings *KubeClientSettingsArgs
 	// describing things
-	Settings LayeredTypePtrInput
+	Settings *LayeredTypeArgs
 }
 
 func (FooArgs) ElementType() reflect.Type {

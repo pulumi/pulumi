@@ -42,10 +42,10 @@ type ContainerInput interface {
 }
 
 type ContainerArgs struct {
-	Brightness ContainerBrightnessPtrInput `pulumi:"brightness"`
-	Color      pulumi.StringPtrInput       `pulumi:"color"`
-	Material   pulumi.StringPtrInput       `pulumi:"material"`
-	Size       ContainerSizeInput          `pulumi:"size"`
+	Brightness *ContainerBrightness `pulumi:"brightness"`
+	Color      *string              `pulumi:"color"`
+	Material   *string              `pulumi:"material"`
+	Size       ContainerSizeInput   `pulumi:"size"`
 }
 
 // Defaults sets the appropriate defaults for ContainerArgs
@@ -55,7 +55,7 @@ func (val *ContainerArgs) Defaults() *ContainerArgs {
 	}
 	tmp := *val
 	if tmp.Brightness == nil {
-		tmp.Brightness = ContainerBrightness(1.0)
+		tmp.Brightness = *ContainerBrightness(1.0)
 	}
 	return &tmp
 }

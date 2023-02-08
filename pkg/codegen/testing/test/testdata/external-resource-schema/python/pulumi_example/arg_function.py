@@ -54,7 +54,7 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
 
 
 @_utilities.lift_output_func(arg_function)
-def arg_function_output(name: Optional[pulumi.Input[Optional['pulumi_random.RandomPet']]] = None,
+def arg_function_output(name: pulumi.Input[Optional['pulumi_random.RandomPet']] = None,
                         opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
     """
     Use this data source to access information about an existing resource.

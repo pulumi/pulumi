@@ -32,7 +32,7 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-                   <span class="nx">thing</span><span class="p">:</span> <span class="nx">Optional[_root_inputs.TopLevelArgs]</span> = None<span class="p">)</span>
+                   <span class="nx">thing</span><span class="p">:</span> <span class="nx">Optional[Optional[_root_inputs.TopLevelArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ModuleResourceArgs]</a></span> = None<span class="p">,</span>
@@ -225,7 +225,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_csharp" style="color: inherit; text-decoration: inherit;">Thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Inputs.<wbr>Top<wbr>Level<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -239,7 +239,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_go" style="color: inherit; text-decoration: inherit;">Thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type">Top<wbr>Level<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -253,7 +253,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_java" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Top<wbr>Level<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -267,7 +267,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_nodejs" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type">Top<wbr>Level<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -281,7 +281,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_python" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Top<wbr>Level<wbr>Args</a></span>
+        <span class="property-type">Top<wbr>Level<wbr>Args]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -295,7 +295,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#thing_yaml" style="color: inherit; text-decoration: inherit;">thing</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#toplevel">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

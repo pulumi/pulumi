@@ -40,7 +40,7 @@ namespace Pulumi.Example.MyModule
     public sealed class IamResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("config")]
-        public Input<Pulumi.GoogleNative.IAM.V1.Inputs.AuditConfigArgs>? Config { get; set; }
+        public Input<Pulumi.GoogleNative.IAM.V1.Inputs.AuditConfigArgs?>? Config { get; set; }
 
         public IamResourceArgs()
         {

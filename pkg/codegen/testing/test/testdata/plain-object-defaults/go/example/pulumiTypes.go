@@ -53,9 +53,9 @@ type HelmReleaseSettingsInput interface {
 // BETA FEATURE - Options to configure the Helm Release resource.
 type HelmReleaseSettingsArgs struct {
 	// The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
-	Driver pulumi.StringPtrInput `pulumi:"driver"`
+	Driver *string `pulumi:"driver"`
 	// The path to the helm plugins directory.
-	PluginsPath pulumi.StringPtrInput `pulumi:"pluginsPath"`
+	PluginsPath *string `pulumi:"pluginsPath"`
 	// to test required args
 	RequiredArg pulumi.StringInput `pulumi:"requiredArg"`
 }
@@ -67,10 +67,10 @@ func (val *HelmReleaseSettingsArgs) Defaults() *HelmReleaseSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Driver == nil {
-		tmp.Driver = pulumi.StringPtr(getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string))
+		tmp.Driver = *string(getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string))
 	}
 	if tmp.PluginsPath == nil {
-		tmp.PluginsPath = pulumi.StringPtr(getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string))
+		tmp.PluginsPath = *string(getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string))
 	}
 	return &tmp
 }
@@ -263,10 +263,10 @@ type KubeClientSettingsInput interface {
 // Options for tuning the Kubernetes client used by a Provider.
 type KubeClientSettingsArgs struct {
 	// Maximum burst for throttle. Default value is 10.
-	Burst pulumi.IntPtrInput `pulumi:"burst"`
+	Burst *int `pulumi:"burst"`
 	// Maximum queries per second (QPS) to the API server from this client. Default value is 5.
-	Qps     pulumi.Float64PtrInput     `pulumi:"qps"`
-	RecTest KubeClientSettingsPtrInput `pulumi:"recTest"`
+	Qps     *float64                `pulumi:"qps"`
+	RecTest *KubeClientSettingsArgs `pulumi:"recTest"`
 }
 
 // Defaults sets the appropriate defaults for KubeClientSettingsArgs
@@ -276,12 +276,11 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Burst == nil {
-		tmp.Burst = pulumi.IntPtr(getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int))
+		tmp.Burst = *int(getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_BURST").(string))
 	}
 	if tmp.Qps == nil {
-		tmp.Qps = pulumi.Float64Ptr(getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64))
+		tmp.Qps = *float64(getEnvOrDefault("", nil, "PULUMI_K8S_CLIENT_QPS").(string))
 	}
-
 	return &tmp
 }
 func (KubeClientSettingsArgs) ElementType() reflect.Type {
@@ -483,13 +482,13 @@ type LayeredTypeInput interface {
 // Make sure that defaults propagate through types
 type LayeredTypeArgs struct {
 	// The answer to the question
-	Answer pulumi.Float64PtrInput   `pulumi:"answer"`
+	Answer *float64                 `pulumi:"answer"`
 	Other  HelmReleaseSettingsInput `pulumi:"other"`
 	// Test how plain types interact
 	PlainOther *HelmReleaseSettingsArgs `pulumi:"plainOther"`
 	// The question already answered
-	Question  pulumi.StringPtrInput `pulumi:"question"`
-	Recursive LayeredTypePtrInput   `pulumi:"recursive"`
+	Question  *string          `pulumi:"question"`
+	Recursive *LayeredTypeArgs `pulumi:"recursive"`
 	// To ask and answer
 	Thinker pulumi.StringInput `pulumi:"thinker"`
 }
@@ -501,17 +500,17 @@ func (val *LayeredTypeArgs) Defaults() *LayeredTypeArgs {
 	}
 	tmp := *val
 	if tmp.Answer == nil {
-		tmp.Answer = pulumi.Float64Ptr(42.0)
+		tmp.Answer = *float64(42.0)
 	}
+	tmp.Other = *tmp.Other.Defaults()
 
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
-		tmp.Question = pulumi.StringPtr(getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string))
+		tmp.Question = *string(getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string))
 	}
-
 	if tmp.Thinker == nil {
-		tmp.Thinker = pulumi.String("not a good interaction")
+		tmp.Thinker = "not a good interaction"
 	}
 	return &tmp
 }
@@ -740,9 +739,9 @@ type TypInput interface {
 
 // A test for namespaces (mod main)
 type TypArgs struct {
-	Mod1 mod1.TypPtrInput      `pulumi:"mod1"`
-	Mod2 mod2.TypPtrInput      `pulumi:"mod2"`
-	Val  pulumi.StringPtrInput `pulumi:"val"`
+	Mod1 *mod1.TypArgs `pulumi:"mod1"`
+	Mod2 *mod2.TypArgs `pulumi:"mod2"`
+	Val  *string       `pulumi:"val"`
 }
 
 // Defaults sets the appropriate defaults for TypArgs
@@ -751,9 +750,8 @@ func (val *TypArgs) Defaults() *TypArgs {
 		return nil
 	}
 	tmp := *val
-
 	if tmp.Val == nil {
-		tmp.Val = pulumi.StringPtr("mod main")
+		tmp.Val = *string("mod main")
 	}
 	return &tmp
 }

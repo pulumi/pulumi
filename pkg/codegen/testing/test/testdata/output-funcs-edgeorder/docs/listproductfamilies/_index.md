@@ -51,10 +51,10 @@ function </span>listProductFamiliesOutput<span class="p">(</span><span class="nx
                           <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ListProductFamiliesResult</span
 ><span class="k">
-def </span>list_product_families_output<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
-                          <span class="nx">expand</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+def </span>list_product_families_output<span class="p">(</span><span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
+                          <span class="nx">expand</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                           <span class="nx">filterable_properties</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Mapping[str, pulumi.Input[Sequence[pulumi.Input[FilterablePropertyArgs]]]]]]</span> = None<span class="p">,</span>
-                          <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+                          <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                           <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListProductFamiliesResult]</span
 ></code></pre></div>
 </pulumi-choosable>

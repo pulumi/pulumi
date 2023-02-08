@@ -32,9 +32,9 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[SomeOtherObjectArgs]</span> = None<span class="p">,</span>
-             <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[ObjectWithNodeOptionalInputsArgs]</span> = None<span class="p">,</span>
-             <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[ObjectArgs]</span> = None<span class="p">)</span>
+             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[Optional[SomeOtherObjectArgs]]</span> = None<span class="p">,</span>
+             <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Optional[ObjectWithNodeOptionalInputsArgs]]</span> = None<span class="p">,</span>
+             <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[Optional[ObjectArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">TypeUses</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[TypeUsesArgs]</a></span> = None<span class="p">,</span>
@@ -227,7 +227,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Other.<wbr>Example.<wbr>Inputs.<wbr>Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Other.<wbr>Example.<wbr>Inputs.<wbr>Some<wbr>Other<wbr>Object<wbr>Args?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -235,7 +235,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Other.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type">Other.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -243,7 +243,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Other.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Other.<wbr>Example.<wbr>Inputs.<wbr>Object<wbr>Args?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -257,7 +257,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Some<wbr>Other<wbr>Object<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -265,7 +265,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_go" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -273,7 +273,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_go" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -287,7 +287,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Some<wbr>Other<wbr>Object<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -295,7 +295,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_java" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -303,7 +303,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Object<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -317,7 +317,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Some<wbr>Other<wbr>Object<wbr>Args | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -325,7 +325,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_nodejs" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -333,7 +333,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Args | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -347,7 +347,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object<wbr>Args</a></span>
+        <span class="property-type">Some<wbr>Other<wbr>Object<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -355,7 +355,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_python" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>With<wbr>Node<wbr>Optional<wbr>Inputs<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -363,7 +363,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Object<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -377,7 +377,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#someotherobject">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -385,7 +385,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_yaml" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectwithnodeoptionalinputs">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -393,7 +393,7 @@ The TypeUses resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_yaml" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#object">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

@@ -14,7 +14,7 @@ namespace Other.Example.Inputs
     public sealed class ObjectWithNodeOptionalInputsArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<int>? Bar { get; set; }
+        public Input<int?>? Bar { get; set; }
 
         [Input("foo", required: true)]
         public Input<string> Foo { get; set; } = null!;

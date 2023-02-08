@@ -91,32 +91,20 @@ namespace Pulumi.Mypkg
 
     public sealed class GetAmiIdsInvokeArgs : global::Pulumi.InvokeArgs
     {
-        [Input("executableUsers")]
-        private InputList<string>? _executableUsers;
-
         /// <summary>
         /// Limit search to users with *explicit* launch
         /// permission on  the image. Valid items are the numeric account ID or `self`.
         /// </summary>
-        public InputList<string> ExecutableUsers
-        {
-            get => _executableUsers ?? (_executableUsers = new InputList<string>());
-            set => _executableUsers = value;
-        }
-
-        [Input("filters")]
-        private InputList<Inputs.GetAmiIdsFilterInputArgs>? _filters;
+        [Input("executableUsers")]
+        public Input<ImmutableArray<Input<string>>>? ExecutableUsers { get; set; }
 
         /// <summary>
         /// One or more name/value pairs to filter off of. There
         /// are several valid keys, for a full reference, check out
         /// [describe-images in the AWS CLI reference][1].
         /// </summary>
-        public InputList<Inputs.GetAmiIdsFilterInputArgs> Filters
-        {
-            get => _filters ?? (_filters = new InputList<Inputs.GetAmiIdsFilterInputArgs>());
-            set => _filters = value;
-        }
+        [Input("filters")]
+        public Input<ImmutableArray<Input<Inputs.GetAmiIdsFilterInputArgs>>>? Filters { get; set; }
 
         /// <summary>
         /// A regex string to apply to the AMI list returned
@@ -126,7 +114,7 @@ namespace Pulumi.Mypkg
         /// options to narrow down the list AWS returns.
         /// </summary>
         [Input("nameRegex")]
-        public Input<string>? NameRegex { get; set; }
+        public Input<string?>? NameRegex { get; set; }
 
         [Input("owners", required: true)]
         private InputList<string>? _owners;
@@ -144,7 +132,7 @@ namespace Pulumi.Mypkg
         /// Used to sort AMIs by creation time.
         /// </summary>
         [Input("sortAscending")]
-        public Input<bool>? SortAscending { get; set; }
+        public Input<bool?>? SortAscending { get; set; }
 
         public GetAmiIdsInvokeArgs()
         {

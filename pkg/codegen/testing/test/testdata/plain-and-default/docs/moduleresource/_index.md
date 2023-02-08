@@ -32,10 +32,10 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">ModuleResource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                    <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-                   <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[EnumThing]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
-                   <span class="nx">optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_bool</span><span class="p">:</span> <span class="nx">Optional[Optional[bool]]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_enum</span><span class="p">:</span> <span class="nx">Optional[Optional[EnumThing]]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_number</span><span class="p">:</span> <span class="nx">Optional[Optional[float]]</span> = None<span class="p">,</span>
+                   <span class="nx">optional_string</span><span class="p">:</span> <span class="nx">Optional[Optional[str]]</span> = None<span class="p">,</span>
                    <span class="nx">plain_optional_bool</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
                    <span class="nx">plain_optional_number</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                    <span class="nx">plain_optional_string</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -294,7 +294,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>bool</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">bool</span>
+        <span class="property-type">bool?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -302,7 +302,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing</a></span>
+        <span class="property-type">Pulumi.<wbr>Foo<wbr>Bar.<wbr>Enum<wbr>Thing?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -310,7 +310,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>number</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">double</span>
+        <span class="property-type">double?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -318,7 +318,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_csharp" style="color: inherit; text-decoration: inherit;">Optional_<wbr>string</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -420,7 +420,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_go" style="color: inherit; text-decoration: inherit;">Optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+        <span class="property-type">Enum<wbr>Thing</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -530,7 +530,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Boolean</span>
+        <span class="property-type">Optional&lt;Boolean&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -538,7 +538,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+        <span class="property-type">Optional&lt;Enum<wbr>Thing&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -546,7 +546,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Double</span>
+        <span class="property-type">Optional&lt;Double&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -554,7 +554,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_java" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String</span>
+        <span class="property-type">Optional&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -648,7 +648,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">boolean</span>
+        <span class="property-type">boolean | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -656,7 +656,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+        <span class="property-type">Enum<wbr>Thing | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -664,7 +664,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">number</span>
+        <span class="property-type">number | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -672,7 +672,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_nodejs" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -766,7 +766,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_bool_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>bool</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">bool</span>
+        <span class="property-type">Optional[bool]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -774,7 +774,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">Enum<wbr>Thing</a></span>
+        <span class="property-type">Enum<wbr>Thing</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -782,7 +782,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_number_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>number</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">float</span>
+        <span class="property-type">Optional[float]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -790,7 +790,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_string_python" style="color: inherit; text-decoration: inherit;">optional_<wbr>string</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str</span>
+        <span class="property-type">Optional[str]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -892,7 +892,7 @@ The ModuleResource resource accepts the following [input](/docs/intro/concepts/i
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#optional_enum_yaml" style="color: inherit; text-decoration: inherit;">optional_<wbr>enum</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#enumthing">4 | 6 | 8</a></span>
+        <span class="property-type">4 | 6 | 8</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

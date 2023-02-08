@@ -13,10 +13,10 @@ namespace Pulumi.Example.Nested.Inputs
     public sealed class BazArgs : global::Pulumi.ResourceArgs
     {
         [Input("hello")]
-        public Input<string>? Hello { get; set; }
+        public Input<string?>? Hello { get; set; }
 
         [Input("world")]
-        public Input<string>? World { get; set; }
+        public Input<string?>? World { get; set; }
 
         public BazArgs()
         {

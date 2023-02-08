@@ -63,7 +63,7 @@ export class RubberTree extends pulumi.CustomResource {
             if ((!args || args.type === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'type'");
             }
-            resourceInputs["container"] = args ? (args.container ? pulumi.output(args.container).apply(inputs.containerArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["container"] = args ? (args.container ? args.container === undefined ? undefined : pulumi.output(args.container).apply(x => x === undefined ? undefined : inputs.containerArgsProvideDefaults(x)) : undefined) : undefined;
             resourceInputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
             resourceInputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
             resourceInputs["size"] = (args ? args.size : undefined) ?? "medium";
@@ -75,16 +75,16 @@ export class RubberTree extends pulumi.CustomResource {
 }
 
 export interface RubberTreeState {
-    farm?: pulumi.Input<enums.tree.v1.Farm | string>;
+    farm?: pulumi.Input<enums.tree.v1.Farm | string | undefined>;
 }
 
 /**
  * The set of arguments for constructing a RubberTree resource.
  */
 export interface RubberTreeArgs {
-    container?: pulumi.Input<inputs.ContainerArgs>;
+    container?: pulumi.Input<inputs.ContainerArgs | undefined>;
     diameter: pulumi.Input<enums.tree.v1.Diameter>;
-    farm?: pulumi.Input<enums.tree.v1.Farm | string>;
-    size?: pulumi.Input<enums.tree.v1.TreeSize>;
+    farm?: pulumi.Input<enums.tree.v1.Farm | string | undefined>;
+    size?: pulumi.Input<enums.tree.v1.TreeSize | undefined>;
     type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

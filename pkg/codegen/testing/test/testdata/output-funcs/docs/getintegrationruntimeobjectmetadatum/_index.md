@@ -53,7 +53,7 @@ function </span>getIntegrationRuntimeObjectMetadatumOutput<span class="p">(</spa
 ><span class="k">
 def </span>get_integration_runtime_object_metadatum_output<span class="p">(</span><span class="nx">factory_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                              <span class="nx">integration_runtime_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-                                             <span class="nx">metadata_path</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+                                             <span class="nx">metadata_path</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                                              <span class="nx">resource_group_name</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
                                              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetIntegrationRuntimeObjectMetadatumResult]</span
 ></code></pre></div>

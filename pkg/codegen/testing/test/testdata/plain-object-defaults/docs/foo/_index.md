@@ -36,8 +36,8 @@ test new feature with resoruces
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
         <span class="nx">argument</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
         <span class="nx">backup_kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
-        <span class="nx">kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[KubeClientSettingsArgs]</span> = None<span class="p">,</span>
-        <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[LayeredTypeArgs]</span> = None<span class="p">)</span>
+        <span class="nx">kube_client_settings</span><span class="p">:</span> <span class="nx">Optional[Optional[KubeClientSettingsArgs]]</span> = None<span class="p">,</span>
+        <span class="nx">settings</span><span class="p">:</span> <span class="nx">Optional[Optional[LayeredTypeArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Foo</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">FooArgs</a></span><span class="p">,</span>
@@ -247,7 +247,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_csharp" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Kube<wbr>Client<wbr>Settings<wbr>Args?</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -256,7 +256,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_csharp" style="color: inherit; text-decoration: inherit;">Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">Layered<wbr>Type<wbr>Args?</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
@@ -288,7 +288,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_go" style="color: inherit; text-decoration: inherit;">Kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Kube<wbr>Client<wbr>Settings<wbr>Args</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -297,7 +297,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_go" style="color: inherit; text-decoration: inherit;">Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">Layered<wbr>Type<wbr>Args</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
@@ -329,7 +329,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_java" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Kube<wbr>Client<wbr>Settings<wbr>Args&gt;</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -338,7 +338,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_java" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Layered<wbr>Type<wbr>Args&gt;</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
@@ -370,7 +370,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_nodejs" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Kube<wbr>Client<wbr>Settings<wbr>Args | undefined</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -379,7 +379,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_nodejs" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">Layered<wbr>Type<wbr>Args | undefined</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
@@ -411,7 +411,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kube_client_settings_python" style="color: inherit; text-decoration: inherit;">kube_<wbr>client_<wbr>settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Kube<wbr>Client<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Kube<wbr>Client<wbr>Settings<wbr>Args</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -420,7 +420,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_python" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Layered<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">Layered<wbr>Type<wbr>Args</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>
@@ -452,7 +452,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#kubeclientsettings_yaml" style="color: inherit; text-decoration: inherit;">kube<wbr>Client<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#kubeclientsettings">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd><p>Options for tuning the Kubernetes client used by a Provider.</p>
 </dd><dt class="property-optional"
@@ -461,7 +461,7 @@ The Foo resource accepts the following [input](/docs/intro/concepts/inputs-outpu
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#settings_yaml" style="color: inherit; text-decoration: inherit;">settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#layeredtype">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd><p>describing things</p>
 </dd></dl>

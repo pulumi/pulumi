@@ -1037,8 +1037,24 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	var diags hcl.Diagnostics
 
-	// Bind property types and constant or default values.
+	// Prefill the property names for checking known names while parsing the required array
 	propertyMap := map[string]*Property{}
+	for name := range properties {
+		propertyMap[name] = nil
+	}
+
+	// Compute required properties.
+	requiredProperties := map[string]struct{}{}
+	for i, name := range required {
+		_, ok := propertyMap[name]
+		if !ok {
+			diags = diags.Append(errorf(fmt.Sprintf("%s/%v", requiredPath, i), "unknown required property %q", name))
+			continue
+		}
+		requiredProperties[name] = struct{}{}
+	}
+
+	// Bind property types and constant or default values.
 	var result = make([]*Property, 0, len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
@@ -1067,10 +1083,20 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			language[name] = json.RawMessage(raw)
 		}
 
+		if _, isRequired := requiredProperties[name]; !isRequired {
+			if inputType, ok := typ.(*InputType); ok {
+				// For input shape properties the correct type for optionality is optional[input[optional[T]]],
+				// some languages can simplify that
+				typ = t.newOptionalType(t.newInputType(t.newOptionalType(inputType.ElementType)))
+			} else {
+				typ = t.newOptionalType(typ)
+			}
+		}
+
 		p := &Property{
 			Name:                 name,
 			Comment:              spec.Description,
-			Type:                 t.newOptionalType(typ),
+			Type:                 typ,
 			ConstValue:           cv,
 			DefaultValue:         dv,
 			DeprecationMessage:   spec.DeprecationMessage,
@@ -1082,18 +1108,6 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		}
 
 		propertyMap[name], result = p, append(result, p)
-	}
-
-	// Compute required properties.
-	for i, name := range required {
-		p, ok := propertyMap[name]
-		if !ok {
-			diags = diags.Append(errorf(fmt.Sprintf("%s/%v", requiredPath, i), "unknown required property %q", name))
-			continue
-		}
-		if typ, ok := p.Type.(*OptionalType); ok {
-			p.Type = typ.ElementType
-		}
 	}
 
 	sort.Slice(result, func(i, j int) bool {

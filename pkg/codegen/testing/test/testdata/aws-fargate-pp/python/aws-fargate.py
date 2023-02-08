@@ -74,11 +74,11 @@ app_service = aws.ecs.Service("appService",
     desired_count=5,
     launch_type="FARGATE",
     task_definition=app_task.arn,
-    network_configuration=aws.ecs.ServiceNetworkConfigurationArgs(
-        assign_public_ip=True,
-        subnets=subnets.ids,
-        security_groups=[web_security_group.id],
-    ),
+    network_configuration={
+        "assignPublicIp": True,
+        "subnets": subnets.ids,
+        "securityGroups": [web_security_group.id],
+    },
     load_balancers=[aws.ecs.ServiceLoadBalancerArgs(
         target_group_arn=web_target_group.arn,
         container_name="my-app",

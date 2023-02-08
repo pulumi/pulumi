@@ -26,7 +26,7 @@ type TopLevelInput interface {
 }
 
 type TopLevelArgs struct {
-	Buzz pulumi.StringPtrInput `pulumi:"buzz"`
+	Buzz *string `pulumi:"buzz"`
 }
 
 func (TopLevelArgs) ElementType() reflect.Type {

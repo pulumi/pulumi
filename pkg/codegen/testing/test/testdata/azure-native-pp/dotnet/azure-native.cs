@@ -11,13 +11,13 @@ return await Deployment.RunAsync(() =>
         {
             new AzureNative.Network.Inputs.RoutingRuleArgs
             {
-                RouteConfiguration = new AzureNative.Network.Inputs.ForwardingConfigurationArgs
+                RouteConfiguration = 
                 {
-                    OdataType = "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-                    BackendPool = new AzureNative.Network.Inputs.SubResourceArgs
+                    { "odataType", "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration" },
+                    { "backendPool", 
                     {
-                        Id = "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
-                    },
+                        { "id", "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1" },
+                    } },
                 },
             },
         },
@@ -26,9 +26,9 @@ return await Deployment.RunAsync(() =>
     var endpoint = new AzureNative.Cdn.Endpoint("endpoint", new()
     {
         Origins = new[] {},
-        DeliveryPolicy = new AzureNative.Cdn.Inputs.EndpointPropertiesUpdateParametersDeliveryPolicyArgs
+        DeliveryPolicy = 
         {
-            Rules = new[]
+            { "rules", new[]
             {
                 new AzureNative.Cdn.Inputs.DeliveryRuleArgs
                 {
@@ -89,7 +89,7 @@ return await Deployment.RunAsync(() =>
                     Name = "rule1",
                     Order = 1,
                 },
-            },
+            } },
         },
         EndpointName = "endpoint1",
         IsCompressionEnabled = true,

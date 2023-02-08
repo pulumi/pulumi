@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     public sealed class ConfigMapArgs : global::Pulumi.ResourceArgs
     {
         [Input("config")]
-        public Input<string>? Config { get; set; }
+        public Input<string?>? Config { get; set; }
 
         public ConfigMapArgs()
         {

@@ -71,7 +71,7 @@ def list_storage_account_keys(account_name: Optional[str] = None,
 
 @_utilities.lift_output_func(list_storage_account_keys)
 def list_storage_account_keys_output(account_name: Optional[pulumi.Input[str]] = None,
-                                     expand: Optional[pulumi.Input[Optional[str]]] = None,
+                                     expand: pulumi.Input[Optional[str]] = None,
                                      resource_group_name: Optional[pulumi.Input[str]] = None,
                                      opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListStorageAccountKeysResult]:
     """

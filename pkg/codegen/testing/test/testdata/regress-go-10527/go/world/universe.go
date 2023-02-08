@@ -58,7 +58,7 @@ type universeArgs struct {
 
 // The set of arguments for constructing a Universe resource.
 type UniverseArgs struct {
-	Worlds WorldMapInput
+	Worlds map[string]WorldInput
 }
 
 func (UniverseArgs) ElementType() reflect.Type {

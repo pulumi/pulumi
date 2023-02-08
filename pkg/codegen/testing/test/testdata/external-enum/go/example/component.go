@@ -64,8 +64,8 @@ type componentArgs struct {
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	LocalEnum  local.MyEnumPtrInput
-	RemoteEnum accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItemPtrInput
+	LocalEnum  *local.MyEnum
+	RemoteEnum *accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItem
 }
 
 func (ComponentArgs) ElementType() reflect.Type {

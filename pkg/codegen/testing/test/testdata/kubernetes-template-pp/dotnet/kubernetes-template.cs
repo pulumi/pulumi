@@ -8,48 +8,48 @@ return await Deployment.RunAsync(() =>
     {
         ApiVersion = "apps/v1",
         Kind = "Deployment",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            Name = "argocd-server",
+            { "name", "argocd-server" },
         },
-        Spec = new Kubernetes.Types.Inputs.Apps.V1.DeploymentSpecArgs
+        Spec = 
         {
-            Selector = new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
+            { "selector", new Kubernetes.Types.Inputs.Meta.V1.LabelSelectorArgs
             {
                 MatchLabels = 
                 {
                     { "app", "server" },
                 },
-            },
-            Replicas = 1,
-            Template = new Kubernetes.Types.Inputs.Core.V1.PodTemplateSpecArgs
+            } },
+            { "replicas", 1 },
+            { "template", new Kubernetes.Types.Inputs.Core.V1.PodTemplateSpecArgs
             {
-                Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+                Metadata = 
                 {
-                    Labels = 
+                    { "labels", 
                     {
                         { "app", "server" },
-                    },
+                    } },
                 },
-                Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
+                Spec = 
                 {
-                    Containers = new[]
+                    { "containers", new[]
                     {
                         new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                         {
                             Name = "nginx",
                             Image = "nginx",
-                            ReadinessProbe = new Kubernetes.Types.Inputs.Core.V1.ProbeArgs
+                            ReadinessProbe = 
                             {
-                                HttpGet = new Kubernetes.Types.Inputs.Core.V1.HTTPGetActionArgs
+                                { "httpGet", 
                                 {
-                                    Port = 8080,
-                                },
+                                    { "port", 8080 },
+                                } },
                             },
                         },
-                    },
+                    } },
                 },
-            },
+            } },
         },
     });
 

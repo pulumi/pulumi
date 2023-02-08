@@ -22,9 +22,6 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	if args.HelmReleaseSettings != nil {
-		args.HelmReleaseSettings = args.HelmReleaseSettings.ToHelmReleaseSettingsPtrOutput().ApplyT(func(v *HelmReleaseSettings) *HelmReleaseSettings { return v.Defaults() }).(HelmReleaseSettingsPtrOutput)
-	}
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
 	if err != nil {
@@ -41,7 +38,7 @@ type providerArgs struct {
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
 	// BETA FEATURE - Options to configure the Helm Release resource.
-	HelmReleaseSettings HelmReleaseSettingsPtrInput
+	HelmReleaseSettings *HelmReleaseSettingsArgs
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

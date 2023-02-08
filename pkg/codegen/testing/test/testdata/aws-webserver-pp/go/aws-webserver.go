@@ -11,12 +11,12 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		securityGroup, err := ec2.NewSecurityGroup(ctx, "securityGroup", &ec2.SecurityGroupArgs{
-			Ingress: ec2.SecurityGroupIngressArray{
-				&ec2.SecurityGroupIngressArgs{
+			Ingress: []ec2.SecurityGroupIngressArgs{
+				{
 					Protocol: pulumi.String("tcp"),
 					FromPort: pulumi.Int(0),
 					ToPort:   pulumi.Int(0),
-					CidrBlocks: pulumi.StringArray{
+					CidrBlocks: []pulumi.String{
 						pulumi.String("0.0.0.0/0"),
 					},
 				},
@@ -43,15 +43,15 @@ func main() {
 			return err
 		}
 		server, err := ec2.NewInstance(ctx, "server", &ec2.InstanceArgs{
-			Tags: pulumi.StringMap{
+			Tags: map[string]pulumi.String{
 				"Name": pulumi.String("web-server-www"),
 			},
-			InstanceType: pulumi.String("t2.micro"),
-			SecurityGroups: pulumi.StringArray{
+			InstanceType: "t2.micro",
+			SecurityGroups: []pulumi.String{
 				securityGroup.Name,
 			},
 			Ami:      pulumi.String(ami.Id),
-			UserData: pulumi.String(fmt.Sprintf("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n")),
+			UserData: fmt.Sprintf("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
 		})
 		if err != nil {
 			return err

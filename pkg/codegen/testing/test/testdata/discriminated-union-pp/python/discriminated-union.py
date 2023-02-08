@@ -10,12 +10,12 @@ server = azure_native.dbforpostgresql.Server("server",
     ),
     resource_group_name="TargetResourceGroup",
     server_name="targetserver",
-    sku=azure_native.dbforpostgresql.SkuArgs(
-        capacity=2,
-        family="Gen5",
-        name="B_Gen5_2",
-        tier="Basic",
-    ),
+    sku={
+        "capacity": 2,
+        "family": "Gen5",
+        "name": "B_Gen5_2",
+        "tier": "Basic",
+    },
     tags={
         "ElasticServer": "1",
     })

@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Person</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
            <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-           <span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
-           <span class="nx">pets</span><span class="p">:</span> <span class="nx">Optional[Sequence[PetArgs]]</span> = None<span class="p">)</span>
+           <span class="nx">name</span><span class="p">:</span> <span class="nx">Optional[Optional[str]]</span> = None<span class="p">,</span>
+           <span class="nx">pets</span><span class="p">:</span> <span class="nx">Optional[Optional[Sequence[PetArgs]]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Person</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
            <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[PersonArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_csharp" style="color: inherit; text-decoration: inherit;">Name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_csharp" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Pet<wbr>Args&gt;?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -256,7 +256,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_go" style="color: inherit; text-decoration: inherit;">Pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">[]Pet<wbr>Type<wbr>Args</a></span>
+        <span class="property-type">[]Pet<wbr>Type<wbr>Args</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -270,7 +270,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_java" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">String</span>
+        <span class="property-type">Optional&lt;String&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -278,7 +278,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_java" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Pet<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Pet<wbr>Args&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -292,7 +292,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">string</span>
+        <span class="property-type">string | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -300,7 +300,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_nodejs" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet<wbr>Args[]</a></span>
+        <span class="property-type">Pet<wbr>Args[] | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -314,7 +314,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">str</span>
+        <span class="property-type">Optional[str]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -322,7 +322,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_python" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Sequence[Pet<wbr>Args]</a></span>
+        <span class="property-type">Sequence[Pet<wbr>Args]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -344,7 +344,7 @@ The Person resource accepts the following [input](/docs/intro/concepts/inputs-ou
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pets_yaml" style="color: inherit; text-decoration: inherit;">pets</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">List&lt;Property Map&gt;</a></span>
+        <span class="property-type">List&lt;Property Map&gt;</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>

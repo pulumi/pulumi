@@ -14,42 +14,25 @@ namespace Other.Example.Inputs
     public sealed class ObjectArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<string>? Bar { get; set; }
+        public Input<string?>? Bar { get; set; }
 
         [Input("configs")]
-        private InputList<Inputs.ConfigMapArgs>? _configs;
-        public InputList<Inputs.ConfigMapArgs> Configs
-        {
-            get => _configs ?? (_configs = new InputList<Inputs.ConfigMapArgs>());
-            set => _configs = value;
-        }
+        public Input<ImmutableArray<Input<Inputs.ConfigMapArgs>>>? Configs { get; set; }
 
         [Input("foo")]
-        public Input<Other.Example.Resource>? Foo { get; set; }
-
-        [Input("others")]
-        private InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>>? _others;
+        public Input<Other.Example.Resource?>? Foo { get; set; }
 
         /// <summary>
         /// List of lists of other objects
         /// </summary>
-        public InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>> Others
-        {
-            get => _others ?? (_others = new InputList<ImmutableArray<Inputs.SomeOtherObjectArgs>>());
-            set => _others = value;
-        }
-
-        [Input("stillOthers")]
-        private InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>>? _stillOthers;
+        [Input("others")]
+        public Input<ImmutableArray<InputList<Inputs.SomeOtherObjectArgs>>>? Others { get; set; }
 
         /// <summary>
         /// Mapping from string to list of some other object
         /// </summary>
-        public InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>> StillOthers
-        {
-            get => _stillOthers ?? (_stillOthers = new InputMap<ImmutableArray<Inputs.SomeOtherObjectArgs>>());
-            set => _stillOthers = value;
-        }
+        [Input("stillOthers")]
+        public Input<ImmutableDictionary<string, InputList<Inputs.SomeOtherObjectArgs>>?>? StillOthers { get; set; }
 
         public ObjectArgs()
         {

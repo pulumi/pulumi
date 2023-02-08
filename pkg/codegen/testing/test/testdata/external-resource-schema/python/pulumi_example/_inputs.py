@@ -20,10 +20,10 @@ class PetArgs:
                  required_name: pulumi.Input['pulumi_random.RandomPet'],
                  required_name_array: pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]],
                  required_name_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]],
-                 age: Optional[pulumi.Input[int]] = None,
-                 name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
-                 name_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
-                 name_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None):
+                 age: pulumi.Input[Optional[int]] = None,
+                 name: pulumi.Input[Optional['pulumi_random.RandomPet']] = None,
+                 name_array: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_random.RandomPet']]]] = None,
+                 name_map: pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]] = None):
         pulumi.set(__self__, "required_name", required_name)
         pulumi.set(__self__, "required_name_array", required_name_array)
         pulumi.set(__self__, "required_name_map", required_name_map)
@@ -65,38 +65,38 @@ class PetArgs:
 
     @property
     @pulumi.getter
-    def age(self) -> Optional[pulumi.Input[int]]:
+    def age(self) -> pulumi.Input[Optional[int]]:
         return pulumi.get(self, "age")
 
     @age.setter
-    def age(self, value: Optional[pulumi.Input[int]]):
+    def age(self, value: pulumi.Input[Optional[int]]):
         pulumi.set(self, "age", value)
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input['pulumi_random.RandomPet']]:
+    def name(self) -> pulumi.Input[Optional['pulumi_random.RandomPet']]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input['pulumi_random.RandomPet']]):
+    def name(self, value: pulumi.Input[Optional['pulumi_random.RandomPet']]):
         pulumi.set(self, "name", value)
 
     @property
     @pulumi.getter(name="nameArray")
-    def name_array(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]:
+    def name_array(self) -> pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]:
         return pulumi.get(self, "name_array")
 
     @name_array.setter
-    def name_array(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]):
+    def name_array(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_random.RandomPet']]]]):
         pulumi.set(self, "name_array", value)
 
     @property
     @pulumi.getter(name="nameMap")
-    def name_map(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]:
+    def name_map(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]:
         return pulumi.get(self, "name_map")
 
     @name_map.setter
-    def name_map(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]):
+    def name_map(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_random.RandomPet']]]]):
         pulumi.set(self, "name_map", value)
 
 

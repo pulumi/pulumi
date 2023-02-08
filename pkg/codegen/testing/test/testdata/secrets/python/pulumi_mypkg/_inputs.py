@@ -16,17 +16,17 @@ __all__ = [
 @pulumi.input_type
 class ConfigArgs:
     def __init__(__self__, *,
-                 foo: Optional[pulumi.Input[str]] = None):
+                 foo: pulumi.Input[Optional[str]] = None):
         if foo is not None:
             pulumi.set(__self__, "foo", foo)
 
     @property
     @pulumi.getter
-    def foo(self) -> Optional[pulumi.Input[str]]:
+    def foo(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "foo")
 
     @foo.setter
-    def foo(self, value: Optional[pulumi.Input[str]]):
+    def foo(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "foo", value)
 
 

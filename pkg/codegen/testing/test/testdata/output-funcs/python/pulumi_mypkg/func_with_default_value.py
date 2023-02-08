@@ -56,7 +56,7 @@ def func_with_default_value(a: Optional[str] = None,
 
 @_utilities.lift_output_func(func_with_default_value)
 def func_with_default_value_output(a: Optional[pulumi.Input[str]] = None,
-                                   b: Optional[pulumi.Input[Optional[str]]] = None,
+                                   b: pulumi.Input[Optional[str]] = None,
                                    opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithDefaultValueResult]:
     """
     Check codegen of functions with default values.

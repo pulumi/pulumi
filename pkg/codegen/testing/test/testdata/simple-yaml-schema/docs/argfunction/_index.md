@@ -45,7 +45,7 @@ function </span>argFunctionOutput<span class="p">(</span><span class="nx">args</
 ><span class="k">def </span>arg_function<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[Resource]</span> = None<span class="p">,</span>
                  <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ArgFunctionResult</span
 ><span class="k">
-def </span>arg_function_output<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Resource]]</span> = None<span class="p">,</span>
+def </span>arg_function_output<span class="p">(</span><span class="nx">arg1</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[Resource]]</span> = None<span class="p">,</span>
                  <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ArgFunctionResult]</span
 ></code></pre></div>
 </pulumi-choosable>

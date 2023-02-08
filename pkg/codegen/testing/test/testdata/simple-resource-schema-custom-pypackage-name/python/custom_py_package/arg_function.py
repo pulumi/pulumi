@@ -54,7 +54,7 @@ def arg_function(arg1: Optional['Resource'] = None,
 
 
 @_utilities.lift_output_func(arg_function)
-def arg_function_output(arg1: Optional[pulumi.Input[Optional['Resource']]] = None,
+def arg_function_output(arg1: pulumi.Input[Optional['Resource']] = None,
                         opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
     """
     Use this data source to access information about an existing resource.

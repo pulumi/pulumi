@@ -61,8 +61,8 @@ type catArgs struct {
 
 // The set of arguments for constructing a Cat resource.
 type CatArgs struct {
-	Age pulumi.IntPtrInput
-	Pet PetPtrInput
+	Age *int
+	Pet *PetArgs
 }
 
 func (CatArgs) ElementType() reflect.Type {

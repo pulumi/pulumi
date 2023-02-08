@@ -7,14 +7,14 @@ return await Deployment.RunAsync(() =>
     var bar = new Kubernetes.Core.V1.Pod("bar", new()
     {
         ApiVersion = "v1",
-        Metadata = new Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs
+        Metadata = 
         {
-            Namespace = "foo",
-            Name = "bar",
+            { "namespace", "foo" },
+            { "name", "bar" },
         },
-        Spec = new Kubernetes.Types.Inputs.Core.V1.PodSpecArgs
+        Spec = 
         {
-            Containers = new[]
+            { "containers", new[]
             {
                 new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
                 {
@@ -27,13 +27,13 @@ return await Deployment.RunAsync(() =>
                             ContainerPortValue = 80,
                         },
                     },
-                    Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
+                    Resources = 
                     {
-                        Limits = 
+                        { "limits", 
                         {
                             { "memory", "20Mi" },
                             { "cpu", "0.2" },
-                        },
+                        } },
                     },
                 },
                 new Kubernetes.Types.Inputs.Core.V1.ContainerArgs
@@ -47,16 +47,16 @@ return await Deployment.RunAsync(() =>
                             ContainerPortValue = 80,
                         },
                     },
-                    Resources = new Kubernetes.Types.Inputs.Core.V1.ResourceRequirementsArgs
+                    Resources = 
                     {
-                        Limits = 
+                        { "limits", 
                         {
                             { "memory", "20Mi" },
                             { "cpu", "0.2" },
-                        },
+                        } },
                     },
                 },
-            },
+            } },
         },
     });
 

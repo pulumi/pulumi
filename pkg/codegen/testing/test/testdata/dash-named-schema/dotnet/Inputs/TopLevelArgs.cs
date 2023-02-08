@@ -13,7 +13,7 @@ namespace Pulumi.FooBar.Inputs
     public sealed class TopLevelArgs : global::Pulumi.ResourceArgs
     {
         [Input("buzz")]
-        public Input<string>? Buzz { get; set; }
+        public Input<string?>? Buzz { get; set; }
 
         public TopLevelArgs()
         {

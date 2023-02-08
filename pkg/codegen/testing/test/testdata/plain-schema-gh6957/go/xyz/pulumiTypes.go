@@ -26,7 +26,7 @@ type FooInput interface {
 }
 
 type FooArgs struct {
-	A pulumi.BoolPtrInput `pulumi:"a"`
+	A *bool `pulumi:"a"`
 }
 
 func (FooArgs) ElementType() reflect.Type {

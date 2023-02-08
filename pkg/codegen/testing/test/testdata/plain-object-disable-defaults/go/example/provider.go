@@ -38,7 +38,7 @@ type providerArgs struct {
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
 	// BETA FEATURE - Options to configure the Helm Release resource.
-	HelmReleaseSettings HelmReleaseSettingsPtrInput
+	HelmReleaseSettings *HelmReleaseSettingsArgs
 }
 
 func (ProviderArgs) ElementType() reflect.Type {

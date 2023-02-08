@@ -42,7 +42,7 @@ func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...
 }
 
 type ArgFunctionOutputArgs struct {
-	Name random.RandomPetInput `pulumi:"name"`
+	Name *random.RandomPet `pulumi:"name"`
 }
 
 func (ArgFunctionOutputArgs) ElementType() reflect.Type {

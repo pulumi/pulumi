@@ -51,8 +51,8 @@ function </span>listConfigurationsOutput<span class="p">(</span><span class="nx"
                         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>ListConfigurationsResult</span
 ><span class="k">
 def </span>list_configurations_output<span class="p">(</span><span class="nx">configuration_filters</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[ConfigurationFiltersArgs]]]]</span> = None<span class="p">,</span>
-                        <span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
-                        <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+                        <span class="nx">customer_subscription_details</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[CustomerSubscriptionDetailsArgs]]</span> = None<span class="p">,</span>
+                        <span class="nx">skip_token</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[ListConfigurationsResult]</span
 ></code></pre></div>
 </pulumi-choosable>

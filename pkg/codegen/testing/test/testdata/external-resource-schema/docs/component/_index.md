@@ -32,9 +32,9 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
-              <span class="nx">metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
-              <span class="nx">metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">metadata_array</span><span class="p">:</span> <span class="nx">Optional[Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]]</span> = None<span class="p">,</span>
+              <span class="nx">metadata_map</span><span class="p">:</span> <span class="nx">Optional[Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]]</span> = None<span class="p">,</span>
               <span class="nx">required_metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">,</span>
               <span class="nx">required_metadata_array</span><span class="p">:</span> <span class="nx">Optional[Sequence[pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">,</span>
               <span class="nx">required_metadata_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, pulumi_kubernetes.meta.v1.ObjectMetaArgs]]</span> = None<span class="p">)</span>
@@ -254,7 +254,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_csharp" style="color: inherit; text-decoration: inherit;">Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -262,7 +262,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;?</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -270,7 +270,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_csharp" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;</span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Meta.<wbr>V1.<wbr>Object<wbr>Meta<wbr>Args&gt;?</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -308,7 +308,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_go" style="color: inherit; text-decoration: inherit;">Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -316,7 +316,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -362,7 +362,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_java" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Object<wbr>Meta<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -370,7 +370,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_java" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List&lt;Object<wbr>Meta<wbr>Args&gt;</a></span>
+        <span class="property-type">List&lt;Object<wbr>Meta<wbr>Args&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -416,7 +416,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_nodejs" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta</a></span>
+        <span class="property-type">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -424,7 +424,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[]</a></span>
+        <span class="property-type">pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta[] | undefined</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -432,7 +432,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadatamap_nodejs" style="color: inherit; text-decoration: inherit;">metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">{[key: string]: pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta}</span>
+        <span class="property-type">{[key: string]: pulumi<wbr>Kubernetestypesinputmetav1Object<wbr>Meta} | undefined</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -470,7 +470,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -478,7 +478,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_array_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args]</a></span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args]]</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -486,7 +486,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_map_python" style="color: inherit; text-decoration: inherit;">metadata_<wbr>map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta<wbr>Args]</span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args]]</span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -524,7 +524,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadata_yaml" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -532,7 +532,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#metadataarray_yaml" style="color: inherit; text-decoration: inherit;">metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">List&lt;Property Map&gt;</a></span>
+        <span class="property-type">List&lt;Property Map&gt;</span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">

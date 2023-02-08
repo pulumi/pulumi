@@ -72,7 +72,7 @@ def get_bastion_shareable_link(bastion_host_name: Optional[str] = None,
 @_utilities.lift_output_func(get_bastion_shareable_link)
 def get_bastion_shareable_link_output(bastion_host_name: Optional[pulumi.Input[str]] = None,
                                       resource_group_name: Optional[pulumi.Input[str]] = None,
-                                      vms: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['BastionShareableLink']]]]] = None,
+                                      vms: pulumi.Input[Optional[Sequence[pulumi.InputType['BastionShareableLink']]]] = None,
                                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetBastionShareableLinkResult]:
     """
     Response for all the Bastion Shareable Link endpoints.

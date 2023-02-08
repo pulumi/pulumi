@@ -74,16 +74,16 @@ namespace Pulumi.Plant.Tree.V1
     public sealed class RubberTreeArgs : global::Pulumi.ResourceArgs
     {
         [Input("container")]
-        public Input<Pulumi.Plant.Inputs.ContainerArgs>? Container { get; set; }
+        public Input<Pulumi.Plant.Inputs.ContainerArgs?>? Container { get; set; }
 
         [Input("diameter", required: true)]
         public Input<Pulumi.Plant.Tree.V1.Diameter> Diameter { get; set; } = null!;
 
         [Input("farm")]
-        public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
+        public Input<Union<Input<Pulumi.Plant.Tree.V1.Farm>, Input<string>>?>? Farm { get; set; }
 
         [Input("size")]
-        public Input<Pulumi.Plant.Tree.V1.TreeSize>? Size { get; set; }
+        public Input<Pulumi.Plant.Tree.V1.TreeSize?>? Size { get; set; }
 
         [Input("type", required: true)]
         public Input<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
@@ -92,7 +92,7 @@ namespace Pulumi.Plant.Tree.V1
         {
             Diameter = Pulumi.Plant.Tree.V1.Diameter.Sixinch;
             Farm = "(unknown)";
-            Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
+            Size = "medium";
             Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;
         }
         public static new RubberTreeArgs Empty => new RubberTreeArgs();
@@ -101,7 +101,7 @@ namespace Pulumi.Plant.Tree.V1
     public sealed class RubberTreeState : global::Pulumi.ResourceArgs
     {
         [Input("farm")]
-        public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
+        public Input<Union<Input<Pulumi.Plant.Tree.V1.Farm>, Input<string>>?>? Farm { get; set; }
 
         public RubberTreeState()
         {

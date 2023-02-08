@@ -61,7 +61,7 @@ type moduleResourceArgs struct {
 
 // The set of arguments for constructing a ModuleResource resource.
 type ModuleResourceArgs struct {
-	Thing foo.TopLevelPtrInput
+	Thing *foo.TopLevelArgs
 }
 
 func (ModuleResourceArgs) ElementType() reflect.Type {

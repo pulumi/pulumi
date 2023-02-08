@@ -81,9 +81,9 @@ type componentArgs struct {
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Metadata              metav1.ObjectMetaPtrInput
-	MetadataArray         metav1.ObjectMetaArrayInput
-	MetadataMap           metav1.ObjectMetaMapInput
+	Metadata              *metav1.ObjectMetaArgs
+	MetadataArray         []metav1.ObjectMetaInput
+	MetadataMap           map[string]metav1.ObjectMetaInput
 	RequiredMetadata      metav1.ObjectMetaInput
 	RequiredMetadataArray metav1.ObjectMetaArrayInput
 	RequiredMetadataMap   metav1.ObjectMetaMapInput

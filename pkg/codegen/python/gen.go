@@ -2338,6 +2338,13 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Special case Optional[Input[Optional[T]]] to just Input[Optional[T]]
+		if innerInput, ok := t.ElementType.(*schema.InputType); ok {
+			if _, ok := innerInput.ElementType.(*schema.OptionalType); ok {
+				return mod.typeString(innerInput, input, acceptMapping)
+			}
+		}
+
 		return fmt.Sprintf("Optional[%s]", mod.typeString(t.ElementType, input, acceptMapping))
 	case *schema.InputType:
 		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, acceptMapping)

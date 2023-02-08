@@ -34,7 +34,7 @@ The provider type for the kubernetes package.
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">helm_release_settings</span><span class="p">:</span> <span class="nx">Optional[HelmReleaseSettingsArgs]</span> = None<span class="p">)</span>
+             <span class="nx">helm_release_settings</span><span class="p">:</span> <span class="nx">Optional[Optional[HelmReleaseSettingsArgs]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Provider</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ProviderArgs]</a></span> = None<span class="p">,</span>
@@ -227,7 +227,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Helm<wbr>Release<wbr>Settings<wbr>Args?</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -242,7 +242,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_go" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Helm<wbr>Release<wbr>Settings<wbr>Args</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -257,7 +257,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_java" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Optional&lt;Helm<wbr>Release<wbr>Settings<wbr>Args&gt;</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -272,7 +272,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_nodejs" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Helm<wbr>Release<wbr>Settings<wbr>Args | undefined</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -287,7 +287,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helm_release_settings_python" style="color: inherit; text-decoration: inherit;">helm_<wbr>release_<wbr>settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type">Helm<wbr>Release<wbr>Settings<wbr>Args</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -302,7 +302,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_yaml" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Property Map</a></span>
+        <span class="property-type">Property Map</span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>

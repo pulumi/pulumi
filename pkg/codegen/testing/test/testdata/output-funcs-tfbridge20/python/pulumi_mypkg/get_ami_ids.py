@@ -146,11 +146,11 @@ def get_ami_ids(executable_users: Optional[Sequence[str]] = None,
 
 
 @_utilities.lift_output_func(get_ami_ids)
-def get_ami_ids_output(executable_users: Optional[pulumi.Input[Optional[Sequence[str]]]] = None,
-                       filters: Optional[pulumi.Input[Optional[Sequence[pulumi.InputType['GetAmiIdsFilterArgs']]]]] = None,
-                       name_regex: Optional[pulumi.Input[Optional[str]]] = None,
+def get_ami_ids_output(executable_users: pulumi.Input[Optional[Sequence[str]]] = None,
+                       filters: pulumi.Input[Optional[Sequence[pulumi.InputType['GetAmiIdsFilterArgs']]]] = None,
+                       name_regex: pulumi.Input[Optional[str]] = None,
                        owners: Optional[pulumi.Input[Sequence[str]]] = None,
-                       sort_ascending: Optional[pulumi.Input[Optional[bool]]] = None,
+                       sort_ascending: pulumi.Input[Optional[bool]] = None,
                        opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetAmiIdsResult]:
     """
     Taken from pulumi-AWS to regress an issue

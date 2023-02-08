@@ -45,7 +45,7 @@ function </span>getCustomResultOutput<span class="p">(</span><span class="nx">ar
 ><span class="k">def </span>get_custom_result<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[float]</span> = None<span class="p">,</span>
                       <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetCustomResultResult</span
 ><span class="k">
-def </span>get_custom_result_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[float]]</span> = None<span class="p">,</span>
+def </span>get_custom_result_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[float]]</span> = None<span class="p">,</span>
                       <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetCustomResultResult]</span
 ></code></pre></div>
 </pulumi-choosable>

@@ -38,7 +38,7 @@ type barResourceArgs struct {
 
 // The set of arguments for constructing a BarResource resource.
 type BarResourceArgs struct {
-	Foo ResourceInput
+	Foo *Resource
 }
 
 func (BarResourceArgs) ElementType() reflect.Type {

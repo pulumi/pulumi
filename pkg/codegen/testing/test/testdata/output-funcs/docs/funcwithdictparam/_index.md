@@ -48,8 +48,8 @@ function </span>funcWithDictParamOutput<span class="p">(</span><span class="nx">
                          <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>FuncWithDictParamResult</span
 ><span class="k">
-def </span>func_with_dict_param_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]</span> = None<span class="p">,</span>
-                         <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+def </span>func_with_dict_param_output<span class="p">(</span><span class="nx">a</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[Mapping[str, pulumi.Input[str]]]]</span> = None<span class="p">,</span>
+                         <span class="nx">b</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                          <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[FuncWithDictParamResult]</span
 ></code></pre></div>
 </pulumi-choosable>

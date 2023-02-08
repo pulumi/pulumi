@@ -53,11 +53,11 @@ function </span>getAmiIdsOutput<span class="p">(</span><span class="nx">args</sp
                 <span class="nx">sort_ascending</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>GetAmiIdsResult</span
 ><span class="k">
-def </span>get_ami_ids_output<span class="p">(</span><span class="nx">executable_users</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]</span> = None<span class="p">,</span>
-                <span class="nx">filters</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[GetAmiIdsFilterArgs]]]]</span> = None<span class="p">,</span>
-                <span class="nx">name_regex</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
+def </span>get_ami_ids_output<span class="p">(</span><span class="nx">executable_users</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[Sequence[pulumi.Input[str]]]]</span> = None<span class="p">,</span>
+                <span class="nx">filters</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[Sequence[pulumi.Input[GetAmiIdsFilterArgs]]]]</span> = None<span class="p">,</span>
+                <span class="nx">name_regex</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[str]]</span> = None<span class="p">,</span>
                 <span class="nx">owners</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Sequence[pulumi.Input[str]]]]</span> = None<span class="p">,</span>
-                <span class="nx">sort_ascending</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[bool]]</span> = None<span class="p">,</span>
+                <span class="nx">sort_ascending</span><span class="p">:</span> <span class="nx">pulumi.Input[Optional[bool]]</span> = None<span class="p">,</span>
                 <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions">Optional[InvokeOptions]</a></span> = None<span class="p">) -&gt;</span> <span>Output[GetAmiIdsResult]</span
 ></code></pre></div>
 </pulumi-choosable>

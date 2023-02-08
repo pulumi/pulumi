@@ -64,15 +64,10 @@ namespace Pulumi.Example
     public sealed class PersonArgs : global::Pulumi.ResourceArgs
     {
         [Input("name")]
-        public Input<string>? Name { get; set; }
+        public Input<string?>? Name { get; set; }
 
         [Input("pets")]
-        private InputList<Inputs.PetArgs>? _pets;
-        public InputList<Inputs.PetArgs> Pets
-        {
-            get => _pets ?? (_pets = new InputList<Inputs.PetArgs>());
-            set => _pets = value;
-        }
+        public Input<ImmutableArray<Input<Inputs.PetArgs>>>? Pets { get; set; }
 
         public PersonArgs()
         {

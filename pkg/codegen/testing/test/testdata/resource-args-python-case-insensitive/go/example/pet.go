@@ -60,7 +60,7 @@ type petArgs struct {
 
 // The set of arguments for constructing a Pet resource.
 type PetArgs struct {
-	Name pulumi.StringPtrInput
+	Name *string
 }
 
 func (PetArgs) ElementType() reflect.Type {

@@ -24,7 +24,7 @@ func NewResource(ctx *pulumi.Context,
 	}
 
 	if args.Baz != nil {
-		args.Baz = pulumi.ToSecret(args.Baz).(pulumi.StringPtrInput)
+		args.Baz = pulumi.ToSecret(args.Baz).(*string)
 	}
 	secrets := pulumi.AdditionalSecretOutputs([]string{
 		"baz",
@@ -67,7 +67,7 @@ type resourceArgs struct {
 
 // The set of arguments for constructing a Resource resource.
 type ResourceArgs struct {
-	Baz pulumi.StringPtrInput
+	Baz *string
 }
 
 func (ResourceArgs) ElementType() reflect.Type {

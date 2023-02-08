@@ -31,5 +31,5 @@ export function absReducedOutputOutput(args: AbsReducedOutputOutputArgs, opts?: 
 
 export interface AbsReducedOutputOutputArgs {
     a: pulumi.Input<number>;
-    b?: pulumi.Input<number>;
+    b?: pulumi.Input<number | undefined>;
 }

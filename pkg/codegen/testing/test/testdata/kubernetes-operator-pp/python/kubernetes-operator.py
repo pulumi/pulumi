@@ -4,28 +4,28 @@ import pulumi_kubernetes as kubernetes
 pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_kubernetes_operatorDeployment",
     api_version="apps/v1",
     kind="Deployment",
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        name="pulumi-kubernetes-operator",
-    ),
-    spec=kubernetes.apps.v1.DeploymentSpecArgs(
-        replicas=1,
-        selector=kubernetes.meta.v1.LabelSelectorArgs(
+    metadata={
+        "name": "pulumi-kubernetes-operator",
+    },
+    spec={
+        "replicas": 1,
+        "selector": kubernetes.meta.v1.LabelSelectorArgs(
             match_labels={
                 "name": "pulumi-kubernetes-operator",
             },
         ),
-        template=kubernetes.core.v1.PodTemplateSpecArgs(
-            metadata=kubernetes.meta.v1.ObjectMetaArgs(
-                labels={
+        "template": kubernetes.core.v1.PodTemplateSpecArgs(
+            metadata={
+                "labels": {
                     "name": "pulumi-kubernetes-operator",
                 },
-            ),
-            spec=kubernetes.core.v1.PodSpecArgs(
-                service_account_name="pulumi-kubernetes-operator",
-                image_pull_secrets=[kubernetes.core.v1.LocalObjectReferenceArgs(
+            },
+            spec={
+                "serviceAccountName": "pulumi-kubernetes-operator",
+                "imagePullSecrets": [kubernetes.core.v1.LocalObjectReferenceArgs(
                     name="pulumi-kubernetes-operator",
                 )],
-                containers=[kubernetes.core.v1.ContainerArgs(
+                "containers": [kubernetes.core.v1.ContainerArgs(
                     name="pulumi-kubernetes-operator",
                     image="pulumi/pulumi-kubernetes-operator:v0.0.2",
                     command=["pulumi-kubernetes-operator"],
@@ -34,19 +34,19 @@ pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_ku
                     env=[
                         kubernetes.core.v1.EnvVarArgs(
                             name="WATCH_NAMESPACE",
-                            value_from=kubernetes.core.v1.EnvVarSourceArgs(
-                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                                    field_path="metadata.namespace",
-                                ),
-                            ),
+                            value_from={
+                                "fieldRef": {
+                                    "fieldPath": "metadata.namespace",
+                                },
+                            },
                         ),
                         kubernetes.core.v1.EnvVarArgs(
                             name="POD_NAME",
-                            value_from=kubernetes.core.v1.EnvVarSourceArgs(
-                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
-                                    field_path="metadata.name",
-                                ),
-                            ),
+                            value_from={
+                                "fieldRef": {
+                                    "fieldPath": "metadata.name",
+                                },
+                            },
                         ),
                         kubernetes.core.v1.EnvVarArgs(
                             name="OPERATOR_NAME",
@@ -54,16 +54,16 @@ pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_ku
                         ),
                     ],
                 )],
-            ),
+            },
         ),
-    ))
+    })
 pulumi_kubernetes_operator_role = kubernetes.rbac.v1.Role("pulumi_kubernetes_operatorRole",
     api_version="rbac.authorization.k8s.io/v1",
     kind="Role",
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        creation_timestamp=None,
-        name="pulumi-kubernetes-operator",
-    ),
+    metadata={
+        "creationTimestamp": None,
+        "name": "pulumi-kubernetes-operator",
+    },
     rules=[
         kubernetes.rbac.v1.PolicyRuleArgs(
             api_groups=[""],
@@ -149,9 +149,9 @@ pulumi_kubernetes_operator_role = kubernetes.rbac.v1.Role("pulumi_kubernetes_ope
 pulumi_kubernetes_operator_role_binding = kubernetes.rbac.v1.RoleBinding("pulumi_kubernetes_operatorRoleBinding",
     kind="RoleBinding",
     api_version="rbac.authorization.k8s.io/v1",
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        name="pulumi-kubernetes-operator",
-    ),
+    metadata={
+        "name": "pulumi-kubernetes-operator",
+    },
     subjects=[kubernetes.rbac.v1.SubjectArgs(
         kind="ServiceAccount",
         name="pulumi-kubernetes-operator",
@@ -164,6 +164,6 @@ pulumi_kubernetes_operator_role_binding = kubernetes.rbac.v1.RoleBinding("pulumi
 pulumi_kubernetes_operator_service_account = kubernetes.core.v1.ServiceAccount("pulumi_kubernetes_operatorServiceAccount",
     api_version="v1",
     kind="ServiceAccount",
-    metadata=kubernetes.meta.v1.ObjectMetaArgs(
-        name="pulumi-kubernetes-operator",
-    ))
+    metadata={
+        "name": "pulumi-kubernetes-operator",
+    })

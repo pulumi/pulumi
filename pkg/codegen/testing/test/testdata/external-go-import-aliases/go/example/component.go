@@ -113,7 +113,7 @@ type ComponentArgs struct {
 	TypeLocalInsteadOfRemoteAlias     gcpiamv1.AuditConfigInput
 	TypeNoAlias                       s3.BucketWebsiteInput
 	TypeRemoteAlias                   dns.DnsKeySpecInput
-	TypeRemoteEnum                    accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItemPtrInput
+	TypeRemoteEnum                    *accesscontextmanager.DevicePolicyAllowedDeviceManagementLevelsItem
 }
 
 func (ComponentArgs) ElementType() reflect.Type {

@@ -16,17 +16,17 @@ __all__ = [
 @pulumi.input_type
 class PetArgs:
     def __init__(__self__, *,
-                 name: Optional[pulumi.Input[str]] = None):
+                 name: pulumi.Input[Optional[str]] = None):
         if name is not None:
             pulumi.set(__self__, "name", name)
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input[str]]:
+    def name(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input[str]]):
+    def name(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "name", value)
 
 

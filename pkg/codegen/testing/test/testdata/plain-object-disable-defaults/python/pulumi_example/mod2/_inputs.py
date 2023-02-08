@@ -17,8 +17,8 @@ __all__ = [
 @pulumi.input_type
 class TypArgs:
     def __init__(__self__, *,
-                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
-                 val: Optional[pulumi.Input[str]] = None):
+                 mod1: pulumi.Input[Optional['_mod1.TypArgs']] = None,
+                 val: pulumi.Input[Optional[str]] = None):
         """
         A test for namespaces (mod 2)
         """
@@ -31,20 +31,20 @@ class TypArgs:
 
     @property
     @pulumi.getter
-    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+    def mod1(self) -> pulumi.Input[Optional['_mod1.TypArgs']]:
         return pulumi.get(self, "mod1")
 
     @mod1.setter
-    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+    def mod1(self, value: pulumi.Input[Optional['_mod1.TypArgs']]):
         pulumi.set(self, "mod1", value)
 
     @property
     @pulumi.getter
-    def val(self) -> Optional[pulumi.Input[str]]:
+    def val(self) -> pulumi.Input[Optional[str]]:
         return pulumi.get(self, "val")
 
     @val.setter
-    def val(self, value: Optional[pulumi.Input[str]]):
+    def val(self, value: pulumi.Input[Optional[str]]):
         pulumi.set(self, "val", value)
 
 
