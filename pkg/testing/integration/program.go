@@ -217,8 +217,13 @@ type ProgramTestOptions struct {
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
 	RunBuild bool
-	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
+
+	// DEPRECATED. Use RunUpdateTestOptions.
 	RunUpdateTest bool
+
+	// RunUpdateTestOptions tests that updating stacks with Dependencies generates no spurious diffs.
+	RunUpdateTestOptions *RunUpdateTestOptions
+
 	// DecryptSecretsInOutput will ensure that stack output is passed `--show-secrets` parameter
 	// Used in conjunction with ExtraRuntimeValidation
 	DecryptSecretsInOutput bool
@@ -327,6 +332,43 @@ func (opts *ProgramTestOptions) GetUseSharedVirtualEnv() bool {
 		return *opts.UseSharedVirtualEnv
 	}
 	return false
+}
+
+// RunUpdateTestOptions tests that updating stacks with Dependencies generates no spurious diffs.
+//
+// A ProgramTest with RunUpdateTestOptions will:
+//
+//   - Step 1: Ignore Dependencies field in ProgramTestOptions and otherwise execute normally and perform pulumi up.
+//     This will create a stack on the baseline version specified in the project.
+//
+//   - Step 2: Apply Dependencies, and perform an additional pulumi up with ProgramTestOptions further modified by
+//     applying RunUpdateTestOptions overrides such as extending the environment. This update should result in no
+//     changes. If unexpected changes are detected, ProgramTest will fail the test.
+//
+// A common use case for this feature is testing Pulumi provider upgrades. For example, Dependencies may specify a new
+// version of a provider Node SDK that is being tested such as @pulumi/random to be linked in with yarn link, while
+// package.json specifies a production version:
+//
+//	"dependencies": {
+//	     "@pulumi/pulumi": "^3.0.0",
+//	     "@pulumi/random": "^4.0.0"
+//	}
+//
+// In this example the test will verify that updating a stack created with 4.x.x SDK to the latest version is a safe
+// no-changes operation.
+//
+// When testing full provider updates, and not just Node SDK updates, special care is needed for managing PATH. In the
+// pulumi-random example, pulumi CLI will look for a local pulumi-provider-random overidde in PATH first, and fall bakck
+// to auto-installing a version that matches the Node SDK version. A good strategy is to:
+//
+//   - Ensure the new version of pulumi-provider-random is not in PATH, or set ProgramTestOptions.Env to exclude it.
+//     This makes Step 1 auto-install and utilize the latest production 4.x.x version.
+//
+//   - Set PATH=/path/to/pulumi-provider-random/bin in RunUpdateTestOptions.Env. This makes Step 2 use the new provider.
+type RunUpdateTestOptions struct {
+
+	// Additional environment variables to set for Step 2.
+	Env []string
 }
 
 type LocalDependency struct {
@@ -524,6 +566,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.RunUpdateTest {
 		opts.RunUpdateTest = overrides.RunUpdateTest
+	}
+	if overrides.RunUpdateTestOptions != nil {
+		opts.RunUpdateTestOptions = overrides.RunUpdateTestOptions
 	}
 	if overrides.DecryptSecretsInOutput {
 		opts.DecryptSecretsInOutput = overrides.DecryptSecretsInOutput
@@ -825,6 +870,19 @@ type ProgramTester struct {
 	tmpdir         string              // the temporary directory we use for our test environment
 	projdir        string              // the project directory we use for this run
 	TestFinished   bool                // whether or not the test if finished
+}
+
+func (pt *ProgramTester) withOpts(overrides ProgramTestOptions) *ProgramTester {
+	var copy ProgramTester = *pt
+	oldOpts := copy.opts
+	newOpts := new(ProgramTestOptions)
+	if oldOpts == nil {
+		*newOpts = overrides
+	} else {
+		*newOpts = oldOpts.With(overrides)
+	}
+	copy.opts = newOpts
+	return &copy
 }
 
 func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
@@ -1212,13 +1270,20 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 		return fmt.Errorf("running test preview, update, and edits: %w", err)
 	}
 
-	if pt.opts.RunUpdateTest {
-		err = upgradeProjectDeps(pt.projdir, pt)
-		if err != nil {
+	if pt.opts.RunUpdateTest || pt.opts.RunUpdateTestOptions != nil {
+		ptCustom := pt
+
+		if pt.opts.RunUpdateTestOptions != nil && pt.opts.RunUpdateTestOptions.Env != nil {
+			ptCustom = pt.withOpts(pt.opts.With(ProgramTestOptions{
+				Env: pt.opts.RunUpdateTestOptions.Env,
+			}))
+		}
+
+		if err = upgradeProjectDeps(ptCustom.projdir, ptCustom); err != nil {
 			return fmt.Errorf("upgrading project dependencies: %w", err)
 		}
 
-		if err = pt.TestPreviewUpdateAndEdits(); err != nil {
+		if err = ptCustom.TestPreviewUpdateAndEdits(); err != nil {
 			return fmt.Errorf("running test preview, update, and edits (updateTest): %w", err)
 		}
 	}
