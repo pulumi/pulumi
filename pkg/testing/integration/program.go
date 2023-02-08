@@ -1279,9 +1279,13 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 			}))
 		}
 
+		pt.t.Logf("ugpradeProjectDeps")
+
 		if err = upgradeProjectDeps(ptCustom.projdir, ptCustom); err != nil {
 			return fmt.Errorf("upgrading project dependencies: %w", err)
 		}
+		pt.t.Logf("ugpradeProjectDeps OK")
+		pt.t.Logf("TestPreviewUpdateAndEdits")
 
 		if err = ptCustom.TestPreviewUpdateAndEdits(); err != nil {
 			return fmt.Errorf("running test preview, update, and edits (updateTest): %w", err)
@@ -2064,7 +2068,7 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if !pt.opts.RunUpdateTest {
+	if !pt.opts.RunUpdateTest && pt.opts.RunUpdateTestOptions == nil {
 		if err = pt.yarnLinkPackageDeps(cwd); err != nil {
 			return err
 		}
@@ -2150,7 +2154,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	if !pt.opts.RunUpdateTest {
+	if !pt.opts.RunUpdateTest && pt.opts.RunUpdateTestOptions == nil {
 		if err = pt.installPipPackageDeps(cwd); err != nil {
 			return err
 		}
