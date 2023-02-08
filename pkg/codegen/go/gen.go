@@ -224,7 +224,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	if mod == "" {
 		var err error
 		mod, err = packageRoot(pkg.pkg)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "Unable to determine package root")
 	}
 
 	var importPath string
@@ -254,7 +254,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
 	if pkg == nil {
 		panic(fmt.Errorf("pkg is nil. token %s", tok))
 	}
@@ -299,7 +299,7 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
 	if pkg == nil {
 		panic(fmt.Errorf("pkg is nil. token %s", tok))
 	}
@@ -338,13 +338,13 @@ func tokenToModule(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
 	return components[1]
 }
 
 func tokenToName(tok string) string {
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "Token must have 3 components, got %d", len(components))
 	return Title(components[2])
 }
 
@@ -685,12 +685,13 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 
 func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, typeDetails) {
 	isExternal, extPkg, token := pkg.isExternalReferenceWithPackage(t)
-	contract.Assert(isExternal)
+	contract.Assertf(isExternal, "Expected external reference for %v", t)
 
 	var goInfo GoPackageInfo
 	extDef, err := extPkg.Definition()
-	contract.AssertNoError(err)
-	contract.AssertNoError(extDef.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	contract.AssertNoErrorf(err, "Could not load definition for %q", extPkg.Name())
+	contract.AssertNoErrorf(extDef.ImportLanguages(map[string]schema.Language{"go": Importer}),
+		"Failed to import languages")
 	if info, ok := extDef.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
 	} else {
@@ -702,7 +703,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 	// Ensure that any package import aliases we have specified locally take precedence over those
 	// specified in the remote package.
 	def, err := pkg.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "Could not load definition for %q", pkg.pkg.Name())
 	if ourPkgGoInfoI, has := def.Language["go"]; has {
 		ourPkgGoInfo := ourPkgGoInfoI.(GoPackageInfo)
 		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
@@ -724,7 +725,7 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 		maps = extMap
 	} else {
 		maps, err = generatePackageContextMap(pkg.tool, extPkg, goInfo, pkg.externalPackages)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "Could not generate package context map")
 		pkg.externalPackages.setContextMap(extDef, maps)
 	}
 	extPkgCtx := maps[""]
@@ -1083,7 +1084,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType) error {
 
 	mod := pkg.tokenToPackage(enumType.Token)
 	modPkg, ok := pkg.packages[mod]
-	contract.Assert(ok)
+	contract.Assertf(ok, "Context for module %q not found", mod)
 
 	printCommentWithDeprecationMessage(w, enumType.Comment, "", false)
 
@@ -1311,7 +1312,7 @@ func (pkg *pkgContext) assignProperty(w io.Writer, p *schema.Property, object, v
 }
 
 func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) string {
-	contract.Assert(field != nil)
+	contract.Assertf(field != nil, "Field must not be nil")
 	return fieldName(pkg, r, field)
 }
 
@@ -1392,7 +1393,7 @@ func (pkg *pkgContext) provideDefaultsFuncName(typ schema.Type) string {
 }
 
 func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) error {
-	contract.Assert(t.IsInputShape())
+	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
 	name := pkg.tokenToType(t.Token)
 
@@ -1448,7 +1449,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 }
 
 func (pkg *pkgContext) genInputArgsStruct(w io.Writer, typeName string, t *schema.ObjectType) {
-	contract.Assert(t.IsInputShape())
+	contract.Assertf(t.IsInputShape(), "Object type must have input shape")
 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %s struct {\n", typeName)
@@ -1470,7 +1471,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 	t := genArgs.t
 	details := pkg.detailsForType(t)
 
-	contract.Assert(!t.IsInputShape())
+	contract.Assertf(!t.IsInputShape(), "Object type must not have input shape")
 
 	name := genArgs.name
 	if name == "" {
@@ -2079,11 +2080,12 @@ func NeedsGoOutputVersion(f *schema.Function) bool {
 	fPkgRef := f.PackageReference
 
 	fPkg, err := fPkgRef.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "Could not load definition for %q", fPkgRef.Name())
 
 	var goInfo GoPackageInfo
 
-	contract.AssertNoError(fPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	contract.AssertNoErrorf(fPkg.ImportLanguages(map[string]schema.Language{"go": Importer}),
+		"Could not import languages")
 	if info, ok := fPkg.Language["go"].(GoPackageInfo); ok {
 		goInfo = info
 	}
@@ -2404,7 +2406,7 @@ func rewriteCyclicObjectFields(pkg *schema.Package) {
 }
 
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) error {
-	contract.Assert(!obj.IsInputShape())
+	contract.Assertf(!obj.IsInputShape(), "Object type must not have input shape")
 	if obj.IsOverlay {
 		// This type is generated by the provider, so no further action is required.
 		return nil
@@ -2629,7 +2631,7 @@ func (pkg *pkgContext) genEnumRegistrations(w io.Writer) {
 		for _, e := range pkg.enums {
 			// Enums are guaranteed to have at least one element when they are
 			// bound into a schema.
-			contract.Assert(len(e.Elements) > 0)
+			contract.Assertf(len(e.Elements) > 0, "Enum must have at least one element")
 			name, details := pkg.tokenToEnum(e.Token), pkg.detailsForType(e)
 			instance := fmt.Sprintf("%#v", e.Elements[0].Value)
 			if details.input || details.ptrInput {
@@ -2867,7 +2869,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 	var pkgName string
 	if pkg.mod == "" {
 		def, err := pkg.pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "Could not retrieve definition")
 		pkgName = packageName(def)
 	} else {
 		pkgName = path.Base(pkg.mod)
@@ -2966,7 +2968,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
 // definition and its registration to support rehydrating providers.
 func (pkg *pkgContext) genResourceModule(w io.Writer) error {
-	contract.Assert(len(pkg.resources) != 0)
+	contract.Assertf(len(pkg.resources) != 0, "Package must have at least one resource")
 	allResourcesAreOverlays := true
 	for _, r := range pkg.resources {
 		if !r.IsOverlay {
@@ -3031,7 +3033,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 				continue
 			}
 			if r.IsProvider {
-				contract.Assert(provider == nil)
+				contract.Assertf(provider == nil, "Provider must not be specified for Provider resources")
 				provider = r
 				continue
 			}

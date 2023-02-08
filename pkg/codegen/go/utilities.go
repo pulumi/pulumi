@@ -150,6 +150,6 @@ func fieldName(pkg *pkgContext, r *schema.Resource, p *schema.Property) string {
 	}
 
 	res := s + "_"
-	contract.Assert(!isReservedResourceField(name, res))
+	contract.Assertf(!isReservedResourceField(name, res), "Name %q is reserved on resource %q", name, res)
 	return res
 }

@@ -277,7 +277,7 @@ func getPackages(tool string, pkg *schema.Package, cache *Cache) map[string]*pkg
 		goPkgInfo = goInfo
 	}
 	v, err := generatePackageContextMap(tool, pkg.Reference(), goPkgInfo, cache)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "Could not generate package context map")
 	packageContexts.Store(pkg, v)
 	return v
 }
@@ -289,7 +289,7 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 		}
 		return n, nil
 	})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "Expcted no diagnostics, got %d", len(diags))
 }
 
 // genPreamble generates package decl, imports, and opens the main func
@@ -402,7 +402,7 @@ func (g *generator) collectImports(
 					tokenRange := tokenArg.SyntaxNode().Range()
 					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
-					contract.Assert(len(diagnostics) == 0)
+					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 
 					vPath, err := g.getVersionPath(program, pkg)
 					if err != nil {
@@ -420,7 +420,7 @@ func (g *generator) collectImports(
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 
 		diags = n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -435,7 +435,7 @@ func (g *generator) collectImports(
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 	}
 }
 
