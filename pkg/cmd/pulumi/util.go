@@ -991,13 +991,13 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 				id := backend.(httpstate.Stack).StackIdentifier()
 				// we don't really care if these logging calls fail as they should not stop the execution
 				if secretName != "" {
-					contract.Assert(commandName == "")
+					contract.Assertf(commandName == "", "Command name must be empty if secret name is set")
 					err := client.Log3rdPartySecretsProviderDecryptionEvent(ctx, id, secretName)
 					contract.IgnoreError(err)
 				}
 
 				if commandName != "" {
-					contract.Assert(secretName == "")
+					contract.Assertf(secretName == "", "Secret name must be empty if command name is set")
 					err := client.LogBulk3rdPartySecretsProviderDecryptionEvent(ctx, id, commandName)
 					contract.IgnoreError(err)
 				}

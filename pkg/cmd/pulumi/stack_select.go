@@ -92,7 +92,7 @@ func newStackSelectCmd() *cobra.Command {
 				return err
 			}
 
-			contract.Assert(stack != nil)
+			contract.Assertf(stack != nil, "must select a stack")
 			return state.SetCurrentStack(stack.Ref().String())
 
 		}),

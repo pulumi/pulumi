@@ -598,7 +598,7 @@ func newUpCmd() *cobra.Command {
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
 			"of sames).")
 	if !hasExperimentalCommands() {
-		contract.AssertNoError(cmd.PersistentFlags().MarkHidden("plan"))
+		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
 
 	// Remote flags
