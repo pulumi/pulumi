@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"cloud.google.com/go/storage"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
 	"gocloud.dev/blob/gcsblob"
@@ -37,6 +38,15 @@ func ResolveGoogleCredentials(ctx context.Context, scope string) (*google.Creden
 			return nil, fmt.Errorf("unable to parse credentials from $GOOGLE_CREDENTIALS: %w", err)
 		}
 		return credentials, nil
+	}
+
+	if creds := os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN"); creds != "" {
+		// We try $GOOGLE_OAUTH_ACCESS_TOKEN before gcp.DefaultCredentials
+		// so that users can override the default creds
+
+		return &google.Credentials{
+			TokenSource: oauth2.StaticTokenSource(&oauth2.Token{AccessToken: creds}),
+		}, nil
 	}
 
 	// DefaultCredentials will attempt to load creds in the following order:
