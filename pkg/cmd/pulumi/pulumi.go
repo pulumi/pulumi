@@ -335,6 +335,7 @@ func NewPulumiCmd() *cobra.Command {
 			Commands: []*cobra.Command{
 				newVersionCmd(),
 				newAboutCmd(),
+				newGenCompletionCmd(cmd),
 			},
 		},
 
@@ -342,7 +343,6 @@ func NewPulumiCmd() *cobra.Command {
 		{
 			Name: "Hidden Commands",
 			Commands: []*cobra.Command{
-				newGenCompletionCmd(cmd),
 				newGenMarkdownCmd(cmd),
 			},
 		},
