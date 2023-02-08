@@ -40,6 +40,10 @@ func ResolveGoogleCredentials(ctx context.Context, scope string) (*google.Creden
 		return credentials, nil
 	}
 
+	// GOOGLE_OAUTH_ACCESS_TOKEN aren't part of the gcloud standard authorization variables
+	// but the GCP terraform provider uses this variable to allow users to authenticate
+	// with a temporary access token obtained from the Google Authorization Server instead of just a file path or credentials.json.
+	// https://www.terraform.io/docs/backends/types/gcs.html
 	if creds := os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN"); creds != "" {
 		// We try $GOOGLE_OAUTH_ACCESS_TOKEN before gcp.DefaultCredentials
 		// so that users can override the default creds
