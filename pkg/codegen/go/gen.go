@@ -1350,8 +1350,12 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 			if err != nil {
 				return err
 			}
-			pkg.needsUtils = true
-			fmt.Fprintf(w, "if isZero(tmp.%s) {\n", pkg.fieldName(nil, p))
+			if isNilType(p.Type) {
+				fmt.Fprintf(w, "if tmp.%s == nil {\n", pkg.fieldName(nil, p))
+			} else {
+				pkg.needsUtils = true
+				fmt.Fprintf(w, "if isZero(tmp.%s) {\n", pkg.fieldName(nil, p))
+			}
 			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
 			fmt.Fprintf(w, "}\n")
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
@@ -1708,8 +1712,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if err != nil {
 				return err
 			}
-			pkg.needsUtils = true
-			fmt.Fprintf(w, "\tif isZero(args.%s) {\n", pkg.fieldName(r, p))
+			if isNilType(p.Type) {
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
+			} else {
+				pkg.needsUtils = true
+				fmt.Fprintf(w, "\tif isZero(args.%s) {\n", pkg.fieldName(r, p))
+			}
 			assign(p, dv)
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {

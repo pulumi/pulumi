@@ -7,7 +7,6 @@
     "example/mod1/pulumiTypes.go",
     "example/mod1/pulumiUtilities.go",
     "example/mod2/pulumiTypes.go",
-    "example/mod2/pulumiUtilities.go",
     "example/moduleTest.go",
     "example/provider.go",
     "example/pulumi-plugin.json",

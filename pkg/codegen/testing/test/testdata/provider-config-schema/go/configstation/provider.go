@@ -22,7 +22,7 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
-	if isZero(args.FavoriteColor) {
+	if args.FavoriteColor == nil {
 		args.FavoriteColor = pulumi.StringPtr(getEnvOrDefault("", nil, "FAVE_COLOR").(string))
 	}
 	if args.SecretSandwiches != nil {

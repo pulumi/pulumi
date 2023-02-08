@@ -3,6 +3,11 @@
   "name": "foobar",
   "resources": {
     "foobar::ModuleResource": {
+      "properties": {
+        "optional_bool": {
+          "type": "boolean"
+        }
+      },
       "inputProperties": {
         "plain_optional_const": {
           "type": "string",
