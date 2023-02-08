@@ -222,7 +222,7 @@ func newDestroyCmd() *cobra.Command {
 			var protectedCount int
 			var targetUrns []string = *targets
 			if excludeProtected {
-				contract.Assert(len(targetUrns) == 0)
+				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
 				if err != nil {
 					return result.FromError(err)

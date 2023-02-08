@@ -614,8 +614,9 @@ func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
 		return semver.Version{}, false, nil
 	}
 
-	url, err := url.Parse("https://formulae.brew.sh/api/formula/pulumi.json")
-	contract.AssertNoError(err)
+	const formulaJSON = "https://formulae.brew.sh/api/formula/pulumi.json"
+	url, err := url.Parse(formulaJSON)
+	contract.AssertNoErrorf(err, "Could not parse URL %q", formulaJSON)
 
 	resp, err := httputil.DoWithRetry(&http.Request{
 		Method: http.MethodGet,

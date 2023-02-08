@@ -78,7 +78,7 @@ func unprotectAllResources(ctx context.Context, stackName string, showPrompt boo
 
 		for _, res := range snap.Resources {
 			err := edit.UnprotectResource(snap, res)
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
 		}
 
 		return nil

@@ -280,7 +280,9 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 		usageCommands = append(usageCommands, "pulumi policy publish [org-name]")
 	}
 
-	contract.Assert(len(usageCommandPreambles) == len(usageCommands))
+	contract.Assertf(len(usageCommandPreambles) == len(usageCommands),
+		"Number of command preambles (%d) must match number of commands (%d)",
+		len(usageCommandPreambles), len(usageCommands))
 
 	if len(usageCommands) == 1 {
 		usageMsg := fmt.Sprintf("Once you're done editing your Policy Pack, to %s `%s`", usageCommandPreambles[0],
