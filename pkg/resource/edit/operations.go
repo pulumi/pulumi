@@ -63,43 +63,65 @@ func DeleteResource(
 		return err
 	}
 
-	dg := graph.NewDependencyGraph(snapshot.Resources)
-	deleteSet := map[resource.URN]bool{
-		condemnedRes.URN: true,
+	var numSameURN int
+	for _, res := range snapshot.Resources {
+		if res.URN != condemnedRes.URN {
+			continue
+		}
+		numSameURN++
 	}
 
-	if dependencies := dg.DependingOn(condemnedRes, nil, true); len(dependencies) != 0 {
-		if !targetDependents {
-			return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
-		}
-		for _, dep := range dependencies {
-			err := handleProtected(dep)
-			if err != nil {
-				return err
+	deleteSet := map[resource.URN]struct{}{}
+
+	isUniqueURN := numSameURN <= 1
+	// If there's only one resource (or fewer), determine dependencies to be deleted from state.
+	if isUniqueURN {
+		// condemnedRes.URN is unique. We can safely delete it by URN.
+		deleteSet[condemnedRes.URN] = struct{}{}
+		dg := graph.NewDependencyGraph(snapshot.Resources)
+
+		if deps := dg.DependingOn(condemnedRes, nil, true); len(deps) != 0 {
+			if !targetDependents {
+				return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}
 			}
-			deleteSet[dep.URN] = true
+			for _, dep := range deps {
+				if err := handleProtected(dep); err != nil {
+					return err
+				}
+				deleteSet[dep.URN] = struct{}{}
+			}
 		}
 	}
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
 	// not condemnedRes.
-	var newSnapshot []*resource.State
+	newSnapshot := make([]*resource.State, 0, len(snapshot.Resources))
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
+		if res == condemnedRes {
+			// Skip condemned resource.
+			continue
+		}
+
+		if _, inDeleteSet := deleteSet[res.URN]; inDeleteSet {
+			//  Skip resources to be deleted.
+			continue
+		}
+
 		// While iterating, keep track of the set of resources that are parented to our
 		// condemned resource. This acts as a check on DependingOn, preventing a bug from
 		// introducing state corruption.
-		if res.Parent == condemnedRes.URN && !deleteSet[res.URN] {
+		if res.Parent == condemnedRes.URN {
 			children = append(children, res)
 		}
 
-		if !deleteSet[res.URN] {
-			newSnapshot = append(newSnapshot, res)
-		}
+		newSnapshot = append(newSnapshot, res)
+
 	}
 
-	// If there exists a resource that is the child of condemnedRes, we can't delete it.
-	contract.Assertf(len(children) == 0, "unexpected children in resource dependency list")
+	// If condemnedRes is unique and there exists a resource that is the child of condemnedRes,
+	// we can't delete it.
+	contract.Assertf(!isUniqueURN || len(children) == 0, "unexpected children in resource dependency list")
 
 	// Otherwise, we're good to go. Writing the new resource list into the snapshot persists the mutations that we have
 	// made above.
