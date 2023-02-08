@@ -140,7 +140,10 @@ jobs:
         id: setup-go
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
-          cache: true
+          # Our cache tends to get pretty large.
+          # The Windows workers take longer to extract it
+          # than it would take to just re-download the dependencies.
+          cache: ${{ !contains(inputs.platform, 'windows') }}
           cache-dependency-path: '*/go.sum'
       - name: Prime Go cache
         if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
