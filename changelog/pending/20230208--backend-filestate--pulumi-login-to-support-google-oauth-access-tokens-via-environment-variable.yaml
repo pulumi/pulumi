@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: pulumi login gs:// to support google oauth access tokens via environment variable for Google Cloud Storage backends
