@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: pulumi login to support google oauth access tokens via environment variable
