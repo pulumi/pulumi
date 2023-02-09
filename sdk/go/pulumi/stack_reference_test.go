@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStackReference(t *testing.T) {
@@ -202,4 +203,67 @@ func TestStackReferenceSecrets(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestStackReference_GetOutputDetails(t *testing.T) {
+	t.Parallel()
+
+	outputs := resource.PropertyMap{
+		"bucket": resource.NewStringProperty("mybucket-1234"),
+		"password": resource.NewSecretProperty(&resource.Secret{
+			Element: resource.NewStringProperty("supersecretpassword"),
+		}),
+	}
+	mocks := testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
+			assert.Equal(t, "ref", args.Name)
+			return args.Name, resource.PropertyMap{
+				"name":    resource.NewStringProperty(args.Name),
+				"outputs": resource.NewObjectProperty(outputs),
+			}, nil
+		},
+	}
+
+	tests := []struct {
+		desc string
+		name string
+		want StackReferenceOutputDetails
+	}{
+		{
+			desc: "non secret",
+			name: "bucket",
+			want: StackReferenceOutputDetails{Value: "mybucket-1234"},
+		},
+		{
+			desc: "secret",
+			name: "password",
+			want: StackReferenceOutputDetails{SecretValue: "supersecretpassword"},
+		},
+		{
+			desc: "unknown",
+			name: "does-not-exist",
+			// want empty struct
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			err := RunErr(func(ctx *Context) error {
+				ref, err := NewStackReference(ctx, "ref", nil /* args */)
+				require.NoError(t, err)
+
+				got, err := ref.GetOutputDetails(tt.name)
+				require.NoError(t, err)
+				assert.Equal(t, &tt.want, got)
+
+				return nil
+			}, WithMocks("proj", "stack", &mocks))
+			require.NoError(t, err)
+		})
+	}
+
 }
