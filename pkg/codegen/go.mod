@@ -19,7 +19,6 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/pulumi/pkg/codegen/testing v0.0.0-00010101000000-000000000000
-	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi/sdk/v3 v3.54.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/segmentio/encoding v0.3.6
@@ -158,6 +157,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.0.0-00010101000000-000000000000 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

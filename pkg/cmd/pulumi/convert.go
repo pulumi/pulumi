@@ -26,7 +26,7 @@ import (
 	// javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	// tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	// yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
-	"github.com/pulumi/pulumi/pkg/codegen/convert"
+	// "github.com/pulumi/pulumi/pkg/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
@@ -203,7 +203,7 @@ func runConvert(
 	}
 	defer contract.IgnoreClose(host)
 	loader := schema.NewPluginLoader(host)
-	mapper, err := convert.NewPluginMapper(host, from, mappings)
+	// mapper, err := convert.NewPluginMapper(host, from, mappings)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
 	}
@@ -211,10 +211,11 @@ func runConvert(
 	var proj *workspace.Project
 	var program *pcl.Program
 	if from == "" || from == "yaml" {
-		proj, program, err = yamlgen.Eject(cwd, loader)
-		if err != nil {
-			return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
-		}
+		// proj, program, err = yamlgen.Eject(cwd, loader)
+		// if err != nil {
+		// 	return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+		// }
+		panic("disabled for effect")
 	} else if from == "pcl" {
 		if e.GetBool(env.Dev) {
 			proj, program, err = pclEject(cwd, loader)
@@ -225,7 +226,7 @@ func runConvert(
 			return result.FromError(fmt.Errorf("unrecognized source %s", from))
 		}
 	} else if from == "tf" {
-		panic("disbled for effect")
+		panic("disabled for effect")
 		// proj, program, err = tfgen.Eject(cwd, loader, mapper)
 		// if err != nil {
 		// 	return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
