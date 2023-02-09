@@ -82,7 +82,7 @@ type Workspace interface {
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
-	CreateStack(context.Context, string) error
+	CreateStack(context.Context, string, ...StackCreateOption) error
 	// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.

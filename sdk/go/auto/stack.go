@@ -114,6 +114,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/opthistory"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -149,13 +150,13 @@ func FullyQualifiedStackName(org, project, stack string) string {
 
 // NewStack creates a new stack using the given workspace, and stack name.
 // It fails if a stack with that name already exists
-func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
+func NewStack(ctx context.Context, stackName string, ws Workspace, opts ...StackCreateOption) (Stack, error) {
 	s := Stack{
 		workspace: ws,
 		stackName: stackName,
 	}
 
-	err := ws.CreateStack(ctx, stackName)
+	err := ws.CreateStack(ctx, stackName, opts...)
 	if err != nil {
 		return s, err
 	}
@@ -1253,4 +1254,20 @@ func (fw *fileWatcher) Close() {
 
 	// set to nil so we can safely close again in defer
 	fw.tail = nil
+}
+
+type StackCreateOption func(*internal.StackCreateConfig)
+
+func AddTeam(team string) StackCreateOption {
+	return func(conf *internal.StackCreateConfig) {
+		conf.AddTeam(team)
+	}
+}
+
+func applyStackCreateOpts(opts ...StackCreateOption) *internal.StackCreateConfig {
+	var conf = internal.NewStackCreateConfig()
+	for _, opt := range opts {
+		opt(conf)
+	}
+	return conf
 }

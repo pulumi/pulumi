@@ -323,8 +323,11 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 }
 
 // CreateStack creates and sets a new stack with the stack name, failing if one already exists.
-func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
+func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string, opts ...StackCreateOption) error {
+	flags := applyStackCreateOpts(opts...).GenerateFlags()
 	args := []string{"stack", "init", stackName}
+	args = append(args, flags...)
+
 	if l.secretsProvider != "" {
 		args = append(args, "--secrets-provider", l.secretsProvider)
 	}
