@@ -259,6 +259,23 @@ type ProviderResource interface {
 	getPackage() string
 }
 
+// CustomTimeouts specifies timeouts for resource provisioning operations.
+// Use it with the [Timeouts] option when creating new resources
+// to override default timeouts.
+//
+// Each timeout is specified as a duration string such as,
+// "5ms" (5 milliseconds), "40s" (40 seconds),
+// and "1m30s" (1 minute, 30 seconds).
+//
+// The following units are accepted.
+//
+//   - ns: nanoseconds
+//   - us: microseconds
+//   - µs: microseconds
+//   - ms: milliseconds
+//   - s: seconds
+//   - m: minutes
+//   - h: hours
 type CustomTimeouts struct {
 	Create string
 	Update string
