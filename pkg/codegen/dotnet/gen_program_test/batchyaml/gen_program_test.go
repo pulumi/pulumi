@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	codegenDotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	codegenDotnet "github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

@@ -3,8 +3,8 @@ package dotnet
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 func TestGenerateProgramVersionSelection(t *testing.T) {

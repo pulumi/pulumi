@@ -20,7 +20,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 // Generates code to build and regsiter ResourceModule and

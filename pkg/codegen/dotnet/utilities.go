@@ -20,7 +20,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per

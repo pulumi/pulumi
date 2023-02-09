@@ -35,14 +35,14 @@ import (
 
 	"github.com/pgavlin/goldmark"
 
-	"github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	// "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	// yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	go_gen "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/python"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -206,11 +206,11 @@ func newDocGenContext() *docGenContext {
 			docHelpers[lang] = &nodejs.DocLanguageHelper{}
 		case "python":
 			docHelpers[lang] = &python.DocLanguageHelper{}
-		case "yaml":
-			docHelpers[lang] = &yaml.DocLanguageHelper{}
-		case "java":
-			docHelpers[lang] = &java.DocLanguageHelper{}
-		}
+		// case "yaml":
+		// 	docHelpers[lang] = &yaml.DocLanguageHelper{}
+		// case "java":
+		// 	docHelpers[lang] = &java.DocLanguageHelper{}
+		// }
 	}
 
 	return &docGenContext{

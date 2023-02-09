@@ -22,8 +22,8 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
 // ConstType represents a type that is a single constant value.

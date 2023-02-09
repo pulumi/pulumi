@@ -1,6 +1,6 @@
 # Pulumi CrossCode
 
-The `github.com/pulumi/pulumi/pkg/v3/codegen` package defines the core components of Pulumi's [CrossCode](https://www.pulumi.com/crosscode/) technology. CrossCode provides a set of foundational capabilities for working across a variety of programming languages supported by the Pulumi platform.
+The `github.com/pulumi/pulumi/pkg/codegen` package defines the core components of Pulumi's [CrossCode](https://www.pulumi.com/crosscode/) technology. CrossCode provides a set of foundational capabilities for working across a variety of programming languages supported by the Pulumi platform.
 
 The core components of CrossCode in this package are:
 

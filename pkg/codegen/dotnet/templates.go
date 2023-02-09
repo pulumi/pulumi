@@ -19,7 +19,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 //nolint:lll

@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 

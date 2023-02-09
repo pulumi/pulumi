@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	codegenNode "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	codegenNode "github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

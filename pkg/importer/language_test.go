@@ -19,9 +19,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"

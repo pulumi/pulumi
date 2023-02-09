@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -29,10 +29,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -46,12 +46,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	// javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	// yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/python"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -500,10 +500,10 @@ func newImportCmd() *cobra.Command {
 				programGenerator = nodejs.GenerateProgram
 			case "python":
 				programGenerator = python.GenerateProgram
-			case "java":
-				programGenerator = javagen.GenerateProgram
-			case "yaml":
-				programGenerator = yamlgen.GenerateProgram
+			// case "java":
+			// 	programGenerator = javagen.GenerateProgram
+			// case "yaml":
+			// 	programGenerator = yamlgen.GenerateProgram
 			default:
 				return result.Errorf("cannot generate resource definitions for %v", proj.Runtime.Name())
 			}

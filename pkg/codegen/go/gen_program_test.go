@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/utils"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")

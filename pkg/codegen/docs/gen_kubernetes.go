@@ -25,7 +25,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 func isKubernetesPackage(pkg schema.PackageReference) bool {

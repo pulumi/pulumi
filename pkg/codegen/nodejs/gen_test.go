@@ -14,8 +14,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 // For better CI test to job distribution, we split the test cases into three tests.

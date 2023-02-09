@@ -7,10 +7,10 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	codegenGo "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	codegenGo "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
 )
 
 // UnionType represents values that may be any one of a specified set of types.

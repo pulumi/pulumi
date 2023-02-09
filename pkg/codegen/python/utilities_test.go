@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/utils"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")

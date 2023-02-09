@@ -23,17 +23,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
-	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	// javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	// tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
+	// yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/codegen/go"
+	hclsyntax "github.com/pulumi/pulumi/pkg/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/codegen/python"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -173,10 +173,10 @@ func runConvert(
 		projectGenerator = nodejs.GenerateProject
 	case "python": //nolint:goconst
 		projectGenerator = python.GenerateProject
-	case "java": //nolint:goconst
-		projectGenerator = javagen.GenerateProject
-	case "yaml": //nolint:goconst
-		projectGenerator = yamlgen.GenerateProject
+	// case "java": //nolint:goconst
+	// 	projectGenerator = javagen.GenerateProject
+	// case "yaml": //nolint:goconst
+	// 	projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
 		if e.GetBool(env.Dev) {
 			// No plugin for PCL to install dependencies with
@@ -225,10 +225,11 @@ func runConvert(
 			return result.FromError(fmt.Errorf("unrecognized source %s", from))
 		}
 	} else if from == "tf" {
-		proj, program, err = tfgen.Eject(cwd, loader, mapper)
-		if err != nil {
-			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
-		}
+		panic("disbled for effect")
+		// proj, program, err = tfgen.Eject(cwd, loader, mapper)
+		// if err != nil {
+		// 	return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
+		// }
 	} else {
 		return result.FromError(fmt.Errorf("unrecognized source %s", from))
 	}

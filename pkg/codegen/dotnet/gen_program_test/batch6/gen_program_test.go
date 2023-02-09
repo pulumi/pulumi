@@ -20,8 +20,8 @@ import (
 	"os"
 	"testing"
 
-	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegen "github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 func TestGenerateProgram(t *testing.T) {

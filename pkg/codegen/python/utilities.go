@@ -8,8 +8,8 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
+	"github.com/pulumi/pulumi/pkg/codegen"
+	"github.com/pulumi/pulumi/pkg/codegen/cgstrings"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per

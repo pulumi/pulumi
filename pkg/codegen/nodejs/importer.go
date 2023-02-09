@@ -17,7 +17,7 @@ package nodejs
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 )
 
 // Compatibility mode for Kubernetes 2.0 SDK

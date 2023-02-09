@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	codegenPy "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	codegenPy "github.com/pulumi/pulumi/pkg/codegen/python"
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test"
 )
 
 // This specifically tests the synced examples from pulumi/yaml with

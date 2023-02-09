@@ -20,13 +20,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	// javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/codegen/go"
+	"github.com/pulumi/pulumi/pkg/codegen/nodejs"
+	"github.com/pulumi/pulumi/pkg/codegen/python"
+	"github.com/pulumi/pulumi/pkg/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -81,8 +81,8 @@ func genSDK(language, out string, pkg *schema.Package) error {
 		language = "nodejs"
 	case "python": //nolint:goconst
 		f = python.GeneratePackage
-	case "java":
-		f = javagen.GeneratePackage
+		// case "java":
+		// 	f = javagen.GeneratePackage
 	}
 
 	m, err := f("pulumi", pkg, nil)
