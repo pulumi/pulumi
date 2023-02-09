@@ -84,6 +84,7 @@ from .log import (
 
 from .stack_reference import (
     StackReference,
+    StackReferenceOutputDetails,
 )
 
 # pylint: disable=redefined-builtin
@@ -149,6 +150,7 @@ __all__ = [
     "error",
     # stack_reference
     "StackReference",
+    "StackReferenceOutputDetails",
     # _types
     "MISSING",
     "input_type",
