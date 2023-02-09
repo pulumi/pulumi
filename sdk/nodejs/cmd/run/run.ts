@@ -26,6 +26,7 @@ import * as settings from "../../runtime/settings";
 import * as tracing from "./tracing";
 import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
+import * as otel from "@opentelemetry/api-logs";
 
 import * as mod from ".";
 
@@ -336,6 +337,10 @@ ${defaultMessage}`);
         const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
 
         try {
+            tracing.info("I'm pulumi! Ingesting your NodeJS program!");
+            tracing.warn("Uh oh, this program sucks! I think I might throw up!");
+            tracing.error("Ooopsie woopies, it looks like we made a fucky wucky!");
+
             const projectRoot = projectRootFromProgramPath(program);
             const packageObject = packageObjectFromProjectRoot(projectRoot);
 

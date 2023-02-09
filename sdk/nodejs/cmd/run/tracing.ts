@@ -23,9 +23,13 @@ import { GrpcInstrumentation } from "@opentelemetry/instrumentation-grpc";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { registerInstrumentations } from "@opentelemetry/instrumentation";
 import * as log from "../../log";
+import * as otel from "@opentelemetry/api-logs";
+// @ts-ignore
+import * as emoji from "node-emoji";
 
 let exporter: ZipkinExporter;
 let rootSpan: opentelemetry.Span;
+let logger: otel.Logger;
 
 // serviceName is the name of this service in the Pulumi
 // distributed system, and the name of the tracer we're using.
@@ -91,6 +95,16 @@ export function start(destinationUrl: string) {
     const tracer = opentelemetry.trace.getTracer("nodejs-runtime");
     // Create a root span, which must be closed.
     rootSpan = tracer.startSpan("nodejs-runtime-root");
+
+    const loggerProvider = {
+        'getLogger': function(): Logger {
+            return new Logger();
+        },
+    };
+    /* Initialize LoggerProvider */
+    otel.logs.setGlobalLoggerProvider(loggerProvider);
+    /* returns loggerProvider (no-op if a working provider has not been initialized) */
+    logger = otel.logs.getLoggerProvider().getLogger('NodeJS-Language-Runtime');
 }
 
 /** @internal */
@@ -114,4 +128,63 @@ export function newSpan(name: string): opentelemetry.Span {
     const ctx = opentelemetry.trace.setSpan(activeCtx, parentSpan);
     const childSpan = tracer.startSpan(name, undefined, ctx);
     return childSpan;
+}
+
+/** @internal */
+export function info(text: string) {
+    /* returns a logger from the registered global logger provider (no-op if a working provider has not been initialized) */
+    const logLevel = otel.SeverityNumber.INFO;
+    const record:  otel.LogRecord = {
+        severityNumber: logLevel,
+        body: text,
+    };
+    logger.emitLogRecord(record);
+}
+
+/** @internal */
+export function warn(text: string) {
+    /* returns a logger from the registered global logger provider (no-op if a working provider has not been initialized) */
+    const logLevel = otel.SeverityNumber.WARN;
+    const record:  otel.LogRecord = {
+        severityNumber: logLevel,
+        body: text,
+    };
+    logger.emitLogRecord(record);
+}
+
+/** @internal */
+export function error(text: string) {
+    /* returns a logger from the registered global logger provider (no-op if a working provider has not been initialized) */
+    const logLevel = otel.SeverityNumber.ERROR;
+    const record:  otel.LogRecord = {
+        severityNumber: logLevel,
+        body: text,
+    };
+    logger.emitLogRecord(record);
+}
+
+class Logger {
+    private readonly info = otel.SeverityNumber.INFO;
+    private readonly warn = otel.SeverityNumber.WARN;
+    private readonly error = otel.SeverityNumber.ERROR;
+
+    emitLogRecord(record: otel.LogRecord) {
+        let e = this.toEmoji(record.severityNumber as otel.SeverityNumber);
+        let body = record.body;
+        console.log(`${e}: ${body}`);
+    }
+
+    emitEvent(e: otel.LogEvent) {}
+     
+    toEmoji(level: otel.SeverityNumber): string {
+        let e = null;
+        if(level === this.info) {
+            e = emoji.get('coffee');
+        } else if(level === this.warn) {
+            e = emoji.get('pizza');
+        } else {
+            e = emoji.get('bomb');
+        }
+        return e;
+    }
 }
