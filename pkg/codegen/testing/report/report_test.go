@@ -9,14 +9,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/report"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/report"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = filepath.Join("..", "test", "testdata")
 
 func TestReportExample(t *testing.T) {
 	t.Parallel()
