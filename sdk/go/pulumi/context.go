@@ -638,13 +638,13 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Merge providers.
-	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, nil /* provider */, options.Providers)
 	if err != nil {
 		return err
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := getProvider(t, nil /* provider */, providers)
 
 	// Create resolvers for the resource's outputs.
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
@@ -835,13 +835,13 @@ func (ctx *Context) registerResource(
 	}
 
 	// Merge providers.
-	providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+	providers, err := ctx.mergeProviders(t, options.Parent, nil /* provider */, options.Providers)
 	if err != nil {
 		return err
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := getProvider(t, nil /* provider */, providers)
 
 	// Create resolvers for the resource's outputs.
 	resState := ctx.makeResourceState(t, name, resource, providers, provider,

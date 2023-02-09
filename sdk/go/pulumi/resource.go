@@ -287,8 +287,6 @@ type resourceOptions struct {
 	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
-	// Provider is an optional provider resource to use for this resource's CRUD operations.
-	Provider ProviderResource
 	// Providers is an optional map of package to provider resource for a component resource.
 	Providers map[string]ProviderResource
 	// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
