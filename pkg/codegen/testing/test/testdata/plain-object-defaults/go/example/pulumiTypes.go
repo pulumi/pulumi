@@ -28,11 +28,11 @@ func (val *HelmReleaseSettings) Defaults() *HelmReleaseSettings {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Driver) {
+	if tmp.Driver == nil {
 		driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
 		tmp.Driver = &driver_
 	}
-	if isZero(tmp.PluginsPath) {
+	if tmp.PluginsPath == nil {
 		pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
 		tmp.PluginsPath = &pluginsPath_
 	}
@@ -66,10 +66,10 @@ func (val *HelmReleaseSettingsArgs) Defaults() *HelmReleaseSettingsArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Driver) {
+	if tmp.Driver == nil {
 		tmp.Driver = pulumi.StringPtr(getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string))
 	}
-	if isZero(tmp.PluginsPath) {
+	if tmp.PluginsPath == nil {
 		tmp.PluginsPath = pulumi.StringPtr(getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string))
 	}
 	return &tmp
@@ -236,11 +236,11 @@ func (val *KubeClientSettings) Defaults() *KubeClientSettings {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Burst) {
+	if tmp.Burst == nil {
 		burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
 		tmp.Burst = &burst_
 	}
-	if isZero(tmp.Qps) {
+	if tmp.Qps == nil {
 		qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
 		tmp.Qps = &qps_
 	}
@@ -275,10 +275,10 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Burst) {
+	if tmp.Burst == nil {
 		tmp.Burst = pulumi.IntPtr(getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int))
 	}
-	if isZero(tmp.Qps) {
+	if tmp.Qps == nil {
 		tmp.Qps = pulumi.Float64Ptr(getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64))
 	}
 
@@ -449,7 +449,7 @@ func (val *LayeredType) Defaults() *LayeredType {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Answer) {
+	if tmp.Answer == nil {
 		answer_ := 42.0
 		tmp.Answer = &answer_
 	}
@@ -457,7 +457,7 @@ func (val *LayeredType) Defaults() *LayeredType {
 
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
-	if isZero(tmp.Question) {
+	if tmp.Question == nil {
 		question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
 		tmp.Question = &question_
 	}
@@ -500,17 +500,17 @@ func (val *LayeredTypeArgs) Defaults() *LayeredTypeArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Answer) {
+	if tmp.Answer == nil {
 		tmp.Answer = pulumi.Float64Ptr(42.0)
 	}
 
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
-	if isZero(tmp.Question) {
+	if tmp.Question == nil {
 		tmp.Question = pulumi.StringPtr(getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string))
 	}
 
-	if isZero(tmp.Thinker) {
+	if tmp.Thinker == nil {
 		tmp.Thinker = pulumi.String("not a good interaction")
 	}
 	return &tmp
@@ -720,7 +720,7 @@ func (val *Typ) Defaults() *Typ {
 
 	tmp.Mod2 = tmp.Mod2.Defaults()
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		val_ := "mod main"
 		tmp.Val = &val_
 	}
@@ -752,7 +752,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 	}
 	tmp := *val
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		tmp.Val = pulumi.StringPtr("mod main")
 	}
 	return &tmp

@@ -25,7 +25,7 @@ func (val *Typ) Defaults() *Typ {
 	tmp := *val
 	tmp.Mod1 = tmp.Mod1.Defaults()
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		val_ := "mod2"
 		tmp.Val = &val_
 	}
@@ -56,7 +56,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 	}
 	tmp := *val
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		tmp.Val = pulumi.StringPtr("mod2")
 	}
 	return &tmp

@@ -23,7 +23,7 @@ func (val *Container) Defaults() *Container {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Brightness) {
+	if tmp.Brightness == nil {
 		brightness_ := ContainerBrightness(1.0)
 		tmp.Brightness = &brightness_
 	}
@@ -54,7 +54,7 @@ func (val *ContainerArgs) Defaults() *ContainerArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Brightness) {
+	if tmp.Brightness == nil {
 		tmp.Brightness = ContainerBrightness(1.0)
 	}
 	return &tmp

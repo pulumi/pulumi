@@ -416,5 +416,11 @@ class ModuleResource(pulumi.CustomResource):
 
         __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
 
+        __props__.__dict__["optional_bool"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
+
+    @property
+    @pulumi.getter
+    def optional_bool(self) -> pulumi.Output[Optional[bool]]:
+        return pulumi.get(self, "optional_bool")
 

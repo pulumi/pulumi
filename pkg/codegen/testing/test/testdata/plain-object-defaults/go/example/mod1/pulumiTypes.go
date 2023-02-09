@@ -21,7 +21,7 @@ func (val *Typ) Defaults() *Typ {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		val_ := getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string)
 		tmp.Val = &val_
 	}
@@ -50,7 +50,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		tmp.Val = pulumi.StringPtr(getEnvOrDefault("mod1", nil, "PULUMI_EXAMPLE_MOD1_DEFAULT").(string))
 	}
 	return &tmp

@@ -10,7 +10,6 @@
     "plant-provider/tree/v1/init.go",
     "plant-provider/tree/v1/nursery.go",
     "plant-provider/tree/v1/pulumiEnums.go",
-    "plant-provider/tree/v1/pulumiUtilities.go",
     "plant-provider/tree/v1/rubberTree.go"
   ]
 }

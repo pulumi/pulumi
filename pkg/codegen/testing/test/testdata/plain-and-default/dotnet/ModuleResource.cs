@@ -12,6 +12,10 @@ namespace Pulumi.FooBar
     [FooBarResourceType("foobar::ModuleResource")]
     public partial class ModuleResource : global::Pulumi.CustomResource
     {
+        [Output("optional_bool")]
+        public Output<bool?> Optional_bool { get; private set; } = null!;
+
+
         /// <summary>
         /// Create a ModuleResource resource with the given unique name, arguments, and options.
         /// </summary>
