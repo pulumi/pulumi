@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path"
@@ -58,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"gopkg.in/yaml.v3"
 )
 
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
@@ -68,6 +70,9 @@ const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
 type Backend interface {
 	backend.Backend
 	local() // at the moment, no local specific info, so just use a marker function.
+
+	// Upgrade to the latest state store version
+	Upgrade(ctx context.Context) error
 }
 
 type localBackend struct {
@@ -88,22 +93,48 @@ type localBackend struct {
 
 	// The current project, if any.
 	currentProject *workspace.Project
+
+	// true if this backend is in project mode. This changes where stack files are read/written and how stack
+	// references are parsed.
+	projectMode bool
 }
 
 type localBackendReference struct {
-	name tokens.Name
+	name    tokens.Name
+	project tokens.Name
+	b       *localBackend
 }
 
 func (r *localBackendReference) String() string {
-	return string(r.name)
+	// If project is blank this is a legacy non-project scoped stack reference, just return the name.
+	if r.project == "" {
+		return string(r.name)
+	}
+
+	// For project scoped references when stringifying backend references,
+	// we take the current project (if present) into account.
+	// If the project names match, we can elide them.
+	if r.b.currentProject != nil && string(r.project) == string(r.b.currentProject.Name) {
+		return string(r.name)
+	}
+
+	// Else return a new style fully qualified reference.
+	return fmt.Sprintf("organization/%s/%s", r.project, r.name)
 }
 
 func (r *localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
+func (r *localBackendReference) Project() tokens.Name {
+	return r.project
+}
+
 func (r *localBackendReference) FullyQualifiedName() tokens.QName {
-	return r.Name().Q()
+	if r.project == "" {
+		return r.name.Q()
+	}
+	return tokens.QName(fmt.Sprintf("organization/%s/%s", r.project, r.name))
 }
 
 func IsFileStateBackendURL(urlstr string) bool {
@@ -116,6 +147,11 @@ func IsFileStateBackendURL(urlstr string) bool {
 }
 
 const FilePathPrefix = "file://"
+
+type pulumiState struct {
+	// Version is the current version of the state store
+	Version int `json:"version,omitempty" yaml:"version,omitempty"`
+}
 
 func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
@@ -160,12 +196,49 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		}
 	}
 
-	isAcc, err := bucket.IsAccessible(ctx)
+	// Check if there is a .pulumi/Pulumi.yaml file in the bucket
+	b := &wrappedBucket{bucket: bucket}
+	pulumiYamlPath := filepath.Join(workspace.BookkeepingDir, "Pulumi.yaml")
+	pulumiYaml, err := b.ReadAll(ctx, pulumiYamlPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
+		if gcerrors.Code(err) != gcerrors.NotFound {
+			return nil, fmt.Errorf("could not read 'Pulumi.yaml': %w", err)
+		}
 	}
-	if !isAcc {
-		return nil, fmt.Errorf("bucket %s is not accessible", u)
+
+	var pulumiState pulumiState
+	if err != nil {
+		// We'll only get here if err is NotFound, at this point we want to see if this is a fresh new store,
+		// in which case we'll write the new Pulumi.yaml, or if there's existing data here we'll fallback to
+		// non-project mode.
+		bucketIter := b.bucket.List(&blob.ListOptions{
+			Delimiter: "/",
+			Prefix:    workspace.BookkeepingDir,
+		})
+		_, err := bucketIter.Next(ctx)
+		if err == io.EOF {
+			// It's an empty bucket, turn on project mode
+			pulumiState.Version = 1
+			pulumiYaml, err = yaml.Marshal(&pulumiState)
+			contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
+			err := b.WriteAll(ctx, pulumiYamlPath, pulumiYaml, nil)
+			if err != nil {
+				return nil, fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
+			}
+		}
+	} else {
+		err = yaml.Unmarshal(pulumiYaml, &pulumiState)
+		if err != nil {
+			return nil, fmt.Errorf("state store corrupted, could not unmarshal 'Pulumi.yaml': %w", err)
+		}
+		if pulumiState.Version < 1 {
+			return nil, fmt.Errorf("state store corrupted, 'Pulumi.yaml' reports an invalid version of %d", pulumiState.Version)
+		}
+		if pulumiState.Version > 1 {
+			return nil, fmt.Errorf(
+				"state store unsupported, 'Pulumi.yaml' reports an version of %d unsupported by this version of pulumi",
+				pulumiState.Version)
+		}
 	}
 
 	// Allocate a unique lock ID for this backend instance.
@@ -176,15 +249,110 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 
 	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
-	return &localBackend{
+	backend := &localBackend{
 		d:              d,
 		originalURL:    originalURL,
 		url:            u,
-		bucket:         &wrappedBucket{bucket: bucket},
+		bucket:         b,
 		lockID:         lockID.String(),
 		gzip:           gzipCompression,
 		currentProject: project,
-	}, nil
+		projectMode:    pulumiState.Version != 0,
+	}
+
+	// If we're in project mode warn about any old stack files
+	if backend.projectMode {
+		files, err := listBucket(b, backend.stackPath(nil))
+		// If there's an error listing don't fail, just don't print the warnings
+		if err == nil {
+			for _, file := range files {
+				if !file.IsDir {
+					objName := objectName(file)
+					// Skip files without valid extensions (e.g., *.bak files).
+					ext := filepath.Ext(objName)
+					// But accept gzip compression
+					if ext == encoding.GZIPExt {
+						objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+						ext = filepath.Ext(objName)
+					}
+
+					if _, has := encoding.Marshalers[ext]; !has {
+						continue
+					}
+
+					// This looks like a stack file! Warn about it
+					name := objName[:len(objName)-len(ext)]
+					d.Warningf(&diag.Diag{
+						Message: "Found legacy stack file '%s', you should run 'pulumi state migrate'",
+					}, name)
+				}
+			}
+		}
+	}
+
+	return backend, nil
+}
+
+func (b *localBackend) Upgrade(ctx context.Context) error {
+	files, err := listBucket(b.bucket, b.stackPath(nil))
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if !file.IsDir {
+			objName := objectName(file)
+			// Skip files without valid extensions (e.g., *.bak files).
+			ext := filepath.Ext(objName)
+			// But accept gzip compression
+			if ext == encoding.GZIPExt {
+				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+				ext = filepath.Ext(objName)
+			}
+
+			if _, has := encoding.Marshalers[ext]; !has {
+				continue
+			}
+
+			// This looks like a stack file! Move it to the right project folder
+			name := tokens.Name(objName[:len(objName)-len(ext)])
+			// make an old style stack ref
+			old := &localBackendReference{name: name, b: b}
+
+			chk, err := b.getCheckpoint(old)
+			if err != nil {
+				return err
+			}
+			// Try and find the project name from _any_ resource URN
+			var project tokens.Name
+			if chk.Latest != nil {
+				for _, res := range chk.Latest.Resources {
+					project = tokens.Name(res.URN.Project())
+					break
+				}
+			}
+			if project == "" {
+				return fmt.Errorf("could not determine project for stack file %s", objName)
+			}
+
+			new := &localBackendReference{name: name, project: project, b: b}
+			err = b.renameStack(ctx, old, new)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	var pulumiState pulumiState
+	pulumiState.Version = 1
+	pulumiYaml, err := yaml.Marshal(&pulumiState)
+	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
+	err = b.bucket.WriteAll(ctx, "Pulumi.yaml", pulumiYaml, nil)
+	if err != nil {
+		return fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
+	}
+	b.projectMode = true
+
+	return nil
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
@@ -245,6 +413,12 @@ func (b *localBackend) getReference(ref backend.StackReference) (*localBackendRe
 	if !is {
 		return nil, fmt.Errorf("bad stack reference type")
 	}
+	if localStackRef.project == "" && b.projectMode {
+		return nil, fmt.Errorf("bad stack reference, project was not set")
+	}
+	if localStackRef.project != "" && !b.projectMode {
+		return nil, fmt.Errorf("bad stack reference, project was set")
+	}
 	return localStackRef, nil
 }
 
@@ -302,12 +476,68 @@ func (b *localBackend) ParseStackReference(stackRef string) (backend.StackRefere
 }
 
 func (b *localBackend) parseStackReference(stackRef string) (*localBackendReference, error) {
+	if b.projectMode {
+		var name, project, org string
+		split := strings.Split(stackRef, "/")
+		switch len(split) {
+		case 1:
+			name = split[0]
+		case 2:
+			org = split[0]
+			name = split[1]
+		case 3:
+			org = split[0]
+			project = split[1]
+			name = split[2]
+		default:
+			return nil, fmt.Errorf("could not parse stack reference '%s'", stackRef)
+		}
+
+		// If the provided stack name didn't include the org or project, infer them from the local
+		// environment.
+		if org == "" {
+			// Filestate organization MUST always be "organization"
+			org = "organization"
+		}
+
+		if org != "organization" {
+			return nil, errors.New("organization name must be 'organization'")
+		}
+
+		if project == "" {
+			if b.currentProject == nil {
+				return nil, fmt.Errorf("if you're using the --stack flag, " +
+					"pass the fully qualified name (organization/project/stack)")
+			}
+
+			project = b.currentProject.Name.String()
+		}
+
+		if len(project) > 100 {
+			return nil, errors.New("project names must be less than 100 characters")
+		}
+
+		if project != "" && !tokens.IsName(project) {
+			return nil, fmt.Errorf(
+				"project names may only contain alphanumerics, hyphens, underscores, and periods: %s",
+				project)
+		}
+
+		if !tokens.IsName(name) || len(name) > 100 {
+			return nil, fmt.Errorf(
+				"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
+				name)
+		}
+
+		return &localBackendReference{name: tokens.Name(name), project: tokens.Name(project), b: b}, nil
+	}
+
 	if !tokens.IsName(stackRef) || len(stackRef) > 100 {
 		return nil, fmt.Errorf(
 			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
 			stackRef)
 	}
-	return &localBackendReference{name: tokens.Name(stackRef)}, nil
+	return &localBackendReference{name: tokens.Name(stackRef), b: b}, nil
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend.
@@ -317,8 +547,45 @@ func (b *localBackend) ValidateStackName(stackRef string) error {
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	// Local backends don't really have multiple projects, so just return false here.
+	projects, err := b.getLocalProjects()
+	if err != nil {
+		return false, err
+	}
+
+	for _, project := range projects {
+		if string(project) == projectName {
+			return true, nil
+		}
+	}
+
 	return false, nil
+}
+
+// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project. If the CWD
+// is not in a Pulumi project, does not contradict. If the project name in Pulumi.yaml is "foo", a stack with a
+// name of bar/foo should not work.
+func currentProjectContradictsWorkspace(stack *localBackendReference) bool {
+	contract.Requiref(stack != nil, "stack", "is nil")
+
+	if stack.project == "" {
+		return false
+	}
+
+	projPath, err := workspace.DetectProjectPath()
+	if err != nil {
+		return false
+	}
+
+	if projPath == "" {
+		return false
+	}
+
+	proj, err := workspace.LoadProject(projPath)
+	if err != nil {
+		return false
+	}
+
+	return proj.Name.String() != stack.project.String()
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -334,6 +601,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 	defer b.Unlock(ctx, stackRef)
+
+	if currentProjectContradictsWorkspace(localStackRef) {
+		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
+	}
 
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
@@ -600,6 +871,10 @@ func (b *localBackend) apply(
 	localStackRef, err := b.getReference(stackRef)
 	if err != nil {
 		return nil, nil, result.FromError(err)
+	}
+
+	if currentProjectContradictsWorkspace(localStackRef) {
+		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
 	stackName := stackRef.FullyQualifiedName()
@@ -898,34 +1173,114 @@ func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
 	}
 	stacks := make([]*localBackendReference, 0, len(files))
 
-	for _, file := range files {
-		// Ignore directories.
-		if file.IsDir {
-			continue
+	if b.projectMode {
+		for _, file := range files {
+			if file.IsDir {
+				projName := objectName(file)
+				// If this isn't a valid Name it won't be a project directory, so skip it
+				if !tokens.IsName(projName) {
+					continue
+				}
+
+				// TODO: Could we improve the efficiency here by firstly making listBucket return an enumerator not
+				// eagerly collecting all keys into a slice, and secondly by getting listBucket to return all
+				// descendent items not just the immediate children. We could then do the necessary splitting by
+				// file paths here to work out project names.
+				projectFiles, err := listBucket(b.bucket, filepath.Join(path, projName))
+				if err != nil {
+					return nil, fmt.Errorf("error listing stacks: %w", err)
+				}
+
+				for _, projectFile := range projectFiles {
+					// Can ignore directories at this level
+					if projectFile.IsDir {
+						continue
+					}
+
+					objName := objectName(projectFile)
+					// Skip files without valid extensions (e.g., *.bak files).
+					ext := filepath.Ext(objName)
+					// But accept gzip compression
+					if ext == encoding.GZIPExt {
+						objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+						ext = filepath.Ext(objName)
+					}
+
+					if _, has := encoding.Marshalers[ext]; !has {
+						continue
+					}
+
+					// Read in this stack's information.
+					name := objName[:len(objName)-len(ext)]
+					stacks = append(stacks, &localBackendReference{
+						project: tokens.Name(projName),
+						name:    tokens.Name(name),
+						b:       b,
+					})
+				}
+			}
 		}
+	} else {
+		for _, file := range files {
+			objName := objectName(file)
+			// Skip files without valid extensions (e.g., *.bak files).
+			ext := filepath.Ext(objName)
+			// But accept gzip compression
+			if ext == encoding.GZIPExt {
+				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+				ext = filepath.Ext(objName)
+			}
 
-		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := objectName(file)
-		ext := filepath.Ext(stackfn)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			stackfn = strings.TrimSuffix(stackfn, encoding.GZIPExt)
-			ext = filepath.Ext(stackfn)
+			if _, has := encoding.Marshalers[ext]; !has {
+				continue
+			}
+
+			// Read in this stack's information.
+			name := objName[:len(objName)-len(ext)]
+			stacks = append(stacks, &localBackendReference{
+				name: tokens.Name(name),
+				b:    b,
+			})
 		}
-
-		if _, has := encoding.Marshalers[ext]; !has {
-			continue
-		}
-
-		// Read in this stack's information.
-		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
-
-		stacks = append(stacks, &localBackendReference{
-			name: name,
-		})
 	}
 
 	return stacks, nil
+}
+
+func (b *localBackend) getLocalProjects() ([]tokens.Name, error) {
+	// Read the stack directory.
+	path := b.stackPath(nil)
+
+	files, err := listBucket(b.bucket, path)
+	if err != nil {
+		return nil, fmt.Errorf("error listing projects: %w", err)
+	}
+	projects := make([]tokens.Name, 0, len(files))
+
+	for _, file := range files {
+		// Ignore files.
+		if !file.IsDir {
+			continue
+		}
+
+		// Skip directories without valid names
+		objName := objectName(file)
+		if !tokens.IsName(objName) {
+			continue
+		}
+
+		projects = append(projects, tokens.Name(objName))
+	}
+
+	return projects, nil
+}
+
+// GetStackTags fetches the stack's existing tags.
+func (b *localBackend) GetStackTags(ctx context.Context,
+	stack backend.Stack,
+) (map[apitype.StackTagName]string, error) {
+	// The local backend does not currently persist tags.
+	return nil, errors.New("stack tags not supported in --local mode")
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.

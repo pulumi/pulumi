@@ -367,7 +367,7 @@ func TestStackBackups(t *testing.T) {
 		const stackName = "imulup"
 
 		// Get the path to the backup directory for this project.
-		backupDir, err := getStackProjectBackupDir(e, stackName)
+		backupDir, err := getStackProjectBackupDir(e, "stack_outputs", stackName)
 		assert.NoError(t, err, "getting stack project backup path")
 		defer func() {
 			if !t.Failed() {
@@ -560,8 +560,8 @@ func TestLocalStateLocking(t *testing.T) {
 
 // stackFileFormatAsserters returns a function to assert that the current file
 // format is for gzip and plain formats respectively.
-func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, stackName string) (func(), func()) {
-	stacksDir := filepath.Join(".pulumi", "stacks")
+func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, projectName, stackName string) (func(), func()) {
+	stacksDir := filepath.Join(".pulumi", "stacks", projectName)
 	pathStack := filepath.Join(stacksDir, stackName+".json")
 	pathStackGzip := pathStack + ".gz"
 	pathStackBak := pathStack + ".bak"
@@ -622,7 +622,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 
-	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, stackName)
+	assertGzipFileFormat, assertPlainFileFormat := stackFileFormatAsserters(t, e, "stack_dependencies", stackName)
 	switchGzipOff := func() { e.Setenv(filestate.PulumiFilestateGzipEnvVar, "0") }
 	switchGzipOn := func() { e.Setenv(filestate.PulumiFilestateGzipEnvVar, "1") }
 	pulumiUp := func() { e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview") }
@@ -691,10 +691,11 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 	assert.True(t, parsedTime < after, "False: %v < %v", parsedTime, after)
 }
 
-func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string, error) {
+func getStackProjectBackupDir(e *ptesting.Environment, projectName, stackName string) (string, error) {
 	return filepath.Join(e.RootPath,
 		workspace.BookkeepingDir,
 		workspace.BackupDir,
+		projectName,
 		stackName,
 	), nil
 }

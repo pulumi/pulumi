@@ -128,7 +128,7 @@ func (b *localBackend) getTarget(
 	}
 	return &deploy.Target{
 		Name:         stack.Name(),
-		Organization: "", // filestate has no organizations
+		Organization: "organization", // filestate has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
@@ -372,7 +372,12 @@ func (b *localBackend) stackPath(ref *localBackendReference) string {
 	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
-	plainPath := filepath.ToSlash(filepath.Join(path, fsutil.NamePath(ref.name)) + ".json")
+	var plainPath string
+	if ref.project != "" {
+		plainPath = filepath.ToSlash(filepath.Join(path, fsutil.NamePath(ref.project), fsutil.NamePath(ref.name)) + ".json")
+	} else {
+		plainPath = filepath.ToSlash(filepath.Join(path, fsutil.NamePath(ref.name)) + ".json")
+	}
 	gzipedPath := plainPath + ".gz"
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
@@ -410,12 +415,18 @@ func (b *localBackend) stackPath(ref *localBackendReference) string {
 
 func (b *localBackend) historyDirectory(stack *localBackendReference) string {
 	contract.Requiref(stack != nil, "stack", "must not be nil")
-	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack.name))
+	if stack.project == "" {
+		return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack.name))
+	}
+	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
 }
 
 func (b *localBackend) backupDirectory(stack *localBackendReference) string {
 	contract.Requiref(stack != nil, "stack", "must not be nil")
-	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack.name))
+	if stack.project == "" {
+		return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack.name))
+	}
+	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
 }
 
 // getHistory returns locally stored update history. The first element of the result will be

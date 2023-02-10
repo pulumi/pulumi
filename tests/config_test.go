@@ -71,10 +71,14 @@ func TestConfigCommands(t *testing.T) {
 
 		// check that the nested config does not exist because we didn't use path
 		_, stderr := e.RunCommandExpectError("pulumi", "config", "get", "outer")
-		assert.Equal(t, "error: configuration key 'outer' not found for stack 'test'", strings.Trim(stderr, "\r\n"))
+		assert.Equal(t,
+			"error: configuration key 'outer' not found for stack 'test'",
+			strings.Trim(stderr, "\r\n"))
 
 		_, stderr = e.RunCommandExpectError("pulumi", "config", "get", "myList")
-		assert.Equal(t, "error: configuration key 'myList' not found for stack 'test'", strings.Trim(stderr, "\r\n"))
+		assert.Equal(t,
+			"error: configuration key 'myList' not found for stack 'test'",
+			strings.Trim(stderr, "\r\n"))
 
 		// set the nested config using --path
 		e.RunCommand("pulumi", "config", "set-all", "--path",

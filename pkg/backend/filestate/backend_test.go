@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestMassageBlobPath(t *testing.T) {
@@ -141,9 +143,12 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 }
 
 //nolint:paralleltest // mutates environment variables
-func TestListStacksWithMultiplePassphrases(t *testing.T) {
+func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
+
+	markLegacyStore(t, tmpDir)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
@@ -199,11 +204,72 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	}
 }
 
-func TestDrillError(t *testing.T) {
+//nolint:paralleltest // mutates environment variables
+func TestListStacksWithMultiplePassphrases_project(t *testing.T) {
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Create stack "a" and import a checkpoint with a secret
+	aStackRef, err := b.ParseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	defer func() {
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+		_, err := b.RemoveStack(ctx, aStack, true)
+		assert.NoError(t, err)
+	}()
+	deployment, err := makeUntypedDeployment("a", "abc123",
+		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
+	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+	err = b.ImportDeployment(ctx, aStack, deployment)
+	assert.NoError(t, err)
+
+	// Create stack "b" and import a checkpoint with a secret
+	bStackRef, err := b.ParseStackReference("organization/project/b")
+	assert.NoError(t, err)
+	bStack, err := b.CreateStack(ctx, bStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, bStack)
+	defer func() {
+		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
+		_, err := b.RemoveStack(ctx, bStack, true)
+		assert.NoError(t, err)
+	}()
+	deployment, err = makeUntypedDeployment("b", "123abc",
+		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
+	assert.NoError(t, err)
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
+	err = b.ImportDeployment(ctx, bStack, deployment)
+	assert.NoError(t, err)
+
+	// Remove the config passphrase so that we can no longer deserialize the checkpoints
+	err = os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	assert.NoError(t, err)
+
+	// Ensure that we can list the stacks we created even without a passphrase
+	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
+	assert.NoError(t, err)
+	assert.Nil(t, outContToken)
+	assert.Len(t, stacks, 2)
+	for _, stack := range stacks {
+		assert.NotNil(t, stack.ResourceCount())
+		assert.Equal(t, 1, *stack.ResourceCount())
+	}
+}
+
+func TestDrillError_legacy(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
+	markLegacyStore(t, tmpDir)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
@@ -217,11 +283,31 @@ func TestDrillError(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestCancel(t *testing.T) {
+func TestDrillError_project(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Get a non-existent stack and expect a nil error because it won't be found.
+	stackRef, err := b.ParseStackReference("organization/project/dev")
+	if err != nil {
+		t.Fatalf("unexpected error %v when parsing stack reference", err)
+	}
+	_, err = b.GetStack(ctx, stackRef)
+	assert.Nil(t, err)
+}
+
+func TestCancel_legacy(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	markLegacyStore(t, tmpDir)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
@@ -278,11 +364,74 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRemoveMakesBackups(t *testing.T) {
+func TestCancel_project(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Check that trying to cancel a stack that isn't created yet doesn't error
+	aStackRef, err := b.ParseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Check that trying to cancel a stack that isn't locked doesn't error
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+
+	// Locking and lock checks are only part of the internal interface
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack and check CancelCurrentUpdate deletes the lock file
+	err = lb.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	// check the lock file exists
+	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef))
+	assert.NoError(t, err)
+	assert.True(t, lockExists)
+	// Call CancelCurrentUpdate
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	// Now check the lock file no longer exists
+	lockExists, err = lb.bucket.Exists(ctx, lb.lockPath(aStackRef))
+	assert.NoError(t, err)
+	assert.False(t, lockExists)
+
+	// Make another filestate backend which will have a different lockId
+	ob, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+	otherBackend, ok := ob.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Lock the stack with this new backend, then check that checkForLocks on the first backend now errors
+	err = otherBackend.Lock(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.Error(t, err)
+	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
+	err = lb.CancelCurrentUpdate(ctx, aStackRef)
+	assert.NoError(t, err)
+	err = lb.checkForLock(ctx, aStackRef)
+	assert.NoError(t, err)
+}
+
+func TestRemoveMakesBackups_legacy(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	markLegacyStore(t, tmpDir)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
@@ -321,11 +470,56 @@ func TestRemoveMakesBackups(t *testing.T) {
 	assert.True(t, backupFileExists)
 }
 
-func TestRenameWorks(t *testing.T) {
+func TestRemoveMakesBackups_project(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Check that creating a new stack doesn't make a backup file
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists, but the backup file doesn't
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef)+".bak")
+	assert.NoError(t, err)
+	assert.False(t, backupFileExists)
+
+	// Now remove the stack
+	removed, err := b.RemoveStack(ctx, aStack, false)
+	assert.NoError(t, err)
+	assert.False(t, removed)
+
+	// Check the stack file is now gone, but the backup file exists
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef)+".bak")
+	assert.NoError(t, err)
+	assert.True(t, backupFileExists)
+}
+
+func TestRenameWorks_legacy(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	markLegacyStore(t, tmpDir)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
@@ -391,6 +585,76 @@ func TestRenameWorks(t *testing.T) {
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
+func TestRenameWorks_project(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Create a new stack
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Fake up some history
+	err = lb.addToHistory(aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	assert.NoError(t, err)
+	// And pollute the history folder
+	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory(aStackRef), "randomfile.txt"), []byte{0, 13}, nil)
+	assert.NoError(t, err)
+
+	// Rename the stack
+	bStackRefI, err := b.RenameStack(ctx, aStack, "organization/project/b")
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/project/b", bStackRefI.String())
+	bStackRef := bStackRefI.(*localBackendReference)
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Rename again
+	bStack, err := b.GetStack(ctx, bStackRef)
+	assert.NoError(t, err)
+	cStackRefI, err := b.RenameStack(ctx, bStack, "organization/project/c")
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/project/c", cStackRefI.String())
+	cStackRef := cStackRefI.(*localBackendReference)
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(cStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Check we can still get the history
+	history, err := b.GetHistory(ctx, cStackRef, 10, 0)
+	assert.NoError(t, err)
+	assert.Len(t, history, 1)
+	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
+}
+
 func TestLoginToNonExistingFolderFails(t *testing.T) {
 	t.Parallel()
 
@@ -405,16 +669,79 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 // an error when the stack name is the empty string.TestParseEmptyStackFails
 func TestParseEmptyStackFails(t *testing.T) {
 	t.Parallel()
-	// ParseStackReference does use the method receiver
-	// (it is a total function disguised as a method.)
-	var b *localBackend
-	stackName := ""
-	_, err := b.ParseStackReference(stackName)
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	_, err = b.ParseStackReference("")
 	assert.Error(t, err)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/10439
-func TestHtmlEscaping(t *testing.T) {
+func TestHtmlEscaping_legacy(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+	resources := []*resource.State{
+		{
+			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
+			Type: "a:b:c",
+			Inputs: resource.PropertyMap{
+				resource.PropertyKey("html"): resource.NewStringProperty("<html@tags>"),
+			},
+		},
+	}
+
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil)
+
+	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrsts */)
+	assert.NoError(t, err)
+
+	data, err := encoding.JSON.Marshal(sdep)
+	assert.NoError(t, err)
+
+	// Ensure data has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
+	// ImportDeployment below should not modify the data
+	assert.Contains(t, string(data), "<html@tags>")
+
+	udep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(data),
+	}
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	markLegacyStore(t, tmpDir)
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Create stack "a" and import a checkpoint with a secret
+	aStackRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+	err = b.ImportDeployment(ctx, aStack, udep)
+	assert.NoError(t, err)
+
+	// Ensure the file has the string contents "<html@tags>"", not "\u003chtml\u0026tags\u003e"
+
+	// Grab the bucket interface to read the file with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	chkpath := lb.stackPath(aStackRef.(*localBackendReference))
+	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
+	assert.NoError(t, err)
+	state := string(bytes)
+	assert.Contains(t, state, "<html@tags>")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/10439
+func TestHtmlEscaping_project(t *testing.T) {
 	t.Parallel()
 
 	sm := b64.NewBase64SecretsManager()
@@ -452,7 +779,7 @@ func TestHtmlEscaping(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create stack "a" and import a checkpoint with a secret
-	aStackRef, err := b.ParseStackReference("a")
+	aStackRef, err := b.ParseStackReference("organization/project/a")
 	assert.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
@@ -472,4 +799,246 @@ func TestHtmlEscaping(t *testing.T) {
 	assert.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
+}
+
+func TestLegacyFolderStructure(t *testing.T) {
+	t.Parallel()
+
+	// Make a dummy stack file in the legacy location
+	tmpDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte("{}"), os.ModePerm)
+	require.NoError(t, err)
+
+	// Login to a temp dir filestate backend
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	// Check the backend says it's NOT in project mode
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+	assert.False(t, lb.projectMode)
+
+	// Check that list stack shows that stack
+	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, 1)
+	assert.Equal(t, "a", stacks[0].Name().String())
+
+	// Create a new non-project stack
+	bRef, err := b.ParseStackReference("b")
+	assert.NoError(t, err)
+	assert.Equal(t, "b", bRef.String())
+	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "b", bStack.Ref().String())
+	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
+}
+
+func TestInvalidStateFile(t *testing.T) {
+	t.Parallel()
+
+	// Make a bad version file
+	tmpDir := t.TempDir()
+	err := os.Mkdir(path.Join(tmpDir, ".pulumi"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "Pulumi.yaml"), []byte("version: 0"), os.ModePerm)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.Nil(t, b)
+	assert.Error(t, err)
+}
+
+func TestUnsupportedStateFile(t *testing.T) {
+	t.Parallel()
+
+	// Make a bad version file
+	tmpDir := t.TempDir()
+	err := os.Mkdir(path.Join(tmpDir, ".pulumi"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "Pulumi.yaml"), []byte("version: 10"), os.ModePerm)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.Nil(t, b)
+	assert.Error(t, err)
+}
+
+func TestProjectFolderStructure(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Check the backend says it's in project mode
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+	assert.True(t, lb.projectMode)
+
+	// Make a dummy stack file in the new project location
+	err = os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks", "testproj"), os.ModePerm)
+	assert.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "testproj", "a.json"), []byte("{}"), os.ModePerm)
+	assert.NoError(t, err)
+
+	// Check that testproj is reported as existing
+	exists, err := b.DoesProjectExist(ctx, "testproj")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	// Check that list stack shows that stack
+	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, 1)
+	assert.Equal(t, "organization/testproj/a", stacks[0].Name().String())
+
+	// Create a new project stack
+	bRef, err := b.ParseStackReference("organization/testproj/b")
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/testproj/b", bRef.String())
+	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/testproj/b", bStack.Ref().String())
+	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "testproj", "b.json"))
+}
+
+func chdir(t *testing.T, dir string) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir)) // Set directory
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(cwd)) // Restore directory
+		restoredDir, err := os.Getwd()
+		require.NoError(t, err)
+		require.Equal(t, cwd, restoredDir)
+	})
+}
+
+//nolint:paralleltest // mutates cwd
+func TestProjectNameMustMatch(t *testing.T) {
+	// Create a new project
+	projectDir := t.TempDir()
+	pyaml := filepath.Join(projectDir, "Pulumi.yaml")
+	err := os.WriteFile(pyaml, []byte("name: my-project\nruntime: test"), 0o600)
+	require.NoError(t, err)
+	proj, err := workspace.LoadProject(pyaml)
+	require.NoError(t, err)
+
+	chdir(t, projectDir)
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), proj)
+	require.NoError(t, err)
+
+	// Create a new implicit-project stack
+	aRef, err := b.ParseStackReference("a")
+	assert.NoError(t, err)
+	assert.Equal(t, "a", aRef.String())
+	aStack, err := b.CreateStack(ctx, aRef, "", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "a", aStack.Ref().String())
+	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "a.json"))
+
+	// Create a new project stack with the wrong project name
+	bRef, err := b.ParseStackReference("organization/not-my-project/b")
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/not-my-project/b", bRef.String())
+	bStack, err := b.CreateStack(ctx, bRef, "", nil)
+	assert.Error(t, err)
+	assert.Nil(t, bStack)
+
+	// Create a new project stack with the right project name
+	cRef, err := b.ParseStackReference("organization/my-project/c")
+	assert.NoError(t, err)
+	assert.Equal(t, "c", cRef.String())
+	cStack, err := b.CreateStack(ctx, cRef, "", nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "c", cStack.Ref().String())
+	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "c.json"))
+}
+
+func TestLegacyUpgrade(t *testing.T) {
+	t.Parallel()
+
+	// Make a dummy stack file in the legacy location
+	tmpDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), os.ModePerm)
+	require.NoError(t, err)
+
+	// Login to a temp dir filestate backend
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	// Check the backend says it's NOT in project mode
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+	assert.False(t, lb.projectMode)
+
+	err = lb.Upgrade(ctx)
+	require.NoError(t, err)
+	assert.True(t, lb.projectMode)
+
+	// Check that a has been moved
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	require.NoError(t, err)
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	require.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Write b.json and upgrade again
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "b.json"), []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::other-project::package:module:resource::name"
+				}
+			]
+		}
+	}`), os.ModePerm)
+	require.NoError(t, err)
+
+	err = lb.Upgrade(ctx)
+	require.NoError(t, err)
+
+	// Check that b has been moved
+	bStackRef, err := lb.parseStackReference("organization/other-project/b")
+	require.NoError(t, err)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
+	require.NoError(t, err)
+	assert.True(t, stackFileExists)
+}
+
+// markLegacyStore marks the given directory as a legacy store.
+// This is done by dropping a single file into the bookkeeping directory.
+// ensurePulumiMeta will treat this as a legacy store if the directory exists.
+func markLegacyStore(t *testing.T, dir string) {
+	marker := filepath.Join(dir, workspace.BookkeepingDir, ".legacy")
+	require.NoError(t, os.MkdirAll(filepath.Dir(marker), 0o755))
+	require.NoError(t, os.WriteFile(marker, []byte(nil), 0o600))
 }

@@ -531,7 +531,7 @@ func TestDestroyStackRef(t *testing.T) {
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "dev")
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "organization/large_resource_js/dev")
 }
 
 //nolint:paralleltest // uses parallel programtest

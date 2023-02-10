@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: |
+    The filestate backend now supports project scoped stacks.
+    Newly initialized storage will automatically use this mode.
+    You can migrate your old state store to enable project support by running `pulumi state upgrade`.
+    Note that this will make the state incompatible with old CLI versions.
+    Old CLI versions will not understand new stacks, but may write stack files to the old locations;
+    new CLIs will warn if they see those files and suggest running `pulumi state migrate` again.
