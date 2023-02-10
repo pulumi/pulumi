@@ -418,7 +418,7 @@ func (host *pluginHost) ResolvePlugin(
 			Name:       v.name,
 			Path:       v.path,
 			Version:    &v.version,
-			SchemaPath: filepath.Join(v.path, name+"-"+v.version.String()+".json"),
+			SchemaPath: filepath.Join(v.path, v.name+"-"+v.version.String()+".json"),
 			// SchemaTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)
