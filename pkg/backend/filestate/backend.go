@@ -80,6 +80,13 @@ var (
 	// to disable the warning printed by the filestate backend
 	// when it detects that the state has both, project-scoped and legacy stacks.
 	PulumiFilestateNoLegacyWarningEnvVar = env.SelfManagedStateNoLegacyWarning.Var().Name()
+
+	// PulumiFilestateLegacyLayoutEnvVar is the name of an environment variable
+	// that can be set to force the use of the legacy layout
+	// when initializing an empty bucket for filestate.
+	//
+	// This opt-out is intended to be removed in a future release.
+	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
 )
 
 // Backend extends the base backend interface with specific information about local backends.

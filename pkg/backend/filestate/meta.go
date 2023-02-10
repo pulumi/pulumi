@@ -17,7 +17,9 @@ package filestate
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -57,6 +59,10 @@ type pulumiMeta struct {
 //
 // If the bucket is empty, this will create a new metadata file
 // with the latest version number.
+// This can be overridden by setting the environment variable
+// "PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT" to "1".
+// ensurePulumiMeta uses the provided 'getenv' function
+// to read the environment variable.
 func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 	meta, err := readPulumiMeta(ctx, b)
 	if err != nil {
@@ -82,10 +88,20 @@ func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 		return nil, err
 	}
 
+	useLegacy := !empty
 	if empty {
-		meta = &pulumiMeta{Version: 1}
-	} else {
+		// Allow opting into legacy mode for new states
+		// by setting the environment variable.
+		v, err := strconv.ParseBool(os.Getenv(PulumiFilestateLegacyLayoutEnvVar))
+		if err == nil {
+			useLegacy = v
+		}
+	}
+
+	if useLegacy {
 		meta = &pulumiMeta{Version: 0}
+	} else {
+		meta = &pulumiMeta{Version: 1}
 	}
 
 	// Implementation detail:

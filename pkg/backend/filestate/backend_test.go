@@ -553,6 +553,24 @@ func TestLegacyFolderStructure(t *testing.T) {
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
 }
 
+//nolint:paralleltest // uses t.Setenv
+func TestOptIntoLegacyFolderStructure(t *testing.T) {
+	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")
+
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+
+	// Verify that a new stack is created in the legacy location.
+	foo, err := b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, foo, "", nil)
+	require.NoError(t, err)
+	assert.FileExists(t, filepath.Join(tmpDir, ".pulumi", "stacks", "foo.json"))
+}
+
 // Verifies that the StackReference.String method
 // takes the current project name into account,
 // even if the current project name changes

@@ -26,9 +26,8 @@ import (
 	"gocloud.dev/blob/memblob"
 )
 
+//nolint:paralleltest // uses t.Setenv
 func TestEnsurePulumiMeta(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		desc string
 		give map[string]string // files in the bucket
@@ -39,6 +38,28 @@ func TestEnsurePulumiMeta(t *testing.T) {
 			// Empty bucket should be initialized to
 			// the current version by default.
 			desc: "empty",
+			want: pulumiMeta{Version: 1},
+		},
+		{
+			// Use legacy mode even for the new bucket
+			// because the environment variable is "1".
+			desc: "empty/legacy",
+			env:  map[string]string{PulumiFilestateLegacyLayoutEnvVar: "1"},
+			want: pulumiMeta{Version: 0},
+		},
+		{
+			// Use legacy mode even for the new bucket
+			// because the environment variable is "true".
+			desc: "empty/legacy/true",
+			env:  map[string]string{PulumiFilestateLegacyLayoutEnvVar: "true"},
+			want: pulumiMeta{Version: 0},
+		},
+		{
+			// Legacy mode is disabled by setting the env var
+			// to "false".
+			// This is also the default behavior.
+			desc: "empty/legacy/false",
+			env:  map[string]string{PulumiFilestateLegacyLayoutEnvVar: "false"},
 			want: pulumiMeta{Version: 1},
 		},
 		{
@@ -58,6 +79,8 @@ func TestEnsurePulumiMeta(t *testing.T) {
 			want: pulumiMeta{Version: 0},
 		},
 		{
+			// Non-empty bucket with a version file
+			// should get whatever is in the file.
 			desc: "version 1",
 			give: map[string]string{
 				".pulumi/meta.yaml": `version: 1`,
@@ -76,7 +99,9 @@ func TestEnsurePulumiMeta(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			t.Parallel()
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
 
 			b := memblob.OpenBucket(nil)
 			ctx := context.Background()

@@ -73,4 +73,7 @@ The variable should be set to the log file to which gRPC debug traces will be se
 var (
 	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.")
+
+	SelfManagedStateLegacyLayout = env.Bool("SELF_MANAGED_STATE_LEGACY_LAYOUT",
+		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.")
 )
