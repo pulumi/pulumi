@@ -118,7 +118,7 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-func New(d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
+func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -139,13 +139,13 @@ func New(d diag.Sink, originalURL string, project *workspace.Project) (Backend, 
 	// for gcp we want to support additional credentials
 	// schemes on top of go-cloud's default credentials mux.
 	if p.Scheme == gcsblob.Scheme {
-		blobmux, err = authhelpers.GoogleCredentialsMux(context.TODO())
+		blobmux, err = authhelpers.GoogleCredentialsMux(ctx)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	bucket, err := blobmux.OpenBucket(context.TODO(), u)
+	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
 	}
@@ -161,7 +161,7 @@ func New(d diag.Sink, originalURL string, project *workspace.Project) (Backend, 
 		}
 	}
 
-	isAcc, err := bucket.IsAccessible(context.TODO())
+	isAcc, err := bucket.IsAccessible(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
 	}
@@ -233,8 +233,8 @@ func massageBlobPath(path string) (string, error) {
 	return FilePathPrefix + path, nil
 }
 
-func Login(d diag.Sink, url string, project *workspace.Project) (Backend, error) {
-	be, err := New(d, url, project)
+func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
+	be, err := New(ctx, d, url, project)
 	if err != nil {
 		return nil, err
 	}
@@ -704,7 +704,7 @@ func (b *localBackend) apply(
 			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(stackName)))
 			link = u.String()
 		} else {
-			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
+			link, err = b.bucket.SignedURL(ctx, b.stackPath(stackName), nil)
 			if err != nil {
 				// set link to be empty to when there is an error to hide use of Permalinks
 				link = ""

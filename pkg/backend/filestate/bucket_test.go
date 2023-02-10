@@ -32,7 +32,8 @@ func TestWrappedBucket(t *testing.T) {
 
 	// Initialize a filestate backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
-	b, err := New(nil, cloudURL, nil)
+	ctx := context.Background()
+	b, err := New(ctx, nil, cloudURL, nil)
 	if err != nil {
 		t.Fatalf("Initializing new filestate backend: %v", err)
 	}
@@ -46,7 +47,6 @@ func TestWrappedBucket(t *testing.T) {
 		t.Fatalf("localBackend.bucket wasn't of type wrappedBucket?")
 	}
 
-	ctx := context.Background()
 	// Perform basic file operations using wrappedBucket and verify that it will
 	// successfully handle both "/" and "\" as file separators. (And probably fail in
 	// exciting ways if you try to give it a file on a system that supports "\" or "/" as
