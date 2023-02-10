@@ -15,12 +15,14 @@
 package filestate
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -73,6 +75,207 @@ type referenceStore interface {
 
 	// ParseReference parses a localBackendReference from a string.
 	ParseReference(ref string) (*localBackendReference, error)
+
+	// ValidateReference verifies that the provided reference is valid
+	// returning an error if it is not.
+	ValidateReference(*localBackendReference) error
+}
+
+// projectReferenceStore is a referenceStore that stores stack
+// information with the new project-based layout.
+//
+// This is version 1 of the stack storage format.
+type projectReferenceStore struct {
+	bucket Bucket
+
+	// currentProject is a thread-safe way to get the current project.
+	currentProject func() *workspace.Project
+}
+
+var _ referenceStore = (*projectReferenceStore)(nil)
+
+func newProjectReferenceStore(bucket Bucket, currentProject func() *workspace.Project) *projectReferenceStore {
+	return &projectReferenceStore{
+		bucket:         bucket,
+		currentProject: currentProject,
+	}
+}
+
+// newReference builds a new localBackendReference with the provided arguments.
+// This DOES NOT modify the underlying storage.
+func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBackendReference {
+	return &localBackendReference{
+		name:           name,
+		project:        project,
+		store:          p,
+		currentProject: p.currentProject,
+	}
+}
+
+func (p *projectReferenceStore) StackBasePath(ref *localBackendReference) string {
+	contract.Requiref(ref.project != "", "ref.project", "must not be empty")
+	return filepath.Join(StacksDir, fsutil.NamePath(ref.project), fsutil.NamePath(ref.name))
+}
+
+func (p *projectReferenceStore) HistoryDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
+	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+}
+
+func (p *projectReferenceStore) BackupDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
+	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+}
+
+func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
+	// We accept the following forms:
+	//
+	// 1. <stack-name>
+	// 2. <org-name>/<stack-name>
+	// 3. <org-name>/<project-name>/<stack-name>
+	//
+	// org-name must always be "organization".
+	// This matches the behavior of the Pulumi Service storage backend.
+	if stackRef == "" {
+		return nil, errors.New("stack name must not be empty")
+	}
+
+	var name, project, org string
+	split := strings.Split(stackRef, "/") // guaranteed to have at least one element
+	switch len(split) {
+	case 1:
+		name = split[0]
+	case 2:
+		org = split[0]
+		name = split[1]
+	case 3:
+		org = split[0]
+		project = split[1]
+		name = split[2]
+	}
+
+	// If the provided stack name didn't include the org or project,
+	// infer them from the local environment.
+	if org == "" {
+		// Filestate organization MUST always be "organization"
+		org = "organization"
+	}
+
+	if org != "organization" {
+		return nil, errors.New("organization name must be 'organization'")
+	}
+
+	if project == "" {
+		currentProject := p.currentProject()
+		if currentProject == nil {
+			return nil, fmt.Errorf("if you're using the --stack flag, " +
+				"pass the fully qualified name (organization/project/stack)")
+		}
+
+		project = currentProject.Name.String()
+	}
+
+	if len(project) > 100 {
+		return nil, errors.New("project names are limited to 100 characters")
+	}
+
+	if project != "" && !tokens.IsName(project) {
+		return nil, fmt.Errorf(
+			"project names may only contain alphanumerics, hyphens, underscores, and periods: %s",
+			project)
+	}
+
+	if !tokens.IsName(name) || len(name) > 100 {
+		return nil, fmt.Errorf(
+			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
+			name)
+	}
+
+	return p.newReference(tokens.Name(project), tokens.Name(name)), nil
+}
+
+func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) error {
+	if ref.project == "" {
+		return fmt.Errorf("bad stack reference, project was not set")
+	}
+	return nil
+}
+
+func (p *projectReferenceStore) ListProjects() ([]tokens.Name, error) {
+	path := StacksDir
+
+	files, err := listBucket(p.bucket, path)
+	if err != nil {
+		return nil, fmt.Errorf("error listing stacks: %w", err)
+	}
+
+	projects := make([]tokens.Name, 0, len(files))
+	for _, file := range files {
+		if !file.IsDir {
+			continue // ignore files
+		}
+
+		projName := objectName(file)
+		if !tokens.IsName(projName) {
+			// If this isn't a valid Name
+			// it won't be a project directory,
+			// so skip it.
+			continue
+		}
+
+		projects = append(projects, tokens.Name(projName))
+	}
+
+	return projects, nil
+}
+
+func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
+	// The first level of the bucket is the project name.
+	// The second level of the bucket is the stack name.
+	path := StacksDir
+
+	projects, err := p.ListProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	var stacks []*localBackendReference
+	for _, projName := range projects {
+		// TODO: Could we improve the efficiency here by firstly making listBucket return an enumerator not
+		// eagerly collecting all keys into a slice, and secondly by getting listBucket to return all
+		// descendent items not just the immediate children. We could then do the necessary splitting by
+		// file paths here to work out project names.
+		projectFiles, err := listBucket(p.bucket, filepath.Join(path, projName.String()))
+		if err != nil {
+			return nil, fmt.Errorf("error listing stacks: %w", err)
+		}
+
+		for _, projectFile := range projectFiles {
+			// Can ignore directories at this level
+			if projectFile.IsDir {
+				continue
+			}
+
+			objName := objectName(projectFile)
+			// Skip files without valid extensions (e.g., *.bak files).
+			ext := filepath.Ext(objName)
+			// But accept gzip compression
+			if ext == encoding.GZIPExt {
+				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+				ext = filepath.Ext(objName)
+			}
+
+			if _, has := encoding.Marshalers[ext]; !has {
+				continue
+			}
+
+			// Read in this stack's information.
+			name := objName[:len(objName)-len(ext)]
+			stacks = append(stacks, p.newReference(projName, tokens.Name(name)))
+		}
+	}
+
+	return stacks, nil
 }
 
 // legacyReferenceStore is a referenceStore that stores stack
@@ -103,14 +306,17 @@ func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendRefer
 }
 
 func (p *legacyReferenceStore) StackBasePath(ref *localBackendReference) string {
+	contract.Requiref(ref.project == "", "ref.project", "must be empty")
 	return filepath.Join(StacksDir, fsutil.NamePath(ref.name))
 }
 
 func (p *legacyReferenceStore) HistoryDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project == "", "ref.project", "must be empty")
 	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.name))
 }
 
 func (p *legacyReferenceStore) BackupDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project == "", "ref.project", "must be empty")
 	return filepath.Join(BackupsDir, fsutil.NamePath(stack.name))
 }
 
@@ -121,6 +327,13 @@ func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendRef
 			stackRef)
 	}
 	return p.newReference(tokens.Name(stackRef)), nil
+}
+
+func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) error {
+	if ref.project != "" {
+		return fmt.Errorf("bad stack reference, project was set")
+	}
+	return nil
 }
 
 func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error) {

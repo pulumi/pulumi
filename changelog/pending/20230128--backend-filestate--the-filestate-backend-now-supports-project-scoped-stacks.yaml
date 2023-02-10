@@ -1,0 +1,8 @@
+changes:
+- type: feat
+  scope: backend/filestate
+  description: |
+    Add support for project-scoped stacks.
+    Newly initialized storage will automatically use this mode.
+    This mode needs write access to the root of the .pulumi directory;
+    if you're using a cloud storage, be sure to update your ACLs.

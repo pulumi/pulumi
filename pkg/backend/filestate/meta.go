@@ -43,6 +43,7 @@ type pulumiMeta struct {
 	//
 	// Version 0 is the starting version.
 	// It does not support project-scoped stacks.
+	// Version 1 adds support for project-scoped stacks.
 	//
 	// Does not use "omitempty" to differentiate
 	// between a missing field and a zero value.
@@ -66,13 +67,30 @@ func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 		return meta, nil
 	}
 
-	// If there's no metadata file, we need to create one
-	// with the latest version.
+	// If there's no metadata file, we need to create one.
+	// The version we pick for the new file decides how we lay out the state.
 	//
+	// - Version 0 is legacy mode, which is the old layout.
+	//   To avoid breaking old stacks, we want to use version 0
+	//   if the bucket is not empty.
+	//
+	// - Version 1 added support for project-scoped stacks.
+	//   For entirely new buckets, we'll use version 1
+	//   to give new users access to the latest features.
+	empty, err := isPulumiDirEmpty(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+
+	if empty {
+		meta = &pulumiMeta{Version: 1}
+	} else {
+		meta = &pulumiMeta{Version: 0}
+	}
+
 	// Implementation detail:
-	// For version 0, we don't write the file.
-	// However, for future versions, we will write it.
-	meta = &pulumiMeta{Version: 0}
+	// For version 0, WriteTo won't write the metadata file.
+	// See [pulumiMeta.WriteTo] for details on why.
 	if err := meta.WriteTo(ctx, b); err != nil {
 		return nil, err
 	}

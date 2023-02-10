@@ -39,6 +39,15 @@ func TestEnsurePulumiMeta(t *testing.T) {
 			// Empty bucket should be initialized to
 			// the current version by default.
 			desc: "empty",
+			want: pulumiMeta{Version: 1},
+		},
+		{
+			// Non-empty bucket without a version file
+			// should get version 0 for legacy mode.
+			desc: "legacy",
+			give: map[string]string{
+				".pulumi/stacks/a.json": `{}`,
+			},
 			want: pulumiMeta{Version: 0},
 		},
 		{
@@ -47,6 +56,13 @@ func TestEnsurePulumiMeta(t *testing.T) {
 				".pulumi/meta.yaml": `version: 0`,
 			},
 			want: pulumiMeta{Version: 0},
+		},
+		{
+			desc: "version 1",
+			give: map[string]string{
+				".pulumi/meta.yaml": `version: 1`,
+			},
+			want: pulumiMeta{Version: 1},
 		},
 		{
 			desc: "future version",
@@ -124,6 +140,7 @@ func TestMeta_roundTrip(t *testing.T) {
 		give pulumiMeta
 	}{
 		{desc: "zero", give: pulumiMeta{Version: 0}},
+		{desc: "one", give: pulumiMeta{Version: 1}},
 		{desc: "future", give: pulumiMeta{Version: 42}},
 	}
 
@@ -133,6 +150,11 @@ func TestMeta_roundTrip(t *testing.T) {
 			t.Parallel()
 
 			b := memblob.OpenBucket(nil)
+			// The bucket is always non-empty,
+			// so we won't automatically try to use version 1.
+			require.NoError(t,
+				b.WriteAll(context.Background(), ".pulumi/foo", []byte("bar"), nil))
+
 			ctx := context.Background()
 			require.NoError(t, tt.give.WriteTo(ctx, b))
 
@@ -159,13 +181,19 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
 }
 
-// Verify that we don't create a metadata file with version 0 in new buckets.
+// Verify that we don't create a metadata file with version 0 in buckets
+// that have other files.
 func TestNew_noMetaOnInit(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(tmpDir, nil)
+	require.NoError(t, err)
+	require.NoError(t,
+		bucket.WriteAll(context.Background(), ".pulumi/foo", []byte("bar"), nil))
+
 	ctx := context.Background()
-	_, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
 	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
