@@ -75,7 +75,6 @@ type response string
 
 const (
 	yes     response = "yes"
-	yesPlan response = "[experimental] yes, using Update Plans (https://pulumi.com/updateplans)"
 	no      response = "no"
 	details response = "details"
 )
@@ -163,12 +162,6 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 			choices = append(choices, string(details))
 		}
 
-		// If we have a new plan but didn't start with a plan we can prompt to use the new plan.
-		// If we're in experimental mode we don't add this because "yes" will also use the plan
-		if plan != nil && opts.Engine.Plan == nil && !opts.Engine.Experimental {
-			choices = append(choices, string(yesPlan))
-		}
-
 		var previewWarning string
 		if opts.SkipPreview {
 			previewWarning = colors.SpecWarning + " without a preview" + colors.Bold
@@ -205,9 +198,6 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 				return nil, plan
 			}
 			return nil, nil
-		}
-		if response == string(yesPlan) {
-			return nil, plan
 		}
 
 		if response == string(details) {
