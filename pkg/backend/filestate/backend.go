@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -95,15 +94,15 @@ type localBackendReference struct {
 	name tokens.Name
 }
 
-func (r localBackendReference) String() string {
+func (r *localBackendReference) String() string {
 	return string(r.name)
 }
 
-func (r localBackendReference) Name() tokens.Name {
+func (r *localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
-func (r localBackendReference) FullyQualifiedName() tokens.QName {
+func (r *localBackendReference) FullyQualifiedName() tokens.QName {
 	return r.Name().Q()
 }
 
@@ -241,6 +240,14 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
 }
 
+func (b *localBackend) getReference(ref backend.StackReference) (*localBackendReference, error) {
+	localStackRef, is := ref.(*localBackendReference)
+	if !is {
+		return nil, fmt.Errorf("bad stack reference type")
+	}
+	return localStackRef, nil
+}
+
 func (b *localBackend) local() {}
 
 func (b *localBackend) Name() string {
@@ -290,27 +297,23 @@ func (b *localBackend) SupportsOrganizations() bool {
 	return false
 }
 
-func (b *localBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	if err := b.ValidateStackName(stackRefName); err != nil {
-		return nil, err
-	}
-	return localBackendReference{name: tokens.Name(stackRefName)}, nil
+func (b *localBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
+	return b.parseStackReference(stackRef)
 }
 
-// ValidateStackName verifies the stack name is valid for the local backend. We use the same rules as the
-// httpstate backend.
-func (b *localBackend) ValidateStackName(stackName string) error {
-	if strings.Contains(stackName, "/") {
-		return errors.New("stack names may not contain slashes")
+func (b *localBackend) parseStackReference(stackRef string) (*localBackendReference, error) {
+	if !tokens.IsName(stackRef) || len(stackRef) > 100 {
+		return nil, fmt.Errorf(
+			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
+			stackRef)
 	}
+	return &localBackendReference{name: tokens.Name(stackRef)}, nil
+}
 
-	validNameRegex := regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
-	if !validNameRegex.MatchString(stackName) {
-		return errors.New(
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods")
-	}
-
-	return nil
+// ValidateStackName verifies the stack name is valid for the local backend.
+func (b *localBackend) ValidateStackName(stackRef string) error {
+	_, err := b.ParseStackReference(stackRef)
+	return err
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
@@ -321,7 +324,12 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	root string, opts interface{},
 ) (backend.Stack, error) {
-	err := b.Lock(ctx, stackRef)
+	localStackRef, err := b.getReference(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.Lock(ctx, stackRef)
 	if err != nil {
 		return nil, err
 	}
@@ -329,35 +337,39 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
-	stackName := stackRef.Name()
+	stackName := localStackRef.FullyQualifiedName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, err := b.getStack(ctx, stackName); err == nil {
+	if _, _, err := b.getStack(ctx, localStackRef); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
 	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
 
-	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
+	if err = validation.ValidateStackProperties(stackName.Name().String(), tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
-	file, err := b.saveStack(stackName, nil, nil)
+	file, err := b.saveStack(localStackRef, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	stack := newStack(stackRef, file, nil, b)
+	stack := newStack(localStackRef, file, nil, b)
 	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
 
 	return stack, nil
 }
 
 func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {
-	stackName := stackRef.Name()
-	snapshot, path, err := b.getStack(ctx, stackName)
+	localStackRef, err := b.getReference(stackRef)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshot, path, err := b.getStack(ctx, localStackRef)
 
 	switch {
 	case gcerrors.Code(err) == gcerrors.NotFound:
@@ -365,7 +377,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	case err != nil:
 		return nil, err
 	default:
-		return newStack(stackRef, path, snapshot, b), nil
+		return newStack(localStackRef, path, snapshot, b), nil
 	}
 }
 
@@ -381,12 +393,8 @@ func (b *localBackend) ListStacks(
 	// Note that the provided stack filter is not honored, since fields like
 	// organizations and tags aren't persisted in the local backend.
 	results := make([]backend.StackSummary, 0, len(stacks))
-	for _, stackName := range stacks {
-		chk, err := b.getCheckpoint(stackName)
-		if err != nil {
-			return nil, nil, err
-		}
-		stackRef, err := b.ParseStackReference(string(stackName))
+	for _, stackRef := range stacks {
+		chk, err := b.getCheckpoint(stackRef)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -397,14 +405,18 @@ func (b *localBackend) ListStacks(
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
-	err := b.Lock(ctx, stack.Ref())
+	localStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return false, err
 	}
-	defer b.Unlock(ctx, stack.Ref())
 
-	stackName := stack.Ref().Name()
-	snapshot, _, err := b.getStack(ctx, stackName)
+	err = b.Lock(ctx, localStackRef)
+	if err != nil {
+		return false, err
+	}
+	defer b.Unlock(ctx, localStackRef)
+
+	snapshot, _, err := b.getStack(ctx, localStackRef)
 	if err != nil {
 		return false, err
 	}
@@ -414,63 +426,76 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
-	return false, b.removeStack(stackName)
+	return false, b.removeStack(localStackRef)
 }
 
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	newName tokens.QName,
 ) (backend.StackReference, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
-	// Get the current state from the stack to be renamed.
-	stackName := stack.Ref().Name()
-	snap, _, err := b.getStack(ctx, stackName)
+	localStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the new stack name is valid.
-	newRef, err := b.ParseStackReference(string(newName))
+	newRef, err := b.parseStackReference(string(newName))
 	if err != nil {
 		return nil, err
 	}
 
-	newStackName := newRef.Name()
+	err = b.renameStack(ctx, localStackRef, newRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return newRef, nil
+}
+
+func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendReference,
+	newRef *localBackendReference,
+) error {
+	err := b.Lock(ctx, oldRef)
+	if err != nil {
+		return err
+	}
+	defer b.Unlock(ctx, oldRef)
+
+	// Get the current state from the stack to be renamed.
+	snap, _, err := b.getStack(ctx, oldRef)
+	if err != nil {
+		return err
+	}
 
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newStackName))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newRef))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if hasExisting {
-		return nil, fmt.Errorf("a stack named %s already exists", newName)
+		return fmt.Errorf("a stack named %s already exists", newRef.String())
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
-		if err = edit.RenameStack(snap, newStackName, ""); err != nil {
-			return nil, err
+		if err = edit.RenameStack(snap, newRef.name, ""); err != nil {
+			return err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newStackName, snap, nil); err != nil {
-		return nil, err
+	if _, err = b.saveStack(newRef, snap, nil); err != nil {
+		return err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
-	file := b.stackPath(stackName)
+	file := b.stackPath(oldRef)
 	backupTarget(b.bucket, file, false)
 
 	// And rename the history folder as well.
-	if err = b.renameHistory(stackName, newStackName); err != nil {
-		return nil, err
+	if err = b.renameHistory(oldRef, newRef); err != nil {
+		return err
 	}
-	return newRef, err
+	return err
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
@@ -572,7 +597,12 @@ func (b *localBackend) apply(
 	events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	stackRef := stack.Ref()
-	stackName := stackRef.Name()
+	localStackRef, err := b.getReference(stackRef)
+	if err != nil {
+		return nil, nil, result.FromError(err)
+	}
+
+	stackName := stackRef.FullyQualifiedName()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -582,7 +612,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(ctx, stackName, op)
+	update, err := b.newUpdate(ctx, localStackRef, op)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -591,7 +621,7 @@ func (b *localBackend) apply(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go display.ShowEvents(
-		strings.ToLower(actionLabel), kind, stackName, op.Proj.Name, "",
+		strings.ToLower(actionLabel), kind, stackName.Name(), op.Proj.Name, "",
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
@@ -614,7 +644,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(stackName, op.SecretsManager)
+	persister := b.newSnapshotPersister(localStackRef, op.SecretsManager)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -676,8 +706,8 @@ func (b *localBackend) apply(
 	var saveErr error
 	var backupErr error
 	if !opts.DryRun {
-		saveErr = b.addToHistory(stackName, info)
-		backupErr = b.backupStack(stackName)
+		saveErr = b.addToHistory(localStackRef, info)
+		backupErr = b.backupStack(localStackRef)
 	}
 
 	if updateRes != nil {
@@ -701,10 +731,10 @@ func (b *localBackend) apply(
 		var link string
 		if strings.HasPrefix(b.url, FilePathPrefix) {
 			u, _ := url.Parse(b.url)
-			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(stackName)))
+			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(localStackRef)))
 			link = u.String()
 		} else {
-			link, err = b.bucket.SignedURL(ctx, b.stackPath(stackName), nil)
+			link, err = b.bucket.SignedURL(ctx, b.stackPath(localStackRef), nil)
 			if err != nil {
 				// set link to be empty to when there is an error to hide use of Permalinks
 				link = ""
@@ -743,8 +773,11 @@ func (b *localBackend) GetHistory(
 	pageSize int,
 	page int,
 ) ([]backend.UpdateInfo, error) {
-	stackName := stackRef.Name()
-	updates, err := b.getHistory(stackName, pageSize, page)
+	localStackRef, err := b.getReference(stackRef)
+	if err != nil {
+		return nil, err
+	}
+	updates, err := b.getHistory(localStackRef, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -755,8 +788,12 @@ func (b *localBackend) GetLogs(ctx context.Context,
 	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
 	query operations.LogQuery,
 ) ([]operations.LogEntry, error) {
-	stackName := stack.Ref().Name()
-	target, err := b.getTarget(ctx, stackName, cfg.Config, cfg.Decrypter)
+	localStackRef, err := b.getReference(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+
+	target, err := b.getTarget(ctx, localStackRef, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -790,8 +827,12 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 func (b *localBackend) ExportDeployment(ctx context.Context,
 	stk backend.Stack,
 ) (*apitype.UntypedDeployment, error) {
-	stackName := stk.Ref().Name()
-	chk, err := b.getCheckpoint(stackName)
+	localStackRef, err := b.getReference(stk.Ref())
+	if err != nil {
+		return nil, err
+	}
+
+	chk, err := b.getCheckpoint(localStackRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -810,19 +851,24 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment,
 ) error {
-	err := b.Lock(ctx, stk.Ref())
+	localStackRef, err := b.getReference(stk.Ref())
 	if err != nil {
 		return err
 	}
-	defer b.Unlock(ctx, stk.Ref())
 
-	stackName := stk.Ref().Name()
+	err = b.Lock(ctx, localStackRef)
+	if err != nil {
+		return err
+	}
+	defer b.Unlock(ctx, localStackRef)
+
+	stackName := localStackRef.FullyQualifiedName()
 	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = b.saveCheckpoint(stackName, chk)
+	_, _, err = b.saveCheckpoint(localStackRef, chk)
 	return err
 }
 
@@ -842,15 +888,15 @@ func (b *localBackend) CurrentUser() (string, []string, error) {
 	return user.Username, nil, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
+func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
 	// Read the stack directory.
-	path := b.stackPath("")
+	path := b.stackPath(nil)
 
 	files, err := listBucket(b.bucket, path)
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
-	stacks := make([]tokens.Name, 0, len(files))
+	stacks := make([]*localBackendReference, 0, len(files))
 
 	for _, file := range files {
 		// Ignore directories.
@@ -874,7 +920,9 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 		// Read in this stack's information.
 		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
 
-		stacks = append(stacks, name)
+		stacks = append(stacks, &localBackendReference{
+			name: name,
+		})
 	}
 
 	return stacks, nil
@@ -890,7 +938,7 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
 	// Try to delete ALL the lock files
-	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.FullyQualifiedName()))
 	if err != nil {
 		// Don't error if it just wasn't found
 		if gcerrors.Code(err) == gcerrors.NotFound {
