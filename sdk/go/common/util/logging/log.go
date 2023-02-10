@@ -23,6 +23,7 @@ package logging
 // should be updated to properly filter as well before forwarding things along.
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"strconv"
@@ -160,6 +161,15 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			continue
 		}
 		items = append(items, secret, replacement)
+
+		// Catch secrets that are serialized to JSON.
+		bs, err := json.Marshal(secret)
+		if err != nil {
+			continue
+		}
+		if escaped := string(bs[1 : len(bs)-1]); escaped != secret {
+			items = append(items, escaped, replacement)
+		}
 	}
 	if len(items) > 0 {
 		return &replacerFilter{replacer: strings.NewReplacer(items...)}

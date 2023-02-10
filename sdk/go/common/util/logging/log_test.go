@@ -55,4 +55,20 @@ func TestFilter(t *testing.T) {
 	filter4 := CreateFilter([]string{"a", "my", "123"}, "[creds]")
 	msg4 := filter4.Filter("These are my secrets: a, my, 123")
 	assert.Equal(t, msg4, "These are my secrets: a, my, [creds]")
+
+	// Ensure that multi-line secrets are masked in output.
+	filter5 := CreateFilter([]string{"multi\nline\nsecret"}, "[secret]")
+	msg5 := filter5.Filter(
+		`These are my secrets: multi\nline\nsecret`)
+	assert.Equal(t,
+		"These are my secrets: [secret]",
+		msg5)
+
+	// Ensure that secrets with tabs are masked in output.
+	filter6 := CreateFilter([]string{"secretwith\t"}, "[secret]")
+	msg6 := filter6.Filter(
+		`These are my secrets: secretwith\t`)
+	assert.Equal(t,
+		"These are my secrets: [secret]",
+		msg6)
 }
