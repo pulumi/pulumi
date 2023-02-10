@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -491,7 +492,7 @@ runtime: dotnet
 config:
   instanceSize:
     default: t3.micro
-  region: 
+  region:
     value: us-west-1`
 
 	projectStackYaml := `
@@ -931,4 +932,103 @@ func TestProjectLoadYAML(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, proj.Description)
 	assert.Equal(t, "", proj.Main)
+}
+
+func TestProjectSaveLoadRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		project Project
+	}{
+		{
+			name: "Numeric name",
+			project: Project{
+				Name:    "1234",
+				Runtime: NewProjectRuntimeInfo("python", nil),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmp, err := os.CreateTemp("", "*.yaml")
+			require.NoError(t, err)
+			defer deleteFile(t, tmp)
+
+			path := tmp.Name()
+
+			err = tt.project.Save(path)
+			require.NoError(t, err)
+
+			loadedProject, err := LoadProject(path)
+			require.NoError(t, err)
+			require.NotNil(t, loadedProject)
+
+			// Clear the raw data before we compare
+			loadedProject.raw = nil
+			assert.Equal(t, tt.project, *loadedProject)
+		})
+	}
+}
+
+func TestProjectEditRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		yaml     string
+		edit     func(*Project)
+		expected string
+	}{
+		{
+			name:     "Change name",
+			yaml:     "name: test\nruntime: python\n",
+			edit:     func(proj *Project) { proj.Name = "new" },
+			expected: "name: new\nruntime: python\n",
+		},
+		{
+			name: "Add runtime option",
+			yaml: "name: test\nruntime: python\n",
+			edit: func(proj *Project) {
+				proj.Runtime = NewProjectRuntimeInfo(
+					proj.Runtime.Name(),
+					map[string]interface{}{
+						"setting": "test",
+					})
+			},
+			expected: "name: test\nruntime:\n  name: python\n  options:\n    setting: test\n",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tmp, err := os.CreateTemp("", "*.yaml")
+			require.NoError(t, err)
+			defer deleteFile(t, tmp)
+
+			path := tmp.Name()
+			err = os.WriteFile(path, []byte(tt.yaml), 0o600)
+			require.NoError(t, err)
+
+			loadedProject, err := LoadProject(path)
+			require.NoError(t, err)
+			require.NotNil(t, loadedProject)
+
+			tt.edit(loadedProject)
+			err = loadedProject.Save(path)
+			require.NoError(t, err)
+
+			actualYaml, err := os.ReadFile(path)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expected, string(actualYaml))
+		})
+	}
 }
