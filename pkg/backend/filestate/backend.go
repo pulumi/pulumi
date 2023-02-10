@@ -60,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"gopkg.in/yaml.v3"
 )
 
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
@@ -93,6 +94,9 @@ var (
 type Backend interface {
 	backend.Backend
 	local() // at the moment, no local specific info, so just use a marker function.
+
+	// Upgrade to the latest state store version.
+	Upgrade(ctx context.Context) error
 }
 
 type localBackend struct {
@@ -296,6 +300,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	}
 	// Otherwise, warn about any old stack files.
 	// This is possible if a user creates a new stack with a new CLI,
+	// or migrates it to project mode with `pulumi state upgrade`,
 	// but someone else interacts with the same state with an old CLI.
 
 	refs, err := newLegacyReferenceStore(wbucket).ListReferences()
@@ -312,9 +317,73 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	for _, ref := range refs {
 		fmt.Fprintf(&msg, "  - %s\n", ref.Name())
 	}
+	msg.WriteString("Please run 'pulumi state upgrade' to migrate them to the new format.\n")
 	msg.WriteString("Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.")
 	d.Warningf(diag.Message("", msg.String()))
 	return backend, nil
+}
+
+func (b *localBackend) Upgrade(ctx context.Context) error {
+	// We don't use the existing b.store because
+	// this may already be a projectReferenceStore
+	// with new legacy files introduced to it accidentally.
+	olds, err := newLegacyReferenceStore(b.bucket).ListReferences()
+	if err != nil {
+		return fmt.Errorf("read old references: %w", err)
+	}
+
+	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
+	var upgraded int
+	for _, old := range olds {
+		if err := b.upgradeStack(ctx, newStore, old); err != nil {
+			b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
+			continue
+		}
+		upgraded++
+	}
+
+	pulumiYaml, err := yaml.Marshal(&pulumiMeta{Version: 1})
+	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
+	if err = b.bucket.WriteAll(ctx, "Pulumi.yaml", pulumiYaml, nil); err != nil {
+		return fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
+	}
+	b.store = newStore
+
+	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded)
+	return nil
+}
+
+// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
+func (b *localBackend) upgradeStack(
+	ctx context.Context,
+	newStore *projectReferenceStore,
+	old *localBackendReference,
+) error {
+	contract.Requiref(old.project == "", "old.project", "must be empty")
+
+	chk, err := b.getCheckpoint(old)
+	if err != nil {
+		return err
+	}
+
+	// Try and find the project name from _any_ resource URN
+	var project tokens.Name
+	if chk.Latest != nil {
+		for _, res := range chk.Latest.Resources {
+			project = tokens.Name(res.URN.Project())
+			break
+		}
+	}
+	if project == "" {
+		return errors.New("no project found")
+	}
+
+	new := newStore.newReference(project, old.Name())
+	if err := b.renameStack(ctx, old, new); err != nil {
+		return fmt.Errorf("rename to %v: %w", new, err)
+	}
+
+	return nil
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud

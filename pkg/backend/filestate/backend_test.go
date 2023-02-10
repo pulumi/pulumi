@@ -781,6 +781,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 			wantOut: "warning: Found legacy stack files in state store:\n" +
 				"  - a\n" +
 				"  - b\n" +
+				"Please run 'pulumi state upgrade' to migrate them to the new format.\n" +
 				"Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.\n",
 		},
 		{
@@ -823,6 +824,118 @@ func TestNew_legacyFileWarning(t *testing.T) {
 			assert.Equal(t, tt.wantOut, buff.String())
 		})
 	}
+}
+
+func TestLegacyUpgrade(t *testing.T) {
+	t.Parallel()
+
+	// Make a dummy stack file in the legacy location
+	tmpDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.json"), []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), os.ModePerm)
+	require.NoError(t, err)
+
+	var output bytes.Buffer
+	sink := diag.DefaultSink(&output, &output, diag.FormatOptions{Color: colors.Never})
+
+	// Login to a temp dir filestate backend
+	ctx := context.Background()
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+	// Check the backend says it's NOT in project mode
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+	assert.IsType(t, &legacyReferenceStore{}, lb.store)
+
+	err = lb.Upgrade(ctx)
+	require.NoError(t, err)
+	assert.IsType(t, &projectReferenceStore{}, lb.store)
+
+	assert.Contains(t, output.String(), "Upgraded 1 stack(s) to project mode")
+
+	// Check that a has been moved
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	require.NoError(t, err)
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
+	require.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Write b.json and upgrade again
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "b.json"), []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::other-project::package:module:resource::name"
+				}
+			]
+		}
+	}`), os.ModePerm)
+	require.NoError(t, err)
+
+	err = lb.Upgrade(ctx)
+	require.NoError(t, err)
+
+	// Check that b has been moved
+	bStackRef, err := lb.parseStackReference("organization/other-project/b")
+	require.NoError(t, err)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
+	require.NoError(t, err)
+	assert.True(t, stackFileExists)
+}
+
+func TestLegacyUpgrade_partial(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that we can upgrade a subset of stacks.
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), nil))
+	require.NoError(t,
+		// no resources, can't guess project name
+		bucket.WriteAll(ctx, ".pulumi/stacks/bar.json",
+			[]byte(`{"latest": {"resources": []}}`), nil))
+
+	var buff bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+	require.NoError(t, err)
+
+	require.NoError(t, b.Upgrade(ctx))
+	assert.Contains(t, buff.String(), `Skipping stack "bar": no project found`)
+
+	exists, err := bucket.Exists(ctx, ".pulumi/stacks/project/foo.json")
+	require.NoError(t, err)
+	assert.True(t, exists, "foo was not migrated")
+
+	ref, err := b.ParseStackReference("organization/project/foo")
+	require.NoError(t, err)
+	assert.Equal(t, tokens.QName("organization/project/foo"), ref.FullyQualifiedName())
 }
 
 func TestNew_unsupportedStoreVersion(t *testing.T) {
