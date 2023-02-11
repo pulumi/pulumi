@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Remove temporary files from plugin downloads.

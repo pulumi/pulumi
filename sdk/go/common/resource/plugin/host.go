@@ -478,7 +478,7 @@ func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
 		if err != nil {
 			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
 		}
-		defer os.Remove(tarball.Name())
+		defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 		if err := pkgPlugin.InstallWithContext(host.ctx.baseContext, workspace.TarPlugin(tarball), false); err != nil {
 			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
 		}
