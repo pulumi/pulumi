@@ -190,9 +190,103 @@ func (source *getPulumiSource) Download(
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
 
 	req, err := buildHTTPRequest(endpoint, "")
+	if err != nil {
+		return nil, -1, err
+	}
+	return getHTTPResponse(req)
+}
+
+// gitlabSource can download a plugin from gitlab releases.
+type gitlabSource struct {
+	host    string
+	project string
+	name    string
+	kind    PluginKind
+
+	token string
+}
+
+// Creates a new GitLab source from a gitlab://<host>/<project_id> url.
+// Uses the GITLAB_TOKEN environment variable for authentication if it's set.
+func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource, error) {
+	contract.Assert(url.Scheme == "gitlab")
+
+	host := url.Host
+	if host == "" {
+		return nil, fmt.Errorf("gitlab:// url must have a host part, was: %s", url)
+	}
+
+	project := strings.Trim(url.Path, "/")
+	if project == "" || strings.Contains(project, "/") {
+		return nil, fmt.Errorf(
+			"gitlab:// url must have the format <host>/<project>, was: %s",
+			url)
+	}
+
+	return &gitlabSource{
+		host:    host,
+		project: project,
+		name:    name,
+		kind:    kind,
+
+		token: os.Getenv("GITLAB_TOKEN"),
+	}, nil
+}
+
+func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
+	req, err := buildHTTPRequest(url, fmt.Sprintf("Bearer %s", source.token))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", accept)
+	return req, nil
+}
+
+func (source *gitlabSource) GetLatestVersion(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	releaseURL := fmt.Sprintf(
+		"https://%s/api/v4/projects/%s/releases/permalink/latest",
+		source.host, source.project)
+	logging.V(9).Infof("plugin GitLab releases url: %s", releaseURL)
+	req, err := source.newHTTPRequest(releaseURL, "application/json")
+	if err != nil {
+		return nil, err
+	}
+	resp, length, err := getHTTPResponse(req)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(resp)
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err = json.NewDecoder(resp).Decode(&release); err != nil {
+		return nil, fmt.Errorf("cannot decode gitlab response len(%d): %w", length, err)
+	}
+
+	parsedVersion, err := semver.ParseTolerant(release.TagName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid plugin version %s: %w", release.TagName, err)
+	}
+	return &parsedVersion, nil
+}
+
+func (source *gitlabSource) Download(
+	version semver.Version, opSy string, arch string,
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+
+	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
+
+	assetURL := fmt.Sprintf(
+		"https://%s/api/v4/projects/%s/releases/v%s/downloads/%s",
+		source.host, source.project, version, assetName)
+	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
+
+	req, err := source.newHTTPRequest(assetURL, "application/octet-stream")
 	if err != nil {
 		return nil, -1, err
 	}
@@ -226,16 +320,22 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	parts := strings.Split(strings.Trim(url.Path, "/"), "/")
 
 	if host == "" {
-		return nil, fmt.Errorf("github:// url must have a host part, was: %s", url.String())
+		return nil, fmt.Errorf("github:// url must have a host part, was: %s", url)
 	}
 
 	if len(parts) != 1 && len(parts) != 2 {
 		return nil, fmt.Errorf(
 			"github:// url must have the format <host>/<organization>[/<repository>], was: %s",
-			url.String())
+			url)
 	}
 
 	organization := parts[0]
+	if organization == "" {
+		return nil, fmt.Errorf(
+			"github:// url must have the format <host>/<organization>[/<repository>], was: %s",
+			url)
+	}
+
 	repository := "pulumi-" + name
 	if len(parts) == 2 {
 		repository = parts[1]
@@ -252,8 +352,13 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	}, nil
 }
 
-func (source *githubSource) HasAuthentication() bool {
-	return source.token != ""
+func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
+	req, err := buildHTTPRequest(url, fmt.Sprintf("token %s", source.token))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", accept)
+	return req, nil
 }
 
 func (source *githubSource) GetLatestVersion(
@@ -262,29 +367,26 @@ func (source *githubSource) GetLatestVersion(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
-	req, err := buildHTTPRequest(releaseURL, source.token)
+	req, err := source.newHTTPRequest(releaseURL, "application/json")
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/json")
 	resp, length, err := getHTTPResponse(req)
 	if err != nil {
 		return nil, err
 	}
-	jsonBody, err := io.ReadAll(resp)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal github response len(%d): %s", length, err.Error())
-	}
-	release := struct {
+	defer contract.IgnoreClose(resp)
+
+	var release struct {
 		TagName string `json:"tag_name"`
-	}{}
-	err = json.Unmarshal(jsonBody, &release)
-	if err != nil {
-		return nil, err
 	}
+	if err = json.NewDecoder(resp).Decode(&release); err != nil {
+		return nil, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
+	}
+
 	parsedVersion, err := semver.ParseTolerant(release.TagName)
 	if err != nil {
-		return nil, fmt.Errorf("invalid plugin semver: %w", err)
+		return nil, fmt.Errorf("invalid plugin version %s: %w", release.TagName, err)
 	}
 	return &parsedVersion, nil
 }
@@ -293,39 +395,33 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
 
-	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)
+	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
 
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
-		source.host, source.organization, source.repository, version.String())
+		source.host, source.organization, source.repository, version)
 	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
 
-	req, err := buildHTTPRequest(releaseURL, source.token)
+	req, err := source.newHTTPRequest(releaseURL, "application/json")
 	if err != nil {
 		return nil, -1, err
 	}
-	req.Header.Set("Accept", "application/json")
 	resp, length, err := getHTTPResponse(req)
 	if err != nil {
 		return nil, -1, err
 	}
-	jsonBody, err := io.ReadAll(resp)
-	if err != nil {
-		logging.V(9).Infof("cannot unmarshal github response len(%d): %s", length, err.Error())
-		return nil, -1, err
-	}
-	release := struct {
+	defer contract.IgnoreClose(resp)
+
+	var release struct {
 		Assets []struct {
 			Name string `json:"name"`
 			URL  string `json:"url"`
 		} `json:"assets"`
-	}{}
-	err = json.Unmarshal(jsonBody, &release)
-	if err != nil {
-		logging.V(9).Infof("github json response: %s", jsonBody)
-		logging.V(9).Infof("cannot unmarshal github response: %s", err.Error())
-		return nil, -1, err
 	}
+	if err = json.NewDecoder(resp).Decode(&release); err != nil {
+		return nil, -1, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
+	}
+
 	assetURL := ""
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
@@ -333,18 +429,17 @@ func (source *githubSource) Download(
 		}
 	}
 	if assetURL == "" {
-		logging.V(9).Infof("github json response: %s", jsonBody)
+		logging.V(9).Infof("github response: %v", release)
 		logging.V(9).Infof("plugin asset '%s' not found", assetName)
 		return nil, -1, fmt.Errorf("plugin asset '%s' not found", assetName)
 	}
 
 	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
 
-	req, err = buildHTTPRequest(assetURL, source.token)
+	req, err = source.newHTTPRequest(assetURL, "application/octet-stream")
 	if err != nil {
 		return nil, -1, err
 	}
-	req.Header.Set("Accept", "application/octet-stream")
 	return getHTTPResponse(req)
 }
 
@@ -380,7 +475,7 @@ func (source *pluginURLSource) Download(
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version.String(), opSy, arch)))
+		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
 
 	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
@@ -702,11 +797,14 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 				return nil, err
 			}
 
-			if url.Scheme == "github" {
+			switch url.Scheme {
+			case "github":
 				return newGithubSource(url, spec.Name, spec.Kind)
+			case "gitlab":
+				return newGitlabSource(url, spec.Name, spec.Kind)
+			default:
+				return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
 			}
-
-			return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
 		}
 
 		// If the plugin name matches an override, download the plugin from the override URL.
@@ -768,7 +866,7 @@ func (spec PluginSpec) Download() (io.ReadCloser, int64, error) {
 	return source.Download(*spec.Version, opSy, arch, getHTTPResponse)
 }
 
-func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error) {
+func buildHTTPRequest(pluginEndpoint string, authorization string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
@@ -777,8 +875,8 @@ func buildHTTPRequest(pluginEndpoint string, token string) (*http.Request, error
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 
-	if token != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
 	}
 
 	return req, nil
