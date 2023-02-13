@@ -165,6 +165,10 @@ func camelCase(s string) string {
 	return string(runes)
 }
 
+func SimplifyTypeName(typ tokens.Type) string {
+	return simplifyTypeName(typ)
+}
+
 func simplifyTypeName(typ tokens.Type) string {
 	typeString := string(typ)
 
@@ -974,6 +978,18 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 	}
 
 	return strings.TrimRightFunc(msg, unicode.IsSpace)
+}
+
+// getStepStatus handles getting the value to put in the status column.
+func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done bool, failed bool) string {
+	var status string
+	if done {
+		status = display.getStepDoneDescription(step, failed)
+	} else {
+		status = display.getStepInProgressDescription(step)
+	}
+	status = addRetainStatusFlag(status, step)
+	return status
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {

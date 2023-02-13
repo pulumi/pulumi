@@ -130,12 +130,33 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, nil
 	}
 
+	stats := computeUpdateStats(events)
+
 	infoPrefix := "\b" + op.Opts.Display.Color.Colorize(colors.SpecWarning+"info: "+colors.Reset)
 	if kind != apitype.UpdateUpdate {
 		// If not an update, we can skip displaying warnings
-	} else if countResources(events) == 0 {
+	} else if stats.numNonStackResources == 0 {
 		// This is an update and there are no resources being CREATED
 		fmt.Print(infoPrefix, "There are no resources in your stack (other than the stack resource).\n\n")
+	}
+
+	// Warn user if an update is going to leave untracked resources in the environment.
+	switch kind {
+	case apitype.UpdateUpdate, apitype.PreviewUpdate, apitype.DestroyUpdate:
+		if len(stats.retainedResources) == 0 {
+			// No resources. Skip.
+			break
+		}
+		fmt.Printf(
+			infoPrefix+"This update will leave %d resource(s) untracked in your environment:\n",
+			len(stats.retainedResources))
+		for _, res := range stats.retainedResources {
+			urn := res.URN
+			name := string(urn.Name())
+			typ := display.SimplifyTypeName(urn.Type())
+			fmt.Printf("    - %s %s\n", typ, name)
+		}
+		fmt.Print("\n")
 	}
 
 	// Otherwise, ensure the user wants to proceed.
@@ -255,8 +276,13 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	return changes, res
 }
 
-func countResources(events []engine.Event) int {
-	count := 0
+type updateStats struct {
+	numNonStackResources int
+	retainedResources    []engine.StepEventMetadata
+}
+
+func computeUpdateStats(events []engine.Event) updateStats {
+	var stats updateStats
 
 	for _, e := range events {
 		if e.Type != engine.ResourcePreEvent {
@@ -268,12 +294,19 @@ func countResources(events []engine.Event) int {
 			continue
 		}
 
-		if p.Metadata.Type.String() == "pulumi:pulumi:Stack" {
-			continue
+		if p.Metadata.Type.String() != "pulumi:pulumi:Stack" {
+			stats.numNonStackResources++
 		}
-		count++
+
+		// Track deleted resources that are retained.
+		switch p.Metadata.Op {
+		case deploy.OpDelete, deploy.OpReplace:
+			if p.Metadata.Old != nil && p.Metadata.Old.State != nil && p.Metadata.Old.State.RetainOnDelete {
+				stats.retainedResources = append(stats.retainedResources, p.Metadata)
+			}
+		}
 	}
-	return count
+	return stats
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {

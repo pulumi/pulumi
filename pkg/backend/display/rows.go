@@ -305,15 +305,39 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 
-	if done {
-		failed := data.failed || diagInfo.ErrorCount > 0
-		columns[statusColumn] = data.display.getStepDoneDescription(step, failed)
-	} else {
-		columns[statusColumn] = data.display.getStepInProgressDescription(step)
-	}
+	failed := data.failed || diagInfo.ErrorCount > 0
 
+	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
+}
+
+// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
+// RetainOnDelete and the step will discard the resource.
+func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
+	// Guard against nil pointer dereference and return the status string as is.
+	if step.Old == nil {
+		return status
+	}
+
+	// Guard against nil pointer dereference and return the status string as is.
+	if step.Old.State == nil {
+		return status
+	}
+
+	// If a resource is not marked as RetainOnDelete, return the status string as is.
+	if !step.Old.State.RetainOnDelete {
+		return status
+	}
+	switch step.Op {
+	// Deletes and Replacements should indicate retain on delete behavior as they can leave
+	// untracked resources in the environment.
+	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+		return status + "[retain]"
+	}
+
+	// The resource's update status behavior is not affected by the RetainOnDelete flag.
+	return status
 }
 
 func (data *resourceRowData) getInfoColumn() string {
