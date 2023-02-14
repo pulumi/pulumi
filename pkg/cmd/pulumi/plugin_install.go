@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 
 	"github.com/blang/semver"
@@ -174,6 +175,7 @@ func newPluginInstallCmd() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("%s downloading from %s: %w", label, install.PluginDownloadURL, err)
 					}
+					defer func() { contract.IgnoreError(os.Remove(r.Name())) }()
 
 					payload = workspace.TarPlugin(r)
 				} else {

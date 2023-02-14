@@ -244,6 +244,7 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	if err != nil {
 		return fmt.Errorf("failed to download plugin: %s: %w", plugin, err)
 	}
+	defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
 
 	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
 
