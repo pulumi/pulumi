@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Remove the `[experimental] yes, using Update Plans` prompt.
