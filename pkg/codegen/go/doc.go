@@ -101,7 +101,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
 	var err error
 	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name)
 }
 
 // GetPropertyName returns the property name specific to Go.

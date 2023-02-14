@@ -712,7 +712,7 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		g.genStringLiteral(w, fmtStr.String())
 	}
 	_, err := args.WriteTo(w)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "Failed to write arguments")
 	g.Fgenf(w, ")")
 }
 
