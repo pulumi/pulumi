@@ -71,61 +71,87 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 	p3 := &testProv{foo: "c"}
 	p3.pkg = "azure"
 
-	// merges two singleton options for same pkg
-	opts := merge(Provider(p1), Provider(p2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+	t.Run("two singleton options for same pkg", func(t *testing.T) {
+		t.Parallel()
 
-	// merges two singleton options for different pkg
-	opts = merge(Provider(p1), Provider(p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(Provider(p1), Provider(p2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+	})
 
-	// merges singleton and array
-	opts = merge(Provider(p1), Providers(p2, p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("two singleton options for different pkg", func(t *testing.T) {
+		t.Parallel()
 
-	// merges singleton and single value array
-	opts = merge(Provider(p1), Providers(p2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+		opts := merge(Provider(p1), Provider(p3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p1, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
 
-	// merges two arrays
-	opts = merge(Providers(p1), Providers(p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("singleton and array", func(t *testing.T) {
+		t.Parallel()
 
-	// merges overlapping arrays
-	opts = merge(Providers(p1, p2), Providers(p1, p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(Provider(p1), Providers(p2, p3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
 
-	// merge single value maps
+	t.Run("singleton and single value array", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Provider(p1), Providers(p2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+	})
+
+	t.Run("two arrays", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Providers(p1), Providers(p3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p1, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
+
+	t.Run("overlapping arrays", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Providers(p1, p2), Providers(p1, p3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p1, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
+
 	m1 := map[string]ProviderResource{"aws": p1}
 	m2 := map[string]ProviderResource{"aws": p2}
 	m3 := map[string]ProviderResource{"aws": p2, "azure": p3}
 
-	// merge single value maps
-	opts = merge(ProviderMap(m1), ProviderMap(m2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+	t.Run("single value maps", func(t *testing.T) {
+		t.Parallel()
 
-	// merge singleton with map
-	opts = merge(Provider(p1), ProviderMap(m3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(ProviderMap(m1), ProviderMap(m2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+	})
 
-	// merge arry and map
-	opts = merge(Providers(p2, p1), ProviderMap(m3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("singleton with map", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Provider(p1), ProviderMap(m3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
+
+	t.Run("array and map", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Providers(p2, p1), ProviderMap(m3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, p3, opts.Providers["azure"])
+	})
 }
 
 func TestResourceOptionMergingDependsOn(t *testing.T) {
