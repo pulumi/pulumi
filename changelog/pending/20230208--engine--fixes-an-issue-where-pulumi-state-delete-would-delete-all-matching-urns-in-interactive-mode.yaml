@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: This fixes an issue where 'pulumi state delete ' would prompt the user to disambiguate between multiple resources in state with the same URN and proceed to delete all of them. With this change, dependency checks are performed only if the deletion will lead to no resources possessing the URN. The targetDependents flag will only target dependents if the deleted resource will orphan the dependents.

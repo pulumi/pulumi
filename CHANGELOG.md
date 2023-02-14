@@ -1,5 +1,50 @@
 # Changelog
 
+## 3.55.0 (2023-02-14)
+
+
+### Features
+
+- [cli] Remove the `[experimental] yes, using Update Plans` prompt.
+  [#12135](https://github.com/pulumi/pulumi/pull/12135)
+
+- [backend/filestate] pulumi login gs:// to support google oauth access tokens via environment variable for Google Cloud Storage backends
+  [#12102](https://github.com/pulumi/pulumi/pull/12102)
+
+- [sdk/go] Adds StackReference.GetOutputDetails to retrieve outputs from StackReferences as plain objects.
+  [#12034](https://github.com/pulumi/pulumi/pull/12034)
+
+- [sdk/nodejs] Adds StackReference.getOutputDetails to retrieve outputs from StackReferences as plain objects.
+  [#12072](https://github.com/pulumi/pulumi/pull/12072)
+
+- [sdk/python] Adds StackReference.get_output_details to retrieve outputs from StackReferences as plain objects.
+  [#12071](https://github.com/pulumi/pulumi/pull/12071)
+
+
+### Bug Fixes
+
+- [cli] Fix verbose logging to filter secrets.
+  [#12079](https://github.com/pulumi/pulumi/pull/12079)
+
+- [engine] This fixes an issue where 'pulumi state delete ' would prompt the user to disambiguate between multiple resources in state with the same URN and proceed to delete all of them. With this change, dependency checks are performed only if the deletion will lead to no resources possessing the URN. The targetDependents flag will only target dependents if the deleted resource will orphan the dependents.
+  [#12111](https://github.com/pulumi/pulumi/pull/12111)
+
+- [engine] Fixed issue where pulumi displays multiline secrets when the newlines('
+') are escaped.
+  [#12140](https://github.com/pulumi/pulumi/pull/12140)
+
+- [sdkgen/go] Prevent defaults from overriding set values.
+  [#12099](https://github.com/pulumi/pulumi/pull/12099)
+
+
+### Miscellaneous
+
+- [pkg] Raise 'go' directive to 1.18.
+  [#11807](https://github.com/pulumi/pulumi/pull/11807)
+
+- [sdk/go] Raise 'go' directive to 1.18.
+  [#11807](https://github.com/pulumi/pulumi/pull/11807)
+
 ## 3.54.0 (2023-02-06)
 
 
