@@ -157,8 +157,46 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		names[urn] = name
 	}
 
+	// Attempts to generate a human-readable description of the given import spec
+	// for use in error messages using whatever information is available.
+	// For example:
+	//
+	//	resource 'foo' of type 'aws:ec2/vpc:Vpc'
+	//	resource 'foo'
+	//	resource 3 of type 'aws:ec2/vpc:Vpc'
+	//	resource 3
+	describeResource := func(idx int, spec importSpec) string {
+		var sb strings.Builder
+		sb.WriteString("resource ")
+
+		switch {
+		case spec.Name != "":
+			fmt.Fprintf(&sb, "'%v'", spec.Name)
+		case spec.ID != "":
+			fmt.Fprintf(&sb, "'%v'", spec.ID)
+		default:
+			fmt.Fprintf(&sb, "%d", idx)
+		}
+
+		if spec.Type != "" {
+			fmt.Fprintf(&sb, " of type '%v'", spec.Type)
+		}
+
+		return sb.String()
+	}
+
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
+		if spec.Type == "" {
+			return nil, nil, fmt.Errorf("%v has no type", describeResource(i, spec))
+		}
+		if spec.Name == "" {
+			return nil, nil, fmt.Errorf("%v has no name", describeResource(i, spec))
+		}
+		if spec.ID == "" {
+			return nil, nil, fmt.Errorf("%v has no ID", describeResource(i, spec))
+		}
+
 		imp := deploy.Import{
 			Type:       spec.Type,
 			Name:       spec.Name,
@@ -170,8 +208,8 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Parent != "" {
 			urn, ok := f.NameTable[spec.Parent]
 			if !ok {
-				return nil, nil, fmt.Errorf("the parent '%v' for resource '%v' of type '%v' has no name",
-					spec.Parent, spec.Name, spec.Type)
+				return nil, nil, fmt.Errorf("the parent '%v' for %v has no name",
+					spec.Parent, describeResource(i, spec))
 			}
 			imp.Parent = urn
 		}
@@ -179,8 +217,8 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Provider != "" {
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
-				return nil, nil, fmt.Errorf("the provider '%v' for resource '%v' of type '%v' has no name",
-					spec.Provider, spec.Name, spec.Type)
+				return nil, nil, fmt.Errorf("the provider '%v' for %v has no name",
+					spec.Provider, describeResource(i, spec))
 			}
 			imp.Provider = urn
 		}
@@ -188,8 +226,8 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Version != "" {
 			v, err := semver.ParseTolerant(spec.Version)
 			if err != nil {
-				return nil, nil, fmt.Errorf("could not parse version '%v' for resource '%v' of type '%v': %w",
-					spec.Version, spec.Name, spec.Type, err)
+				return nil, nil, fmt.Errorf("could not parse version '%v' for %v: %w",
+					spec.Version, describeResource(i, spec), err)
 			}
 			imp.Version = &v
 		}
