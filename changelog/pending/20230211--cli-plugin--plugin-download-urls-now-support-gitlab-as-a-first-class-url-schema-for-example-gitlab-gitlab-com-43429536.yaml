@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Plugin download urls now support GitLab as a first class url schema. For example "gitlab://gitlab.com/43429536".
