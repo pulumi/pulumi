@@ -99,7 +99,10 @@ func logJSONEvent(encoder *json.Encoder, event engine.Event, opts Options, seq i
 
 func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options) (<-chan engine.Event, chan<- bool) {
 	// Before moving further, attempt to open the log file.
-	logFile, err := os.Create(opts.EventLogPath)
+	//
+	// Try setting O_APPEND to see if that helps with the malformed reads we've been seeing in automation api:
+	// https://github.com/pulumi/pulumi/issues/6768
+	logFile, err := os.OpenFile(opts.EventLogPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0666)
 	if err != nil {
 		logging.V(7).Infof("could not create event log: %v", err)
 		return events, done
