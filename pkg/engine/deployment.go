@@ -45,7 +45,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
 	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
 
-	contract.Require(projinfo != nil, "projinfo")
+	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 
 	// If the package contains an override for the main entrypoint, use it.
 	pwd, main, err := projinfo.GetPwdMain()
@@ -98,7 +98,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
 func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
-	contract.Require(u != nil, "u")
+	contract.Requiref(u != nil, "u", "must not be nil")
 
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
@@ -157,15 +157,15 @@ type deploymentSourceFunc func(
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
 	dryRun bool) (*deployment, error) {
-	contract.Assert(info != nil)
-	contract.Assert(info.Update != nil)
-	contract.Assert(opts.SourceFunc != nil)
+	contract.Assertf(info != nil, "a deployment context must be provided")
+	contract.Assertf(info.Update != nil, "update info cannot be nil")
+	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
 	proj, target := info.Update.GetProject(), info.Update.GetTarget()
-	contract.Assert(proj != nil)
-	contract.Assert(target != nil)
+	contract.Assertf(proj != nil, "update project cannot be nil")
+	contract.Assertf(target != nil, "update target cannot be nil")
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
 	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)

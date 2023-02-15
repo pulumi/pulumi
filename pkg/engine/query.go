@@ -38,8 +38,8 @@ type QueryOptions struct {
 }
 
 func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
-	contract.Require(q != nil, "update")
-	contract.Require(ctx != nil, "ctx")
+	contract.Requiref(q != nil, "update", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
@@ -68,7 +68,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	statusDiag := newEventSink(emitter, true)
 
 	proj := q.GetProject()
-	contract.Assert(proj != nil)
+	contract.Assertf(proj != nil, "query project cannot be nil")
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
 		opts.Host, diag, statusDiag, false, tracingSpan)
