@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Fixes panic on incomplete resources in JSON file.
