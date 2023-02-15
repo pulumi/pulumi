@@ -29,8 +29,8 @@ import (
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
-	contract.Assert(from.Kind() == reflect.Struct)
-	contract.Assert(to.Kind() == reflect.Struct)
+	contract.Assertf(from.Kind() == reflect.Struct, "from must be a struct type, got %v (%v)", from, from.Kind())
+	contract.Assertf(to.Kind() == reflect.Struct, "to must be a struct type, got %v (%v)", to, to.Kind())
 
 	if from == to {
 		return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
@@ -166,7 +166,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 
 	switch pt.Kind() {
 	case reflect.Struct:
-		contract.Assert(rt.Kind() == reflect.Struct)
+		contract.Assertf(rt.Kind() == reflect.Struct, "expected struct, got %v (%v)", rt, rt.Kind())
 		// We use the resolved type to decide how to convert inputs to outputs.
 		rt := props.ElementType()
 		if rt.Kind() == reflect.Ptr {
@@ -187,7 +187,9 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			}
 		}
 	case reflect.Map:
-		contract.Assert(rt.Key().Kind() == reflect.String)
+		ktype := rt.Key()
+		contract.Assertf(ktype.Kind() == reflect.String,
+			"expected map with string keys, got %v (%v)", ktype, ktype.Kind())
 		for _, key := range pv.MapKeys() {
 			keyname := key.Interface().(string)
 			val := pv.MapIndex(key).Interface()
@@ -365,7 +367,7 @@ func marshalInputImpl(v interface{},
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				contract.Assert(!secretID)
+				contract.Assertf(!secretID, "CustomResource must not have a secret ID")
 
 				return resource.MakeCustomResourceReference(resource.URN(urn), resource.ID(id), ""), deps, nil
 			}
@@ -613,7 +615,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
 func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {
-	contract.Assert(dest.CanSet())
+	contract.Requiref(dest.CanSet(), "dest", "value must be settable")
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
 	if v.IsNull() || v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {

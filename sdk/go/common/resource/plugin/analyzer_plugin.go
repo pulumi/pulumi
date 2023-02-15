@@ -63,7 +63,7 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	if err != nil {
 		return nil, rpcerror.Convert(err)
 	}
-	contract.Assert(path != "")
+	contract.Assertf(path != "", "unexpected empty path for analyzer plugin %s", name)
 
 	dialOpts := rpcutil.OpenTracingInterceptorDialOptions()
 

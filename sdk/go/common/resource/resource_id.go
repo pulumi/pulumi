@@ -76,8 +76,8 @@ func NewUniqueHex(prefix string, randlen, maxlen int) (string, error) {
 
 	bs := make([]byte, (randlen+1)/2)
 	n, err := cryptorand.Read(bs)
-	contract.AssertNoError(err)
-	contract.Assert(n == len(bs))
+	contract.AssertNoErrorf(err, "error generating random bytes")
+	contract.Assertf(n == len(bs), "generated fewer bytes (%d) than requested (%d)", n, len(bs))
 
 	return prefix + hex.EncodeToString(bs)[:randlen], nil
 }
@@ -119,13 +119,13 @@ func NewUniqueHexV2(urn URN, sequenceNumber int, prefix string, randLen, maxLen 
 	hasher := crypto.SHA512.New()
 
 	_, err := hasher.Write([]byte(urn))
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error hashing urn")
 
 	err = binary.Write(hasher, binary.LittleEndian, uint32(sequenceNumber))
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error hashing sequence number")
 
 	bs := hasher.Sum(nil)
-	contract.Assert(len(bs) == 64)
+	contract.Assertf(len(bs) == 64, "expected 64 bytes from sha512, got %d", len(bs))
 
 	return prefix + hex.EncodeToString(bs)[:randLen], nil
 }

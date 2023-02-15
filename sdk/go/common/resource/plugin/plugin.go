@@ -187,7 +187,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
-	contract.Assert(plug != nil)
+	contract.Assertf(plug != nil, "plugin %v canot be nil", bin)
 
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {

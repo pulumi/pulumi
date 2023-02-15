@@ -59,7 +59,7 @@ func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 		return nil, err
 	}
 
-	contract.Assert(path != "")
+	contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
 
 	args, err := buildArgsForNewPlugin(host, root, options)
 	if err != nil {
@@ -406,12 +406,12 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 
 			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
 				n, err := outw.Write(value.Stdout)
-				contract.AssertNoError(err)
-				contract.Assert(n == len(value.Stdout))
+				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
+				contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
 			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
 				n, err := errw.Write(value.Stderr)
-				contract.AssertNoError(err)
-				contract.Assert(n == len(value.Stderr))
+				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
+				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
 			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
 				// If stdout and stderr are empty we've flushed and are returning the exit code
 				outw.Close()

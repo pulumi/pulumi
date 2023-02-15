@@ -173,7 +173,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			return nil, err
 		}
 
-		contract.Assert(path != "")
+		contract.Assertf(path != "", "unexpected empty path for plugin %s", pkg)
 
 		// Runtime options are passed as environment variables to the provider, this is _currently_ used by
 		// dynamic providers to do things like lookup the virtual environment to use.
@@ -749,10 +749,10 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string) (DiffResult, error) {
 
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
-	contract.Assert(news != nil)
-	contract.Assert(olds != nil)
+	contract.Assertf(urn != "", "Diff requires a URN")
+	contract.Assertf(id != "", "Diff requires an ID")
+	contract.Assertf(news != nil, "Diff requires new properties")
+	contract.Assertf(olds != nil, "Diff requires old properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
@@ -838,8 +838,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
 func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
 	resource.PropertyMap, resource.Status, error) {
-	contract.Assert(urn != "")
-	contract.Assert(props != nil)
+	contract.Assertf(urn != "", "Create requires a URN")
+	contract.Assertf(props != nil, "Create requires properties")
 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#props=%v)", label, len(props))
@@ -875,7 +875,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(pcfg.known)
+	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
 	mprops, err := MarshalProperties(props, MarshalOptions{
 		Label:         fmt.Sprintf("%s.inputs", label),
@@ -1066,10 +1066,10 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
-	contract.Assert(news != nil)
-	contract.Assert(olds != nil)
+	contract.Assertf(urn != "", "Update requires a URN")
+	contract.Assertf(id != "", "Update requires an ID")
+	contract.Assertf(news != nil, "Update requires new properties")
+	contract.Assertf(olds != nil, "Update requires old properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
@@ -1105,7 +1105,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(pcfg.known)
+	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
 	molds, err := MarshalProperties(olds, MarshalOptions{
 		Label:              fmt.Sprintf("%s.olds", label),
@@ -1178,8 +1178,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 // Delete tears down an existing resource.
 func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
 	timeout float64) (resource.Status, error) {
-	contract.Assert(urn != "")
-	contract.Assert(id != "")
+	contract.Assertf(urn != "", "Delete requires a URN")
+	contract.Assertf(id != "", "Delete requires an ID")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), urn, id)
 	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
@@ -1202,7 +1202,7 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
-	contract.Assert(pcfg.known)
+	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
 	if _, err := client.Delete(p.requestContext(), &pulumirpc.DeleteRequest{
 		Id:         string(id),
@@ -1224,9 +1224,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
 	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
 
-	contract.Assert(typ != "")
-	contract.Assert(name != "")
-	contract.Assert(inputs != nil)
+	contract.Assertf(typ != "", "Construct requires a type")
+	contract.Assertf(name != "", "Construct requires a name")
+	contract.Assertf(inputs != nil, "Construct requires input properties")
 
 	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), typ, name, parent)
 	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(inputs))
@@ -1239,7 +1239,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	}
 
 	// We should only be calling Construct if the provider is fully configured.
-	contract.Assert(pcfg.known)
+	contract.Assertf(pcfg.known, "Construct cannot be called if the configuration is unknown")
 
 	if !pcfg.acceptSecrets {
 		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
@@ -1343,7 +1343,7 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 // Invoke dynamically executes a built-in function in the provider.
 func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
 	[]CheckFailure, error) {
-	contract.Assert(tok != "")
+	contract.Assertf(tok != "", "Invoke requires a token")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
@@ -1407,7 +1407,7 @@ func (p *provider) StreamInvoke(
 	args resource.PropertyMap,
 	onNext func(resource.PropertyMap) error) ([]CheckFailure, error) {
 
-	contract.Assert(tok != "")
+	contract.Assertf(tok != "", "StreamInvoke requires a token")
 
 	label := fmt.Sprintf("%s.StreamInvoke(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
@@ -1484,7 +1484,7 @@ func (p *provider) StreamInvoke(
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
 	options CallOptions) (CallResult, error) {
-	contract.Assert(tok != "")
+	contract.Assertf(tok != "", "Call requires a token")
 
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), tok)
 	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
@@ -1716,7 +1716,7 @@ func parseError(err error) (
 
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
-	contract.Assert(responseErr != nil)
+	contract.Assertf(responseErr != nil, "resourceStateAndError must never return a nil error")
 
 	// If resource was successfully created but failed to initialize, the error will be packed
 	// with the live properties of the object.

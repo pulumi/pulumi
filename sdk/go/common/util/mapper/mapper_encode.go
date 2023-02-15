@@ -29,7 +29,7 @@ func (md *mapper) Encode(source interface{}) (map[string]interface{}, MappingErr
 }
 
 func (md *mapper) encode(vsrc reflect.Value) (map[string]interface{}, MappingError) {
-	contract.Assert(vsrc.IsValid())
+	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
 
 	// Fetch the type; if it's a pointer, do a quick nil check, otherwise operate on its underlying type.
 	vsrcType := vsrc.Type()
@@ -82,7 +82,7 @@ func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
 }
 
 func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
-	contract.Assert(vsrc.IsValid())
+	contract.Requiref(vsrc.IsValid(), "vsrc", "value must be valid")
 
 	// Otherwise, try to map to the closest JSON-like destination type we can.
 	switch k := vsrc.Kind(); k {
@@ -129,7 +129,8 @@ func (md *mapper) encodeValue(vsrc reflect.Value) (interface{}, MappingError) {
 		if vsrc.IsNil() {
 			return nil, nil
 		}
-		contract.Assert(vsrc.Type().Key().Kind() == reflect.String)
+		ktype := vsrc.Type().Key()
+		contract.Assertf(ktype.Kind() == reflect.String, "expected map with string keys, got %v (%v)", ktype, ktype.Kind())
 
 		iter := vsrc.MapRange()
 		mmap := make(map[string]interface{}, vsrc.Len())

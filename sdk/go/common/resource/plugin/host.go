@@ -279,7 +279,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
-			contract.Assert(plug != nil)
+			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
 			return plug.Plugin, nil
 		}
 
@@ -307,7 +307,7 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
-			contract.Assert(plug != nil)
+			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
 			return plug.Plugin, nil
 		}
 
@@ -400,7 +400,7 @@ func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
 
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[key]; has {
-			contract.Assert(plug != nil)
+			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", key)
 			return plug.Plugin, nil
 		}
 

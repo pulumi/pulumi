@@ -197,7 +197,7 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 	var result []string
 	for _, env := range environ {
 		split := strings.SplitN(env, "=", 2)
-		contract.Assert(len(split) == 2)
+		contract.Assertf(len(split) == 2, "unexpected environment variable: %q", env)
 		key, value := split[0], split[1]
 
 		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".

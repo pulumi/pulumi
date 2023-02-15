@@ -114,5 +114,5 @@ func captureToMap(r *regexp.Regexp, s string) map[string]string {
 
 func mustFprintf(w io.Writer, format string, a ...interface{}) {
 	_, err := fmt.Fprintf(w, format, a...)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to write")
 }

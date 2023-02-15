@@ -53,7 +53,7 @@ func loadFromCache(key string) (W, bool) {
 }
 
 func upsertIntoCache(key string, w W) {
-	contract.Require(w != nil, "w")
+	contract.Requiref(w != nil, "w", "cannot be nil")
 
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
@@ -198,7 +198,7 @@ func sha1HexString(value string) string {
 	//nolint:gosec
 	h := sha1.New()
 	_, err := h.Write([]byte(value))
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error hashing string")
 	return hex.EncodeToString(h.Sum(nil))
 }
 

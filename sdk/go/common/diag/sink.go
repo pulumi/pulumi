@@ -17,10 +17,11 @@ package diag
 import (
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"io"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -62,8 +63,8 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
-	contract.Require(stdout != nil, "stdout")
-	contract.Require(stderr != nil, "stderr")
+	contract.Requiref(stdout != nil, "stdout", "must not be nil")
+	contract.Requiref(stderr != nil, "stderr", "must not be nil")
 	// Discard debug output by default unless requested.
 	debug := io.Discard
 	if opts.Debug {
@@ -79,11 +80,11 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 }
 
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
-	contract.Assert(writers[Debug] != nil)
-	contract.Assert(writers[Info] != nil)
-	contract.Assert(writers[Infoerr] != nil)
-	contract.Assert(writers[Error] != nil)
-	contract.Assert(writers[Warning] != nil)
+	contract.Assertf(writers[Debug] != nil, "Writer for %v must be set", Debug)
+	contract.Assertf(writers[Info] != nil, "Writer for %v must be set", Info)
+	contract.Assertf(writers[Infoerr] != nil, "Writer for %v must be set", Infoerr)
+	contract.Assertf(writers[Error] != nil, "Writer for %v must be set", Error)
+	contract.Assertf(writers[Warning] != nil, "Writer for %v must be set", Warning)
 	contract.Assertf(opts.Color != "", "FormatOptions.Color must be set")
 	return &defaultSink{
 		opts:    opts,

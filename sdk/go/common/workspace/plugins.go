@@ -212,7 +212,7 @@ type githubSource struct {
 
 // Creates a new github source adding authentication data in the environment, if it exists
 func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource, error) {
-	contract.Assert(url.Scheme == "github")
+	contract.Requiref(url.Scheme == "github", "url", `scheme must be "github", was %q`, url.Scheme)
 
 	// 14-03-2022 we stopped looking at GITHUB_PERSONAL_ACCESS_TOKEN and sending basic auth for github and
 	// instead just look at GITHUB_TOKEN and send in a header. Given GITHUB_PERSONAL_ACCESS_TOKEN was an
@@ -405,7 +405,7 @@ func newFallbackSource(name string, kind PluginKind) *fallbackSource {
 
 func urlMustParse(rawURL string) *url.URL {
 	url, err := url.Parse(rawURL)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "url.Parse(%q)", rawURL)
 	return url
 }
 
@@ -490,8 +490,8 @@ func (reader *checksumReader) Read(p []byte) (int, error) {
 	}
 
 	m, err := reader.hasher.Write(p[0:n])
-	contract.AssertNoError(err)
-	contract.Assert(m == n)
+	contract.AssertNoErrorf(err, "error hashing input")
+	contract.Assertf(m == n, "wrote %d bytes, expected %d", m, n)
 
 	return n, nil
 }
@@ -1416,7 +1416,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 		return "", err
 	}
 
-	contract.Assert(info.Path == filepath.Dir(path))
+	contract.Assertf(info.Path == filepath.Dir(path),
+		"plugin executable (%v) is not inside plugin directory (%v)", path, info.Path)
 	return path, err
 }
 
@@ -1427,7 +1428,8 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 		return nil, err
 	}
 
-	contract.Assert(info.Path == filepath.Dir(path))
+	contract.Assertf(info.Path == filepath.Dir(path),
+		"plugin executable (%v) is not inside plugin directory (%v)", path, info.Path)
 	return info, nil
 }
 

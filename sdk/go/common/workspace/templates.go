@@ -697,9 +697,9 @@ func getValidProjectName(name string) string {
 func walkFiles(sourceDir string, destDir string, projectName string,
 	actionFn func(entry os.DirEntry, source string, dest string) error) error {
 
-	contract.Require(sourceDir != "", "sourceDir")
-	contract.Require(destDir != "", "destDir")
-	contract.Require(actionFn != nil, "actionFn")
+	contract.Requiref(sourceDir != "", "sourceDir", "must not be empty")
+	contract.Requiref(destDir != "", "destDir", "must not be empty")
+	contract.Requiref(actionFn != nil, "actionFn", "must not be nil")
 
 	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
@@ -744,7 +744,7 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 // newExistingFilesError returns a new error from a list of existing file names
 // that would be overwritten.
 func newExistingFilesError(existing []string) error {
-	contract.Assert(len(existing) > 0)
+	contract.Assertf(len(existing) > 0, "called with no existing files")
 	message := "creating this template will make changes to existing files:\n"
 	for _, file := range existing {
 		message = message + fmt.Sprintf("  overwrite   %s\n", file)

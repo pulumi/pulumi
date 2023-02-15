@@ -335,28 +335,28 @@ func (singleton *policyPackProjectLoader) load(path string) (*PolicyPackProject,
 
 // LoadProject reads a project definition from a file.
 func LoadProject(path string) (*Project, error) {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	return projectSingleton.load(path)
 }
 
 // LoadProjectStack reads a stack definition from a file.
 func LoadProjectStack(project *Project, path string) (*ProjectStack, error) {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	return projectStackSingleton.load(project, path)
 }
 
 // LoadPluginProject reads a plugin project definition from a file.
 func LoadPluginProject(path string) (*PluginProject, error) {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	return pluginProjectSingleton.load(path)
 }
 
 // LoadPolicyPack reads a policy pack definition from a file.
 func LoadPolicyPack(path string) (*PolicyPackProject, error) {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	return policyPackProjectSingleton.load(path)
 }
