@@ -43,7 +43,7 @@ func Run(body RunFunc, opts ...RunOption) {
 	logError := func(ctx *Context, programErr error) {
 		logErr := ctx.Log.Error(fmt.Sprintf("an unhandled error occurred: program failed: \n%v",
 			programErr), nil)
-		contract.AssertNoError(logErr)
+		contract.IgnoreError(logErr)
 	}
 
 	err := runErrInner(body, logError, opts...)

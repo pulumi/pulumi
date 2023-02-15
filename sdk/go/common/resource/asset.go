@@ -363,9 +363,9 @@ func (a *Asset) readURI() (*Blob, error) {
 		}
 		return NewReadCloserBlob(resp.Body)
 	case "file":
-		contract.Assert(url.User == nil)
-		contract.Assert(url.RawQuery == "")
-		contract.Assert(url.Fragment == "")
+		contract.Assertf(url.User == nil, "file:// URIs cannot have a user: %v", url)
+		contract.Assertf(url.RawQuery == "", "file:// URIs cannot have a query string: %v", url)
+		contract.Assertf(url.Fragment == "", "file:// URIs cannot have a fragment: %v", url)
 		if url.Host != "" && url.Host != "localhost" {
 			return nil, fmt.Errorf("file:// host '%v' not supported (only localhost)", url.Host)
 		}
@@ -912,10 +912,10 @@ func (a *Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 		}
 		return resp.Body, nil
 	case "file":
-		contract.Assert(url.Host == "")
-		contract.Assert(url.User == nil)
-		contract.Assert(url.RawQuery == "")
-		contract.Assert(url.Fragment == "")
+		contract.Assertf(url.Host == "", "file:// URIs cannot have a host: %v", url)
+		contract.Assertf(url.User == nil, "file:// URIs cannot have a user: %v", url)
+		contract.Assertf(url.RawQuery == "", "file:// URIs cannot have a query string: %v", url)
+		contract.Assertf(url.Fragment == "", "file:// URIs cannot have a fragment: %v", url)
 		return os.Open(url.Path)
 	default:
 		return nil, fmt.Errorf("Unrecognized or unsupported URI scheme: %v", s)

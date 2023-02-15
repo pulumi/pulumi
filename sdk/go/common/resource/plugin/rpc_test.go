@@ -28,7 +28,7 @@ import (
 
 func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v interface{}) {
 	marshaled, err := MarshalPropertyValue(key, resource.NewPropertyValue(v), MarshalOptions{})
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "error marshaling property value")
 	s.GetStructValue().Fields[k] = marshaled
 }
 

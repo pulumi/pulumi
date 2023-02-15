@@ -107,7 +107,7 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 				vdstType = vdstType.Elem()
 				if !vdst.Elem().CanSet() {
 					// If the pointer is nil, initialize it so we can set it below.
-					contract.Assert(vdst.IsNil())
+					contract.Assertf(vdst.IsNil(), "destination pointer must be nil")
 					vdst.Set(reflect.New(vdstType))
 				}
 			}
@@ -162,7 +162,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				adjusted.Elem().Set(val)          // *adjusted = val
 			}
 			// In either case, the loop condition should be sastisfied at this point.
-			contract.Assert(adjusted.Type().AssignableTo(to))
+			contract.Assertf(adjusted.Type().AssignableTo(to), "type %v is not assignable to %v", adjusted.Type(), to)
 			return adjusted, nil
 		} else if val.Kind() == reflect.Interface {
 			// It could be that the source is an interface{} with the right element type (or the right element type

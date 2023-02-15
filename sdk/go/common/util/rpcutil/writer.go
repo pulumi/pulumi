@@ -35,8 +35,8 @@ type ptyCloser struct {
 func (w *ptyCloser) Close() error {
 	// Close can be called multiple times, but we will of nil'd out everything first time.
 	if w.done == nil {
-		contract.Assert(w.pty == nil)
-		contract.Assert(w.tty == nil)
+		contract.Assertf(w.pty == nil, "ptyCloser.Close called twice: pty is nil")
+		contract.Assertf(w.tty == nil, "ptyCloser.Close called twice: tty is nil")
 		return nil
 	}
 

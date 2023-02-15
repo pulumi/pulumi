@@ -433,7 +433,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 func randomStackName() string {
 	b := make([]byte, 4)
 	_, err := cryptorand.Read(b)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to generate random stack name")
 	return "test" + hex.EncodeToString(b)
 }
 

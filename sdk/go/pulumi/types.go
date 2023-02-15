@@ -317,7 +317,7 @@ var outputStateType = reflect.TypeOf((*OutputState)(nil))
 var outputTypeToOutputState sync.Map // map[reflect.Type]int
 
 func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
-	contract.Assert(typ.Implements(outputType))
+	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
 	// `isOutput` method. If we yet haven't recorded the index of this field for the ouptut type `typ`, find and
@@ -332,7 +332,7 @@ func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 				break
 			}
 		}
-		contract.Assert(outputField != -1)
+		contract.Assertf(outputField != -1, "type %v does not embed an OutputState field", typ)
 		outputTypeToOutputState.Store(typ, outputField)
 		outputFieldV = outputField
 	}
@@ -839,7 +839,7 @@ func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType r
 //     b. If the value is a primitive, stop.
 //     c. If the value is a slice, array, struct, or map, recur on its contents.
 func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []Resource, error) {
-	contract.Assert(v.IsValid())
+	contract.Requiref(v.IsValid(), "v", "must be valid")
 
 	if !resolved.CanSet() {
 		return true, false, nil, nil
@@ -912,7 +912,8 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		// In this case, dereference the pointer to get at its actual value.
 		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
 			v = v.Elem()
-			contract.Assert(v.Interface().(Input).ElementType() == valueType)
+			elemType := v.Interface().(Input).ElementType()
+			contract.Assertf(elemType == valueType, "input element type must be %v, got %v", valueType, elemType)
 		}
 
 		// If we are assigning the input value itself, update the value type.

@@ -95,7 +95,7 @@ func (nm QName) Name() Name {
 	} else {
 		nmn = string(nm[ix+1:])
 	}
-	contract.Assert(IsName(nmn))
+	contract.Assertf(IsName(nmn), "QName %q has invalid name %q", nm, nmn)
 	return Name(nmn)
 }
 
@@ -108,7 +108,7 @@ func (nm QName) Namespace() QName {
 	} else {
 		qn = string(nm[:ix])
 	}
-	contract.Assert(IsQName(qn))
+	contract.Assertf(IsQName(qn), "QName %q has invalid namespace %q", nm, qn)
 	return QName(qn)
 }
 

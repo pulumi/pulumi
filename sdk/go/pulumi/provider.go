@@ -261,7 +261,7 @@ func gatherDeps(v resource.PropertyValue, deps urnSet) {
 }
 
 func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) error {
-	contract.Assert(dest.CanSet())
+	contract.Requiref(dest.CanSet(), "dest", "value must be settable")
 
 	// Check for nils. The destination will be left with the zero value.
 	if v.IsNull() {

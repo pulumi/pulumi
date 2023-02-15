@@ -210,10 +210,10 @@ func encryptAES256GCGM(plaintext string, key []byte) ([]byte, []byte) {
 	contract.Assertf(err == nil, "could not read from system random source")
 
 	block, err := aes.NewCipher(key)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error creating AES cipher")
 
 	aesgcm, err := cipher.NewGCM(block)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error creating AES-GCM cipher")
 
 	msg := aesgcm.Seal(nil, nonce, []byte(plaintext), nil)
 
@@ -224,10 +224,10 @@ func decryptAES256GCM(ciphertext []byte, key []byte, nonce []byte) (string, erro
 	contract.Requiref(len(key) == SymmetricCrypterKeyBytes, "key", "AES-256-GCM needs a 32 byte key")
 
 	block, err := aes.NewCipher(key)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error creating AES cipher")
 
 	aesgcm, err := cipher.NewGCM(block)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error creating AES-GCM cipher")
 
 	msg, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 
