@@ -259,11 +259,10 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 	// buffered channel will be scheduled when new data is placed in the channel.
 
 	defer close(done)
+	contract.Assertf(buffer != nil, "buffer channel must not be nil")
 
 	var queue []Event
 	for {
-		contract.Assert(buffer != nil)
-
 		e, ok := <-buffer
 		if !ok {
 			return
@@ -291,7 +290,8 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 }
 
 func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool) StepEventMetadata {
-	contract.Assert(op == step.Op() || step.Op() == deploy.OpRefresh)
+	contract.Assertf(op == step.Op() || step.Op() == deploy.OpRefresh,
+		"step must be %v or %v, got %v", op, deploy.OpRefresh, step.Op())
 
 	var keys, diffs []resource.PropertyKey
 	if keyer, hasKeys := step.(interface{ Keys() []resource.PropertyKey }); hasKeys {
@@ -394,7 +394,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	for k, v := range cfg {
 		keyString := k.String()
 		valueString, err := v.Value(config.NewBlindingDecrypter())
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error getting configuration value for entry %q", keyString)
 		configStringMap[keyString] = valueString
 	}
 

@@ -30,8 +30,8 @@ func Refresh(
 	opts UpdateOptions,
 	dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
 
-	contract.Require(u != nil, "u")
-	contract.Require(ctx != nil, "ctx")
+	contract.Requiref(u != nil, "u", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 

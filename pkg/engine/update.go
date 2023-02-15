@@ -65,7 +65,8 @@ type LocalPolicyPack struct {
 func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPolicyPack {
 	// If we have any configPaths, we should have already validated that the length of
 	// the localPaths and configPaths are the same.
-	contract.Assert(len(configPaths) == 0 || len(configPaths) == len(localPaths))
+	contract.Assertf(len(configPaths) == 0 || len(configPaths) == len(localPaths),
+		"configPaths must be empty or match localPaths count (%d), got %d", len(localPaths), len(configPaths))
 
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
@@ -174,8 +175,8 @@ func HasChanges(changes display.ResourceChanges) bool {
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	*deploy.Plan, display.ResourceChanges, result.Result) {
 
-	contract.Require(u != nil, "update")
-	contract.Require(ctx != nil, "ctx")
+	contract.Requiref(u != nil, "update", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
@@ -601,8 +602,8 @@ func (acts *updateActions) OnResourceStepPost(
 			step.URN())
 		new := step.New()
 		old := step.Old()
-		contract.Assert(new != nil)
-		contract.Assert(old != nil)
+		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
+		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
 		new.Inputs = make(resource.PropertyMap)
 		for key, value := range old.Inputs {
 			new.Inputs[key] = value
