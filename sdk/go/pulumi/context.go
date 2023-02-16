@@ -1042,7 +1042,13 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	// copy specific provider, if any
 	if provider != nil {
 		pkg := provider.getPackage()
-		if _, alreadyExists := providerMap[pkg]; alreadyExists {
+		// We want to warn users if there's a conflicting
+		// provider entry in the map.
+		// However, since we merge the Provider into the Providers map
+		// when combining the functional options,
+		// there will always be a conflicting entry in the map.
+		// So we need to also check that it's a different provider.
+		if other, alreadyExists := providerMap[pkg]; alreadyExists && other != provider {
 			err := ctx.Log.Warn(fmt.Sprintf("Provider for %s conflicts with providers map. %s %s", pkg,
 				"This will become an error in july 2022.",
 				"See https://github.com/pulumi/pulumi/issues/8799 for more details.",
