@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go
+  description: The various workspace load routines (e.g. LoadProject) are no longer singularly cached.
