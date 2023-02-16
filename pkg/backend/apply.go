@@ -49,8 +49,8 @@ type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op 
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
-	contract.Assert(v.previewText != "")
-	contract.Assert(v.text != "")
+	contract.Assertf(v.previewText != "", "preview text for %q cannot be empty", kind)
+	contract.Assertf(v.text != "", "text for %q cannot be empty", kind)
 
 	if dryRun {
 		return "Previewing " + v.previewText

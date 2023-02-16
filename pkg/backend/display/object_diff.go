@@ -79,8 +79,8 @@ func getIndentationString(indent int, op display.StepOp, prefix bool) string {
 	}
 
 	rp := deploy.RawPrefix(op)
-	contract.Assert(len(rp) == 2)
-	contract.Assert(len(result) >= 2)
+	contract.Assertf(len(rp) == 2, "expected raw prefix to be 2 characters long: %q", rp)
+	contract.Assertf(len(result) >= 2, "expected indention to be at least 2 characters long: %q", result)
 	return result[:len(result)-2] + rp
 }
 
@@ -145,7 +145,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 		new := step.New
 		if old != nil && new != nil && old.Provider != new.Provider {
 			newProv, err := providers.ParseReference(new.Provider)
-			contract.Assert(err == nil)
+			contract.Assertf(err == nil, "invalid provider reference %q: %v", new.Provider, err)
 
 			writeWithIndentNoPrefix(&b, indent+1, deploy.OpUpdate, "[provider: ")
 			write(&b, deploy.OpDelete, "%s", old.Provider)
@@ -158,7 +158,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 			writeVerbatim(&b, deploy.OpUpdate, "]\n")
 		} else {
 			prov, err := providers.ParseReference(step.Provider)
-			contract.Assert(err == nil)
+			contract.Assertf(err == nil, "invalid provider reference %q: %v", step.Provider, err)
 
 			// Elide references to default providers.
 			if prov.URN().Name() != "default" {
@@ -586,7 +586,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		} else if path, has := a.GetPath(); has {
 			p.write("asset(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
-			contract.Assert(a.IsURI())
+			contract.Assertf(a.IsURI(), "asset is not a text, file, or URI")
 			p.write("asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
 		}
 	case v.IsArchive():
@@ -605,7 +605,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		} else if path, has := a.GetPath(); has {
 			p.write("archive(file:%s) { %s }", shortHash(a.Hash), path)
 		} else {
-			contract.Assert(a.IsURI())
+			contract.Assertf(a.IsURI(), "archive is not a file or URI")
 			p.write("archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
 	case v.IsObject():
@@ -682,7 +682,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 }
 
 func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []resource.PropertyKey) {
-	contract.Assert(p.indent > 0)
+	contract.Assertf(p.indent > 0, "indentation must be > 0 to print object diffs")
 
 	// Compute the maximum width of property keys so we can justify everything. If an include set was given, filter out
 	// any properties that are not in the set.
@@ -723,7 +723,7 @@ func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxk
 
 func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter), diff resource.ValueDiff) {
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
-	contract.Assert(p.indent > 0)
+	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
 
 	if diff.Array != nil {
 		titleFunc(p)
@@ -799,7 +799,7 @@ func isPrimitive(value resource.PropertyValue) bool {
 }
 
 func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) {
-	contract.Assert(isPrimitive(v))
+	contract.Requiref(isPrimitive(v), "v", "must be primitive")
 	if v.IsNull() {
 		p.writeVerbatim("<null>")
 	} else if v.IsBool() {
@@ -869,7 +869,7 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 			return
 		}
 	} else {
-		contract.Assert(oldArchive.IsAssets())
+		contract.Assertf(oldArchive.IsAssets(), "old archive is not a path, URI, or a group of assets")
 		oldAssets, _ := oldArchive.GetAssets()
 
 		if newAssets, has := newArchive.GetAssets(); has {
@@ -980,7 +980,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 			i++
 			continue
 		} else {
-			contract.Assert(addNew)
+			contract.Assertf(addNew, "expected to print new asset")
 			newName := newNames[j]
 			titleFunc := propertyTitlePrinter("\""+newName+"\"", maxkey)
 			p.indented(1).printAdd(assetOrArchiveToPropertyValue(newAssets[newName]), titleFunc)
@@ -1017,7 +1017,7 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 			return
 		}
 	} else {
-		contract.Assert(oldAsset.IsURI())
+		contract.Assertf(oldAsset.IsURI(), "old asset is not text, path, or URI")
 
 		oldURI, _ := oldAsset.GetURI()
 		if newURI, has := newAsset.GetURI(); has {

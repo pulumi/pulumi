@@ -543,7 +543,7 @@ func (pc *Client) CreateUpdate(
 	wireConfig := make(map[string]apitype.ConfigValue)
 	for k, cv := range cfg {
 		v, err := cv.Value(config.NopDecrypter)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
 
 		wireConfig[k.String()] = apitype.ConfigValue{
 			String: v,

@@ -122,7 +122,8 @@ func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 	si, err := s.b.getCloudStackIdentifier(s.ref)
-	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
+	// the above only fails when ref is of the wrong type.
+	contract.AssertNoErrorf(err, "unexpected stack reference type: %T", s.ref)
 	return si
 }
 
@@ -204,7 +205,7 @@ type cloudStackSummary struct {
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
-	contract.Assert(css.summary.ProjectName != "")
+	contract.Assertf(css.summary.ProjectName != "", "project name must not be empty")
 
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,

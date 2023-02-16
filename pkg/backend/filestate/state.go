@@ -98,7 +98,7 @@ func (b *localBackend) newUpdate(
 	ctx context.Context,
 	stackName tokens.Name,
 	op backend.UpdateOperation) (*update, error) {
-	contract.Require(stackName != "", "stackName")
+	contract.Requiref(stackName != "", "stackName", "must not be empty")
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, stackName,
@@ -295,7 +295,7 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 
 // removeStack removes information about a stack from the current workspace.
 func (b *localBackend) removeStack(name tokens.Name) error {
-	contract.Require(name != "", "name")
+	contract.Requiref(name != "", "name", "must not be empty")
 
 	// Just make a backup of the file and don't write out anything new.
 	file := b.stackPath(name)
@@ -307,7 +307,7 @@ func (b *localBackend) removeStack(name tokens.Name) error {
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.
 func backupTarget(bucket Bucket, file string, keepOriginal bool) string {
-	contract.Require(file != "", "file")
+	contract.Requiref(file != "", "file", "must not be empty")
 	bck := file + ".bak"
 
 	err := bucket.Copy(context.TODO(), bck, file, nil)
@@ -328,7 +328,7 @@ func backupTarget(bucket Bucket, file string, keepOriginal bool) string {
 
 // backupStack copies the current Checkpoint file to ~/.pulumi/backups.
 func (b *localBackend) backupStack(name tokens.Name) error {
-	contract.Require(name != "", "name")
+	contract.Requiref(name != "", "name", "must not be empty")
 
 	// Exit early if backups are disabled.
 	if cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
@@ -406,19 +406,19 @@ func (b *localBackend) stackPath(stack tokens.Name) string {
 }
 
 func (b *localBackend) historyDirectory(stack tokens.Name) string {
-	contract.Require(stack != "", "stack")
+	contract.Requiref(stack != "", "stack", "must not be empty")
 	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack))
 }
 
 func (b *localBackend) backupDirectory(stack tokens.Name) string {
-	contract.Require(stack != "", "stack")
+	contract.Requiref(stack != "", "stack", "must not be empty")
 	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack))
 }
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
 func (b *localBackend) getHistory(name tokens.Name, pageSize int, page int) ([]backend.UpdateInfo, error) {
-	contract.Require(name != "", "name")
+	contract.Requiref(name != "", "name", "must not be empty")
 
 	dir := b.historyDirectory(name)
 	// TODO: we could consider optimizing the list operation using `page` and `pageSize`.
@@ -490,8 +490,8 @@ func (b *localBackend) getHistory(name tokens.Name, pageSize int, page int) ([]b
 }
 
 func (b *localBackend) renameHistory(oldName tokens.Name, newName tokens.Name) error {
-	contract.Require(oldName != "", "oldName")
-	contract.Require(newName != "", "newName")
+	contract.Requiref(oldName != "", "oldName", "must not be empty")
+	contract.Requiref(newName != "", "newName", "must not be empty")
 
 	oldHistory := b.historyDirectory(oldName)
 	newHistory := b.historyDirectory(newName)
@@ -534,7 +534,7 @@ func (b *localBackend) renameHistory(oldName tokens.Name, newName tokens.Name) e
 
 // addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
 func (b *localBackend) addToHistory(name tokens.Name, update backend.UpdateInfo) error {
-	contract.Require(name != "", "name")
+	contract.Requiref(name != "", "name", "must not be empty")
 
 	dir := b.historyDirectory(name)
 

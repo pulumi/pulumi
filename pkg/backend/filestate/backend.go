@@ -754,7 +754,7 @@ func (b *localBackend) GetLogs(ctx context.Context,
 
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
 func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
-	contract.Assert(target != nil)
+	contract.Requiref(target != nil, "target", "must not be nil")
 
 	if target.Snapshot == nil {
 		// If the stack has not been deployed yet, return no logs.

@@ -184,7 +184,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string,
 	nonce := hex.EncodeToString(nonceBytes)
 
 	u, err := url.Parse(loginURL)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error parsing login url: %s", loginURL)
 
 	// Generate a description to associate with the access token we'll generate, for display on the Account Settings
 	// page.
