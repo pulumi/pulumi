@@ -456,7 +456,7 @@ func WelcomeUser(opts display.Options) {
 
 `,
 		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip:"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
