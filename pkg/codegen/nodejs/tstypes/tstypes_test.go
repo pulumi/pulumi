@@ -29,7 +29,7 @@ func TestParenInsert(t *testing.T) {
 
 	ast := astGenerator()
 	rapid.Check(t, func(t *rapid.T) {
-		example := ast.Draw(t, "ast").(TypeAst)
+		example := ast.Draw(t, "ast")
 
 		t.Logf("example: %s", spew.Sdump(example))
 		t.Logf("example type: %s", TypeLiteral(example))
@@ -47,14 +47,14 @@ func TestParenInsert(t *testing.T) {
 	})
 }
 
-func astGenerator() *rapid.Generator {
+func astGenerator() *rapid.Generator[TypeAst] {
 	names := rapid.OneOf(rapid.Just("x"), rapid.Just("y"))
 
-	var ast func(depth int) *rapid.Generator
-	ast = func(depth int) *rapid.Generator {
+	var ast func(depth int) *rapid.Generator[TypeAst]
+	ast = func(depth int) *rapid.Generator[TypeAst] {
 		if depth <= 1 {
 			return rapid.Custom(func(t *rapid.T) TypeAst {
-				n := names.Draw(t, "name").(string)
+				n := names.Draw(t, "name")
 				return &idType{n}
 			})
 		}
@@ -63,17 +63,17 @@ func astGenerator() *rapid.Generator {
 		subs := rapid.SliceOfN(sub, 2, 4)
 
 		mapGen := rapid.Custom(func(t *rapid.T) TypeAst {
-			element := sub.Draw(t, "ast").(TypeAst)
+			element := sub.Draw(t, "ast")
 			return &mapType{element}
 		})
 
 		arrGen := rapid.Custom(func(t *rapid.T) TypeAst {
-			element := sub.Draw(t, "ast").(TypeAst)
+			element := sub.Draw(t, "ast")
 			return &arrayType{element}
 		})
 
 		unionGen := rapid.Custom(func(t *rapid.T) TypeAst {
-			ts := subs.Draw(t, "asts").([]TypeAst)
+			ts := subs.Draw(t, "asts")
 			return &unionType{ts[0], ts[1], ts[2:]}
 		})
 
@@ -82,8 +82,8 @@ func astGenerator() *rapid.Generator {
 
 	n := rapid.IntRange(1, 3)
 	return rapid.Custom(func(t *rapid.T) TypeAst {
-		sz := n.Draw(t, "n").(int)
-		return ast(sz).Draw(t, "ast").(TypeAst)
+		sz := n.Draw(t, "n")
+		return ast(sz).Draw(t, "ast")
 	})
 }
 

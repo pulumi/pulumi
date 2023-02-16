@@ -491,7 +491,7 @@ func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
 		_, err := SerializePropertyValue(v, config.NopEncrypter, false)
 		assert.NoError(t, err)
 	})
@@ -531,7 +531,7 @@ func TestPropertyValueSchema(t *testing.T) {
 
 	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
-		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue))
+		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
 		require.NoError(t, err)
 
 		err = propertyValueSchema.Validate(wireObject)
@@ -570,7 +570,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 	t.Parallel()
 
 	rapid.Check(t, func(t *rapid.T) {
-		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value").(resource.PropertyValue)
+		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
 		wireObject, err := wireValue(original)
 		require.NoError(t, err)
 
@@ -582,36 +582,36 @@ func TestRoundTripPropertyValue(t *testing.T) {
 }
 
 // UnknownObjectGenerator generates the unknown object value.
-func UnknownObjectGenerator() *rapid.Generator {
+func UnknownObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) interface{} {
 		return rapid.Just(computedValuePlaceholder).Draw(t, "unknowns")
 	})
 }
 
 // BoolObjectGenerator generates boolean object values.
-func BoolObjectGenerator() *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func BoolObjectGenerator() *rapid.Generator[bool] {
+	return rapid.Custom(func(t *rapid.T) bool {
 		return rapid.Bool().Draw(t, "booleans")
 	})
 }
 
 // NumberObjectGenerator generates numeric object values.
-func NumberObjectGenerator() *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func NumberObjectGenerator() *rapid.Generator[float64] {
+	return rapid.Custom(func(t *rapid.T) float64 {
 		return rapid.Float64().Draw(t, "numbers")
 	})
 }
 
 // StringObjectGenerator generates string object values.
-func StringObjectGenerator() *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func StringObjectGenerator() *rapid.Generator[string] {
+	return rapid.Custom(func(t *rapid.T) string {
 		return rapid.String().Draw(t, "strings")
 	})
 }
 
 // TextAssetObjectGenerator generates textual asset object values.
-func TextAssetObjectGenerator() *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func TextAssetObjectGenerator() *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
 		return map[string]interface{}{
 			resource.SigKey:            resource.AssetSig,
 			resource.AssetTextProperty: rapid.String().Draw(t, "text asset contents"),
@@ -620,16 +620,21 @@ func TextAssetObjectGenerator() *rapid.Generator {
 }
 
 // AssetObjectGenerator generates asset object values.
-func AssetObjectGenerator() *rapid.Generator {
+func AssetObjectGenerator() *rapid.Generator[map[string]any] {
 	return TextAssetObjectGenerator()
 }
 
 // LiteralArchiveObjectGenerator generates archive object values with literal archive contents.
-func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator {
+func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return rapid.Custom(func(t *rapid.T) map[string]interface{} {
-		var contentsGenerator *rapid.Generator
+		var contentsGenerator *rapid.Generator[map[string]any]
 		if maxDepth > 0 {
-			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetObjectGenerator(), ArchiveObjectGenerator(maxDepth-1)), 0, 16)
+			contentsGenerator = rapid.MapOfN(
+				rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`),
+				rapid.OneOf(
+					AssetObjectGenerator().AsAny(),
+					ArchiveObjectGenerator(maxDepth-1).AsAny(),
+				), 0, 16)
 		} else {
 			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
@@ -642,20 +647,23 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator {
 }
 
 // ArchiveObjectGenerator generates archive object values.
-func ArchiveObjectGenerator(maxDepth int) *rapid.Generator {
+func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return LiteralArchiveObjectGenerator(maxDepth)
 }
 
 // ResourceReferenceObjectGenerator generates resource reference object values.
-func ResourceReferenceObjectGenerator() *rapid.Generator {
+func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) interface{} {
 		fields := map[string]interface{}{
 			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            string(resource_testing.URNGenerator().Draw(t, "referenced URN").(resource.URN)),
+			"urn":            string(resource_testing.URNGenerator().Draw(t, "referenced URN")),
 			"packageVersion": resource_testing.SemverStringGenerator().Draw(t, "package version"),
 		}
 
-		id := rapid.OneOf(UnknownObjectGenerator(), StringObjectGenerator()).Draw(t, "referenced ID")
+		id := rapid.OneOf(
+			UnknownObjectGenerator(),
+			StringObjectGenerator().AsAny(),
+		).Draw(t, "referenced ID")
 		if idstr := id.(string); idstr != "" && idstr != computedValuePlaceholder {
 			fields["id"] = id
 		}
@@ -666,24 +674,24 @@ func ResourceReferenceObjectGenerator() *rapid.Generator {
 
 // ArrayObjectGenerator generates array object values. The maxDepth parameter controls the maximum
 // depth of the elements of the array.
-func ArrayObjectGenerator(maxDepth int) *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func ArrayObjectGenerator(maxDepth int) *rapid.Generator[[]any] {
+	return rapid.Custom(func(t *rapid.T) []any {
 		return rapid.SliceOfN(ObjectValueGenerator(maxDepth-1), 0, 32).Draw(t, "array elements")
 	})
 }
 
 // MapObjectGenerator generates map object values. The maxDepth parameter controls the maximum
 // depth of the elements of the map.
-func MapObjectGenerator(maxDepth int) *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func MapObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
 		return rapid.MapOfN(rapid.String(), ObjectValueGenerator(maxDepth-1), 0, 32).Draw(t, "map elements")
 	})
 }
 
 // SecretObjectGenerator generates secret object values. The maxDepth parameter controls the maximum
 // depth of the plaintext value of the secret, if any.
-func SecretObjectGenerator(maxDepth int) *rapid.Generator {
-	return rapid.Custom(func(t *rapid.T) interface{} {
+func SecretObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
 		value := ObjectValueGenerator(maxDepth-1).Draw(t, "secret element")
 		bytes, err := json.Marshal(value)
 		require.NoError(t, err)
@@ -697,21 +705,21 @@ func SecretObjectGenerator(maxDepth int) *rapid.Generator {
 
 // ObjectValueGenerator generates arbitrary object values. The maxDepth parameter controls the maximum
 // number of times the generator may recur.
-func ObjectValueGenerator(maxDepth int) *rapid.Generator {
-	choices := []*rapid.Generator{
+func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
+	choices := []*rapid.Generator[any]{
 		UnknownObjectGenerator(),
-		BoolObjectGenerator(),
-		NumberObjectGenerator(),
-		StringObjectGenerator(),
-		AssetObjectGenerator(),
+		BoolObjectGenerator().AsAny(),
+		NumberObjectGenerator().AsAny(),
+		StringObjectGenerator().AsAny(),
+		AssetObjectGenerator().AsAny(),
 		ResourceReferenceObjectGenerator(),
 	}
 	if maxDepth > 0 {
 		choices = append(choices,
-			ArchiveObjectGenerator(maxDepth),
-			ArrayObjectGenerator(maxDepth),
-			MapObjectGenerator(maxDepth),
-			SecretObjectGenerator(maxDepth))
+			ArchiveObjectGenerator(maxDepth).AsAny(),
+			ArrayObjectGenerator(maxDepth).AsAny(),
+			MapObjectGenerator(maxDepth).AsAny(),
+			SecretObjectGenerator(maxDepth).AsAny())
 	}
 	return rapid.OneOf(choices...)
 }
