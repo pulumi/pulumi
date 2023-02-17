@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,8 +127,14 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		filter.Project = &projName
 	}
 
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return err
+	}
+
 	// Get the current backend.
-	b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+	b, err := currentBackend(ctx, project, display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err
 	}

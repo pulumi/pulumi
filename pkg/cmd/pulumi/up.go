@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -243,12 +243,18 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
 		}
 
+		// There is no current project at this point to pass into currentBackend
+		b, err := currentBackend(ctx, nil, opts.Display)
+		if err != nil {
+			return result.FromError(err)
+		}
+
 		// If a stack was specified via --stack, see if it already exists.
 		var name string
 		var description string
 		var s backend.Stack
 		if stackName != "" {
-			if s, name, description, err = getStack(ctx, stackName, opts.Display); err != nil {
+			if s, name, description, err = getStack(ctx, b, stackName, opts.Display); err != nil {
 				return result.FromError(err)
 			}
 		}
@@ -293,7 +299,7 @@ func newUpCmd() *cobra.Command {
 
 		// Create the stack, if needed.
 		if s == nil {
-			if s, err = promptAndCreateStack(ctx, promptForValue, stackName, name, false /*setCurrent*/, yes,
+			if s, err = promptAndCreateStack(ctx, b, promptForValue, stackName, name, false /*setCurrent*/, yes,
 				opts.Display, secretsProvider); err != nil {
 				return result.FromError(err)
 			}

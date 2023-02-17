@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 	ctx := context.Background()
 
-	b, err := currentBackend(ctx, display.Options{})
+	b, err := currentBackend(ctx, nil, display.Options{})
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
@@ -152,7 +152,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	_, err = os.Stat(filepath.Join(fileStateDir, workspace.BookkeepingDir, workspace.StackDir, stackName+".json"))
 	assert.NoError(t, err)
 
-	b, err = currentBackend(ctx, display.Options{})
+	b, err = currentBackend(ctx, nil, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
 }
@@ -185,7 +185,7 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 
 func currentUser(t *testing.T) string {
 	ctx := context.Background()
-	b, err := currentBackend(ctx, display.Options{})
+	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
 	currentUser, _, err := b.CurrentUser()
 	assert.NoError(t, err)
@@ -200,7 +200,7 @@ func loadStackName(t *testing.T) string {
 
 func removeStack(t *testing.T, name string) {
 	ctx := context.Background()
-	b, err := currentBackend(ctx, display.Options{})
+	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)

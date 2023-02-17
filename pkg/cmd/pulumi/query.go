@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,12 +58,13 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			b, err := currentBackend(ctx, opts.Display)
+			// Try to read the current project
+			project, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			b, err := currentBackend(ctx, project, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -73,7 +74,7 @@ func newQueryCmd() *cobra.Command {
 			}
 
 			res := b.Query(ctx, backend.QueryOperation{
-				Proj:            proj,
+				Proj:            project,
 				Root:            root,
 				Opts:            opts,
 				Scopes:          cancellationScopes,

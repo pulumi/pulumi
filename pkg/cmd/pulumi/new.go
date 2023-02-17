@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,15 +118,18 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
-	if !args.generateOnly {
-		if _, err = currentBackend(ctx, opts); err != nil {
+	var b backend.Backend
+	if !args.generateOnly || (args.stack != "" && strings.Count(args.stack, "/") == 2) {
+		// There is no current project at this point to pass into currentBackend
+		b, err = currentBackend(ctx, nil, opts)
+		if err != nil {
 			return err
 		}
 	}
 
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
-		if err := validateProjectName(ctx, args.name, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, b, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -182,7 +185,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(ctx, stackName, opts)
+		existingStack, existingName, existingDesc, err := getStack(ctx, b, stackName, opts)
 		if err != nil {
 			return err
 		}
@@ -213,7 +216,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(ctx, defaultValue, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, b, defaultValue, args.generateOnly, opts); err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
@@ -224,7 +227,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(ctx, s, args.generateOnly, opts) }
+		validate := func(s string) error { return validateProjectName(ctx, b, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
 			return err
@@ -282,7 +285,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
-		if s, err = promptAndCreateStack(ctx, args.prompt,
+		if s, err = promptAndCreateStack(ctx, b, args.prompt,
 			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
@@ -538,17 +541,16 @@ func errorIfNotEmptyDirectory(path string) error {
 	return nil
 }
 
-func validateProjectName(ctx context.Context, projectName string, generateOnly bool, opts display.Options) error {
+func validateProjectName(ctx context.Context, b backend.Backend,
+	projectName string, generateOnly bool, opts display.Options) error {
+
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
 	}
 
 	if !generateOnly {
-		b, err := currentBackend(ctx, opts)
-		if err != nil {
-			return err
-		}
+		contract.Requiref(b != nil, "b", "must not be nil")
 
 		exists, err := b.DoesProjectExist(ctx, projectName)
 		if err != nil {
@@ -564,11 +566,10 @@ func validateProjectName(ctx context.Context, projectName string, generateOnly b
 }
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
-func getStack(ctx context.Context, stack string, opts display.Options) (backend.Stack, string, string, error) {
-	b, err := currentBackend(ctx, opts)
-	if err != nil {
-		return nil, "", "", err
-	}
+func getStack(ctx context.Context, b backend.Backend,
+	stack string, opts display.Options) (backend.Stack, string, string, error) {
+
+	contract.Requiref(b != nil, "b", "must not be nil")
 
 	stackRef, err := b.ParseStackReference(stack)
 	if err != nil {
@@ -593,14 +594,10 @@ func getStack(ctx context.Context, stack string, opts display.Options) (backend.
 }
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
-func promptAndCreateStack(ctx context.Context, prompt promptForValueFunc,
+func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
-
-	b, err := currentBackend(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
+	contract.Requiref(b != nil, "b", "must not be nil")
 
 	if stack != "" {
 		stackName, err := buildStackName(stack)
