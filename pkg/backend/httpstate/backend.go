@@ -802,7 +802,7 @@ func currentProjectContradictsWorkspace(project *workspace.Project, stack client
 }
 
 func (b *cloudBackend) CreateStack(
-	ctx context.Context, stackRef backend.StackReference,
+	ctx context.Context, stackRef backend.StackReference, root string,
 	project *workspace.Project, _ interface{} /* No custom options for httpstate backend. */) (
 	backend.Stack, error) {
 
@@ -815,10 +815,7 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
-	tags, err := backend.GetEnvironmentTagsForCurrentStack()
-	if err != nil {
-		return nil, fmt.Errorf("error determining initial tags: %w", err)
-	}
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, project)
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {
@@ -1025,10 +1022,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetMergedStackTags(ctx, stack)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", fmt.Errorf("getting stack tags: %w", err)
-	}
+	tags := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj)
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
