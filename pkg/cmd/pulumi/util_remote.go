@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // This is a variable instead of a constant so it can be set in certain builds of the CLI that do not
@@ -258,7 +259,13 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 		sshPrivateKey = string(key)
 	}
 
-	b, err := currentBackend(ctx, opts)
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return result.FromError(err)
+	}
+
+	b, err := currentBackend(ctx, project, opts)
 	if err != nil {
 		return result.FromError(err)
 	}

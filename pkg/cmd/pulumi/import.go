@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/spf13/cobra"
@@ -185,16 +186,22 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		return sb.String()
 	}
 
+	// TODO: When Go 1.21 is released, switch to errors.Join.
+	var errs error
+	pusherrf := func(format string, args ...interface{}) {
+		errs = multierror.Append(errs, fmt.Errorf(format, args...))
+	}
+
 	imports := make([]deploy.Import, len(f.Resources))
 	for i, spec := range f.Resources {
 		if spec.Type == "" {
-			return nil, nil, fmt.Errorf("%v has no type", describeResource(i, spec))
+			pusherrf("%v has no type", describeResource(i, spec))
 		}
 		if spec.Name == "" {
-			return nil, nil, fmt.Errorf("%v has no name", describeResource(i, spec))
+			pusherrf("%v has no name", describeResource(i, spec))
 		}
 		if spec.ID == "" {
-			return nil, nil, fmt.Errorf("%v has no ID", describeResource(i, spec))
+			pusherrf("%v has no ID", describeResource(i, spec))
 		}
 
 		imp := deploy.Import{
@@ -208,34 +215,37 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		if spec.Parent != "" {
 			urn, ok := f.NameTable[spec.Parent]
 			if !ok {
-				return nil, nil, fmt.Errorf("the parent '%v' for %v has no name",
+				pusherrf("the parent '%v' for %v has no name",
 					spec.Parent, describeResource(i, spec))
+			} else {
+				imp.Parent = urn
 			}
-			imp.Parent = urn
 		}
 
 		if spec.Provider != "" {
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
-				return nil, nil, fmt.Errorf("the provider '%v' for %v has no name",
+				pusherrf("the provider '%v' for %v has no name",
 					spec.Provider, describeResource(i, spec))
+			} else {
+				imp.Provider = urn
 			}
-			imp.Provider = urn
 		}
 
 		if spec.Version != "" {
 			v, err := semver.ParseTolerant(spec.Version)
 			if err != nil {
-				return nil, nil, fmt.Errorf("could not parse version '%v' for %v: %w",
+				pusherrf("could not parse version '%v' for %v: %w",
 					spec.Version, describeResource(i, spec), err)
+			} else {
+				imp.Version = &v
 			}
-			imp.Version = &v
 		}
 
 		imports[i] = imp
 	}
 
-	return imports, names, nil
+	return imports, names, errs
 }
 
 func getCurrentDeploymentForStack(

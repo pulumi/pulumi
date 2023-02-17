@@ -134,15 +134,9 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url, workspace.GetCloudInsecure(url))
 }
 
-func currentBackend(ctx context.Context, opts display.Options) (backend.Backend, error) {
+func currentBackend(ctx context.Context, project *workspace.Project, opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
-	}
-
-	// Try to read the current project
-	project, _, err := readProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return nil, err
 	}
 
 	url, err := workspace.GetCurrentCloudURL(project)
@@ -291,7 +285,13 @@ func requireStack(ctx context.Context,
 		return requireCurrentStack(ctx, lopt, opts)
 	}
 
-	b, err := currentBackend(ctx, opts)
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
+	b, err := currentBackend(ctx, project, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -326,8 +326,15 @@ func requireStack(ctx context.Context,
 }
 
 func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
+
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
 	// Search for the current stack.
-	b, err := currentBackend(ctx, opts)
+	b, err := currentBackend(ctx, project, opts)
 	if err != nil {
 		return nil, err
 	}

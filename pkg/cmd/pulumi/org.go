@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -91,19 +91,19 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 			orgName = args[0]
 
-			currentBe, err := currentBackend(ctx, displayOpts)
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
 			if err != nil {
 				return err
 			}
 			if !currentBe.SupportsOrganizations() {
 				return fmt.Errorf("unable to set a default organization for backend type: %s",
 					currentBe.Name())
-			}
-
-			// Try to read the current project
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
 			}
 
 			cloudURL, err := workspace.GetCurrentCloudURL(project)
@@ -137,7 +137,13 @@ func newOrgGetDefaultCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			currentBe, err := currentBackend(ctx, displayOpts)
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
 			if err != nil {
 				return err
 			}

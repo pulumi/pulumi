@@ -118,11 +118,10 @@ type Backend interface {
 }
 
 type cloudBackend struct {
-	d              diag.Sink
-	url            string
-	client         *client.Client
-	currentProject *workspace.Project
-	capabilities   func(context.Context) capabilities
+	d            diag.Sink
+	url          string
+	client       *client.Client
+	capabilities func(context.Context) capabilities
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -137,21 +136,14 @@ func New(d diag.Sink, cloudURL string, insecure bool) (Backend, error) {
 	}
 	apiToken := account.AccessToken
 
-	// When stringifying backend references, we take the current project (if present) into account.
-	currentProject, err := workspace.DetectProject()
-	if err != nil {
-		currentProject = nil
-	}
-
 	client := client.NewClient(cloudURL, apiToken, insecure, d)
 	capabilities := detectCapabilities(d, client)
 
 	return &cloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         client,
-		currentProject: currentProject,
-		capabilities:   capabilities,
+		d:            d,
+		url:          cloudURL,
+		client:       client,
+		capabilities: capabilities,
 	}, nil
 }
 

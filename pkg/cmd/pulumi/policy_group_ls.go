@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPolicyGroupCmd() *cobra.Command {
@@ -46,8 +48,15 @@ func newPolicyGroupLsCmd() *cobra.Command {
 		Long:  "List all Policy Groups for a Pulumi organization",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()
+
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
 			// Get backend.
-			b, err := currentBackend(ctx, display.Options{Color: cmdutil.GetGlobalColorization()})
+			b, err := currentBackend(ctx, project, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return fmt.Errorf("failed to get current backend: %w", err)
 			}
