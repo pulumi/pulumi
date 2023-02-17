@@ -151,7 +151,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
@@ -169,7 +169,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Create stack "b" and import a checkpoint with a secret
 	bStackRef, err := b.ParseStackReference("b")
 	assert.NoError(t, err)
-	bStack, err := b.CreateStack(ctx, bStackRef, nil)
+	bStack, err := b.CreateStack(ctx, bStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
@@ -234,7 +234,7 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that trying to cancel a stack that isn't locked doesn't error
-	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.CancelCurrentUpdate(ctx, aStackRef)
@@ -296,7 +296,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	// Check that creating a new stack doesn't make a backup file
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -339,7 +339,7 @@ func TestRenameWorks(t *testing.T) {
 	// Create a new stack
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -452,7 +452,7 @@ func TestHtmlEscaping(t *testing.T) {
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.ImportDeployment(ctx, aStack, udep)

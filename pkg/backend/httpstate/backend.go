@@ -793,33 +793,25 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 // if the project name in Pulumi.yaml is "foo".
 //
 //	a stack with a name of foo/bar/foo should not work.
-func currentProjectContradictsWorkspace(stack client.StackIdentifier) bool {
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
+func currentProjectContradictsWorkspace(project *workspace.Project, stack client.StackIdentifier) bool {
+	if project == nil {
 		return false
 	}
 
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.Project
+	return project.Name.String() != stack.Project
 }
 
 func (b *cloudBackend) CreateStack(
-	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
+	ctx context.Context, stackRef backend.StackReference,
+	project *workspace.Project, _ interface{} /* No custom options for httpstate backend. */) (
 	backend.Stack, error) {
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	if currentProjectContradictsWorkspace(stackID) {
+	if currentProjectContradictsWorkspace(project, stackID) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
@@ -1000,7 +992,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	if currentProjectContradictsWorkspace(stackID) {
+	if currentProjectContradictsWorkspace(op.Proj, stackID) {
 		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
 			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}

@@ -225,7 +225,12 @@ func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
 
-	stack, err := b.CreateStack(ctx, stackRef, opts)
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
+	stack, err := b.CreateStack(ctx, stackRef, project, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
