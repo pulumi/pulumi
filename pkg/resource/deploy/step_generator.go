@@ -16,7 +16,9 @@ package deploy
 
 import (
 	cryptorand "crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -558,10 +560,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// If the above didn't set the seed, generate a new random one. If we're running with plans but this
 	// resource was missing a seed then if the seed is used later checks will fail.
 	if randomSeed == nil {
-		randomSeed = make([]byte, 32)
-		n, err := cryptorand.Read(randomSeed)
-		contract.AssertNoError(err)
-		contract.Assert(n == len(randomSeed))
+		fromEnv := os.Getenv("PULUMI_RANDOM_SEED")
+		if fromEnv != "" {
+			decoded, err := base64.StdEncoding.DecodeString(fromEnv)
+			if err == nil && len(decoded) != 32 {
+				err = fmt.Errorf("must be 32 bytes in length")
+			}
+			if err != nil {
+				panic(fmt.Errorf("Invalid PULUMI_RANDOM_SEED: %w", err))
+			}
+			randomSeed = decoded
+		} else {
+			randomSeed = make([]byte, 32)
+			n, err := cryptorand.Read(randomSeed)
+			contract.AssertNoError(err)
+			contract.Assert(n == len(randomSeed))
+		}
 	}
 
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old

@@ -15,16 +15,48 @@
 package rpcdebug
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"reflect"
+
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
-// JSON format for tracking gRPC conversations. Normal methods have
-// one entry for each req-resp conversation, streaming methods have
-// one entry per each request or response over the stream.
+// JSON format for tracking gRPC conversations. Normal methods have one entry for each req-resp conversation, streaming
+// methods have one entry per each request or response over the stream.
 type debugInterceptorLogEntry struct {
 	Method   string          `json:"method"`
 	Request  json.RawMessage `json:"request,omitempty"`
 	Response json.RawMessage `json:"response,omitempty"`
 	Errors   []string        `json:"errors,omitempty"`
 	Metadata interface{}     `json:"metadata,omitempty"`
+}
+
+// Convert protobuf messages to JSON used in Request, Response fields of debugInterceptorLogEntry.
+func transcode(obj interface{}) (json.RawMessage, error) {
+	if obj == nil {
+		return json.RawMessage("null"), nil
+	}
+
+	m, ok := obj.(proto.Message)
+	if !ok {
+		return json.RawMessage("null"),
+			fmt.Errorf("Failed to decode, expecting proto.Message, got %v",
+				reflect.TypeOf(obj))
+	}
+
+	jsonSer := jsonpb.Marshaler{}
+	buf := bytes.Buffer{}
+	if err := jsonSer.Marshal(&buf, m); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func transcodeBack(raw json.RawMessage, dest interface{}) error {
+	jsonSer := &jsonpb.Unmarshaler{}
+	destmsg := dest.(proto.Message)
+	return jsonSer.Unmarshal(bytes.NewReader(raw), destmsg)
 }
