@@ -110,7 +110,13 @@ func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPa
 	// Attempt to log into cloud backend.
 	//
 
-	cloudURL, err := workspace.GetCurrentCloudURL()
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
+	cloudURL, err := workspace.GetCurrentCloudURL(project)
 	if err != nil {
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi service: %w", err)
 	}

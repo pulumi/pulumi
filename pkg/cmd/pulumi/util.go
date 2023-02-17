@@ -104,7 +104,13 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 		return false, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL()
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return false, err
+	}
+
+	url, err := workspace.GetCurrentCloudURL(project)
 	if err != nil {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -117,7 +123,13 @@ func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) 
 		return backendInstance, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL()
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
+	url, err := workspace.GetCurrentCloudURL(project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
@@ -133,7 +145,13 @@ func currentBackend(ctx context.Context, opts display.Options) (backend.Backend,
 		return backendInstance, nil
 	}
 
-	url, err := workspace.GetCurrentCloudURL()
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+
+	url, err := workspace.GetCurrentCloudURL(project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}

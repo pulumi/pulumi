@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -34,7 +35,13 @@ func newOrgCmd() *cobra.Command {
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			cloudURL, err := workspace.GetCurrentCloudURL()
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			cloudURL, err := workspace.GetCurrentCloudURL(project)
 			if err != nil {
 				return err
 			}
@@ -93,7 +100,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL()
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			cloudURL, err := workspace.GetCurrentCloudURL(project)
 			if err != nil {
 				return err
 			}
