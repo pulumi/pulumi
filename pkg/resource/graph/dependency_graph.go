@@ -30,7 +30,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 	dependentSet := make(map[resource.URN]bool)
 
 	cursorIndex, ok := dg.index[res]
-	contract.Assert(ok)
+	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = true
 
 	isDependent := func(candidate *resource.State) bool {
@@ -47,7 +47,7 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 		}
 		if candidate.Provider != "" {
 			ref, err := providers.ParseReference(candidate.Provider)
-			contract.Assert(err == nil)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", candidate.Provider)
 			if dependentSet[ref.URN()] {
 				return true
 			}
@@ -91,12 +91,12 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 
 	if res.Provider != "" {
 		ref, err := providers.ParseReference(res.Provider)
-		contract.Assert(err == nil)
+		contract.AssertNoErrorf(err, "cannot parse provider reference %q", res.Provider)
 		dependentUrns[ref.URN()] = true
 	}
 
 	cursorIndex, ok := dg.index[res]
-	contract.Assert(ok)
+	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	for i := cursorIndex - 1; i >= 0; i-- {
 		candidate := dg.resources[i]
 		// Include all resources that are dependencies of the resource
@@ -168,7 +168,7 @@ func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedPro
 		r.marked = true
 		if r.resource.Provider != "" {
 			ref, err := providers.ParseReference(r.resource.Provider)
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "cannot parse provider reference %q", r.resource.Provider)
 			dependedProviders[ref.URN()] = struct{}{}
 		}
 		for _, dep := range r.resource.Dependencies {

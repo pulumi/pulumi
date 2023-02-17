@@ -114,7 +114,7 @@ func (prov *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyM
 	return prov.DiffConfigF(urn, olds, news, ignoreChanges)
 }
 func (prov *Provider) Configure(inputs resource.PropertyMap) error {
-	contract.Assert(!prov.configured)
+	contract.Assertf(!prov.configured, "provider %v was already configured", prov.Name)
 	prov.configured = true
 
 	if prov.ConfigureF == nil {
@@ -126,7 +126,7 @@ func (prov *Provider) Configure(inputs resource.PropertyMap) error {
 
 func (prov *Provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap, _ bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	contract.Assert(randomSeed != nil)
+	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
 		return news, nil, nil
 	}

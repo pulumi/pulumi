@@ -92,7 +92,7 @@ func (p ProviderRequest) Name() tokens.QName {
 	}
 
 	// This thing that we generated must be a QName.
-	contract.Assert(tokens.IsQName(base))
+	contract.Assertf(tokens.IsQName(base), "generated provider name %q is not a QName", base)
 	return tokens.QName(base)
 }
 
