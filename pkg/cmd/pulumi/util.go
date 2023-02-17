@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,15 +118,9 @@ func isFilestateBackend(opts display.Options) (bool, error) {
 	return filestate.IsFileStateBackendURL(url), nil
 }
 
-func nonInteractiveCurrentBackend(ctx context.Context) (backend.Backend, error) {
+func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil
-	}
-
-	// Try to read the current project
-	project, _, err := readProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return nil, err
 	}
 
 	url, err := workspace.GetCurrentCloudURL(project)

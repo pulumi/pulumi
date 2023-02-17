@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -175,7 +175,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	}
 
 	var backend backend.Backend
-	backend, err = nonInteractiveCurrentBackend(ctx)
+	backend, err = nonInteractiveCurrentBackend(ctx, proj)
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
