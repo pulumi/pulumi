@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
@@ -207,12 +208,15 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         errorSet.add(err);
 
+        // colorize stack trace if exists
+        const stackMessage = err.stack && util.inspect(err, {colors: true});
+
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = err.stack || err.message || ("" + err);
+        const defaultMessage = stackMessage || err.message || ("" + err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {
