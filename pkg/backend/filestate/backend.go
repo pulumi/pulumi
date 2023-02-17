@@ -309,7 +309,7 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	project *workspace.Project, opts interface{}) (backend.Stack, error) {
+	root string, project *workspace.Project, opts interface{}) (backend.Stack, error) {
 
 	err := b.Lock(ctx, stackRef)
 	if err != nil {
@@ -328,10 +328,8 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags, err := backend.GetEnvironmentTagsForCurrentStack()
-	if err != nil {
-		return nil, fmt.Errorf("getting stack tags: %w", err)
-	}
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, project)
+
 	if err = validation.ValidateStackProperties(string(stackName), tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}

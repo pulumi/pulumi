@@ -149,7 +149,9 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
-func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]string, error) {
+func GetMergedStackTags(ctx context.Context, s Stack,
+	root string, project *workspace.Project) map[apitype.StackTagName]string {
+
 	// Get the stack's existing tags.
 	tags := s.Tags()
 	if tags == nil {
@@ -157,10 +159,7 @@ func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]
 	}
 
 	// Get latest environment tags for the current stack.
-	envTags, err := GetEnvironmentTagsForCurrentStack()
-	if err != nil {
-		return nil, err
-	}
+	envTags := GetEnvironmentTagsForCurrentStack(root, project)
 
 	// Add each new environment tag to the existing tags, overwriting existing tags with the
 	// latest values.
@@ -168,37 +167,30 @@ func GetMergedStackTags(ctx context.Context, s Stack) (map[apitype.StackTagName]
 		tags[k] = v
 	}
 
-	return tags, nil
+	return tags
 }
 
 // GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
 // and Pulumi.yaml file.
-func GetEnvironmentTagsForCurrentStack() (map[apitype.StackTagName]string, error) {
+func GetEnvironmentTagsForCurrentStack(root string, project *workspace.Project) map[apitype.StackTagName]string {
 	tags := make(map[apitype.StackTagName]string)
 
 	// Tags based on Pulumi.yaml.
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		// No current stack return empty
-		return make(map[apitype.StackTagName]string), nil
+	if project != nil {
+		tags[apitype.ProjectNameTag] = project.Name.String()
+		tags[apitype.ProjectRuntimeTag] = project.Runtime.Name()
+		if project.Description != nil {
+			tags[apitype.ProjectDescriptionTag] = *project.Description
+		}
 	}
-	if projPath != "" {
-		proj, err := workspace.LoadProject(projPath)
-		if err != nil {
-			return nil, fmt.Errorf("error loading project %q: %w", projPath, err)
-		}
-		tags[apitype.ProjectNameTag] = proj.Name.String()
-		tags[apitype.ProjectRuntimeTag] = proj.Runtime.Name()
-		if proj.Description != nil {
-			tags[apitype.ProjectDescriptionTag] = *proj.Description
-		}
 
-		// Add the git metadata to the tags, ignoring any errors that come from it.
-		ignoredErr := addGitMetadataToStackTags(tags, projPath)
+	// Add the git metadata to the tags, ignoring any errors that come from it.
+	if root != "" {
+		ignoredErr := addGitMetadataToStackTags(tags, root)
 		contract.IgnoreError(ignoredErr)
 	}
 
-	return tags, nil
+	return tags
 }
 
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
