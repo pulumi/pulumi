@@ -309,7 +309,7 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
+	project *workspace.Project, opts interface{}) (backend.Stack, error) {
 
 	err := b.Lock(ctx, stackRef)
 	if err != nil {
