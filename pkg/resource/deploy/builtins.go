@@ -97,7 +97,7 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
 
-	contract.Assert(urn.Type() == stackReferenceType)
+	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	if !inputs["name"].DeepEquals(state["name"]) {
 		return plugin.DiffResult{
@@ -112,7 +112,7 @@ func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs r
 func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
 	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
-	contract.Assert(urn.Type() == stackReferenceType)
+	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	state, err := p.readStackReference(inputs)
 	if err != nil {
@@ -136,7 +136,7 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs
 	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 
 	contract.Failf("unexpected update for builtin resource %v", urn)
-	contract.Assert(urn.Type() == stackReferenceType)
+	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
@@ -144,16 +144,16 @@ func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,
 	state resource.PropertyMap, timeout float64) (resource.Status, error) {
 
-	contract.Assert(urn.Type() == stackReferenceType)
+	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	return resource.StatusOK, nil
 }
 
 func (p *builtinProvider) Read(urn resource.URN, id resource.ID,
 	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-	contract.Assertf(urn != "", "Read URN was empty")
-	contract.Assertf(id != "", "Read ID was empty")
-	contract.Assert(urn.Type() == stackReferenceType)
+	contract.Requiref(urn != "", "urn", "must not be empty")
+	contract.Requiref(id != "", "id", "must not be empty")
+	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
 	outputs, err := p.readStackReference(state)
 	if err != nil {
@@ -227,8 +227,8 @@ func (p *builtinProvider) SignalCancellation() error {
 
 func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	name, ok := inputs["name"]
-	contract.Assert(ok)
-	contract.Assert(name.IsString())
+	contract.Assertf(ok, "missing required property 'name'")
+	contract.Assertf(name.IsString(), "expected 'name' to be a string")
 
 	if p.backendClient == nil {
 		return nil, errors.New("no backend client is available")
@@ -260,8 +260,8 @@ func (p *builtinProvider) readStackReference(inputs resource.PropertyMap) (resou
 
 func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	name, ok := inputs["stackName"]
-	contract.Assert(ok)
-	contract.Assert(name.IsString())
+	contract.Assertf(ok, "missing required property 'stackName'")
+	contract.Assertf(name.IsString(), "expected 'stackName' to be a string")
 
 	if p.backendClient == nil {
 		return nil, errors.New("no backend client is available")
@@ -280,8 +280,8 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 
 func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	urn, ok := inputs["urn"]
-	contract.Assert(ok)
-	contract.Assert(urn.IsString())
+	contract.Assertf(ok, "missing required property 'urn'")
+	contract.Assertf(urn.IsString(), "expected 'urn' to be a string")
 
 	state, ok := p.resources.get(resource.URN(urn.StringValue()))
 	if !ok {

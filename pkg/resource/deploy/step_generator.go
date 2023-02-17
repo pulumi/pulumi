@@ -85,9 +85,9 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 		return false
 	}
 
-	if res.Provider != "" {
-		res, err := providers.ParseReference(res.Provider)
-		contract.AssertNoError(err)
+	if ref := res.Provider; ref != "" {
+		res, err := providers.ParseReference(ref)
+		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
 		if sg.updateTargetsOpt.Contains(res.URN()) {
 			return true
 		}
@@ -260,7 +260,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	steps, res := sg.generateSteps(event)
 	if res != nil {
-		contract.Assert(len(steps) == 0)
+		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
 		return nil, res
 	}
 
@@ -560,8 +560,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	if randomSeed == nil {
 		randomSeed = make([]byte, 32)
 		n, err := cryptorand.Read(randomSeed)
-		contract.AssertNoError(err)
-		contract.Assert(n == len(randomSeed))
+		contract.AssertNoErrorf(err, "failed to generate random seed")
+		contract.Assertf(n == len(randomSeed),
+			"generated fewer (%d) than expected (%d) random bytes", n, len(randomSeed))
 	}
 
 	// If the goal contains an ID, this may be an import. An import occurs if there is no old resource or if the old
@@ -729,7 +730,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	//
 	//  Logically, recreating implies hasOld, since in order to delete something it must have
 	//  already existed.
-	contract.Assert(!recreating || hasOld)
+	contract.Assertf(!recreating || hasOld, "cannot recreate a resource that doesn't exist")
 	if recreating {
 		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
 
@@ -784,7 +785,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	//  - Otherwise, we invoke the resource's provider's `Diff` method. If this method indicates that the resource must
 	//    be replaced, we do so. If it does not, we update the resource in place.
 	if hasOld {
-		contract.Assert(old != nil)
+		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then do nothing but create a SameStep for it.
@@ -952,7 +953,8 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			}
 			if deleteBeforeReplace {
 				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
-				contract.Assert(sg.deployment.depGraph != nil)
+				contract.Assertf(sg.deployment.depGraph != nil,
+					"dependency graph must be available for delete-before-replace")
 
 				// DeleteBeforeCreate implies that we must immediately delete the resource. For correctness,
 				// we must also eagerly delete all resources that depend directly or indirectly on the resource
@@ -1487,7 +1489,7 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
 	ignoreChanges []string) (plugin.DiffResult, error) {
 
-	contract.Require(prov != nil, "prov != nil")
+	contract.Requiref(prov != nil, "prov", "must not be nil")
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
 	// provider returns an "unknown" diff result, pretend it returned "diffs exist".
@@ -1558,7 +1560,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 		switch {
 		case hasOld && hasNew:
 			ok = path.Set(ignoredInputs, oldValue)
-			contract.Assert(ok)
+			contract.Assertf(ok, "path.Set cannot fail when the path already exists")
 		case hasOld && !hasNew:
 			ok = path.Set(ignoredInputs, oldValue)
 		case !hasOld && hasNew:
@@ -1591,7 +1593,7 @@ func (sg *stepGenerator) loadResourceProvider(
 		return sg.deployment.providers, nil
 	}
 
-	contract.Assert(provider != "")
+	contract.Assertf(provider != "", "must have a provider for custom resource %v", urn)
 	ref, refErr := providers.ParseReference(provider)
 	if refErr != nil {
 		sg.deployment.Diag().Errorf(diag.GetBadProviderError(urn), provider, urn, refErr)
@@ -1798,7 +1800,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		if res != nil {
 			return false, nil, res
 		}
-		contract.Assert(prov != nil)
+		contract.Assertf(prov != nil, "resource %v has no provider", r.URN)
 
 		// Call the provider's `Diff` method and return.
 		diff, err := prov.Diff(r.URN, r.ID, r.Outputs, inputsForDiff, true, nil)

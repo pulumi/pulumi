@@ -165,18 +165,18 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 	// Await the program to compute some more state and then inspect what it has to say.
 	select {
 	case reg := <-iter.regChan:
-		contract.Assert(reg != nil)
+		contract.Assertf(reg != nil, "received a nil registerResourceEvent")
 		goal := reg.Goal()
 		logging.V(5).Infof("EvalSourceIterator produced a registration: t=%v,name=%v,#props=%v",
 			goal.Type, goal.Name, len(goal.Properties))
 		return reg, nil
 	case regOut := <-iter.regOutChan:
-		contract.Assert(regOut != nil)
+		contract.Assertf(regOut != nil, "received a nil registerResourceOutputsEvent")
 		logging.V(5).Infof("EvalSourceIterator produced a completion: urn=%v,#outs=%v",
 			regOut.URN(), len(regOut.Outputs()))
 		return regOut, nil
 	case read := <-iter.regReadChan:
-		contract.Assert(read != nil)
+		contract.Assertf(read != nil, "received a nil readResourceEvent")
 		logging.V(5).Infoln("EvalSourceIterator produced a read")
 		return read, nil
 	case res := <-iter.finChan:
@@ -397,7 +397,7 @@ func (d *defaultProviders) handleRequest(req providers.ProviderRequest) (provide
 	}
 
 	ref, err = providers.NewReference(result.State.URN, id)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "could not create provider reference with URN %s and ID %s", result.State.URN, id)
 	d.providers[req.String()] = ref
 
 	return ref, nil
@@ -974,7 +974,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
 	}
 
-	contract.Assert(result != nil)
+	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:         label,
 		KeepUnknowns:  true,
