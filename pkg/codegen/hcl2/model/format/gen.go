@@ -111,11 +111,11 @@ func (e *Formatter) gen(w io.Writer, parentPrecedence int, rhs bool, x model.Exp
 		// OK
 	case precedence < parentPrecedence || rhs:
 		_, err := fmt.Fprint(w, "(")
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "write error")
 
 		defer func() {
 			_, err = fmt.Fprint(w, ")")
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "write error")
 		}()
 	}
 
@@ -163,7 +163,7 @@ func (e *Formatter) Fgen(w io.Writer, vs ...interface{}) {
 			e.gen(w, math.MaxInt32, false, x)
 		} else {
 			_, err := fmt.Fprint(w, v)
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "write error")
 		}
 	}
 }

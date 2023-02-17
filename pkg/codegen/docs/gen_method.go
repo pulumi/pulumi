@@ -220,7 +220,7 @@ func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
 		})
 		for _, arg := range args {
 			def, err := mod.pkg.Definition()
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 			typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, arg.Type, true /*input*/)
 			var defaultValue string
 			if !arg.IsRequired() {
@@ -328,7 +328,7 @@ func (mod *modContext) getMethodResult(r *schema.Resource, m *schema.Method) map
 	for _, lang := range dctx.supportedLanguages {
 		if m.Function.ReturnType != nil {
 			def, err := mod.pkg.Definition()
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 			resultTypeName = dctx.getLanguageDocHelper(lang).GetMethodResultName(def, mod.mod, r, m)
 		}
 		resourceMap[lang] = propertyType{

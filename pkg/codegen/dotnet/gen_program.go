@@ -311,7 +311,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 				var info CSharpPackageInfo
 				if r.Schema != nil && r.Schema.PackageReference != nil {
 					def, err := r.Schema.PackageReference.Definition()
-					contract.AssertNoError(err)
+					contract.AssertNoErrorf(err, "error loading definition for package %q", r.Schema.PackageReference.Name())
 					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 						info = csharpinfo
 					}
@@ -339,7 +339,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
 	if g.asyncInit {
@@ -430,7 +430,7 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pcl.FixupPulumiPackageTokens(r)
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -469,7 +469,7 @@ func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]stri
 func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -492,7 +492,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := pcl.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
@@ -541,7 +541,7 @@ func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType m
 	}
 
 	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 	module := g.tokenToModules[pkg](token)
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)

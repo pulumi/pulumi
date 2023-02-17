@@ -41,7 +41,7 @@ type Source struct {
 // NewContext creates a new cancellation context and source parented to the given context. The returned cancellation
 // context will be terminated when the supplied root context is canceled.
 func NewContext(ctx context.Context) (*Context, *Source) {
-	contract.Require(ctx != nil, "ctx")
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 
 	// Set up two new cancellable contexts: one for termination and one for cancellation. The cancellation context is a
 	// child context of the termination context and will therefore be automatically cancelled when termination is

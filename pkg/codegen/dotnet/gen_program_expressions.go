@@ -72,7 +72,8 @@ func (g *generator) lowerExpressionWithoutApplies(expr model.Expression, typ mod
 // in to a Pulumi program; if this changes in the future, this transform will need to be applied in a more general way
 // (e.g. by the apply rewriter).
 func (g *generator) awaitInvokes(x model.Expression) model.Expression {
-	contract.Assert(g.asyncInit)
+	contract.Assertf(g.asyncInit,
+		"awaitInvokes can be used only if we are generating an async Initialize")
 
 	rewriter := func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		// Ignore the node if it is not a call to invoke.
@@ -82,12 +83,12 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 		}
 
 		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assert(isPromise)
+		contract.Assertf(isPromise, "invoke should return a promise, got %v", call.Type())
 
 		return newAwaitCall(call), nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return x
 }
 
@@ -111,12 +112,12 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 		}
 
 		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assert(isPromise)
+		contract.Assertf(isPromise, "invoke should return a promise, got %v", call.Type())
 
 		return newOutputCall(call), nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return x
 }
 
@@ -301,8 +302,9 @@ func enumName(enum *model.EnumType) (string, string) {
 	if !ok {
 		return "", ""
 	}
-	def, err := e.(*schema.EnumType).PackageReference.Definition()
-	contract.AssertNoError(err)
+	et := e.(*schema.EnumType)
+	def, err := et.PackageReference.Definition()
+	contract.AssertNoErrorf(err, "error loading definition for package %q", et.PackageReference.Name())
 	namespaceMap := def.Language["csharp"].(CSharpPackageInfo).Namespaces
 	namespace := namespaceName(namespaceMap, components[0])
 	if components[1] != "" && components[1] != "index" {

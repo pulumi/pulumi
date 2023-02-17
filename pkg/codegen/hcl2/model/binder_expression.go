@@ -345,7 +345,7 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	if syntax.KeyVar != "" {
 		keyVariable = &Variable{Name: syntax.KeyVar, VariableType: keyType}
 		ok := b.scope.Define(syntax.KeyVar, keyVariable)
-		contract.Assert(ok)
+		contract.Assertf(ok, "key variable %q already defined", syntax.KeyVar)
 	}
 	valueVariable := &Variable{Name: syntax.ValVar, VariableType: valueType}
 	if ok := b.scope.Define(syntax.ValVar, valueVariable); !ok {

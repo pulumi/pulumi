@@ -172,7 +172,7 @@ func (m *tokenMapper) mapRelativeTraversalTokens(traversal hcl.Traversal) []Trav
 		return nil
 	}
 
-	contract.Assert(traversal.IsRelative())
+	contract.Requiref(traversal.IsRelative(), "traversal", "must be relative")
 	items := make([]TraverserTokens, len(traversal))
 	for i, t := range traversal {
 		rng := t.SourceRange()
@@ -698,7 +698,8 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	}
 
 	// If we had any tokens, we should have attached all trivia to something.
-	contract.Assert(len(trivia) == 0 || len(tokens) == 0)
+	contract.Assertf(len(trivia) == 0 || len(tokens) == 0,
+		"unexpected unattached trivia (%d found)", len(trivia))
 
 	// Now build the token map.
 	//
@@ -714,7 +715,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 		tokens:               tokens,
 		templateControlExprs: codegen.Set{},
 	})
-	contract.Assert(diags == nil)
+	contract.Assertf(diags == nil, "error building token map: %v", diags)
 
 	// If the root was a Body and there is a trailing end-of-file token, attach it to the body.
 	body, isBody := root.(*hclsyntax.Body)
@@ -788,12 +789,12 @@ func processBlockComment(text string) []string {
 		switch i {
 		case 0:
 			start := blockStartPat.FindString(l)
-			contract.Assert(start != "")
+			contract.Assertf(start != "", "unexpected block comment start: %q", l)
 			l = l[len(start):]
 
 			// If this is a single-line block comment, trim the end pattern as well.
 			if len(lines) == 1 {
-				contract.Assert(prefix == "")
+				contract.Assertf(prefix == "", "unexpected block comment prefix: %q", prefix)
 
 				if end := blockEndPat.FindString(l); end != "" {
 					l = l[:len(l)-len(end)]

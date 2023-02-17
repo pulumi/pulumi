@@ -374,8 +374,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			extPkg := t.PackageReference
 			var info CSharpPackageInfo
 			def, err := extPkg.Definition()
-			contract.AssertNoError(err)
-			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			contract.AssertNoErrorf(err, "error loading definition for package %q", extPkg.Name())
+			contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}),
+				"error importing csharp for package %q", extPkg.Name())
 			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
@@ -410,8 +411,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			extPkg := t.Resource.PackageReference
 			var info CSharpPackageInfo
 			def, err := extPkg.Definition()
-			contract.AssertNoError(err)
-			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			contract.AssertNoErrorf(err, "error loading definition for package %q", extPkg.Name())
+			contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}),
+				"error importing csharp for package %q", extPkg.Name())
 			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
@@ -2279,11 +2281,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	infos := map[*schema.Package]*CSharpPackageInfo{}
 	getPackageInfo := func(p schema.PackageReference) *CSharpPackageInfo {
 		def, err := p.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error loading definition for package %v", p.Name())
 		info, ok := infos[def]
 		if !ok {
 			err := def.ImportLanguages(map[string]schema.Language{"csharp": Importer})
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "error importing csharp language info for package %q", p.Name())
 			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 			info = &csharpInfo
 			infos[def] = info

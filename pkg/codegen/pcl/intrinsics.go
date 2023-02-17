@@ -81,7 +81,7 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expression,
 	then *model.AnonymousFunctionExpression,
 ) {
-	contract.Assert(c.Name == IntrinsicApply)
+	contract.Requiref(c.Name == IntrinsicApply, "c", "must be a call to %q, got %q", IntrinsicApply, c.Name)
 	return c.Args[:len(c.Args)-1], c.Args[len(c.Args)-1].(*model.AnonymousFunctionExpression)
 }
 
@@ -103,6 +103,6 @@ func NewConvertCall(from model.Expression, to model.Type) *model.FunctionCallExp
 // ParseConvertCall extracts the value being converted and the type it is being converted to from a call to the convert
 // intrinsic.
 func ParseConvertCall(c *model.FunctionCallExpression) (model.Expression, model.Type) {
-	contract.Assert(c.Name == IntrinsicConvert)
+	contract.Requiref(c.Name == IntrinsicConvert, "c", "must be a call to %q, got %q", IntrinsicConvert, c.Name)
 	return c.Args[0], c.Signature.ReturnType
 }

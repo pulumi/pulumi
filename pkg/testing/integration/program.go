@@ -385,7 +385,7 @@ func (opts *ProgramTestOptions) GetStackName() tokens.QName {
 
 		b := make([]byte, 4)
 		_, err = cryptorand.Read(b)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "failure to generate random stack suffix")
 
 		opts.StackName = strings.ToLower("p-it-" + host + "-" + test + "-" + hex.EncodeToString(b))
 	}

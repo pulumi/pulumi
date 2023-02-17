@@ -482,7 +482,7 @@ func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTrav
 
 // rewriteRoot replaces the root node in a bound expression with a call to the __apply intrinsic if necessary.
 func (ctx *observeContext) rewriteRoot(expr model.Expression) model.Expression {
-	contract.Require(expr == ctx.root, "expr")
+	contract.Requiref(expr == ctx.root, "expr", "must be root expression")
 
 	if len(ctx.applyArgs) == 0 {
 		return expr
@@ -553,7 +553,7 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 
 	// TODO(pdg): arrays of outputs, for expressions, etc.
 	diagnostics := expr.Typecheck(false)
-	contract.Assert(len(diagnostics) == 0)
+	contract.Assertf(len(diagnostics) == 0, "error typechecking expression: %v", diagnostics)
 
 	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr {
 		return expr, nil

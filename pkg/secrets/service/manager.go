@@ -111,12 +111,12 @@ func (sm *serviceSecretsManager) State() interface{} {
 }
 
 func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter, nil
 }
 
 func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
 }
 

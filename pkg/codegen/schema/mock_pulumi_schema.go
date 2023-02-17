@@ -42,7 +42,7 @@ func newPulumiPackage() *Package {
 	if err == nil && diags.HasErrors() {
 		err = diags
 	}
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to bind mock pulumi package")
 	return pkg
 }
 
