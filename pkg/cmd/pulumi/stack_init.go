@@ -125,16 +125,20 @@ func newStackInitCmd() *cobra.Command {
 				return err
 			}
 
+			proj, root, projectErr := readProject()
+			if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
+				return projectErr
+			}
+
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(ctx, b, stackRef, createOpts, !noSelect, secretsProvider)
+			newStack, err := createStack(ctx, b, stackRef, root, proj, createOpts, !noSelect, secretsProvider)
 			if err != nil {
 				return err
 			}
 
 			if stackToCopy != "" {
-				proj, _, err := readProject()
-				if err != nil {
-					return err
+				if projectErr != nil {
+					return projectErr
 				}
 
 				// load the old stack and its project
