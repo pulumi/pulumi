@@ -336,7 +336,31 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
-	t.Run("Custom Server URL", func(t *testing.T) {
+	t.Run("Custom http URL", func(t *testing.T) {
+		version := semver.MustParse("4.32.0")
+		spec := PluginSpec{
+			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			Name:              "mockdl",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t,
+				"http://customurl.jfrog.io/artifactory/pulumi-packages/"+
+					"package-name/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
+	t.Run("Custom https URL", func(t *testing.T) {
 		version := semver.MustParse("4.32.0")
 		spec := PluginSpec{
 			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
@@ -578,7 +602,19 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
-	t.Run("Custom Server URL", func(t *testing.T) {
+	t.Run("Custom http URL", func(t *testing.T) {
+		spec := PluginSpec{
+			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			Name:              "mock-latest",
+			Kind:              PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		version, err := source.GetLatestVersion(getHTTPResponse)
+		assert.Nil(t, version)
+		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
+	})
+	t.Run("Custom https URL", func(t *testing.T) {
 		spec := PluginSpec{
 			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
 			Name:              "mock-latest",
@@ -588,7 +624,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		version, err := source.GetLatestVersion(getHTTPResponse)
 		assert.Nil(t, version)
-		assert.Equal(t, "GetLatestVersion is not supported for plugins using PluginDownloadURL", err.Error())
+		assert.Equal(t, "GetLatestVersion is not supported for plugins from http sources", err.Error())
 	})
 	t.Run("Private Pulumi GitHub Releases", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", token)
@@ -868,4 +904,19 @@ plugins:
 	assert.Equal(t, "aws", proj.Plugins.Providers[0].Name)
 	assert.Equal(t, "1.0.0", proj.Plugins.Providers[0].Version)
 	assert.Equal(t, "../bin/aws", proj.Plugins.Providers[0].Path)
+}
+
+func TestPluginBadSource(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("4.30.0")
+	spec := PluginSpec{
+		PluginDownloadURL: "strange-scheme://what.is.this?oh-no",
+		Name:              "mockdl",
+		Version:           &version,
+		Kind:              PluginKind("resource"),
+	}
+	source, err := spec.GetSource()
+	assert.ErrorContains(t, err, "unknown plugin source scheme: strange-scheme")
+	assert.Nil(t, source)
 }

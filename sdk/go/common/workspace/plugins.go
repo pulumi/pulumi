@@ -443,36 +443,38 @@ func (source *githubSource) Download(
 	return getHTTPResponse(req)
 }
 
-// pluginURLSource can download a plugin from a given PluginDownloadURL, it doesn't support GetLatestVersion
-type pluginURLSource struct {
-	name              string
-	kind              PluginKind
-	pluginDownloadURL string
+// httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
+type httpSource struct {
+	name string
+	kind PluginKind
+	url  string
 }
 
-func newPluginURLSource(name string, kind PluginKind, pluginDownloadURL string) *pluginURLSource {
-	return &pluginURLSource{
-		name:              name,
-		kind:              kind,
-		pluginDownloadURL: pluginDownloadURL,
+func newHTTPSource(name string, kind PluginKind, url *url.URL) *httpSource {
+	contract.Requiref(
+		url.Scheme == "http" || url.Scheme == "https",
+		"url", `scheme must be "http" or "https", was %q`, url.Scheme)
+
+	return &httpSource{
+		name: name,
+		kind: kind,
+		url:  url.String(),
 	}
 }
 
-func (source *pluginURLSource) GetLatestVersion(
+func (source *httpSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
-	return nil, errors.New("GetLatestVersion is not supported for plugins using PluginDownloadURL")
+	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
 }
 
-func (source *pluginURLSource) Download(
+func (source *httpSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-	serverURL := source.pluginDownloadURL
-	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 
-	serverURL = interpolateURL(serverURL, version, opSy, arch)
+	serverURL := interpolateURL(source.url, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
-
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
+
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
 		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
@@ -484,8 +486,7 @@ func (source *pluginURLSource) Download(
 	return getHTTPResponse(req)
 }
 
-// fallbackSource handles our current complicated default logic of trying the pulumi public github, then maybe
-// the users private github, then get.pulumi.com
+// fallbackSource handles our current default logic of trying the pulumi public github then get.pulumi.com.
 type fallbackSource struct {
 	name string
 	kind PluginKind
@@ -802,14 +803,16 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 				return newGithubSource(url, spec.Name, spec.Kind)
 			case "gitlab":
 				return newGitlabSource(url, spec.Name, spec.Kind)
+			case "http", "https":
+				return newHTTPSource(spec.Name, spec.Kind, url), nil
 			default:
-				return newPluginURLSource(spec.Name, spec.Kind, spec.PluginDownloadURL), nil
+				return nil, fmt.Errorf("unknown plugin source scheme: %s", url.Scheme)
 			}
 		}
 
 		// If the plugin name matches an override, download the plugin from the override URL.
 		if url, ok := pluginDownloadURLOverridesParsed.get(spec.Name); ok {
-			return newPluginURLSource(spec.Name, spec.Kind, url), nil
+			return newHTTPSource(spec.Name, spec.Kind, urlMustParse(url)), nil
 		}
 
 		// Use our default fallback behaviour of github then get.pulumi.com
