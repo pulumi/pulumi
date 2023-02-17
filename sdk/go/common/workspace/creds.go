@@ -17,6 +17,7 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -150,23 +151,16 @@ func getCredsFilePath() (string, error) {
 // GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
 // have not logged in. Note if PULUMI_BACKEND_URL is set, the corresponding value is returned
 // instead irrespective of the backend for current project or stored credentials.
-func GetCurrentCloudURL() (string, error) {
+func GetCurrentCloudURL(project *Project) (string, error) {
 	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
 	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
 		return backend, nil
 	}
 
 	var url string
-	// Try detecting backend from config
-	projPath, err := DetectProjectPath()
-	if err == nil && projPath != "" {
-		proj, err := LoadProject(projPath)
-		if err != nil {
-			return "", fmt.Errorf("could not load current project: %w", err)
-		}
-
-		if proj.Backend != nil {
-			url = proj.Backend.URL
+	if project != nil {
+		if project.Backend != nil {
+			url = project.Backend.URL
 		}
 	}
 
@@ -359,7 +353,16 @@ func GetBackendConfigDefaultOrg() (string, error) {
 		return "", err
 	}
 
-	backendURL, err := GetCurrentCloudURL()
+	var project *Project
+	projPath, err := DetectProjectPath()
+	if err == nil && !errors.Is(err, ErrProjectNotFound) {
+		project, err = LoadProject(projPath)
+		if err != nil {
+			return "", fmt.Errorf("could not load current project: %w", err)
+		}
+	}
+
+	backendURL, err := GetCurrentCloudURL(project)
 	if err != nil {
 		return "", err
 	}

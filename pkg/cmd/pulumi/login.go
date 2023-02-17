@@ -116,9 +116,15 @@ func newLoginCmd() *cobra.Command {
 				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
 			if cloudURL == "" {
 				var err error
-				cloudURL, err = workspace.GetCurrentCloudURL()
+				cloudURL, err = workspace.GetCurrentCloudURL(project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -135,7 +141,6 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			var be backend.Backend
-			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
 				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
 				if defaultOrg != "" {
@@ -145,7 +150,7 @@ func newLoginCmd() *cobra.Command {
 				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, insecure, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					cloudURL, err := workspace.GetCurrentCloudURL()
+					cloudURL, err := workspace.GetCurrentCloudURL(project)
 					if err != nil {
 						return err
 					}
