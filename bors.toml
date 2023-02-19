@@ -8,8 +8,4 @@ status = [
 ]
 pr_status = [
 	'linear-history',
-	'CI / Lint / Lint GHA',
-	'CI / Lint / Lint Go',
-	'CI / Lint / Lint Protobufs',
-	'CI / Lint / Lint SDKs',
 ]
