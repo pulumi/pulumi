@@ -7,7 +7,7 @@ jobs:
     name: Rebase
     runs-on: ubuntu-latest
     if: >-
-      github.event.comment.author_association == 'COLLABORATOR' &&
+      contains(fromJSON('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association) &&
       github.event.issue.pull_request != '' && 
       (
         contains(github.event.comment.body, '/rebase') || 
