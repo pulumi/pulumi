@@ -55,8 +55,7 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
-// AnyChanges returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
-// diff is nil. Otherwise returns false.
+// AnyChanges returns true if there are any changes (adds, deletes, updates) in the diff. Otherwise returns false.
 func (diff *ObjectDiff) AnyChanges() bool {
 	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
 }
