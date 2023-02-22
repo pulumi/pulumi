@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend
+  description: Fixes a bug where Resource instances as stack exports got printed as if it had diff in the end steps
