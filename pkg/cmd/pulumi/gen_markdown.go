@@ -53,7 +53,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				title := strings.Replace(fileNameWithoutExtension, "_", " ", -1)
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
-				buf.WriteString(fmt.Sprintf("title: %q\n", title))
+				fmt.Fprintf(buf, "title: %q\n", title)
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}

@@ -216,7 +216,7 @@ require (
 
 			if info, ok := p.Language["go"]; ok {
 				if info, ok := info.(GoPackageInfo); ok && info.ModulePath != "" {
-					gomod.WriteString(fmt.Sprintf(" %s v%s\n", info.ModulePath, p.Version.String()))
+					fmt.Fprintf(&gomod, " %s v%s\n", info.ModulePath, p.Version.String())
 				}
 			}
 			continue
@@ -242,7 +242,7 @@ require (
 		}
 
 		if packageName != "" {
-			gomod.WriteString(fmt.Sprintf("	%s v%s\n", packageName, p.Version.String()))
+			fmt.Fprintf(&gomod, "	%s v%s\n", packageName, p.Version.String())
 		}
 	}
 
