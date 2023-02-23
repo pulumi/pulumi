@@ -60,7 +60,7 @@ type OverStackLimitError struct {
 
 func (e OverStackLimitError) Error() string {
 	m := e.Message
-	m = strings.Replace(m, "Conflict: ", "over stack limit: ", -1)
+	m = strings.ReplaceAll(m, "Conflict: ", "over stack limit: ")
 	return m
 }
 

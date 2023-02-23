@@ -50,7 +50,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 
 				// Add some front matter to each file.
 				fileNameWithoutExtension := strings.TrimSuffix(filepath.Base(s), ".md")
-				title := strings.Replace(fileNameWithoutExtension, "_", " ", -1)
+				title := strings.ReplaceAll(fileNameWithoutExtension, "_", " ")
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
 				buf.WriteString(fmt.Sprintf("title: %q\n", title))

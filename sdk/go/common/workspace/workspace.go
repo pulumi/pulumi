@@ -204,5 +204,5 @@ func sha1HexString(value string) string {
 
 // qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
 func qnameFileName(nm tokens.QName) string {
-	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
+	return strings.ReplaceAll(string(nm), tokens.QNameDelimiter, "-")
 }

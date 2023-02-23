@@ -245,7 +245,7 @@ func clampString(s string, maxWidth int) string {
 // Highlight takes an input string, a sequence of commands, and replaces all occurrences of that string with
 // a "highlighted" version surrounded by those commands and a final reset afterwards.
 func Highlight(s, text, commands string) string {
-	return strings.Replace(s, text, commands+text+Reset, -1)
+	return strings.ReplaceAll(s, text, commands+text+Reset)
 }
 
 var (
