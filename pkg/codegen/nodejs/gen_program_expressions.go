@@ -244,12 +244,12 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 
 	if litFrom, ok := from.(*model.LiteralValueExpression); ok {
 		fromV, err := convert.Convert(litFrom.Value, cty.Number)
-		contract.Assert(err == nil)
+		contract.AssertNoErrorf(err, "conversion of %v to number failed", litFrom.Value.Type())
 
 		from, _ := fromV.AsBigFloat().Int64()
 		if litTo, ok := to.(*model.LiteralValueExpression); ok {
 			toV, err := convert.Convert(litTo.Value, cty.Number)
-			contract.Assert(err == nil)
+			contract.AssertNoErrorf(err, "conversion of %v to number failed", litTo.Value.Type())
 
 			to, _ := toV.AsBigFloat().Int64()
 			if from == 0 {
@@ -296,7 +296,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return []string{"@pulumi/" + pkg}
 }
 
@@ -405,7 +405,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
 			module = "." + module
 		}

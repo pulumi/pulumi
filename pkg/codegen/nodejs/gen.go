@@ -187,8 +187,10 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 
 		var info NodePackageInfo
 		def, err := pkg.Definition()
-		contract.AssertNoError(err)
-		contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"nodejs": Importer}))
+		contract.AssertNoErrorf(err, "error loading definition for package %q", pkg.Name())
+		contract.AssertNoErrorf(
+			def.ImportLanguages(map[string]schema.Language{"nodejs": Importer}),
+			"failed to import nodejs language for package %v", pkg.Name())
 		if v, ok := def.Language["nodejs"].(NodePackageInfo); ok {
 			info = v
 		}
@@ -1409,7 +1411,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		}
 		if modName != mod.mod {
 			mp, err := filepath.Rel(mod.mod, modName)
-			contract.Assert(err == nil)
+			contract.AssertNoErrorf(err, "cannot make %q relative to %q", modName, mod.mod)
 			if path.Base(mp) == "." {
 				mp = path.Dir(mp)
 			}
@@ -1424,7 +1426,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 
 	var nodePackageInfo NodePackageInfo
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error loading definition for package %v", mod.pkg.Name())
 	if languageInfo, hasLanguageInfo := def.Language["nodejs"]; hasLanguageInfo {
 		nodePackageInfo = languageInfo.(NodePackageInfo)
 	}
@@ -1668,7 +1670,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 func (mod *modContext) getRelativePath() string {
 	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "could not turn %q into a relative path", mod.mod)
 	return path.Dir(filepath.ToSlash(rel))
 }
 
@@ -1683,7 +1685,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 		}...)
 
 		def, err := mod.pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error loading package definition for %q", mod.pkg.Name())
 		if def.Language["nodejs"].(NodePackageInfo).ContainsEnums {
 			code := `import * as enums from "%s/types/enums";`
 			if lookupNodePackageInfo(def).UseTypeOnlyReferences {
@@ -1878,7 +1880,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 		return mod.mod == ""
 	case "vars.ts":
 		config, err := mod.pkg.Config()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "failed to get config for package %q", mod.pkg.Name())
 		return len(config) > 0
 	default:
 		return false
@@ -2099,7 +2101,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		modDir := strings.ToLower(mod.mod)
 		for _, exp := range exports {
 			rel, err := filepath.Rel(modDir, exp.pathToNodeModule)
-			contract.Assert(err == nil)
+			contract.AssertNoErrorf(err, "cannot make %q relative to %q", exp.pathToNodeModule, modDir)
 			if path.Base(rel) == "." {
 				rel = path.Dir(rel)
 			}
@@ -2109,7 +2111,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 	}
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error loading package definition for %q", mod.pkg.Name())
 
 	info, _ := def.Language["nodejs"].(NodePackageInfo)
 	if info.ContainsEnums {
@@ -2166,7 +2168,7 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
 // definition and its registration to support rehydrating providers.
 func (mod *modContext) genResourceModule(w io.Writer) {
-	contract.Assert(len(mod.resources) != 0)
+	contract.Assertf(len(mod.resources) != 0, "module %v has no resources", mod.mod)
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
@@ -2181,7 +2183,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 			}
 
 			if r.IsProvider {
-				contract.Assert(provider == nil)
+				contract.Assertf(provider == nil, "module %v has multiple providers", mod.mod)
 				provider = r
 				continue
 			}
@@ -2422,7 +2424,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 
 	// Now write out the serialized form.
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "error serializing package.json")
 	return string(npmjson) + "\n"
 }
 
