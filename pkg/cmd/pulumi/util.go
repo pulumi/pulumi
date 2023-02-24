@@ -222,13 +222,10 @@ func createSecretsManager(
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(ctx context.Context,
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
+	b backend.Backend, stackRef backend.StackReference,
+	root string, project *workspace.Project,
+	opts interface{}, setCurrent bool,
 	secretsProvider string) (backend.Stack, error) {
-
-	project, root, err := readProject()
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return nil, err
-	}
 
 	stack, err := b.CreateStack(ctx, stackRef, root, project, opts)
 	if err != nil {
@@ -291,7 +288,7 @@ func requireStack(ctx context.Context,
 	}
 
 	// Try to read the current project
-	project, _, err := readProject()
+	project, root, err := readProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return nil, err
 	}
@@ -324,7 +321,7 @@ func requireStack(ctx context.Context,
 			return nil, err
 		}
 
-		return createStack(ctx, b, stackRef, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, b, stackRef, root, project, nil, lopt.SetCurrent(), "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
@@ -369,7 +366,7 @@ func chooseStack(ctx context.Context,
 		return nil, errors.New(chooseStackErr)
 	}
 
-	proj, err := workspace.DetectProject()
+	proj, root, err := readProject()
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +460,7 @@ func chooseStack(ctx context.Context,
 			return nil, parseErr
 		}
 
-		return createStack(ctx, b, stackRef, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, b, stackRef, root, proj, nil, lopt.SetCurrent(), "")
 	}
 
 	// With the stack name selected, look it up from the backend.

@@ -286,7 +286,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Create the stack, if needed.
 	if !args.generateOnly && s == nil {
 		if s, err = promptAndCreateStack(ctx, b, args.prompt,
-			args.stack, args.name, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
+			args.stack, root, proj, true /*setCurrent*/, args.yes, opts, args.secretsProvider); err != nil {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
@@ -595,16 +595,18 @@ func getStack(ctx context.Context, b backend.Backend,
 
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptForValueFunc,
-	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
+	stack string, root string, project *workspace.Project, setCurrent bool, yes bool, opts display.Options,
 	secretsProvider string) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
+	contract.Requiref(project != nil, "project", "must not be nil")
+	contract.Requiref(root != "", "root", "must not be empty")
 
 	if stack != "" {
 		stackName, err := buildStackName(stack)
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, stackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, b, stackName, root, project, setCurrent, secretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -629,7 +631,7 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 		if err != nil {
 			return nil, err
 		}
-		s, err := stackInit(ctx, b, formattedStackName, setCurrent, secretsProvider)
+		s, err := stackInit(ctx, b, formattedStackName, root, project, setCurrent, secretsProvider)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
@@ -645,12 +647,13 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 // stackInit creates the stack.
 func stackInit(
 	ctx context.Context, b backend.Backend, stackName string,
+	root string, project *workspace.Project,
 	setCurrent bool, secretsProvider string) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(ctx, b, stackRef, nil, setCurrent, secretsProvider)
+	return createStack(ctx, b, stackRef, root, project, nil, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
