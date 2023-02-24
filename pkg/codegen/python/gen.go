@@ -34,6 +34,7 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python/pyproject"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2057,6 +2058,60 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	return plugin.JSON()
 }
 
+func genPyprojectTOML(
+	tool string,
+	pkg *schema.Package,
+	pyPkgName string,
+	requires map[string]string,
+	pythonRequires string) (string, error) {
+	// First, create a Writer for everything in pyproject.toml
+	w := &bytes.Buffer{}
+	// Next, create the default pyproject.toml file.
+	var contact = pyproject.Contact{
+		Name:  "The Pulumi Team",
+		Email: "security@pulumi.com",
+	}
+	// TODO(@Robbie): Marshal and Unmarshal
+	var schema = pyproject.Schema{
+		Project: pyproject.Project{
+			Name:        pyPkgName,
+			Authors:     []pyproject.Contact{contact},
+			Classifiers: []string{}, // TODO(@Robbie): How do we fill this in?
+			// TODO(@Robbie):
+			Description: "",
+			// TODO(@Robbie):
+			Dependencies: []string{},
+			Dynamic:      nil, // Not used at this time.
+			// TODO(@Robbie):
+			EntryPoints: pyproject.Entrypoints{},
+			// TODO(@Robbie):
+			GUIScripts: pyproject.Entrypoints{},
+			// TODO(@Robbie):
+			Keywords: []string{},
+			// TODO(@Robbie):
+			License: "",
+			// TODO(@Robbie):
+			Maintainers: []pyproject.Contact{contact},
+			// TODO(@Robbie):
+			OptionalDependencies: nil,
+			// TODO(@Robbie):
+			README: "README.md",
+			// TODO(@Robbie):
+			RequiresPython: nil,
+			// TODO(@Robbie):
+			Scripts: pyproject.Entrypoints{},
+			// TODO(@Robbie):
+			URLs: map[string]string{},
+			// TODO(@Robbie):
+			Version: nil,
+		},
+	}
+
+	// Then, apply any overrides provided.
+
+	return w.String(), nil
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
 	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string) (string, error) {
@@ -2971,6 +3026,15 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return nil, err
 	}
 	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
+
+	// Generate pyproject.toml, if enabled.
+	if pkg.PyProject.Enabled {
+		project, err := genPyprojectTOML(tool, pkg, pkgName, info.Requires, info.PythonRequires)
+		if err != nil {
+			return nil, err
+		}
+		files.Add("pyproject.toml", []byte(project))
+	}
 
 	// Finally emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
