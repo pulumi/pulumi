@@ -33,6 +33,7 @@ from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.proto import language_pb2_grpc
 from ._representable import _Representable
+from ._tag import TagMap
 
 _DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -632,6 +633,42 @@ class Stack:
     def refresh_config(self) -> None:
         """Gets and sets the config map used with the last update."""
         self.workspace.refresh_config(self.name)
+
+    def get_tag(self, key: str) -> str:
+        """
+        Returns the tag value associated with specified key.
+
+        :param key: The key to use for the tag lookup.
+        :returns: str
+        """
+        return self.workspace.get_tag(self.name, key)
+
+    def set_tag(self, key: str, value: str) -> None:
+        """
+        Sets a tag key-value pair on the Stack in the associated Workspace.
+
+        :param key: The tag key to set.
+        :param value: The tag value to set.
+        """
+        self.workspace.set_tag(self.name, key, value)
+
+    def remove_tag(self, key: str) -> None:
+        """
+        Removes the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to remove.
+        """
+        self.workspace.remove_tag(self.name, key)
+
+    def list_tags(self) -> TagMap:
+        """
+        Returns the tag map for the specified tag name, scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :returns: TagMap
+        """
+        return self.workspace.list_tags(self.name)
 
     def outputs(self) -> OutputMap:
         """

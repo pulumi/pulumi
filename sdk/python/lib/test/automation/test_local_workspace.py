@@ -319,6 +319,35 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertFalse(arr.secret)
         self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
 
+    def test_tag_methods(self):
+        project_name = "python_test"
+        runtime = "python"
+        project_settings = ProjectSettings(name=project_name, runtime=runtime)
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        _ = Stack.create(stack_name, ws)
+
+        # Lists tag values
+        result = ws.list_tags(stack_name)
+        self.assertEqual(result["pulumi:project"], project_name)
+        self.assertEqual(result["pulumi:runtime"], runtime)
+
+        # Sets tag values
+        ws.set_tag(stack_name, "foo", "bar")
+        result = ws.list_tags(stack_name)
+        self.assertEqual(result["foo"], "bar")
+
+        # Removes tag values
+        ws.remove_tag(stack_name, "foo")
+        result = ws.list_tags(stack_name)
+        self.assertTrue("foo" not in result)
+
+        # Gets a single tag value
+        result = ws.get_tag(stack_name, "pulumi:project")
+        self.assertEqual(result, project_name)
+
+        ws.remove_stack(stack_name)
+
     def test_stack_status_methods(self):
         project_name = "python_test"
         project_settings = ProjectSettings(name=project_name, runtime="python")

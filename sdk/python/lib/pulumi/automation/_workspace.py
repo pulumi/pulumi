@@ -20,6 +20,7 @@ from ._stack_settings import StackSettings
 from ._project_settings import ProjectSettings
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
+from ._tag import TagMap
 
 PulumiFn = Callable[[], None]
 
@@ -259,6 +260,45 @@ class Workspace(ABC):
         Gets and sets the config map used with the last update for Stack matching stack name.
 
         :param stack_name: The name of the stack.
+        """
+
+    @abstractmethod
+    def get_tag(self, stack_name: str, key: str) -> str:
+        """
+        Returns the value associated with the specified stack name and key,
+        scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :param key: The key to use for the tag lookup.
+        :returns: str
+        """
+
+    @abstractmethod
+    def set_tag(self, stack_name: str, key: str, value: str) -> None:
+        """
+        Sets the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to set.
+        :param value: The tag value to set.
+        """
+
+    @abstractmethod
+    def remove_tag(self, stack_name: str, key: str) -> None:
+        """
+        Removes the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to remove.
+        """
+
+    @abstractmethod
+    def list_tags(self, stack_name: str) -> TagMap:
+        """
+        Returns the tag map for the specified tag name, scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :returns: TagMap
         """
 
     @abstractmethod

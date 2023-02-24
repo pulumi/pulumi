@@ -38,6 +38,7 @@ from ._output import OutputMap, OutputValue
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 from ._minimum_version import _MINIMUM_VERSION
 from .errors import InvalidVersionError
+from ._tag import TagMap
 
 if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
@@ -272,6 +273,26 @@ class LocalWorkspace(Workspace):
             ["config", "refresh", "--force", "--stack", stack_name]
         )
         self.get_all_config(stack_name)
+
+    def get_tag(self, stack_name: str, key: str) -> str:
+        result = self._run_pulumi_cmd_sync(
+            ["stack", "tag", "get", key, "--stack", stack_name]
+        )
+        return result.stdout.strip()
+
+    def set_tag(self, stack_name: str, key: str, value: str) -> None:
+        self._run_pulumi_cmd_sync(
+            ["stack", "tag", "set", key, value, "--stack", stack_name]
+        )
+
+    def remove_tag(self, stack_name: str, key: str) -> None:
+        self._run_pulumi_cmd_sync(["stack", "tag", "rm", key, "--stack", stack_name])
+
+    def list_tags(self, stack_name: str) -> TagMap:
+        result = self._run_pulumi_cmd_sync(
+            ["stack", "tag", "ls", "--json", "--stack", stack_name]
+        )
+        return json.loads(result.stdout)
 
     def who_am_i(self) -> WhoAmIResult:
         result = self._run_pulumi_cmd_sync(["whoami"])
