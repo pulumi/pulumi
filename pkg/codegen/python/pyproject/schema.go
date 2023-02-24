@@ -1,11 +1,36 @@
 package pyproject
 
-// TODO(@ROBBIE):
-//  • Include "omit empty" tags
-//  • Convert structs to pointers to distinguish nil from empty.
-//  • Add JSON tags so Providers can override individual fields.
+// The specification for the pyproject.toml file can be found here.
+// https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+type Schema struct {
+	Project *Project `toml:"project,omitempty" json:"project,omitempty"`
+}
 
-type Unit struct{}
+type Project struct {
+	Name         *string     `toml:"name,omitempty" json:"name,omitempty"`
+	Authors      []Contact   `toml:"authors,omitempty" json:"authors,omitempty"`
+	Classifiers  []string    `toml:"classifiers,omitempty" json:"classifiers,omitempty"`
+	Description  *string     `toml:"description,omitempty" json:"description,omitempty"`
+	Dependencies []string    `toml:"dependencies,omitempty" json:"dependencies,omitempty"`
+	Dynamic      []string    `toml:"dynamic,omitempty" json:"dynamic,omitempty"`
+	EntryPoints  Entrypoints `toml:"entry-points,omitempty" json:"entry-points,omitempty"`
+	GUIScripts   Entrypoints `toml:"gui-scripts,omitempty" json:"gui-scripts,omitempty"`
+	// These are keywords used in package search.
+	Keywords             []string             `toml:"keywords,omitempty" json:"keywords,omitempty"`
+	License              *License             `toml:"license,omitempty" json:"license,omitempty"`
+	Maintainers          []Contact            `toml:"maintainers,omitempty" json:"maintainers,omitempty"`
+	OptionalDependencies OptionalDependencies `toml:"optional-dependencies,omitempty" json:"optional-dependencies,omitempty"`
+	// README is a path to a .md file or a .rst file
+	README *string `toml:"readme,omitempty" json:"readme,omitempty"`
+	// The version constraint e.g. ">=3.8"
+	RequiresPython *string     `toml:"requires-python,omitempty" json:"requires-python,omitempty"`
+	Scripts        Entrypoints `toml:"scripts,omitempty" json:"scripts,omitempty"`
+	// URLs provides core metadata about this project's website, a link
+	// to the repo, project documentation, and the project homepage.
+	URLs map[string]string `toml:"urls,omitempty" json:"urls,omitempty"`
+	// Version is the package version.
+	Version *string `toml:"version,omitempty" json:"version,omitempty"`
+}
 
 // Contact references someone associated with the project, including
 // their contact information. Contacts are used for both Authors and
@@ -15,8 +40,8 @@ type Unit struct{}
 // can be found here:
 // https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#authors-maintainers
 type Contact struct {
-	Name  string `toml:"name,omitempty"`
-	Email string `toml:"email,omitempty"`
+	Name  string `toml:"name,omitempty" json:"name,omitempty"`
+	Email string `toml:"email,omitempty" json:"email,omitempty"`
 }
 
 // An Entrypoint is…
@@ -27,41 +52,11 @@ type Entrypoints map[string]string
 // to a license file, while text is either the
 // name of the license, or the text of the license.
 type License struct {
-	File string `toml:"file,omitempty"`
-	Text string `toml:"text,omitempty"`
+	File string `toml:"file,omitempty" json:"file,omitempty"`
+	Text string `toml:"text,omitempty" json:"text,omitempty"`
 }
 
 // OptionalDependencies provides a map from "Extras" (parlance specific to Python)
 // to their dependencies. Each value in the array becomes a required dependency
 // if the Extra is enabled.
 type OptionalDependencies map[string][]string
-
-// The specification for the pyproject.toml file can be found here.
-// https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
-type Schema struct {
-	Project *struct {
-		Name         string      `toml:"name"` // name must always be provided
-		Authors      []Contact   `toml:"authors,omitempty"`
-		Classifiers  []string    `toml:"classifiers,omitempty"`
-		Description  string      `toml:"description,omitempty"`
-		Dependencies []string    `toml:"dependencies,omitempty"`
-		Dynamic      []string    `toml:"dynamic,omitempty"`
-		EntryPoints  Entrypoints `toml:"entry-points,omitempty"`
-		GUIScripts   Entrypoints `toml:"gui-scripts,omitempty"`
-		// These are keywords used in package search.
-		Keywords             []string             `toml:"keywords,omitempty"`
-		License              *License             `toml:"license,omitempty"`
-		Maintainers          []Contact            `toml:"maintainers,omitempty"`
-		OptionalDependencies OptionalDependencies `toml:"optional-dependencies,omitempty"`
-		// README is a path to a .md file or a .rst file
-		README string `toml:"readme,omitempty"`
-		// The version constraint e.g. ">=3.8"
-		RequiresPython string      `toml:"requires-python,omitempty"`
-		Scripts        Entrypoints `toml:"scripts,omitempty"`
-		// URLs provides core metadata about this project's website, a link
-		// to the repo, project documentation, and the project homepage.
-		URLs map[string]string `toml:"urls,omitempty"`
-		// Version is the package version.
-		Version string `toml:"version,omitempty"`
-	} `toml:"project"`
-}

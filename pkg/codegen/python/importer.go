@@ -17,6 +17,7 @@ package python
 import (
 	"encoding/json"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python/pyproject"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -54,6 +55,17 @@ type PackageInfo struct {
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+
+	// If enabled, a pyproject.toml file will be generated.
+	// The "schema" field can be used as a list of overrides for the
+	// generated pyproject.toml file. It should be provided using
+	// the JSON equivalent of the expected TOML configuration.
+	// When providing overrides, no fields are required, unlike in
+	// pyproject.toml.
+	PyProject struct {
+		Enabled bool              `json:"enabled,omitempty"`
+		Schema  *pyproject.Schema `json:"overrides,omitempty"`
+	} `json:"pyproject,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
