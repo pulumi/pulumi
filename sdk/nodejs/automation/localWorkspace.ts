@@ -758,7 +758,7 @@ export class LocalWorkspace implements Workspace {
                     args.push("--remote-git-auth-password", password);
                 }
                 if (username) {
-                    args.push("--remote-git-username", username);
+                    args.push("--remote-git-auth-username", username);
                 }
             }
         }
