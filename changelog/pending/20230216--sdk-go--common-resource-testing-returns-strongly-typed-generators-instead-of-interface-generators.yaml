@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: "common/resource/testing: Returns strongly typed generators instead of `interface{}` generators."
