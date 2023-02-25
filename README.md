@@ -15,7 +15,7 @@
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
-**Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
+**Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that uses 
 containers, serverless functions, hosted services, and infrastructure, on any cloud.
 
 Simply write code in your favorite language and Pulumi automatically provisions and manages your
