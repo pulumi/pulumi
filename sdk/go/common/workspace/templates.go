@@ -792,10 +792,10 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 func transform(content string, projectName string, projectDescription string) string {
 	// On Windows, we need to replace \n with \r\n because go-git does not currently handle it.
 	if runtime.GOOS == "windows" {
-		content = strings.Replace(content, "\n", "\r\n", -1)
+		content = strings.ReplaceAll(content, "\n", "\r\n")
 	}
-	content = strings.Replace(content, "${PROJECT}", projectName, -1)
-	content = strings.Replace(content, "${DESCRIPTION}", projectDescription, -1)
+	content = strings.ReplaceAll(content, "${PROJECT}", projectName)
+	content = strings.ReplaceAll(content, "${DESCRIPTION}", projectDescription)
 	return content
 }
 

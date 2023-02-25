@@ -285,7 +285,7 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectNa
 			if strings.Contains(fmt.Sprintf("%v", v), "invalid Go source code:") {
 				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
 			}
-			errMsg.WriteString(fmt.Sprintf("%v\n", v))
+			fmt.Fprintf(&errMsg, "%v\n", v)
 			fmt.Print(errMsg.String())
 		}
 	}()

@@ -57,7 +57,7 @@ func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string)
 func (*lazyLoadGen) genLazyLoads(w io.Writer, importPath string, properties ...string) {
 	sort.Strings(properties)
 	j, err := json.Marshal(properties)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error serializing properties")
 	fmt.Fprintf(w, "utilities.lazyLoad(exports, %s, () => require(%q));\n",
 		string(j), importPath)
 }

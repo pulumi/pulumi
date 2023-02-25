@@ -114,9 +114,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 		if p.Version != nil {
-			requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
+			fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
 		} else {
-			requirementsTxt.WriteString(fmt.Sprintf("%s\n", packageName))
+			fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
 		}
 	}
 
@@ -241,7 +241,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics reported: %v", diags)
 	}
 
 	var imports []string
@@ -319,7 +319,7 @@ func resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 			})
 		} else {
 			err = pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "failed to import python language plugin for package %s", pkg.Name)
 			if lang, ok := pkg.Language["python"]; ok {
 				pkgInfo := lang.(PackageInfo)
 				if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
@@ -351,13 +351,13 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 
 	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
 	pkgName, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diagnostics) == 0)
+	contract.Assertf(len(diagnostics) == 0, "unexpected diagnostics reported: %v", diagnostics)
 
 	modName := objType.PackageReference.TokenToModule(token)
 
 	// Normalize module.
 	pkg, err := objType.PackageReference.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error loading definition for package %q", objType.PackageReference.Name())
 	if lang, ok := pkg.Language["python"]; ok {
 		pkgInfo := lang.(PackageInfo)
 		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {

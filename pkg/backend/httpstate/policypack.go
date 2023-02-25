@@ -58,7 +58,7 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 		version = strconv.Itoa(policy.Version)
 	}
 	policyPackPath, installed, err := workspace.GetPolicyPath(rp.OrgName(),
-		strings.Replace(policy.Name, tokens.QNameDelimiter, "_", -1), version)
+		strings.ReplaceAll(policy.Name, tokens.QNameDelimiter, "_"), version)
 	if err != nil {
 		// Failed to get a sensible PolicyPack path.
 		return "", err

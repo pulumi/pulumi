@@ -227,7 +227,7 @@ func TestReferenceRenderer(t *testing.T) {
 				doc := doc
 
 				text := []byte(fmt.Sprintf("[entity](%s)", doc.entity))
-				expected := strings.Replace(doc.entity, "/", "_", -1) + "\n"
+				expected := strings.ReplaceAll(doc.entity, "/", "_") + "\n"
 
 				parsed := ParseDocs(text)
 				actual := []byte(RenderDocsToString(text, parsed, WithReferenceRenderer(

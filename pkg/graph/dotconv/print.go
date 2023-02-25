@@ -77,11 +77,11 @@ func Print(g graph.Graph, w io.Writer) error {
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// IDEA: consider serializing properties on the node also.
-		if _, err := b.WriteString(fmt.Sprintf("%v%v", indent, id)); err != nil {
+		if _, err := fmt.Fprintf(b, "%v%v", indent, id); err != nil {
 			return err
 		}
 		if label := v.Label(); label != "" {
-			if _, err := b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label)); err != nil {
+			if _, err := fmt.Fprintf(b, " [label=\"%v\"]", label); err != nil {
 				return err
 			}
 		}
@@ -96,7 +96,7 @@ func Print(g graph.Graph, w io.Writer) error {
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
 			for _, out := range outs {
 				to := out.To()
-				if _, err := b.WriteString(fmt.Sprintf("%s -> %s", base, getID(to))); err != nil {
+				if _, err := fmt.Fprintf(b, "%s -> %s", base, getID(to)); err != nil {
 					return err
 				}
 
@@ -108,7 +108,7 @@ func Print(g graph.Graph, w io.Writer) error {
 					attrs = append(attrs, fmt.Sprintf("label = \"%s\"", out.Label()))
 				}
 				if len(attrs) > 0 {
-					if _, err := b.WriteString(fmt.Sprintf(" [%s]", strings.Join(attrs, ", "))); err != nil {
+					if _, err := fmt.Fprintf(b, " [%s]", strings.Join(attrs, ", ")); err != nil {
 						return err
 					}
 				}

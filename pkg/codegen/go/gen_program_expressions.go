@@ -1169,7 +1169,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 		}
 	}
 	modOrAlias := g.getModOrAlias(pkg, module, module)
-	mod := strings.Replace(modOrAlias, "/", ".", -1)
+	mod := strings.ReplaceAll(modOrAlias, "/", ".")
 	return pkg, mod, Title(member), diagnostics
 }
 

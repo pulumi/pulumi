@@ -54,7 +54,7 @@ func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 	options map[string]interface{}) (LanguageRuntime, error) {
 
 	path, err := workspace.GetPluginPath(
-		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil, host.GetProjectPlugins())
+		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
