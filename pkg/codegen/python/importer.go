@@ -98,3 +98,22 @@ func (importer) ImportPackageSpec(pkg *schema.Package, raw json.RawMessage) (int
 	}
 	return info, nil
 }
+
+// minimumPythonVersion returns a string containing the version
+// constraint specifying the minimumal version of Python required
+// by this package. For example, ">=3.8" is satified by all versions
+// of Python greater than or equal to Python 3.8.
+func (info PackageInfo) minimumPythonVersion() (string, error) {
+	if info.PythonRequires != "" {
+		return info.PythonRequires, nil
+	}
+	return "", noMinimumPythonErr{}
+}
+
+// noMinimumPythonErr is a non-fatal error indicating that the schema
+// did not provide a minimum version of Python for the Package.
+type noMinimumPythonErr struct{}
+
+func (noMinimumPythonErr) Error() string {
+	return "The schema does not require a minimum version of Python. It's recommended to provide a minimum version so package users can understand the package's requirements."
+}
