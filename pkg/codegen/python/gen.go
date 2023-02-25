@@ -2058,58 +2058,120 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 	return plugin.JSON()
 }
 
+type NoLicenseErr struct{}
+
+func (NoLicenseErr) Error() string {
+	return "No license was provided for this package. Consider specifying a license in the provider schema."
+}
+
+func pkgLicense(pkg *schema.Package) (string, error) {
+	if pkg.License != "" {
+		return pkg.License, nil
+	}
+	return "", NoLicenseErr{}
+}
+
+type NoMinimumPythonErr struct{}
+
+func (NoMinimumPythonErr) Error() string {
+	return "The schema does not require a minimum version of Python. It's recommended to provide a minimum version so package users can understand the package's requirements."
+}
+
+// minimumPythonVersion returns a string containing the version
+// constraint specifying the minimumal version of Python required
+// by this package. For example, ">=3.8" is satified by all versions
+// of Python greater than or equal to Python 3.8.
+func minimumPythonVersion(info *PackageInfo) (*string, error) {
+	if info != nil && info.PythonRequires != "" {
+		return &info.PythonRequires, nil
+	}
+	return nil, NoMinimumPythonErr{}
+}
+
 func genPyprojectTOML(
 	tool string,
 	pkg *schema.Package,
 	pyPkgName string,
 	requires map[string]string,
-	pythonRequires string) (string, error) {
-	// First, create a Writer for everything in pyproject.toml
-	w := &bytes.Buffer{}
-	// Next, create the default pyproject.toml file.
-	var contact = pyproject.Contact{
-		Name:  "The Pulumi Team",
-		Email: "security@pulumi.com",
+	info *PackageInfo) (string, error) {
+	var (
+		// First, create a Writer for everything in pyproject.toml
+		w = &bytes.Buffer{}
+		// Next, create the default pyproject.toml file.
+		contact = pyproject.Contact{
+			Name:  "The Pulumi Team",
+			Email: "security@pulumi.com",
+		}
+		description               = sanitizePackageDescription(pkg.Description)
+		license, licenseErr       = pkgLicense(pkg)
+		minPython, minPythonError = minimumPythonVersion(info)
+	)
+	// Issue a warning if any of these fields aren't provided
+	// in the schema. (It's possible they could be provided as part
+	// of an override, but that's less than ideal.)
+	for _, err := range []error{licenseErr, minPythonError} {
+		if err != nil {
+			cmdutil.Diag().Warningf(&diag.Diag{Message: licenseErr.Error()})
+		}
 	}
+
 	// TODO(@Robbie): Marshal and Unmarshal
 	var schema = pyproject.Schema{
-		Project: pyproject.Project{
-			Name:        pyPkgName,
-			Authors:     []pyproject.Contact{contact},
-			Classifiers: []string{}, // TODO(@Robbie): How do we fill this in?
-			// TODO(@Robbie):
-			Description: "",
+		Project: &pyproject.Project{
+			Name: &pyPkgName,
+			// TODO(@Robbie): Ask Providers what they want in this field.
+			Authors: []pyproject.Contact{contact},
+			// TODO(@Robbie): How do we fill this in?
+			// Maybe we leave it blank for now, and ask the Providers
+			// team what they think. I should create a doc with
+			// questions to bring to the teams.
+			Classifiers: []string{},
+			Description: &description,
 			// TODO(@Robbie):
 			Dependencies: []string{},
 			Dynamic:      nil, // Not used at this time.
 			// TODO(@Robbie):
 			EntryPoints: pyproject.Entrypoints{},
 			// TODO(@Robbie):
-			GUIScripts: pyproject.Entrypoints{},
-			// TODO(@Robbie):
-			Keywords: []string{},
-			// TODO(@Robbie):
-			License: "",
-			// TODO(@Robbie):
+			GUIScripts:  pyproject.Entrypoints{},
+			Keywords:    pkg.Keywords,
+			License:     &pyproject.License{Text: license},
 			Maintainers: []pyproject.Contact{contact},
 			// TODO(@Robbie):
 			OptionalDependencies: nil,
-			// TODO(@Robbie):
-			README: "README.md",
-			// TODO(@Robbie):
-			RequiresPython: nil,
+			// TODO(@Robbie): This should be made dynamic.
+			README:         "README.md",
+			RequiresPython: minPython,
 			// TODO(@Robbie):
 			Scripts: pyproject.Entrypoints{},
-			// TODO(@Robbie):
-			URLs: map[string]string{},
+			URLs:    pkgURLs(pkg),
 			// TODO(@Robbie):
 			Version: nil,
 		},
 	}
 
+	// TODO(@Robbie):
 	// Then, apply any overrides provided.
 
 	return w.String(), nil
+}
+
+// Right now we provide at most two URLs, one pointing to the repository
+// and one pointing to the project homepage.
+// The list of recommended URLs can be found here:
+// https://packaging.python.org/en/latest/specifications/declaring-project-metadata/#urls
+// TODO(@Robbie): Open an issue to support additional URLs
+//                For example, we can point to the CHANGELOG for all
+//                first-party providers.
+func pkgURLs(pkg *schema.Package) map[string]string {
+	var urls = map[string]string{}
+	if pkg.Homepage != "" {
+		urls["homepage"] = pkg.Homepage
+	}
+	if pkg.Repository != "" {
+		urls["repository"] = pkg.Homepage
+	}
+	return urls
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
@@ -2184,6 +2246,9 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "      cmdclass={\n")
 	fmt.Fprintf(w, "          'install': InstallPluginCommand,\n")
 	fmt.Fprintf(w, "      },\n")
+
+	// TODO(@Robbie): This is a really complex and hacky way to
+	// space-separate the keywords. Replace this with strings.Join.
 	if pkg.Keywords != nil {
 		fmt.Fprintf(w, "      keywords='")
 		for i, kw := range pkg.Keywords {
@@ -2194,16 +2259,20 @@ func genPackageMetadata(
 		}
 		fmt.Fprintf(w, "',\n")
 	}
+	// TODO(@Robbie): Abstract this into a function.
 	if pkg.Homepage != "" {
 		fmt.Fprintf(w, "      url='%s',\n", pkg.Homepage)
 	}
+	// TODO(@Robbie): Abstract this into a function.
 	if pkg.Repository != "" {
 		fmt.Fprintf(w, "      project_urls={\n")
 		fmt.Fprintf(w, "          'Repository': '%s'\n", pkg.Repository)
 		fmt.Fprintf(w, "      },\n")
 	}
-	if pkg.License != "" {
-		fmt.Fprintf(w, "      license='%s',\n", pkg.License)
+	if license, err := pkgLicense(pkg); err == nil {
+		fmt.Fprintf(w, "      license='%s',\n", license)
+	} else {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
 	fmt.Fprintf(w, "      packages=find_packages(),\n")
 
@@ -2216,6 +2285,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
 
+	// TODO(@Robbie): Abstract this function because it will be used elsewhere.
 	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure
 	// that it specifies an acceptable version range.
 	if pulumiReq, ok := requires["pulumi"]; ok {
@@ -2249,6 +2319,7 @@ func genPackageMetadata(
 	}
 	sort.Strings(reqNames)
 
+	// TODO(@Robbie): Refactor this to use strings.Join.
 	fmt.Fprintf(w, "      install_requires=[\n")
 	for i, req := range reqNames {
 		var comma string
@@ -2261,6 +2332,41 @@ func genPackageMetadata(
 
 	fmt.Fprintf(w, "      zip_safe=False)\n")
 	return w.String(), nil
+}
+
+// getDependencies returns the sorted list of Python package dependencies.
+func getDependencies(requires map[string]string) ([]string, error) {
+	// These are the dependencies that are always required.
+	var dependencies = []string{
+		"semver>=2.8.1",
+		"parver>=0.2.1",
+	}
+
+	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure
+	// that it specifies an acceptable version range.
+	if pulumiReq, ok := requires["pulumi"]; ok {
+		// We expect a specific pattern of ">=version,<version" here.
+		matches := requirementRegex.FindStringSubmatch(pulumiReq)
+		if len(matches) != 2 {
+			return nil, fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
+		}
+
+		lowerBound, err := pep440VersionToSemver(matches[1])
+		if err != nil {
+			return nil, fmt.Errorf("invalid version for lower bound: %v", err)
+		}
+		if lowerBound.LT(oldestAllowedPulumi) {
+			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
+		}
+	} else {
+		if requires == nil {
+			requires = map[string]string{}
+		}
+		requires["pulumi"] = ""
+	}
+
+	// TODO(@Robbie): Append the entries from requires into this return value.
+	return dependencies
 }
 
 func pep440VersionToSemver(v string) (semver.Version, error) {
