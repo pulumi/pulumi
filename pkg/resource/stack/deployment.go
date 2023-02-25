@@ -97,7 +97,7 @@ func ValidateUntypedDeployment(deployment *apitype.UntypedDeployment) error {
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
 func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets bool) (*apitype.DeploymentV3, error) {
-	contract.Require(snap != nil, "snap")
+	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	// Capture the version information into a manifest.
 	manifest := snap.Manifest.Serialize()
@@ -167,7 +167,7 @@ func DeserializeUntypedDeployment(
 	deployment *apitype.UntypedDeployment,
 	secretsProv secrets.Provider) (*deploy.Snapshot, error) {
 
-	contract.Require(deployment != nil, "deployment")
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 	switch {
 	case deployment.Version > apitype.DeploymentSchemaVersionCurrent:
 		return nil, ErrDeploymentSchemaVersionTooNew
@@ -285,8 +285,8 @@ func DeserializeDeploymentV3(
 
 // SerializeResource turns a resource into a structure suitable for serialization.
 func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bool) (apitype.ResourceV3, error) {
-	contract.Assert(res != nil)
-	contract.Assertf(string(res.URN) != "", "Unexpected empty resource resource.URN")
+	contract.Requiref(res != nil, "res", "must not be nil")
+	contract.Requiref(res.URN != "", "res", "must have a URN")
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
@@ -576,14 +576,14 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
-					contract.Assert(isasset)
+					contract.Assertf(isasset, "resource with asset signature is not an asset")
 					return resource.NewAssetProperty(asset), nil
 				case resource.ArchiveSig:
 					archive, isarchive, err := resource.DeserializeArchive(objmap)
 					if err != nil {
 						return resource.PropertyValue{}, err
 					}
-					contract.Assert(isarchive)
+					contract.Assertf(isarchive, "resource with archive signature is not an archive")
 					return resource.NewArchiveProperty(archive), nil
 				case resource.SecretSig:
 					ciphertext, cipherOk := objmap["ciphertext"].(string)

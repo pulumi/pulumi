@@ -84,9 +84,10 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 
 	fixProvider := func(provider string) string {
 		ref, err := providers.ParseReference(provider)
-		contract.AssertNoError(err)
-		ref, err = providers.NewReference(fixUrn(ref.URN()), ref.ID())
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "malformed provider reference: %s", provider)
+		newURN := fixUrn(ref.URN())
+		ref, err = providers.NewReference(newURN, ref.ID())
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %s and ID %s", newURN, ref.ID())
 		return ref.String()
 	}
 

@@ -409,7 +409,7 @@ func (ex *deploymentExecutor) performDeletes(
 // handleSingleEvent handles a single source event. For all incoming events, it produces a chain that needs
 // to be executed and schedules the chain for execution.
 func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result {
-	contract.Require(event != nil, "event != nil")
+	contract.Requiref(event != nil, "event", "must not be nil")
 
 	var steps []Step
 	var res result.Result
@@ -570,8 +570,8 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		if new == nil {
 			if refresh {
-				contract.Assertf(old.Custom, "Expected custom resource")
-				contract.Assert(!providers.IsProviderType(old.Type))
+				contract.Assertf(old.Custom, "expected custom resource")
+				contract.Assertf(!providers.IsProviderType(old.Type), "expected non-provider resource")
 			}
 			continue
 		}

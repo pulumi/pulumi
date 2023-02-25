@@ -501,7 +501,7 @@ func (rp *ResourcePlan) checkOutputs(
 	oldOutputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,
 ) error {
-	contract.Assert(rp.Goal != nil)
+	contract.Assertf(rp.Goal != nil, "resource plan goal must be set")
 
 	// Check that the property diffs meet the constraints set in the plan.
 	if err := checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff); err != nil {
@@ -516,10 +516,14 @@ func (rp *ResourcePlan) checkGoal(
 	newInputs resource.PropertyMap,
 	programGoal *resource.Goal) error {
 
-	contract.Assert(programGoal != nil)
+	contract.Requiref(programGoal != nil, "programGoal", "must not be nil")
 	// rp.Goal may be nil, but if it isn't Type and Name should match
-	contract.Assert(rp.Goal == nil || rp.Goal.Type == programGoal.Type)
-	contract.Assert(rp.Goal == nil || rp.Goal.Name == programGoal.Name)
+	if rp.Goal != nil {
+		contract.Assertf(rp.Goal.Type == programGoal.Type,
+			"resource plan goal type (%v) does not match program goal type (%v)", rp.Goal.Type, programGoal.Type)
+		contract.Assertf(rp.Goal.Name == programGoal.Name,
+			"resource plan goal name (%v) does not match program goal name (%v)", rp.Goal.Type, programGoal.Name)
+	}
 
 	if rp.Goal == nil {
 		// If the plan goal is nil it expected a delete

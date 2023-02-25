@@ -61,8 +61,8 @@ type ImportOptions struct {
 func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
 	preview bool) (*Deployment, error) {
 
-	contract.Assert(ctx != nil)
-	contract.Assert(target != nil)
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+	contract.Requiref(target != nil, "target", "must not be nil")
 
 	prev := target.Snapshot
 	source := NewErrorSource(projectName)
@@ -194,7 +194,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ref := string(imp.Provider)
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
 				r, err := providers.NewReference(imp.Provider, state.ID)
-				contract.AssertNoError(err)
+				contract.AssertNoErrorf(err,
+					"could not create provider reference with URN %q and ID %q", imp.Provider, state.ID)
 				ref = r.String()
 			}
 			urnToReference[imp.Provider] = ref
@@ -209,7 +210,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err,
+				"could not create provider reference with URN %q and ID %q", urn, state.ID)
 			urnToReference[urn] = ref.String()
 			continue
 		}
@@ -277,7 +279,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			id = providers.UnknownID
 		}
 		ref, err := providers.NewReference(res.URN, id)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, id)
 		urnToReference[res.URN] = ref.String()
 	}
 
@@ -285,7 +287,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 }
 
 func (i *importer) importResources(ctx context.Context) result.Result {
-	contract.Assert(len(i.deployment.imports) != 0)
+	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
 		return nil
@@ -338,7 +340,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// Fetch the provider reference for this import. All provider URNs should be mapped.
 		provider, ok := urnToReference[providerURN]
-		contract.Assert(ok)
+		contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 
 		// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
 		var randomSeed []byte
@@ -349,8 +351,8 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		} else {
 			randomSeed = make([]byte, 32)
 			n, err := cryptorand.Read(randomSeed)
-			contract.AssertNoError(err)
-			contract.Assert(n == len(randomSeed))
+			contract.AssertNoErrorf(err, "could not read random bytes")
+			contract.Assertf(n == len(randomSeed), "read %d random bytes, expected %d", n, len(randomSeed))
 		}
 
 		// Create the new desired state. Note that the resource is protected.

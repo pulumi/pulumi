@@ -218,13 +218,13 @@ func (r *Registry) label() string {
 
 // GetSchema returns the JSON-serialized schema for the provider.
 func (r *Registry) GetSchema(version int) ([]byte, error) {
-	contract.Fail()
+	contract.Failf("GetSchema must not be called on the provider registry")
 
 	return nil, errors.New("the provider registry has no schema")
 }
 
 func (r *Registry) GetMapping(key string) ([]byte, string, error) {
-	contract.Fail()
+	contract.Failf("GetMapping must not be called on the provider registry")
 
 	return nil, "", errors.New("the provider registry has no mappings")
 }
@@ -233,19 +233,19 @@ func (r *Registry) GetMapping(key string) ([]byte, string, error) {
 func (r *Registry) CheckConfig(urn resource.URN, olds,
 	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	contract.Fail()
+	contract.Failf("CheckConfig must not be called on the provider registry")
 	return nil, nil, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	contract.Fail()
+	contract.Failf("DiffConfig must not be called on the provider registry")
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
 
 func (r *Registry) Configure(props resource.PropertyMap) error {
-	contract.Fail()
+	contract.Failf("Configure must not be called on the provider registry")
 	return errors.New("the provider registry is not configurable")
 }
 
@@ -260,7 +260,7 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	contract.Require(IsProviderType(urn.Type()), "urn")
+	contract.Requiref(IsProviderType(urn.Type()), "urn", "must be a provider type, got %v", urn.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
@@ -304,7 +304,7 @@ func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
-	contract.Require(id != "", "id")
+	contract.Requiref(id != "", "id", "must not be empty")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
 	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
@@ -392,7 +392,7 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 			return "", nil, resource.StatusOK, err
 		}
 		id = resource.ID(uuid.String())
-		contract.Assert(id != UnknownID)
+		contract.Assertf(id != UnknownID, "resource ID must not be unknown")
 	}
 
 	r.setProvider(mustNewReference(urn, id), provider)
@@ -426,11 +426,11 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.
 // registry was created (i.e. it must have been present in the state handed to NewRegistry).
 func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
 	timeout float64) (resource.Status, error) {
-	contract.Assert(!r.isPreview)
+	contract.Assertf(!r.isPreview, "Delete must not be called during preview")
 
 	ref := mustNewReference(urn, id)
 	provider, has := r.deleteProvider(ref)
-	contract.Assert(has)
+	contract.Assertf(has, "could not find provider to delete (%v)", ref)
 
 	closeErr := r.host.CloseProvider(provider)
 	contract.IgnoreError(closeErr)
@@ -452,7 +452,7 @@ func (r *Registry) Invoke(tok tokens.ModuleMember,
 
 	// It is the responsibility of the eval source to ensure that we never attempt an invoke using the provider
 	// registry.
-	contract.Fail()
+	contract.Failf("Invoke must not be called on the provider registry")
 	return nil, nil, errors.New("the provider registry is not invokable")
 }
 
@@ -468,7 +468,7 @@ func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 
 	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
 	// registry.
-	contract.Fail()
+	contract.Failf("Call must not be called on the provider registry")
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 

@@ -337,7 +337,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 
 			urn, id := defaultProviderURN(target, source, pkg), resource.ID(uuid.String())
 			ref, err = providers.NewReference(urn, id)
-			contract.Assert(err == nil)
+			contract.Assertf(err == nil,
+				"could not create provider reference with URN %v and ID %v", urn, id)
 
 			provider := &resource.State{
 				Type:    urn.Type(),
@@ -424,9 +425,9 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Plan, source Source,
 	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Deployment, error) {
 
-	contract.Assert(ctx != nil)
-	contract.Assert(target != nil)
-	contract.Assert(source != nil)
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+	contract.Requiref(target != nil, "target", "must not be nil")
+	contract.Requiref(source != nil, "source", "must not be nil")
 
 	if err := migrateProviders(target, prev, source); err != nil {
 		return nil, err
@@ -513,7 +514,7 @@ func defaultProviderURN(target *Target, source Source, pkg tokens.Package) resou
 
 // generateEventURN generates a URN for the resource associated with the given event.
 func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
-	contract.Require(event != nil, "event != nil")
+	contract.Requiref(event != nil, "event", "must not be nil")
 
 	switch e := event.(type) {
 	case RegisterResourceEvent:

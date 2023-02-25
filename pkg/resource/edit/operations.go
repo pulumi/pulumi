@@ -42,8 +42,8 @@ func DeleteResource(
 	snapshot *deploy.Snapshot, condemnedRes *resource.State,
 	onProtected func(*resource.State) error, targetDependents bool,
 ) error {
-	contract.Require(snapshot != nil, "snapshot")
-	contract.Require(condemnedRes != nil, "state")
+	contract.Requiref(snapshot != nil, "snapshot", "must not be nil")
+	contract.Requiref(condemnedRes != nil, "condemnedRes", "must not be nil")
 
 	handleProtected := func(res *resource.State) error {
 		if !res.Protect {
@@ -155,7 +155,7 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 // RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
 // the root Stack resource itself. May optionally change the project/package name as well.
 func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.PackageName) error {
-	contract.Require(snap != nil, "snap")
+	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
 		project := u.Project()
@@ -173,7 +173,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.P
 	}
 
 	rewriteState := func(res *resource.State) {
-		contract.Assert(res != nil)
+		contract.Assertf(res != nil, "resource state must not be nil")
 
 		res.URN = rewriteUrn(res.URN)
 

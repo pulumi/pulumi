@@ -53,7 +53,7 @@ func MakeProviderType(pkg tokens.Package) tokens.Type {
 
 // GetProviderPackage returns the provider package for the given type token.
 func GetProviderPackage(typ tokens.Type) tokens.Package {
-	contract.Require(IsProviderType(typ), "typ")
+	contract.Requiref(IsProviderType(typ), "typ", "must be a provider type token, got %q", typ)
 	return tokens.Package(typ.Name())
 }
 
@@ -113,7 +113,7 @@ func NewDenyDefaultProvider(name tokens.QName) Reference {
 //
 // Panics if called on a provider that is not a DenyDefaultProvider.
 func GetDeniedDefaultProviderPkg(ref Reference) string {
-	contract.Assert(IsDenyDefaultsProvider(ref))
+	contract.Requiref(IsDenyDefaultsProvider(ref), "ref", "must be a DenyDefaultProvider, got %v", ref)
 	return ref.URN().Name().String()
 }
 
@@ -131,7 +131,7 @@ func NewReference(urn resource.URN, id resource.ID) (Reference, error) {
 
 func mustNewReference(urn resource.URN, id resource.ID) Reference {
 	ref, err := NewReference(urn, id)
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "could not create reference with URN '%v' and ID '%v'", urn, id)
 	return ref
 }
 

@@ -134,7 +134,7 @@ func DeserializeCheckpoint(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, error) {
-	contract.Require(chkpoint != nil, "chkpoint")
+	contract.Requiref(chkpoint != nil, "chkpoint", "must not be nil")
 	if chkpoint.Latest != nil {
 		return DeserializeDeploymentV3(ctx, *chkpoint.Latest, secretsProvider)
 	}

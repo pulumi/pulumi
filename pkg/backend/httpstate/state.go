@@ -88,7 +88,7 @@ func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
 // the update logs or drilling into the timeline of an update.
 func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.Event) error {
-	contract.Assert(u.tokenSource != nil)
+	contract.Assertf(u.tokenSource != nil, "cloud update requires a token source")
 	token, err := u.tokenSource.GetToken()
 	if err != nil {
 		return err

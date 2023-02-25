@@ -143,11 +143,11 @@ func lockDir() string {
 }
 
 func stackLockDir(stack tokens.Name) string {
-	contract.Require(stack != "", "stack")
+	contract.Requiref(stack != "", "stack", "must not be empty")
 	return path.Join(lockDir(), fsutil.NamePath(stack))
 }
 
 func (b *localBackend) lockPath(stack tokens.Name) string {
-	contract.Require(stack != "", "stack")
+	contract.Requiref(stack != "", "stack", "must not be empty")
 	return path.Join(stackLockDir(stack), b.lockID+".json")
 }
