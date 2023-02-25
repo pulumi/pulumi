@@ -633,6 +633,23 @@ type Package struct {
 	importedLanguages map[string]struct{}
 }
 
+// A NoLicenseErr is a recoverable error created the Package does not provide
+// a license.
+type NoLicenseErr struct{}
+
+func (NoLicenseErr) Error() string {
+	return "No license was provided for this package. Consider specifying a license in the provider schema."
+}
+
+// GetLicense is a checked access to the pkg.License field, returning
+// an error when the License is not provided.
+func (pkg *Package) GetLicense() (string, error) {
+	if pkg != nil && pkg.License != "" {
+		return pkg.License, nil
+	}
+	return "", NoLicenseErr{}
+}
+
 // Language provides hooks for importing language-specific metadata in a package.
 type Language interface {
 	// ImportDefaultSpec decodes language-specific metadata associated with a DefaultValue.

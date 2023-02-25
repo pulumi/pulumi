@@ -2151,8 +2151,12 @@ func genPackageMetadata(
 		fmt.Fprintf(w, "          'Repository': '%s'\n", pkg.Repository)
 		fmt.Fprintf(w, "      },\n")
 	}
-	if pkg.License != "" {
-		fmt.Fprintf(w, "      license='%s',\n", pkg.License)
+	// Remind the user to provide a license if none is provided in
+	// the schema.
+	if license, err := pkg.GetLicense(); err == nil {
+		fmt.Fprintf(w, "      license='%s',\n", license)
+	} else {
+		cmdutil.Diag().Infof(&diag.Diag{Message: err.Error()})
 	}
 	fmt.Fprintf(w, "      packages=find_packages(),\n")
 
