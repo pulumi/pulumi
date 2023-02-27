@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdkgen/python
-  description: Remind users to specify a min Python version.
+  description: Remind users to specify a min Python version and a license file when the associated schema fields are unset.
