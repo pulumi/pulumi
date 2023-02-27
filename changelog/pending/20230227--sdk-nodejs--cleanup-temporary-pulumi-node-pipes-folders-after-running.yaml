@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Cleanup temporary pulumi-node-pipes folders after running.

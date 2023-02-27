@@ -91,13 +91,11 @@ func (p *unixPipes) connect() error {
 func (p *unixPipes) shutdown() {
 	if p.reqPipe != nil {
 		contract.IgnoreClose(p.reqPipe)
-		contract.IgnoreError(os.Remove(p.reqPath))
 	}
 
 	if p.resPipe != nil {
 		contract.IgnoreClose(p.resPipe)
-		contract.IgnoreError(os.Remove(p.resPath))
 	}
 
-	contract.IgnoreError(os.Remove(p.dir))
+	contract.IgnoreError(os.RemoveAll(p.dir))
 }
