@@ -3,7 +3,7 @@
     "version": "",
     "dependencies": {
         "@pulumi/pulumi": "latest",
-        "@pulumi/random": "^4.2.0"
+        "@pulumi/random": "^4.11.2"
     },
     "devDependencies": {
         "@types/node": "^17.0.14",

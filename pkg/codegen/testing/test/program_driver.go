@@ -231,6 +231,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		// directionally correct.
 		SkipCompile: allProgLanguages,
 	},
+	{
+		Directory:   "retain-on-delete",
+		Description: "Generate RetainOnDelete option",
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

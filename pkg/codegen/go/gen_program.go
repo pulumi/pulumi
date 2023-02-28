@@ -593,6 +593,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions) (*model.Bloc
 	if opts.Protect != nil {
 		appendOption("Protect", opts.Protect, model.BoolType)
 	}
+	if opts.RetainOnDelete != nil {
+		appendOption("RetainOnDelete", opts.RetainOnDelete, model.BoolType)
+	}
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges, model.NewListType(model.StringType))
 	}
