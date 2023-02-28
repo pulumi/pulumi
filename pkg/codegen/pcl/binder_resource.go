@@ -421,6 +421,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "protect":
 					t = model.BoolType
 					resourceOptions.Protect = item.Value
+				case "retainOnDelete":
+					t = model.BoolType
+					resourceOptions.RetainOnDelete = item.Value
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value
