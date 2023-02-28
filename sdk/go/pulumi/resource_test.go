@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -602,6 +603,61 @@ func TestDependsOnInputs(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
+		assert.NoError(t, err)
+	})
+}
+
+// https://github.com/pulumi/pulumi/issues/12161
+func TestComponentResourcePropagatesProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("provider option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Provider(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
+		assert.NoError(t, err)
+	})
+
+	t.Run("providers option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Providers(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
 }

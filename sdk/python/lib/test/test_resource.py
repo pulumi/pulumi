@@ -201,5 +201,5 @@ class MergeResourceOptions(unittest.TestCase):
         assert opts1.protect is None
         opts2 = ResourceOptions.merge(opts1, ResourceOptions(protect=True))
         assert opts2.protect is True
-        opts3 = opts2.merge(ResourceOptions())
+        opts3 = ResourceOptions.merge(opts2, ResourceOptions())
         assert opts3.protect is True
