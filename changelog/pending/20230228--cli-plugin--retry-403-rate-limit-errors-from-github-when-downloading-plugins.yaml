@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/plugin
+  description: Retry 403 rate limit errors from GitHub when downloading plugins.

@@ -573,6 +573,62 @@ func TestPluginDownload(t *testing.T) {
 		assert.Equal(t, int(l), len(readBytes))
 		assert.Equal(t, expectedBytes, readBytes)
 	})
+	t.Run("GitHub Releases with 403 retry", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "")
+		version := semver.MustParse("1.23.0")
+		spec := PluginSpec{
+			PluginDownloadURL: "github://api.github.org/someorg",
+			Name:              "someprovider",
+			Version:           &version,
+			Kind:              PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+		// Fail the first request, succeed the second
+		failCounter := 0
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			if req.URL.String() == "https://api.github.org/repos/someorg/pulumi-someprovider/releases/tags/v1.23.0" {
+				if failCounter == 0 {
+					failCounter++
+					return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
+				}
+				failCounter = 0
+				assert.Equal(t, "", req.Header.Get("Authorization"))
+				assert.Equal(t, "application/json", req.Header.Get("Accept"))
+				// Minimal JSON from the releases API to get the test to pass
+				return newMockReadCloserString(`{
+					"assets": [
+					  {
+						"url": "https://api.github.com/repos/someorg/pulumi-someprovider/releases/assets/654321",
+						"name": "pulumi-someprovider_1.23.0_checksums.txt"
+					  },
+					  {
+						"url": "https://api.github.com/repos/someorg/pulumi-someprovider/releases/assets/123456",
+						"name": "pulumi-resource-someprovider-v1.23.0-windows-amd64.tar.gz"
+					  }
+					]
+				  }
+				`)
+			}
+
+			if failCounter == 0 {
+				failCounter++
+				return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
+			}
+			failCounter = 0
+
+			assert.Equal(t, "https://api.github.com/repos/someorg/pulumi-someprovider/releases/assets/123456", req.URL.String())
+			assert.Equal(t, "", req.Header.Get("Authorization"))
+			assert.Equal(t, "application/octet-stream", req.Header.Get("Accept"))
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(*spec.Version, "windows", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(readBytes))
+		assert.Equal(t, expectedBytes, readBytes)
+	})
 }
 
 //nolint:paralleltest // mutates environment variables

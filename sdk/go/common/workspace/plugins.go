@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -237,7 +238,11 @@ func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource,
 }
 
 func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
-	req, err := buildHTTPRequest(url, fmt.Sprintf("Bearer %s", source.token))
+	var token string
+	if source.token != "" {
+		token = fmt.Sprintf("Bearer %s", source.token)
+	}
+	req, err := buildHTTPRequest(url, token)
 	if err != nil {
 		return nil, err
 	}
@@ -353,12 +358,52 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 }
 
 func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
-	req, err := buildHTTPRequest(url, fmt.Sprintf("token %s", source.token))
+	var token string
+	if source.token != "" {
+		token = fmt.Sprintf("token %s", source.token)
+	}
+	req, err := buildHTTPRequest(url, token)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", accept)
 	return req, nil
+}
+
+func (source *githubSource) retryHTTP(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	req *http.Request) (io.ReadCloser, int64, error) {
+
+	for attempt := 0; ; attempt++ {
+		resp, length, err := getHTTPResponse(req)
+		if err == nil {
+			return resp, length, nil
+		}
+
+		// Only retry a few times.
+		const maxAttempts = 5
+		if attempt >= maxAttempts {
+			return nil, -1, err
+		}
+
+		// We'll retry only 403 rate limit errors.
+		var downErr *downloadError
+		if !errors.As(err, &downErr) || downErr.code != 403 {
+			return nil, -1, err
+		}
+
+		// This is a rate limiting error only if x-ratelimit-remaining is 0.
+		// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+		if downErr.header.Get("x-ratelimit-remaining") != "0" {
+			return nil, -1, err
+		}
+
+		delay := 80 * time.Millisecond // sensible default if we can't parse the header
+		if reset, err := strconv.ParseInt(downErr.header.Get("x-ratelimit-reset"), 10, 64); err == nil {
+			delay = time.Until(time.Unix(reset, 0).UTC())
+		}
+		time.Sleep(delay)
+	}
 }
 
 func (source *githubSource) GetLatestVersion(
@@ -371,7 +416,7 @@ func (source *githubSource) GetLatestVersion(
 	if err != nil {
 		return nil, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.retryHTTP(getHTTPResponse, req)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +451,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.retryHTTP(getHTTPResponse, req)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -440,7 +485,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHTTPResponse(req)
+	return source.retryHTTP(getHTTPResponse, req)
 }
 
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
@@ -901,7 +946,8 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, newDownloadError(resp.StatusCode, req.URL)
+		contract.IgnoreClose(resp.Body)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL, resp.Header)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -909,16 +955,13 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 
 // downloadError is an error that happened during the HTTP download of a plugin.
 type downloadError struct {
-	msg  string
-	code int
+	msg    string
+	code   int
+	header http.Header
 }
 
 func (e *downloadError) Error() string {
 	return e.msg
-}
-
-func (e *downloadError) Code() int {
-	return e.code
 }
 
 // Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
@@ -934,13 +977,14 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 }
 
 // Create a new downloadError.
-func newDownloadError(statusCode int, url *url.URL) error {
+func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)
 	}
 	return &downloadError{
-		code: statusCode,
-		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		code:   statusCode,
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		header: header,
 	}
 }
 
@@ -1078,7 +1122,7 @@ func DownloadToFile(
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			if err, ok := readErr.(*downloadError); ok && (err.Code() == 404 || err.Code() == 403) {
+			if err, ok := readErr.(*downloadError); ok && (err.code == 404 || err.code == 403) {
 				return "", readErr
 			}
 
