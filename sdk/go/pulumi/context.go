@@ -806,6 +806,20 @@ func (ctx *Context) registerResource(
 	parent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
+	} else {
+		// Guard against uninitialized parent resources to prevent
+		// panics from invalid state further down the line.
+		// Uninitialized parent resources won't have a URN.
+		if parent.URN().getState() == nil {
+			var msg string
+			if _, parentIsCustom := parent.(CustomResource); !parentIsCustom {
+				msg = "parent component resource %T has not been registered: " +
+					"did you mean to call RegisterComponentResource?"
+			} else {
+				msg = "parent resource %T has not been registered"
+			}
+			return fmt.Errorf(msg, parent)
+		}
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the

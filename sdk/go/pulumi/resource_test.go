@@ -552,6 +552,90 @@ func TestNewResourceInput(t *testing.T) {
 	assert.Equal(t, "abracadabra", unpackedRes.foo)
 }
 
+// Verifies that a Parent resource that has not been initialized will panic,
+// and will instead report a meaningful error message.
+func TestUninitializedParentResource(t *testing.T) {
+	t.Parallel()
+
+	type myComponent struct {
+		ResourceState
+	}
+
+	type myCustomResource struct {
+		CustomResourceState
+	}
+
+	tests := []struct {
+		desc   string
+		parent Resource
+
+		// additional options to pass to RegisterResource
+		// besides the Parent.
+		// The original report of the panic was with an Alias option.
+		opts []ResourceOption
+
+		// Message that should be part of the error message.
+		wantErr string
+	}{
+		{
+			desc:   "component resource",
+			parent: &myComponent{},
+			wantErr: "parent component resource *pulumi.myComponent has not been registered: " +
+				"did you mean to call RegisterComponentResource?",
+		},
+		{
+			desc:   "component resource/alias",
+			parent: &myComponent{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "parent component resource *pulumi.myComponent has not been registered: " +
+				"did you mean to call RegisterComponentResource?",
+		},
+		{
+			desc:    "custom resource",
+			parent:  &myCustomResource{},
+			wantErr: "parent resource *pulumi.myCustomResource has not been registered",
+		},
+		{
+			desc:   "custom resource/alias",
+			parent: &myCustomResource{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "parent resource *pulumi.myCustomResource has not been registered",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotEmpty(t, tt.wantErr,
+				"test case must specify an error message")
+
+			err := RunErr(func(ctx *Context) error {
+				opts := []ResourceOption{Parent(tt.parent)}
+				opts = append(opts, tt.opts...)
+
+				var res testRes
+				err := ctx.RegisterResource(
+					"test:index:MyResource",
+					"my-resource",
+					nil /* props */, &res, opts...)
+				assert.ErrorContains(t, err, tt.wantErr)
+				return nil
+			}, WithMocks("project", "stack", &testMonitor{}))
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestDependsOnInputs(t *testing.T) {
 	t.Parallel()
 
