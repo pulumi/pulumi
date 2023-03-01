@@ -78,21 +78,13 @@ func (u *cloudUpdate) GetTarget() *deploy.Target {
 func (u *cloudUpdate) Complete(status apitype.UpdateStatus) error {
 	defer u.tokenSource.Close()
 
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-	return u.backend.client.CompleteUpdate(u.context, u.update, status, token)
+	return u.backend.client.CompleteUpdate(u.context, u.update, status, u.tokenSource)
 }
 
 // recordEngineEvents will record the events with the Pulumi Service, enabling things like viewing
 // the update logs or drilling into the timeline of an update.
 func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.Event) error {
 	contract.Assertf(u.tokenSource != nil, "cloud update requires a token source")
-	token, err := u.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
 
 	var apiEvents apitype.EngineEventBatch
 	for idx, event := range events {
@@ -110,7 +102,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 		apiEvents.Events = append(apiEvents.Events, apiEvent)
 	}
 
-	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, token)
+	return u.backend.client.RecordEngineEvents(u.context, u.update, apiEvents, u.tokenSource)
 }
 
 // RecordAndDisplayEvents inspects engine events from the given channel, and prints them to the CLI as well as

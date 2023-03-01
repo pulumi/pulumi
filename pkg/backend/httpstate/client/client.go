@@ -118,7 +118,7 @@ func (pc *Client) restCallWithOptions(ctx context.Context, method, path string, 
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{},
-	token updateAccessToken, httpOptions httpCallOptions) error {
+	token updateToken, httpOptions httpCallOptions) error {
 
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
@@ -915,14 +915,14 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
 	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true}); err != nil {
+		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryAllMethods: true}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil
 }
 
 // InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, token string) error {
+func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, token UpdateTokenSource) error {
 	req := apitype.PatchUpdateCheckpointRequest{
 		IsInvalid: true,
 	}
@@ -934,7 +934,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
 func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
-	token string) error {
+	token UpdateTokenSource) error {
 
 	rawDeployment, err := json.Marshal(deployment)
 	if err != nil {
@@ -955,7 +955,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token string) error {
+	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource) error {
 
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
 		Version:           3,
@@ -978,7 +978,7 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.
 func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token string) error {
+	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource) error {
 
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
 		Version:         3,
@@ -1002,7 +1002,7 @@ func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) err
 
 // CompleteUpdate completes the indicated update with the given status.
 func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
-	token string) error {
+	token UpdateTokenSource) error {
 
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
@@ -1032,7 +1032,7 @@ func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdenti
 
 // RecordEngineEvents posts a batch of engine events to the Pulumi service.
 func (pc *Client) RecordEngineEvents(
-	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token string) error {
+	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token UpdateTokenSource) error {
 	callOpts := httpCallOptions{
 		GzipCompress:    true,
 		RetryAllMethods: true,
