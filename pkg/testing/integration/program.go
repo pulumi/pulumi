@@ -318,6 +318,9 @@ type ProgramTestOptions struct {
 	// uses Node, Python, .NET or Go.
 	PrepareProject func(*engine.Projinfo) error
 
+	// If not nil, will be run after the project has been prepared.
+	PostPrepareProject func(*engine.Projinfo) error
+
 	// Array of provider plugin dependencies which come from local packages.
 	LocalProviders []LocalDependency
 }
@@ -1884,6 +1887,13 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	err = pt.prepareProject(projinfo)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to prepare %v: %w", projdir, err)
+	}
+
+	if pt.opts.PostPrepareProject != nil {
+		err = pt.opts.PostPrepareProject(projinfo)
+		if err != nil {
+			return "", "", fmt.Errorf("Failed to post-prepare %v: %w", projdir, err)
+		}
 	}
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
