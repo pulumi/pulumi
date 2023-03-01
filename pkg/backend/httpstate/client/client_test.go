@@ -126,12 +126,14 @@ func TestGzip(t *testing.T) {
 	_, err := client.ImportStackDeployment(context.Background(), StackIdentifier{}, nil)
 	assert.NoError(t, err)
 
+	tok := updateTokenStaticSource("")
+
 	// PATCH /checkpoint
-	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{}, nil, "")
+	err = client.PatchUpdateCheckpoint(context.Background(), UpdateIdentifier{}, nil, tok)
 	assert.NoError(t, err)
 
 	// POST /events/batch
-	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{}, apitype.EngineEventBatch{}, "")
+	err = client.RecordEngineEvents(context.Background(), UpdateIdentifier{}, apitype.EngineEventBatch{}, tok)
 	assert.NoError(t, err)
 
 	// POST /events/batch
@@ -182,7 +184,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
-		UpdateIdentifier{}, sequenceNumber, indented, "token")
+		UpdateIdentifier{}, sequenceNumber, indented, updateTokenStaticSource("token"))
 	assert.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {

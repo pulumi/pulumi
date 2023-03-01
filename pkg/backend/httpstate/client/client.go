@@ -922,7 +922,9 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 }
 
 // InvalidateUpdateCheckpoint invalidates the checkpoint for the indicated update.
-func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, token UpdateTokenSource) error {
+func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateIdentifier,
+	token UpdateTokenSource) error {
+
 	req := apitype.PatchUpdateCheckpointRequest{
 		IsInvalid: true,
 	}
