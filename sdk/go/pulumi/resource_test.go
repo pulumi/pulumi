@@ -15,8 +15,10 @@
 package pulumi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"testing"
@@ -580,8 +582,9 @@ func TestUninitializedParentResource(t *testing.T) {
 		{
 			desc:   "component resource",
 			parent: &myComponent{},
-			wantErr: "parent component resource *pulumi.myComponent has not been registered: " +
-				"did you mean to call RegisterComponentResource?",
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
 		},
 		{
 			desc:   "component resource/alias",
@@ -591,13 +594,16 @@ func TestUninitializedParentResource(t *testing.T) {
 					{Name: String("alias1")},
 				}),
 			},
-			wantErr: "parent component resource *pulumi.myComponent has not been registered: " +
-				"did you mean to call RegisterComponentResource?",
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
 		},
 		{
-			desc:    "custom resource",
-			parent:  &myCustomResource{},
-			wantErr: "parent resource *pulumi.myCustomResource has not been registered",
+			desc:   "custom resource",
+			parent: &myCustomResource{},
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
 		},
 		{
 			desc:   "custom resource/alias",
@@ -607,7 +613,9 @@ func TestUninitializedParentResource(t *testing.T) {
 					{Name: String("alias1")},
 				}),
 			},
-			wantErr: "parent resource *pulumi.myCustomResource has not been registered",
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
 		},
 	}
 
@@ -620,15 +628,26 @@ func TestUninitializedParentResource(t *testing.T) {
 				"test case must specify an error message")
 
 			err := RunErr(func(ctx *Context) error {
+				// This is a hack.
+				// We're accesing context mock internals
+				// because the mock API does not expose a way
+				// to set the logger.
+				//
+				// If this ever becomes a problem,
+				// add a way to supply a logger to the mock
+				// and use that here.
+				var buff bytes.Buffer
+				ctx.engine.(*mockEngine).logger = log.New(&buff, "", 0)
+
 				opts := []ResourceOption{Parent(tt.parent)}
 				opts = append(opts, tt.opts...)
 
 				var res testRes
-				err := ctx.RegisterResource(
+				require.NoError(t, ctx.RegisterResource(
 					"test:index:MyResource",
 					"my-resource",
-					nil /* props */, &res, opts...)
-				assert.ErrorContains(t, err, tt.wantErr)
+					nil /* props */, &res, opts...))
+				assert.Contains(t, buff.String(), tt.wantErr)
 				return nil
 			}, WithMocks("project", "stack", &testMonitor{}))
 			assert.NoError(t, err)
