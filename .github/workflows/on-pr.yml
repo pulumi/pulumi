@@ -45,10 +45,23 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
+  # Labels the PR based on affected paths.
+  # Configuration is in .github/labeler.yml.
+  label:
+    name: Add CI labels
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+
   ci:
     name: CI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info]
+    needs: [info, label]
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -59,6 +72,14 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       lint: true
       build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+      # codegen tests take quite a while to run.
+      # Run them only if ci/test or ci/test-codegen is set.
+      # The latter is set by the label action if relevant files change.
+      codegen-tests:  >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
+          contains(github.event.pull_request.labels.*.name, 'ci/test-codegen')
+        }}
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
