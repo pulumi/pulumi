@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: grpc 1.51.3 Python SDK contains native arm64 binaries (universal2)

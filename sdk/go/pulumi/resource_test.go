@@ -15,13 +15,16 @@
 package pulumi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -551,6 +554,107 @@ func TestNewResourceInput(t *testing.T) {
 	assert.Equal(t, "abracadabra", unpackedRes.foo)
 }
 
+// Verifies that a Parent resource that has not been initialized will panic,
+// and will instead report a meaningful error message.
+func TestUninitializedParentResource(t *testing.T) {
+	t.Parallel()
+
+	type myComponent struct {
+		ResourceState
+	}
+
+	type myCustomResource struct {
+		CustomResourceState
+	}
+
+	tests := []struct {
+		desc   string
+		parent Resource
+
+		// additional options to pass to RegisterResource
+		// besides the Parent.
+		// The original report of the panic was with an Alias option.
+		opts []ResourceOption
+
+		// Message that should be part of the error message.
+		wantErr string
+	}{
+		{
+			desc:   "component resource",
+			parent: &myComponent{},
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
+		},
+		{
+			desc:   "component resource/alias",
+			parent: &myComponent{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
+		},
+		{
+			desc:   "custom resource",
+			parent: &myCustomResource{},
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
+		},
+		{
+			desc:   "custom resource/alias",
+			parent: &myCustomResource{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotEmpty(t, tt.wantErr,
+				"test case must specify an error message")
+
+			err := RunErr(func(ctx *Context) error {
+				// This is a hack.
+				// We're accesing context mock internals
+				// because the mock API does not expose a way
+				// to set the logger.
+				//
+				// If this ever becomes a problem,
+				// add a way to supply a logger to the mock
+				// and use that here.
+				var buff bytes.Buffer
+				ctx.engine.(*mockEngine).logger = log.New(&buff, "", 0)
+
+				opts := []ResourceOption{Parent(tt.parent)}
+				opts = append(opts, tt.opts...)
+
+				var res testRes
+				require.NoError(t, ctx.RegisterResource(
+					"test:index:MyResource",
+					"my-resource",
+					nil /* props */, &res, opts...))
+				assert.Contains(t, buff.String(), tt.wantErr)
+				return nil
+			}, WithMocks("project", "stack", &testMonitor{}))
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestDependsOnInputs(t *testing.T) {
 	t.Parallel()
 
@@ -602,6 +706,61 @@ func TestDependsOnInputs(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
+		assert.NoError(t, err)
+	})
+}
+
+// https://github.com/pulumi/pulumi/issues/12161
+func TestComponentResourcePropagatesProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("provider option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Provider(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
+		assert.NoError(t, err)
+	})
+
+	t.Run("providers option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Providers(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
 }

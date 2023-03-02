@@ -78,7 +78,7 @@ const (
 // accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
 type accessToken interface {
 	Kind() accessTokenKind
-	String() string
+	Get(ctx context.Context) (string, error)
 }
 
 type httpCallOptions struct {
@@ -97,20 +97,38 @@ func (apiAccessToken) Kind() accessTokenKind {
 	return accessTokenKindAPIToken
 }
 
-func (t apiAccessToken) String() string {
-	return string(t)
+func (t apiAccessToken) Get(_ context.Context) (string, error) {
+	return string(t), nil
 }
 
-// updateAccessToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
-// accessTokenKindUpdateToken)
-type updateAccessToken string
+// UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
+// actual API call (e.g. after marshaling, etc.).
+type UpdateTokenSource interface {
+	GetToken(ctx context.Context) (string, error)
+}
 
-func (updateAccessToken) Kind() accessTokenKind {
+type updateTokenStaticSource string
+
+func (t updateTokenStaticSource) GetToken(_ context.Context) (string, error) {
+	return string(t), nil
+}
+
+// updateToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
+// accessTokenKindUpdateToken)
+type updateToken struct {
+	source UpdateTokenSource
+}
+
+func updateAccessToken(source UpdateTokenSource) updateToken {
+	return updateToken{source: source}
+}
+
+func (updateToken) Kind() accessTokenKind {
 	return accessTokenKindUpdateToken
 }
 
-func (t updateAccessToken) String() string {
-	return string(t)
+func (t updateToken) Get(ctx context.Context) (string, error) {
+	return t.source.GetToken(ctx)
 }
 
 func float64Ptr(f float64) *float64 {
@@ -208,8 +226,12 @@ func pulumiAPICall(ctx context.Context,
 	req.Header.Set("Accept", "application/vnd.pulumi+8")
 
 	// Apply credentials if provided.
-	if tok.String() != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
+	creds, err := tok.Get(ctx)
+	if err != nil {
+		return "", nil, fmt.Errorf("fetching credentials: %w", err)
+	}
+	if creds != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), creds))
 	}
 
 	tracingOptions := tracing.OptionsFromContext(ctx)
@@ -255,7 +277,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
+	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
 		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 

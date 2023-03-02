@@ -13,20 +13,20 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import * as util from "util";
-import * as url from "url";
+import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsnode from "ts-node";
-import * as ini from "ini";
 import * as semver from "semver";
+import * as tsnode from "ts-node";
+import * as url from "url";
+import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as stack from "../../runtime/stack";
-import * as settings from "../../runtime/settings";
-import * as tracing from "./tracing";
-import * as tsutils from "../../tsutils";
 import { Inputs } from "../../output";
+import * as settings from "../../runtime/settings";
+import * as stack from "../../runtime/stack";
+import * as tsutils from "../../tsutils";
+import * as tracing from "./tracing";
 
 import * as mod from ".";
 
@@ -373,6 +373,12 @@ ${defaultMessage}`);
                 }
             } else {
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
+
+                // If this is a folder ensure it ends with a "/" so we require the folder, not any adjacent .json file
+                const programStats = await fs.promises.lstat(program);
+                if (programStats.isDirectory() && !program.endsWith("/")) {
+                    program = program + "/";
+                }
                 programExport = require(program);
             }
 

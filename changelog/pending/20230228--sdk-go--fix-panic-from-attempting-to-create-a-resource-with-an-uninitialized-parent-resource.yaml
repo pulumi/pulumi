@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Fix panic from attempting to create a resource with an uninitialized parent resource.
