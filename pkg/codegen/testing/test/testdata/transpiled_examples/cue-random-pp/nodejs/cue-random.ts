@@ -4,6 +4,6 @@ import * as random from "@pulumi/random";
 const randomPassword = new random.RandomPassword("randomPassword", {
     length: 16,
     special: true,
-    overrideSpecial: `_%@`,
+    overrideSpecial: "_%@",
 });
 export const password = randomPassword.result;
