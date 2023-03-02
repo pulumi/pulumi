@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -12,7 +10,7 @@ func main() {
 		randomPassword, err := random.NewRandomPassword(ctx, "randomPassword", &random.RandomPasswordArgs{
 			Length:          pulumi.Int(16),
 			Special:         pulumi.Bool(true),
-			OverrideSpecial: pulumi.String(fmt.Sprintf("_%v@", "%")),
+			OverrideSpecial: pulumi.String("_%@"),
 		})
 		if err != nil {
 			return err
