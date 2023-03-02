@@ -154,7 +154,49 @@ func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.ResourceIn
 func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
 	opts ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
 
-	panic("not implemented")
+	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if in.GetTok() == "pulumi:pulumi:getResource" {
+		urn := args["urn"].StringValue()
+		registeredResourceV, ok := m.resources.Load(urn)
+		if !ok {
+			return nil, fmt.Errorf("unknown resource %s", urn)
+		}
+		registeredResource := registeredResourceV.(resource.PropertyMap)
+		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.CallResponse{
+			Return: result,
+		}, nil
+	}
+	resultV, err := m.mocks.Call(MockCallArgs{
+		Token:    in.GetTok(),
+		Args:     args,
+		Provider: in.GetProvider(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CallResponse{
+		Return: result,
+	}, nil
 }
 
 func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResourceRequest,

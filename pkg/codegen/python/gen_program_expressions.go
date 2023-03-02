@@ -363,6 +363,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
+	case "method":
+		// _, _, fn, diags := functionName(expr.Args[0])
+		// contract.Assert(len(diags) == 0)
 	case "join":
 		g.Fgenf(w, "%.16v.join(%v)", expr.Args[0], expr.Args[1])
 	case "length":

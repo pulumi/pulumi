@@ -1004,6 +1004,8 @@ type FunctionCallExpression struct {
 	Signature StaticFunctionSignature
 	// The arguments to the function call.
 	Args []Expression
+	// The resource name for the function call.
+	Res string
 	// ExpandFinal indicates that the final argument should be a tuple, list, or set whose elements will be passed as
 	// individual arguments to the function.
 	ExpandFinal bool
