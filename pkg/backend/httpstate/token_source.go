@@ -23,7 +23,7 @@ import (
 )
 
 type tokenSourceCapability interface {
-	GetToken() (string, error)
+	GetToken(ctx context.Context) (string, error)
 }
 
 // tokenSource is a helper type that manages the renewal of the lease token for a managed update.
@@ -130,11 +130,21 @@ func (ts *tokenSource) handleRequests(
 	}
 }
 
-func (ts *tokenSource) GetToken() (string, error) {
+func (ts *tokenSource) GetToken(ctx context.Context) (string, error) {
 	ch := make(chan tokenResponse)
-	ts.requests <- ch
-	resp := <-ch
-	return resp.token, resp.err
+
+	select {
+	case ts.requests <- ch:
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
+	select {
+	case resp := <-ch:
+		return resp.token, resp.err
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
 }
 
 func (ts *tokenSource) Close() {

@@ -514,6 +514,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	if err != nil {
 		return nil, err
 	}
+	defer pipes.shutdown()
 
 	// Channel producing the final response we want to issue to our caller. Will get the result of
 	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.

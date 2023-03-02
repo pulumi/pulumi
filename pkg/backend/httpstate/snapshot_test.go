@@ -241,6 +241,6 @@ type tokenSourceFn func() (string, error)
 
 var _ tokenSourceCapability = tokenSourceFn(nil)
 
-func (tsf tokenSourceFn) GetToken() (string, error) {
+func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 	return tsf()
 }

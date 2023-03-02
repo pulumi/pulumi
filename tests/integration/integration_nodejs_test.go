@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
@@ -1307,6 +1308,26 @@ func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 			urn := resource.URN(urnOut)
 			typ := urn.Type().String()
 			assert.Equal(t, "pulumi-nodejs:dynamic/custom-provider:CustomResource", typ)
+		},
+	})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12301
+func TestRegression12301Node(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "regression-12301"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		PostPrepareProject: func(project *engine.Projinfo) error {
+			// Move the bad JSON file up one directory
+			jsonPath := filepath.Join(project.Root, "regression-12301.json")
+			dirName := filepath.Base(project.Root)
+			newPath := filepath.Join(project.Root, "..", dirName+".json")
+			return os.Rename(jsonPath, newPath)
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Len(t, stack.Outputs, 1)
+			assert.Contains(t, stack.Outputs, "bar")
+			assert.Equal(t, 3.0, stack.Outputs["bar"].(float64))
 		},
 	})
 }

@@ -44,11 +44,6 @@ func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	ctx := persister.context
 
-	token, err := persister.tokenSource.GetToken()
-	if err != nil {
-		return err
-	}
-
 	deploymentV3, err := stack.SerializeDeployment(snapshot, persister.sm, false /* showSecrets */)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
@@ -58,7 +53,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	if persister.deploymentDiffState == nil {
 		// Continue with how deployments were saved before diff.
 		return persister.backend.client.PatchUpdateCheckpoint(
-			persister.context, persister.update, deploymentV3, token)
+			persister.context, persister.update, deploymentV3, persister.tokenSource)
 	}
 
 	deployment, err := client.MarshalUntypedDeployment(deploymentV3)
@@ -70,7 +65,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
 	if !differ.ShouldDiff(deployment) {
-		if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
+		if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
@@ -78,13 +73,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 		if err != nil {
 			return err
 		}
-		if err := persister.saveDiff(ctx, diff, token); err != nil {
+		if err := persister.saveDiff(ctx, diff, persister.tokenSource); err != nil {
 			if logging.V(3) {
 				logging.V(3).Infof("ignoring error saving checkpoint "+
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)
 			}
-			if err := persister.saveFullVerbatim(ctx, differ, deployment, token); err != nil {
+			if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
 				return err
 			}
 		}
@@ -94,14 +89,14 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 }
 
 func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
-	diff deploymentDiff, token string) error {
+	diff deploymentDiff, token client.UpdateTokenSource) error {
 	return persister.backend.client.PatchUpdateCheckpointDelta(
 		persister.context, persister.update,
 		diff.sequenceNumber, diff.checkpointHash, diff.deploymentDelta, token)
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment json.RawMessage, token string) error {
+	differ *deploymentDiffState, deployment json.RawMessage, token client.UpdateTokenSource) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
 		deployment, token)
