@@ -15,6 +15,9 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -28,9 +31,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func newGenSdkCommand() *cobra.Command {
+	var overlays string
 	var language string
 	var out string
 	cmd := &cobra.Command{
@@ -47,55 +52,95 @@ func newGenSdkCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Normalize from well known language names the the matching runtime names.
+			switch language {
+			case "csharp", "c#":
+				language = "dotnet"
+			case "typescript":
+				language = "nodejs"
+			}
+
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					err := genSDK(lang, out, pkg)
+					// If we're generating all the languages place each one in a subdirectory of the output
+					// directory, and grab the overlays from a subdirectory of the overlays directory.
+					langOut := filepath.Join(out, language)
+					langOverlays := ""
+					if overlays != "" {
+						langOverlays = filepath.Join(overlays, language)
+					}
+					err := genSDK(lang, langOut, pkg, langOverlays)
 					if err != nil {
 						return err
 					}
 				}
 				return nil
 			}
-			return genSDK(language, out, pkg)
+			return genSDK(language, out, pkg, overlays)
 		}),
 	}
 	cmd.Flags().StringVarP(&language, "language", "", "all",
 		"The SDK language to generate: [nodejs|python|go|dotnet|java|all]")
 	cmd.Flags().StringVarP(&out, "out", "o", "./sdk",
 		"The directory to write the SDK to")
+	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
+	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd
 }
 
-func genSDK(language, out string, pkg *schema.Package) error {
+func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 	var f func(string, *schema.Package, map[string][]byte) (map[string][]byte, error)
 	switch language {
-	case "csharp", "c#", "dotnet":
+	case "dotnet":
 		f = dotnet.GeneratePackage
-		language = "dotnet"
 	case "go":
+		if overlays != "" {
+			return errors.New("overlays are not supported for Go")
+		}
 		f = func(s string, p *schema.Package, m map[string][]byte) (map[string][]byte, error) {
 			return gogen.GeneratePackage(s, pkg)
 		}
-	case "typescript", "nodejs":
+	case "nodejs":
 		f = nodejs.GeneratePackage
-		language = "nodejs"
 	case "python": //nolint:goconst
 		f = python.GeneratePackage
 	case "java":
 		f = javagen.GeneratePackage
+	default:
+		return fmt.Errorf("unknown language %q", language)
 	}
 
-	m, err := f("pulumi", pkg, nil)
+	extraFiles := make(map[string][]byte)
+	if overlays != "" {
+		fsys := os.DirFS(overlays)
+		err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+
+			contents, err := fs.ReadFile(fsys, path)
+			if err != nil {
+				return fmt.Errorf("read overlay file %q: %w", path, err)
+			}
+
+			extraFiles[path] = contents
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("read overlay directory %q: %w", overlays, err)
+		}
+	}
+
+	m, err := f("pulumi", pkg, extraFiles)
 	if err != nil {
 		return err
 	}
-	root := filepath.Join(out, language)
-	err = os.RemoveAll(root)
+	err = os.RemoveAll(out)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	for k, v := range m {
-		path := filepath.Join(root, k)
+		path := filepath.Join(out, k)
 		err := os.MkdirAll(filepath.Dir(path), 0o700)
 		if err != nil {
 			return err
