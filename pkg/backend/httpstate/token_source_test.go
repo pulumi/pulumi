@@ -42,7 +42,7 @@ func TestTokenSource(t *testing.T) {
 	defer ts.Close()
 
 	for i := 0; i < 32; i++ {
-		tok, err := ts.GetToken()
+		tok, err := ts.GetToken(ctx)
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
@@ -78,7 +78,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	defer ts.Close()
 
 	for i := 0; i < 8; i++ {
-		tok, err := ts.GetToken()
+		tok, err := ts.GetToken(ctx)
 		assert.NoError(t, err)
 		assert.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
