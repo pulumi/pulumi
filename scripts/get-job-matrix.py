@@ -72,6 +72,27 @@ def is_unit_test(pkg: str) -> bool:
         or pkg in INTEGRATION_TEST_PACKAGES
     )
 
+# Keep this in sync with filters defined in .github/workflows/on-pr.yml.
+CODEGEN_TEST_PACKAGES = {
+    "github.com/pulumi/pulumi/pkg/v3/codegen/docs",
+    "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",
+    "github.com/pulumi/pulumi/pkg/v3/codegen/go",
+    "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs",
+    "github.com/pulumi/pulumi/pkg/v3/codegen/python",
+}
+
+def is_codegen_test(pkg: str) -> bool:
+    """Checks if a package is a per-language codegen test"""
+    if pkg in CODEGEN_TEST_PACKAGES:
+        return True
+
+    for codegen_pkg in CODEGEN_TEST_PACKAGES:
+        if pkg.startswith(codegen_pkg + "/"):
+            return True
+
+    return False
+
+
 class MakefileTest(TypedDict):
     name: str
     run: str
@@ -348,6 +369,7 @@ def get_matrix(
     platforms: List[str],
     version_sets: List[VersionSet],
     fast: bool = False,
+    codegen_tests: bool = False,
 ) -> Matrix:
     """Compute a job matrix"""
     if kind == JobKind.INTEGRATION_TEST:
@@ -374,6 +396,8 @@ def get_matrix(
     for item in partition_modules:
         go_packages = run_list_packages(item.module_dir, tags)
         go_packages = set(go_packages) - partitioned_packages
+        if not codegen_tests:
+            go_packages = {pkg for pkg in go_packages if not is_codegen_test(pkg)}
 
         if kind == JobKind.INTEGRATION_TEST or kind == JobKind.ACCEPTANCE_TEST:
             go_packages = {pkg for pkg in go_packages if not is_unit_test(pkg)}
@@ -453,6 +477,7 @@ def generate_matrix(args: argparse.Namespace):
         partition_modules=partition_modules,
         partition_packages=partition_packages,
         version_sets=version_sets,
+        codegen_tests=args.codegen_tests,
     )
 
     if not matrix["platform"] or not matrix["test-suite"] or not matrix["version-set"]:
@@ -469,6 +494,13 @@ def add_generate_matrix_args(parser: argparse.ArgumentParser):
         required=True,
         choices=[kind.value for kind in JobKind],
         help="Kind of output to generate",
+    )
+    parser.add_argument(
+        "--codegen-tests",
+        required=False,
+        default=True,
+        action=argparse.BooleanOptionalAction,  # adds --no-codegen-tests
+        help="Whether to include per-langauge codegen tests",
     )
     parser.add_argument(
         "--fast", action="store_true", default=False, help="Exclude slow tests"

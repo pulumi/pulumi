@@ -45,10 +45,35 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
+  # Determines which files have changed
+  # so we can avoid running expensive tests
+  # if they're not necessary.
+  inspect:
+    name: Inspect changed files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          filters: |
+            # If files matching any of these patterns change,
+            # we will run codegen tests for pull requests.
+            test-codegen:
+              - 'pkg/codegen/docs/**'
+              - 'pkg/codegen/dotnet/**'
+              - 'pkg/codegen/go/**'
+              - 'pkg/codegen/nodejs/**'
+              - 'pkg/codegen/python/**'
+    outputs:
+      # Add an entry here for every named pattern
+      # defined in filters.
+      test-codegen: ${{ steps.changes.outputs.test-codegen }}
+
   ci:
     name: CI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info]
+    needs: [info, inspect]
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -59,6 +84,14 @@ jobs:
       version: ${{ needs.info.outputs.version }}
       lint: true
       build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
+      # codegen tests take quite a while to run.
+      # Run them only if ci/test is set,
+      # or if one of the codegen files changed.
+      test-codegen:  >- # No newlines or trailing newline.
+        ${{
+          contains(github.event.pull_request.labels.*.name, 'ci/test') ||
+          (needs.inspect.outputs.test-codegen == 'true')
+        }}
       test-version-sets: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test')
