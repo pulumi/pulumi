@@ -324,7 +324,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
 	var sortedVals = importSet.SortedValues()
@@ -399,9 +399,9 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
 		def, err := pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error loading package definition for %q", pkg.Name())
 		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error importing nodejs language for %q", pkg.Name())
 		if lang, ok := def.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
