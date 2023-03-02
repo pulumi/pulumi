@@ -114,9 +114,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 		if p.Version != nil {
-			requirementsTxt.WriteString(fmt.Sprintf("%s==%s\n", packageName, p.Version.String()))
+			fmt.Fprintf(&requirementsTxt, "%s==%s\n", packageName, p.Version.String())
 		} else {
-			requirementsTxt.WriteString(fmt.Sprintf("%s\n", packageName))
+			fmt.Fprintf(&requirementsTxt, "%s\n", packageName)
 		}
 	}
 

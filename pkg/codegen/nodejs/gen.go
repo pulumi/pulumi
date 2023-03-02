@@ -173,7 +173,7 @@ func (mod *modContext) tokenToModName(tok string) string {
 	}
 
 	if modName != "" {
-		modName = strings.Replace(modName, "/", ".", -1) + "."
+		modName = strings.ReplaceAll(modName, "/", ".") + "."
 	}
 
 	return modName
@@ -382,7 +382,7 @@ func isStringType(t schema.Type) bool {
 }
 
 func sanitizeComment(str string) string {
-	return strings.Replace(str, "*/", "*&#47;", -1)
+	return strings.ReplaceAll(str, "*/", "*&#47;")
 }
 
 func printComment(w io.Writer, comment, deprecationMessage, indent string) {
@@ -2671,7 +2671,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 				continue
 			}
 
-			packagePath := strings.Replace(modName, "/", ".", -1)
+			packagePath := strings.ReplaceAll(modName, "/", ".")
 			lr := LanguageResource{
 				Resource: r,
 				Name:     resourceName(r),

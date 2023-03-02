@@ -212,9 +212,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 			}
 		}
 		if p.Version != nil {
-			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, p.Version.String()))
+			fmt.Fprintf(&csproj, packageTemplate, packageName, p.Version.String())
 		} else {
-			csproj.WriteString(fmt.Sprintf(packageTemplate, packageName, "*"))
+			fmt.Fprintf(&csproj, packageTemplate, packageName, "*")
 		}
 	}
 

@@ -103,7 +103,7 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 		name := packs.Name
 
 		// Version Tags column
-		versionTags := strings.Trim(strings.Replace(fmt.Sprint(packs.VersionTags), " ", ", ", -1), "[]")
+		versionTags := strings.Trim(strings.ReplaceAll(fmt.Sprint(packs.VersionTags), " ", ", "), "[]")
 
 		// Render the columns.
 		columns := []string{name, versionTags}

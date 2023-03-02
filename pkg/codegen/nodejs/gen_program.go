@@ -162,14 +162,15 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
-	packageJSON.WriteString(fmt.Sprintf(`{
+	fmt.Fprintf(&packageJSON, `{
 		"name": "%s",
 		"devDependencies": {
 			"@types/node": "^14"
 		},
 		"dependencies": {
 			"typescript": "^4.0.0",
-			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
+			"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+
 	// For each package add a dependency line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
@@ -196,9 +197,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
 		if p.Version != nil {
-			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
 		} else {
-			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, "*"))
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
 		}
 	}
 	packageJSON.WriteString(`

@@ -59,7 +59,7 @@ func ReplaceInFile(old, new, path string) error {
 	if err != nil {
 		return err
 	}
-	newContents := strings.Replace(string(rawContents), old, new, -1)
+	newContents := strings.ReplaceAll(string(rawContents), old, new)
 	return os.WriteFile(path, []byte(newContents), os.ModePerm)
 }
 

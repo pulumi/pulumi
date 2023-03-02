@@ -2925,7 +2925,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 				continue
 			}
 
-			packagePath := strings.Replace(modName, "/", ".", -1)
+			packagePath := strings.ReplaceAll(modName, "/", ".")
 			lr := LanguageResource{
 				Resource: r,
 				Package:  packagePath,

@@ -162,7 +162,7 @@ func MassageIfUserProgramCodeAsset(asset *Asset, debug bool) *Asset {
 	text := asset.Text
 	replaceNewlines := func() {
 		for {
-			newText := strings.Replace(text, "\n\n\n", "\n\n", -1)
+			newText := strings.ReplaceAll(text, "\n\n\n", "\n\n")
 			if len(newText) == len(text) {
 				break
 			}
