@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Display now shows default colorized stacktraces in NodeJS.
