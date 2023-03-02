@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -361,6 +362,42 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 	return req, nil
 }
 
+func (source *githubSource) getHTTPResponse(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	req *http.Request) (io.ReadCloser, int64, error) {
+
+	resp, length, err := getHTTPResponse(req)
+	if err == nil {
+		return resp, length, nil
+	}
+
+	// Wrap 403 rate limit errors with a more helpful message.
+	var downErr *downloadError
+	if !errors.As(err, &downErr) || downErr.code != 403 {
+		return nil, -1, err
+	}
+
+	// This is a rate limiting error only if x-ratelimit-remaining is 0.
+	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+	if downErr.header.Get("x-ratelimit-remaining") != "0" {
+		return nil, -1, err
+	}
+
+	tryAgain := "."
+	if reset, err := strconv.ParseInt(downErr.header.Get("x-ratelimit-reset"), 10, 64); err == nil {
+		delay := time.Until(time.Unix(reset, 0).UTC())
+		tryAgain = fmt.Sprintf(", try again in %s.", delay)
+	}
+
+	addAuth := ""
+	if source.token == "" {
+		addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+	}
+
+	logging.Errorf("GitHub rate limit exceeded%s%s", tryAgain, addAuth)
+	return nil, -1, fmt.Errorf("rate limit exceeded: %w", err)
+}
+
 func (source *githubSource) GetLatestVersion(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
@@ -371,7 +408,7 @@ func (source *githubSource) GetLatestVersion(
 	if err != nil {
 		return nil, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +443,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -440,7 +477,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHTTPResponse(req)
+	return source.getHTTPResponse(getHTTPResponse, req)
 }
 
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
@@ -901,7 +938,8 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, newDownloadError(resp.StatusCode, req.URL)
+		contract.IgnoreClose(resp.Body)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL, resp.Header)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -909,16 +947,13 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 
 // downloadError is an error that happened during the HTTP download of a plugin.
 type downloadError struct {
-	msg  string
-	code int
+	msg    string
+	code   int
+	header http.Header
 }
 
 func (e *downloadError) Error() string {
 	return e.msg
-}
-
-func (e *downloadError) Code() int {
-	return e.code
 }
 
 // Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
@@ -934,13 +969,14 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 }
 
 // Create a new downloadError.
-func newDownloadError(statusCode int, url *url.URL) error {
+func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)
 	}
 	return &downloadError{
-		code: statusCode,
-		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		code:   statusCode,
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		header: header,
 	}
 }
 
@@ -1073,12 +1109,14 @@ func DownloadToFile(
 			}
 
 			// If the readErr is a checksum error don't retry
-			if _, ok := readErr.(*checksumError); ok {
+			var checksumErr *checksumError
+			if errors.As(readErr, &checksumErr) {
 				return "", readErr
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			if err, ok := readErr.(*downloadError); ok && (err.Code() == 404 || err.Code() == 403) {
+			var downloadErr *downloadError
+			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
 				return "", readErr
 			}
 
