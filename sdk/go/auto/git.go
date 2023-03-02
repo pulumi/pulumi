@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp/capability"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -36,7 +37,6 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	}
 
 	if repoArgs.Auth != nil {
-
 		authDetails := repoArgs.Auth
 		// Each of the authentication options are mutually exclusive so let's check that only 1 is specified
 		if authDetails.SSHPrivateKeyPath != "" && authDetails.Username != "" ||
@@ -134,6 +134,16 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	transport.UnsupportedCapabilities = oldUnsupportedCaps
 
 	if repoArgs.CommitHash != "" {
+		// ensure that the commit has been fetched
+		err = repo.FetchContext(ctx, &git.FetchOptions{
+			RemoteName: "origin",
+			Auth:       cloneOptions.Auth,
+			RefSpecs:   []config.RefSpec{config.RefSpec(repoArgs.CommitHash + ":" + repoArgs.CommitHash)},
+		})
+		if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) && !errors.Is(err, git.ErrExactSHA1NotSupported) {
+			return "", fmt.Errorf("fetching commit: %w", err)
+		}
+
 		// checkout commit if specified
 		w, err := repo.Worktree()
 		if err != nil {
