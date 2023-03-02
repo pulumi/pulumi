@@ -803,6 +803,26 @@ func (ctx *Context) registerResource(
 	}
 
 	options := merge(opts...)
+
+	if parent := options.Parent; parent != nil && parent.URN().getState() == nil {
+		// Guard against uninitialized parent resources to prevent
+		// panics from invalid state further down the line.
+		// Uninitialized parent resources won't have a URN.
+
+		resourceType := "resource"
+		registerMethod := "RegisterResource"
+		if _, parentIsCustom := parent.(CustomResource); !parentIsCustom {
+			resourceType = "component resource"
+			registerMethod = "RegisterComponentResource"
+		}
+		err := ctx.Log.Warn(fmt.Sprintf(
+			"Ignoring %v %T (parent of %v :: %v) because it was not registered with %v",
+			resourceType, parent, name, t, registerMethod), nil /* args */)
+		contract.IgnoreError(err)
+
+		options.Parent = nil
+	}
+
 	parent := options.Parent
 	if options.Parent == nil {
 		options.Parent = ctx.stack
