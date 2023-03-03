@@ -159,7 +159,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	project.Runtime = workspace.NewProjectRuntimeInfo("go", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return err
+		return err // sample change to verify https://github.com/pulumi/pulumi/pull/12339
 	}
 	files["Pulumi.yaml"] = projectBytes
 
