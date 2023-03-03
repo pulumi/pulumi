@@ -15,7 +15,10 @@
 package engine
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -66,16 +69,34 @@ func Refresh(
 func newRefreshSource(client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
-	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
-	// Unlike Update, we don't actually run the user's program so we only need the set of plugins described
-	// in the snapshot.
-	plugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	snapshotPlugins, err := gatherPluginsFromSnapshot(plugctx, target)
+	if err != nil {
+		return nil, err
+	}
+	programPlugins, err := gatherPluginsFromProgram(plugctx, plugin.ProgInfo{
+		Proj:    proj,
+		Pwd:     pwd,
+		Program: main,
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	for _, pp := range programPlugins.Values() {
+		for _, sp := range snapshotPlugins.Values() {
+			if sp.Name == pp.Name && sp.Kind == pp.Kind {
+				if pp.Version.GT(*sp.Version) {
+					msg := fmt.Sprintf(
+						"refresh operation is using an older version of plugin '%s' than the specified program version: %s < %s",
+						pp.Name, sp.Version, pp.Version)
+					plugctx.Diag.Warningf(diag.Message("", msg))
+				}
+			}
+		}
+	}
+
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(plugctx.Request(), snapshotPlugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
