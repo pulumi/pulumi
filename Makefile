@@ -169,6 +169,8 @@ schema-%: curl.ensure jq.ensure
 #
 # pkg/codegen/testing/utils/host.go depends on this list, update that file on changes.
 #
+# pkg/codegen/testing/test/helpers.go depends on some of this list, update that file on changes.
+#
 # pkg/codegen/schema/schema_test.go depends on kubernetes@3.7.2, update that file on changes.
 #
 # As a courtesy to reviewers, please make changes to this list and the committed schema files in a
@@ -189,6 +191,7 @@ get_schemas: \
 			schema-kubernetes!3.7.2     \
 			schema-random!4.2.0         \
 			schema-random!4.3.1         \
+			schema-random!4.11.2        \
 			schema-eks!0.37.1           \
 			schema-eks!0.40.0           \
 			schema-docker!3.1.0         \
