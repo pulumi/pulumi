@@ -122,13 +122,16 @@ type cloudBackend struct {
 	url          string
 	client       *client.Client
 	capabilities func(context.Context) capabilities
+
+	// The current project, if any.
+	currentProject *workspace.Project
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string, insecure bool) (Backend, error) {
+func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -140,15 +143,16 @@ func New(d diag.Sink, cloudURL string, insecure bool) (Backend, error) {
 	capabilities := detectCapabilities(d, client)
 
 	return &cloudBackend{
-		d:            d,
-		url:          cloudURL,
-		client:       client,
-		capabilities: capabilities,
+		d:              d,
+		url:            cloudURL,
+		client:         client,
+		capabilities:   capabilities,
+		currentProject: project,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string,
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project *workspace.Project,
 	insecure bool, opts display.Options,
 ) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
@@ -237,16 +241,18 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string,
 	// Welcome the user since this was an interactive login.
 	WelcomeUser(opts)
 
-	return New(d, cloudURL, insecure)
+	return New(d, cloudURL, project, insecure)
 }
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
-	Current(ctx context.Context, d diag.Sink, cloudURL string, insecure bool) (Backend, error)
+	Current(ctx context.Context, d diag.Sink, cloudURL string,
+		project *workspace.Project, insecure bool) (Backend, error)
 
 	// Login logs into the target cloud URL and returns the cloud backend for it.
-	Login(ctx context.Context, d diag.Sink, cloudURL string, insecure bool, opts display.Options) (Backend, error)
+	Login(ctx context.Context, d diag.Sink, cloudURL string,
+		project *workspace.Project, insecure bool, opts display.Options) (Backend, error)
 }
 
 // NewLoginManager returns a LoginManager for handling backend logins.
@@ -264,7 +270,7 @@ type defaultLoginManager struct{}
 
 // Current returns the current cloud backend if one is already logged in.
 func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL string,
-	insecure bool,
+	project *workspace.Project, insecure bool,
 ) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
@@ -290,7 +296,7 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 				return nil, err
 			}
 
-			return New(d, cloudURL, insecure)
+			return New(d, cloudURL, project, insecure)
 		}
 	}
 
@@ -327,14 +333,15 @@ func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL 
 		return nil, err
 	}
 
-	return New(d, cloudURL, insecure)
+	return New(d, cloudURL, project, insecure)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
 func (m defaultLoginManager) Login(
-	ctx context.Context, d diag.Sink, cloudURL string, insecure bool, opts display.Options,
+	ctx context.Context, d diag.Sink, cloudURL string,
+	project *workspace.Project, insecure bool, opts display.Options,
 ) (Backend, error) {
-	current, err := m.Current(ctx, d, cloudURL, insecure)
+	current, err := m.Current(ctx, d, cloudURL, project, insecure)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +407,7 @@ func (m defaultLoginManager) Login(
 		}
 
 		if accessToken == "" {
-			return loginWithBrowser(ctx, d, cloudURL, insecure, opts)
+			return loginWithBrowser(ctx, d, cloudURL, project, insecure, opts)
 		}
 
 		// Welcome the user since this was an interactive login.
@@ -427,7 +434,7 @@ func (m defaultLoginManager) Login(
 		return nil, err
 	}
 
-	return New(d, cloudURL, insecure)
+	return New(d, cloudURL, project, insecure)
 }
 
 // WelcomeUser prints a Welcome to Pulumi message.
@@ -480,6 +487,10 @@ func (b *cloudBackend) URL() string {
 		return cloudConsoleURL(b.url)
 	}
 	return cloudConsoleURL(b.url, user)
+}
+
+func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
+	b.currentProject = project
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, error) {
@@ -806,7 +817,7 @@ func currentProjectContradictsWorkspace(project *workspace.Project, stack client
 
 func (b *cloudBackend) CreateStack(
 	ctx context.Context, stackRef backend.StackReference, root string,
-	project *workspace.Project, _ interface{} /* No custom options for httpstate backend. */) (
+	_ interface{} /* No custom options for httpstate backend. */) (
 	backend.Stack, error,
 ) {
 	stackID, err := b.getCloudStackIdentifier(stackRef)
@@ -814,11 +825,11 @@ func (b *cloudBackend) CreateStack(
 		return nil, err
 	}
 
-	if currentProjectContradictsWorkspace(project, stackID) {
+	if currentProjectContradictsWorkspace(b.currentProject, stackID) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, project)
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags)
 	if err != nil {

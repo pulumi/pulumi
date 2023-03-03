@@ -36,6 +36,7 @@ import (
 type MockBackend struct {
 	NameF                  func() string
 	URLF                   func() string
+	SetCurrentProjectF     func(proj *workspace.Project)
 	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
@@ -43,7 +44,7 @@ type MockBackend struct {
 	ValidateStackNameF     func(s string) error
 	DoesProjectExistF      func(context.Context, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
-	CreateStackF           func(context.Context, StackReference, string, *workspace.Project, interface{}) (Stack, error)
+	CreateStackF           func(context.Context, StackReference, string, interface{}) (Stack, error)
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
@@ -88,6 +89,13 @@ func (be *MockBackend) Name() string {
 func (be *MockBackend) URL() string {
 	if be.URLF != nil {
 		return be.URLF()
+	}
+	panic("not implemented")
+}
+
+func (be *MockBackend) SetCurrentProject(project *workspace.Project) {
+	if be.SetCurrentProjectF != nil {
+		be.SetCurrentProjectF(project)
 	}
 	panic("not implemented")
 }
@@ -156,10 +164,10 @@ func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (S
 }
 
 func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
-	root string, project *workspace.Project, opts interface{},
+	root string, opts interface{},
 ) (Stack, error) {
 	if be.CreateStackF != nil {
-		return be.CreateStackF(ctx, stackRef, root, project, opts)
+		return be.CreateStackF(ctx, stackRef, root, opts)
 	}
 	panic("not implemented")
 }

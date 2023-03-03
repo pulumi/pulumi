@@ -32,7 +32,7 @@ func TestWrappedBucket(t *testing.T) {
 
 	// Initialize a filestate backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
-	b, err := New(nil, cloudURL)
+	b, err := New(nil, cloudURL, nil)
 	if err != nil {
 		t.Fatalf("Initializing new filestate backend: %v", err)
 	}

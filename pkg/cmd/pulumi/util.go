@@ -129,9 +129,9 @@ func nonInteractiveCurrentBackend(ctx context.Context, project *workspace.Projec
 	}
 
 	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
+		return filestate.New(cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url, workspace.GetCloudInsecure(url))
+	return httpstate.NewLoginManager().Current(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url))
 }
 
 func currentBackend(ctx context.Context, project *workspace.Project, opts display.Options) (backend.Backend, error) {
@@ -145,9 +145,9 @@ func currentBackend(ctx context.Context, project *workspace.Project, opts displa
 	}
 
 	if filestate.IsFileStateBackendURL(url) {
-		return filestate.New(cmdutil.Diag(), url)
+		return filestate.New(cmdutil.Diag(), url, project)
 	}
-	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, workspace.GetCloudInsecure(url), opts)
+	return httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), url, project, workspace.GetCloudInsecure(url), opts)
 }
 
 // This is used to control the contents of the tracing header.
@@ -223,11 +223,10 @@ func createSecretsManager(
 // createStack creates a stack with the given name, and optionally selects it as the current.
 func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference,
-	root string, project *workspace.Project,
-	opts interface{}, setCurrent bool,
+	root string, opts interface{}, setCurrent bool,
 	secretsProvider string,
 ) (backend.Stack, error) {
-	stack, err := b.CreateStack(ctx, stackRef, root, project, opts)
+	stack, err := b.CreateStack(ctx, stackRef, root, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
 		if _, ok := err.(*backend.StackAlreadyExistsError); ok {
@@ -322,7 +321,7 @@ func requireStack(ctx context.Context,
 			return nil, err
 		}
 
-		return createStack(ctx, b, stackRef, root, project, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, b, stackRef, root, nil, lopt.SetCurrent(), "")
 	}
 
 	return nil, fmt.Errorf("no stack named '%s' found", stackName)
@@ -461,7 +460,7 @@ func chooseStack(ctx context.Context,
 			return nil, parseErr
 		}
 
-		return createStack(ctx, b, stackRef, root, proj, nil, lopt.SetCurrent(), "")
+		return createStack(ctx, b, stackRef, root, nil, lopt.SetCurrent(), "")
 	}
 
 	// With the stack name selected, look it up from the backend.
