@@ -705,6 +705,22 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
+	t.Run("Hit GitHub ratelimit", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "")
+		spec := PluginSpec{
+			PluginDownloadURL: "",
+			Name:              "mock-latest",
+			Kind:              PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		assert.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
+		}
+		_, err = source.GetLatestVersion(getHTTPResponse)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "rate limit exceeded")
+	})
 }
 
 func TestInterpolateURL(t *testing.T) {
