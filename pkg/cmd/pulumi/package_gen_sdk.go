@@ -62,14 +62,7 @@ func newGenSdkCommand() *cobra.Command {
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
-					// If we're generating all the languages place each one in a subdirectory of the output
-					// directory, and grab the overlays from a subdirectory of the overlays directory.
-					langOut := filepath.Join(out, language)
-					langOverlays := ""
-					if overlays != "" {
-						langOverlays = filepath.Join(overlays, language)
-					}
-					err := genSDK(lang, langOut, pkg, langOverlays)
+					err := genSDK(lang, out, pkg, overlays)
 					if err != nil {
 						return err
 					}
@@ -112,7 +105,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 
 	extraFiles := make(map[string][]byte)
 	if overlays != "" {
-		fsys := os.DirFS(overlays)
+		fsys := os.DirFS(filepath.Join(overlays, language))
 		err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return err
@@ -135,12 +128,14 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 	if err != nil {
 		return err
 	}
-	err = os.RemoveAll(out)
+
+	root := filepath.Join(out, language)
+	err = os.RemoveAll(root)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	for k, v := range m {
-		path := filepath.Join(out, k)
+		path := filepath.Join(root, k)
 		err := os.MkdirAll(filepath.Dir(path), 0o700)
 		if err != nil {
 			return err
