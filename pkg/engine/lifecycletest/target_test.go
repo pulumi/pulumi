@@ -71,8 +71,8 @@ func TestDestroyTarget(t *testing.T) {
 
 func destroySpecificTargets(
 	t *testing.T, targets []string, targetDependents bool,
-	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
-
+	validate func(urns []resource.URN, deleted map[resource.URN]bool),
+) {
 	//             A
 	//    _________|_________
 	//    B        C        D
@@ -89,7 +89,8 @@ func destroySpecificTargets(
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -99,8 +100,8 @@ func destroySpecificTargets(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
@@ -127,8 +128,8 @@ func destroySpecificTargets(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -199,8 +200,8 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
@@ -208,8 +209,8 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					outputs := olds.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
@@ -235,8 +236,8 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -308,8 +309,8 @@ func updateInvalidTarget(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// all resources will change.
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
@@ -317,8 +318,8 @@ func updateInvalidTarget(t *testing.T) {
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					outputs := olds.Copy()
 
 					outputs["output_prop"] = resource.NewPropertyValue(42)
@@ -384,8 +385,8 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -446,8 +447,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -564,8 +565,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -598,15 +599,15 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// No resources will change.
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 				},
 
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -629,8 +630,8 @@ func TestReplaceSpecificTargets(t *testing.T) {
 		Op:            Update,
 		ExpectFailure: false,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -659,8 +660,10 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Run(t, old)
 }
 
-var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H",
-	"I", "J", "K", "L", "M", "N"}
+var componentBasedTestDependencyGraphNames = []string{
+	"A", "B", "C", "D", "E", "F", "G", "H",
+	"I", "J", "K", "L", "M", "N",
+}
 
 func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	// Parent-child graph
@@ -685,7 +688,8 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	// K depends on H
 	// N depends on H
 
-	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime,
+) {
 	resTypeComponent := tokens.Type("pkgA:index:Component")
 	resTypeResource := tokens.Type("pkgA:index:Resource")
 
@@ -709,7 +713,8 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE, urnF, urnG, urnH, urnI, urnJ, urnK, urnL, urnM, urnN}
 
 	newResource := func(urn, parent resource.URN, id resource.ID,
-		dependencies []resource.URN, propertyDeps propertyDependencies) *resource.State {
+		dependencies []resource.URN, propertyDeps propertyDependencies,
+	) *resource.State {
 		return newResource(urn, parent, id, "", dependencies, propertyDeps,
 			nil, urn.Type() != resTypeComponent)
 	}
@@ -815,8 +820,8 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 
 func destroySpecificTargetsWithChildren(
 	t *testing.T, targets []string, targetDependents bool,
-	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
-
+	validate func(urns []resource.URN, deleted map[resource.URN]bool),
+) {
 	p := &TestPlan{}
 
 	urns, old, program := generateParentedTestDependencyGraph(t, p)
@@ -825,7 +830,8 @@ func destroySpecificTargetsWithChildren(
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -835,8 +841,8 @@ func destroySpecificTargetsWithChildren(
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
@@ -863,8 +869,8 @@ func destroySpecificTargetsWithChildren(
 		Op:            Destroy,
 		ExpectFailure: !targetDependents,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			assert.True(t, len(entries) > 0)
 
@@ -887,8 +893,8 @@ func destroySpecificTargetsWithChildren(
 }
 
 func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
-	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool) *resource.State {
-
+	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool,
+) *resource.State {
 	inputs := resource.PropertyMap{}
 	for k := range propertyDeps {
 		inputs[k] = resource.NewStringProperty("foo")

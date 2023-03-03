@@ -37,8 +37,8 @@ import (
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
-
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
+) {
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
 	}
@@ -102,7 +102,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 	//
 	// Try setting O_APPEND to see if that helps with the malformed reads we've been seeing in automation api:
 	// https://github.com/pulumi/pulumi/issues/6768
-	logFile, err := os.OpenFile(opts.EventLogPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(opts.EventLogPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0o666)
 	if err != nil {
 		logging.V(7).Infof("could not create event log: %v", err)
 		return events, done
@@ -137,8 +137,7 @@ func startEventLogger(events <-chan engine.Event, done chan<- bool, opts Options
 	return outEvents, outDone
 }
 
-type nopSpinner struct {
-}
+type nopSpinner struct{}
 
 func (s *nopSpinner) Tick() {
 }

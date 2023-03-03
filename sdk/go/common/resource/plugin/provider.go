@@ -242,7 +242,6 @@ func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]Propert
 }
 
 func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff, acc map[string]PropertyDiff) {
-
 	getPrefix := func(k resource.PropertyKey) string {
 		if prefix == "" {
 			return string(k)
@@ -277,7 +276,6 @@ func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff, acc map[strin
 	for i := range d.Deletes {
 		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete}
 	}
-
 }
 
 func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff, acc map[string]PropertyDiff) {

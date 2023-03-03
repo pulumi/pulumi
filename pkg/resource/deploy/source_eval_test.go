@@ -692,7 +692,6 @@ func TestDisableDefaultProviders(t *testing.T) {
 			assert.Equalf(t, expectedReads, reads, "Reads")
 			assert.Equalf(t, expectedInvokes, int(invokes), "Invokes")
 			assert.Equalf(t, expectedRegisters, registers, "Registers")
-
 		})
 	}
 }

@@ -35,7 +35,7 @@ func newStackRmCmd() *cobra.Command {
 	var yes bool
 	var force bool
 	var preserveConfig bool
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rm [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Remove a stack and its configuration",

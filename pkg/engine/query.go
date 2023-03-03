@@ -90,8 +90,8 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 }
 
 func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
-	opts QueryOptions) (deploy.QuerySource, error) {
-
+	opts QueryOptions,
+) (deploy.QuerySource, error) {
 	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
 		nil, opts.plugctx, false /*returnInstallErrors*/)
 	if err != nil {

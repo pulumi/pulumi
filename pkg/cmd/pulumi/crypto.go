@@ -82,8 +82,8 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 }
 
 func saveProjectStackAfterSecretManger(stack backend.Stack,
-	old *workspace.ProjectStack, new *workspace.ProjectStack) error {
-
+	old *workspace.ProjectStack, new *workspace.ProjectStack,
+) error {
 	// We should only save the ProjectStack at this point IF we have changed the
 	// secrets provider.
 	// If we do not check to see if the secrets provider has changed, then we will actually
@@ -112,5 +112,4 @@ func validateSecretsProvider(typ string) error {
 	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,
 		strings.Join(supportedKinds, ","))
-
 }

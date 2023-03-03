@@ -193,5 +193,4 @@ func validateCloudBackendType(typ string) error {
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
-
 }

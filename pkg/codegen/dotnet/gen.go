@@ -1806,7 +1806,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 
 // pulumiImports is a slice of common imports that are used with the genHeader method.
 func (mod *modContext) pulumiImports() []string {
-	var pulumiImports = []string{
+	pulumiImports := []string{
 		"System",
 		"System.Collections.Generic",
 		"System.Collections.Immutable",
@@ -2164,8 +2164,8 @@ func genPackageMetadata(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
 	projectReferences []string,
-	files codegen.Fs) error {
-
+	files codegen.Fs,
+) error {
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences)
 	if err != nil {
 		return err
@@ -2202,8 +2202,8 @@ func genPackageMetadata(pkg *schema.Package,
 func genProjectFile(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
-	projectReferences []string) ([]byte, error) {
-
+	projectReferences []string,
+) ([]byte, error) {
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
 	}
@@ -2277,7 +2277,7 @@ type LanguageResource struct {
 func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
 	// Decode .NET-specific info for each package as we discover them.
 	infos := map[*schema.Package]*CSharpPackageInfo{}
-	var getPackageInfo = func(p schema.PackageReference) *CSharpPackageInfo {
+	getPackageInfo := func(p schema.PackageReference) *CSharpPackageInfo {
 		def, err := p.Definition()
 		contract.AssertNoError(err)
 		info, ok := infos[def]
@@ -2519,7 +2519,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	files := codegen.Fs{}
 	for p, f := range extraFiles {
 		files.Add(p, f)
-
 	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
@@ -2533,7 +2532,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		info.PackageReferences,
 		info.ProjectReferences,
 		files); err != nil {
-
 		return nil, err
 	}
 	return files, nil

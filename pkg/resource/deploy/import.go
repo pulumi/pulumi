@@ -59,8 +59,8 @@ type ImportOptions struct {
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
 func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
-	preview bool) (*Deployment, error) {
-
+	preview bool,
+) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
 
@@ -185,7 +185,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	//
 	// NOTE: what if the configuration for an existing default provider has changed? If it has, we should diff it and
 	// replace it appropriately or we should not use the ambient config at all.
-	var defaultProviderRequests = make([]providers.ProviderRequest, 0, len(i.deployment.imports))
+	defaultProviderRequests := make([]providers.ProviderRequest, 0, len(i.deployment.imports))
 	defaultProviders := map[resource.URN]struct{}{}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider != "" {

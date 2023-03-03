@@ -178,8 +178,8 @@ type nodeLanguageHost struct {
 func newLanguageHost(
 	engineAddress, tracing string,
 	typescript bool, tsconfigpath,
-	nodeargs string) pulumirpc.LanguageRuntimeServer {
-
+	nodeargs string,
+) pulumirpc.LanguageRuntimeServer {
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
@@ -219,7 +219,8 @@ func compatibleVersions(a, b semver.Version) (bool, string) {
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	// To get the plugins required by a program, find all node_modules/ packages that contain {
 	// "pulumi": true } inside of their package.json files.  We begin this search in the same
 	// directory that contains the project. It's possible that a developer would do a
@@ -269,8 +270,8 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 // getPluginsFromDir enumerates all node_modules/ directories, deeply, and returns the fully concatenated results.
 func getPluginsFromDir(
 	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
-	inNodeModules bool, visitedPaths map[string]struct{}) ([]*pulumirpc.PluginDependency, error) {
-
+	inNodeModules bool, visitedPaths map[string]struct{},
+) ([]*pulumirpc.PluginDependency, error) {
 	// try to absolute the input path so visitedPaths can track it correctly
 	dir, err := filepath.Abs(dir)
 	if err != nil {
@@ -565,8 +566,8 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 // `responseChannel` arg.
 func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
-	nodeBin, runPath, address, pipesDirectory string) {
-
+	nodeBin, runPath, address, pipesDirectory string,
+) {
 	// Actually launch nodejs and process the result of it into an appropriate response object.
 	response := func() *pulumirpc.RunResponse {
 		args := host.constructArguments(req, runPath, address, pipesDirectory)
@@ -666,8 +667,8 @@ func (host *nodeLanguageHost) execNodejs(ctx context.Context,
 // by enumerating all of the optional and non-optional arguments present
 // in a RunRequest.
 func (host *nodeLanguageHost) constructArguments(
-	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string) []string {
-
+	req *pulumirpc.RunRequest, runPath, address, pipesDirectory string,
+) []string {
 	args := []string{runPath}
 	maybeAppendArg := func(k, v string) {
 		if v != "" {
@@ -753,8 +754,8 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 }
 
 func (host *nodeLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
-
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
@@ -916,8 +917,8 @@ func parseNpmLockFile(path string) ([]*pulumirpc.DependencyInfo, error) {
 // Intersect a list of packages with the contents of `package.json`. Returns
 // only packages that appear in both sets. `path` is used only for error handling.
 func crossCheckPackageJSONFile(path string, file []byte,
-	packages []*pulumirpc.DependencyInfo) ([]*pulumirpc.DependencyInfo, error) {
-
+	packages []*pulumirpc.DependencyInfo,
+) ([]*pulumirpc.DependencyInfo, error) {
 	var body packageJSON
 	if err := json.Unmarshal(file, &body); err != nil {
 		return nil, fmt.Errorf("could not parse %s: %w", path, err)
@@ -948,7 +949,8 @@ func crossCheckPackageJSONFile(path string, file []byte,
 }
 
 func (host *nodeLanguageHost) GetProgramDependencies(
-	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
 	// We get the node dependencies. This requires either a yarn.lock file and the
 	// yarn executable, a package-lock.json file and the npm executable. If
 	// transitive is false, we also need the package.json file.
@@ -1004,6 +1006,7 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 }
 
 func (host *nodeLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
+) error {
 	return errors.New("not supported")
 }

@@ -20,7 +20,6 @@ import (
 	"runtime"
 	"sync"
 	"testing"
-
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -101,7 +100,8 @@ func (ts *testTokenBackend) NewToken(duration time.Duration) (string, time.Time)
 func (ts *testTokenBackend) Refresh(
 	ctx context.Context,
 	duration time.Duration,
-	currentToken string) (string, time.Time, error) {
+	currentToken string,
+) (string, time.Time, error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 	if err := ts.verifyTokenInner(currentToken); err != nil {

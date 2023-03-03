@@ -162,7 +162,8 @@ func TestListFormatter(t *testing.T) {
 		{"a,\nb,\nc,\nd", commaList.Columns(4)},
 		{"a | b | c | d", barList},
 		{"  a\n| b\n| c\n| d", barList.Columns(4)},
-		{`  a
+		{
+			`  a
 | b
 | [
     1,
@@ -242,7 +243,6 @@ func TestObjectTagging(t *testing.T) {
 		}()},
 		// Non-recursive duplicates
 		{`{ one: { foo: val }, two: { foo: val } }`, func() Formatter {
-
 			inner := &Object{
 				Properties: map[string]Formatter{
 					"foo": FromString("val"),

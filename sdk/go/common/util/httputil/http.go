@@ -93,7 +93,6 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		},
 	}
 	_, res, err := retry.Until(context.Background(), acceptor)
-
 	if err != nil {
 		return nil, err
 	}

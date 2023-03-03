@@ -31,8 +31,8 @@ type Component struct {
 }
 
 func NewComponent(
-	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
-
+	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("testcomponent:index:Component", name, args, &resource, opts...)
 	if err != nil {
@@ -43,8 +43,8 @@ func NewComponent(
 }
 
 func NewSecondComponent(
-	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
-
+	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("secondtestcomponent:index:Component", name, args, &resource, opts...)
 	if err != nil {
@@ -55,8 +55,8 @@ func NewSecondComponent(
 }
 
 func NewComponentComponent(
-	ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*Component, error) {
-
+	ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("secondtestcomponent:index:ComponentComponent", name, pulumi.Map{}, &resource, opts...)
 	if err != nil {

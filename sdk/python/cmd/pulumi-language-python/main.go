@@ -192,8 +192,8 @@ type pythonLanguageHost struct {
 }
 
 func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
-	virtualenvPath string) pulumirpc.LanguageRuntimeServer {
-
+	virtualenvPath string,
+) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
 		cwd:            cwd,
 		exec:           exec,
@@ -206,8 +206,8 @@ func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	// Prepare the virtual environment (if needed).
 	err := host.prepareVirtualEnvironment(ctx, host.cwd)
 	if err != nil {
@@ -249,7 +249,6 @@ func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 
 // prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
 func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd string) error {
-
 	if host.virtualenv == "" {
 		return nil
 	}
@@ -441,8 +440,8 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 // values are derived from the package name and version. If the plugin version cannot be determined from the package
 // version, nil is returned.
 func determinePluginDependency(
-	virtualenv, cwd string, pkg pythonPackage) (*pulumirpc.PluginDependency, error) {
-
+	virtualenv, cwd string, pkg pythonPackage,
+) (*pulumirpc.PluginDependency, error) {
 	var name, version, server string
 	plugin, err := pkg.readPulumiPluginJSON()
 	if plugin != nil && err == nil {
@@ -843,8 +842,8 @@ func validateVersion(ctx context.Context, virtualEnvPath string) {
 }
 
 func (host *pythonLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
-
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
@@ -929,11 +928,11 @@ type pipDependency struct {
 }
 
 func (host *pythonLanguageHost) GetProgramDependencies(
-	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
 	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
 	if !req.TransitiveDependencies {
 		cmdArgs = append(cmdArgs, "--not-required")
-
 	}
 	out, err := host.callPythonCommand(ctx, cmdArgs...)
 	if err != nil {
@@ -959,6 +958,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 }
 
 func (host *pythonLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
+) error {
 	return errors.New("not supported")
 }

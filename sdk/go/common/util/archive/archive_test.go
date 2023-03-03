@@ -143,12 +143,12 @@ func archiveContents(t *testing.T, prefixPathInsideTar, path string, files ...fi
 			name = strings.ReplaceAll(name, "/", string(os.PathSeparator))
 		}
 
-		err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0755)
+		err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755)
 		if err != nil {
 			return nil, err
 		}
 
-		err = os.WriteFile(filepath.Join(dir, name), file.contents, 0600)
+		err = os.WriteFile(filepath.Join(dir, name), file.contents, 0o600)
 		if err != nil {
 			return nil, err
 		}

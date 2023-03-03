@@ -37,7 +37,6 @@ func TestParenInsert(t *testing.T) {
 		tokens := (&typeScriptTypeUnparser{}).unparse(example)
 
 		parsed, err := (&typeScriptTypeParser{}).parse(tokens)
-
 		if err != nil {
 			t.Error(err)
 			return

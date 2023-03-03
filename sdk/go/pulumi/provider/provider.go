@@ -31,9 +31,11 @@ type ConstructFunc func(ctx *pulumi.Context, typ, name string, inputs ConstructI
 
 // Construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
-	construct ConstructFunc) (*pulumirpc.ConstructResponse, error) {
+	construct ConstructFunc,
+) (*pulumirpc.ConstructResponse, error) {
 	return linkedConstruct(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, typ, name string,
-		inputs map[string]interface{}, options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error) {
+		inputs map[string]interface{}, options pulumi.ResourceOption,
+	) (pulumi.URNInput, pulumi.Input, error) {
 		ci := ConstructInputs{ctx: pulumiCtx, inputs: inputs}
 		result, err := construct(pulumiCtx, typ, name, ci, options)
 		if err != nil {
@@ -81,9 +83,11 @@ type CallFunc func(ctx *pulumi.Context, tok string, args CallArgs) (*CallResult,
 
 // Call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
-	call CallFunc) (*pulumirpc.CallResponse, error) {
+	call CallFunc,
+) (*pulumirpc.CallResponse, error) {
 	return linkedCall(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, tok string,
-		args map[string]interface{}) (pulumi.Input, []interface{}, error) {
+		args map[string]interface{},
+	) (pulumi.Input, []interface{}, error) {
 		ca := CallArgs{ctx: pulumiCtx, args: args}
 		result, err := call(pulumiCtx, tok, ca)
 		if err != nil {

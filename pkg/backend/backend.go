@@ -38,10 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var (
-	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
-	ErrNoPreviousDeployment = errors.New("no previous deployment")
-)
+// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
 type StackAlreadyExistsError struct {
@@ -327,7 +325,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 }
 
 func (c *backendClient) GetStackResourceOutputs(
-	ctx context.Context, name string) (resource.PropertyMap, error) {
+	ctx context.Context, name string,
+) (resource.PropertyMap, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return nil, err
@@ -351,7 +350,8 @@ func (c *backendClient) GetStackResourceOutputs(
 
 		resc := resource.PropertyMap{
 			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs)}
+			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs),
+		}
 		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
 	}
 	return pm, nil

@@ -56,7 +56,6 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
-
 	// Some tests have do not have mocha as a dependency.
 	hasMocha := false
 	for _, c := range getYarnCommands(t, pwd) {

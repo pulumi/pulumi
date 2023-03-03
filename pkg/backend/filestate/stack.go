@@ -74,8 +74,8 @@ func (s *localStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 
 func (s *localStack) Preview(
 	ctx context.Context,
-	op backend.UpdateOperation) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
@@ -84,7 +84,8 @@ func (s *localStack) Update(ctx context.Context, op backend.UpdateOperation) (di
 }
 
 func (s *localStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import) (display.ResourceChanges, result.Result) {
+	imports []deploy.Import,
+) (display.ResourceChanges, result.Result) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
@@ -101,7 +102,8 @@ func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, path
 }
 
 func (s *localStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
 }
 

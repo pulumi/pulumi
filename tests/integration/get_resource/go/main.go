@@ -18,8 +18,10 @@ type MyResource struct {
 	Prefix pulumi.StringPtrOutput `pulumi:"prefix"`
 }
 
-type myResourceArgs struct{}
-type MyResourceArgs struct{}
+type (
+	myResourceArgs struct{}
+	MyResourceArgs struct{}
+)
 
 func (MyResourceArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*myResourceArgs)(nil)).Elem()
@@ -37,7 +39,6 @@ func GetResource(ctx *pulumi.Context, urn pulumi.URN) (*MyResource, error) {
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-
 		c := config.New(ctx, "")
 		bar := c.RequireSecret("bar")
 		pet, err := random.NewRandomPet(ctx, "cat", &random.RandomPetArgs{

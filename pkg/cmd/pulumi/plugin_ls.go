@@ -170,5 +170,7 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 	return nil
 }
 
-const humanNeverTime = "never"
-const naString = "n/a"
+const (
+	humanNeverTime = "never"
+	naString       = "n/a"
+)

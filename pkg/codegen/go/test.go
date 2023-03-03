@@ -37,10 +37,12 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 	require.NoError(t, err)
 	if pulumiSDKPath != "" {
 		err = integration.RunCommand(t, "point towards local Go SDK",
-			[]string{ex, "mod", "edit",
+			[]string{
+				ex, "mod", "edit",
 				fmt.Sprintf("--replace=%s=%s",
 					"github.com/pulumi/pulumi/sdk/v3",
-					pulumiSDKPath)},
+					pulumiSDKPath),
+			},
 			dir, &integration.ProgramTestOptions{})
 		require.NoError(t, err)
 	}

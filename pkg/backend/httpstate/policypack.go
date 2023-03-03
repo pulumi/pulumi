@@ -35,8 +35,8 @@ type cloudRequiredPolicy struct {
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
 func newCloudRequiredPolicy(client *client.Client,
-	policy apitype.RequiredPolicy, orgName string) *cloudRequiredPolicy {
-
+	policy apitype.RequiredPolicy, orgName string,
+) *cloudRequiredPolicy {
 	return &cloudRequiredPolicy{
 		client:         client,
 		RequiredPolicy: policy,
@@ -81,8 +81,8 @@ func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
 
 func newCloudBackendPolicyPackReference(
-	cloudConsoleURL, orgName string, name tokens.QName) *cloudBackendPolicyPackReference {
-
+	cloudConsoleURL, orgName string, name tokens.QName,
+) *cloudBackendPolicyPackReference {
 	return &cloudBackendPolicyPackReference{
 		orgName:         orgName,
 		name:            name,
@@ -145,8 +145,8 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 }
 
 func (pack *cloudPolicyPack) Publish(
-	ctx context.Context, op backend.PublishOperation) result.Result {
-
+	ctx context.Context, op backend.PublishOperation,
+) result.Result {
 	//
 	// Get PolicyPack metadata from the plugin.
 	//
@@ -248,7 +248,7 @@ const packageDir = "package"
 func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
-	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
@@ -259,7 +259,7 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 
 	// The policy pack files are actually in a directory called `package`.
 	tempPackageDir := filepath.Join(tempDir, packageDir)
-	if err := os.MkdirAll(tempPackageDir, 0700); err != nil {
+	if err := os.MkdirAll(tempPackageDir, 0o700); err != nil {
 		return fmt.Errorf("creating plugin root: %w", err)
 	}
 
@@ -310,7 +310,6 @@ func completeNodeJSInstall(ctx context.Context, finalDir string) error {
 	if bin, err := npm.Install(ctx, finalDir, false /*production*/, nil, os.Stderr); err != nil {
 		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
 			"in %q before this policy pack works"+": %w", bin, finalDir, err)
-
 	}
 
 	return nil

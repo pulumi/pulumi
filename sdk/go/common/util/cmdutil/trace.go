@@ -67,7 +67,6 @@ func IsTracingEnabled() bool {
 
 // InitTracing initializes tracing
 func InitTracing(name, rootSpanName, tracingEndpoint string) {
-
 	// If no tracing endpoint was provided, just return. The default global tracer is already a no-op tracer.
 	if tracingEndpoint == "" {
 		return
@@ -202,7 +201,6 @@ func startProxyAppDashServer(collector appdash.Collector) (string, error) {
 // Computes initial tags to write to the `TracingRootSpan`, which can
 // be useful for aggregating trace data in benchmarks.
 func rootSpanTags() []opentracing.Tag {
-
 	tags := []opentracing.Tag{
 		{
 			Key:   "os.Args",

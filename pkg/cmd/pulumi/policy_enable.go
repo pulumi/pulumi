@@ -34,7 +34,7 @@ type policyEnableArgs struct {
 func newPolicyEnableCmd() *cobra.Command {
 	args := policyEnableArgs{}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Enable a Policy Pack for a Pulumi organization",

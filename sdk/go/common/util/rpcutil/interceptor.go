@@ -47,8 +47,8 @@ func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc
 
 // OpenTracingStreamServerInterceptor is OpenTracingServerInterceptor for instrumenting streaming gRPC calls.
 func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span,
-	options ...otgrpc.Option) grpc.StreamServerInterceptor {
-
+	options ...otgrpc.Option,
+) grpc.StreamServerInterceptor {
 	options = append(options, logPayloads()...)
 	tracer := opentracing.GlobalTracer()
 

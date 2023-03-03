@@ -183,7 +183,8 @@ func TestNestedSecret(t *testing.T) {
 		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("hello"),
 			resource.MakeSecret(resource.NewStringProperty("shh")),
-			resource.NewStringProperty("goodbye")}),
+			resource.NewStringProperty("goodbye"),
+		}),
 		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("a"),
 			"b": resource.NewStringProperty("b"),
@@ -199,7 +200,8 @@ func TestNestedSecret(t *testing.T) {
 		"secretArray": resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("shh"),
 			resource.NewStringProperty("hello"),
-			resource.NewStringProperty("goodbye")}),
+			resource.NewStringProperty("goodbye"),
+		}),
 		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("a"),
 			"b": resource.NewStringProperty("b"),
@@ -220,7 +222,8 @@ func TestNestedSecret(t *testing.T) {
 		"secretArray": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewStringProperty("shh"),
 			resource.NewStringProperty("hello"),
-			resource.NewStringProperty("goodbye")})),
+			resource.NewStringProperty("goodbye"),
+		})),
 		"secretMap": resource.MakeSecret(resource.NewObjectProperty(resource.PropertyMap{
 			"a": resource.NewStringProperty("a"),
 			"b": resource.NewStringProperty("b"),

@@ -15,8 +15,8 @@ import (
 )
 
 func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expression,
-	parts []model.Traversable) (model.Expression, hcl.Diagnostics) {
-
+	parts []model.Traversable,
+) (model.Expression, hcl.Diagnostics) {
 	// TODO(pdg): transfer trivia
 
 	var rootName string

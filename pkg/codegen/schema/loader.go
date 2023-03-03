@@ -284,7 +284,7 @@ func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime
 	}
 
 	success := false
-	schemaFile, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	schemaFile, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	defer func() {
 		if !success {
 			schemaFile.Close()

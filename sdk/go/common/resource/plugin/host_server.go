@@ -61,7 +61,6 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +113,8 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 // GetRootResource returns the current root resource's URN, which will serve as the parent of resources that are
 // otherwise left unparented.
 func (eng *hostServer) GetRootResource(ctx context.Context,
-	req *lumirpc.GetRootResourceRequest) (*lumirpc.GetRootResourceResponse, error) {
+	req *lumirpc.GetRootResourceRequest,
+) (*lumirpc.GetRootResourceResponse, error) {
 	var response lumirpc.GetRootResourceResponse
 	response.Urn = eng.rootUrn.Load().(string)
 	return &response, nil
@@ -123,7 +123,8 @@ func (eng *hostServer) GetRootResource(ctx context.Context,
 // SetRootResource sets the current root resource's URN. Generally only called on startup when the Stack resource is
 // registered.
 func (eng *hostServer) SetRootResource(ctx context.Context,
-	req *lumirpc.SetRootResourceRequest) (*lumirpc.SetRootResourceResponse, error) {
+	req *lumirpc.SetRootResourceRequest,
+) (*lumirpc.SetRootResourceResponse, error) {
 	var response lumirpc.SetRootResourceResponse
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil

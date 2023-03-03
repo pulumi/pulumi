@@ -173,8 +173,8 @@ func HasChanges(changes display.ResourceChanges) bool {
 }
 
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
-	*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	*deploy.Plan, display.ResourceChanges, result.Result,
+) {
 	contract.Requiref(u != nil, "update", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
@@ -206,15 +206,16 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
 func RunInstallPlugins(
-	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
+	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
+) error {
 	_, _, err := installPlugins(proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
-
+	plugctx *plugin.Context, returnInstallErrors bool,
+) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -262,8 +263,8 @@ func installPlugins(
 }
 
 func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
-	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions) error {
-
+	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions,
+) error {
 	var allValidationErrors []string
 	appendValidationErrors := func(policyPackName, policyPackVersion string, validationErrors []string) {
 		for _, validationError := range validationErrors {
@@ -372,8 +373,8 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 
 func newUpdateSource(
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
-
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
 	//
@@ -430,8 +431,8 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	preview bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}
 	if !opts.isRefresh && !opts.isImport {
@@ -528,8 +529,8 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 
 func (acts *updateActions) OnResourceStepPost(
 	ctx interface{}, step deploy.Step,
-	status resource.Status, err error) error {
-
+	status resource.Status, err error,
+) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -692,7 +693,8 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 }
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error) error {
+	step deploy.Step, status resource.Status, err error,
+) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()

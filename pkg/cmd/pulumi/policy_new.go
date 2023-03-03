@@ -195,7 +195,8 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		// fow now this works.
 		projinfo := &engine.Projinfo{Proj: &workspace.Project{
 			Main:    proj.Main,
-			Runtime: proj.Runtime}, Root: root}
+			Runtime: proj.Runtime,
+		}, Root: root}
 		pwd, _, pluginCtx, err := engine.ProjectInfoContext(
 			projinfo,
 			nil,
@@ -227,7 +228,8 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 }
 
 func installPolicyPackDependencies(ctx *plugin.Context,
-	proj *workspace.PolicyPackProject, directory string) error {
+	proj *workspace.PolicyPackProject, directory string,
+) error {
 	// First make sure the language plugin is present.  We need this to load the required resource plugins.
 	// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 	lang, err := ctx.Host.LanguageRuntime(ctx.Root, ctx.Pwd, proj.Runtime.Name(), proj.Runtime.Options())
@@ -271,8 +273,9 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 		fmt.Println()
 	}
 
-	usageCommandPreambles :=
-		[]string{"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run"}
+	usageCommandPreambles := []string{
+		"run the Policy Pack against a Pulumi program, in the directory of the Pulumi program run",
+	}
 	usageCommands := []string{fmt.Sprintf("pulumi up --policy-pack %s", root)}
 
 	if strings.EqualFold(proj.Runtime.Name(), "nodejs") || strings.EqualFold(proj.Runtime.Name(), "python") {
@@ -303,8 +306,8 @@ func printPolicyPackNextSteps(proj *workspace.PolicyPackProject, root string, ge
 
 // choosePolicyPackTemplate will prompt the user to choose amongst the available templates.
 func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
-	opts display.Options) (workspace.PolicyPackTemplate, error) {
-
+	opts display.Options,
+) (workspace.PolicyPackTemplate, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi policy new` to choose one"
 	if !opts.IsInteractive {
 		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
@@ -331,8 +334,8 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 // policyTemplatesToOptionArrayAndMap returns an array of option strings and a map of option strings to policy
 // templates. Each option string is made up of the template name and description with some padding in between.
 func policyTemplatesToOptionArrayAndMap(
-	templates []workspace.PolicyPackTemplate) ([]string, map[string]workspace.PolicyPackTemplate) {
-
+	templates []workspace.PolicyPackTemplate,
+) ([]string, map[string]workspace.PolicyPackTemplate) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {

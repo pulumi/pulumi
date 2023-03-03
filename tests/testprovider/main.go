@@ -106,7 +106,8 @@ func (k *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest)
 // StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
 // back as a series of messages.
 func (k *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
-	server rpc.ResourceProvider_StreamInvokeServer) error {
+	server rpc.ResourceProvider_StreamInvokeServer,
+) error {
 	tok := req.GetTok()
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
 }
@@ -188,7 +189,8 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
-	req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
+	req *rpc.GetSchemaRequest,
+) (*rpc.GetSchemaResponse, error) {
 	return &rpc.GetSchemaResponse{}, nil
 }
 

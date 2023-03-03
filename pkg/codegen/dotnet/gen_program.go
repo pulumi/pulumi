@@ -78,7 +78,8 @@ const pulumiPackage = "pulumi"
 
 func GenerateProgramWithOptions(
 	program *pcl.Program,
-	options GenerateProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
+	options GenerateProgramOptions,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
@@ -229,7 +230,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := os.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -451,7 +452,7 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 
 func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
 	// Extract language-specific property names from schema
-	var csharpInputPropertyNameMap = make(map[string]string)
+	csharpInputPropertyNameMap := make(map[string]string)
 	if r.Schema != nil {
 		for _, inputProperty := range r.Schema.InputProperties {
 			if val1, ok := inputProperty.Language["csharp"]; ok {

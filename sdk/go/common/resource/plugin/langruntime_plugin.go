@@ -51,8 +51,8 @@ type langhost struct {
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
-	options map[string]interface{}) (LanguageRuntime, error) {
-
+	options map[string]interface{},
+) (LanguageRuntime, error) {
 	path, err := workspace.GetPluginPath(
 		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
@@ -155,7 +155,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 		return nil, rpcError
 	}
 
-	var results = make([]workspace.PluginSpec, 0, len(resp.GetPlugins()))
+	results := make([]workspace.PluginSpec, 0, len(resp.GetPlugins()))
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -269,7 +269,6 @@ func (h *langhost) InstallDependencies(directory string) error {
 		Directory:  directory,
 		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
 	})
-
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
@@ -308,7 +307,6 @@ func (h *langhost) InstallDependencies(directory string) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
 		h.runtime, directory)
 	return nil
-
 }
 
 func (h *langhost) About() (AboutInfo, error) {
@@ -381,7 +379,6 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 		Args:    info.Args,
 		Env:     info.Env,
 	})
-
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
 		// connection terminates.

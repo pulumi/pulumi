@@ -23,8 +23,8 @@ type propertyDependencies map[resource.PropertyKey][]resource.URN
 var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
 func generateComplexTestDependencyGraph(
-	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
-
+	t *testing.T, p *TestPlan,
+) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 	resType := tokens.Type("pkgA:m:typA")
 
 	names := complexTestDependencyGraphNames
@@ -48,7 +48,8 @@ func generateComplexTestDependencyGraph(
 	}
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
-		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
+		propertyDeps propertyDependencies, outputs resource.PropertyMap,
+	) *resource.State {
 		return newResource(urn, "", id, provider, dependencies, propertyDeps, outputs, true)
 	}
 
@@ -145,7 +146,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -155,8 +157,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
@@ -173,8 +175,8 @@ func TestDeleteBeforeReplace(t *testing.T) {
 		ExpectFailure: false,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			replaced := make(map[resource.URN]bool)
@@ -216,10 +218,9 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	var urnA, urnB, urnC, urnD resource.URN
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		register := func(name string, inputs resource.PropertyMap, inputDeps propertyDependencies,
-			dependencies []resource.URN) resource.URN {
-
+			dependencies []resource.URN,
+		) resource.URN {
 			urn, _, _, err := monitor.RegisterResource(resType, name, true, deploytest.ResourceOptions{
 				Inputs:       inputs,
 				Dependencies: dependencies,
@@ -284,8 +285,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -347,8 +348,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -371,8 +372,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -396,8 +397,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -420,8 +421,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -444,8 +445,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -470,8 +471,8 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -497,8 +498,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["A"].DeepEquals(news["A"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
@@ -513,8 +514,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -569,8 +570,8 @@ func TestDependencyChangeDBR(t *testing.T) {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
-
+				evts []Event, res result.Result,
+			) result.Result {
 				assert.Nil(t, res)
 				assert.True(t, len(entries) > 0)
 

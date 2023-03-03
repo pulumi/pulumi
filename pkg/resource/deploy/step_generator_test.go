@@ -264,7 +264,6 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 			assert.Equal(t, c.expected, newdiff)
 		})
 	}
-
 }
 
 func TestEngineDiff(t *testing.T) {

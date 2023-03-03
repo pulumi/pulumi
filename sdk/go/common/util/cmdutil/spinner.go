@@ -28,8 +28,8 @@ import (
 // the specified ttyFrames, or a simple spinner that just prints a dot on each tick and updates
 // slowly.
 func NewSpinnerAndTicker(prefix string, ttyFrames []string,
-	color colors.Colorization, timesPerSecond time.Duration) (Spinner, *time.Ticker) {
-
+	color colors.Colorization, timesPerSecond time.Duration,
+) (Spinner, *time.Ticker) {
 	if ttyFrames == nil {
 		// If explicit tick frames weren't specified, default to unicode for Mac and ASCII for Windows/Linux.
 		if Emoji {

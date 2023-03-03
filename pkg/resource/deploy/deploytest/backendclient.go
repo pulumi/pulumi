@@ -37,6 +37,7 @@ func (b *BackendClient) GetStackOutputs(ctx context.Context, name string) (resou
 // `Propertymap` with members `type` (containing the Pulumi type ID for the resource) and
 // `outputs` (containing the resource outputs themselves).
 func (b *BackendClient) GetStackResourceOutputs(
-	ctx context.Context, name string) (resource.PropertyMap, error) {
+	ctx context.Context, name string,
+) (resource.PropertyMap, error) {
 	return b.GetStackResourceOutputsF(ctx, name)
 }

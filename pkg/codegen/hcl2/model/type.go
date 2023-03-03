@@ -80,8 +80,8 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	conversionFromImpl func() (ConversionKind, lazyDiagnostics)) (ConversionKind, lazyDiagnostics) {
-
+	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
+) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}

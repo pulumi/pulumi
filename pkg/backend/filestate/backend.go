@@ -257,18 +257,20 @@ func (b *localBackend) StateDir() string {
 }
 
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
-	d diag.Sink) (backend.PolicyPack, error) {
-
+	d diag.Sink,
+) (backend.PolicyPack, error) {
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
+) {
 	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
-	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
+) {
 	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
@@ -309,8 +311,8 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	root string, project *workspace.Project, opts interface{}) (backend.Stack, error) {
-
+	root string, project *workspace.Project, opts interface{},
+) (backend.Stack, error) {
 	err := b.Lock(ctx, stackRef)
 	if err != nil {
 		return nil, err
@@ -361,7 +363,8 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 
 func (b *localBackend) ListStacks(
 	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
-	[]backend.StackSummary, backend.ContinuationToken, error) {
+	[]backend.StackSummary, backend.ContinuationToken, error,
+) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
 		return nil, nil, err
@@ -369,7 +372,7 @@ func (b *localBackend) ListStacks(
 
 	// Note that the provided stack filter is not honored, since fields like
 	// organizations and tags aren't persisted in the local backend.
-	var results = make([]backend.StackSummary, 0, len(stacks))
+	results := make([]backend.StackSummary, 0, len(stacks))
 	for _, stackName := range stacks {
 		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
@@ -386,7 +389,6 @@ func (b *localBackend) ListStacks(
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
-
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return false, err
@@ -408,8 +410,8 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 }
 
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.QName) (backend.StackReference, error) {
-
+	newName tokens.QName,
+) (backend.StackReference, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
@@ -464,8 +466,8 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
-	stack backend.Stack) (config.Map, error) {
-
+	stack backend.Stack,
+) (config.Map, error) {
 	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return nil, err
@@ -480,13 +482,14 @@ func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 func (b *localBackend) PackPolicies(
 	ctx context.Context, policyPackRef backend.PolicyPackReference,
 	cancellationScopes backend.CancellationScopeSource,
-	callerEventsOpt chan<- engine.Event) result.Result {
-
+	callerEventsOpt chan<- engine.Event,
+) result.Result {
 	return result.Error("File state backend does not support resource policy")
 }
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	op backend.UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -496,8 +499,8 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, result.FromError(err)
@@ -508,8 +511,8 @@ func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation, imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, result.FromError(err)
@@ -521,8 +524,8 @@ func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, result.FromError(err)
@@ -533,8 +536,8 @@ func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, result.FromError(err)
@@ -545,12 +548,12 @@ func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 }
 
 func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
-
 	return b.query(ctx, op, nil /*events*/)
 }
 
 func (b *localBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string) result.Result {
+	op backend.UpdateOperation, paths []string,
+) result.Result {
 	return backend.Watch(ctx, stack.DefaultSecretsProvider, b, stk, op, b.apply, paths)
 }
 
@@ -558,8 +561,8 @@ func (b *localBackend) Watch(ctx context.Context, stk backend.Stack,
 func (b *localBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	stackRef := stack.Ref()
 	stackName := stackRef.Name()
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
@@ -721,8 +724,8 @@ func (b *localBackend) apply(
 
 // query executes a query program against the resource outputs of a locally hosted stack.
 func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event) result.Result {
-
+	callerEventsOpt chan<- engine.Event,
+) result.Result {
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
@@ -730,7 +733,8 @@ func (b *localBackend) GetHistory(
 	ctx context.Context,
 	stackRef backend.StackReference,
 	pageSize int,
-	page int) ([]backend.UpdateInfo, error) {
+	page int,
+) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
 	updates, err := b.getHistory(stackName, pageSize, page)
 	if err != nil {
@@ -741,8 +745,8 @@ func (b *localBackend) GetHistory(
 
 func (b *localBackend) GetLogs(ctx context.Context,
 	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	stackName := stack.Ref().Name()
 	target, err := b.getTarget(ctx, stackName, cfg.Config, cfg.Decrypter)
 	if err != nil {
@@ -776,8 +780,8 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 }
 
 func (b *localBackend) ExportDeployment(ctx context.Context,
-	stk backend.Stack) (*apitype.UntypedDeployment, error) {
-
+	stk backend.Stack,
+) (*apitype.UntypedDeployment, error) {
 	stackName := stk.Ref().Name()
 	chk, err := b.getCheckpoint(stackName)
 	if err != nil {
@@ -796,8 +800,8 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 }
 
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
-	deployment *apitype.UntypedDeployment) error {
-
+	deployment *apitype.UntypedDeployment,
+) error {
 	err := b.Lock(ctx, stk.Ref())
 	if err != nil {
 		return err
@@ -838,7 +842,7 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
-	var stacks = make([]tokens.Name, 0, len(files))
+	stacks := make([]tokens.Name, 0, len(files))
 
 	for _, file := range files {
 		// Ignore directories.
@@ -870,8 +874,8 @@ func (b *localBackend) getLocalStacks() ([]tokens.Name, error) {
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *localBackend) UpdateStackTags(ctx context.Context,
-	stack backend.Stack, tags map[apitype.StackTagName]string) error {
-
+	stack backend.Stack, tags map[apitype.StackTagName]string,
+) error {
 	// The local backend does not currently persist tags.
 	return errors.New("stack tags not supported in --local mode")
 }

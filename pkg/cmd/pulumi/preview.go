@@ -74,7 +74,7 @@ func newPreviewCmd() *cobra.Command {
 		use, cmdArgs = "preview [url]", cmdutil.MaximumNArgs(1)
 	}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:        use,
 		Aliases:    []string{"pre"},
 		SuggestFor: []string{"build", "plan"},
@@ -93,7 +93,7 @@ func newPreviewCmd() *cobra.Command {
 		Args: cmdArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}

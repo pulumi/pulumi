@@ -156,7 +156,7 @@ func TestProjectLoadJSON(t *testing.T) {
 		tmp, err := os.CreateTemp("", "*.json")
 		assert.NoError(t, err)
 		path := tmp.Name()
-		err = os.WriteFile(path, []byte(str), 0600)
+		err = os.WriteFile(path, []byte(str), 0o600)
 		assert.NoError(t, err)
 		return LoadProject(path)
 	}
@@ -184,7 +184,8 @@ func TestProjectLoadJSON(t *testing.T) {
 		"3 errors occurred:",
 		"* #/runtime: oneOf failed",
 		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number"}
+		"* #/runtime: expected object, but got number",
+	}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -193,7 +194,8 @@ func TestProjectLoadJSON(t *testing.T) {
 	expected = []string{
 		"2 errors occurred:",
 		"* #/main: expected string or null, but got object",
-		"* #/backend: expected object or null, but got number"}
+		"* #/backend: expected object or null, but got number",
+	}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -223,7 +225,7 @@ func loadProjectFromText(t *testing.T, content string) (*Project, error) {
 	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
-	err = os.WriteFile(path, []byte(content), 0600)
+	err = os.WriteFile(path, []byte(content), 0o600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProject(path)
@@ -233,7 +235,7 @@ func loadProjectStackFromText(t *testing.T, project *Project, content string) (*
 	tmp, err := os.CreateTemp("", "*.yaml")
 	assert.NoError(t, err)
 	path := tmp.Name()
-	err = os.WriteFile(path, []byte(content), 0600)
+	err = os.WriteFile(path, []byte(content), 0o600)
 	assert.NoError(t, err)
 	defer deleteFile(t, tmp)
 	return LoadProjectStack(project, path)
@@ -902,7 +904,8 @@ func TestProjectLoadYAML(t *testing.T) {
 		"3 errors occurred:",
 		"* #/runtime: oneOf failed",
 		"* #/runtime: expected string, but got number",
-		"* #/runtime: expected object, but got number"}
+		"* #/runtime: expected object, but got number",
+	}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}
@@ -911,7 +914,8 @@ func TestProjectLoadYAML(t *testing.T) {
 	expected = []string{
 		"2 errors occurred:",
 		"* #/main: expected string or null, but got object",
-		"* #/backend: expected object or null, but got number"}
+		"* #/backend: expected object or null, but got number",
+	}
 	for _, e := range expected {
 		assert.Contains(t, err.Error(), e)
 	}

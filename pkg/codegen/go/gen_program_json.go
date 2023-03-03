@@ -5,8 +5,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-type jsonSpiller struct {
-}
+type jsonSpiller struct{}
 
 func (g *generator) rewriteToJSON(x model.Expression) (model.Expression, []*spillTemp, hcl.Diagnostics) {
 	return g.rewriteSpills(x, func(x model.Expression) (string, model.Expression, bool) {

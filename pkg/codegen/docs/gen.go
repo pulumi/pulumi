@@ -427,7 +427,7 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	copy := *mod
 	copy.docGenContext = dctx
-	var children = make([]*modContext, 0, len(copy.children))
+	children := make([]*modContext, 0, len(copy.children))
 	for _, c := range copy.children {
 		children = append(children, c.withDocGenContext(dctx))
 	}
@@ -1066,8 +1066,8 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 }
 
 func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.Property, lang string, input, nested,
-	isProvider bool, idPrefix string, exclude func(name string) bool) []property {
-
+	isProvider bool, idPrefix string, exclude func(name string) bool,
+) []property {
 	dctx := mod.docGenContext
 	if len(properties) == 0 {
 		return nil
@@ -1254,7 +1254,6 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 // getConstructorResourceInfo returns a map of per-language information about
 // the resource being constructed.
 func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) map[string]propertyType {
-
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("yaml")
 	resourceMap := make(map[string]propertyType)
@@ -1987,8 +1986,8 @@ func (dctx *docGenContext) getMod(
 	tokenPkg schema.PackageReference,
 	modules map[string]*modContext,
 	tool string,
-	add bool) *modContext {
-
+	add bool,
+) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
 	if !ok {

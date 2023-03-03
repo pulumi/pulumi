@@ -45,16 +45,19 @@ func missingStackConfigurationKeysError(missingKeys []string, stackName string) 
 		formatMissingKeys(missingKeys))
 }
 
-type StackName = string
-type ProjectConfigKey = string
-type StackConfigValidator = func(StackName, ProjectConfigKey, ProjectConfigType, config.Value, config.Decrypter) error
+type (
+	StackName            = string
+	ProjectConfigKey     = string
+	StackConfigValidator = func(StackName, ProjectConfigKey, ProjectConfigType, config.Value, config.Decrypter) error
+)
 
 func DefaultStackConfigValidator(
 	stackName string,
 	projectConfigKey string,
 	projectConfigType ProjectConfigType,
 	stackValue config.Value,
-	dec config.Decrypter) error {
+	dec config.Decrypter,
+) error {
 	// First check if the project says this should be secret, and if so that the stack value is
 	// secure.
 	if projectConfigType.Secret && !stackValue.Secure() {
@@ -99,7 +102,8 @@ func NoopStackConfigValidator(
 	projectConfigKey string,
 	projectConfigType ProjectConfigType,
 	stackValue config.Value,
-	dec config.Decrypter) error {
+	dec config.Decrypter,
+) error {
 	return nil
 }
 
@@ -117,7 +121,6 @@ func createConfigValue(rawValue interface{}) (config.Value, error) {
 		return config.Value{}, jsonError
 	}
 	return config.NewObjectValue(string(configValueJSON)), nil
-
 }
 
 func ValidateStackConfigAndMergeProjectConfig(
@@ -125,8 +128,8 @@ func ValidateStackConfigAndMergeProjectConfig(
 	project *Project,
 	stackConfig config.Map,
 	lazyDecrypter func() config.Decrypter,
-	validate StackConfigValidator) error {
-
+	validate StackConfigValidator,
+) error {
 	var decrypter config.Decrypter
 	missingConfigurationKeys := make([]string, 0)
 	projectName := project.Name.String()
@@ -215,7 +218,8 @@ func ValidateStackConfigAndApplyProjectConfig(
 	stackName string,
 	project *Project,
 	stackConfig config.Map,
-	dec config.Decrypter) error {
+	dec config.Decrypter,
+) error {
 	decrypter := func() config.Decrypter {
 		return dec
 	}

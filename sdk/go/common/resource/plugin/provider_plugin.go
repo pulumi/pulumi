@@ -128,8 +128,8 @@ func (p *pluginConfigPromise) Fulfill(cfg pluginConfig, err error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
-
+	options map[string]interface{}, disableProviderPreview bool,
+) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
 	var optAttach string
@@ -273,8 +273,8 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
-	disableProviderPreview bool) Provider {
-
+	disableProviderPreview bool,
+) Provider {
 	cfgPromise := newPluginConfigPromise()
 	return &provider{
 		ctx:                    ctx,
@@ -338,7 +338,8 @@ func (p *provider) GetSchema(version int) ([]byte, error) {
 
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error) {
+	news resource.PropertyMap, allowUnknowns bool,
+) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
@@ -439,7 +440,8 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string,
+) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 	molds, err := MarshalProperties(olds, MarshalOptions{
@@ -489,15 +491,15 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 		return DiffResult{}, nil
 	}
 
-	var replaces = make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables = make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	var diffs = make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -664,7 +666,8 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(urn resource.URN,
 	olds, news resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error) {
+	allowUnknowns bool, randomSeed []byte,
+) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
 
@@ -747,8 +750,8 @@ func (p *provider) Check(urn resource.URN,
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
-	ignoreChanges []string) (DiffResult, error) {
-
+	ignoreChanges []string,
+) (DiffResult, error) {
 	contract.Assertf(urn != "", "Diff requires a URN")
 	contract.Assertf(id != "", "Diff requires an ID")
 	contract.Assertf(news != nil, "Diff requires new properties")
@@ -807,15 +810,15 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, rpcError
 	}
 
-	var replaces = make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	var stables = make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	var diffs = make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -837,7 +840,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
 func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64, preview bool) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+	resource.PropertyMap, resource.Status, error,
+) {
 	contract.Assertf(urn != "", "Create requires a URN")
 	contract.Assertf(props != nil, "Create requires properties")
 
@@ -890,7 +894,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	var id resource.ID
 	var liveObject *_struct.Struct
 	var resourceError error
-	var resourceStatus = resource.StatusOK
+	resourceStatus := resource.StatusOK
 	resp, err := client.Create(p.requestContext(), &pulumirpc.CreateRequest{
 		Urn:        string(urn),
 		Properties: mprops,
@@ -943,8 +947,8 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 // read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource id, but may also include some properties.
 func (p *provider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
-
+	inputs, state resource.PropertyMap,
+) (ReadResult, resource.Status, error) {
 	contract.Assertf(urn != "", "Read URN was empty")
 	contract.Assertf(id != "", "Read ID was empty")
 
@@ -995,7 +999,7 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 	var liveObject *_struct.Struct
 	var liveInputs *_struct.Struct
 	var resourceError error
-	var resourceStatus = resource.StatusOK
+	resourceStatus := resource.StatusOK
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),
@@ -1064,8 +1068,8 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+	ignoreChanges []string, preview bool,
+) (resource.PropertyMap, resource.Status, error) {
 	contract.Assertf(urn != "", "Update requires a URN")
 	contract.Assertf(id != "", "Update requires an ID")
 	contract.Assertf(news != nil, "Update requires new properties")
@@ -1128,7 +1132,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	var liveObject *_struct.Struct
 	var resourceError error
-	var resourceStatus = resource.StatusOK
+	resourceStatus := resource.StatusOK
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
@@ -1177,7 +1181,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 // Delete tears down an existing resource.
 func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float64) (resource.Status, error) {
+	timeout float64,
+) (resource.Status, error) {
 	contract.Assertf(urn != "", "Delete requires a URN")
 	contract.Assertf(id != "", "Delete requires an ID")
 
@@ -1222,8 +1227,8 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
 // its URN and outputs.
 func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options ConstructOptions) (ConstructResult, error) {
-
+	inputs resource.PropertyMap, options ConstructOptions,
+) (ConstructResult, error) {
 	contract.Assertf(typ != "", "Construct requires a type")
 	contract.Assertf(name != "", "Construct requires a name")
 	contract.Assertf(inputs != nil, "Construct requires input properties")
@@ -1342,7 +1347,8 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 
 // Invoke dynamically executes a built-in function in the provider.
 func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap,
-	[]CheckFailure, error) {
+	[]CheckFailure, error,
+) {
 	contract.Assertf(tok != "", "Invoke requires a token")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), tok)
@@ -1405,8 +1411,8 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 func (p *provider) StreamInvoke(
 	tok tokens.ModuleMember,
 	args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]CheckFailure, error) {
-
+	onNext func(resource.PropertyMap) error,
+) ([]CheckFailure, error) {
 	contract.Assertf(tok != "", "StreamInvoke requires a token")
 
 	label := fmt.Sprintf("%s.StreamInvoke(%s)", p.label(), tok)
@@ -1483,7 +1489,8 @@ func (p *provider) StreamInvoke(
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
-	options CallOptions) (CallResult, error) {
+	options CallOptions,
+) (CallResult, error) {
 	contract.Assertf(tok != "", "Call requires a token")
 
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), tok)
@@ -1713,7 +1720,6 @@ func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 func parseError(err error) (
 	resourceStatus resource.Status, id resource.ID, liveInputs, liveObject *_struct.Struct, resourceErr error,
 ) {
-
 	var responseErr *rpcerror.Error
 	resourceStatus, responseErr = resourceStateAndError(err)
 	contract.Assertf(responseErr != nil, "resourceStateAndError must never return a nil error")

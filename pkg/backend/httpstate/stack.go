@@ -151,28 +151,32 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 
 func (s *cloudStack) Preview(
 	ctx context.Context,
-	op backend.UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
 func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result) {
+	result.Result,
+) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
 func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
+	imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
 func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result) {
+	result.Result,
+) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
 func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
-	result.Result) {
+	result.Result,
+) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
@@ -181,7 +185,8 @@ func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, path
 }
 
 func (s *cloudStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
 }
 

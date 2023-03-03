@@ -41,8 +41,10 @@ type projectWorkspace struct {
 	settings *Settings          // settings for this workspace.
 }
 
-var cache = make(map[string]W)
-var cacheMutex sync.RWMutex
+var (
+	cache      = make(map[string]W)
+	cacheMutex sync.RWMutex
+)
 
 func loadFromCache(key string) (W, bool) {
 	cacheMutex.RLock()
@@ -128,7 +130,7 @@ func (pw *projectWorkspace) Save() error {
 		return nil
 	}
 
-	err := os.MkdirAll(filepath.Dir(settingsFile), 0700)
+	err := os.MkdirAll(filepath.Dir(settingsFile), 0o700)
 	if err != nil {
 		return err
 	}
@@ -148,7 +150,7 @@ func atomicWriteFile(path string, b []byte) error {
 	}
 	defer func() { contract.Ignore(os.Remove(tmp.Name())) }()
 
-	if err = tmp.Chmod(0600); err != nil {
+	if err = tmp.Chmod(0o600); err != nil {
 		return fmt.Errorf("failed to set temporary file permission: %w", err)
 	}
 	if _, err = tmp.Write(b); err != nil {

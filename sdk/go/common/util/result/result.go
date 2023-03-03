@@ -59,6 +59,7 @@ func (r *simpleResult) String() string {
 	}
 	return fmt.Sprintf("Error: %s", r.err)
 }
+
 func (r *simpleResult) GoString() string {
 	if r.err == nil {
 		return "&simpleResult{}"

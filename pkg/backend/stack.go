@@ -85,8 +85,8 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackRefer
 func PreviewStack(
 	ctx context.Context,
 	s Stack,
-	op UpdateOperation) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	return s.Backend().Preview(ctx, s, op)
 }
 
@@ -97,8 +97,8 @@ func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (display.Reso
 
 // ImportStack updates the target stack with the current workspace's contents (config and code).
 func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
-	imports []deploy.Import) (display.ResourceChanges, result.Result) {
-
+	imports []deploy.Import,
+) (display.ResourceChanges, result.Result) {
 	return s.Backend().Import(ctx, s, op, imports)
 }
 
@@ -125,15 +125,16 @@ func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
 
 // GetStackLogs fetches a list of log entries for the current stack in the current backend.
 func GetStackLogs(ctx context.Context, secretsProvider secrets.Provider, s Stack, cfg StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	return s.Backend().GetLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
 func ExportStackDeployment(
 	ctx context.Context,
-	s Stack) (*apitype.UntypedDeployment, error) {
-
+	s Stack,
+) (*apitype.UntypedDeployment, error) {
 	return s.Backend().ExportDeployment(ctx, s)
 }
 
@@ -150,8 +151,8 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack,
-	root string, project *workspace.Project) map[apitype.StackTagName]string {
-
+	root string, project *workspace.Project,
+) map[apitype.StackTagName]string {
 	// Get the stack's existing tags.
 	tags := s.Tags()
 	if tags == nil {
@@ -205,7 +206,6 @@ func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath st
 	}
 
 	remoteURL, err := gitutil.GetGitRemoteURL(repo, "origin")
-
 	if err != nil {
 		return err
 	}

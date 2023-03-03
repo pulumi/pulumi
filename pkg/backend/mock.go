@@ -93,18 +93,20 @@ func (be *MockBackend) URL() string {
 }
 
 func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, ContinuationToken, error) {
+	apitype.ListPolicyGroupsResponse, ContinuationToken, error,
+) {
 	panic("not implemented")
 }
 
 func (be *MockBackend) ListPolicyPacks(context.Context, string, ContinuationToken) (
-	apitype.ListPolicyPacksResponse, ContinuationToken, error) {
+	apitype.ListPolicyPacksResponse, ContinuationToken, error,
+) {
 	panic("not implemented")
 }
 
 func (be *MockBackend) GetPolicyPack(
-	ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error) {
-
+	ctx context.Context, policyPack string, d diag.Sink,
+) (PolicyPack, error) {
 	if be.GetPolicyPackF != nil {
 		return be.GetPolicyPackF(ctx, policyPack, d)
 	}
@@ -154,8 +156,8 @@ func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (S
 }
 
 func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
-	root string, project *workspace.Project, opts interface{}) (Stack, error) {
-
+	root string, project *workspace.Project, opts interface{},
+) (Stack, error) {
 	if be.CreateStackF != nil {
 		return be.CreateStackF(ctx, stackRef, root, project, opts)
 	}
@@ -170,7 +172,8 @@ func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool)
 }
 
 func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
-	[]StackSummary, ContinuationToken, error) {
+	[]StackSummary, ContinuationToken, error,
+) {
 	if be.ListStacksF != nil {
 		return be.ListStacksF(ctx, filter, inContToken)
 	}
@@ -178,7 +181,8 @@ func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, 
 }
 
 func (be *MockBackend) RenameStack(ctx context.Context, stack Stack,
-	newName tokens.QName) (StackReference, error) {
+	newName tokens.QName,
+) (StackReference, error) {
 	if be.RenameStackF != nil {
 		return be.RenameStackF(ctx, stack, newName)
 	}
@@ -193,8 +197,8 @@ func (be *MockBackend) GetStackCrypter(stackRef StackReference) (config.Crypter,
 }
 
 func (be *MockBackend) Preview(ctx context.Context, stack Stack,
-	op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	if be.PreviewF != nil {
 		return be.PreviewF(ctx, stack, op)
 	}
@@ -202,8 +206,8 @@ func (be *MockBackend) Preview(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Update(ctx context.Context, stack Stack,
-	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	if be.UpdateF != nil {
 		return be.UpdateF(ctx, stack, op)
 	}
@@ -211,8 +215,8 @@ func (be *MockBackend) Update(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Import(ctx context.Context, stack Stack,
-	op UpdateOperation, imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation, imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	if be.ImportF != nil {
 		return be.ImportF(ctx, stack, op, imports)
 	}
@@ -220,8 +224,8 @@ func (be *MockBackend) Import(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
-	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	if be.RefreshF != nil {
 		return be.RefreshF(ctx, stack, op)
 	}
@@ -229,8 +233,8 @@ func (be *MockBackend) Refresh(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
-	op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	if be.DestroyF != nil {
 		return be.DestroyF(ctx, stack, op)
 	}
@@ -238,8 +242,8 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation, paths []string) result.Result {
-
+	op UpdateOperation, paths []string,
+) result.Result {
 	if be.WatchF != nil {
 		return be.WatchF(ctx, stack, op, paths)
 	}
@@ -247,7 +251,6 @@ func (be *MockBackend) Watch(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) Query(ctx context.Context, op QueryOperation) result.Result {
-
 	if be.QueryF != nil {
 		return be.QueryF(ctx, op)
 	}
@@ -257,7 +260,8 @@ func (be *MockBackend) Query(ctx context.Context, op QueryOperation) result.Resu
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,
-	page int) ([]UpdateInfo, error) {
+	page int,
+) ([]UpdateInfo, error) {
 	if be.GetHistoryF != nil {
 		return be.GetHistoryF(ctx, stackRef, pageSize, page)
 	}
@@ -266,8 +270,8 @@ func (be *MockBackend) GetHistory(ctx context.Context,
 
 func (be *MockBackend) GetLogs(
 	ctx context.Context, secretsProvider secrets.Provider, stack Stack,
-	cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error) {
-
+	cfg StackConfiguration, query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	if be.GetLogsF != nil {
 		return be.GetLogsF(ctx, secretsProvider, stack, cfg, query)
 	}
@@ -275,8 +279,8 @@ func (be *MockBackend) GetLogs(
 }
 
 func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
-	stack Stack) (config.Map, error) {
-
+	stack Stack,
+) (config.Map, error) {
 	if be.GetLatestConfigurationF != nil {
 		return be.GetLatestConfigurationF(ctx, stack)
 	}
@@ -284,8 +288,8 @@ func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 }
 
 func (be *MockBackend) UpdateStackTags(ctx context.Context, stack Stack,
-	tags map[apitype.StackTagName]string) error {
-
+	tags map[apitype.StackTagName]string,
+) error {
 	if be.UpdateStackTagsF != nil {
 		return be.UpdateStackTagsF(ctx, stack, tags)
 	}
@@ -293,8 +297,8 @@ func (be *MockBackend) UpdateStackTags(ctx context.Context, stack Stack,
 }
 
 func (be *MockBackend) ExportDeployment(ctx context.Context,
-	stack Stack) (*apitype.UntypedDeployment, error) {
-
+	stack Stack,
+) (*apitype.UntypedDeployment, error) {
 	if be.ExportDeploymentF != nil {
 		return be.ExportDeploymentF(ctx, stack)
 	}
@@ -302,8 +306,8 @@ func (be *MockBackend) ExportDeployment(ctx context.Context,
 }
 
 func (be *MockBackend) ImportDeployment(ctx context.Context, stack Stack,
-	deployment *apitype.UntypedDeployment) error {
-
+	deployment *apitype.UntypedDeployment,
+) error {
 	if be.ImportDeploymentF != nil {
 		return be.ImportDeploymentF(ctx, stack, deployment)
 	}
@@ -404,8 +408,8 @@ func (ms *MockStack) Backend() Backend {
 
 func (ms *MockStack) Preview(
 	ctx context.Context,
-	op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-
+	op UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	if ms.PreviewF != nil {
 		return ms.PreviewF(ctx, op)
 	}
@@ -420,7 +424,8 @@ func (ms *MockStack) Update(ctx context.Context, op UpdateOperation) (sdkDisplay
 }
 
 func (ms *MockStack) Import(ctx context.Context, op UpdateOperation,
-	imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result) {
+	imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	if ms.ImportF != nil {
 		return ms.ImportF(ctx, op, imports)
 	}
@@ -470,7 +475,8 @@ func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) (StackRef
 }
 
 func (ms *MockStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	if ms.GetLogsF != nil {
 		return ms.GetLogsF(ctx, secretsProvider, cfg, query)
 	}

@@ -93,7 +93,6 @@ func TestEngineEvents(t *testing.T) {
 			assert.Contains(t, preEventResourceTypes, "pulumi-nodejs:dynamic:Resource")
 		},
 	})
-
 }
 
 // TestProjectMainNodejs tests out the ability to override the main entrypoint.
@@ -126,7 +125,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			e.RootPath,
 		)
 		t.Logf("writing new Pulumi.yaml: \npath: %s\ncontents:%s", yamlPath, absYamlContents)
-		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0644); err != nil {
+		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0o644); err != nil {
 			t.Error(err)
 			return
 		}
@@ -804,7 +803,6 @@ func TestCloudSecretProvider(t *testing.T) {
 
 	// Also run with local backend
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
-
 }
 
 // Tests a resource with a large (>4mb) string prop in Node.js
@@ -884,10 +882,9 @@ func TestConstructPlainNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t,
 				optsForConstructPlainNode(t, test.expectedResourceCount, localProviders))
 		})

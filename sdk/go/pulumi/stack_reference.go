@@ -179,8 +179,8 @@ func (StackReferenceArgs) ElementType() reflect.Type {
 
 // NewStackReference creates a stack reference that makes available outputs from the specified stack
 func NewStackReference(ctx *Context, name string, args *StackReferenceArgs,
-	opts ...ResourceOption) (*StackReference, error) {
-
+	opts ...ResourceOption,
+) (*StackReference, error) {
 	if args == nil {
 		args = &StackReferenceArgs{}
 	}

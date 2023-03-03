@@ -581,7 +581,6 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 		return strKey, true
 	}
 	return fmt.Sprintf("%q", strKey), true
-
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {

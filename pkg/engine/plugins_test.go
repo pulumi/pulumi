@@ -61,7 +61,6 @@ func TestDefaultProvidersSingle(t *testing.T) {
 	assert.NotNil(t, kubernetesVer)
 	assert.Equal(t, "0.22.0", kubernetesVer.String())
 	assert.Equal(t, "com.server.url", kubernetes.PluginDownloadURL)
-
 }
 
 func TestDefaultProvidersOverrideNoVersion(t *testing.T) {

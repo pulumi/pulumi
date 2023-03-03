@@ -56,8 +56,8 @@ type Context struct {
 // host's.
 func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span) (*Context, error) {
-
+	parentSpan opentracing.Span,
+) (*Context, error) {
 	// TODO: I think really this ought to just take plugins *workspace.Plugins as an arg, but yaml depends on
 	// this function so *sigh*. For now just see if there's a project we should be using, and use it if there
 	// is.
@@ -78,8 +78,8 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, plugins *workspace.Plugins) (*Context, error) {
-
+	parentSpan opentracing.Span, plugins *workspace.Plugins,
+) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}

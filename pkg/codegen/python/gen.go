@@ -259,7 +259,6 @@ func (mod *modContext) tokenToEnum(tok string) string {
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
-
 	if r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
 		return mod.tokenToResource(r.Token)
 	}
@@ -822,7 +821,6 @@ func (mod *modContext) importEnumType(e *schema.EnumType) string {
 }
 
 func (mod *modContext) importResourceType(r *schema.ResourceType) string {
-
 	if r.Resource != nil && !codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
 		return fmt.Sprintf("import %s", pyPack(r.Resource.PackageReference.Name()))
 	}
@@ -1491,7 +1489,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 }
 
 func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, setters bool, indent string,
-	propType func(prop *schema.Property) string) {
+	propType func(prop *schema.Property) string,
+) {
 	// Write out Python properties for each property. If there is a property named "property", it will
 	// be emitted last to avoid conflicting with the built-in `@property` decorator function. We do
 	// this instead of importing `builtins` and fully qualifying the decorator as `@builtins.property`
@@ -1941,7 +1940,6 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	fmt.Fprintf(w, "__all__ = [\n")
 	for _, enum := range enums {
 		fmt.Fprintf(w, "    '%s',\n", tokenToName(enum.Token))
-
 	}
 	fmt.Fprintf(w, "]\n\n\n")
 
@@ -2008,7 +2006,8 @@ func (mod *modContext) collectImports(properties []*schema.Property, imports imp
 }
 
 func (mod *modContext) collectImportsForResource(properties []*schema.Property, imports imports, input bool,
-	res *schema.Resource) {
+	res *schema.Resource,
+) {
 	codegen.VisitTypeClosure(properties, func(t schema.Type) {
 		switch t := t.(type) {
 		case *schema.ObjectType:
@@ -2024,11 +2023,13 @@ func (mod *modContext) collectImportsForResource(properties []*schema.Property, 
 	})
 }
 
-var requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
-var pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
-var pep440BetaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
-var pep440RCRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
-var pep440DevRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
+var (
+	requirementRegex = regexp.MustCompile(`^>=([^,]+),<[^,]+$`)
+	pep440AlphaRegex = regexp.MustCompile(`^(\d+\.\d+\.\d)+a(\d+)$`)
+	pep440BetaRegex  = regexp.MustCompile(`^(\d+\.\d+\.\d+)b(\d+)$`)
+	pep440RCRegex    = regexp.MustCompile(`^(\d+\.\d+\.\d+)rc(\d+)$`)
+	pep440DevRegex   = regexp.MustCompile(`^(\d+\.\d+\.\d+)\.dev(\d+)$`)
+)
 
 var oldestAllowedPulumi = semver.Version{
 	Major: 0,
@@ -2060,8 +2061,8 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string) (string, error) {
-
+	tool string, pkg *schema.Package, pyPkgName string, requires map[string]string, pythonRequires string,
+) (string, error) {
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
 

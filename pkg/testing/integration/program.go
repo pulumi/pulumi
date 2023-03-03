@@ -635,9 +635,11 @@ func (rf *regexFlag) Set(v string) error {
 	return nil
 }
 
-var directoryMatcher regexFlag
-var listDirs bool
-var pipMutex *fsutil.FileMutex
+var (
+	directoryMatcher regexFlag
+	listDirs         bool
+	pipMutex         *fsutil.FileMutex
+)
 
 func init() {
 	flag.Var(&directoryMatcher, "dirs", "optional list of regexes to use to select integration tests to run")
@@ -654,8 +656,8 @@ func GetLogs(
 	t *testing.T,
 	provider, region string,
 	stackInfo RuntimeValidationStackInfo,
-	query operations.LogQuery) *[]operations.LogEntry {
-
+	query operations.LogQuery,
+) *[]operations.LogEntry {
 	snap, err := stack.DeserializeDeploymentV3(
 		context.Background(),
 		*stackInfo.Deployment,
@@ -1393,7 +1395,6 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		pt.t.Logf("Performing empty preview and update%s", msg)
 		if err := pt.PreviewAndUpdate(dir, "empty", pt.opts.ExpectFailure,
 			!pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
-
 			return fmt.Errorf("empty preview: %w", err)
 		}
 	}
@@ -1451,8 +1452,8 @@ func (pt *ProgramTester) exportImport(dir string) error {
 
 // PreviewAndUpdate runs pulumi preview followed by pulumi up
 func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, expectNopPreview,
-	expectNopUpdate bool) error {
-
+	expectNopUpdate bool,
+) error {
 	preview := []string{"preview", "--non-interactive", "--diff"}
 	update := []string{"up", "--non-interactive", "--yes", "--skip-preview", "--event-log", pt.updateEventLog}
 	if pt.opts.GetDebugUpdates() {
@@ -1512,7 +1513,6 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 }
 
 func (pt *ProgramTester) query(dir string, name string, shouldFail bool) error {
-
 	query := []string{"query", "--non-interactive"}
 	if pt.opts.GetDebugUpdates() {
 		query = append(query, "-d")
@@ -1655,8 +1655,8 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 }
 
 func (pt *ProgramTester) performExtraRuntimeValidation(
-	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string) error {
-
+	extraRuntimeValidation func(t *testing.T, stack RuntimeValidationStackInfo), dir string,
+) error {
 	if extraRuntimeValidation == nil {
 		return nil
 	}
@@ -1880,7 +1880,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", fmt.Errorf("error marshalling project %q: %w", projfile, err)
 	}
 
-	if err := os.WriteFile(projfile, bytes, 0600); err != nil {
+	if err := os.WriteFile(projfile, bytes, 0o600); err != nil {
 		return "", "", fmt.Errorf("error writing project: %w", err)
 	}
 
@@ -1915,7 +1915,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 				"@pulumi/pulumi": "latest"
 			}
 		}`
-		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0o600); err != nil {
 			return "", "", err
 		}
 		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
@@ -2023,7 +2023,6 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	}
 
 	return nil
-
 }
 
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
@@ -2195,11 +2194,9 @@ func getSanitizedModulePath(pkg string) string {
 		return strings.TrimSuffix(strings.ReplaceAll(pkg, v, ""), "/")
 	}
 	return pkg
-
 }
 
 func getRewritePath(pkg string, gopath string, depRoot string) string {
-
 	var depParts []string
 	sanitizedPkg := getSanitizedModulePath(pkg)
 
@@ -2219,7 +2216,6 @@ func getRewritePath(pkg string, gopath string, depRoot string) string {
 	}
 	depParts = append([]string{gopath, "src"}, splitPkg...)
 	return filepath.Join(depParts...)
-
 }
 
 // Fetchs the GOPATH
@@ -2405,10 +2401,12 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		// packages which cannot be found in our local nuget source. A restore
 		// will happen automatically as part of the `pulumi up`.
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep,
+			[]string{
+				dotNetBin, "add", "package", dep,
 				"-v", version,
 				"-s", localNuget,
-				"--no-restore"},
+				"--no-restore",
+			},
 			cwd)
 		if err != nil {
 			return fmt.Errorf("failed to add dependency on %s: %w", dep, err)

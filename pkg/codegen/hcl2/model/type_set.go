@@ -47,8 +47,8 @@ func (t *SetType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 // Equals returns true if this type has the same identity as the given type.
 func (t *SetType) Equals(other Type) bool {
 	return t.equals(other, nil)
-
 }
+
 func (t *SetType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true

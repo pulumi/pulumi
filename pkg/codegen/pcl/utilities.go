@@ -202,7 +202,8 @@ func GenerateMultiArguments(
 	w io.Writer,
 	undefinedLiteral string,
 	expr *model.ObjectConsExpression,
-	multiArguments []*schema.Property) {
+	multiArguments []*schema.Property,
+) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
 		lit := item.Key.(*model.LiteralValueExpression)

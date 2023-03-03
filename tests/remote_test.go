@@ -50,14 +50,18 @@ func TestInvalidRemoteFlags(t *testing.T) {
 			err:  "error: `--remote-git-branch` and `--remote-git-commit` cannot both be specified",
 		},
 		"both ssh private key and path": {
-			args: []string{remoteTestRepo, "--remote-git-branch", "branch", "--remote-git-auth-ssh-private-key", "key",
-				"--remote-git-auth-ssh-private-key-path", "path"},
+			args: []string{
+				remoteTestRepo, "--remote-git-branch", "branch", "--remote-git-auth-ssh-private-key", "key",
+				"--remote-git-auth-ssh-private-key-path", "path",
+			},
 			err: "error: `--remote-git-auth-ssh-private-key` and `--remote-git-auth-ssh-private-key-path` " +
 				"cannot both be specified",
 		},
 		"ssh private key path doesn't exist": {
-			args: []string{remoteTestRepo, "--remote-git-branch", "branch", "--remote-git-auth-ssh-private-key-path",
-				"doesntexist"},
+			args: []string{
+				remoteTestRepo, "--remote-git-branch", "branch", "--remote-git-auth-ssh-private-key-path",
+				"doesntexist",
+			},
 			err: "error: reading SSH private key path",
 		},
 		"invalid env": {
@@ -137,8 +141,10 @@ func TestRemoteLifecycle(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "--no-select", "--stack", fullyQualifiedStack)
 
 	args := func(command string) []string {
-		return []string{command, remoteTestRepo, "--stack", fullyQualifiedStack,
-			"--remote", "--remote-git-branch", "refs/heads/master", "--remote-git-repo-dir", "goproj"}
+		return []string{
+			command, remoteTestRepo, "--stack", fullyQualifiedStack,
+			"--remote", "--remote-git-branch", "refs/heads/master", "--remote-git-repo-dir", "goproj",
+		}
 	}
 
 	e.RunCommand("pulumi", args("preview")...)

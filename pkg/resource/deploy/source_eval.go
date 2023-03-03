@@ -61,8 +61,8 @@ type EvalRunInfo struct {
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
 func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
-	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool) Source {
-
+	defaultProviderInfo map[tokens.Package]workspace.PluginSpec, dryRun bool,
+) Source {
 	return &evalSource{
 		plugctx:             plugctx,
 		runinfo:             runinfo,
@@ -96,8 +96,8 @@ func (src *evalSource) Info() interface{} { return src.runinfo }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
 func (src *evalSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
-
+	ctx context.Context, opts Options, providers ProviderSource,
+) (SourceIterator, result.Result) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
@@ -276,8 +276,8 @@ type defaultProviderRequest struct {
 // newRegisterDefaultProviderEvent creates a RegisterResourceEvent and completion channel that can be sent to the
 // engine to register a default provider resource for the indicated package.
 func (d *defaultProviders) newRegisterDefaultProviderEvent(
-	req providers.ProviderRequest) (*registerResourceEvent, <-chan *RegisterResult, error) {
-
+	req providers.ProviderRequest,
+) (*registerResourceEvent, <-chan *RegisterResult, error) {
 	// Attempt to get the config for the package.
 	inputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
@@ -503,8 +503,8 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
-	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span) (*resmon, error) {
-
+	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span,
+) (*resmon, error) {
 	// Create our cancellation channel.
 	cancel := make(chan bool)
 
@@ -600,7 +600,8 @@ func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span) [
 // given unparsed provider reference. If the unparsed provider reference is empty, this function returns a reference
 // to the default provider for the indicated package.
 func getProviderReference(defaultProviders *defaultProviders, req providers.ProviderRequest,
-	rawProviderRef string) (providers.Reference, error) {
+	rawProviderRef string,
+) (providers.Reference, error) {
 	if rawProviderRef != "" {
 		ref, err := providers.ParseReference(rawProviderRef)
 		if err != nil {
@@ -622,8 +623,8 @@ func getProviderReference(defaultProviders *defaultProviders, req providers.Prov
 func getProviderFromSource(
 	providerSource ProviderSource, defaultProviders *defaultProviders,
 	req providers.ProviderRequest, rawProviderRef string,
-	token tokens.ModuleMember) (plugin.Provider, error) {
-
+	token tokens.ModuleMember,
+) (plugin.Provider, error) {
 	providerRef, err := getProviderReference(defaultProviders, req, rawProviderRef)
 	if err != nil {
 		return nil, fmt.Errorf("getProviderFromSource: %w", err)
@@ -657,8 +658,8 @@ func parseProviderRequest(pkg tokens.Package, version, pluginDownloadURL string)
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
-	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
-
+	req *pulumirpc.SupportsFeatureRequest,
+) (*pulumirpc.SupportsFeatureResponse, error) {
 	hasSupport := false
 
 	// NOTE: DO NOT ADD ANY MORE FEATURES TO THIS LIST
@@ -742,7 +743,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
-	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -828,7 +829,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
+	chkfails := make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
 	for _, failure := range ret.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -839,8 +840,8 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 }
 
 func (rm *resmon) StreamInvoke(
-	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
-
+	req *pulumirpc.ResourceInvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer,
+) error {
 	tok := tokens.ModuleMember(req.GetTok())
 	label := fmt.Sprintf("ResourceMonitor.StreamInvoke(%s)", tok)
 
@@ -883,7 +884,7 @@ func (rm *resmon) StreamInvoke(
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	var chkfails = make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -899,7 +900,8 @@ func (rm *resmon) StreamInvoke(
 
 // ReadResource reads the current state associated with a resource from its provider plugin.
 func (rm *resmon) ReadResource(ctx context.Context,
-	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
+	req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
 	// Read the basic inputs necessary to identify the plugin.
 	t, err := tokens.ParseTypeToken(req.GetType())
 	if err != nil {
@@ -927,7 +929,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	id := resource.ID(req.GetId())
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
-	var deps = make([]resource.URN, 0, len(req.GetDependencies()))
+	deps := make([]resource.URN, 0, len(req.GetDependencies()))
 	for _, depURN := range req.GetDependencies() {
 		deps = append(deps, resource.URN(depURN))
 	}
@@ -942,7 +944,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
-	var additionalSecretOutputs = make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
+	additionalSecretOutputs := make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
@@ -993,8 +995,8 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
-	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
-
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
 	// Communicate the type, name, and object information to the iterator that is awaiting us.
 	name := tokens.QName(req.GetName())
 	custom := req.GetCustom()
@@ -1155,7 +1157,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	var additionalSecretOutputs = make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
+	additionalSecretOutputs := make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
@@ -1314,9 +1316,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			if customTimeouts == nil {
 				return false
 			}
-			var hasUpdateTimeout = customTimeouts.Update != ""
-			var hasCreateTimeout = customTimeouts.Create != ""
-			var hasDeleteTimeout = customTimeouts.Delete != ""
+			hasUpdateTimeout := customTimeouts.Update != ""
+			hasCreateTimeout := customTimeouts.Create != ""
+			hasDeleteTimeout := customTimeouts.Delete != ""
 			return hasCreateTimeout || hasUpdateTimeout || hasDeleteTimeout
 		})
 		rm.checkComponentOption(result.State.URN, "additionalSecretOutputs", func() bool {
@@ -1370,8 +1372,8 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 // RegisterResourceOutputs records some new output properties for a resource that have arrived after its initial
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
-	req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
-
+	req *pulumirpc.RegisterResourceOutputsRequest,
+) (*pbempty.Empty, error) {
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn := resource.URN(req.GetUrn())
 	if urn == "" {
@@ -1485,6 +1487,7 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
+
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
 }

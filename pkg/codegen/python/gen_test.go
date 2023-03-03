@@ -70,7 +70,7 @@ func TestGeneratePackage(t *testing.T) {
 	var virtualEnvLock sync.Mutex
 	// If we are running without checks, we mark the env as already built so we don't
 	// build it again.
-	var virtualEnvBuilt = test.NoSDKCodegenChecks()
+	virtualEnvBuilt := test.NoSDKCodegenChecks()
 
 	// To speed up these tests, we will generate one common virtual environment for all of
 	// them to run in, rather than having one per test. We want to make sure that we only

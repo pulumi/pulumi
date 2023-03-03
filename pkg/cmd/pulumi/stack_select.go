@@ -101,7 +101,6 @@ func newStackSelectCmd() *cobra.Command {
 
 			contract.Assertf(stack != nil, "must select a stack")
 			return state.SetCurrentStack(stack.Ref().String())
-
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(

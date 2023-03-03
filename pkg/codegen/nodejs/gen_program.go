@@ -130,7 +130,6 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 				g.Fgenf(&index, "%sreturn %v;\n", g.Indent, result)
 			}
 		}
-
 	})
 
 	if g.asyncMain {
@@ -243,7 +242,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := os.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -328,7 +327,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
-	var sortedVals = importSet.SortedValues()
+	sortedVals := importSet.SortedValues()
 	imports := make([]string, 0, len(sortedVals))
 	for _, pkg := range sortedVals {
 		if pkg == "@pulumi/pulumi" {

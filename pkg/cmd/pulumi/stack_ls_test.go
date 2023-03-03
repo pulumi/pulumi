@@ -149,7 +149,8 @@ func TestListStacksPagination(t *testing.T) {
 
 	backendInstance = &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
-			[]backend.StackSummary, backend.ContinuationToken, error) {
+			[]backend.StackSummary, backend.ContinuationToken, error,
+		) {
 			requestsMade = append(requestsMade, stackLSInputs{filter, inContToken})
 			requestIdx := len(requestsMade) - 1
 			response := cannedResponses[requestIdx]

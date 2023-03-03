@@ -127,10 +127,9 @@ func TestConstructPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, localProviders, test.env...))
 		})
@@ -224,7 +223,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
 
-		if err := os.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
+		if err := os.WriteFile(pulumiYaml, newYaml, 0o644); err != nil {
 			t.Error(err)
 			return
 		}

@@ -128,7 +128,7 @@ venv/`)
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := os.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -232,7 +232,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 						}
 						importSet[importPackage] = Import{
 							ImportAs: importAs,
-							Pkg:      maybePkg}
+							Pkg:      maybePkg,
+						}
 					}
 				}
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
@@ -298,7 +299,6 @@ func tokenToQualifiedName(pkg, module, member string) string {
 	}
 
 	return fmt.Sprintf("%s%s.%s", PyName(pkg), module, title(member))
-
 }
 
 // resourceTypeName computes the qualified name of a python resource.

@@ -51,7 +51,6 @@ import (
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
 func compileProgram(programDirectory string, outfile string) (string, error) {
-
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
 	if matches, err := filepath.Glob(goFileSearchPattern); err != nil || len(matches) == 0 {
 		return "", fmt.Errorf("Failed to find go files for 'go build' matching %s", goFileSearchPattern)
@@ -283,8 +282,8 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 // dep or glide, the list command fails with "go list -m: not using modules".
 // However, we do enforce that go 1.14.0 or higher is installed.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
-
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
 	gobin, err := executable.FindExecutable("go")
@@ -536,8 +535,8 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 }
 
 func (host *goLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
-
+	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
 	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
 	if err != nil {
 		return err
@@ -614,7 +613,8 @@ type goModule struct {
 }
 
 func (host *goLanguageHost) GetProgramDependencies(
-	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest) (*pulumirpc.GetProgramDependenciesResponse, error) {
+	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
+) (*pulumirpc.GetProgramDependenciesResponse, error) {
 	// go list -m ...
 	//
 	//Go has a --json flag, but it doesn't emit a single json object (which
@@ -663,7 +663,8 @@ func (host *goLanguageHost) GetProgramDependencies(
 }
 
 func (host *goLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer) error {
+	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
+) error {
 	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
 
 	program, err := compileProgram(req.Program, "")

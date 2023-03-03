@@ -71,7 +71,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 	case tar.TypeDir:
 		// Create any directories as needed.
 		if _, err := os.Stat(path); err != nil {
-			if err = os.MkdirAll(path, 0700); err != nil {
+			if err = os.MkdirAll(path, 0o700); err != nil {
 				return errors.Wrapf(err, "extracting dir %s", path)
 			}
 		}
@@ -81,7 +81,7 @@ func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
 		// to create it here.
 		dir := filepath.Dir(path)
 		if _, err := os.Stat(dir); err != nil {
-			if err = os.MkdirAll(dir, 0700); err != nil {
+			if err = os.MkdirAll(dir, 0o700); err != nil {
 				return errors.Wrapf(err, "extracting dir %s", dir)
 			}
 		}
@@ -133,7 +133,8 @@ const (
 )
 
 func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string,
-	useDefaultIgnores bool, ignores *ignoreState) error {
+	useDefaultIgnores bool, ignores *ignoreState,
+) error {
 	ignoreFilePath := filepath.Join(dir, gitIgnoreFile)
 
 	// If there is an ignorefile, process it before looking at any child paths.

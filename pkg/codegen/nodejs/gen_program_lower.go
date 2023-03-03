@@ -70,8 +70,8 @@ func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
 //
 // Each of these patterns matches an apply that can be handled by `pulumi.Output`'s property access proxy.
 func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
-	then model.Expression) (model.Expression, bool) {
-
+	then model.Expression,
+) (model.Expression, bool) {
 	if len(args) != 1 {
 		return nil, false
 	}
@@ -133,8 +133,8 @@ func callbackParameterReferences(expr model.Expression, parameters codegen.Set) 
 // If a match is found, parseInterpolate returns an appropriate call to the __interpolate intrinsic with a mix of
 // expressions and proxied applies.
 func (g *generator) parseInterpolate(parameters codegen.Set, args []model.Expression,
-	then *model.AnonymousFunctionExpression) (model.Expression, bool) {
-
+	then *model.AnonymousFunctionExpression,
+) (model.Expression, bool) {
 	template, ok := then.Body.(*model.TemplateExpression)
 	if !ok {
 		return nil, false

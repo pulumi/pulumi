@@ -120,8 +120,8 @@ func (b *Body) Blocks(typ string) []*Block {
 
 // BindBody binds an HCL2 body using the given scopes and token map.
 func BindBody(body *hclsyntax.Body, scopes Scopes, tokens syntax.TokenMap,
-	opts ...BindOption) (*Body, hcl.Diagnostics) {
-
+	opts ...BindOption,
+) (*Body, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	syntaxItems := SourceOrderBody(body)

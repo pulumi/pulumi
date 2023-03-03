@@ -124,12 +124,11 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
 	}, nil
-
 }
 
 func (p *providerServer) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
-
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	schema, err := p.provider.GetSchema(int(req.GetVersion()))
 	if err != nil {
 		return nil, err
@@ -167,8 +166,8 @@ func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbemp
 }
 
 func (p *providerServer) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
-
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
 	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("olds"))
@@ -220,8 +219,8 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 }
 
 func (p *providerServer) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
-
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	var inputs resource.PropertyMap
 	if req.GetArgs() != nil {
 		args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
@@ -409,8 +408,8 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 }
 
 func (p *providerServer) Construct(ctx context.Context,
-	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
-
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	typ, name, parent := tokens.Type(req.GetType()), tokens.QName(req.GetName()), resource.URN(req.GetParent())
 
 	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs"))
@@ -524,8 +523,8 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 }
 
 func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
-
+	server pulumirpc.ResourceProvider_StreamInvokeServer,
+) error {
 	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
 	if err != nil {
 		return err
@@ -626,7 +625,8 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 }
 
 func (p *providerServer) GetMapping(ctx context.Context,
-	req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
 	data, provider, err := p.provider.GetMapping(req.Key)
 	if err != nil {
 		return nil, err

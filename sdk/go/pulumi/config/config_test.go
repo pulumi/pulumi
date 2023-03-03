@@ -215,7 +215,6 @@ func TestSecretConfig(t *testing.T) {
 				result <- val.(string)
 			} else {
 				errChan <- fmt.Errorf("invalid result: %v", val)
-
 			}
 		}
 		return v, nil
@@ -282,7 +281,6 @@ func TestSecretConfig(t *testing.T) {
 				resultBool <- val.(bool)
 			} else {
 				errChan <- fmt.Errorf("invalid result: %v", val)
-
 			}
 		}
 		return v, nil
@@ -313,7 +311,6 @@ func TestSecretConfig(t *testing.T) {
 				resultInt <- val.(int)
 			} else {
 				errChan <- fmt.Errorf("invalid result: %v", val)
-
 			}
 		}
 		return v, nil

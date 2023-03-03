@@ -73,8 +73,10 @@ func findGRPCPayload(t *appdash.Trace) string {
 	return ""
 }
 
-var urnFieldRe = regexp.MustCompile(`urn:"([^"]+)"`)
-var tokFieldRe = regexp.MustCompile(`tok:"([^"]+)"`)
+var (
+	urnFieldRe = regexp.MustCompile(`urn:"([^"]+)"`)
+	tokFieldRe = regexp.MustCompile(`tok:"([^"]+)"`)
+)
 
 func extractResourceType(t *appdash.Trace) string {
 	grpcPayload := findGRPCPayload(t)
@@ -181,7 +183,7 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 
 func newConvertTraceCmd() *cobra.Command {
 	var quantum time.Duration
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "convert-trace [trace-file]",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
 		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +

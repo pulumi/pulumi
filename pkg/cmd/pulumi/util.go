@@ -171,8 +171,8 @@ func commandContext() context.Context {
 
 func createSecretsManager(
 	ctx context.Context, stack backend.Stack, secretsProvider string,
-	rotateSecretsProvider, creatingStack bool) error {
-
+	rotateSecretsProvider, creatingStack bool,
+) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
@@ -225,8 +225,8 @@ func createStack(ctx context.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, project *workspace.Project,
 	opts interface{}, setCurrent bool,
-	secretsProvider string) (backend.Stack, error) {
-
+	secretsProvider string,
+) (backend.Stack, error) {
 	stack, err := b.CreateStack(ctx, stackRef, root, project, opts)
 	if err != nil {
 		// If it's a well-known error, don't wrap it.
@@ -282,7 +282,8 @@ func (o stackLoadOption) SetCurrent() bool {
 // the workspace is returned.  If no stack with either the given name, or a currently selected stack, exists,
 // and we are in an interactive terminal, the user will be prompted to create a new stack.
 func requireStack(ctx context.Context,
-	stackName string, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
+	stackName string, lopt stackLoadOption, opts display.Options,
+) (backend.Stack, error) {
 	if stackName == "" {
 		return requireCurrentStack(ctx, lopt, opts)
 	}
@@ -328,7 +329,6 @@ func requireStack(ctx context.Context,
 }
 
 func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
-
 	// Try to read the current project
 	project, _, err := readProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -354,7 +354,8 @@ func requireCurrentStack(ctx context.Context, lopt stackLoadOption, opts display
 // chooseStack will prompt the user to choose amongst the full set of stacks in the given backend.  If offerNew is
 // true, then the option to create an entirely new stack is provided and will create one as desired.
 func chooseStack(ctx context.Context,
-	b backend.Backend, lopt stackLoadOption, opts display.Options) (backend.Stack, error) {
+	b backend.Backend, lopt stackLoadOption, opts display.Options,
+) (backend.Stack, error) {
 	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
 	var chooseStackErr string
 	if lopt.OfferNew() {
@@ -572,7 +573,6 @@ func readPolicyProject() (*workspace.PolicyPackProject, string, string, error) {
 	if err != nil {
 		return nil, "", "", fmt.Errorf("failed to find current Pulumi project because of "+
 			"an error when searching for the PulumiPolicy.yaml file (searching upwards from %s)"+": %w", pwd, err)
-
 	} else if path == "" {
 		return nil, "", "", fmt.Errorf("no PulumiPolicy.yaml project file found (searching upwards from %s)", pwd)
 	}
@@ -1003,7 +1003,8 @@ func buildStackName(stackName string) (string, error) {
 // to requesting a list of secrets in an individual event e.g. stack export
 // the logging event will only happen during the `--show-secrets` path within the cli
 func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend backend.Stack,
-	secretName, commandName string) {
+	secretName, commandName string,
+) {
 	if stack, ok := backend.(httpstate.Stack); ok {
 		// we only want to do something if this is a service backend
 		if be, ok := stack.Backend().(httpstate.Backend); ok {

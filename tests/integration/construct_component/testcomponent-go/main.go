@@ -38,7 +38,8 @@ func (ResourceArgs) ElementType() reflect.Type {
 }
 
 func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
-	opts ...pulumi.ResourceOption) (*Resource, error) {
+	opts ...pulumi.ResourceOption,
+) (*Resource, error) {
 	args := &ResourceArgs{Echo: echo}
 	var resource Resource
 	err := ctx.RegisterResource(providerName+":index:Resource", name, args, &resource, opts...)
@@ -61,7 +62,8 @@ type ComponentArgs struct {
 }
 
 func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
-	opts ...pulumi.ResourceOption) (*Component, error) {
+	opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	if args == nil {
 		return nil, errors.New("args is required")
 	}
@@ -101,8 +103,10 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 	return component, nil
 }
 
-const providerName = "testcomponent"
-const version = "0.0.1"
+const (
+	providerName = "testcomponent"
+	version      = "0.0.1"
+)
 
 var currentID int
 
@@ -134,7 +138,8 @@ func makeProvider(host *provider.HostClient, name, version string) (pulumirpc.Re
 }
 
 func (p *Provider) Create(ctx context.Context,
-	req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	req *pulumirpc.CreateRequest,
+) (*pulumirpc.CreateResponse, error) {
 	urn := resource.URN(req.GetUrn())
 	typ := urn.Type()
 	if typ != providerName+":index:Resource" {
@@ -155,10 +160,11 @@ func (p *Provider) Create(ctx context.Context,
 }
 
 func (p *Provider) Construct(ctx context.Context,
-	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-
+		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+	) (*pulumiprovider.ConstructResult, error) {
 		if typ != providerName+":index:Component" {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
@@ -178,17 +184,20 @@ func (p *Provider) Construct(ctx context.Context,
 }
 
 func (p *Provider) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 func (p *Provider) DiffConfig(ctx context.Context,
-	req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
 	return &pulumirpc.DiffResponse{}, nil
 }
 
 func (p *Provider) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	if _, ok := req.GetArgs().Fields["expectResourceArg"]; ok {
 		p.expectResourceArg = true
 	}
@@ -200,22 +209,26 @@ func (p *Provider) Configure(ctx context.Context,
 }
 
 func (p *Provider) Invoke(ctx context.Context,
-	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	req *pulumirpc.InvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+	server pulumirpc.ResourceProvider_StreamInvokeServer,
+) error {
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	req *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
 	return nil, fmt.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *Provider) Check(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
@@ -231,7 +244,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 }
 
 func (p *Provider) Update(ctx context.Context,
-	req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
 	return &pulumirpc.UpdateResponse{
 		Properties: req.GetNews(),
 	}, nil
@@ -252,7 +266,8 @@ func (p *Provider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pb
 }
 
 func (p *Provider) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	return &pulumirpc.GetSchemaResponse{}, nil
 }
 

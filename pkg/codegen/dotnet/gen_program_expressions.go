@@ -429,7 +429,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				} else {
 					g.Fgenf(w, "%v", funcExpr.Args[1])
 				}
-
 			}
 
 			g.Fprint(w, ")")
@@ -715,8 +714,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	expr *model.ObjectConsExpression,
 	destTypeName string,
 	implicitTypeName bool,
-	multiArguments []*schema.Property) {
-
+	multiArguments []*schema.Property,
+) {
 	if len(expr.Items) == 0 {
 		return
 	}
@@ -758,8 +757,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
-	traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType) {
-
+	traversal hcl.Traversal, parts []model.Traversable, objType *schema.ObjectType,
+) {
 	for i, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {

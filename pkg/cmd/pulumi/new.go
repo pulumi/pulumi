@@ -158,7 +158,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		if template, err = chooseTemplate(templates, opts); err != nil {
 			return err
 		}
-
 	}
 	if template.Errored() {
 		return fmt.Errorf("template '%s' is currently broken: %w", template.Name, template.Error)
@@ -372,7 +371,7 @@ func useSpecifiedDir(dir string) (string, error) {
 //
 //nolint:vetshadow
 func newNewCmd() *cobra.Command {
-	var args = newArgs{
+	args := newArgs{
 		interactive: cmdutil.Interactive(),
 		prompt:      promptForValue,
 	}
@@ -542,8 +541,8 @@ func errorIfNotEmptyDirectory(path string) error {
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
-	projectName string, generateOnly bool, opts display.Options) error {
-
+	projectName string, generateOnly bool, opts display.Options,
+) error {
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
 		return err
@@ -567,8 +566,8 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
 func getStack(ctx context.Context, b backend.Backend,
-	stack string, opts display.Options) (backend.Stack, string, string, error) {
-
+	stack string, opts display.Options,
+) (backend.Stack, string, string, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 
 	stackRef, err := b.ParseStackReference(stack)
@@ -596,7 +595,8 @@ func getStack(ctx context.Context, b backend.Backend,
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptForValueFunc,
 	stack string, root string, project *workspace.Project, setCurrent bool, yes bool, opts display.Options,
-	secretsProvider string) (backend.Stack, error) {
+	secretsProvider string,
+) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 	contract.Requiref(project != nil, "project", "must not be nil")
 	contract.Requiref(root != "", "root", "must not be empty")
@@ -648,7 +648,8 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 func stackInit(
 	ctx context.Context, b backend.Backend, stackName string,
 	root string, project *workspace.Project,
-	setCurrent bool, secretsProvider string) (backend.Stack, error) {
+	setCurrent bool, secretsProvider string,
+) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
@@ -854,8 +855,8 @@ func promptForConfig(
 	commandLineConfig config.Map,
 	stackConfig config.Map,
 	yes bool,
-	opts display.Options) (config.Map, error) {
-
+	opts display.Options,
+) (config.Map, error) {
 	// Convert `string` keys to `config.Key`. If a string key is missing a delimiter,
 	// the project name will be prepended.
 	parsedTemplateConfig := make(map[config.Key]workspace.ProjectTemplateConfigValue)
@@ -966,8 +967,8 @@ func promptForConfig(
 // prompts again.
 func promptForValue(
 	yes bool, valueType string, defaultValue string, secret bool,
-	isValidFn func(value string) error, opts display.Options) (string, error) {
-
+	isValidFn func(value string) error, opts display.Options,
+) (string, error) {
 	var value string
 	for {
 		// If we are auto-accepting the default (--yes), just set it and move on to validating.
@@ -1035,8 +1036,8 @@ func promptForValue(
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
 func templatesToOptionArrayAndMap(templates []workspace.Template,
-	showAll bool) ([]string, map[string]workspace.Template) {
-
+	showAll bool,
+) ([]string, map[string]workspace.Template) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {

@@ -27,7 +27,7 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
-	var pluginLoaders = make([]*deploytest.PluginLoader, 0, len(providers))
+	pluginLoaders := make([]*deploytest.PluginLoader, 0, len(providers))
 
 	for _, v := range providers {
 		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))

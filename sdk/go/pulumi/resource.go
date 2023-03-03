@@ -30,9 +30,11 @@ type (
 	URN string
 )
 
-var resourceStateType = reflect.TypeOf(ResourceState{})
-var customResourceStateType = reflect.TypeOf(CustomResourceState{})
-var providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
+var (
+	resourceStateType         = reflect.TypeOf(ResourceState{})
+	customResourceStateType   = reflect.TypeOf(CustomResourceState{})
+	providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
+)
 
 // ResourceState is the base
 type ResourceState struct {

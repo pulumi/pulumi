@@ -17,7 +17,8 @@ type Component struct {
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
 func NewComponent(ctx *pulumi.Context,
-	name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
+	name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	if args == nil {
 		args = &ComponentArgs{}
 	}

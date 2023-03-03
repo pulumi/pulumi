@@ -42,7 +42,8 @@ func NewPropertyMap(s interface{}) PropertyMap {
 // NewPropertyMapRepl turns a struct into a property map, using any JSON tags inside to determine naming.  If non-nil
 // replk or replv function(s) are provided, key and/or value transformations are performed during the mapping.
 func NewPropertyMapRepl(s interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyMap {
 	m, err := mapper.Unmap(s)
 	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
 	return NewPropertyMapFromMapRepl(m, replk, replv)
@@ -55,7 +56,8 @@ func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
 
 // NewPropertyMapFromMapRepl optionally replaces keys/values in an existing map while creating a new resource map.
 func NewPropertyMapFromMapRepl(m map[string]interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyMap {
 	result := make(PropertyMap)
 	for k, v := range m {
 		key := PropertyKey(k)
@@ -175,7 +177,8 @@ func (props PropertyMap) Mappable() map[string]interface{} {
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
 func (props PropertyMap) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool)) map[string]interface{} {
+	replv func(PropertyValue) (interface{}, bool),
+) map[string]interface{} {
 	obj := make(map[string]interface{})
 	for _, k := range props.StableKeys() {
 		key := string(k)
@@ -264,7 +267,8 @@ func NewPropertyValue(v interface{}) PropertyValue {
 // NewPropertyValueRepl turns a value into a property value, provided it is of a legal "JSON-like" kind.  The
 // replacement functions, replk and replv, may be supplied to transform keys and/or values as the mapping takes place.
 func NewPropertyValueRepl(v interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyValue {
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+) PropertyValue {
 	// If a replacement routine is supplied, use that.
 	if replv != nil {
 		if rv, repl := replv(v); repl {
@@ -558,7 +562,8 @@ func (v PropertyValue) Mappable() interface{} {
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
 func (v PropertyValue) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool)) interface{} {
+	replv func(PropertyValue) (interface{}, bool),
+) interface{} {
 	if replv != nil {
 		if rv, repv := replv(v); repv {
 			return rv
