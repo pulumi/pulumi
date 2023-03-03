@@ -55,7 +55,7 @@ func TestPclConvert(t *testing.T) {
 	// On Windows, we need to replace \r\n with \n to match the expected string below
 	pclCode := string(pclBytes)
 	if runtime.GOOS == "windows" {
-		pclCode = strings.Replace(pclCode, "\r\n", "\n", -1)
+		pclCode = strings.ReplaceAll(pclCode, "\r\n", "\n")
 	}
 	expectedPclCode := `key = readFile("key.pub")
 

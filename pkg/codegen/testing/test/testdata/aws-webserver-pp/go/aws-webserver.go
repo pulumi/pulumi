@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -51,7 +49,7 @@ func main() {
 				securityGroup.Name,
 			},
 			Ami:      pulumi.String(ami.Id),
-			UserData: pulumi.String(fmt.Sprintf("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n")),
+			UserData: pulumi.String("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
 		})
 		if err != nil {
 			return err

@@ -256,7 +256,7 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 	}
 
 	quotes, ok := qa.allocations.quotes[x]
-	contract.Assert(ok)
+	contract.Assertf(ok, "cannot free unknown expression")
 	qa.free(quotes)
 	return x, nil
 }

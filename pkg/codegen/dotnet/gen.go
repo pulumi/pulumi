@@ -904,7 +904,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	if r.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
+		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.ReplaceAll(r.DeprecationMessage, `"`, `""`))
 	}
 	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name()), r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
@@ -1421,7 +1421,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	}
 
 	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(fun.DeprecationMessage, `"`, `""`, -1))
+		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.ReplaceAll(fun.DeprecationMessage, `"`, `""`))
 	}
 
 	// Open the class we'll use for data sources.
@@ -1647,7 +1647,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 
 func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
 	if deprecationMessage != "" {
-		fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(deprecationMessage, `"`, `""`, -1))
+		fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.ReplaceAll(deprecationMessage, `"`, `""`))
 	}
 }
 

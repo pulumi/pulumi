@@ -148,7 +148,7 @@ func Exit(err error) {
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string) {
 	// Escape percent sign before passing the message as a format string (e.g., msg could contain %PATH% on Windows).
-	format := strings.Replace(msg, "%", "%%", -1)
+	format := strings.ReplaceAll(msg, "%", "%%")
 	exitErrorCodef(-1, format)
 }
 

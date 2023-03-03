@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.56.0 (2023-03-02)
+
+
+### Features
+
+- [cli/display] Display now shows default colorized stacktraces in NodeJS.
+  [#10410](https://github.com/pulumi/pulumi/pull/10410)
+
+- [cli/plugin] Plugin download urls now support GitLab as a first class url schema. For example "gitlab://gitlab.com/43429536".
+  [#12145](https://github.com/pulumi/pulumi/pull/12145)
+
+
+### Bug Fixes
+
+- [backend/service] Reduce retrieval-validation latency for update tokens
+  [#12323](https://github.com/pulumi/pulumi/pull/12323)
+
+- [sdk/go] Fix panic from attempting to create a resource with an uninitialized parent resource.
+  [#12303](https://github.com/pulumi/pulumi/pull/12303)
+
+- [cli/import] Fixes panic on incomplete resources in JSON file.
+  [#12182](https://github.com/pulumi/pulumi/pull/12182)
+
+- [sdk/nodejs] Cleanup temporary pulumi-node-pipes folders after running.
+  [#12294](https://github.com/pulumi/pulumi/pull/12294)
+
+- [sdk/nodejs] Fix stack outputs picking up co-located JSON files.
+  [#12302](https://github.com/pulumi/pulumi/pull/12302)
+
+- [cli/plugin] Remove temporary files from plugin downloads.
+  [#12146](https://github.com/pulumi/pulumi/pull/12146)
+
+
+### Miscellaneous
+
+- [sdk/go] common/resource/testing: Returns strongly typed generators instead of `interface{}` generators.
+  [#12197](https://github.com/pulumi/pulumi/pull/12197)
+
+- [sdk/python] grpc 1.51.3 Python SDK contains native arm64 binaries (universal2)
+  [#12313](https://github.com/pulumi/pulumi/pull/12313)
+
 ## 3.55.0 (2023-02-14)
 
 

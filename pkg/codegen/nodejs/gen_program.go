@@ -162,14 +162,15 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
-	packageJSON.WriteString(fmt.Sprintf(`{
+	fmt.Fprintf(&packageJSON, `{
 		"name": "%s",
 		"devDependencies": {
 			"@types/node": "^14"
 		},
 		"dependencies": {
 			"typescript": "^4.0.0",
-			"@pulumi/pulumi": "^3.0.0"`, project.Name.String()))
+			"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+
 	// For each package add a dependency line
 	packages, err := program.PackageSnapshots()
 	if err != nil {
@@ -196,9 +197,9 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		}
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
 		if p.Version != nil {
-			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, p.Version.String()))
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
 		} else {
-			packageJSON.WriteString(fmt.Sprintf(dependencyTemplate, packageName, "*"))
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
 		}
 	}
 	packageJSON.WriteString(`
@@ -324,7 +325,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
 	var sortedVals = importSet.SortedValues()
@@ -399,9 +400,9 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
 		def, err := pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error loading package definition for %q", pkg.Name())
 		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error importing nodejs language for %q", pkg.Name())
 		if lang, ok := def.Language["nodejs"]; ok {
 			pkgInfo := lang.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {

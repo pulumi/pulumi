@@ -45,3 +45,6 @@ issues:
 
     # https://github.com/pulumi/pulumi/issues/11870
     - 'strings.Title has been deprecated'
+
+    # https://github.com/pulumi/pulumi/issues/12328
+    - 'deprecated: Please use types in:? cloud.google.com/go/logging/apiv2/loggingpb'

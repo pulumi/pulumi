@@ -186,7 +186,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
 }
 
 var functionImports = map[string][]string{
@@ -214,7 +214,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return []string{"pulumi_" + pkg}
 }
 
@@ -256,7 +256,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						tag = fmt.Sprintf("%v", member.Value)
 					}
 					tag, err := makeSafeEnumName(tag, enumName)
-					contract.AssertNoError(err)
+					contract.AssertNoErrorf(err, "error sanitizing enum name")
 					g.Fgenf(w, "%s.%s.%s", pkg, enumName, tag)
 				}, func(from model.Expression) {
 					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
@@ -305,7 +305,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		pkg, module, fn, diags := functionName(expr.Args[0])
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
 			module = "." + module
 		}
@@ -542,7 +542,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		switch key.Type() {
 		case cty.String:
 			keyVal := key.AsString()
-			contract.Assert(isLegalIdentifier(keyVal))
+			contract.Assertf(isLegalIdentifier(keyVal), "illegal identifier: %q", keyVal)
 			g.Fgenf(w, ".%s", keyVal)
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
