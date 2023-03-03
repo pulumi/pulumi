@@ -50,8 +50,8 @@ func NewGoal(t tokens.Type, name tokens.QName, custom bool, props PropertyMap,
 	parent URN, protect bool, dependencies []URN, provider string, initErrors []string,
 	propertyDependencies map[PropertyKey][]URN, deleteBeforeReplace *bool, ignoreChanges []string,
 	additionalSecretOutputs []PropertyKey, aliases []Alias, id ID, customTimeouts *CustomTimeouts,
-	replaceOnChanges []string, retainOnDelete bool, deletedWith URN) *Goal {
-
+	replaceOnChanges []string, retainOnDelete bool, deletedWith URN,
+) *Goal {
 	g := &Goal{
 		Type:                    t,
 		Name:                    name,

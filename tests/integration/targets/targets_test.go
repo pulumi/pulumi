@@ -45,7 +45,6 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	if err := fsutil.CopyFile(
 		path.Join(e.RootPath, "untargeted_create", "index.ts"),
 		path.Join("untargeted_create", "step1", "index.ts"), nil); err != nil {
-
 		t.Fatalf("error copying index.ts file: %v", err)
 	}
 

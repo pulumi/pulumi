@@ -33,7 +33,7 @@ import (
 func newQueryCmd() *cobra.Command {
 	var stackName string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "query",
 		Short: "Run query program against cloud resources",
 		Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +

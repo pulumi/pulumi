@@ -79,8 +79,8 @@ func NewApplyCall(args []model.Expression, then *model.AnonymousFunctionExpressi
 
 // ParseApplyCall extracts the apply arguments and the continuation from a call to the apply intrinsic.
 func ParseApplyCall(c *model.FunctionCallExpression) (applyArgs []model.Expression,
-	then *model.AnonymousFunctionExpression) {
-
+	then *model.AnonymousFunctionExpression,
+) {
 	contract.Assert(c.Name == IntrinsicApply)
 	return c.Args[:len(c.Args)-1], c.Args[len(c.Args)-1].(*model.AnonymousFunctionExpression)
 }

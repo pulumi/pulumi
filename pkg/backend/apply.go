@@ -80,7 +80,8 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -145,7 +146,8 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, plan *deploy.Plan, opts UpdateOptions) (result.Result, *deploy.Plan) {
+	events []engine.Event, plan *deploy.Plan, opts UpdateOptions,
+) (result.Result, *deploy.Plan) {
 	for {
 		var response string
 
@@ -210,7 +212,8 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (sdkDisplay.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {

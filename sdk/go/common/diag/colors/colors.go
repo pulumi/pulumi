@@ -25,8 +25,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-const colorLeft = "<{%"
-const colorRight = "%}>"
+const (
+	colorLeft  = "<{%"
+	colorRight = "%}>"
+)
 
 type Color = string
 

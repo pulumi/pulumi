@@ -197,7 +197,6 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 		assert.NotNil(t, stack.ResourceCount())
 		assert.Equal(t, 1, *stack.ResourceCount())
 	}
-
 }
 
 func TestDrillError(t *testing.T) {
@@ -406,8 +405,8 @@ func TestParseEmptyStackFails(t *testing.T) {
 	// ParseStackReference does use the method receiver
 	// (it is a total function disguised as a method.)
 	var b *localBackend
-	var stackName = ""
-	var _, err = b.ParseStackReference(stackName)
+	stackName := ""
+	_, err := b.ParseStackReference(stackName)
 	assert.Error(t, err)
 }
 

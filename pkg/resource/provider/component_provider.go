@@ -87,7 +87,8 @@ func (p *componentProvider) GetPluginInfo(context.Context, *pbempty.Empty) (*pul
 
 // GetSchema returns the JSON-encoded schema for this provider's package.
 func (p *componentProvider) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	if v := req.GetVersion(); v != 0 {
 		return nil, fmt.Errorf("unsupported schema version %d", v)
 	}
@@ -100,7 +101,8 @@ func (p *componentProvider) GetSchema(ctx context.Context,
 
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *componentProvider) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
@@ -111,7 +113,8 @@ func (p *componentProvider) Configure(ctx context.Context,
 
 // Construct creates a new instance of the provided component resource and returns its state.
 func (p *componentProvider) Construct(ctx context.Context,
-	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	if p.construct != nil {
 		return provider.Construct(ctx, req, p.host.conn, p.construct)
 	}
@@ -120,7 +123,8 @@ func (p *componentProvider) Construct(ctx context.Context,
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *componentProvider) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	req *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
 	if p.call != nil {
 		return provider.Call(ctx, req, p.host.conn, p.call)
 	}
@@ -138,7 +142,8 @@ func (p *componentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Em
 
 // Attach attaches to the engine for an already running provider.
 func (p *componentProvider) Attach(ctx context.Context,
-	req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
+	req *pulumirpc.PluginAttach,
+) (*pbempty.Empty, error) {
 	host, err := NewHostClient(req.GetAddress())
 	if err != nil {
 		return nil, err
@@ -149,6 +154,7 @@ func (p *componentProvider) Attach(ctx context.Context,
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
 func (p *componentProvider) GetMapping(ctx context.Context,
-	req *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {
+	req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
 	return &pulumirpc.GetMappingResponse{Provider: "", Data: nil}, nil
 }

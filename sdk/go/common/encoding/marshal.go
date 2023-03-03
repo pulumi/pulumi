@@ -71,8 +71,7 @@ type Marshaler interface {
 // JSON is a Marshaler that marshals and unmarshals JSON with indented printing.
 var JSON Marshaler = &jsonMarshaler{}
 
-type jsonMarshaler struct {
-}
+type jsonMarshaler struct{}
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
@@ -94,8 +93,7 @@ func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
 
 var YAML Marshaler = &yamlMarshaler{}
 
-type yamlMarshaler struct {
-}
+type yamlMarshaler struct{}
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
 	if r, ok := v.(yamlutil.HasRawValue); ok {
@@ -145,7 +143,6 @@ func (m *gzipMarshaller) Marshal(v interface{}) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-
 }
 
 func (m *gzipMarshaller) Unmarshal(data []byte, v interface{}) error {

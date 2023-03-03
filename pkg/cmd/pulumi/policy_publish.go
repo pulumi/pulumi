@@ -31,7 +31,7 @@ import (
 )
 
 func newPolicyPublishCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "publish [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Publish a Policy Pack to the Pulumi service",
@@ -93,7 +93,8 @@ func newPolicyPublishCmd() *cobra.Command {
 			//
 
 			res := policyPack.Publish(ctx, backend.PublishOperation{
-				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
+				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes,
+			})
 			if res != nil && res.Error() != nil {
 				return res.Error()
 			}

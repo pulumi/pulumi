@@ -21,12 +21,13 @@
 package pulumirpc
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -1225,29 +1226,32 @@ func file_pulumi_resource_proto_rawDescGZIP() []byte {
 	return file_pulumi_resource_proto_rawDescData
 }
 
-var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_pulumi_resource_proto_goTypes = []interface{}{
-	(*SupportsFeatureRequest)(nil),                       // 0: pulumirpc.SupportsFeatureRequest
-	(*SupportsFeatureResponse)(nil),                      // 1: pulumirpc.SupportsFeatureResponse
-	(*ReadResourceRequest)(nil),                          // 2: pulumirpc.ReadResourceRequest
-	(*ReadResourceResponse)(nil),                         // 3: pulumirpc.ReadResourceResponse
-	(*RegisterResourceRequest)(nil),                      // 4: pulumirpc.RegisterResourceRequest
-	(*RegisterResourceResponse)(nil),                     // 5: pulumirpc.RegisterResourceResponse
-	(*RegisterResourceOutputsRequest)(nil),               // 6: pulumirpc.RegisterResourceOutputsRequest
-	(*ResourceInvokeRequest)(nil),                        // 7: pulumirpc.ResourceInvokeRequest
-	(*RegisterResourceRequest_PropertyDependencies)(nil), // 8: pulumirpc.RegisterResourceRequest.PropertyDependencies
-	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 9: pulumirpc.RegisterResourceRequest.CustomTimeouts
-	nil, // 10: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	nil, // 11: pulumirpc.RegisterResourceRequest.ProvidersEntry
-	(*RegisterResourceResponse_PropertyDependencies)(nil), // 12: pulumirpc.RegisterResourceResponse.PropertyDependencies
-	nil,                     // 13: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	(*structpb.Struct)(nil), // 14: google.protobuf.Struct
-	(*Alias)(nil),           // 15: pulumirpc.Alias
-	(*CallRequest)(nil),     // 16: pulumirpc.CallRequest
-	(*InvokeResponse)(nil),  // 17: pulumirpc.InvokeResponse
-	(*CallResponse)(nil),    // 18: pulumirpc.CallResponse
-	(*emptypb.Empty)(nil),   // 19: google.protobuf.Empty
-}
+var (
+	file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+	file_pulumi_resource_proto_goTypes  = []interface{}{
+		(*SupportsFeatureRequest)(nil),                       // 0: pulumirpc.SupportsFeatureRequest
+		(*SupportsFeatureResponse)(nil),                      // 1: pulumirpc.SupportsFeatureResponse
+		(*ReadResourceRequest)(nil),                          // 2: pulumirpc.ReadResourceRequest
+		(*ReadResourceResponse)(nil),                         // 3: pulumirpc.ReadResourceResponse
+		(*RegisterResourceRequest)(nil),                      // 4: pulumirpc.RegisterResourceRequest
+		(*RegisterResourceResponse)(nil),                     // 5: pulumirpc.RegisterResourceResponse
+		(*RegisterResourceOutputsRequest)(nil),               // 6: pulumirpc.RegisterResourceOutputsRequest
+		(*ResourceInvokeRequest)(nil),                        // 7: pulumirpc.ResourceInvokeRequest
+		(*RegisterResourceRequest_PropertyDependencies)(nil), // 8: pulumirpc.RegisterResourceRequest.PropertyDependencies
+		(*RegisterResourceRequest_CustomTimeouts)(nil),       // 9: pulumirpc.RegisterResourceRequest.CustomTimeouts
+		nil, // 10: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+		nil, // 11: pulumirpc.RegisterResourceRequest.ProvidersEntry
+		(*RegisterResourceResponse_PropertyDependencies)(nil), // 12: pulumirpc.RegisterResourceResponse.PropertyDependencies
+		nil,                     // 13: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+		(*structpb.Struct)(nil), // 14: google.protobuf.Struct
+		(*Alias)(nil),           // 15: pulumirpc.Alias
+		(*CallRequest)(nil),     // 16: pulumirpc.CallRequest
+		(*InvokeResponse)(nil),  // 17: pulumirpc.InvokeResponse
+		(*CallResponse)(nil),    // 18: pulumirpc.CallResponse
+		(*emptypb.Empty)(nil),   // 19: google.protobuf.Empty
+	}
+)
+
 var file_pulumi_resource_proto_depIdxs = []int32{
 	14, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
 	14, // 1: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct

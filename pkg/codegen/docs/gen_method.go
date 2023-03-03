@@ -115,8 +115,8 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 }
 
 func (mod *modContext) genMethodTS(f *schema.Function, resourceName, methodName string,
-	optionalArgs bool) []formalParam {
-
+	optionalArgs bool,
+) []formalParam {
 	argsType := fmt.Sprintf("%s.%sArgs", resourceName, title(methodName, "nodejs"))
 
 	var optionalFlag string
@@ -138,8 +138,8 @@ func (mod *modContext) genMethodTS(f *schema.Function, resourceName, methodName 
 }
 
 func (mod *modContext) genMethodGo(f *schema.Function, resourceName, methodName string,
-	optionalArgs bool) []formalParam {
-
+	optionalArgs bool,
+) []formalParam {
 	argsType := fmt.Sprintf("%s%sArgs", resourceName, title(methodName, "go"))
 
 	params := []formalParam{
@@ -241,8 +241,8 @@ func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
 // genMethodArgs generates the arguments string for a given method that can be
 // rendered directly into a template. An empty string indicates no args.
 func (mod *modContext) genMethodArgs(r *schema.Resource, m *schema.Method,
-	methodNameMap map[string]string) map[string]string {
-
+	methodNameMap map[string]string,
+) map[string]string {
 	dctx := mod.docGenContext
 	f := m.Function
 

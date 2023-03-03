@@ -556,7 +556,6 @@ func TestLocalStateLocking(t *testing.T) {
 		stderr := <-stderrs
 		assert.Equal(t, "", stderr)
 	}
-
 }
 
 // stackFileFormatAsserters returns a function to assert that the current file

@@ -288,7 +288,6 @@ func TestDeleteProtected(t *testing.T) {
 				// scheduled for deletion, so we don't call the onProtect handler.
 				assert.Equal(t, protectedCount, 2)
 				assert.Equal(t, snap.Resources, []*resource.State{pA, a})
-
 			},
 		},
 		{

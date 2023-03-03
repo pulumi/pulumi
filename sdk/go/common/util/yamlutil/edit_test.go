@@ -85,7 +85,6 @@ listFoo:
 }
 
 func TestEditEmpty(t *testing.T) {
-
 	// Covers 100% of the happy path statements
 	t.Parallel()
 

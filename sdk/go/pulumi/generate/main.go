@@ -211,7 +211,7 @@ var funcs = template.FuncMap{
 
 func makeBuiltins(primitives []*builtin) []*builtin {
 	// Augment primitives with array and map types.
-	var builtins = make([]*builtin, 0, len(primitives))
+	builtins := make([]*builtin, 0, len(primitives))
 	for _, p := range primitives {
 		p.Strategy = "primitive"
 		name := ""
@@ -382,5 +382,4 @@ func templateFilePath(name string) string {
 	filename := strings.TrimSuffix(parts[len(parts)-1], ".template")
 	parts[len(parts)-1] = filename
 	return filepath.Join(parts...)
-
 }

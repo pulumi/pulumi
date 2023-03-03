@@ -89,14 +89,16 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 }
 
 func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
-	diff deploymentDiff, token client.UpdateTokenSource) error {
+	diff deploymentDiff, token client.UpdateTokenSource,
+) error {
 	return persister.backend.client.PatchUpdateCheckpointDelta(
 		persister.context, persister.update,
 		diff.sequenceNumber, diff.checkpointHash, diff.deploymentDelta, token)
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment json.RawMessage, token client.UpdateTokenSource) error {
+	differ *deploymentDiffState, deployment json.RawMessage, token client.UpdateTokenSource,
+) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
 		deployment, token)
@@ -105,8 +107,8 @@ func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
 
 func (cb *cloudBackend) newSnapshotPersister(ctx context.Context, update client.UpdateIdentifier,
-	tokenSource tokenSourceCapability, sm secrets.Manager) *cloudSnapshotPersister {
-
+	tokenSource tokenSourceCapability, sm secrets.Manager,
+) *cloudSnapshotPersister {
 	p := &cloudSnapshotPersister{
 		context:     ctx,
 		update:      update,

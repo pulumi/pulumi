@@ -213,7 +213,6 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := funcName + argsTypeSuffix
@@ -250,7 +249,6 @@ func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outp
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := title(funcName+argsTypeSuffix, "java")

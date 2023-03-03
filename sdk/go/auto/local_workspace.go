@@ -987,7 +987,8 @@ func NewStackRemoteSource(
 // into the Workspace. Unless a WorkDir option is specified, the GitRepo will be clone
 // into a new temporary directory provided by the OS.
 func UpsertStackRemoteSource(
-	ctx context.Context, stackName string, repo GitRepo, opts ...LocalWorkspaceOption) (Stack, error) {
+	ctx context.Context, stackName string, repo GitRepo, opts ...LocalWorkspaceOption,
+) (Stack, error) {
 	opts = append(opts, Repo(repo))
 	w, err := NewLocalWorkspace(ctx, opts...)
 	var stack Stack

@@ -97,7 +97,7 @@ func newLogsCmd() *cobra.Command {
 			}
 			var resourceFilter *operations.ResourceFilter
 			if resource != "" {
-				var rf = operations.ResourceFilter(resource)
+				rf := operations.ResourceFilter(resource)
 				resourceFilter = &rf
 			}
 

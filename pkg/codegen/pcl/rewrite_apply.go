@@ -356,8 +356,8 @@ func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName stri
 
 // rewriteApplyArg replaces a single expression with an apply parameter.
 func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType model.Type, traversal hcl.Traversal,
-	parts []model.Traversable, isRoot bool) model.Expression {
-
+	parts []model.Traversable, isRoot bool,
+) model.Expression {
 	if len(traversal) == 0 && isRoot {
 		return applyArg
 	}
@@ -389,8 +389,8 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 // rewriteRelativeTraversalExpression replaces a single access to an ouptut-typed RelativeTraversalExpression with an
 // apply parameter.
 func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.RelativeTraversalExpression,
-	isRoot bool) model.Expression {
-
+	isRoot bool,
+) model.Expression {
 	// If the access is not an output() or a promise(), return the node as-is.
 	paramType, isEventual := ctx.isEventualType(expr.Type())
 	if !isEventual {
@@ -422,8 +422,8 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 // rewriteScopeTraversalExpression replaces a single access to an ouptut-typed ScopeTraversalExpression with an apply
 // parameter.
 func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTraversalExpression,
-	isRoot bool) model.Expression {
-
+	isRoot bool,
+) model.Expression {
 	// If the access is not an output() or a promise(), return the node as-is.
 	resolvedType, isEventual := ctx.isEventualType(expr.Type())
 	if !isEventual {

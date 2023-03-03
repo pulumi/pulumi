@@ -30,8 +30,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-const versionKey resource.PropertyKey = "version"
-const pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+const (
+	versionKey        resource.PropertyKey = "version"
+	pluginDownloadKey resource.PropertyKey = "pluginDownloadURL"
+)
 
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
@@ -98,8 +100,8 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
-	builtins plugin.Provider) (plugin.Provider, error) {
-
+	builtins plugin.Provider,
+) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
@@ -111,8 +113,8 @@ func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
 // resources will be loaded, configured, and added to the returned registry under its reference. If any provider is not
 // loadable/configurable or has an invalid ID, this function returns an error.
 func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
-	builtins plugin.Provider) (*Registry, error) {
-
+	builtins plugin.Provider,
+) (*Registry, error) {
 	r := &Registry{
 		host:      host,
 		isPreview: isPreview,
@@ -231,15 +233,16 @@ func (r *Registry) GetMapping(key string) ([]byte, string, error) {
 
 // CheckConfig validates the configuration for this resource provider.
 func (r *Registry) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
+	news resource.PropertyMap, allowUnknowns bool,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	contract.Failf("CheckConfig must not be called on the provider registry")
 	return nil, nil, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (r *Registry) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	contract.Failf("DiffConfig must not be called on the provider registry")
 	return plugin.DiffResult{}, errors.New("the provider registry is not configurable")
 }
@@ -258,8 +261,8 @@ func (r *Registry) Configure(props resource.PropertyMap) error {
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
+	allowUnknowns bool, randomSeed []byte,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	contract.Requiref(IsProviderType(urn.Type()), "urn", "must be a provider type, got %v", urn.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), urn)
@@ -303,7 +306,8 @@ func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	contract.Requiref(id != "", "id", "must not be empty")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), urn, id)
@@ -371,8 +375,8 @@ func (r *Registry) Same(ref Reference) {
 //
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout float64,
-	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+	preview bool,
+) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), urn)
 	logging.V(7).Infof("%s executing (#news=%v)", label, len(news))
 
@@ -404,8 +408,8 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 //
 // THe provider must have been loaded by a prior call to Check.
 func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+	ignoreChanges []string, preview bool,
+) (resource.PropertyMap, resource.Status, error) {
 	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), id, urn)
 	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
 
@@ -425,7 +429,8 @@ func (r *Registry) Update(urn resource.URN, id resource.ID, olds, news resource.
 // Delete unregisters and unloads the provider with the given URN and ID. The provider must have been loaded when the
 // registry was created (i.e. it must have been present in the state handed to NewRegistry).
 func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.PropertyMap,
-	timeout float64) (resource.Status, error) {
+	timeout float64,
+) (resource.Status, error) {
 	contract.Assertf(!r.isPreview, "Delete must not be called during preview")
 
 	ref := mustNewReference(urn, id)
@@ -438,18 +443,20 @@ func (r *Registry) Delete(urn resource.URN, id resource.ID, props resource.Prope
 }
 
 func (r *Registry) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	inputs, state resource.PropertyMap,
+) (plugin.ReadResult, resource.Status, error) {
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("provider resources may not be read")
 }
 
 func (r *Registry) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	inputs resource.PropertyMap, options plugin.ConstructOptions,
+) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{}, errors.New("provider resources may not be constructed")
 }
 
 func (r *Registry) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
+	args resource.PropertyMap,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an invoke using the provider
 	// registry.
 	contract.Failf("Invoke must not be called on the provider registry")
@@ -458,14 +465,14 @@ func (r *Registry) Invoke(tok tokens.ModuleMember,
 
 func (r *Registry) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
-
+	onNext func(resource.PropertyMap) error,
+) ([]plugin.CheckFailure, error) {
 	return nil, fmt.Errorf("the provider registry does not implement streaming invokes")
 }
 
 func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions) (plugin.CallResult, error) {
-
+	options plugin.CallOptions,
+) (plugin.CallResult, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
 	// registry.
 	contract.Failf("Call must not be called on the provider registry")

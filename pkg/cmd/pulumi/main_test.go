@@ -50,8 +50,10 @@ func (noTestDeps) WriteProfileTo(string, io.Writer, int) error { return nil }
 
 // Methods added in go 1.18 for forwards compat:
 func (noTestDeps) CheckCorpus(vals []interface{}, types []reflect.Type) error { return nil }
+
 func (noTestDeps) CoordinateFuzzing(
-	time.Duration, int64, time.Duration, int64, int, []corpusEntry, []reflect.Type, string, string) error {
+	time.Duration, int64, time.Duration, int64, int, []corpusEntry, []reflect.Type, string, string,
+) error {
 	return nil
 }
 func (noTestDeps) RunFuzzWorker(func(corpusEntry) error) error              { return nil }

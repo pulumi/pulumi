@@ -213,7 +213,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		o.ApplyOption(preOpts)
 	}
 
-	var bufferSizeHint = len(preOpts.Replace) + len(preOpts.Target) +
+	bufferSizeHint := len(preOpts.Replace) + len(preOpts.Target) +
 		len(preOpts.PolicyPacks) + len(preOpts.PolicyPackConfigs)
 	sharedArgs := make([]string, 0, bufferSizeHint)
 
@@ -336,7 +336,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		o.ApplyOption(upOpts)
 	}
 
-	var bufferSizeHint = len(upOpts.Replace) + len(upOpts.Target) + len(upOpts.PolicyPacks) + len(upOpts.PolicyPackConfigs)
+	bufferSizeHint := len(upOpts.Replace) + len(upOpts.Target) + len(upOpts.PolicyPacks) + len(upOpts.PolicyPackConfigs)
 	sharedArgs := make([]string, 0, bufferSizeHint)
 
 	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
@@ -625,7 +625,8 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
 func (s *Stack) History(ctx context.Context,
-	pageSize int, page int, opts ...opthistory.Option) ([]UpdateSummary, error) {
+	pageSize int, page int, opts ...opthistory.Option,
+) ([]UpdateSummary, error) {
 	var options opthistory.Options
 	for _, opt := range opts {
 		opt.ApplyOption(&options)
@@ -1101,7 +1102,8 @@ func (s *languageRuntimeServer) Close() error {
 }
 
 func (s *languageRuntimeServer) GetRequiredPlugins(ctx context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	return &pulumirpc.GetRequiredPluginsResponse{}, nil
 }
 
@@ -1169,7 +1171,8 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 
 func (s *languageRuntimeServer) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
 	return nil
 }
 

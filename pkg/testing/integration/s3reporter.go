@@ -52,7 +52,6 @@ func NewS3Reporter(region string, bucket string, keyPrefix string) *S3Reporter {
 		bucket:    bucket,
 		keyPrefix: keyPrefix,
 	}
-
 }
 
 // ReportCommand uploads the results of running a command to S3

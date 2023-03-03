@@ -42,11 +42,15 @@ import (
 
 var testdataPath = filepath.Join("..", "codegen", "testing", "test", "testdata")
 
-const parentName = "parent"
-const providerName = "provider"
+const (
+	parentName   = "parent"
+	providerName = "provider"
+)
 
-var parentURN = resource.NewURN("stack", "project", "", "my::parent", "parent")
-var providerURN = resource.NewURN("stack", "project", "", providers.MakeProviderType("pkg"), "provider")
+var (
+	parentURN   = resource.NewURN("stack", "project", "", "my::parent", "parent")
+	providerURN = resource.NewURN("stack", "project", "", providers.MakeProviderType("pkg"), "provider")
+)
 
 var names = NameTable{
 	parentURN:   parentName,

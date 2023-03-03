@@ -770,8 +770,8 @@ func assertHasDeps(
 	ctx *Context,
 	depTracker *dependenciesTracker,
 	res Resource,
-	expectedDeps ...Resource) {
-
+	expectedDeps ...Resource,
+) {
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
@@ -828,7 +828,8 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 	m := newInterceptingResourceMonitor(cl)
 	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
 		resp *pulumirpc.RegisterResourceResponse,
-		err error) {
+		err error,
+	) {
 		var deps []URN
 		for _, dep := range in.GetDependencies() {
 			deps = append(deps, URN(dep))

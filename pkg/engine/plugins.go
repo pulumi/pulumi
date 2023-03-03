@@ -98,7 +98,7 @@ func (p pluginSet) Deduplicate() pluginSet {
 
 // Values returns a slice of all of the plugins contained within this set.
 func (p pluginSet) Values() []workspace.PluginSpec {
-	var plugins = make([]workspace.PluginSpec, 0, len(p))
+	plugins := make([]workspace.PluginSpec, 0, len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
 	}
@@ -253,7 +253,6 @@ func installPlugin(ctx context.Context, plugin workspace.PluginSpec) error {
 	if err := plugin.InstallWithContext(ctx, workspace.TarPlugin(tarball), false); err != nil {
 		return fmt.Errorf("installing plugin; run `pulumi plugin install %s %s v%s` to retry manually: %w",
 			plugin.Kind, plugin.Name, plugin.Version, err)
-
 	}
 
 	logging.V(7).Infof("installPlugin(%s, %s): installation complete", plugin.Name, plugin.Version)

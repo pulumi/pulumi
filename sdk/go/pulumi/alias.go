@@ -60,8 +60,8 @@ func multipleTrue(booleans ...bool) bool {
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
-	defaultProject, defaultStack string) (URNOutput, error) {
-
+	defaultProject, defaultStack string,
+) (URNOutput, error) {
 	if a.URN != nil {
 		return a.URN.ToURNOutput(), nil
 	}

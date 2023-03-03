@@ -108,8 +108,8 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
-	m *schema.Method) string {
-
+	m *schema.Method,
+) string {
 	var returnType *schema.ObjectType
 	if m.Function.ReturnType != nil {
 		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok {

@@ -354,8 +354,8 @@ func (e *eventEmitter) sendEvent(event Event) {
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
-	step deploy.Step, status resource.Status, steps int, debug bool) {
-
+	step deploy.Step, status resource.Status, steps int, debug bool,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourceOperationFailed, ResourceOperationFailedPayload{
@@ -376,8 +376,8 @@ func (e *eventEmitter) resourceOutputsEvent(op display.StepOp, step deploy.Step,
 }
 
 func (e *eventEmitter) resourcePreEvent(
-	step deploy.Step, planning bool, debug bool) {
-
+	step deploy.Step, planning bool, debug bool,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(ResourcePreEvent, ResourcePreEventPayload{
@@ -405,8 +405,8 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 }
 
 func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
-	resourceChanges display.ResourceChanges, policyPacks map[string]string) {
-
+	resourceChanges display.ResourceChanges, policyPacks map[string]string,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(SummaryEvent, SummaryEventPayload{
@@ -419,7 +419,6 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 }
 
 func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	// Write prefix.
@@ -459,7 +458,8 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 }
 
 func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Severity,
-	ephemeral bool) {
+	ephemeral bool,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.sendEvent(NewEvent(DiagEvent, DiagEventPayload{

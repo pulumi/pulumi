@@ -43,7 +43,7 @@ func createTGZ(files map[string][]byte) ([]byte, error) {
 		if err := writer.WriteHeader(&tar.Header{
 			Name: name,
 			Size: int64(len(content)),
-			Mode: 0600,
+			Mode: 0o600,
 		}); err != nil {
 			return nil, err
 		}
@@ -271,7 +271,7 @@ func TestInstallCleansOldFiles(t *testing.T) {
 
 	// Leftover partial file.
 	partialPath := filepath.Join(dir, plugin.Dir()+".partial")
-	err = os.WriteFile(partialPath, nil, 0600)
+	err = os.WriteFile(partialPath, nil, 0o600)
 	assert.NoError(t, err)
 
 	err = plugin.Install(tarball, false)
@@ -295,7 +295,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	err := plugin.Install(tarball, false)
 	assert.NoError(t, err)
 
-	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
+	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0o600)
 	assert.NoError(t, err)
 
 	assert.False(t, HasPlugin(plugin))

@@ -115,8 +115,10 @@ func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
 	return sm.crypter, nil
 }
 
-var lock sync.Mutex
-var cache map[string]secrets.Manager
+var (
+	lock  sync.Mutex
+	cache map[string]secrets.Manager
+)
 
 // clearCachedSecretsManagers is used to clear the cache, for tests.
 func clearCachedSecretsManagers() {
@@ -216,7 +218,8 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 }
 
 func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
-	rotateSecretsProvider bool) (secrets.Manager, error) {
+	rotateSecretsProvider bool,
+) (secrets.Manager, error) {
 	if rotateSecretsProvider {
 		info.EncryptionSalt = ""
 	}

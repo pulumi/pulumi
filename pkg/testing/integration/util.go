@@ -93,13 +93,13 @@ const (
 
 func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
 	logFileDir := filepath.Join(runDir, commandOutputFolderName)
-	if err := os.MkdirAll(logFileDir, 0700); err != nil {
+	if err := os.MkdirAll(logFileDir, 0o700); err != nil {
 		return "", fmt.Errorf("Failed to create '%s': %w", logFileDir, err)
 	}
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
-	if err := os.WriteFile(logFile, output, 0600); err != nil {
+	if err := os.WriteFile(logFile, output, 0o600); err != nil {
 		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
 	}
 

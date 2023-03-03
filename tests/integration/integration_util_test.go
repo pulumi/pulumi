@@ -177,10 +177,9 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
@@ -219,10 +218,9 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		test := test
 
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:                    filepath.Join(testDir, lang),
 				Dependencies:           dependencies,
@@ -368,10 +366,9 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,
@@ -465,10 +462,9 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
 				Dependencies:   dependencies,

@@ -26,8 +26,8 @@ func isParameterReference(parameters codegen.Set, x model.Expression) bool {
 // Each of these patterns matches an apply that can be handled by `pulumi.Output`'s `__getitem__` or `__getattr__`
 // method. The rewritten expressions will use those methods rather than calling `apply`.
 func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Expression,
-	then model.Expression) (model.Expression, bool) {
-
+	then model.Expression,
+) (model.Expression, bool) {
 	if len(args) != 1 {
 		return nil, false
 	}

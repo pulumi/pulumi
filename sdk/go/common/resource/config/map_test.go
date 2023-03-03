@@ -1370,7 +1370,6 @@ func TestCopyMap(t *testing.T) {
 			assert.Equal(t, test.Expected, newConfig)
 		})
 	}
-
 }
 
 func roundtripMapYAML(m Map) (Map, error) {
@@ -1382,7 +1381,8 @@ func roundtripMapJSON(m Map) (Map, error) {
 }
 
 func roundtripMap(m Map, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error) (Map, error) {
+	unmarshal func([]byte, interface{}) error,
+) (Map, error) {
 	b, err := marshal(m)
 	if err != nil {
 		return nil, err

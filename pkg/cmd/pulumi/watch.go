@@ -52,7 +52,7 @@ func newWatchCmd() *cobra.Command {
 	var showSames bool
 	var secretsProvider string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:        "watch",
 		SuggestFor: []string{"developer", "dev"},
 		Short:      "Continuously update the resources in a stack",

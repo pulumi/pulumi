@@ -99,7 +99,7 @@ func newConvertCmd() *cobra.Command {
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
 	if directory != "." {
-		err := os.MkdirAll(directory, 0755)
+		err := os.MkdirAll(directory, 0o755)
 		if err != nil {
 			return fmt.Errorf("could not create output directory: %w", err)
 		}
@@ -108,7 +108,7 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
 	for file, source := range p.Source() {
 		outputFile := path.Join(directory, file)
-		err := os.WriteFile(outputFile, []byte(source), 0600)
+		err := os.WriteFile(outputFile, []byte(source), 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -161,8 +161,8 @@ func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Proje
 func runConvert(
 	e env.Env,
 	cwd string, mappings []string, from string, language string,
-	outDir string, generateOnly bool) result.Result {
-
+	outDir string, generateOnly bool,
+) result.Result {
 	var projectGenerator projectGeneratorFunc
 	switch language {
 	case "csharp", "c#":
@@ -191,7 +191,7 @@ func runConvert(
 	}
 
 	if outDir != "." {
-		err := os.MkdirAll(outDir, 0755)
+		err := os.MkdirAll(outDir, 0o755)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not create output directory: %w", err))
 		}

@@ -22,11 +22,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
-	"testing"
-
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"testing"
 
 	"github.com/hexops/gotextdiff"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +52,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		t.Cleanup(func() {
 			bytes, err := json.MarshalIndent(expectations, "", "  ")
 			require.NoError(t, err)
-			err = os.WriteFile(expectationsFile, bytes, 0600)
+			err = os.WriteFile(expectationsFile, bytes, 0o600)
 			require.NoError(t, err)
 		})
 	} else {

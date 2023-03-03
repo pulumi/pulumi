@@ -47,7 +47,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		prompt:            promptForValue,
@@ -72,7 +72,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
@@ -95,7 +95,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -136,7 +136,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
@@ -157,12 +157,15 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, backendURL, b.URL())
 }
 
-const projectName = "test_project"
-const stackName = "test_stack"
+const (
+	projectName = "test_project"
+	stackName   = "test_stack"
+)
 
 func promptMock(name string, stackName string) promptForValueFunc {
 	return func(yes bool, valueType string, defaultValue string, secret bool,
-		isValidFn func(value string) error, opts display.Options) (string, error) {
+		isValidFn func(value string) error, opts display.Options,
+	) (string, error) {
 		if valueType == "project name" {
 			err := isValidFn(name)
 			return name, err

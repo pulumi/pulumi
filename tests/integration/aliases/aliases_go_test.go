@@ -13,7 +13,7 @@ import (
 func TestGoAliases(t *testing.T) {
 	t.Parallel()
 
-	var dirs = []string{
+	dirs := []string{
 		"rename",
 		"adopt_into_component",
 		"rename_component_and_child",

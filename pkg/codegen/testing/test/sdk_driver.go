@@ -44,7 +44,6 @@ type SDKTest struct {
 
 // ShouldSkipTest indicates if a given test for a given language should be run.
 func (tt *SDKTest) ShouldSkipTest(language, test string) bool {
-
 	// Only language-specific checks.
 	if !strings.HasPrefix(test, language+"/") {
 		return true

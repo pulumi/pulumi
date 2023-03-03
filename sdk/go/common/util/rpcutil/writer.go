@@ -81,8 +81,8 @@ func (w *pipeWriter) Write(p []byte) (int, error) {
 
 func makeStreams(
 	sendStdout func([]byte) error, sendStderr func([]byte) error,
-	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
-
+	isTerminal bool,
+) (io.Closer, io.Writer, io.Writer, error) {
 	stderr := &pipeWriter{send: sendStderr}
 	stdout := &pipeWriter{send: sendStdout}
 
@@ -121,8 +121,8 @@ func makeStreams(
 // Returns a pair of streams for use with the language runtimes InstallDependencies method
 func MakeInstallDependenciesStreams(
 	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
-
+	isTerminal bool,
+) (io.Closer, io.Writer, io.Writer, error) {
 	return makeStreams(
 		func(b []byte) error {
 			return server.Send(&pulumirpc.InstallDependenciesResponse{Stdout: b})
@@ -136,8 +136,8 @@ func MakeInstallDependenciesStreams(
 // Returns a pair of streams for use with the language runtimes RunPlugin method
 func MakeRunPluginStreams(
 	server pulumirpc.LanguageRuntime_RunPluginServer,
-	isTerminal bool) (io.Closer, io.Writer, io.Writer, error) {
-
+	isTerminal bool,
+) (io.Closer, io.Writer, io.Writer, error) {
 	return makeStreams(
 		func(b []byte) error {
 			return server.Send(&pulumirpc.RunPluginResponse{Output: &pulumirpc.RunPluginResponse_Stdout{Stdout: b}})

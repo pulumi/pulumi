@@ -112,7 +112,8 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 // runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
 func runStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
-	urn resource.URN, operation edit.OperationFunc) result.Result {
+	urn resource.URN, operation edit.OperationFunc,
+) result.Result {
 	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
@@ -127,7 +128,8 @@ func runStateEdit(
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
-	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+) result.Result {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
@@ -139,7 +141,8 @@ func runTotalStateEdit(
 }
 
 func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
-	operation func(opts display.Options, snap *deploy.Snapshot) error) result.Result {
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+) result.Result {
 	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
 		return result.FromError(err)

@@ -902,7 +902,7 @@ func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	tempdir := t.TempDir()
 	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
 
-	//write to pyaml
+	// write to pyaml
 	err := os.WriteFile(pyaml, []byte(`name: test-yaml
 runtime: yaml
 description: "Test Pulumi YAML"
@@ -910,7 +910,7 @@ plugins:
   providers:
   - name: aws
     version: 1.0.0
-    path: ../bin/aws`), 0600)
+    path: ../bin/aws`), 0o600)
 	assert.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)

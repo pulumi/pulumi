@@ -631,8 +631,8 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 // mapTokens builds a mapping from the syntax nodes in the given source file to their tokens. The mapping is recorded
 // in the map passed in to the function.
 func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap,
-	initialPos hcl.Pos) {
-
+	initialPos hcl.Pos,
+) {
 	// Turn the list of raw tokens into a list of trivia-carrying tokens.
 	lastEndPos := initialPos
 	var tokens tokenList
@@ -745,9 +745,11 @@ func processComment(bytes []byte) []string {
 
 // These regexes are used by processBlockComment. The first matches a block comment start, the second a block comment
 // end, and the third a block comment line prefix.
-var blockStartPat = regexp.MustCompile(`^/\*+`)
-var blockEndPat = regexp.MustCompile(`[[:space:]]*\*+/$`)
-var blockPrefixPat = regexp.MustCompile(`^[[:space:]]*\*`)
+var (
+	blockStartPat  = regexp.MustCompile(`^/\*+`)
+	blockEndPat    = regexp.MustCompile(`[[:space:]]*\*+/$`)
+	blockPrefixPat = regexp.MustCompile(`^[[:space:]]*\*`)
+)
 
 // processBlockComment splits a block comment into mutiple lines, removes comment delimiters, and attempts to remove
 // common comment prefixes from interior lines. For example, the following HCL block comment:

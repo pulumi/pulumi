@@ -41,15 +41,14 @@ func (src *nullSource) Project() tokens.PackageName { return src.project }
 func (src *nullSource) Info() interface{}           { return nil }
 
 func (src *nullSource) Iterate(
-	ctx context.Context, opts Options, providers ProviderSource) (SourceIterator, result.Result) {
-
+	ctx context.Context, opts Options, providers ProviderSource,
+) (SourceIterator, result.Result) {
 	contract.Ignore(ctx)
 	return &nullSourceIterator{}, nil
 }
 
 // nullSourceIterator always returns nil, nil in response to Next, indicating that it is done.
-type nullSourceIterator struct {
-}
+type nullSourceIterator struct{}
 
 func (iter *nullSourceIterator) Close() error {
 	return nil // nothing to do.

@@ -399,7 +399,7 @@ func TestProgramCodegen(
 				pclFile = filepath.Join(testDir, filepath.Base(tt.Directory)+".pp")
 			}
 			testDir = filepath.Join(testDir, testcase.Language)
-			err = os.MkdirAll(testDir, 0700)
+			err = os.MkdirAll(testDir, 0o700)
 			if err != nil && !os.IsExist(err) {
 				t.Fatalf("Failed to create %q: %s", testDir, err)
 			}
@@ -428,7 +428,8 @@ func TestProgramCodegen(
 			}
 
 			hclFiles := map[string]*hcl.File{
-				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes}}
+				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
+			}
 			opts := append(tt.BindOptions, pcl.PluginHost(utils.NewHost(testdataPath)))
 
 			program, diags, err := pcl.BindProgram(parser.Files, opts...)
@@ -480,7 +481,7 @@ func TestProgramCodegen(
 			}
 
 			if pulumiAccept {
-				err := os.WriteFile(expectedFile, files[testcase.OutputFile], 0600)
+				err := os.WriteFile(expectedFile, files[testcase.OutputFile], 0o600)
 				require.NoError(t, err)
 			} else {
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))

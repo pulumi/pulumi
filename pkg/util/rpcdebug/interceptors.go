@@ -81,7 +81,8 @@ func (i *DebugInterceptor) DialOptions(opts LogOptions) []grpc.DialOption {
 // configure the location of the Go file.
 func (i *DebugInterceptor) DebugServerInterceptor(opts LogOptions) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{},
-		info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		info *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		log := debugInterceptorLogEntry{
 			Method:   info.FullMethod,
 			Metadata: opts.Metadata,
@@ -113,7 +114,8 @@ func (i *DebugInterceptor) DebugStreamServerInterceptor(opts LogOptions) grpc.St
 // Like debugServerInterceptor but for GRPC client connections.
 func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{},
-		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, gopts ...grpc.CallOption) error {
+		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, gopts ...grpc.CallOption,
+	) error {
 		// Ignoring weird entries with empty method and nil req and reply.
 		if method == "" {
 			return invoker(ctx, method, req, reply, cc, gopts...)
@@ -136,8 +138,8 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 // Like debugClientInterceptor but for streaming calls.
 func (i *DebugInterceptor) DebugStreamClientInterceptor(opts LogOptions) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string,
-		streamer grpc.Streamer, gopts ...grpc.CallOption) (grpc.ClientStream, error) {
-
+		streamer grpc.Streamer, gopts ...grpc.CallOption,
+	) (grpc.ClientStream, error) {
 		stream, err := streamer(ctx, desc, cc, method, gopts...)
 
 		wrappedStream := &debugClientStream{
@@ -155,7 +157,7 @@ func (i *DebugInterceptor) record(log debugInterceptorLogEntry) error {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(i.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("Failed to append GRPC debug logs to file %s: %v", i.logFile, err)
 	}

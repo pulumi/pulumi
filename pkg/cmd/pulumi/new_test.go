@@ -35,7 +35,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	chdir(t, tempdir)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               false,
 		prompt:            promptForValue,
@@ -58,7 +58,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		prompt:            promptForValue,
@@ -85,7 +85,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir)
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, orgStackName),
 		secretsProvider:   "default",
@@ -111,7 +111,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	uniqueProjectName := filepath.Base(tempdir)
 	fullStackName := fmt.Sprintf("%s/%s/%s", currentUser(t), uniqueProjectName, stackName)
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		prompt:            promptForValue,
@@ -136,7 +136,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		name:              uniqueProjectName,
@@ -164,7 +164,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(uniqueProjectName, stackName),
 		secretsProvider:   "default",
@@ -194,7 +194,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 		},
 	}
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       false,
 		yes:               true,
 		name:              projectName,
@@ -222,7 +222,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		},
 	}
 
-	var args = newArgs{
+	args := newArgs{
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
 		secretsProvider:   "default",
@@ -249,7 +249,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	}
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	var args = newArgs{
+	args := newArgs{
 		generateOnly:      true,
 		interactive:       false,
 		yes:               true,
@@ -281,7 +281,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	}
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	var args = newArgs{
+	args := newArgs{
 		generateOnly:      true,
 		interactive:       true,
 		prompt:            promptMock(projectName, ""),
@@ -311,7 +311,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	// Generate-only command is not creating any stacks, so don't bother with with the name uniqueness check.
-	var args = newArgs{
+	args := newArgs{
 		generateOnly:      true,
 		interactive:       false,
 		yes:               true,
@@ -371,7 +371,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		defer os.RemoveAll(tempdir)
 		chdir(t, tempdir)
 
-		var args = newArgs{
+		args := newArgs{
 			interactive:       false,
 			yes:               true,
 			secretsProvider:   "default",
@@ -392,7 +392,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		// A template that will never exist.
 		template := "this-is-not-the-template-youre-looking-for"
 
-		var args = newArgs{
+		args := newArgs{
 			interactive:       false,
 			yes:               true,
 			secretsProvider:   "default",
@@ -413,7 +413,7 @@ func TestInvalidTemplateName(t *testing.T) {
 		// A template that will never exist remotely.
 		template := "this-is-not-the-template-youre-looking-for"
 
-		var args = newArgs{
+		args := newArgs{
 			generateOnly:      true,
 			offline:           true,
 			secretsProvider:   "default",
@@ -759,11 +759,11 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 			// Fill test directory with files and directories
 			// requested by the test case.
 			for _, name := range tt.dirs {
-				err := os.MkdirAll(filepath.Join(path, name), 01700)
+				err := os.MkdirAll(filepath.Join(path, name), 0o1700)
 				require.NoError(t, err)
 			}
 			for _, name := range tt.files {
-				err := os.WriteFile(filepath.Join(path, name), nil /* body */, 0600)
+				err := os.WriteFile(filepath.Join(path, name), nil /* body */, 0o600)
 				require.NoError(t, err)
 			}
 

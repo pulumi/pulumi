@@ -35,13 +35,15 @@ func (t *testSecretsManager) Decrypter() (config.Decrypter, error) {
 }
 
 func (t *testSecretsManager) EncryptValue(
-	ctx context.Context, plaintext string) (string, error) {
+	ctx context.Context, plaintext string,
+) (string, error) {
 	t.encryptCalls++
 	return fmt.Sprintf("%v:%v", t.encryptCalls, plaintext), nil
 }
 
 func (t *testSecretsManager) DecryptValue(
-	ctx context.Context, ciphertext string) (string, error) {
+	ctx context.Context, ciphertext string,
+) (string, error) {
 	t.decryptCalls++
 	i := strings.Index(ciphertext, ":")
 	if i == -1 {
@@ -51,7 +53,8 @@ func (t *testSecretsManager) DecryptValue(
 }
 
 func (t *testSecretsManager) BulkDecrypt(
-	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	ctx context.Context, ciphertexts []string,
+) (map[string]string, error) {
 	return config.DefaultBulkDecrypt(ctx, t, ciphertexts)
 }
 
@@ -231,13 +234,15 @@ type mapTestDecrypter struct {
 }
 
 func (t *mapTestDecrypter) DecryptValue(
-	ctx context.Context, ciphertext string) (string, error) {
+	ctx context.Context, ciphertext string,
+) (string, error) {
 	t.decryptCalls++
 	return t.d.DecryptValue(ctx, ciphertext)
 }
 
 func (t *mapTestDecrypter) BulkDecrypt(
-	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	ctx context.Context, ciphertexts []string,
+) (map[string]string, error) {
 	t.bulkDecryptCalls++
 	return config.DefaultBulkDecrypt(ctx, t.d, ciphertexts)
 }

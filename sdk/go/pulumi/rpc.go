@@ -221,7 +221,8 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 func marshalInputImpl(v interface{},
 	destType reflect.Type,
 	await,
-	skipInputCheck bool) (resource.PropertyValue, []Resource, error) {
+	skipInputCheck bool,
+) (resource.PropertyValue, []Resource, error) {
 	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
@@ -906,8 +907,10 @@ type ResourceModule interface {
 	Construct(ctx *Context, name, typ, urn string) (Resource, error)
 }
 
-var resourcePackages versionedMap
-var resourceModules versionedMap
+var (
+	resourcePackages versionedMap
+	resourceModules  versionedMap
+)
 
 // RegisterResourcePackage register a resource package with the Pulumi runtime.
 func RegisterResourcePackage(pkg string, resourcePackage ResourcePackage) {

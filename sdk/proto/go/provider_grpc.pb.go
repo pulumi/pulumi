@@ -8,6 +8,7 @@ package pulumirpc
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -322,60 +323,76 @@ type ResourceProviderServer interface {
 }
 
 // UnimplementedResourceProviderServer must be embedded to have forward compatible implementations.
-type UnimplementedResourceProviderServer struct {
-}
+type UnimplementedResourceProviderServer struct{}
 
 func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchemaRequest) (*GetSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
 }
+
 func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
 }
+
 func (UnimplementedResourceProviderServer) DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiffConfig not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Configure not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Invoke(context.Context, *InvokeRequest) (*InvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
 }
+
 func (UnimplementedResourceProviderServer) StreamInvoke(*InvokeRequest, ResourceProvider_StreamInvokeServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamInvoke not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Call(context.Context, *CallRequest) (*CallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Check(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Diff(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Diff not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Create(context.Context, *CreateRequest) (*CreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Update(context.Context, *UpdateRequest) (*UpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Construct(context.Context, *ConstructRequest) (*ConstructResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Construct not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
+
 func (UnimplementedResourceProviderServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
+
 func (UnimplementedResourceProviderServer) Attach(context.Context, *PluginAttach) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attach not implemented")
 }
+
 func (UnimplementedResourceProviderServer) GetMapping(context.Context, *GetMappingRequest) (*GetMappingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMapping not implemented")
 }

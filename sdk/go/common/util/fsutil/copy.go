@@ -52,7 +52,7 @@ func CopyFile(dst string, src string, excl map[string]bool) error {
 			return err
 		}
 		dstdir := filepath.Dir(dst)
-		if err = os.MkdirAll(dstdir, 0700); err != nil {
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
 			return err
 		}
 		if err = os.WriteFile(dst, data, info.Mode()); err != nil {

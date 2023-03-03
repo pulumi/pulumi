@@ -23,7 +23,8 @@ type DependencyGraph struct {
 //
 // includeChildren adds children as another type of (transitive) dependency.
 func (dg *DependencyGraph) DependingOn(res *resource.State,
-	ignore map[resource.URN]bool, includeChildren bool) []*resource.State {
+	ignore map[resource.URN]bool, includeChildren bool,
+) []*resource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
 	var dependents []*resource.State
@@ -158,7 +159,6 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) ResourceS
 	// We don't want to include `r` as it's own dependency.
 	delete(dependencies, r)
 	return dependencies
-
 }
 
 // Mark a resource and its parents as a dependency. This is a helper function for `TransitiveDependenciesOf`.

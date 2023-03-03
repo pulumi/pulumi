@@ -24,8 +24,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-var snkMutex sync.Mutex
-var snk diag.Sink
+var (
+	snkMutex sync.Mutex
+	snk      diag.Sink
+)
 
 // By default we'll attempt to figure out if we should have colors or not. This can be overridden
 // for any command by passing --color=... at the command line.

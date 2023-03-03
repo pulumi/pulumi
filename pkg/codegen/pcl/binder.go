@@ -29,8 +29,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const pulumiPackage = "pulumi"
-const LogicalNamePropertyKey = "__logicalName"
+const (
+	pulumiPackage          = "pulumi"
+	LogicalNamePropertyKey = "__logicalName"
+)
 
 type bindOptions struct {
 	allowMissingVariables  bool

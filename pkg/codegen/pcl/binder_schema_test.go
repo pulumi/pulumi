@@ -51,5 +51,4 @@ func TestGenEnum(t *testing.T) {
 	}, safeEnumFunc, unsafeEnumFunc)
 	assert.Equal(t, d.Summary, `"Bar" is not a valid value of the enum "my:enum"`)
 	assert.Equal(t, d.Detail, `Valid members are "foo", "bar"`)
-
 }

@@ -138,8 +138,8 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 
 // Deprecated. Please use ServeWithOptions and OpenTracingServerInterceptorOptions.
 func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
-	parentSpan opentracing.Span, options ...otgrpc.Option) (int, chan error, error) {
-
+	parentSpan opentracing.Span, options ...otgrpc.Option,
+) (int, chan error, error) {
 	opts := ServeOptions{
 		Port:   port,
 		Cancel: cancel,

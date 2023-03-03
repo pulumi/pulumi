@@ -217,12 +217,14 @@ func TestDecryptingValue(t *testing.T) {
 type passThroughDecrypter struct{}
 
 func (d passThroughDecrypter) DecryptValue(
-	ctx context.Context, ciphertext string) (string, error) {
+	ctx context.Context, ciphertext string,
+) (string, error) {
 	return ciphertext, nil
 }
 
 func (d passThroughDecrypter) BulkDecrypt(
-	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	ctx context.Context, ciphertexts []string,
+) (map[string]string, error) {
 	return DefaultBulkDecrypt(ctx, d, ciphertexts)
 }
 
@@ -330,7 +332,8 @@ func roundtripValueJSON(v Value) (Value, error) {
 }
 
 func roundtripValue(v Value, marshal func(v interface{}) ([]byte, error),
-	unmarshal func([]byte, interface{}) error) (Value, error) {
+	unmarshal func([]byte, interface{}) error,
+) (Value, error) {
 	b, err := marshal(v)
 	if err != nil {
 		return Value{}, err

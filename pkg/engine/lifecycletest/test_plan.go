@@ -43,8 +43,8 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 
 func ImportOp(imports []deploy.Import) TestOp {
 	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
-		dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+		dryRun bool,
+	) (*deploy.Plan, display.ResourceChanges, result.Result) {
 		return Import(info, ctx, opts, imports, dryRun)
 	})
 }
@@ -55,23 +55,23 @@ type ValidateFunc func(project workspace.Project, target deploy.Target, entries 
 	events []Event, res result.Result) result.Result
 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Plan, result.Result) {
-
+	backendClient deploy.BackendClient, validate ValidateFunc,
+) (*deploy.Plan, result.Result) {
 	plan, _, res := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
 	return plan, res
 }
 
 func (op TestOp) Run(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
-
+	dryRun bool, backendClient deploy.BackendClient, validate ValidateFunc,
+) (*deploy.Snapshot, result.Result) {
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Snapshot, result.Result) {
-
+	backendClient deploy.BackendClient, validate ValidateFunc,
+) (*deploy.Snapshot, result.Result) {
 	_, snap, res := op.runWithContext(callerCtx, project, target, opts, dryRun, backendClient, validate)
 	return snap, res
 }
@@ -79,8 +79,8 @@ func (op TestOp) RunWithContext(
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc) (*deploy.Plan, *deploy.Snapshot, result.Result) {
-
+	backendClient deploy.BackendClient, validate ValidateFunc,
+) (*deploy.Plan, *deploy.Snapshot, result.Result) {
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
 
@@ -148,7 +148,8 @@ type TestStep struct {
 func (t *TestStep) ValidateAnd(f ValidateFunc) {
 	o := t.Validate
 	t.Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		events []Event, res result.Result) result.Result {
+		events []Event, res result.Result,
+	) result.Result {
 		r := o(project, target, entries, events, res)
 		if r != nil {
 			return r
@@ -294,8 +295,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only creates or reads.
 				for _, entry := range entries {
 					op := entry.Step.Op()
@@ -311,8 +312,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only refresh-sames.
 				for _, entry := range entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -328,8 +329,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Update,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only sames.
 				for _, entry := range entries {
 					op := entry.Step.Op()
@@ -345,8 +346,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only refresh-sames.
 				for _, entry := range entries {
 					assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
@@ -362,8 +363,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Destroy,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only deletes.
 				for _, entry := range entries {
 					switch entry.Step.Op() {
@@ -383,8 +384,8 @@ func MakeBasicLifecycleSteps(t *testing.T, resCount int) []TestStep {
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				assert.Len(t, entries, 0)
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)

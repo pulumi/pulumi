@@ -86,8 +86,8 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) ValidateFunc {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		res result.Result) result.Result {
-
+		res result.Result,
+	) result.Result {
 		assert.NotNil(t, res)
 
 		for i := range events {
@@ -156,8 +156,8 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
 				},
 			}, nil
@@ -187,8 +187,8 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	// Now run a preview. Expect a warning because the diff is unavailable.
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, res result.Result) result.Result {
-
+			events []Event, res result.Result,
+		) result.Result {
 			found := false
 			for _, e := range events {
 				if e.Type == DiagEvent {
@@ -214,7 +214,8 @@ func TestCheckFailureRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, randomSeed []byte,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, nil, errors.New("oh no, check had an error")
 				},
 			}, nil
@@ -235,8 +236,8 @@ func TestCheckFailureRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
-
+				evts []Event, res result.Result,
+			) result.Result {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -263,7 +264,8 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(urn resource.URN,
-					olds, news resource.PropertyMap, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					olds, news resource.PropertyMap, randomSeed []byte,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return nil, []plugin.CheckFailure{{
 						Property: "someprop",
 						Reason:   "field is not valid",
@@ -287,8 +289,8 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
-
+				evts []Event, res result.Result,
+			) result.Result {
 				sawFailure := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -308,7 +310,6 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	}
 
 	p.Run(t, nil)
-
 }
 
 // Tests that errors returned directly from the language host get logged by the engine.
@@ -335,8 +336,8 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
-
+				evts []Event, res result.Result,
+			) result.Result {
 				assertIsErrorOrBailResult(t, res)
 				sawExitCode := false
 				for _, evt := range evts {
@@ -398,8 +399,8 @@ func TestBrokenDecrypter(t *testing.T) {
 			ExpectFailure: true,
 			SkipPreview:   true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
-
+				evts []Event, res result.Result,
+			) result.Result {
 				assertIsErrorOrBailResult(t, res)
 				decryptErr := res.Error().(DecryptError)
 				assert.Equal(t, key, decryptErr.Key)
@@ -482,8 +483,8 @@ func TestProviderCancellation(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					// Inform the waiter that we've entered a provider op and wait for cancellation.
 					ops.Done()
 					<-provCtx.Done()
@@ -764,7 +765,8 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 			{
 				Resource: newResource(urnB, "1", false),
 				Type:     resource.OperationTypeCreating,
-			}},
+			},
+		},
 		Resources: []*resource.State{
 			newResource(urnA, "0", false),
 		},
@@ -791,7 +793,8 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		res result.Result) result.Result {
+		res result.Result,
+	) result.Result {
 		for i := range events {
 			if events[i].Type == "diag" {
 				payload := events[i].Payload().(engine.DiagEventPayload)
@@ -826,16 +829,16 @@ func TestUpdatePartialFailure(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 					}, nil
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 						"output_prop": 42,
 					})
@@ -864,8 +867,8 @@ func TestUpdatePartialFailure(t *testing.T) {
 		ExpectFailure: true,
 		SkipPreview:   true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assertIsErrorOrBailResult(t, res)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -973,8 +976,8 @@ func TestStackReference(t *testing.T) {
 		Op:          Update,
 		SkipPreview: true,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
@@ -1140,14 +1143,14 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return plugin.DiffResult{}, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return resource.PropertyMap{}, resource.StatusOK, nil
 				},
@@ -1156,7 +1159,8 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}
 
 	updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, ignoreChanges []string,
-		allowedOps []display.StepOp) *deploy.Snapshot {
+		allowedOps []display.StepOp,
+	) *deploy.Snapshot {
 		expectedIgnoreChanges = ignoreChanges
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1173,7 +1177,8 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
@@ -1305,11 +1310,13 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 				return &deploytest.Provider{
 					DiffF: diffFunc,
 					UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-						ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+						ignoreChanges []string, preview bool,
+					) (resource.PropertyMap, resource.Status, error) {
 						return news, resource.StatusOK, nil
 					},
 					CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-						preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+						preview bool,
+					) (resource.ID, resource.PropertyMap, resource.Status, error) {
 						return resource.ID("id123"), inputs, resource.StatusOK, nil
 					},
 				}, nil
@@ -1317,7 +1324,8 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 		}
 
 		updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, replaceOnChanges []string,
-			allowedOps []display.StepOp) *deploy.Snapshot {
+			allowedOps []display.StepOp,
+		) *deploy.Snapshot {
 			program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 					Inputs:           props,
@@ -1333,7 +1341,8 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					{
 						Op: Update,
 						Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-							events []Event, res result.Result) result.Result {
+							events []Event, res result.Result,
+						) result.Result {
 							for _, event := range events {
 								if event.Type == ResourcePreEvent {
 									payload := event.Payload().(ResourcePreEventPayload)
@@ -1410,8 +1419,8 @@ func TestReplaceOnChanges(t *testing.T) {
 	// We simulate a provider that has it's own diff function.
 	replaceOnChangesTest(t, "provider diff",
 		func(urn resource.URN, id resource.ID,
-			olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+			olds, news resource.PropertyMap, ignoreChanges []string,
+		) (plugin.DiffResult, error) {
 			// To establish a observable difference between the provider and engine diff function,
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
@@ -1481,8 +1490,8 @@ func TestAliases(t *testing.T) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
 					old, hasOld := olds["forcesReplacement"]
 					new, hasNew := news["forcesReplacement"]
@@ -1496,7 +1505,8 @@ func TestAliases(t *testing.T) {
 	}
 
 	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool) *deploy.Snapshot {
+		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
+	) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			err := registerResources(t, monitor, resources)
 			return err
@@ -1509,7 +1519,8 @@ func TestAliases(t *testing.T) {
 					Op:            Update,
 					ExpectFailure: expectFailure,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
@@ -1835,7 +1846,8 @@ func TestAliases(t *testing.T) {
 
 		for j := 0; j < 10; j++ {
 			n2Aliases = append(n2Aliases, resource.Alias{
-				URN: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j))})
+				URN: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)),
+			})
 			n3Aliases = append(n3Aliases, resource.Alias{
 				Name:    "n1-sub-sub",
 				Type:    fmt.Sprintf("pkgA:index:t1-v%d$pkgA:index:t2-v%d$pkgA:index:t3", i, j),
@@ -1874,8 +1886,8 @@ func TestAliasURNs(t *testing.T) {
 			return &deploytest.Provider{
 				// The `forcesReplacement` key forces replacement and all other keys can update in place
 				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					replaceKeys := []resource.PropertyKey{}
 					old, hasOld := olds["forcesReplacement"]
 					new, hasNew := news["forcesReplacement"]
@@ -1889,7 +1901,8 @@ func TestAliasURNs(t *testing.T) {
 	}
 
 	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool) *deploy.Snapshot {
+		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
+	) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			err := registerResources(t, monitor, resources)
 			return err
@@ -1902,7 +1915,8 @@ func TestAliasURNs(t *testing.T) {
 					Op:            Update,
 					ExpectFailure: expectFailure,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
@@ -2262,8 +2276,8 @@ func TestPersistentDiff(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 				},
 			}, nil
@@ -2294,8 +2308,8 @@ func TestPersistentDiff(t *testing.T) {
 	// provider diffing.
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, res result.Result) result.Result {
-
+			events []Event, res result.Result,
+		) result.Result {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
@@ -2315,8 +2329,8 @@ func TestPersistentDiff(t *testing.T) {
 	p.Options.UseLegacyDiff = true
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, res result.Result) result.Result {
-
+			events []Event, res result.Result,
+		) result.Result {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
@@ -2340,8 +2354,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 						DetailedDiff: map[string]plugin.PropertyDiff{
@@ -2377,8 +2391,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 	// provider diffing.
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
-			events []Event, res result.Result) result.Result {
-
+			events []Event, res result.Result,
+		) result.Result {
 			found := false
 			for _, e := range events {
 				if e.Type == ResourcePreEvent {
@@ -2437,7 +2451,8 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
 					if !olds.DeepEquals(news) {
 						keys := []resource.PropertyKey{}
@@ -2495,8 +2510,8 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
 			// Look for replace steps on the provider and the resource.
@@ -2559,8 +2574,8 @@ func TestProviderPreview(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2569,8 +2584,8 @@ func TestProviderPreview(t *testing.T) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2646,8 +2661,8 @@ func TestProviderPreviewGrpc(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2656,8 +2671,8 @@ func TestProviderPreviewGrpc(t *testing.T) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2735,8 +2750,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2744,8 +2759,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
-
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					if preview {
 						sawPreview = true
 					}
@@ -2829,8 +2844,8 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+				options plugin.ConstructOptions,
+			) (plugin.ConstructResult, error) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
 					Aliases: options.Aliases,
@@ -2937,7 +2952,8 @@ func (ctx *updateContext) Finish(err error) (*deploy.Snapshot, result.Result) {
 }
 
 func (ctx *updateContext) GetRequiredPlugins(_ context.Context,
-	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
+	req *pulumirpc.GetRequiredPluginsRequest,
+) (*pulumirpc.GetRequiredPluginsResponse, error) {
 	return &pulumirpc.GetRequiredPluginsResponse{}, nil
 }
 
@@ -2972,7 +2988,8 @@ func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (
 
 func (ctx *updateContext) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer) error {
+	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
 	return nil
 }
 
@@ -3008,8 +3025,8 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-				inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+				inputs resource.PropertyMap, options plugin.ConstructOptions,
+			) (plugin.ConstructResult, error) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:       parent,
 					Protect:      options.Protect,
@@ -3037,11 +3054,13 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", inputs, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 				ConstructF: construct,
@@ -3158,8 +3177,8 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+				options plugin.ConstructOptions,
+			) (plugin.ConstructResult, error) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
@@ -3184,8 +3203,8 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 			}
 
 			call := func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap,
-				info plugin.CallInfo, options plugin.CallOptions) (plugin.CallResult, error) {
-
+				info plugin.CallInfo, options plugin.CallOptions,
+			) (plugin.CallResult, error) {
 				assert.Equal(t, resource.PropertyMap{
 					"name": resource.NewStringProperty("Alice"),
 				}, args)
@@ -3251,8 +3270,8 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+				options plugin.ConstructOptions,
+			) (plugin.ConstructResult, error) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
@@ -3277,8 +3296,8 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 			}
 
 			call := func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap,
-				info plugin.CallInfo, options plugin.CallOptions) (plugin.CallResult, error) {
-
+				info plugin.CallInfo, options plugin.CallOptions,
+			) (plugin.CallResult, error) {
 				_, _, _, err := monitor.RegisterResource("pkgA:m:typC", "resA", true, deploytest.ResourceOptions{
 					Parent: urn,
 				})
@@ -3338,8 +3357,8 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+					inputs resource.PropertyMap, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
 					switch typ {
 					case "pkgB:m:first":
 						firstURN, _, _, err = monitor.RegisterResource("pkgB:m:first", name, false)
@@ -3419,7 +3438,8 @@ func TestComponentDeleteDependencies(t *testing.T) {
 			Op:          Destroy,
 			SkipPreview: true,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				evts []Event, res result.Result) result.Result {
+				evts []Event, res result.Result,
+			) result.Result {
 				assert.Nil(t, res)
 
 				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
@@ -3466,7 +3486,8 @@ func TestProtect(t *testing.T) {
 					urn resource.URN,
 					id resource.ID,
 					olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
@@ -3477,13 +3498,15 @@ func TestProtect(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-					timeout float64) (resource.Status, error) {
+					timeout float64,
+				) (resource.Status, error) {
 					deleteCounter = deleteCounter + 1
 					return resource.StatusOK, nil
 				},
@@ -3499,7 +3522,6 @@ func TestProtect(t *testing.T) {
 	createResource := true
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:  ins,
@@ -3532,7 +3554,8 @@ func TestProtect(t *testing.T) {
 	// Both updates below should give a diagnostic event
 	validate := func(project workspace.Project,
 		target deploy.Target, entries JournalEntries,
-		events []Event, res result.Result) result.Result {
+		events []Event, res result.Result,
+	) result.Result {
 		for _, event := range events {
 			if event.Type == DiagEvent {
 				payload := event.Payload().(DiagEventPayload)
@@ -3619,7 +3642,8 @@ func TestRetainOnDelete(t *testing.T) {
 					urn resource.URN,
 					id resource.ID,
 					olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
@@ -3630,13 +3654,15 @@ func TestRetainOnDelete(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-					timeout float64) (resource.Status, error) {
+					timeout float64,
+				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
 					return resource.StatusOK, nil
 				},
@@ -3651,7 +3677,6 @@ func TestRetainOnDelete(t *testing.T) {
 	createResource := true
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		if createResource {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:         ins,
@@ -3709,7 +3734,8 @@ func TestDeletedWith(t *testing.T) {
 					urn resource.URN,
 					id resource.ID,
 					olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
@@ -3720,13 +3746,15 @@ func TestDeletedWith(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-					timeout float64) (resource.Status, error) {
+					timeout float64,
+				) (resource.Status, error) {
 					if urn != topURN {
 						// Only topURN (aURN) should be actually deleted
 						assert.Fail(t, "Delete was called")
@@ -3744,7 +3772,6 @@ func TestDeletedWith(t *testing.T) {
 	createResource := true
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		if createResource {
 			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
@@ -3819,18 +3846,20 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 					urn resource.URN,
 					id resource.ID,
 					olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					resourceID := resource.ID(fmt.Sprintf("created-id-%d", idCounter))
 					idCounter = idCounter + 1
 					return resourceID, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-					timeout float64) (resource.Status, error) {
-
+					timeout float64,
+				) (resource.Status, error) {
 					assert.Fail(t, "Delete was called")
 
 					return resource.StatusOK, nil
@@ -3847,7 +3876,6 @@ func TestDeletedWithCircularDependency(t *testing.T) {
 	cURN := resource.URN("")
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		if createResource {
 			aURN, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs:      ins,
@@ -3942,8 +3970,8 @@ func TestEventSecrets(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					diff := olds.Diff(news)
 					if diff == nil {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -3959,11 +3987,13 @@ func TestEventSecrets(t *testing.T) {
 				},
 
 				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					return news, resource.StatusOK, nil
 				},
 				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("id123"), inputs, resource.StatusOK, nil
 				},
 			}, nil
@@ -4009,8 +4039,8 @@ func TestEventSecrets(t *testing.T) {
 		})),
 	}
 	p.Steps[0].Validate = func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		evts []Event, res result.Result) result.Result {
-
+		evts []Event, res result.Result,
+	) result.Result {
 		for _, e := range evts {
 			var step StepEventMetadata
 			switch e.Type {
@@ -4043,7 +4073,8 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("id123"), inputs, resource.StatusOK, nil
 				},
 			}, nil
@@ -4077,8 +4108,8 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	validate := func(
 		project workspace.Project, target deploy.Target,
 		entries JournalEntries, events []Event,
-		res result.Result) result.Result {
-
+		res result.Result,
+	) result.Result {
 		if res != nil {
 			return res
 		}
@@ -4115,7 +4146,8 @@ func TestDefaultParents(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -4194,8 +4226,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					if strings.Contains(string(urn), "typB") && failCreationOfTypB {
 						return "", nil, resource.StatusOK, fmt.Errorf("Could not create typB")
 					}
@@ -4207,7 +4239,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 					return id, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN,
-					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					id resource.ID, olds resource.PropertyMap, timeout float64,
+				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
 					for other, res := range cloudState {
 						for _, v := range res {
@@ -4221,7 +4254,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 					return resource.StatusOK, nil
 				},
 				DiffF: func(urn resource.URN,
-					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if strings.Contains(string(urn), "typA") {
 						if !olds["foo"].DeepEquals(news["foo"]) {
 							return plugin.DiffResult{
@@ -4257,7 +4291,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 				},
 				UpdateF: func(urn resource.URN,
 					id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					assert.Fail(t, "Didn't expect update to be called")
 					return nil, resource.StatusOK, nil
 				},
@@ -4333,7 +4368,8 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -4342,7 +4378,6 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 
 	mode := 0
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-
 		switch mode {
 		case 0:
 			// Default case, just make resA
@@ -4442,8 +4477,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := resource.ID("")
 					if !preview {
 						id = resource.ID(fmt.Sprintf("%d", cloudID))
@@ -4453,7 +4488,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					return id, news, resource.StatusOK, nil
 				},
 				DeleteF: func(urn resource.URN,
-					id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error) {
+					id resource.ID, olds resource.PropertyMap, timeout float64,
+				) (resource.Status, error) {
 					// Fail if anything in cloud state still points to us
 					for _, res := range cloudState {
 						for _, v := range res {
@@ -4471,7 +4507,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					return resource.StatusOK, nil
 				},
 				DiffF: func(urn resource.URN,
-					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if strings.Contains(string(urn), "typA") {
 						if !olds["foo"].DeepEquals(news["foo"]) {
 							return plugin.DiffResult{
@@ -4520,7 +4557,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 				},
 				UpdateF: func(urn resource.URN,
 					id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
 					assert.Fail(t, "Didn't expect update to be called")
 					return nil, resource.StatusOK, nil
 				},

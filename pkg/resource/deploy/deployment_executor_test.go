@@ -105,6 +105,5 @@ func TestRebuildBaseState(t *testing.T) {
 			"G": {URN: "G", Parent: "D"},
 			"D": {URN: "D", Parent: "A"},
 		}, ex.deployment.olds)
-
 	})
 }

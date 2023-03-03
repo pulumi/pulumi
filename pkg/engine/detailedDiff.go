@@ -38,8 +38,8 @@ func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyVal
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
 func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
-	oldParent, newParent resource.PropertyValue) {
-
+	oldParent, newParent resource.PropertyValue,
+) {
 	contract.Requiref(len(path) > 0, "path", "must not be empty")
 
 	element := path[0]

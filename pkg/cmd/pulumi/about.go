@@ -47,31 +47,30 @@ func newAboutCmd() *cobra.Command {
 	var transitiveDependencies bool
 	var stack string
 	short := "Print information about the Pulumi environment."
-	cmd :=
-		&cobra.Command{
-			Use:   "about",
-			Short: short,
-			Long: short + "\n" +
-				"\n" +
-				"Prints out information helpful for debugging the Pulumi CLI." +
-				"\n" +
-				"This includes information about:\n" +
-				" - the CLI and how it was built\n" +
-				" - which OS Pulumi was run from\n" +
-				" - the current project\n" +
-				" - the current stack\n" +
-				" - the current backend\n",
-			Args: cmdutil.MaximumNArgs(0),
-			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				ctx := commandContext()
-				summary := getSummaryAbout(ctx, transitiveDependencies, stack)
-				if jsonOut {
-					return printJSON(summary)
-				}
-				summary.Print()
-				return nil
-			}),
-		}
+	cmd := &cobra.Command{
+		Use:   "about",
+		Short: short,
+		Long: short + "\n" +
+			"\n" +
+			"Prints out information helpful for debugging the Pulumi CLI." +
+			"\n" +
+			"This includes information about:\n" +
+			" - the CLI and how it was built\n" +
+			" - which OS Pulumi was run from\n" +
+			" - the current project\n" +
+			" - the current stack\n" +
+			" - the current backend\n",
+		Args: cmdutil.MaximumNArgs(0),
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
+			summary := getSummaryAbout(ctx, transitiveDependencies, stack)
+			if jsonOut {
+				return printJSON(summary)
+			}
+			summary.Print()
+			return nil
+		}),
+	}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().StringVarP(
@@ -295,7 +294,8 @@ func (host hostAbout) String() string {
 			{"OS", host.Os},
 			{"Version", host.Version},
 			{"Arch", host.Arch},
-		})}.String()
+		}),
+	}.String()
 }
 
 type backendAbout struct {
@@ -380,7 +380,7 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 			URN:  string(r.URN),
 		}
 	}
-	var aboutPending = make([]aboutState, len(pendingOps))
+	aboutPending := make([]aboutState, len(pendingOps))
 	for i, p := range pendingOps {
 		aboutPending[i] = aboutState{
 			Type: string(p.Type),
@@ -555,7 +555,8 @@ func (runtime projectRuntimeAbout) String() string {
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
 func getProjectPluginsSilently(
-	ctx *plugin.Context, proj *workspace.Project, pwd, main string) ([]workspace.PluginSpec, error) {
+	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
+) ([]workspace.PluginSpec, error) {
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err

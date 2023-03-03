@@ -54,7 +54,6 @@ type CreatePolicyPackResponse struct {
 // RequiredPolicy is the information regarding a particular Policy that is required
 // by an organization.
 type RequiredPolicy struct {
-
 	// The name (unique and URL-safe) of the required Policy Pack.
 	Name string `json:"name"`
 

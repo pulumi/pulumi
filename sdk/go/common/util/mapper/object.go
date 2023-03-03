@@ -38,7 +38,8 @@ func AsString(v interface{}, ty reflect.Type, key string) (*string, FieldError) 
 // FieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the
 // field exists but is not an object map, or it is missing and optional is false, a non-nil error is returned.
 func FieldObject(obj map[string]interface{}, ty reflect.Type,
-	key string, optional bool) (map[string]interface{}, FieldError) {
+	key string, optional bool,
+) (map[string]interface{}, FieldError) {
 	if o, has := obj[key]; has {
 		return AsObject(o, ty, key)
 	} else if !optional {

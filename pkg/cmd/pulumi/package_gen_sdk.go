@@ -96,11 +96,11 @@ func genSDK(language, out string, pkg *schema.Package) error {
 	}
 	for k, v := range m {
 		path := filepath.Join(root, k)
-		err := os.MkdirAll(filepath.Dir(path), 0700)
+		err := os.MkdirAll(filepath.Dir(path), 0o700)
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(path, v, 0600)
+		err = os.WriteFile(path, v, 0o600)
 		if err != nil {
 			return err
 		}

@@ -907,7 +907,6 @@ func NewObjectConsItemTokens(last bool) ObjectConsItemTokens {
 			Raw:            newRawToken(hclsyntax.TokenComma),
 			TrailingTrivia: TriviaList{NewWhitespace('\n')},
 		}
-
 	}
 	return ObjectConsItemTokens{
 		Equals: Token{

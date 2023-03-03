@@ -235,7 +235,6 @@ func TestAssetReject(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, archValue)
 	}
-
 }
 
 func TestUnsupportedSecret(t *testing.T) {
@@ -285,7 +284,6 @@ func TestUnknownSig(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
 	assert.Error(t, err)
-
 }
 
 func TestSkipInternalKeys(t *testing.T) {
@@ -1653,8 +1651,8 @@ func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
 func walkValueSelfWithDescendants(
 	v *structpb.Value,
 	path string,
-	visit func(path string, v *structpb.Value) error) error {
-
+	visit func(path string, v *structpb.Value) error,
+) error {
 	if v == nil {
 		return fmt.Errorf("bad *structpb.Value nil at %s", path)
 	}

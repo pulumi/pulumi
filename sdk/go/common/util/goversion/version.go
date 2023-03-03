@@ -1,10 +1,11 @@
 package goversion
 
 import (
-	goVersion "github.com/hashicorp/go-version"
-	"github.com/pkg/errors"
 	"os/exec"
 	"strings"
+
+	goVersion "github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
 )
 
 var minGoVersion = goVersion.Must(goVersion.NewVersion("1.14.0"))
@@ -26,7 +27,6 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 	split := strings.Split(goVersionOutput, " ")
 	if len(split) <= 2 {
 		return errors.Errorf("unexpected format for go version output: \"%s\"", goVersionOutput)
-
 	}
 	version := strings.TrimSpace(split[2])
 	version = strings.TrimPrefix(version, "go")

@@ -13,10 +13,8 @@ import (
 // Tests that the stack export that included secrets in step1 is read into a secret output.
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-
 		slug := fmt.Sprintf("%v/%v/%v", ctx.Organization(), ctx.Project(), ctx.Stack())
 		stackRef, err := pulumi.NewStackReference(ctx, slug, nil)
-
 		if err != nil {
 			return fmt.Errorf("error reading stack reference: %v", err)
 		}
@@ -28,7 +26,6 @@ func main() {
 		secret := make(chan bool)
 
 		_ = val.ApplyT(func(v []string) ([]string, error) {
-
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
 				errChan <- fmt.Errorf("invalid result")
 				return nil, fmt.Errorf("invalid result")

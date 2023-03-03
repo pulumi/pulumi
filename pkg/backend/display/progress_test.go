@@ -64,10 +64,10 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 		assert.Equal(t, string(expectedStdout), stdout.String())
 		assert.Equal(t, string(expectedStderr), stderr.String())
 	} else {
-		err = os.WriteFile(path+suffix+".stdout.txt", stdout.Bytes(), 0600)
+		err = os.WriteFile(path+suffix+".stdout.txt", stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(path+suffix+".stderr.txt", stderr.Bytes(), 0600)
+		err = os.WriteFile(path+suffix+".stderr.txt", stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
 }

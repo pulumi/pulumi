@@ -181,7 +181,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		}
 		path := filepath.Join(sitePackages, "pip_install_test", "pulumi-plugin.json")
 		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
-		err = os.WriteFile(path, bytes, 0600)
+		err = os.WriteFile(path, bytes, 0o600)
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
 		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)

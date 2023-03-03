@@ -31,7 +31,7 @@ import (
 func newPolicyLsCmd() *cobra.Command {
 	var jsonOut bool
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "ls [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "List all Policy Packs for a Pulumi organization",

@@ -35,14 +35,17 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	typ := "some:invalid:type1"
 
 	resc1 := liveState(typ, "resc1", resource.PropertyMap{
-		resource.PropertyKey("prop1"): resource.NewStringProperty("val1")})
+		resource.PropertyKey("prop1"): resource.NewStringProperty("val1"),
+	})
 	resc2 := liveState(typ, "resc2", resource.PropertyMap{
-		resource.PropertyKey("prop2"): resource.NewStringProperty("val2")})
+		resource.PropertyKey("prop2"): resource.NewStringProperty("val2"),
+	})
 
 	// `deleted` will be ignored by `GetStackResourceOutputs`.
 	deletedName := "resc3"
 	deleted := deleteState("deletedType", "resc3", resource.PropertyMap{
-		resource.PropertyKey("deleted"): resource.NewStringProperty("deleted")})
+		resource.PropertyKey("deleted"): resource.NewStringProperty("deleted"),
+	})
 
 	// Mock backend that implements just enough methods to service `GetStackResourceOutputs`.
 	// Returns a single stack snapshot.

@@ -198,7 +198,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Remove duplicates
 	retLogs := make([]LogEntry, 0, len(logs))
 	var lastLogTimestamp int64
-	var lastLogs = make([]LogEntry, 0, len(logs))
+	lastLogs := make([]LogEntry, 0, len(logs))
 	for _, log := range logs {
 		shouldContinue := false
 		if log.Timestamp == lastLogTimestamp {
