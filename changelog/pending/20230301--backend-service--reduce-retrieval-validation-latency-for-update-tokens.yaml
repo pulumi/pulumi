@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/service
-  description: Reduce retrieval-validation latency for update tokens

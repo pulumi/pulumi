@@ -58,7 +58,7 @@ var _ Analyzer = (*analyzer)(nil)
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Load the plugin's path by using the standard workspace logic.
 	path, err := workspace.GetPluginPath(
-		workspace.AnalyzerPlugin, strings.Replace(string(name), tokens.QNameDelimiter, "_", -1),
+		workspace.AnalyzerPlugin, strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
 		nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, rpcerror.Convert(err)

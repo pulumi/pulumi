@@ -161,8 +161,9 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 func (mod *modContext) modNameAndName(pkg schema.PackageReference, t schema.Type, input bool) (modName string, name string) {
 	var info PackageInfo
 	p, err := pkg.Definition()
-	contract.AssertNoError(err)
-	contract.AssertNoError(p.ImportLanguages(map[string]schema.Language{"python": Importer}))
+	contract.AssertNoErrorf(err, "error loading definition for package %q", pkg.Name())
+	contract.AssertNoErrorf(p.ImportLanguages(map[string]schema.Language{"python": Importer}),
+		"error importing python language plugin for package %q", pkg.Name())
 	if v, ok := p.Language["python"].(PackageInfo); ok {
 		info = v
 	}
@@ -378,7 +379,7 @@ func typingImports() []string {
 
 func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typingImports []string) {
 	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "could not turn %q into a relative path", mod.mod)
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 
@@ -744,7 +745,7 @@ func (mod *modContext) genInit(exports []string) string {
 	// If there are resources in this module, register the module with the runtime.
 	if len(mod.resources) != 0 {
 		err := genResourceMappings(mod, w)
-		contract.Assert(err == nil)
+		contract.AssertNoErrorf(err, "error generating resource mappings")
 	}
 
 	return w.String()
@@ -752,14 +753,14 @@ func (mod *modContext) genInit(exports []string) string {
 
 func (mod *modContext) getRelImportFromRoot() string {
 	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
 	relRoot := path.Dir(rel)
 	return relPathToRelImport(relRoot)
 }
 
 func (mod *modContext) genUtilitiesImport() string {
 	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
+	contract.AssertNoErrorf(err, "error turning %q into a relative path", mod.mod)
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 	return fmt.Sprintf("from %s import _utilities", relImport)
@@ -772,7 +773,7 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 
 	tok := t.Token
 	parts := strings.Split(tok, ":")
-	contract.Assert(len(parts) == 3)
+	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 	refPkgName := parts[0]
 
 	modName := mod.tokenToModule(tok)
@@ -828,7 +829,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 
 	tok := r.Token
 	parts := strings.Split(tok, ":")
-	contract.Assert(len(parts) == 3)
+	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 
 	// If it's a provider resource, import the top-level package.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
@@ -2924,7 +2925,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 				continue
 			}
 
-			packagePath := strings.Replace(modName, "/", ".", -1)
+			packagePath := strings.ReplaceAll(modName, "/", ".")
 			lr := LanguageResource{
 				Resource: r,
 				Package:  packagePath,

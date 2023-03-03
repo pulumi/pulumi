@@ -2192,7 +2192,7 @@ func getSanitizedModulePath(pkg string) string {
 	re := regexp.MustCompile(`v\d`)
 	v := re.FindString(pkg)
 	if v != "" {
-		return strings.TrimSuffix(strings.Replace(pkg, v, "", -1), "/")
+		return strings.TrimSuffix(strings.ReplaceAll(pkg, v, ""), "/")
 	}
 	return pkg
 
