@@ -320,6 +320,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			Git: &apitype.SourceContextGit{
 				RepoURL: url,
 				Branch:  args.gitBranch,
+				Commit:  args.gitCommit,
 				RepoDir: args.gitRepoDir,
 				GitAuth: gitAuth,
 			},
