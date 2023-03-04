@@ -25,9 +25,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var verbose bool
-
 func newWhoAmICmd() *cobra.Command {
+	var jsonOut bool
+	var verbose bool
+
 	cmd := &cobra.Command{
 		Use:   "whoami",
 		Short: "Display the current logged-in user",
@@ -57,6 +58,14 @@ func newWhoAmICmd() *cobra.Command {
 				return err
 			}
 
+			if jsonOut {
+				return printJSON(WhoAmIJSON{
+					User:          name,
+					Organizations: orgs,
+					URL:           b.URL(),
+				})
+			}
+
 			if verbose {
 				fmt.Printf("User: %s\n", name)
 				fmt.Printf("Organizations: %s\n", strings.Join(orgs, ", "))
@@ -70,8 +79,18 @@ func newWhoAmICmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVarP(
+		&jsonOut, "json", "j", false, "Emit output as JSON")
+
+	cmd.PersistentFlags().BoolVarP(
 		&verbose, "verbose", "v", false,
 		"Print detailed whoami information")
 
 	return cmd
+}
+
+// WhoAmIJSON is the shape of the --json output of this command.
+type WhoAmIJSON struct {
+	User          string   `json:"user"`
+	Organizations []string `json:"organizations,omitempty"`
+	URL           string   `json:"url"`
 }
