@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -62,7 +63,7 @@ func newConvertCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			cwd, err := os.Getwd()
 			if err != nil {
-				return result.FromError(fmt.Errorf("could not resolve current working directory"))
+				return result.FromError(fmt.Errorf("get current working directory: %w", err))
 			}
 
 			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly)
@@ -202,13 +203,13 @@ func runConvert(
 		}
 	}
 
-	host, err := newPluginHost()
+	pCtx, err := newPluginContext(cwd)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
 	}
-	defer contract.IgnoreClose(host)
-	loader := schema.NewPluginLoader(host)
-	mapper, err := convert.NewPluginMapper(host, from, mappings)
+	defer contract.IgnoreClose(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx.Host)
+	mapper, err := convert.NewPluginMapper(pCtx.Host, from, mappings)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
 	}
@@ -227,7 +228,7 @@ func runConvert(
 				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))
 			}
 		} else {
-			return result.FromError(fmt.Errorf("unrecognized source %s", from))
+			return result.FromError(fmt.Errorf("unrecognized source %q", from))
 		}
 	} else if from == "tf" {
 		proj, program, err = tfgen.Eject(cwd, loader, mapper)
@@ -235,7 +236,40 @@ func runConvert(
 			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
 		}
 	} else {
-		return result.FromError(fmt.Errorf("unrecognized source %s", from))
+		// Try and load the converter plugin for this
+		converter, err := plugin.NewConverter(pCtx, from, nil)
+		if err != nil {
+			return result.FromError(fmt.Errorf("plugin source %q: %w", from, err))
+		}
+
+		targetDirectory, err := os.MkdirTemp("", "pulumi-convert")
+		if err != nil {
+			return result.FromError(fmt.Errorf("create temporary directory: %w", err))
+		}
+
+		logging.Warningf("Plugin converters are currently experimental")
+
+		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
+			SourceDirectory: cwd,
+			TargetDirectory: targetDirectory,
+		})
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		proj, program, err = pclEject(targetDirectory, loader)
+		if err != nil {
+			return result.FromError(fmt.Errorf("load pcl program: %w", err))
+		}
+
+		// Load the project from the target directory if there is one
+		path, _ := workspace.DetectProjectPathFrom(targetDirectory)
+		if path != "" {
+			proj, err = workspace.LoadProject(path)
+			if err != nil {
+				return result.FromError(fmt.Errorf("load project: %w", err))
+			}
+		}
 	}
 
 	err = projectGenerator(outDir, *proj, program)
@@ -270,11 +304,7 @@ func runConvert(
 	return nil
 }
 
-func newPluginHost() (plugin.Host, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
+func newPluginContext(cwd string) (*plugin.Context, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
@@ -282,5 +312,5 @@ func newPluginHost() (plugin.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pluginCtx.Host, nil
+	return pluginCtx, nil
 }

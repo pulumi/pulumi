@@ -9,6 +9,7 @@
 1574098198 4061 proto/google/protobuf/status.proto
 1405145341 1741 proto/pulumi/alias.proto
 1949619858 9233 proto/pulumi/analyzer.proto
+3757022482 2216 proto/pulumi/converter.proto
 2889436496 3240 proto/pulumi/engine.proto
 3421371250 793 proto/pulumi/errors.proto
 3818289820 5711 proto/pulumi/language.proto

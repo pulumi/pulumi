@@ -161,6 +161,11 @@ type PluginSource interface {
 	GetLatestVersion(getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error)
 }
 
+// standardAssetName returns the standard name for the asset that contains the given plugin.
+func standardAssetName(name string, kind PluginKind, version semver.Version, opSy, arch string) string {
+	return fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", kind, name, version, opSy, arch)
+}
+
 // getPulumiSource can download a plugin from get.pulumi.com
 type getPulumiSource struct {
 	name string
@@ -191,7 +196,7 @@ func (source *getPulumiSource) Download(
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
-		url.QueryEscape(fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)))
+		url.QueryEscape(standardAssetName(source.name, source.kind, version, opSy, arch)))
 
 	req, err := buildHTTPRequest(endpoint, "")
 	if err != nil {
@@ -286,7 +291,7 @@ func (source *gitlabSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 
 	assetURL := fmt.Sprintf(
 		"https://%s/api/v4/projects/%s/releases/v%s/downloads/%s",
@@ -344,6 +349,12 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 	}
 
 	repository := "pulumi-" + name
+	if kind == ConverterPlugin {
+		// Converter plugins are expected at a different repo path, e.g.
+		// github.com/pulumi/pulumi-converter-aws rather than github.com/pulumi/pulumi-aws which would clash
+		// with the providers of the same name.
+		repository = "pulumi-converter-" + name
+	}
 	if len(parts) == 2 {
 		repository = parts[1]
 	}
@@ -444,8 +455,6 @@ func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
-
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
@@ -471,6 +480,7 @@ func (source *githubSource) Download(
 		return nil, -1, fmt.Errorf("cannot decode github response len(%d): %w", length, err)
 	}
 
+	assetName := standardAssetName(source.name, source.kind, version, opSy, arch)
 	assetURL := ""
 	for _, asset := range release.Assets {
 		if asset.Name == assetName {
@@ -1398,12 +1408,14 @@ const (
 	LanguagePlugin PluginKind = "language"
 	// ResourcePlugin is a plugin that can be used as a resource provider for custom CRUD operations.
 	ResourcePlugin PluginKind = "resource"
+	// ConverterPlugin is a plugin that can be used to convert from other ecosystems to Pulumi.
+	ConverterPlugin PluginKind = "converter"
 )
 
 // IsPluginKind returns true if k is a valid plugin kind, and false otherwise.
 func IsPluginKind(k string) bool {
 	switch PluginKind(k) {
-	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin:
+	case AnalyzerPlugin, LanguagePlugin, ResourcePlugin, ConverterPlugin:
 		return true
 	default:
 		return false
