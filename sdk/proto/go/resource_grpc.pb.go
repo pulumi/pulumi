@@ -8,7 +8,6 @@ package pulumirpc
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -142,32 +141,27 @@ type ResourceMonitorServer interface {
 }
 
 // UnimplementedResourceMonitorServer must be embedded to have forward compatible implementations.
-type UnimplementedResourceMonitorServer struct{}
+type UnimplementedResourceMonitorServer struct {
+}
 
 func (UnimplementedResourceMonitorServer) SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SupportsFeature not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) StreamInvoke(*ResourceInvokeRequest, ResourceMonitor_StreamInvokeServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamInvoke not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) Call(context.Context, *CallRequest) (*CallResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Call not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadResource not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResource not implemented")
 }
-
 func (UnimplementedResourceMonitorServer) RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResourceOutputs not implemented")
 }

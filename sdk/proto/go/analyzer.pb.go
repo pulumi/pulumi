@@ -21,13 +21,12 @@
 package pulumirpc
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1347,34 +1346,31 @@ func file_pulumi_analyzer_proto_rawDescGZIP() []byte {
 	return file_pulumi_analyzer_proto_rawDescData
 }
 
-var (
-	file_pulumi_analyzer_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_pulumi_analyzer_proto_msgTypes  = make([]protoimpl.MessageInfo, 17)
-	file_pulumi_analyzer_proto_goTypes   = []interface{}{
-		(EnforcementLevel)(0),                          // 0: pulumirpc.EnforcementLevel
-		(*AnalyzeRequest)(nil),                         // 1: pulumirpc.AnalyzeRequest
-		(*AnalyzerResource)(nil),                       // 2: pulumirpc.AnalyzerResource
-		(*AnalyzerResourceOptions)(nil),                // 3: pulumirpc.AnalyzerResourceOptions
-		(*AnalyzerProviderResource)(nil),               // 4: pulumirpc.AnalyzerProviderResource
-		(*AnalyzerPropertyDependencies)(nil),           // 5: pulumirpc.AnalyzerPropertyDependencies
-		(*AnalyzeStackRequest)(nil),                    // 6: pulumirpc.AnalyzeStackRequest
-		(*AnalyzeResponse)(nil),                        // 7: pulumirpc.AnalyzeResponse
-		(*AnalyzeDiagnostic)(nil),                      // 8: pulumirpc.AnalyzeDiagnostic
-		(*AnalyzerInfo)(nil),                           // 9: pulumirpc.AnalyzerInfo
-		(*PolicyInfo)(nil),                             // 10: pulumirpc.PolicyInfo
-		(*PolicyConfigSchema)(nil),                     // 11: pulumirpc.PolicyConfigSchema
-		(*PolicyConfig)(nil),                           // 12: pulumirpc.PolicyConfig
-		(*ConfigureAnalyzerRequest)(nil),               // 13: pulumirpc.ConfigureAnalyzerRequest
-		nil,                                            // 14: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
-		(*AnalyzerResourceOptions_CustomTimeouts)(nil), // 15: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
-		nil,                     // 16: pulumirpc.AnalyzerInfo.InitialConfigEntry
-		nil,                     // 17: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
-		(*structpb.Struct)(nil), // 18: google.protobuf.Struct
-		(*emptypb.Empty)(nil),   // 19: google.protobuf.Empty
-		(*PluginInfo)(nil),      // 20: pulumirpc.PluginInfo
-	}
-)
-
+var file_pulumi_analyzer_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_pulumi_analyzer_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_pulumi_analyzer_proto_goTypes = []interface{}{
+	(EnforcementLevel)(0),                          // 0: pulumirpc.EnforcementLevel
+	(*AnalyzeRequest)(nil),                         // 1: pulumirpc.AnalyzeRequest
+	(*AnalyzerResource)(nil),                       // 2: pulumirpc.AnalyzerResource
+	(*AnalyzerResourceOptions)(nil),                // 3: pulumirpc.AnalyzerResourceOptions
+	(*AnalyzerProviderResource)(nil),               // 4: pulumirpc.AnalyzerProviderResource
+	(*AnalyzerPropertyDependencies)(nil),           // 5: pulumirpc.AnalyzerPropertyDependencies
+	(*AnalyzeStackRequest)(nil),                    // 6: pulumirpc.AnalyzeStackRequest
+	(*AnalyzeResponse)(nil),                        // 7: pulumirpc.AnalyzeResponse
+	(*AnalyzeDiagnostic)(nil),                      // 8: pulumirpc.AnalyzeDiagnostic
+	(*AnalyzerInfo)(nil),                           // 9: pulumirpc.AnalyzerInfo
+	(*PolicyInfo)(nil),                             // 10: pulumirpc.PolicyInfo
+	(*PolicyConfigSchema)(nil),                     // 11: pulumirpc.PolicyConfigSchema
+	(*PolicyConfig)(nil),                           // 12: pulumirpc.PolicyConfig
+	(*ConfigureAnalyzerRequest)(nil),               // 13: pulumirpc.ConfigureAnalyzerRequest
+	nil,                                            // 14: pulumirpc.AnalyzerResource.PropertyDependenciesEntry
+	(*AnalyzerResourceOptions_CustomTimeouts)(nil), // 15: pulumirpc.AnalyzerResourceOptions.CustomTimeouts
+	nil,                     // 16: pulumirpc.AnalyzerInfo.InitialConfigEntry
+	nil,                     // 17: pulumirpc.ConfigureAnalyzerRequest.PolicyConfigEntry
+	(*structpb.Struct)(nil), // 18: google.protobuf.Struct
+	(*emptypb.Empty)(nil),   // 19: google.protobuf.Empty
+	(*PluginInfo)(nil),      // 20: pulumirpc.PluginInfo
+}
 var file_pulumi_analyzer_proto_depIdxs = []int32{
 	18, // 0: pulumirpc.AnalyzeRequest.properties:type_name -> google.protobuf.Struct
 	3,  // 1: pulumirpc.AnalyzeRequest.options:type_name -> pulumirpc.AnalyzerResourceOptions

@@ -21,12 +21,11 @@
 package pulumirpc
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -415,20 +414,17 @@ func file_pulumi_engine_proto_rawDescGZIP() []byte {
 	return file_pulumi_engine_proto_rawDescData
 }
 
-var (
-	file_pulumi_engine_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_pulumi_engine_proto_msgTypes  = make([]protoimpl.MessageInfo, 5)
-	file_pulumi_engine_proto_goTypes   = []interface{}{
-		(LogSeverity)(0),                // 0: pulumirpc.LogSeverity
-		(*LogRequest)(nil),              // 1: pulumirpc.LogRequest
-		(*GetRootResourceRequest)(nil),  // 2: pulumirpc.GetRootResourceRequest
-		(*GetRootResourceResponse)(nil), // 3: pulumirpc.GetRootResourceResponse
-		(*SetRootResourceRequest)(nil),  // 4: pulumirpc.SetRootResourceRequest
-		(*SetRootResourceResponse)(nil), // 5: pulumirpc.SetRootResourceResponse
-		(*emptypb.Empty)(nil),           // 6: google.protobuf.Empty
-	}
-)
-
+var file_pulumi_engine_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_pulumi_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_pulumi_engine_proto_goTypes = []interface{}{
+	(LogSeverity)(0),                // 0: pulumirpc.LogSeverity
+	(*LogRequest)(nil),              // 1: pulumirpc.LogRequest
+	(*GetRootResourceRequest)(nil),  // 2: pulumirpc.GetRootResourceRequest
+	(*GetRootResourceResponse)(nil), // 3: pulumirpc.GetRootResourceResponse
+	(*SetRootResourceRequest)(nil),  // 4: pulumirpc.SetRootResourceRequest
+	(*SetRootResourceResponse)(nil), // 5: pulumirpc.SetRootResourceResponse
+	(*emptypb.Empty)(nil),           // 6: google.protobuf.Empty
+}
 var file_pulumi_engine_proto_depIdxs = []int32{
 	0, // 0: pulumirpc.LogRequest.severity:type_name -> pulumirpc.LogSeverity
 	1, // 1: pulumirpc.Engine.Log:input_type -> pulumirpc.LogRequest

@@ -21,12 +21,11 @@
 package pulumirpc
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1018,29 +1017,26 @@ func file_pulumi_language_proto_rawDescGZIP() []byte {
 	return file_pulumi_language_proto_rawDescData
 }
 
-var (
-	file_pulumi_language_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-	file_pulumi_language_proto_goTypes  = []interface{}{
-		(*AboutResponse)(nil),                  // 0: pulumirpc.AboutResponse
-		(*GetProgramDependenciesRequest)(nil),  // 1: pulumirpc.GetProgramDependenciesRequest
-		(*DependencyInfo)(nil),                 // 2: pulumirpc.DependencyInfo
-		(*GetProgramDependenciesResponse)(nil), // 3: pulumirpc.GetProgramDependenciesResponse
-		(*GetRequiredPluginsRequest)(nil),      // 4: pulumirpc.GetRequiredPluginsRequest
-		(*GetRequiredPluginsResponse)(nil),     // 5: pulumirpc.GetRequiredPluginsResponse
-		(*RunRequest)(nil),                     // 6: pulumirpc.RunRequest
-		(*RunResponse)(nil),                    // 7: pulumirpc.RunResponse
-		(*InstallDependenciesRequest)(nil),     // 8: pulumirpc.InstallDependenciesRequest
-		(*InstallDependenciesResponse)(nil),    // 9: pulumirpc.InstallDependenciesResponse
-		(*RunPluginRequest)(nil),               // 10: pulumirpc.RunPluginRequest
-		(*RunPluginResponse)(nil),              // 11: pulumirpc.RunPluginResponse
-		nil,                                    // 12: pulumirpc.AboutResponse.MetadataEntry
-		nil,                                    // 13: pulumirpc.RunRequest.ConfigEntry
-		(*PluginDependency)(nil),               // 14: pulumirpc.PluginDependency
-		(*emptypb.Empty)(nil),                  // 15: google.protobuf.Empty
-		(*PluginInfo)(nil),                     // 16: pulumirpc.PluginInfo
-	}
-)
-
+var file_pulumi_language_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_pulumi_language_proto_goTypes = []interface{}{
+	(*AboutResponse)(nil),                  // 0: pulumirpc.AboutResponse
+	(*GetProgramDependenciesRequest)(nil),  // 1: pulumirpc.GetProgramDependenciesRequest
+	(*DependencyInfo)(nil),                 // 2: pulumirpc.DependencyInfo
+	(*GetProgramDependenciesResponse)(nil), // 3: pulumirpc.GetProgramDependenciesResponse
+	(*GetRequiredPluginsRequest)(nil),      // 4: pulumirpc.GetRequiredPluginsRequest
+	(*GetRequiredPluginsResponse)(nil),     // 5: pulumirpc.GetRequiredPluginsResponse
+	(*RunRequest)(nil),                     // 6: pulumirpc.RunRequest
+	(*RunResponse)(nil),                    // 7: pulumirpc.RunResponse
+	(*InstallDependenciesRequest)(nil),     // 8: pulumirpc.InstallDependenciesRequest
+	(*InstallDependenciesResponse)(nil),    // 9: pulumirpc.InstallDependenciesResponse
+	(*RunPluginRequest)(nil),               // 10: pulumirpc.RunPluginRequest
+	(*RunPluginResponse)(nil),              // 11: pulumirpc.RunPluginResponse
+	nil,                                    // 12: pulumirpc.AboutResponse.MetadataEntry
+	nil,                                    // 13: pulumirpc.RunRequest.ConfigEntry
+	(*PluginDependency)(nil),               // 14: pulumirpc.PluginDependency
+	(*emptypb.Empty)(nil),                  // 15: google.protobuf.Empty
+	(*PluginInfo)(nil),                     // 16: pulumirpc.PluginInfo
+}
 var file_pulumi_language_proto_depIdxs = []int32{
 	12, // 0: pulumirpc.AboutResponse.metadata:type_name -> pulumirpc.AboutResponse.MetadataEntry
 	2,  // 1: pulumirpc.GetProgramDependenciesResponse.dependencies:type_name -> pulumirpc.DependencyInfo
