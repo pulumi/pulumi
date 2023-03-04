@@ -70,7 +70,7 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
 	return &hcl.Diagnostic{
@@ -795,7 +795,7 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		case *EnumType:
 			return typ, diags, nil
 		default:
-			contract.Assert(typ == nil)
+			contract.Assertf(typ == nil, "unexpected type %T", typ)
 		}
 
 		// If the type is not a known type, bind it as an opaque token type.
@@ -909,8 +909,8 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 		return t.newArrayType(elementType), diags, nil
 	case "object":
 		elementType, elementDiags, err := t.bindTypeSpec(path, TypeSpec{Type: "string"}, inputShape)
-		contract.Assert(len(elementDiags) == 0)
-		contract.Assert(err == nil)
+		contract.Assertf(len(elementDiags) == 0, "unexpected diagnostics: %v", elementDiags)
+		contract.Assertf(err == nil, "error binding type spec")
 
 		if spec.AdditionalProperties != nil {
 			et, elementDiags, err := t.bindTypeSpec(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
@@ -1413,7 +1413,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(ok)
+	contract.Assertf(ok, "provider resource %q not found", t.pkg.Name)
 
 	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.pkg.Name, spec, decl)
 	if err != nil {

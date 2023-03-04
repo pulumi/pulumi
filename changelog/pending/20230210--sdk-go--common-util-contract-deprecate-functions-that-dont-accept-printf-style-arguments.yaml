@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: "common/util/contract: Deprecate functions that don't accept printf-style arguments."

@@ -96,7 +96,7 @@ func (b *binder) getDependencies(node Node) []Node {
 		}
 		return nil
 	})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return SourceOrderNodes(deps)
 }
 

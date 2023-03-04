@@ -702,6 +702,6 @@ func getStackProjectBackupDir(e *ptesting.Environment, stackName string) (string
 func addRandomSuffix(s string) string {
 	b := make([]byte, 4)
 	_, err := cryptorand.Read(b)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error generating random suffix")
 	return s + "-" + hex.EncodeToString(b)
 }

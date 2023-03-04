@@ -582,7 +582,7 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 	docLanguageHelper := mod.docGenContext.getLanguageDocHelper(lang)
 	modName := mod.getLanguageModuleName(lang)
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get package definition for %q", mod.pkg.Name())
 	langTypeString := docLanguageHelper.GetLanguageTypeString(def, modName, t, characteristics.input)
 
 	if optional, ok := t.(*schema.OptionalType); ok {
@@ -696,7 +696,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 	}
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -738,7 +738,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("go")
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -797,7 +797,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("csharp")
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -854,7 +854,7 @@ func (mod *modContext) genConstructorJava(r *schema.Resource, argsOverload bool)
 	docLangHelper := mod.docGenContext.getLanguageDocHelper("java")
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	result := []formalParam{
 		{
@@ -964,7 +964,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 			continue
 		}
 		def, err := mod.pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 		typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
 			Name:         python.InitParamName(p.Name),
@@ -994,7 +994,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	for _, token := range sortedTokens {
 		for iter := mod.pkg.Types().Range(); iter.Next(); {
 			t, err := iter.Type()
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "error iterating types")
 			switch typ := t.(type) {
 			case *schema.ObjectType:
 				if typ.Token != token || len(typ.Properties) == 0 || typ.IsInputShape() {
@@ -1281,7 +1281,7 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName, tok string) 
 			resourceTypeName = fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, resourceTypeName)
 		case "yaml":
 			def, err := mod.pkg.Definition()
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 			resourceMap[lang] = propertyType{
 				Name:        resourceTypeName,
 				DisplayName: docLangHelper.GetLanguageTypeString(def, mod.mod, &schema.ResourceType{Token: tok}, false),
@@ -1307,7 +1307,7 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("nodejs")
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -1347,7 +1347,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 	docLangHelper := dctx.getLanguageDocHelper("go")
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -1394,7 +1394,7 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 	docLangHelper := dctx.getLanguageDocHelper("csharp")
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -1433,7 +1433,7 @@ func (mod *modContext) getJavaLookupParams(r *schema.Resource, stateParam string
 	dctx := mod.docGenContext
 	docLangHelper := dctx.getLanguageDocHelper("java")
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	return []formalParam{
 		{
@@ -1473,7 +1473,7 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 	params := make([]formalParam, 0, len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
 		def, err := mod.pkg.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 		typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
@@ -1634,7 +1634,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	}
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %s", mod.pkg.Name())
 	packageDetails := packageDetails{
 		DisplayName:    getPackageDisplayName(def.Name),
 		Repository:     def.Repository,
@@ -1877,7 +1877,7 @@ func (mod *modContext) genIndex() indexData {
 	title := modName
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	// An empty string indicates that this is the root module.
 	if title == "" {

@@ -83,7 +83,7 @@ func uniqueSuffix() string {
 	// .<timestamp>.<five random hex characters>
 	timestamp := time.Now().Format("20060102-150405")
 	suffix, err := resource.NewUniqueHex("."+timestamp+".", 5, -1)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "could not generate random suffix")
 	return suffix
 }
 

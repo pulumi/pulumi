@@ -81,7 +81,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	}
 
 	keyString, err := convert.Convert(key, cty.String)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "error converting key (%#v) to string", key)
 
 	propertiesLower := make(map[string]string)
 	for p := range t.Properties {

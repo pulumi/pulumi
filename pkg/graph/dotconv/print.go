@@ -69,7 +69,7 @@ func Print(g graph.Graph, w io.Writer) error {
 		// Dequeue the head of the frontier.
 		v := frontier[0]
 		frontier = frontier[1:]
-		contract.Assert(!emitted[v])
+		contract.Assertf(!emitted[v], "vertex was emitted twice")
 		emitted[v] = true
 
 		// Get and lazily allocate the ID for this vertex.

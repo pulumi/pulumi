@@ -195,7 +195,7 @@ func (x hclExpression) Variables() []hcl.Traversal {
 		}
 		return n, nil
 	})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return variables
 }
 
@@ -388,7 +388,8 @@ func (x *BinaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 
 	// Compute the signature for the operator and typecheck the arguments.
 	signature := getOperationSignature(x.Operation)
-	contract.Assert(len(signature.Parameters) == 2)
+	contract.Assertf(len(signature.Parameters) == 2,
+		"expected binary operator signature to have two parameters, got %v", len(signature.Parameters))
 
 	x.leftType = signature.Parameters[0].Type
 	x.rightType = signature.Parameters[1].Type
@@ -2559,7 +2560,8 @@ func (x *UnaryOpExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 
 	// Compute the signature for the operator and typecheck the arguments.
 	signature := getOperationSignature(x.Operation)
-	contract.Assert(len(signature.Parameters) == 1)
+	contract.Assertf(len(signature.Parameters) == 1,
+		"expected unary operator signature to have 1 parameter, got %d", len(signature.Parameters))
 
 	x.operandType = signature.Parameters[0].Type
 

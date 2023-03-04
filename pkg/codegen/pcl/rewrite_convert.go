@@ -279,7 +279,7 @@ func convertPrimitiveValues(from model.Expression, to model.Type) (model.Express
 	}
 
 	diags := expression.Typecheck(false)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error typechecking expression: %v", diags)
 
 	expression.SetLeadingTrivia(from.GetLeadingTrivia())
 	expression.SetTrailingTrivia(from.GetTrailingTrivia())

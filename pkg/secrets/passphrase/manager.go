@@ -71,7 +71,7 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 }
 
 func indexN(s string, substr string, n int) int {
-	contract.Require(n > 0, "n")
+	contract.Requiref(n > 0, "n", "must be greater than 0")
 	scratch := s
 
 	for i := n; i > 0; i-- {
@@ -106,12 +106,12 @@ func (sm *localSecretsManager) State() interface{} {
 }
 
 func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter, nil
 }
 
 func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
 }
 
@@ -297,7 +297,7 @@ func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 	// symmetricCrypter does not use ctx, safe to use context.Background()
 	ignoredCtx := context.Background()
 	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "could not encrypt message")
 
 	// Encode the salt as the passphrase secrets manager state.
 	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)

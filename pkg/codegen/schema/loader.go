@@ -261,7 +261,7 @@ func (l *pluginLoader) loadPluginSchemaBytes(pkg string, version *semver.Version
 	if err != nil {
 		return nil, nil, err
 	}
-	contract.Assert(provider != nil)
+	contract.Assertf(provider != nil, "unexpected nil provider for %s@%v", pkg, version)
 
 	schemaFormatVersion := 0
 	schemaBytes, err := provider.GetSchema(schemaFormatVersion)

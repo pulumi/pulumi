@@ -73,7 +73,7 @@ func (t *OpaqueType) conversionFromImpl(
 		switch {
 		case t == NumberType:
 			// src == NumberType is handled by t == src above
-			contract.Assert(src != NumberType)
+			contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
 
 			cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
 			switch cki {

@@ -213,7 +213,7 @@ type gitlabSource struct {
 // Creates a new GitLab source from a gitlab://<host>/<project_id> url.
 // Uses the GITLAB_TOKEN environment variable for authentication if it's set.
 func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource, error) {
-	contract.Assert(url.Scheme == "gitlab")
+	contract.Requiref(url.Scheme == "gitlab", "url", `scheme must be "gitlab", was %q`, url.Scheme)
 
 	host := url.Host
 	if host == "" {
