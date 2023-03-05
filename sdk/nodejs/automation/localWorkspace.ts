@@ -547,8 +547,8 @@ export class LocalWorkspace implements Workspace {
      * Returns the currently authenticated user.
      */
     async whoAmI(): Promise<WhoAmIResult> {
-        const result = await this.runPulumiCmd(["whoami"]);
-        return { user: result.stdout.trim() };
+        const result = await this.runPulumiCmd(["whoami", "--json"]);
+        return JSON.parse(result.stdout);
     }
     /**
      * Returns a summary of the currently selected stack, if any.
