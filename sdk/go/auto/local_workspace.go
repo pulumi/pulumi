@@ -235,6 +235,47 @@ func (l *LocalWorkspace) RefreshConfig(ctx context.Context, stackName string) (C
 	return cfg, nil
 }
 
+// GetTag returns the value associated with the specified stack name and key.
+func (l *LocalWorkspace) GetTag(ctx context.Context, stackName string, key string) (string, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "tag", "get", key, "--stack", stackName)
+	if err != nil {
+		return stdout, newAutoError(fmt.Errorf("unable to read tag: %w", err), stdout, stderr, errCode)
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+// SetTag sets the specified key-value pair on the provided stack name.
+func (l *LocalWorkspace) SetTag(ctx context.Context, stackName string, key string, value string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "tag", "set", key, value, "--stack", stackName)
+	if err != nil {
+		return newAutoError(fmt.Errorf("unable to set tag: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
+// RemoveTag removes the specified key-value pair on the provided stack name.
+func (l *LocalWorkspace) RemoveTag(ctx context.Context, stackName string, key string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "tag", "rm", key, "--stack", stackName)
+	if err != nil {
+		return newAutoError(fmt.Errorf("could not remove tag: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
+// ListTags Returns the tag map for the specified stack name.
+func (l *LocalWorkspace) ListTags(ctx context.Context, stackName string) (map[string]string, error) {
+	var vals map[string]string
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "tag", "ls", "--json", "--stack", stackName)
+	if err != nil {
+		return vals, newAutoError(fmt.Errorf("unable to read tags: %w", err), stdout, stderr, errCode)
+	}
+	err = json.Unmarshal([]byte(stdout), &vals)
+	if err != nil {
+		return vals, fmt.Errorf("unable to unmarshal tag values: %w", err)
+	}
+	return vals, nil
+}
+
 // GetEnvVars returns the environment values scoped to the current workspace.
 func (l *LocalWorkspace) GetEnvVars() map[string]string {
 	if l.envvars == nil {

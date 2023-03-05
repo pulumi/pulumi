@@ -701,6 +701,26 @@ func (s *Stack) RefreshConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().RefreshConfig(ctx, s.Name())
 }
 
+// GetTag returns the tag value associated with specified key.
+func (s *Stack) GetTag(ctx context.Context, key string) (string, error) {
+	return s.Workspace().GetTag(ctx, s.Name(), key)
+}
+
+// SetTag sets a tag key-value pair on the stack.
+func (s *Stack) SetTag(ctx context.Context, key string, value string) error {
+	return s.Workspace().SetTag(ctx, s.Name(), key, value)
+}
+
+// RemoveTag removes the specified tag key-value pair from the stack.
+func (s *Stack) RemoveTag(ctx context.Context, key string) error {
+	return s.Workspace().RemoveTag(ctx, s.Name(), key)
+}
+
+// ListTags returns the full key-value tag map associated with the stack.
+func (s *Stack) ListTags(ctx context.Context) (map[string]string, error) {
+	return s.Workspace().ListTags(ctx, s.Name())
+}
+
 // Info returns a summary of the Stack including its URL.
 func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 	var info StackSummary

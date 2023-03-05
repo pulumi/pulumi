@@ -1411,6 +1411,56 @@ func TestNestedConfig(t *testing.T) {
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
 }
 
+func TestTagFunctions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+	ws := s.Workspace()
+
+	// -- lists tag values --
+	tags, err := ws.ListTags(ctx, stackName)
+	if err != nil {
+		t.Errorf("failed to list tags, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, pName, tags["pulumi:project"])
+
+	// -- sets tag values --
+	err = ws.SetTag(ctx, stackName, "foo", "bar")
+	if err != nil {
+		t.Errorf("set tag failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- gets a single tag value --
+	tag, err := ws.GetTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("get tag failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "bar", tag)
+
+	// -- removes tag value --
+	err = ws.RemoveTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("remove tag failed, err: %v", err)
+		t.FailNow()
+	}
+	tags, _ = ws.ListTags(ctx, stackName)
+	assert.NotContains(t, tags, "foo", "failed to remove tag")
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
 //nolint:paralleltest // mutates environment variables
 func TestStructuredOutput(t *testing.T) {
 	ctx := context.Background()
