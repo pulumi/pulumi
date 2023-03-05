@@ -203,6 +203,7 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace()
         result = ws.who_am_i()
         self.assertIsNotNone(result.user)
+        self.assertIsNotNone(result.url)
 
     def test_stack_init(self):
         project_name = "python_test"

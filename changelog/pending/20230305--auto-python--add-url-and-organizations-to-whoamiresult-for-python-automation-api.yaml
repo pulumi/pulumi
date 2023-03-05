@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Add url and organizations to WhoAmIResult for Python Automation API

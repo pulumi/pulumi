@@ -274,8 +274,9 @@ class LocalWorkspace(Workspace):
         self.get_all_config(stack_name)
 
     def who_am_i(self) -> WhoAmIResult:
-        result = self._run_pulumi_cmd_sync(["whoami"])
-        return WhoAmIResult(user=result.stdout.strip())
+        result = self._run_pulumi_cmd_sync(["whoami", "--json"])
+        who_am_i_json = json.loads(result.stdout)
+        return WhoAmIResult(**who_am_i_json)
 
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()

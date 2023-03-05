@@ -55,9 +55,15 @@ class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
+    url: str
+    organizations: Optional[List[str]]
 
-    def __init__(self, user: str):
+    def __init__(
+        self, user: str, url: str, organizations: Optional[List[str]] = None
+    ) -> None:
         self.user = user
+        self.url = url
+        self.organizations = organizations
 
 
 class PluginInfo:
