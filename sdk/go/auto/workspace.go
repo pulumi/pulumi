@@ -79,6 +79,8 @@ type Workspace interface {
 	PulumiVersion() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
+	// WhoAmIDetailed returns detailed information about the currently logged-in Pulumi identity, including backendUrl.
+	WhoAmIDetailed(ctx context.Context) (WhoAmIDetailedInfo, error)
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -132,4 +134,11 @@ type StackSummary struct {
 	UpdateInProgress bool   `json:"updateInProgress"`
 	ResourceCount    *int   `json:"resourceCount,omitempty"`
 	URL              string `json:"url,omitempty"`
+}
+
+// WhoAmIDetailedInfo contains detailed information about the currently logged-in Pulumi identity.
+type WhoAmIDetailedInfo struct {
+	User          string   `json:"user"`
+	Organizations []string `json:"organizations,omitempty"`
+	URL           string   `json:"url"`
 }
