@@ -963,6 +963,12 @@ func TestPythonTranslation(t *testing.T) {
 }
 
 func TestComponentProviderSchemaPython(t *testing.T) {
+	// TODO[https://github.com/pulumi/pulumi/issues/12365] we no longer have shim files so there's no native
+	// binary for the testComponentProviderSchema to just exec. It _ought_ to be rewritten to use the plugin
+	// host framework so that it starts the component up the same as all the other tests are doing (via
+	// shimless).
+	t.Skip("testComponentProviderSchema needs to be updated to use a plugin host to deal with non-native-binary providers")
+
 	path := filepath.Join("component_provider_schema", "testcomponent-python", "pulumi-resource-testcomponent")
 	if runtime.GOOS == WindowsOS {
 		path += ".cmd"

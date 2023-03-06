@@ -960,5 +960,57 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	return errors.New("not supported")
+	logging.V(5).Infof("Attempting to run python plugin in %s", req.Program)
+
+	args := []string{req.Program}
+	args = append(args, req.Args...)
+
+	var cmd *exec.Cmd
+	var virtualenv string
+	if host.virtualenv != "" {
+		virtualenv = host.virtualenvPath
+		if !python.IsVirtualEnv(virtualenv) {
+			return python.NewVirtualEnvError(host.virtualenv, virtualenv)
+		}
+		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
+	} else {
+		var err error
+		cmd, err = python.Command(server.Context(), args...)
+		if err != nil {
+			return err
+		}
+	}
+
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	if err != nil {
+		return err
+	}
+	// best effort close, but we try an explicit close and error check at the end as well
+	defer closer.Close()
+
+	cmd.Dir = req.Pwd
+	cmd.Env = req.Env
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+
+	if virtualenv != "" {
+		cmd.Env = python.ActivateVirtualEnv(cmd.Env, virtualenv)
+	}
+	if err = cmd.Run(); err != nil {
+		var exiterr *exec.ExitError
+		if errors.As(err, &exiterr) {
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				return server.Send(&pulumirpc.RunPluginResponse{
+					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
+				})
+			}
+			return fmt.Errorf("program exited unexpectedly: %w", exiterr)
+		}
+		return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
+	}
+
+	if err := closer.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
