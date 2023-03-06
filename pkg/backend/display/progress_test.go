@@ -42,7 +42,7 @@ func testProgressEvents(t *testing.T, path string, accept, interactive bool, wid
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	go ShowProgressEvents("test", "update", "stack", "project", eventChannel, doneChannel, Options{
+	go ShowProgressEvents("test", "update", "stack", "project", "link", eventChannel, doneChannel, Options{
 		IsInteractive:        interactive,
 		Color:                colors.Raw,
 		ShowConfig:           true,

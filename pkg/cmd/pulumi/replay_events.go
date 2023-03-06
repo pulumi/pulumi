@@ -106,7 +106,7 @@ func newReplayEventsCmd() *cobra.Command {
 			}
 
 			go display.ShowEvents(
-				"replay", action, "replay", "replay",
+				"replay", action, "replay", "replay", "",
 				eventChannel, doneChannel, displayOpts, preview)
 
 			for _, e := range events {

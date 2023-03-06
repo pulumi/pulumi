@@ -1080,31 +1080,17 @@ func (b *cloudBackend) apply(
 		return nil, nil, result.FromError(err)
 	}
 
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
-		// Print a URL at the beginning of the update pointing to the Pulumi Service.
-		b.printLink(op, opts, update, version)
-	}
-
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+	permalink := b.getPermalink(update, version, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, permalink, events, opts.DryRun)
 }
 
-// printLink prints a link to the update in the Pulumi Service.
-func (b *cloudBackend) printLink(
-	op backend.UpdateOperation, opts backend.ApplierOptions,
-	update client.UpdateIdentifier, version int,
-) {
-	var link string
+// getPermalink returns a link to the update in the Pulumi Console.
+func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int, preview bool) string {
 	base := b.cloudConsoleStackPath(update.StackIdentifier)
-	if !opts.DryRun {
-		link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
-	} else {
-		link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+	if !preview {
+		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
-	if link != "" {
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"View Live: "+
-				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n\n"), link)
-	}
+	return b.CloudConsoleURL(base, "previews", update.UpdateID)
 }
 
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi
@@ -1117,7 +1103,7 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
+	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	contract.Assertf(token != "", "persisted actions require a token")
@@ -1131,7 +1117,7 @@ func (b *cloudBackend) runEngineAction(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
@@ -1682,22 +1668,22 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.StackIdentifier,
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
 ) error {
-	getUpdateID := func() (string, error) {
+	getUpdateID := func() (string, int, error) {
 		for tries := 0; tries < 10; tries++ {
 			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
 			if err != nil {
-				return "", err
+				return "", 0, err
 			}
 			if len(updates) > 0 {
-				return updates[0].UpdateID, nil
+				return updates[0].UpdateID, updates[0].Version, nil
 			}
 
 			time.Sleep(500 * time.Millisecond)
 		}
-		return "", fmt.Errorf("could not find update associated with deployment %s", deploymentID)
+		return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
 	}
 
-	updateID, err := getUpdateID()
+	updateID, version, err := getUpdateID()
 	if err != nil {
 		return err
 	}
@@ -1715,9 +1701,10 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	// Timings do not display correctly when rendering remote events, so suppress showing them.
 	opts.SuppressTimings = true
 
+	permalink := b.getPermalink(update, version, dryRun)
 	go display.ShowEvents(
 		backend.ActionLabel(kind, dryRun), kind, tokens.Name(stackID.Stack), tokens.PackageName(stackID.Project),
-		events, done, opts, dryRun)
+		permalink, events, done, opts, dryRun)
 
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
 	var continuationToken *string
