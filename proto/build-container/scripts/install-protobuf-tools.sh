@@ -38,5 +38,5 @@ GOBIN=/usr/local/bin go install "google.golang.org/grpc/cmd/protoc-gen-go-grpc@v
 npm install --unsafe-perm -g "grpc@${NODEJS_GRPC_VERSION}" "grpc-tools@${NODEJS_GRPC_TOOLS_VERSION}"
 
 # Install the Python gRPC Tools
-pip3 install --user "grpcio==${PYTHON_GRPCIO_VERSION}"
-pip3 install --user "grpcio-tools==${PYTHON_GRPCIO_TOOLS_VERSION}"
+python3 -m pip install "grpcio==${PYTHON_GRPCIO_VERSION}"
+python3 -m pip install "grpcio-tools==${PYTHON_GRPCIO_TOOLS_VERSION}"

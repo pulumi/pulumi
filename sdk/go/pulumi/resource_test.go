@@ -872,6 +872,233 @@ func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNewResourceOptions(t *testing.T) {
+	t.Parallel()
+
+	// Declared up here so that it may be shared to test
+	// referential equality.
+	sampleResourceInput := NewResourceInput(&testRes{foo: "foo"})
+
+	tests := []struct {
+		desc string
+		give ResourceOption
+		want ResourceOptions
+	}{
+		{
+			desc: "AdditionalSecretOutputs",
+			give: AdditionalSecretOutputs([]string{"foo"}),
+			want: ResourceOptions{
+				AdditionalSecretOutputs: []string{"foo"},
+			},
+		},
+		{
+			desc: "Aliases",
+			give: Aliases([]Alias{
+				{Name: String("foo")},
+			}),
+			want: ResourceOptions{
+				Aliases: []Alias{
+					{Name: String("foo")},
+				},
+			},
+		},
+		{
+			desc: "Aliases/multiple options",
+			give: Composite(
+				Aliases([]Alias{{Name: String("foo")}}),
+				Aliases([]Alias{{Name: String("bar")}}),
+			),
+			want: ResourceOptions{
+				Aliases: []Alias{
+					{Name: String("foo")},
+					{Name: String("bar")},
+				},
+			},
+		},
+		{
+			desc: "DeleteBeforeReplace",
+			give: DeleteBeforeReplace(true),
+			want: ResourceOptions{DeleteBeforeReplace: true},
+		},
+		{
+			desc: "DependsOn",
+			give: DependsOn([]Resource{
+				&testRes{foo: "foo"},
+				&testRes{foo: "bar"},
+			}),
+			want: ResourceOptions{
+				DependsOn: []Resource{
+					&testRes{foo: "foo"},
+					&testRes{foo: "bar"},
+				},
+			},
+		},
+		{
+			desc: "DependsOnInputs",
+			give: DependsOnInputs(
+				ResourceArray{sampleResourceInput},
+			),
+			want: ResourceOptions{
+				DependsOnInputs: []ResourceArrayInput{
+					ResourceArray{sampleResourceInput},
+				},
+			},
+		},
+		{
+			desc: "IgnoreChanges",
+			give: IgnoreChanges([]string{"foo"}),
+			want: ResourceOptions{
+				IgnoreChanges: []string{"foo"},
+			},
+		},
+		{
+			desc: "Import",
+			give: Import(ID("bar")),
+			want: ResourceOptions{Import: ID("bar")},
+		},
+		{
+			desc: "Parent",
+			give: Parent(&testRes{foo: "foo"}),
+			want: ResourceOptions{
+				Parent: &testRes{foo: "foo"},
+			},
+		},
+		{
+			desc: "Protect",
+			give: Protect(true),
+			want: ResourceOptions{Protect: true},
+		},
+		{
+			desc: "Provider",
+			give: Provider(&testProv{foo: "bar"}),
+			want: ResourceOptions{
+				Provider: &testProv{foo: "bar"},
+				Providers: []ProviderResource{
+					&testProv{foo: "bar"},
+				},
+			},
+		},
+		{
+			desc: "ProviderMap",
+			give: ProviderMap(map[string]ProviderResource{
+				"foo": &testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "foo"},
+					foo:                   "a",
+				},
+				"bar": &testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "bar"},
+					foo:                   "b",
+				},
+			}),
+			want: ResourceOptions{
+				Providers: []ProviderResource{
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "bar"},
+						foo:                   "b",
+					},
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "foo"},
+						foo:                   "a",
+					},
+				},
+			},
+		},
+		{
+			desc: "Providers",
+			give: Providers(
+				&testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "foo"},
+					foo:                   "a",
+				},
+				&testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "bar"},
+					foo:                   "b",
+				},
+			),
+			want: ResourceOptions{
+				Providers: []ProviderResource{
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "bar"},
+						foo:                   "b",
+					},
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "foo"},
+						foo:                   "a",
+					},
+				},
+			},
+		},
+		{
+			desc: "ReplaceOnChanges",
+			give: ReplaceOnChanges([]string{"foo", "bar"}),
+			want: ResourceOptions{
+				ReplaceOnChanges: []string{"foo", "bar"},
+			},
+		},
+		{
+			desc: "Timeouts",
+			give: Timeouts(&CustomTimeouts{Create: "10s"}),
+			want: ResourceOptions{
+				CustomTimeouts: &CustomTimeouts{Create: "10s"},
+			},
+		},
+		{
+			desc: "URN",
+			give: URN_("foo::bar"),
+			want: ResourceOptions{URN: "foo::bar"},
+		},
+		{
+			desc: "Version",
+			give: Version("1.2.3"),
+			want: ResourceOptions{Version: "1.2.3"},
+		},
+		{
+			desc: "PluginDownloadURL",
+			give: PluginDownloadURL("https://example.com/whatever"),
+			want: ResourceOptions{PluginDownloadURL: "https://example.com/whatever"},
+		},
+		{
+			desc: "RetainOnDelete",
+			give: RetainOnDelete(true),
+			want: ResourceOptions{RetainOnDelete: true},
+		},
+		{
+			desc: "DeletedWith",
+			give: DeletedWith(&testRes{foo: "a"}),
+			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewResourceOptions(tt.give)
+			require.NoError(t, err)
+			assert.Equal(t, &tt.want, got)
+		})
+	}
+
+	// Not covered in the table above because function pointers
+	// cannot be compared.
+	t.Run("Transformations", func(t *testing.T) {
+		t.Parallel()
+
+		var called bool
+		tr := ResourceTransformation(func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+			called = true
+			return &ResourceTransformationResult{}
+		})
+
+		ropts, err := NewResourceOptions(Transformations([]ResourceTransformation{tr}))
+		require.NoError(t, err)
+		require.Len(t, ropts.Transformations, 1)
+		ropts.Transformations[0](&ResourceTransformationArgs{})
+		assert.True(t, called, "Transformation function was not called")
+	})
+}
+
 func assertHasDeps(
 	t *testing.T,
 	ctx *Context,

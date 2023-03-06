@@ -23,9 +23,9 @@ update-alternatives --install /usr/bin/python3 python3 "/usr/bin/python${PYTHON_
 python3 --version
 
 # update pip and setuptools
-pip3 install --upgrade pip
+python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade setuptools
 
-pip3 install --user "pipenv==${PIPENV_VERSION}"
-pip3 install --user "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
-pip3 install --user "mypy-protobuf==${MYPY_VERSION}"
+python3 -m pip install "pipenv==${PIPENV_VERSION}"
+python3 -m pip install "wheel==${WHEEL_VERSION}" "twine==${TWINE_VERSION}"
+python3 -m pip install "mypy-protobuf==${MYPY_VERSION}"

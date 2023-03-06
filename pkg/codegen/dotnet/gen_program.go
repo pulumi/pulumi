@@ -616,6 +616,9 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.Protect != nil {
 		appendOption("Protect", opts.Protect)
 	}
+	if opts.RetainOnDelete != nil {
+		appendOption("RetainOnDelete", opts.RetainOnDelete)
+	}
 	if opts.IgnoreChanges != nil {
 		appendOption("IgnoreChanges", opts.IgnoreChanges)
 	}

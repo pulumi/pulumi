@@ -8,7 +8,6 @@ package pulumirpc
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -113,24 +112,21 @@ type AnalyzerServer interface {
 }
 
 // UnimplementedAnalyzerServer must be embedded to have forward compatible implementations.
-type UnimplementedAnalyzerServer struct{}
+type UnimplementedAnalyzerServer struct {
+}
 
 func (UnimplementedAnalyzerServer) Analyze(context.Context, *AnalyzeRequest) (*AnalyzeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Analyze not implemented")
 }
-
 func (UnimplementedAnalyzerServer) AnalyzeStack(context.Context, *AnalyzeStackRequest) (*AnalyzeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AnalyzeStack not implemented")
 }
-
 func (UnimplementedAnalyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*AnalyzerInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAnalyzerInfo not implemented")
 }
-
 func (UnimplementedAnalyzerServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
-
 func (UnimplementedAnalyzerServer) Configure(context.Context, *ConfigureAnalyzerRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Configure not implemented")
 }
