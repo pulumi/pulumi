@@ -28,7 +28,6 @@ func BenchmarkSchemaEmptyCheck(b *testing.B) {
 	schemaPath, err := filepath.Abs("../testing/test/testdata/azure-native.json")
 	assert.NoError(b, err)
 	largeSchema, err := os.ReadFile(schemaPath)
-
 	if err != nil {
 		b.Fatalf("failed to read schema file, ensure that you have run "+
 			"`make get_schemas` to create schema file %q", schemaPath)

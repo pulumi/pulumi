@@ -113,7 +113,7 @@ func TestGoModEdits(t *testing.T) {
 	badModFile := filepath.Join(badModDir, "go.mod")
 	err = os.WriteFile(badModFile, []byte(`
 # invalid go.mod
-`), 0600)
+`), 0o600)
 	require.NoError(t, err)
 
 	errNotExists := "no such file or directory"

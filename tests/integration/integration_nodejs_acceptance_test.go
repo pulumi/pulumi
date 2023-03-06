@@ -88,10 +88,9 @@ func TestConstructNode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t,
 				optsForConstructNode(t, test.expectedResourceCount, localProviders))
 		})

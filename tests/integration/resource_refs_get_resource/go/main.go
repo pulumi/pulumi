@@ -20,8 +20,8 @@ type Child struct {
 }
 
 func NewChild(ctx *pulumi.Context, name string, message pulumi.StringInput,
-	opts ...pulumi.ResourceOption) (*Child, error) {
-
+	opts ...pulumi.ResourceOption,
+) (*Child, error) {
 	component := &Child{}
 	if err := ctx.RegisterComponentResource("test:index:Child", name, component, opts...); err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ type Container struct {
 }
 
 func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
-	opts ...pulumi.ResourceOption) (*Container, error) {
-
+	opts ...pulumi.ResourceOption,
+) (*Container, error) {
 	component := &Container{}
 	if err := ctx.RegisterComponentResource("test:index:Container", name, component, opts...); err != nil {
 		return nil, err

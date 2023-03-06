@@ -172,7 +172,7 @@ func (m *tokenMapper) mapRelativeTraversalTokens(traversal hcl.Traversal) []Trav
 		return nil
 	}
 
-	contract.Assert(traversal.IsRelative())
+	contract.Requiref(traversal.IsRelative(), "traversal", "must be relative")
 	items := make([]TraverserTokens, len(traversal))
 	for i, t := range traversal {
 		rng := t.SourceRange()
@@ -631,8 +631,8 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 // mapTokens builds a mapping from the syntax nodes in the given source file to their tokens. The mapping is recorded
 // in the map passed in to the function.
 func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node, contents []byte, tokenMap tokenMap,
-	initialPos hcl.Pos) {
-
+	initialPos hcl.Pos,
+) {
 	// Turn the list of raw tokens into a list of trivia-carrying tokens.
 	lastEndPos := initialPos
 	var tokens tokenList
@@ -698,7 +698,8 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 	}
 
 	// If we had any tokens, we should have attached all trivia to something.
-	contract.Assert(len(trivia) == 0 || len(tokens) == 0)
+	contract.Assertf(len(trivia) == 0 || len(tokens) == 0,
+		"unexpected unattached trivia (%d found)", len(trivia))
 
 	// Now build the token map.
 	//
@@ -714,7 +715,7 @@ func mapTokens(rawTokens hclsyntax.Tokens, filename string, root hclsyntax.Node,
 		tokens:               tokens,
 		templateControlExprs: codegen.Set{},
 	})
-	contract.Assert(diags == nil)
+	contract.Assertf(diags == nil, "error building token map: %v", diags)
 
 	// If the root was a Body and there is a trailing end-of-file token, attach it to the body.
 	body, isBody := root.(*hclsyntax.Body)
@@ -745,9 +746,11 @@ func processComment(bytes []byte) []string {
 
 // These regexes are used by processBlockComment. The first matches a block comment start, the second a block comment
 // end, and the third a block comment line prefix.
-var blockStartPat = regexp.MustCompile(`^/\*+`)
-var blockEndPat = regexp.MustCompile(`[[:space:]]*\*+/$`)
-var blockPrefixPat = regexp.MustCompile(`^[[:space:]]*\*`)
+var (
+	blockStartPat  = regexp.MustCompile(`^/\*+`)
+	blockEndPat    = regexp.MustCompile(`[[:space:]]*\*+/$`)
+	blockPrefixPat = regexp.MustCompile(`^[[:space:]]*\*`)
+)
 
 // processBlockComment splits a block comment into mutiple lines, removes comment delimiters, and attempts to remove
 // common comment prefixes from interior lines. For example, the following HCL block comment:
@@ -786,12 +789,12 @@ func processBlockComment(text string) []string {
 		switch i {
 		case 0:
 			start := blockStartPat.FindString(l)
-			contract.Assert(start != "")
+			contract.Assertf(start != "", "unexpected block comment start: %q", l)
 			l = l[len(start):]
 
 			// If this is a single-line block comment, trim the end pattern as well.
 			if len(lines) == 1 {
-				contract.Assert(prefix == "")
+				contract.Assertf(prefix == "", "unexpected block comment prefix: %q", prefix)
 
 				if end := blockEndPat.FindString(l); end != "" {
 					l = l[:len(l)-len(end)]

@@ -40,7 +40,7 @@ func TestValidateStackTag(t *testing.T) {
 	t.Run("invalid stack tag names", func(t *testing.T) {
 		t.Parallel()
 
-		var names = []string{
+		names := []string{
 			"tag!",
 			"something with spaces",
 			"escape\nsequences\there",

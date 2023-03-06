@@ -57,7 +57,7 @@ func LookupResource(pkg schema.PackageReference, token string) (*schema.Resource
 }
 
 func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string, bool, error) {
-	contract.Assert(ps != nil)
+	contract.Assertf(ps != nil, "packageSchema must not be nil")
 
 	if ps.functionTokenMap == nil {
 		ps.initFunctionMap()
@@ -77,7 +77,7 @@ func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string,
 }
 
 func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string, bool, error) {
-	contract.Assert(ps != nil)
+	contract.Assertf(ps != nil, "packageSchema must not be nil")
 
 	if ps.resourceTokenMap == nil {
 		ps.initResourceMap()
@@ -264,7 +264,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		}
 		return nil
 	})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
 	for _, name := range packageNames.SortedValues() {
 		if _, ok := b.referencedPackages[name]; ok && pkgOpts.version == "" || name == "" {
@@ -490,7 +490,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	case *model.EnumType:
 		for _, t := range t.Annotations {
 			if t, ok := t.(enumSchemaType); ok {
-				contract.Assert(t.Type != nil)
+				contract.Assertf(t.Type != nil, "enum schema type must not be nil")
 				return t.Type, true
 			}
 		}

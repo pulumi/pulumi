@@ -118,8 +118,8 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 
 	isRefresh := false
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result) result.Result {
-
+		_ []Event, res result.Result,
+	) result.Result {
 		// Should see only sames: the default provider should be injected into the old state before the update
 		// runs.
 		for _, entry := range entries {
@@ -154,8 +154,8 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Destroy,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			// Should see two deletes:  the default provider should be injected into the old state before the update
 			// runs.
 			deleted := make(map[resource.URN]bool)
@@ -189,8 +189,8 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -228,8 +228,8 @@ func TestSingleResourceDefaultProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			provURN := p.NewProviderURN("pkgA", "default", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -270,7 +270,8 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -322,8 +323,8 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -369,8 +370,8 @@ func (p *configurableProvider) configure(news resource.PropertyMap) error {
 }
 
 func (p *configurableProvider) create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
-	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+	preview bool,
+) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	uid, err := uuid.NewV4()
 	if err != nil {
 		return "", nil, resource.StatusUnknown, err
@@ -382,7 +383,8 @@ func (p *configurableProvider) create(urn resource.URN, inputs resource.Property
 }
 
 func (p *configurableProvider) delete(urn resource.URN, id resource.ID, olds resource.PropertyMap,
-	timeout float64) (resource.Status, error) {
+	timeout float64,
+) (resource.Status, error) {
 	p.deletes.Store(id, p.id)
 	return resource.StatusOK, nil
 }
@@ -403,7 +405,8 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					return plugin.DiffResult{}, nil
 				},
 				ConfigureF: configurable.configure,
@@ -493,7 +496,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
 					for k := range news {
 						keys = append(keys, k)
@@ -557,7 +561,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
+			_ []Event, res result.Result,
+		) result.Result {
 			for _, entry := range entries {
 				if entry.Step.Op() != deploy.OpSame {
 					t.Fatalf("update should contain no changes: %v", entry.Step.URN())
@@ -573,8 +578,8 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			provURN := p.NewProviderURN("pkgA", providerName, "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -640,7 +645,8 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// Always require replacement.
 					keys := []resource.PropertyKey{}
 					for k := range news {
@@ -692,8 +698,8 @@ func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			provURN := p.NewProviderURN("pkgA", "provA", "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
@@ -783,7 +789,8 @@ func TestDefaultProviderDiff(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
@@ -869,8 +876,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 			return &deploytest.Provider{
 				// This implementation of DiffConfig always requests replacement.
 				DiffConfigF: func(_ resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
-
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
 					for k := range news {
 						keys = append(keys, k)
@@ -888,7 +895,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 	}
 
 	runProgram := func(base *deploy.Snapshot, versionA, versionB string,
-		expectedSteps ...display.StepOp) *deploy.Snapshot {
+		expectedSteps ...display.StepOp,
+	) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", resName, true, deploytest.ResourceOptions{
 				Version: versionA,
@@ -907,7 +915,8 @@ func TestDefaultProviderDiffReplacement(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, entry := range entries {
 							if entry.Kind != JournalEntrySuccess {
 								continue
@@ -1189,8 +1198,8 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 
 	steps := MakeBasicLifecycleSteps(t, 2)
 	steps[0].ValidateAnd(func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result) result.Result {
-
+		_ []Event, res result.Result,
+	) result.Result {
 		for _, e := range entries {
 			r := e.Step.New()
 			if r.Type == pkgAType && r.Inputs["pluginDownloadURL"].StringValue() != pkgAPluginDownloadURL {
@@ -1342,7 +1351,6 @@ func TestProviderVersionAssignment(t *testing.T) {
 	t.Parallel()
 
 	prog := func(opts ...deploytest.ResourceOptions) deploytest.ProgramFunc {
-
 		return func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, _, _, err := monitor.RegisterResource("pkgA:r:typA", "resA", true, opts...)
 			if err != nil {
@@ -1447,7 +1455,8 @@ func TestProviderVersionAssignment(t *testing.T) {
 
 			update := []TestStep{{Op: Update, Validate: func(
 				project workspace.Project, target deploy.Target, entries JournalEntries,
-				events []Event, res result.Result) result.Result {
+				events []Event, res result.Result,
+			) result.Result {
 				snap, err := entries.Snap(target.Snapshot)
 				require.NoError(t, err)
 				assert.Len(t, snap.Resources, 3)

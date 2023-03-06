@@ -70,7 +70,7 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
 	return &hcl.Diagnostic{
@@ -130,7 +130,8 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //     are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
 //     diagnostic error that is appropriately tagged with a JSON pointer.
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
-	validate bool) (*Package, hcl.Diagnostics, error) {
+	validate bool,
+) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
@@ -195,7 +196,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 //
 // bindTo overrides the PackageReference field contained in generated types.
 func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
-	bindTo PackageReference) (*types, hcl.Diagnostics, error) {
+	bindTo PackageReference,
+) (*types, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
@@ -649,7 +651,8 @@ func (t *types) newArrayType(elementType Type) Type {
 }
 
 func (t *types) newUnionType(
-	elements []Type, defaultType Type, discriminator string, mapping map[string]string) *UnionType {
+	elements []Type, defaultType Type, discriminator string, mapping map[string]string,
+) *UnionType {
 	union := &UnionType{
 		ElementTypes:  elements,
 		DefaultType:   defaultType,
@@ -792,7 +795,7 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		case *EnumType:
 			return typ, diags, nil
 		default:
-			contract.Assert(typ == nil)
+			contract.Assertf(typ == nil, "unexpected type %T", typ)
 		}
 
 		// If the type is not a known type, bind it as an opaque token type.
@@ -864,8 +867,8 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (
 }
 
 func (t *types) bindTypeSpec(path string, spec TypeSpec,
-	inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
-
+	inputShape bool,
+) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
@@ -906,8 +909,8 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 		return t.newArrayType(elementType), diags, nil
 	case "object":
 		elementType, elementDiags, err := t.bindTypeSpec(path, TypeSpec{Type: "string"}, inputShape)
-		contract.Assert(len(elementDiags) == 0)
-		contract.Assert(err == nil)
+		contract.Assertf(len(elementDiags) == 0, "unexpected diagnostics: %v", elementDiags)
+		contract.Assertf(err == nil, "error binding type spec")
 
 		if spec.AdditionalProperties != nil {
 			et, elementDiags, err := t.bindTypeSpec(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
@@ -1033,13 +1036,13 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
 func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
-	inputShape bool) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
-
+	inputShape bool,
+) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	var result = make([]*Property, 0, len(properties))
+	result := make([]*Property, 0, len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 		// NOTE: The correct determination for if we should bind an input is:
@@ -1104,8 +1107,8 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 }
 
 func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string,
-	spec ObjectTypeSpec) (hcl.Diagnostics, error) {
-
+	spec ObjectTypeSpec,
+) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	if len(spec.Plain) > 0 {
@@ -1251,8 +1254,8 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 }
 
 func bindMethods(path, resourceToken string, methods map[string]string,
-	types *types) ([]*Method, hcl.Diagnostics, error) {
-
+	types *types,
+) ([]*Method, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	names := make([]string, 0, len(methods))
@@ -1378,7 +1381,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	var aliases = make([]*Alias, 0, len(spec.Aliases))
+	aliases := make([]*Alias, 0, len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
@@ -1410,7 +1413,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(ok)
+	contract.Assertf(ok, "provider resource %q not found", t.pkg.Name)
 
 	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.pkg.Name, spec, decl)
 	if err != nil {
@@ -1422,7 +1425,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
-	var stringProperties = make([]*Property, 0, len(decl.Properties))
+	stringProperties := make([]*Property, 0, len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
@@ -1451,7 +1454,7 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	}
 	diags = diags.Extend(provDiags)
 
-	var resources = make([]*Resource, 0, len(tokens))
+	resources := make([]*Resource, 0, len(tokens))
 	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
@@ -1610,7 +1613,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	var functions = make([]*Function, 0, len(tokens))
+	functions := make([]*Function, 0, len(tokens))
 	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)

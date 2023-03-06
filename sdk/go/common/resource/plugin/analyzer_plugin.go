@@ -84,8 +84,8 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 
 // NewPolicyAnalyzer boots the nodejs analyzer plugin located at `policyPackpath`
 func NewPolicyAnalyzer(
-	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
-
+	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
+) (Analyzer, error) {
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {

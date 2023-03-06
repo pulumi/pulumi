@@ -262,6 +262,7 @@ func liftOperationType(resultType Type, arguments ...Expression) Type {
 func InputType(t Type) Type {
 	return inputTypeImpl(t, map[Type]Type{})
 }
+
 func inputTypeImpl(t Type, seen map[Type]Type) Type {
 	if t == DynamicType || t == NoneType {
 		return t

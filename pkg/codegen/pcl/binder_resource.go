@@ -283,7 +283,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						}),
 					}
 					diags := condExpr.Typecheck(false)
-					contract.Assert(len(diags) == 0)
+					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) != model.NoConversion:
@@ -303,7 +303,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Value: model.VariableReference(resourceVar),
 					}
 					diags := rangeExpr.Typecheck(false)
-					contract.Assert(len(diags) == 0)
+					contract.Assertf(len(diags) == 0, "failed to typecheck range expression: %v", diags)
 
 					rangeValue = model.IntType
 
@@ -421,6 +421,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "protect":
 					t = model.BoolType
 					resourceOptions.Protect = item.Value
+				case "retainOnDelete":
+					t = model.BoolType
+					resourceOptions.RetainOnDelete = item.Value
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value

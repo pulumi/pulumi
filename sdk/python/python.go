@@ -74,7 +74,6 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 		}
 	}
 	return pythonPath, pythonCmd, nil
-
 }
 
 // Command returns an *exec.Cmd for running `python`. Uses `ComandPath`
@@ -226,7 +225,8 @@ func InstallDependencies(ctx context.Context, root, venvDir string, showOutput b
 }
 
 func InstallDependenciesWithWriters(ctx context.Context,
-	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
 	print := func(message string) {
 		if showOutput {
 			fmt.Fprintf(infoWriter, "%s\n", message)

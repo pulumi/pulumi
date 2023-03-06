@@ -71,7 +71,7 @@ func newOrgCmd() *cobra.Command {
 func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "set-default [NAME]",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Set the default organization for the current backend",
@@ -122,7 +122,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 }
 
 func newOrgGetDefaultCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get-default",
 		Short: "Get the default org for the current backend",
 		Long: "Get the default org for the current backend.\n" +

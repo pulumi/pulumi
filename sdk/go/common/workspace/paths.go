@@ -85,7 +85,6 @@ func DetectProjectPath() (string, error) {
 	path, err := DetectProjectPathFrom(dir)
 	if err != nil {
 		return "", err
-
 	}
 
 	return path, nil

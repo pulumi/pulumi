@@ -170,7 +170,8 @@ func dialPlugin(portNum int, bin, prefix string, dialOptions []grpc.DialOption) 
 }
 
 func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
-	args, env []string, dialOptions []grpc.DialOption) (*plugin, error) {
+	args, env []string, dialOptions []grpc.DialOption,
+) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -297,7 +298,8 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, kind workspace.PluginKind,
 
 // execPlugin starts the plugin executable.
 func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
-	pluginArgs []string, pwd string, env []string) (*plugin, error) {
+	pluginArgs []string, pwd string, env []string,
+) (*plugin, error) {
 	args := buildPluginArguments(pluginArgumentOptions{
 		pluginArgs:      pluginArgs,
 		tracingEndpoint: cmdutil.TracingEndpoint,
@@ -341,7 +343,6 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 			Args:    pluginArgs,
 			Env:     env,
 		})
-
 		if err != nil {
 			return nil, err
 		}

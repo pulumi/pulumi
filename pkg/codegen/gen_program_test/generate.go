@@ -62,18 +62,17 @@ func TestGenerateProgram(t *testing.T) {
 		for i := 1; i <= n; i++ {
 			packageName := fmt.Sprintf("batch%d", i)
 			dir := filepath.Join("../", lang, "gen_program_test", packageName)
-			err := os.MkdirAll(dir, 0755)
+			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
 				panic(fmt.Sprintf("unexpected error generating codegen tests: %v", err))
 			}
 			testPath := filepath.Join(dir, "gen_program_test.go")
 
 			sourceCode := fmt.Sprintf(template, packageName, lang, i, n)
-			err = os.WriteFile(testPath, []byte(sourceCode), 0755) //nolint:gosec
+			err = os.WriteFile(testPath, []byte(sourceCode), 0o755) //nolint:gosec
 			if err != nil {
 				panic(fmt.Sprintf("unexpected error generating codegen tests: %v", err))
 			}
 		}
 	}
-
 }

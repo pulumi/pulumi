@@ -281,7 +281,8 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
-	templateKind TemplateKind) (TemplateRepository, error) {
+	templateKind TemplateKind,
+) (TemplateRepository, error) {
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
@@ -344,7 +345,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	}
 
 	// Ensure the template directory exists.
-	if err := os.MkdirAll(templateDir, 0700); err != nil {
+	if err := os.MkdirAll(templateDir, 0o700); err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -498,13 +499,13 @@ func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 
 // CopyTemplateFiles does the actual copy operation to a destination directory.
 func CopyTemplateFiles(
-	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
-
+	sourceDir, destDir string, force bool, projectName string, projectDescription string,
+) error {
 	return walkFiles(sourceDir, destDir, projectName,
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
 				// Create the destination directory.
-				return os.Mkdir(dest, 0700)
+				return os.Mkdir(dest, 0o700)
 			}
 
 			// Read the source file.
@@ -530,7 +531,7 @@ func CopyTemplateFiles(
 			if err != nil {
 				return err
 			}
-			mode = sourceStat.Mode().Perm() | 0600
+			mode = sourceStat.Mode().Perm() | 0o600
 
 			// Write to the destination file.
 			err = writeAllBytes(dest, result, force, mode)
@@ -652,8 +653,8 @@ func ValueOrSanitizedDefaultProjectName(name string, projectName string, default
 
 // ValueOrDefaultProjectDescription returns the value or defaultDescription.
 func ValueOrDefaultProjectDescription(
-	description string, projectDescription string, defaultDescription string) string {
-
+	description string, projectDescription string, defaultDescription string,
+) string {
 	// If we have a description, use it.
 	if description != "" {
 		return description
@@ -695,8 +696,8 @@ func getValidProjectName(name string) string {
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
 func walkFiles(sourceDir string, destDir string, projectName string,
-	actionFn func(entry os.DirEntry, source string, dest string) error) error {
-
+	actionFn func(entry os.DirEntry, source string, dest string) error,
+) error {
 	contract.Requiref(sourceDir != "", "sourceDir", "must not be empty")
 	contract.Requiref(destDir != "", "destDir", "must not be empty")
 	contract.Requiref(actionFn != nil, "actionFn", "must not be nil")

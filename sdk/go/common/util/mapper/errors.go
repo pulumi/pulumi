@@ -71,8 +71,10 @@ type fieldError struct {
 	Message string
 }
 
-var _ error = (*fieldError)(nil)      // ensure this implements the error interface.
-var _ FieldError = (*fieldError)(nil) // ensure this implements the fieldError interface.
+var (
+	_ error      = (*fieldError)(nil) // ensure this implements the error interface.
+	_ FieldError = (*fieldError)(nil) // ensure this implements the fieldError interface.
+)
 
 func NewFieldError(ty string, fld string, err error) FieldError {
 	return &fieldError{
@@ -97,8 +99,10 @@ type MissingError struct {
 	Message string
 }
 
-var _ error = (*MissingError)(nil)      // ensure this implements the error interface.
-var _ FieldError = (*MissingError)(nil) // ensure this implements the FieldError interface.
+var (
+	_ error      = (*MissingError)(nil) // ensure this implements the error interface.
+	_ FieldError = (*MissingError)(nil) // ensure this implements the FieldError interface.
+)
 
 func NewMissingError(ty reflect.Type, fld string) *MissingError {
 	return &MissingError{
@@ -119,8 +123,10 @@ type UnrecognizedError struct {
 	Message string
 }
 
-var _ error = (*UnrecognizedError)(nil)      // ensure this implements the error interface.
-var _ FieldError = (*UnrecognizedError)(nil) // ensure this implements the FieldError interface.
+var (
+	_ error      = (*UnrecognizedError)(nil) // ensure this implements the error interface.
+	_ FieldError = (*UnrecognizedError)(nil) // ensure this implements the FieldError interface.
+)
 
 func NewUnrecognizedError(ty reflect.Type, fld string) *UnrecognizedError {
 	return &UnrecognizedError{
@@ -142,8 +148,10 @@ type WrongTypeError struct {
 	Message string
 }
 
-var _ error = (*WrongTypeError)(nil)      // ensure this implements the error interface.
-var _ FieldError = (*WrongTypeError)(nil) // ensure this implements the FieldError interface.
+var (
+	_ error      = (*WrongTypeError)(nil) // ensure this implements the error interface.
+	_ FieldError = (*WrongTypeError)(nil) // ensure this implements the FieldError interface.
+)
 
 func NewWrongTypeError(ty reflect.Type, fld string, expect reflect.Type, actual reflect.Type) *WrongTypeError {
 	return &WrongTypeError{

@@ -24,7 +24,7 @@ import (
 func TestValidatePolicyPackConfig(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		PolicyPackPaths       []string
 		PolicyPackConfigPaths []string
 		ExpectError           bool

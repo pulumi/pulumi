@@ -51,8 +51,10 @@ type Crypter interface {
 // A nopCrypter simply returns the ciphertext as-is.
 type nopCrypter struct{}
 
-var NopDecrypter Decrypter = nopCrypter{}
-var NopEncrypter Encrypter = nopCrypter{}
+var (
+	NopDecrypter Decrypter = nopCrypter{}
+	NopEncrypter Encrypter = nopCrypter{}
+)
 
 func (nopCrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
 	return ciphertext, nil
@@ -93,7 +95,8 @@ func (t *trackingDecrypter) DecryptValue(ctx context.Context, ciphertext string)
 }
 
 func (t *trackingDecrypter) BulkDecrypt(
-	ctx context.Context, ciphertexts []string) (map[string]string, error) {
+	ctx context.Context, ciphertexts []string,
+) (map[string]string, error) {
 	return DefaultBulkDecrypt(ctx, t, ciphertexts)
 }
 
@@ -260,7 +263,8 @@ func (c prefixCrypter) BulkDecrypt(ctx context.Context, ciphertexts []string) (m
 // map maps from ciphertext to plaintext. This should only be used by implementers of Decrypter to implement
 // their BulkDecrypt method in cases where they can't do more efficient than just individual decryptions.
 func DefaultBulkDecrypt(ctx context.Context,
-	decrypter Decrypter, ciphertexts []string) (map[string]string, error) {
+	decrypter Decrypter, ciphertexts []string,
+) (map[string]string, error) {
 	if len(ciphertexts) == 0 {
 		return nil, nil
 	}

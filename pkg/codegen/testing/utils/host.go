@@ -27,7 +27,7 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
-	var pluginLoaders = make([]*deploytest.PluginLoader, 0, len(providers))
+	pluginLoaders := make([]*deploytest.PluginLoader, 0, len(providers))
 
 	for _, v := range providers {
 		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))
@@ -59,6 +59,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"azure-native", "1.29.0"},
 		SchemaProvider{"random", "4.2.0"},
 		SchemaProvider{"random", "4.3.1"},
+		SchemaProvider{"random", "4.11.2"},
 		SchemaProvider{"kubernetes", "3.7.0"},
 		SchemaProvider{"kubernetes", "3.7.2"},
 		SchemaProvider{"eks", "0.37.1"},

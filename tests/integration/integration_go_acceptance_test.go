@@ -102,10 +102,9 @@ func TestConstructGo(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t, optsForConstructGo(t, testDir, test.expectedResourceCount, localProviders, test.env...))
 		})
 	}
@@ -116,10 +115,10 @@ func TestNestedConstructGo(t *testing.T) {
 	testDir := "construct_component"
 	runComponentSetup(t, testDir)
 
-	localProviders :=
-		[]integration.LocalDependency{
-			{Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go")},
-			{Package: "secondtestcomponent", Path: filepath.Join(testDir, "testcomponent2-go")}}
+	localProviders := []integration.LocalDependency{
+		{Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go")},
+		{Package: "secondtestcomponent", Path: filepath.Join(testDir, "testcomponent2-go")},
+	}
 	integration.ProgramTest(t, optsForConstructGo(t, "construct_nested_component", 18, localProviders))
 }
 

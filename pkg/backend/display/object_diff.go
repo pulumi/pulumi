@@ -171,7 +171,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 }
 
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool) string {
+	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool,
+) string {
 	var b bytes.Buffer
 
 	// indent everything an additional level, like other properties.
@@ -212,8 +213,8 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func PrintObject(
 	b *bytes.Buffer, props resource.PropertyMap, planning bool,
-	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool) {
-
+	indent int, op display.StepOp, prefix bool, truncateOutput bool, debug bool,
+) {
 	p := propertyPrinter{
 		dest:           b,
 		planning:       planning,
@@ -246,8 +247,8 @@ func (p *propertyPrinter) printObjectProperty(key resource.PropertyKey, value re
 
 func PrintResourceReference(
 	b *bytes.Buffer, resRef resource.ResourceReference, planning bool,
-	indent int, op display.StepOp, prefix bool, debug bool) {
-
+	indent int, op display.StepOp, prefix bool, debug bool,
+) {
 	p := propertyPrinter{
 		dest:     b,
 		planning: planning,
@@ -336,8 +337,8 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func getResourceOutputsPropertiesString(
-	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool) string {
-
+	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames bool,
+) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.Type() == resource.RootStackType {
 		showSames = true
@@ -654,8 +655,8 @@ func shortHash(hash string) string {
 
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool) {
-
+	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool,
+) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
 		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug)
@@ -667,8 +668,8 @@ func printOldNewDiffs(
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
-	planning bool, indent int, summary bool, truncateOutput bool, debug bool) {
-
+	planning bool, indent int, summary bool, truncateOutput bool, debug bool,
+) {
 	p := propertyPrinter{
 		dest:           b,
 		planning:       planning,
@@ -850,8 +851,8 @@ func (p *propertyPrinter) printAdd(v resource.PropertyValue, title func(*propert
 }
 
 func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
-	oldArchive, newArchive *resource.Archive) {
-
+	oldArchive, newArchive *resource.Archive,
+) {
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 
 	hashChange := getTextChangeString(shortHash(oldArchive.Hash), shortHash(newArchive.Hash))
@@ -894,7 +895,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	// recurse on that data to print out how it changed.
 
 	oldNames := make([]string, 0, len(oldAssets))
-	var newNames = make([]string, 0, len(newAssets))
+	newNames := make([]string, 0, len(newAssets))
 
 	for name := range oldAssets {
 		oldNames = append(oldNames, name)
@@ -910,7 +911,7 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 	i := 0
 	j := 0
 
-	var keys = make([]resource.PropertyKey, 0, len(oldNames)+len(newNames))
+	keys := make([]resource.PropertyKey, 0, len(oldNames)+len(newNames))
 	for _, name := range oldNames {
 		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
 	}

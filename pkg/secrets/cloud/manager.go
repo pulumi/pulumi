@@ -134,8 +134,8 @@ func NewCloudSecretsManagerFromState(state json.RawMessage) (secrets.Manager, er
 }
 
 func NewCloudSecretsManager(info *workspace.ProjectStack,
-	secretsProvider string, rotateSecretsProvider bool) (secrets.Manager, error) {
-
+	secretsProvider string, rotateSecretsProvider bool,
+) (secrets.Manager, error) {
 	// Only a passphrase provider has an encryption salt. So changing a secrets provider
 	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
 	// as it's a legacy artifact and needs to be removed

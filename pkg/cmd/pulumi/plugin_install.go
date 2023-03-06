@@ -44,7 +44,7 @@ func newPluginInstallCmd() *cobra.Command {
 	var reinstall bool
 	var checksum string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "install [KIND NAME [VERSION]]",
 		Args:  cmdutil.MaximumNArgs(3),
 		Short: "Install one or more plugins",
@@ -236,7 +236,7 @@ func getFilePayload(file string, spec workspace.PluginSpec) (workspace.PluginCon
 	}
 	if !encoding.IsCompressed(compressHeader) {
 		// Windows doesn't have executable bits to check
-		if runtime.GOOS != "windows" && (stat.Mode()&0100) == 0 {
+		if runtime.GOOS != "windows" && (stat.Mode()&0o100) == 0 {
 			return nil, fmt.Errorf("%s is not executable", source)
 		}
 		return workspace.SingleFilePlugin(f, spec), nil

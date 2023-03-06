@@ -28,7 +28,7 @@ type policyDisableArgs struct {
 func newPolicyDisableCmd() *cobra.Command {
 	args := policyDisableArgs{}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "disable <org-name>/<policy-pack-name>",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Disable a Policy Pack for a Pulumi organization",
@@ -44,7 +44,8 @@ func newPolicyDisableCmd() *cobra.Command {
 
 			// Attempt to disable the Policy Pack.
 			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: &args.version, Scopes: cancellationScopes})
+				VersionTag: &args.version, Scopes: cancellationScopes,
+			})
 		}),
 	}
 

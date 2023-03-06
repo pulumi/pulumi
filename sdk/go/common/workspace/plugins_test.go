@@ -705,6 +705,22 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedVersion, *version)
 	})
+	t.Run("Hit GitHub ratelimit", func(t *testing.T) {
+		t.Setenv("GITHUB_TOKEN", "")
+		spec := PluginSpec{
+			PluginDownloadURL: "",
+			Name:              "mock-latest",
+			Kind:              PluginKind("resource"),
+		}
+		source, err := spec.GetSource()
+		assert.NoError(t, err)
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			return nil, 0, newDownloadError(403, req.URL, http.Header{"X-Ratelimit-Remaining": []string{"0"}})
+		}
+		_, err = source.GetLatestVersion(getHTTPResponse)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "rate limit exceeded")
+	})
 }
 
 func TestInterpolateURL(t *testing.T) {
@@ -886,7 +902,7 @@ func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	tempdir := t.TempDir()
 	pyaml := filepath.Join(tempdir, "Pulumi.yaml")
 
-	//write to pyaml
+	// write to pyaml
 	err := os.WriteFile(pyaml, []byte(`name: test-yaml
 runtime: yaml
 description: "Test Pulumi YAML"
@@ -894,7 +910,7 @@ plugins:
   providers:
   - name: aws
     version: 1.0.0
-    path: ../bin/aws`), 0600)
+    path: ../bin/aws`), 0o600)
 	assert.NoError(t, err)
 
 	proj, err := LoadProject(pyaml)

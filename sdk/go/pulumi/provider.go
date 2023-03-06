@@ -35,8 +35,8 @@ type constructFunc func(ctx *Context, typ, name string, inputs map[string]interf
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
-	constructF constructFunc) (*pulumirpc.ConstructResponse, error) {
-
+	constructF constructFunc,
+) (*pulumirpc.ConstructResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
 		Project:          req.GetProject(),
@@ -445,8 +445,8 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 }
 
 func createOutput(ctx *Context, destType reflect.Type, v resource.PropertyValue, known, secret bool,
-	deps []Resource) (reflect.Value, error) {
-
+	deps []Resource,
+) (reflect.Value, error) {
 	outputType := getOutputType(destType)
 	output := ctx.newOutput(outputType, deps...)
 	outputValueDest := reflect.New(output.ElementType()).Elem()
@@ -600,7 +600,8 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 
 			handleField := func(typ reflect.Type, value resource.PropertyValue,
-				deps []Resource) (reflect.Value, error) {
+				deps []Resource,
+			) (reflect.Value, error) {
 				resultType := getOutputType(typ)
 				output := ctx.newOutput(resultType, deps...)
 				dest := reflect.New(output.ElementType()).Elem()
@@ -722,8 +723,8 @@ type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
-	callF callFunc) (*pulumirpc.CallResponse, error) {
-
+	callF callFunc,
+) (*pulumirpc.CallResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
 		Project:      req.GetProject(),

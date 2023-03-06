@@ -17,17 +17,20 @@
 import * as assert from "assert";
 import { all } from "../output";
 import * as runtime from "../runtime";
-import { allAliases, createUrn, ComponentResource, CustomResourceOptions, DependencyProviderResource } from "../resource";
+import {
+    allAliases, createUrn, ProviderResource, CustomResource, ComponentResource,
+    ComponentResourceOptions, CustomResourceOptions, DependencyProviderResource
+} from "../resource";
 
 class MyResource extends ComponentResource {
-    constructor(name: string, opts?: CustomResourceOptions) {
+    constructor(name: string, opts?: ComponentResourceOptions) {
         super("my:mod:MyResource", name, {}, opts);
     }
 }
 
 class MyParentResource extends ComponentResource {
     child: MyResource;
-    constructor(name: string, opts?: CustomResourceOptions) {
+    constructor(name: string, opts?: ComponentResourceOptions) {
         super("my:mod:MyParentResource", name, {}, opts);
         this.child = new MyResource(`${name}-child`, { parent: this });
     }
@@ -100,22 +103,22 @@ describe("allAliases", () => {
         },
         {
             name: "one child alias (name), one parent alias (type)",
-        	parentAliases:  [{type: "test:resource:type3"}],
-        	childAliases:   [{name: "myres-child2"}],
-        	results: [
-        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
-        		"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
-        		"urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
+            parentAliases: [{ type: "test:resource:type3" }],
+            childAliases: [{ name: "myres-child2" }],
+            results: [
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+                "urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child",
+                "urn:pulumi:stack::project::test:resource:type3$test:resource:child::myres-child2",
             ],
         },
         {
             name: "one child alias (name), one parent alias (name)",
-        	parentAliases:  [{name: "myres2"}],
-        	childAliases:   [{name: "myres-child2"}],
-        	results: [
-        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
-        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
-        		"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
+            parentAliases: [{ name: "myres2" }],
+            childAliases: [{ name: "myres-child2" }],
+            results: [
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child",
+                "urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2",
             ],
         },
         {
@@ -159,3 +162,42 @@ describe("DependencyProviderResource", () => {
         });
     });
 });
+
+describe("ComponentResource", () => {
+    runtime.setMocks({
+        call: (_) => {
+            throw new Error("unexpected call");
+        },
+        newResource: (args) => {
+            return { id: `${args.name}_id`, state: {} };
+        },
+    });
+
+    // https://github.com/pulumi/pulumi/issues/12161
+    it("propagates provider to children", async () => {
+        const provider = new MyProvider("prov");
+        const component = new MyResource("comp", { provider: provider });
+        const custom = new MyCustomResource("custom", { parent: component });
+        assert.strictEqual(custom.__prov, provider);
+    });
+
+    // https://github.com/pulumi/pulumi/issues/12161
+    it("propagates providers list to children", async () => {
+        const provider = new MyProvider("prov");
+        const component = new MyResource("comp", { providers: [provider] });
+        const custom = new MyCustomResource("custom", { parent: component });
+        assert.strictEqual(custom.__prov, provider);
+    })
+})
+
+class MyProvider extends ProviderResource {
+    constructor(name: string) {
+        super("test", name);
+    }
+}
+
+class MyCustomResource extends CustomResource {
+    constructor(name: string, opts?: CustomResourceOptions) {
+        super("test:index:MyCustomResource", name, {}, opts);
+    }
+}

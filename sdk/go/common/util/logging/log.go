@@ -37,12 +37,16 @@ type Filter interface {
 	Filter(s string) string
 }
 
-var LogToStderr = false // true if logging is being redirected to stderr.
-var Verbose = 0         // >0 if verbose logging is enabled at a particular level.
-var LogFlow = false     // true to flow logging settings to child processes.
+var (
+	LogToStderr = false // true if logging is being redirected to stderr.
+	Verbose     = 0     // >0 if verbose logging is enabled at a particular level.
+	LogFlow     = false // true to flow logging settings to child processes.
+)
 
-var rwLock sync.RWMutex
-var filters []Filter
+var (
+	rwLock  sync.RWMutex
+	filters []Filter
+)
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
 //
@@ -131,8 +135,7 @@ func failfast(msg string) {
 	panic(fmt.Sprintf("fatal: %v", msg))
 }
 
-type nopFilter struct {
-}
+type nopFilter struct{}
 
 func (f *nopFilter) Filter(s string) string {
 	return s

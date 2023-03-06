@@ -131,7 +131,7 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 	}
 	sort.Strings(names)
 
-	var rows = make([]cmdutil.TableRow, 0, len(names))
+	rows := make([]cmdutil.TableRow, 0, len(names))
 	for _, name := range names {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}

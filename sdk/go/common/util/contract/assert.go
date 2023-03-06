@@ -21,6 +21,8 @@ import (
 const assertMsg = "An assertion has failed"
 
 // Assert checks a condition and Fails if it is false.
+//
+// Deprecated: Use Assertf.
 func Assert(cond bool) {
 	if !cond {
 		failfast(assertMsg)
@@ -35,6 +37,8 @@ func Assertf(cond bool, msg string, args ...interface{}) {
 }
 
 // AssertNoError will Fail if the error is non-nil.
+//
+// Deprecated: Use AssertNoErrorf.
 func AssertNoError(err error) {
 	if err != nil {
 		failfast(err.Error())

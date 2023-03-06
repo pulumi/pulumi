@@ -89,15 +89,16 @@ func (u *update) GetTarget() *deploy.Target {
 
 func (b *localBackend) newQuery(
 	ctx context.Context,
-	op backend.QueryOperation) (engine.QueryInfo, error) {
-
+	op backend.QueryOperation,
+) (engine.QueryInfo, error) {
 	return &localQuery{root: op.Root, proj: op.Proj}, nil
 }
 
 func (b *localBackend) newUpdate(
 	ctx context.Context,
 	stackName tokens.Name,
-	op backend.UpdateOperation) (*update, error) {
+	op backend.UpdateOperation,
+) (*update, error) {
 	contract.Requiref(stackName != "", "stackName", "must not be empty")
 
 	// Construct the deployment target.
@@ -120,7 +121,8 @@ func (b *localBackend) getTarget(
 	ctx context.Context,
 	stackName tokens.Name,
 	cfg config.Map,
-	dec config.Decrypter) (*deploy.Target, error) {
+	dec config.Decrypter,
+) (*deploy.Target, error) {
 	snapshot, _, err := b.getStack(ctx, stackName)
 	if err != nil {
 		return nil, err
@@ -136,7 +138,8 @@ func (b *localBackend) getTarget(
 
 func (b *localBackend) getStack(
 	ctx context.Context,
-	name tokens.Name) (*deploy.Snapshot, string, error) {
+	name tokens.Name,
+) (*deploy.Snapshot, string, error) {
 	if name == "" {
 		return nil, "", errors.New("invalid empty stack name")
 	}
@@ -180,8 +183,8 @@ func (b *localBackend) getCheckpoint(stackName tokens.Name) (*apitype.Checkpoint
 }
 
 func (b *localBackend) saveCheckpoint(
-	name tokens.Name, checkpoint *apitype.VersionedCheckpoint) (backupFile string, file string, _ error) {
-
+	name tokens.Name, checkpoint *apitype.VersionedCheckpoint,
+) (backupFile string, file string, _ error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file = b.stackPath(name)
 	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
@@ -286,7 +289,6 @@ func (b *localBackend) saveStack(name tokens.Name, snap *deploy.Snapshot, sm sec
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
 				file, backup, verifyerr)
-
 		}
 	}
 

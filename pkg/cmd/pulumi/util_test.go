@@ -177,7 +177,6 @@ func TestReadingGitRepo(t *testing.T) {
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
 		// assert.Equal(t, "branch-from-ci", name) # see https://github.com/pulumi/pulumi/issues/5303
 	}
-
 }
 
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
@@ -233,14 +232,16 @@ func Test_makeJSONString(t *testing.T) {
 			`{
   "my_password": "password"
 }
-`},
+`,
+		},
 		{
 			"special-char-string",
 			map[string]interface{}{"special_password": "pass&word"},
 			`{
   "special_password": "pass&word"
 }
-`},
+`,
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

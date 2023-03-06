@@ -8,6 +8,7 @@ package pulumirpc
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -178,27 +179,32 @@ type LanguageRuntimeServer interface {
 }
 
 // UnimplementedLanguageRuntimeServer must be embedded to have forward compatible implementations.
-type UnimplementedLanguageRuntimeServer struct {
-}
+type UnimplementedLanguageRuntimeServer struct{}
 
 func (UnimplementedLanguageRuntimeServer) GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRequiredPlugins not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) Run(context.Context, *RunRequest) (*RunResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error {
 	return status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) About(context.Context, *emptypb.Empty) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
+
 func (UnimplementedLanguageRuntimeServer) RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error {
 	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
 }

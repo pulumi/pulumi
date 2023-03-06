@@ -65,7 +65,7 @@ func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) 
 }
 
 func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
-	var secretsToDecrypt = make([][]byte, 0, len(secrets))
+	secretsToDecrypt := make([][]byte, 0, len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
 		if err != nil {
@@ -111,18 +111,18 @@ func (sm *serviceSecretsManager) State() interface{} {
 }
 
 func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter, nil
 }
 
 func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
 }
 
 func NewServiceSecretsManager(
-	client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack) (secrets.Manager, error) {
-
+	client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
+) (secrets.Manager, error) {
 	// To change the secrets provider to a serviceSecretsManager we would need to ensure that there are no
 	// remnants of the old secret manager To remove those remnants, we would set those values to be empty in
 	// the project stack.
@@ -175,7 +175,8 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Stack:   s.Stack,
 	}
 	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never}))
+		Color: colors.Never,
+	}))
 
 	return &serviceSecretsManager{
 		state:   s,

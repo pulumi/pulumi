@@ -33,22 +33,20 @@ const (
 	codeFence       = "```"
 )
 
-var (
-	simpleProperties = map[string]schema.PropertySpec{
-		"stringProp": {
-			Description: "A string prop.",
-			TypeSpec: schema.TypeSpec{
-				Type: "string",
-			},
+var simpleProperties = map[string]schema.PropertySpec{
+	"stringProp": {
+		Description: "A string prop.",
+		TypeSpec: schema.TypeSpec{
+			Type: "string",
 		},
-		"boolProp": {
-			Description: "A bool prop.",
-			TypeSpec: schema.TypeSpec{
-				Type: "boolean",
-			},
+	},
+	"boolProp": {
+		Description: "A bool prop.",
+		TypeSpec: schema.TypeSpec{
+			Type: "boolean",
 		},
-	}
-)
+	},
+}
 
 // newTestPackageSpec returns a new fake package spec for a Provider used for testing.
 func newTestPackageSpec() schema.PackageSpec {
@@ -642,6 +640,7 @@ func TestDecomposeDocstring(t *testing.T) {
 				},
 			},
 		},
-		importDetails: "\n\nVPCs can be imported using the `vpc id`, e.g.,\n\n```sh\n $ pulumi import aws:ec2/vpc:Vpc test_vpc vpc-a01106c2\n```\n"},
+		importDetails: "\n\nVPCs can be imported using the `vpc id`, e.g.,\n\n```sh\n $ pulumi import aws:ec2/vpc:Vpc test_vpc vpc-a01106c2\n```\n",
+	},
 		info)
 }

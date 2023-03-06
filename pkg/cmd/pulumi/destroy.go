@@ -71,7 +71,7 @@ func newDestroyCmd() *cobra.Command {
 		use, cmdArgs = "destroy [url]", cmdutil.MaximumNArgs(1)
 	}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:        use,
 		Aliases:    []string{"down"},
 		SuggestFor: []string{"delete", "kill", "remove", "rm", "stop"},
@@ -107,7 +107,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}
@@ -194,7 +194,6 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			cfg, err := getStackConfiguration(ctx, s, proj, sm)
-
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
@@ -220,7 +219,7 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			var protectedCount int
-			var targetUrns []string = *targets
+			targetUrns := *targets
 			if excludeProtected {
 				contract.Assertf(len(targetUrns) == 0, "Expected no target URNs, got %d", len(targetUrns))
 				targetUrns, protectedCount, err = handleExcludeProtected(ctx, s)
@@ -395,7 +394,8 @@ func newDestroyCmd() *cobra.Command {
 // We rely on the fact that `resources` is topologically sorted with respect to its dependencies.
 // This function understands that providers live outside this topological sort.
 func separateProtected(resources []*resource.State) (
-	/*unprotected*/ []*resource.State /*protected*/, []*resource.State) {
+	/*unprotected*/ []*resource.State /*protected*/, []*resource.State,
+) {
 	dg := graph.NewDependencyGraph(resources)
 	transitiveProtected := graph.ResourceSet{}
 	for _, r := range resources {

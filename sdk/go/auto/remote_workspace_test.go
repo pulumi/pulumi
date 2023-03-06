@@ -30,8 +30,8 @@ import (
 const remoteTestRepo = "https://github.com/pulumi/test-repo.git"
 
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
-	opts ...RemoteWorkspaceOption) (RemoteStack, error)) {
-
+	opts ...RemoteWorkspaceOption) (RemoteStack, error),
+) {
 	ctx := context.Background()
 
 	const stack = "owner/project/stack"
@@ -112,8 +112,8 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 }
 
 func testRemoteStackGitSource(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
-	opts ...RemoteWorkspaceOption) (RemoteStack, error)) {
-
+	opts ...RemoteWorkspaceOption) (RemoteStack, error),
+) {
 	// This test requires the service with access to Pulumi Deployments.
 	// Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
 	// and set PULUMI_TEST_DEPLOYMENTS_API to any value to enable the test.
@@ -186,7 +186,6 @@ func testRemoteStackGitSource(t *testing.T, fn func(ctx context.Context, stackNa
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()

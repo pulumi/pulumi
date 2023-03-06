@@ -151,7 +151,7 @@ config:
   foo:d:
     secure: v1:T1ftqhY0hqr+EJK6:+jvd5PMecFx80tcavzuZY4tLatgIfoe/xR72GA== # 🟣 comment on secret
 
-# 🟥 footer comment`), 0600)
+# 🟥 footer comment`), 0o600)
 	require.NoError(t, err)
 	e.RunCommand("pulumi", "config", "set", "e", "E")
 	e.RunCommand("pulumi", "config", "set", "--path", "c.c[2]", "three")

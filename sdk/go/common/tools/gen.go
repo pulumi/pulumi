@@ -34,7 +34,7 @@ type GenWriter struct {
 func NewGenWriter(tool string, file string) (*GenWriter, error) {
 	// If the file is non-empty, open up a writer and overwrite whatever file contents already exist.
 	if file != "" {
-		f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+		f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 		if err != nil {
 			return nil, err
 		}

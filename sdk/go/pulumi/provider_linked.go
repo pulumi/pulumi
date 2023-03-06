@@ -30,7 +30,8 @@ import (
 
 //go:linkname linkedConstruct github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstruct
 func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
-	constructF constructFunc) (*pulumirpc.ConstructResponse, error) {
+	constructF constructFunc,
+) (*pulumirpc.ConstructResponse, error) {
 	return construct(ctx, req, engineConn, constructF)
 }
 
@@ -51,7 +52,8 @@ func linkedNewConstructResult(resource ComponentResource) (URNInput, Input, erro
 
 //go:linkname linkedCall github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedCall
 func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
-	callF callFunc) (*pulumirpc.CallResponse, error) {
+	callF callFunc,
+) (*pulumirpc.CallResponse, error) {
 	return call(ctx, req, engineConn, callF)
 }
 

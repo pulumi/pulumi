@@ -142,7 +142,7 @@ func (cm *codegenManifest) save(dir string) error {
 		return err
 	}
 	data := buf.Bytes()
-	return os.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
+	return os.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0o600)
 }
 
 // ValidateFileEquality compares maps of files for equality.
@@ -254,11 +254,11 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 }
 
 func writeFileEnsuringDir(path string, bytes []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	return os.WriteFile(path, bytes, 0600)
+	return os.WriteFile(path, bytes, 0o600)
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
@@ -285,8 +285,8 @@ func ValidateFileTransformer(
 	t *testing.T,
 	inputFile string,
 	expectedOutputFile string,
-	transformer func(reader io.Reader, writer io.Writer) error) {
-
+	transformer func(reader io.Reader, writer io.Writer) error,
+) {
 	reader, err := os.Open(inputFile)
 	if err != nil {
 		t.Error(err)
@@ -304,7 +304,7 @@ func ValidateFileTransformer(
 	actualBytes := buf.Bytes()
 
 	if os.Getenv("PULUMI_ACCEPT") != "" {
-		err := os.WriteFile(expectedOutputFile, actualBytes, 0600)
+		err := os.WriteFile(expectedOutputFile, actualBytes, 0o600)
 		if err != nil {
 			t.Error(err)
 			return
@@ -331,8 +331,8 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 func RunCommandWithOptions(
 	t *testing.T,
 	opts *integration.ProgramTestOptions,
-	name string, cwd string, exec string, args ...string) {
-
+	name string, cwd string, exec string, args ...string,
+) {
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
 		t.Error(err)
@@ -371,6 +371,6 @@ const (
 	AzureNativeSchema SchemaVersion = "1.29.0"
 	AzureSchema       SchemaVersion = "4.18.0"
 	KubernetesSchema  SchemaVersion = "3.7.2"
-	RandomSchema      SchemaVersion = "4.2.0"
+	RandomSchema      SchemaVersion = "4.11.2"
 	EksSchema         SchemaVersion = "0.37.1"
 )

@@ -263,7 +263,6 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 		return false
 	}
 	return true
-
 }
 
 // Contains returns true if the receiver property path contains the other property path.

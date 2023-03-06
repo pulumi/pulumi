@@ -95,7 +95,6 @@ func (pkg dep) install(t *testing.T, ex, dir string) {
 	err := integration.RunCommand(t, "Add package",
 		args, dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err, "Failed to add dependency %q %q", pkg.Name, pkg.Version)
-
 }
 
 // Converts from the hcl2 dependency format to the dotnet format.

@@ -21,6 +21,8 @@ import (
 const requireMsg = "A precondition has failed for %v"
 
 // Require checks a precondition condition pertaining to a function parameter, and Fails if it is false.
+//
+// Deprecated: Use Requiref.
 func Require(cond bool, param string) {
 	if !cond {
 		failfast(fmt.Sprintf(requireMsg, param))

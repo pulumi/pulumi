@@ -29,8 +29,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 )
 
-type randomResourceProvider struct {
-}
+type randomResourceProvider struct{}
 
 func (p *randomResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil

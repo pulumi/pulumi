@@ -72,8 +72,8 @@ func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
 func (planDiff *PlanDiff) MakeError(
 	key resource.PropertyKey,
 	actualOperation string,
-	actualValue *resource.PropertyValue) string {
-
+	actualValue *resource.PropertyValue,
+) string {
 	// diff wants to do 'actualOperation' (one of '+', '~', '-', '=') but plan differs. This function looks up what
 	// key wanted to do to print a more useful error message
 
@@ -169,7 +169,7 @@ func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan 
 		return nil
 	}
 
-	var diff = NewPlanDiff(inputDiff)
+	diff := NewPlanDiff(inputDiff)
 
 	return &GoalPlan{
 		Type:                    goal.Type,
@@ -268,7 +268,6 @@ func (rp *ResourcePlan) diffStringSets(a, b []string) (message string, changed b
 }
 
 func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, changed bool) {
-
 	setA := map[resource.Alias]struct{}{}
 	for _, s := range a {
 		setA[s] = struct{}{}
@@ -315,8 +314,8 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 func checkMissingPlan(
 	oldState *resource.State,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal) error {
-
+	programGoal *resource.Goal,
+) error {
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
 		Type:                    oldState.Type,
@@ -514,8 +513,8 @@ func (rp *ResourcePlan) checkOutputs(
 func (rp *ResourcePlan) checkGoal(
 	oldInputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal) error {
-
+	programGoal *resource.Goal,
+) error {
 	contract.Requiref(programGoal != nil, "programGoal", "must not be nil")
 	// rp.Goal may be nil, but if it isn't Type and Name should match
 	if rp.Goal != nil {

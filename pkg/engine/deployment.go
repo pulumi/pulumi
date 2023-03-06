@@ -43,8 +43,8 @@ const clientRuntimeName = "client"
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
 func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
-	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
-
+	tracingSpan opentracing.Span,
+) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 
 	// If the package contains an override for the main entrypoint, use it.
@@ -156,7 +156,8 @@ type deploymentSourceFunc func(
 
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	dryRun bool) (*deployment, error) {
+	dryRun bool,
+) (*deployment, error) {
 	contract.Assertf(info != nil, "a deployment context must be provided")
 	contract.Assertf(info.Update != nil, "update info cannot be nil")
 	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
@@ -245,8 +246,8 @@ type runActions interface {
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	preview bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {

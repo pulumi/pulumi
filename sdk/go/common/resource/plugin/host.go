@@ -96,7 +96,8 @@ type Host interface {
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
-	disableProviderPreview bool, plugins *workspace.Plugins) (Host, error) {
+	disableProviderPreview bool, plugins *workspace.Plugins,
+) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
 	if plugins != nil {
@@ -386,10 +387,10 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 }
 
 func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
-	options map[string]interface{}) (LanguageRuntime, error) {
+	options map[string]interface{},
+) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
 	plugin, err := loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
-
 		// Key our cached runtime plugins by the runtime name and the options
 		jsonOptions, err := json.Marshal(options)
 		if err != nil {
@@ -488,7 +489,8 @@ func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
 }
 
 func (host *defaultHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	kind workspace.PluginKind, name string, version *semver.Version,
+) (*workspace.PluginInfo, error) {
 	return workspace.GetPluginInfo(kind, name, version, host.GetProjectPlugins())
 }
 

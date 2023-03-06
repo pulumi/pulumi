@@ -139,7 +139,7 @@ func (t *unionType) all() []TypeAst {
 }
 
 func (t *unionType) depth() int {
-	var maxDepth = 0
+	maxDepth := 0
 	for _, t := range t.all() {
 		d := t.depth()
 		if d > maxDepth {

@@ -612,7 +612,6 @@ func (pkg *pkgContext) typeString(t schema.Type) string {
 		return "pulumi.Any"
 	}
 	return s
-
 }
 
 func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
@@ -622,7 +621,8 @@ func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
 
 // Return if `t` is external to `pkg`. If so, the associated foreign schema.Package is returned.
 func (pkg *pkgContext) isExternalReferenceWithPackage(t schema.Type) (
-	isExternal bool, extPkg schema.PackageReference, token string) {
+	isExternal bool, extPkg schema.PackageReference, token string,
+) {
 	switch typ := t.(type) {
 	case *schema.ObjectType:
 		isExternal = typ.PackageReference != nil && !codegen.PkgEquals(typ.PackageReference, pkg.pkg)
@@ -1098,7 +1098,7 @@ func (pkg *pkgContext) genEnum(w io.Writer, enumType *schema.EnumType) error {
 	for _, e := range enumType.Elements {
 		printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
 
-		var elementName = e.Name
+		elementName := e.Name
 		if e.Name == "" {
 			elementName = fmt.Sprintf("%v", e.Value)
 		}
@@ -1317,7 +1317,8 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 }
 
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
-	properties []*schema.Property) {
+	properties []*schema.Property,
+) {
 	printCommentWithDeprecationMessage(w, comment, deprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 	for _, p := range properties {
@@ -1328,7 +1329,8 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 }
 
 func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
-	properties []*schema.Property) error {
+	properties []*schema.Property,
+) error {
 	defaults := []*schema.Property{}
 	for _, p := range properties {
 		if p.DefaultValue != nil || codegen.IsProvideDefaultsFuncRequired(p.Type) {

@@ -229,7 +229,7 @@ outputs:
 func TestInvalidTypes(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		filename string
 		expected string
 	}{
@@ -502,7 +502,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 func TestMethods(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		filename      string
 		validator     func(pkg *Package)
 		expectedError string
@@ -716,10 +716,12 @@ func TestReplaceOnChanges(t *testing.T) {
 				"cat.fish",
 				"dog.bone",
 				"dog.cat.fish",
-				"cat.dog.bone"},
+				"cat.dog.bone",
+			},
 			errors: []string{
 				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"cat\"",
-				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\"",
+			},
 		},
 		{
 			name:     "Singularly Recursive",

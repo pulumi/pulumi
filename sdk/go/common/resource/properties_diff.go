@@ -62,7 +62,7 @@ func (diff *ObjectDiff) AnyChanges() bool {
 
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
-	var bufferSize = len(diff.Adds) + len(diff.Deletes) + len(diff.Sames) + len(diff.Updates)
+	bufferSize := len(diff.Adds) + len(diff.Deletes) + len(diff.Sames) + len(diff.Updates)
 	ks := make([]PropertyKey, 0, bufferSize)
 	for k := range diff.Adds {
 		ks = append(ks, k)

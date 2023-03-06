@@ -143,8 +143,8 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
-	m *schema.Method) string {
-
+	m *schema.Method,
+) string {
 	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		var objectReturnType *schema.ObjectType
 		if m.Function.ReturnType != nil {

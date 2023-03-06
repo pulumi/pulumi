@@ -22,7 +22,6 @@ import (
 
 //nolint:paralleltest // sets env var, must be run in isolation
 func TestConsoleURL(t *testing.T) {
-
 	//nolint:paralleltest // sets env var, must be run in isolation
 	t.Run("HonorEnvVar", func(t *testing.T) {
 		// Honor the PULUMI_CONSOLE_DOMAIN environment variable.

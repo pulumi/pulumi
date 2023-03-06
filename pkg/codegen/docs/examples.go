@@ -153,7 +153,7 @@ func (dctx *docGenContext) decomposeDocstring(docstring string) docInfo {
 
 		return ast.WalkContinue, nil
 	})
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error walking AST")
 	pushExamples()
 
 	if examplesShortcode != nil {

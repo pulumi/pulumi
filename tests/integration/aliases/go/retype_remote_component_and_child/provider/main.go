@@ -93,8 +93,10 @@ func NewBucketComponentV2(ctx *pulumi.Context, name string, opts ...pulumi.Resou
 	return component, nil
 }
 
-const providerName = "wibble"
-const version = "0.0.1"
+const (
+	providerName = "wibble"
+	version      = "0.0.1"
+)
 
 func typeToken(t string) string {
 	return fmt.Sprintf("%s:index:%s", providerName, t)
@@ -137,10 +139,11 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 }
 
 func (p *Provider) Construct(ctx context.Context,
-	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-
+		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+	) (*pulumiprovider.ConstructResult, error) {
 		var component pulumi.ComponentResource
 		var err error
 		switch typ {
@@ -160,17 +163,20 @@ func (p *Provider) Construct(ctx context.Context,
 }
 
 func (p *Provider) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 func (p *Provider) DiffConfig(ctx context.Context,
-	req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
 	return &pulumirpc.DiffResponse{}, nil
 }
 
 func (p *Provider) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
@@ -179,22 +185,26 @@ func (p *Provider) Configure(ctx context.Context,
 }
 
 func (p *Provider) Invoke(ctx context.Context,
-	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	req *pulumirpc.InvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+	server pulumirpc.ResourceProvider_StreamInvokeServer,
+) error {
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	req *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
 	return nil, fmt.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *Provider) Check(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
@@ -210,7 +220,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 }
 
 func (p *Provider) Update(ctx context.Context,
-	req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
 	return &pulumirpc.UpdateResponse{
 		Properties: req.GetNews(),
 	}, nil
@@ -231,7 +242,8 @@ func (p *Provider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pb
 }
 
 func (p *Provider) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	return &pulumirpc.GetSchemaResponse{}, nil
 }
 

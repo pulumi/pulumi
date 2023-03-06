@@ -73,7 +73,7 @@ func newRefreshCmd() *cobra.Command {
 		use, cmdArgs = "refresh [url]", cmdutil.MaximumNArgs(1)
 	}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   use,
 		Short: "Refresh the resources in a stack",
 		Long: "Refresh the resources in a stack.\n" +
@@ -106,7 +106,7 @@ func newRefreshCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}
@@ -399,7 +399,8 @@ func filterMapPendingCreates(
 // it is returned. The list of URNs that were not mapped to a pending create is also
 // returned.
 func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opts display.Options,
-	importToCreates []string) ([]string, result.Result) {
+	importToCreates []string,
+) ([]string, result.Result) {
 	// A map from URN to ID
 	if len(importToCreates)%2 != 0 {
 		return nil, result.Errorf("each URN must be followed by an ID: found an odd number of entries")

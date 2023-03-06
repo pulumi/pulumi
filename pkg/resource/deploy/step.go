@@ -184,8 +184,8 @@ func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 }
 
 func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
-	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
-
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
+) Step {
 	contract.Requiref(reg != nil, "reg", "must not be nil")
 
 	contract.Requiref(old != nil, "old", "must not be nil")
@@ -462,8 +462,8 @@ var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
-	ignoreChanges []string) Step {
-
+	ignoreChanges []string,
+) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
@@ -561,8 +561,8 @@ type ReplaceStep struct {
 var _ Step = (*ReplaceStep)(nil)
 
 func NewReplaceStep(deployment *Deployment, old, new *resource.State, keys, diffs []resource.PropertyKey,
-	detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
-
+	detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
+) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
 	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
@@ -863,8 +863,8 @@ type ImportStep struct {
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string, randomSeed []byte) Step {
-
+	ignoreChanges []string, randomSeed []byte,
+) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -883,8 +883,8 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string, randomSeed []byte) Step {
-
+	ignoreChanges []string, randomSeed []byte,
+) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
 	contract.Requiref(new != nil, "new", "must not be nil")

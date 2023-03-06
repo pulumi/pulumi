@@ -59,5 +59,4 @@ func (g *generator) rewriteSplat(
 	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
 
 	return x, spiller.temps, diags
-
 }

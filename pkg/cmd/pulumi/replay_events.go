@@ -45,7 +45,7 @@ func newReplayEventsCmd() *cobra.Command {
 	var delay time.Duration
 	var period time.Duration
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "replay-events [kind] [events-file]",
 		Short: "Replay events from a prior update, refresh, or destroy",
 		Long: "Replay events from a prior update, refresh, or destroy.\n" +
@@ -76,7 +76,7 @@ func newReplayEventsCmd() *cobra.Command {
 				return fmt.Errorf("unrecognized update kind '%v'", args[0])
 			}
 
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}

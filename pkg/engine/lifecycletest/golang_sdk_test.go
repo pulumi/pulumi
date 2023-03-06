@@ -54,12 +54,13 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}, nil
@@ -111,12 +112,13 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}, nil
@@ -243,8 +245,8 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			foundRes1 := false
 			foundRes2 := false
 			foundRes2Child := false
@@ -315,16 +317,18 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// just verify that the IgnoreChanges prop made it through
 					assert.Equal(t, expectedIgnoreChanges, ignoreChanges)
 					return plugin.DiffResult{}, nil
@@ -360,7 +364,8 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result) result.Result {
+						events []Event, res result.Result,
+					) result.Result {
 						for _, event := range events {
 							if event.Type == ResourcePreEvent {
 								payload := event.Payload().(ResourcePreEventPayload)
@@ -393,7 +398,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
-					ignoreChanges []string) (plugin.DiffResult, error) {
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -403,8 +409,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
 					}
@@ -448,7 +454,6 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 			return nil
 		})
-
 	})
 
 	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
@@ -461,8 +466,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 
 			AssertSameSteps(t, []StepSummary{
@@ -485,8 +490,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Op: Update,
 
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			evts []Event, res result.Result) result.Result {
-
+			evts []Event, res result.Result,
+		) result.Result {
 			assert.Nil(t, res)
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
@@ -509,7 +514,8 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					assert.Equal(t, resource.ID("someId"), id)
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
@@ -547,8 +553,8 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 				{
 					Op: Update,
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						evts []Event, res result.Result) result.Result {
-
+						evts []Event, res result.Result,
+					) result.Result {
 						assert.Nil(t, res)
 
 						AssertSameSteps(t, []StepSummary{
@@ -583,17 +589,19 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}
 			v.InvokeF = func(tok tokens.ModuleMember,
-				inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				inputs resource.PropertyMap,
+			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				assert.True(t, v.Config.DeepEquals(inputs))
 				return nil, nil, nil
 			}
@@ -602,17 +610,19 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}
 			v.InvokeF = func(tok tokens.ModuleMember,
-				inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				inputs resource.PropertyMap,
+			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				assert.True(t, v.Config.DeepEquals(inputs))
 				return nil, nil, nil
 			}
@@ -751,8 +761,8 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -792,8 +802,8 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 			{
 				Op: Update,
 				Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-					events []Event, res result.Result) result.Result {
-
+					events []Event, res result.Result,
+				) result.Result {
 					collectedOps := make([]display.StepOp, 0)
 					for _, event := range events {
 						if event.Type == ResourcePreEvent {
@@ -853,8 +863,8 @@ func TestRemoteComponentGolang(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 			}, nil
@@ -862,8 +872,8 @@ func TestRemoteComponentGolang(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
-
+					inputs resource.PropertyMap, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
 					_, ok := inputs["bar"]
 					assert.False(t, ok)
 

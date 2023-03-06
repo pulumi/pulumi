@@ -15,7 +15,8 @@ type Component struct {
 }
 
 func NewComponent(ctx *pulumi.Context, name string, args ComponentArgs,
-	opts ...pulumi.ResourceOption) (*Component, error) {
+	opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("testcomponent:index:Component", name, &args, &resource, opts...)
 	if err != nil {

@@ -153,10 +153,8 @@ func newOpStopwatch() opStopwatch {
 	}
 }
 
-var (
-	// policyPayloads is a collection of policy violation events for a single resource.
-	policyPayloads []engine.PolicyViolationEventPayload
-)
+// policyPayloads is a collection of policy violation events for a single resource.
+var policyPayloads []engine.PolicyViolationEventPayload
 
 func camelCase(s string) string {
 	if len(s) == 0 {
@@ -219,8 +217,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
-
+	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
+) {
 	stdin := opts.Stdin
 	if stdin == nil {
 		stdin = os.Stdin
@@ -296,8 +294,8 @@ type treeNode struct {
 }
 
 func (display *ProgressDisplay) getOrCreateTreeNode(
-	result *[]*treeNode, urn resource.URN, row ResourceRow, urnToTreeNode map[resource.URN]*treeNode) *treeNode {
-
+	result *[]*treeNode, urn resource.URN, row ResourceRow, urnToTreeNode map[resource.URN]*treeNode,
+) *treeNode {
 	node, has := urnToTreeNode[urn]
 	if has {
 		return node
@@ -381,8 +379,8 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 }
 
 func (display *ProgressDisplay) convertNodesToRows(
-	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int) {
-
+	nodes []*treeNode, maxSuffixLength int, rows *[][]string, maxColumnLengths *[]int,
+) {
 	for _, node := range nodes {
 		if len(*maxColumnLengths) == 0 {
 			*maxColumnLengths = make([]int, len(node.colorizedColumns))
@@ -683,7 +681,8 @@ func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
 }
 
 func (display *ProgressDisplay) mergeStreamPayloadsToSinglePayload(
-	payloads []engine.DiagEventPayload) engine.DiagEventPayload {
+	payloads []engine.DiagEventPayload,
+) engine.DiagEventPayload {
 	buf := bytes.Buffer{}
 
 	for _, p := range payloads {
@@ -1238,7 +1237,6 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 
 		secondsElapsed := time.Since(start).Seconds()
 		return fmt.Sprintf("%s (%ds)", opText, int(secondsElapsed))
-
 	}
 	return deploy.ColorProgress(op) + getDescription() + colors.Reset
 }

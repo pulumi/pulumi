@@ -374,8 +374,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			extPkg := t.PackageReference
 			var info CSharpPackageInfo
 			def, err := extPkg.Definition()
-			contract.AssertNoError(err)
-			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			contract.AssertNoErrorf(err, "error loading definition for package %q", extPkg.Name())
+			contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}),
+				"error importing csharp for package %q", extPkg.Name())
 			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
@@ -410,8 +411,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			extPkg := t.Resource.PackageReference
 			var info CSharpPackageInfo
 			def, err := extPkg.Definition()
-			contract.AssertNoError(err)
-			contract.AssertNoError(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			contract.AssertNoErrorf(err, "error loading definition for package %q", extPkg.Name())
+			contract.AssertNoErrorf(def.ImportLanguages(map[string]schema.Language{"csharp": Importer}),
+				"error importing csharp for package %q", extPkg.Name())
 			if v, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
@@ -1806,7 +1808,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 
 // pulumiImports is a slice of common imports that are used with the genHeader method.
 func (mod *modContext) pulumiImports() []string {
-	var pulumiImports = []string{
+	pulumiImports := []string{
 		"System",
 		"System.Collections.Generic",
 		"System.Collections.Immutable",
@@ -2164,8 +2166,8 @@ func genPackageMetadata(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
 	projectReferences []string,
-	files codegen.Fs) error {
-
+	files codegen.Fs,
+) error {
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences)
 	if err != nil {
 		return err
@@ -2202,8 +2204,8 @@ func genPackageMetadata(pkg *schema.Package,
 func genProjectFile(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
-	projectReferences []string) ([]byte, error) {
-
+	projectReferences []string,
+) ([]byte, error) {
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
 	}
@@ -2222,7 +2224,7 @@ func genProjectFile(pkg *schema.Package,
 		// only add a package reference to Pulumi if we're not referencing a local Pulumi project
 		// which we usually do when testing schemas locally
 		if !referencedLocalPulumiProject {
-			packageReferences["Pulumi"] = "[3.23.0,4)"
+			packageReferences["Pulumi"] = "[3.54.1.0,4)"
 		}
 	}
 
@@ -2277,13 +2279,13 @@ type LanguageResource struct {
 func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
 	// Decode .NET-specific info for each package as we discover them.
 	infos := map[*schema.Package]*CSharpPackageInfo{}
-	var getPackageInfo = func(p schema.PackageReference) *CSharpPackageInfo {
+	getPackageInfo := func(p schema.PackageReference) *CSharpPackageInfo {
 		def, err := p.Definition()
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "error loading definition for package %v", p.Name())
 		info, ok := infos[def]
 		if !ok {
 			err := def.ImportLanguages(map[string]schema.Language{"csharp": Importer})
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "error importing csharp language info for package %q", p.Name())
 			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
 			info = &csharpInfo
 			infos[def] = info
@@ -2519,7 +2521,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	files := codegen.Fs{}
 	for p, f := range extraFiles {
 		files.Add(p, f)
-
 	}
 	for _, mod := range modules {
 		if err := mod.gen(files); err != nil {
@@ -2533,7 +2534,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		info.PackageReferences,
 		info.ProjectReferences,
 		files); err != nil {
-
 		return nil, err
 	}
 	return files, nil

@@ -43,9 +43,11 @@ import (
 )
 
 // The minimum version of @pulumi/pulumi compatible with the generated SDK.
-const MinimumValidSDKVersion string = "^3.42.0"
-const MinimumTypescriptVersion string = "^4.3.5"
-const MinimumNodeTypesVersion string = "^14"
+const (
+	MinimumValidSDKVersion   string = "^3.42.0"
+	MinimumTypescriptVersion string = "^4.3.5"
+	MinimumNodeTypesVersion  string = "^14"
+)
 
 type typeDetails struct {
 	outputType bool
@@ -204,7 +206,6 @@ func (mod *modContext) namingContext(pkg schema.PackageReference) (namingCtx *mo
 }
 
 func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDetails, tok string, input, args, enum bool) string {
-
 	root := "outputs."
 	if input {
 		root = "inputs."
@@ -415,7 +416,8 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 //
 // We use this to represent both argument and plain object types.
 func (mod *modContext) genPlainType(w io.Writer, name, comment string,
-	properties []*schema.Property, input, readonly bool, level int) error {
+	properties []*schema.Property, input, readonly bool, level int,
+) error {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -443,11 +445,11 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 
 // Generate a provide defaults function for an associated plain object.
 func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
-	properties []*schema.Property, input, readonly bool, level int) error {
+	properties []*schema.Property, input, readonly bool, level int,
+) error {
 	indent := strings.Repeat("    ", level)
 	defaults := []string{}
 	for _, p := range properties {
-
 		if p.DefaultValue != nil {
 			dv, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
@@ -1257,7 +1259,8 @@ func functionArgsOptional(fun *schema.Function) bool {
 func (mod *modContext) genFunctionOutputVersion(
 	w io.Writer,
 	fun *schema.Function,
-	info functionFileInfo) (functionFileInfo, error) {
+	info functionFileInfo,
+) (functionFileInfo, error) {
 	if !fun.NeedsOutputVersion() {
 		return info, nil
 	}
@@ -1522,16 +1525,14 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 		for _, method := range member.Methods {
 			if method.Function.Inputs != nil {
 				for _, p := range method.Function.Inputs.Properties {
-					needsTypes =
-						mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+					needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
 
 			if method.Function.ReturnType != nil {
 				if objectType, ok := method.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 					for _, p := range objectType.Properties {
-						needsTypes =
-							mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+						needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 					}
 				}
 			}

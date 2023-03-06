@@ -92,7 +92,8 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
 func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
-	opts MarshalOptions) (*structpb.Value, error) {
+	opts MarshalOptions,
+) (*structpb.Value, error) {
 	if v.IsNull() {
 		return MarshalNull(opts), nil
 	} else if v.IsBool() {
@@ -287,7 +288,8 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
 func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
-	opts MarshalOptions) (*resource.PropertyValue, error) {
+	opts MarshalOptions,
+) (*resource.PropertyValue, error) {
 	contract.Assertf(v != nil, "a value is required")
 
 	switch v.Kind.(type) {

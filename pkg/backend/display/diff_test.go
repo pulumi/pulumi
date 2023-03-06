@@ -93,10 +93,10 @@ func testDiffEvents(t *testing.T, path string, accept bool, truncateOutput bool)
 		assert.Equal(t, string(expectedStdout), stdout.String())
 		assert.Equal(t, string(expectedStderr), stderr.String())
 	} else {
-		err = os.WriteFile(path+".stdout.txt", stdout.Bytes(), 0600)
+		err = os.WriteFile(path+".stdout.txt", stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(path+".stderr.txt", stderr.Bytes(), 0600)
+		err = os.WriteFile(path+".stderr.txt", stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
 }

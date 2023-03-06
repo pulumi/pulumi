@@ -346,8 +346,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 }
 
 func (ex *deploymentExecutor) performDeletes(
-	ctx context.Context, updateTargetsOpt, destroyTargetsOpt UrnTargets) result.Result {
-
+	ctx context.Context, updateTargetsOpt, destroyTargetsOpt UrnTargets,
+) result.Result {
 	defer func() {
 		// We're done here - signal completion so that the step executor knows to terminate.
 		ex.stepExec.SignalCompletion()
@@ -437,8 +437,8 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) result.Result
 func (ex *deploymentExecutor) importResources(
 	callerCtx context.Context,
 	opts Options,
-	preview bool) (*Plan, result.Result) {
-
+	preview bool,
+) (*Plan, result.Result) {
 	if len(ex.deployment.imports) == 0 {
 		return nil, nil
 	}

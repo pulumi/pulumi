@@ -28,7 +28,7 @@ const allKeyword = "all"
 
 func newPolicyRmCmd() *cobra.Command {
 	var yes bool
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Removes a Policy Pack from a Pulumi organization",
@@ -60,7 +60,8 @@ func newPolicyRmCmd() *cobra.Command {
 
 			// Attempt to remove the Policy Pack.
 			err = policyPack.Remove(ctx, backend.PolicyPackOperation{
-				VersionTag: version, Scopes: cancellationScopes})
+				VersionTag: version, Scopes: cancellationScopes,
+			})
 			if err != nil {
 				return result.FromError(err)
 			}

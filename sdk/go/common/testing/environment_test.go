@@ -31,7 +31,6 @@ func TestEnvOverrideGetCommandResults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, stderr)
 		assert.Equal(t, expect, stdout)
-
 	}
 	// We default PULUMI_DEBUG_COMMANDS to true
 	checkDebug("true")

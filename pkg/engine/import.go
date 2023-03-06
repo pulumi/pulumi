@@ -22,8 +22,8 @@ import (
 )
 
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
-	dryRun bool) (*deploy.Plan, display.ResourceChanges, result.Result) {
-
+	dryRun bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 

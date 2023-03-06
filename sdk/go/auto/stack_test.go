@@ -59,7 +59,6 @@ func TestGetPermalink(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestUpdatePlans(t *testing.T) {
@@ -135,5 +134,4 @@ func TestUpdatePlans(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
-
 }

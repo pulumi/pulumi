@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Fixes Component Resources not correctly propagating the provider option to its children.

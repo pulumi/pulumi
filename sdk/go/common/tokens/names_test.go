@@ -23,7 +23,7 @@ import (
 func TestIsAsName(t *testing.T) {
 	t.Parallel()
 
-	var goodNames = []string{
+	goodNames := []string{
 		"simple",       // all alpha.
 		"SiMplE",       // mixed-case alpha.
 		"simple0",      // alphanumeric.
@@ -41,7 +41,7 @@ func TestIsAsName(t *testing.T) {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
 	}
 
-	var goodQNames = []string{
+	goodQNames := []string{
 		"namespace/complex",                   // multi-part name.
 		"_naMeSpace0/coMpl3x32",               // multi-part, alphanumeric, etc. name.
 		"n_ameSpace3/moRenam3sp4ce/_Complex5", // even more complex parts.
@@ -51,7 +51,7 @@ func TestIsAsName(t *testing.T) {
 		assert.False(t, IsName(nm), "IsName expected to be false: %v", nm)
 	}
 
-	var badNames = []string{
+	badNames := []string{
 		"s!mple",                          // bad characters.
 		"namesp@ce/complex",               // ditto.
 		"namespace/morenamespace/compl#x", // ditto.
@@ -86,8 +86,10 @@ func TestIntoQName(t *testing.T) {
 	}{
 		{"foo/bar", "foo/bar"},
 		{input: "https:", expected: "https_"},
-		{"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
-			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61-L86"},
+		{
+			"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
+			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61-L86",
+		},
 		{"", "_"},
 		{"///", "_"},
 	}

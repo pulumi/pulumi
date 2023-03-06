@@ -129,6 +129,46 @@ def test_depends_on_typing_variations(dep_tracker) -> None:
     ])
 
 
+@pulumi.runtime.test
+def test_component_resource_propagates_provider() -> None:
+    mocks.set_mocks(MinimalMocks())
+
+    provider = pulumi.ProviderResource('test', 'prov', {})
+    component = pulumi.ComponentResource(
+        "custom:foo:Component",
+        "comp",
+        opts=pulumi.ResourceOptions(provider=provider),
+    )
+    custom = pulumi.CustomResource(
+        "test:index:Resource",
+        "res",
+        opts=pulumi.ResourceOptions(parent=component),
+    )
+
+    assert provider == custom._provider, \
+        "Failed to propagate provider to child resource"
+
+
+@pulumi.runtime.test
+def test_component_resource_propagates_providers_list() -> None:
+    mocks.set_mocks(MinimalMocks())
+
+    provider = pulumi.ProviderResource('test', 'prov', {})
+    component = pulumi.ComponentResource(
+        "custom:foo:Component",
+        "comp",
+        opts=pulumi.ResourceOptions(providers=[provider]),
+    )
+    custom = pulumi.CustomResource(
+        "test:index:Resource",
+        "res",
+        opts=pulumi.ResourceOptions(parent=component),
+    )
+
+    assert provider == custom._provider, \
+        "Failed to propagate provider to child resource"
+
+
 def output_depending_on_resource(r: pulumi.Resource, isKnown: bool) -> pulumi.Output[None]:
     """Returns an output that depends on the given resource."""
     o = pulumi.Output.from_input(None)

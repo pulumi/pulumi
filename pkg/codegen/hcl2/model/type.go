@@ -80,8 +80,8 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	conversionFromImpl func() (ConversionKind, lazyDiagnostics)) (ConversionKind, lazyDiagnostics) {
-
+	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
+) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
@@ -103,7 +103,7 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
-	contract.Assert(t0 != nil)
+	contract.Requiref(t0 != nil, "t0", "must not be nil")
 
 	// Normalize s.t. dynamic is always on the right.
 	if t0 == DynamicType {
@@ -133,8 +133,10 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		}
 
 		unified, conversionKind := unify()
-		contract.Assert(conversionKind >= conversionFrom)
-		contract.Assert(conversionKind >= conversionTo)
+		contract.Assertf(conversionKind >= conversionFrom,
+			"conversionKind (%v) < conversionFrom (%v)", conversionKind, conversionFrom)
+		contract.Assertf(conversionKind >= conversionTo,
+			"conversionKind (%v) < conversionTo (%v)", conversionKind, conversionTo)
 		return unified, conversionKind
 	}
 }

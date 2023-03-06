@@ -66,5 +66,4 @@ func (g *generator) rewriteReadDir(
 	x, diags := model.VisitExpression(x, spiller.spillExpression, nil)
 
 	return x, spiller.temps, diags
-
 }

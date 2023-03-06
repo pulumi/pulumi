@@ -423,8 +423,8 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
 func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Plan, source Source,
-	localPolicyPackPaths []string, preview bool, backendClient BackendClient) (*Deployment, error) {
-
+	localPolicyPackPaths []string, preview bool, backendClient BackendClient,
+) (*Deployment, error) {
 	contract.Requiref(ctx != nil, "ctx", "must not be nil")
 	contract.Requiref(target != nil, "target", "must not be nil")
 	contract.Requiref(source != nil, "source", "must not be nil")

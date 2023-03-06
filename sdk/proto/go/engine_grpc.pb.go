@@ -8,6 +8,7 @@ package pulumirpc
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -82,15 +83,16 @@ type EngineServer interface {
 }
 
 // UnimplementedEngineServer must be embedded to have forward compatible implementations.
-type UnimplementedEngineServer struct {
-}
+type UnimplementedEngineServer struct{}
 
 func (UnimplementedEngineServer) Log(context.Context, *LogRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Log not implemented")
 }
+
 func (UnimplementedEngineServer) GetRootResource(context.Context, *GetRootResourceRequest) (*GetRootResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRootResource not implemented")
 }
+
 func (UnimplementedEngineServer) SetRootResource(context.Context, *SetRootResourceRequest) (*SetRootResourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetRootResource not implemented")
 }

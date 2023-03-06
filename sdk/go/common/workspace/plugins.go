@@ -33,6 +33,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,9 +59,7 @@ const (
 	windowsGOOS = "windows"
 )
 
-var (
-	enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
-)
+var enableLegacyPluginBehavior = os.Getenv("PULUMI_ENABLE_LEGACY_PLUGIN_SEARCH") != ""
 
 // pluginDownloadURLOverrides is a variable instead of a constant so it can be set using the `-X` `ldflag` at build
 // time, if necessary. When non-empty, it's parsed into `pluginDownloadURLOverridesParsed` in `init()`. The expected
@@ -102,8 +101,8 @@ func init() {
 
 // parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
 func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideArray, error) {
-	var splits = strings.Split(overrides, ",")
-	var result = make(pluginDownloadOverrideArray, 0, len(splits))
+	splits := strings.Split(overrides, ",")
+	result := make(pluginDownloadOverrideArray, 0, len(splits))
 	if overrides == "" {
 		return result, nil
 	}
@@ -173,13 +172,15 @@ func newGetPulumiSource(name string, kind PluginKind) *getPulumiSource {
 }
 
 func (source *getPulumiSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	return nil, errors.New("GetLatestVersion is not supported for plugins from get.pulumi.com")
 }
 
 func (source *getPulumiSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	serverURL := "https://get.pulumi.com/releases/plugins"
 
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
@@ -212,7 +213,7 @@ type gitlabSource struct {
 // Creates a new GitLab source from a gitlab://<host>/<project_id> url.
 // Uses the GITLAB_TOKEN environment variable for authentication if it's set.
 func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource, error) {
-	contract.Assert(url.Scheme == "gitlab")
+	contract.Requiref(url.Scheme == "gitlab", "url", `scheme must be "gitlab", was %q`, url.Scheme)
 
 	host := url.Host
 	if host == "" {
@@ -246,7 +247,8 @@ func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, e
 }
 
 func (source *gitlabSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/api/v4/projects/%s/releases/permalink/latest",
 		source.host, source.project)
@@ -277,8 +279,8 @@ func (source *gitlabSource) GetLatestVersion(
 
 func (source *gitlabSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
 
 	assetURL := fmt.Sprintf(
@@ -361,8 +363,45 @@ func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, e
 	return req, nil
 }
 
+func (source *githubSource) getHTTPResponse(
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+	req *http.Request,
+) (io.ReadCloser, int64, error) {
+	resp, length, err := getHTTPResponse(req)
+	if err == nil {
+		return resp, length, nil
+	}
+
+	// Wrap 403 rate limit errors with a more helpful message.
+	var downErr *downloadError
+	if !errors.As(err, &downErr) || downErr.code != 403 {
+		return nil, -1, err
+	}
+
+	// This is a rate limiting error only if x-ratelimit-remaining is 0.
+	// https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#exceeding-the-rate-limit
+	if downErr.header.Get("x-ratelimit-remaining") != "0" {
+		return nil, -1, err
+	}
+
+	tryAgain := "."
+	if reset, err := strconv.ParseInt(downErr.header.Get("x-ratelimit-reset"), 10, 64); err == nil {
+		delay := time.Until(time.Unix(reset, 0).UTC())
+		tryAgain = fmt.Sprintf(", try again in %s.", delay)
+	}
+
+	addAuth := ""
+	if source.token == "" {
+		addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
+	}
+
+	logging.Errorf("GitHub rate limit exceeded%s%s", tryAgain, addAuth)
+	return nil, -1, fmt.Errorf("rate limit exceeded: %w", err)
+}
+
 func (source *githubSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
@@ -371,7 +410,7 @@ func (source *githubSource) GetLatestVersion(
 	if err != nil {
 		return nil, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
 	if err != nil {
 		return nil, err
 	}
@@ -393,8 +432,8 @@ func (source *githubSource) GetLatestVersion(
 
 func (source *githubSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	assetName := fmt.Sprintf("pulumi-%s-%s-v%s-%s-%s.tar.gz", source.kind, source.name, version, opSy, arch)
 
 	releaseURL := fmt.Sprintf(
@@ -406,7 +445,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	resp, length, err := getHTTPResponse(req)
+	resp, length, err := source.getHTTPResponse(getHTTPResponse, req)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -440,7 +479,7 @@ func (source *githubSource) Download(
 	if err != nil {
 		return nil, -1, err
 	}
-	return getHTTPResponse(req)
+	return source.getHTTPResponse(getHTTPResponse, req)
 }
 
 // httpSource can download a plugin from a given http url, it doesn't support GetLatestVersion
@@ -463,14 +502,15 @@ func newHTTPSource(name string, kind PluginKind, url *url.URL) *httpSource {
 }
 
 func (source *httpSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	return nil, errors.New("GetLatestVersion is not supported for plugins from http sources")
 }
 
 func (source *httpSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
 	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
@@ -506,8 +546,8 @@ func urlMustParse(rawURL string) *url.URL {
 }
 
 func (source *fallbackSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
-
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	// Try and get this package from our public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
@@ -523,7 +563,8 @@ func (source *fallbackSource) GetLatestVersion(
 
 func (source *fallbackSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	// Try and get this package from public pulumi github
 	public, err := newGithubSource(urlMustParse("github://api.github.com/pulumi"), source.name, source.kind)
 	if err != nil {
@@ -562,7 +603,8 @@ func newChecksumSource(source PluginSource, checksum map[string][]byte) *checksu
 }
 
 func (source *checksumSource) GetLatestVersion(
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (*semver.Version, error) {
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (*semver.Version, error) {
 	return source.source.GetLatestVersion(getHTTPResponse)
 }
 
@@ -598,8 +640,8 @@ func (reader *checksumReader) Close() error {
 
 func (source *checksumSource) Download(
 	version semver.Version, opSy string, arch string,
-	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error)) (io.ReadCloser, int64, error) {
-
+	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
+) (io.ReadCloser, int64, error) {
 	checksum := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
 	response, length, err := source.source.Download(version, opSy, arch, getHTTPResponse)
 	if err != nil {
@@ -818,7 +860,6 @@ func (spec PluginSpec) GetSource() (PluginSource, error) {
 		// Use our default fallback behaviour of github then get.pulumi.com
 		return newFallbackSource(spec.Name, spec.Kind), nil
 	}()
-
 	if err != nil {
 		return nil, err
 	}
@@ -901,7 +942,8 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, -1, newDownloadError(resp.StatusCode, req.URL)
+		contract.IgnoreClose(resp.Body)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL, resp.Header)
 	}
 
 	return resp.Body, resp.ContentLength, nil
@@ -909,16 +951,13 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 
 // downloadError is an error that happened during the HTTP download of a plugin.
 type downloadError struct {
-	msg  string
-	code int
+	msg    string
+	code   int
+	header http.Header
 }
 
 func (e *downloadError) Error() string {
 	return e.msg
-}
-
-func (e *downloadError) Code() int {
-	return e.code
 }
 
 // Create a new downloadError with a message that indicates GITHUB_TOKEN should be set.
@@ -934,13 +973,14 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 }
 
 // Create a new downloadError.
-func newDownloadError(statusCode int, url *url.URL) error {
+func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)
 	}
 	return &downloadError{
-		code: statusCode,
-		msg:  fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		code:   statusCode,
+		msg:    fmt.Sprintf("%d HTTP error fetching plugin from %s", statusCode, url),
+		header: header,
 	}
 }
 
@@ -952,7 +992,7 @@ func (spec PluginSpec) installLock() (unlock func(), err error) {
 	}
 	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
 
-	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0o700); err != nil {
 		return nil, fmt.Errorf("creating plugin root: %w", err)
 	}
 
@@ -975,8 +1015,8 @@ func (spec PluginSpec) Install(tgz io.ReadCloser, reinstall bool) error {
 func DownloadToFile(
 	pkgPlugin PluginSpec,
 	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	retry func(err error, attempt int, limit int, delay time.Duration)) (*os.File, error) {
-
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (*os.File, error) {
 	// This is an internal helper that's pretty much just a copy of io.Copy except it returns read and
 	// write errors separately. We only want to retry if the read (i.e. download) fails, if the write
 	// fails thats probably due to file permissions or space limitations and there's no point retrying.
@@ -1073,12 +1113,14 @@ func DownloadToFile(
 			}
 
 			// If the readErr is a checksum error don't retry
-			if _, ok := readErr.(*checksumError); ok {
+			var checksumErr *checksumError
+			if errors.As(readErr, &checksumErr) {
 				return "", readErr
 			}
 
 			// Don't retry, since the request was processed and rejected.
-			if err, ok := readErr.(*downloadError); ok && (err.Code() == 404 || err.Code() == 403) {
+			var downloadErr *downloadError
+			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
 				return "", readErr
 			}
 
@@ -1104,7 +1146,6 @@ func DownloadToFile(
 		return nil, fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 	}
 	return reader, nil
-
 }
 
 type PluginContent interface {
@@ -1131,7 +1172,7 @@ func (p singleFilePlugin) writeToDir(finalDir string) error {
 
 	finalPath := filepath.Join(finalDir, fmt.Sprintf("pulumi-%s-%s", p.Kind, p.Name))
 	// We are writing an executable.
-	return os.WriteFile(finalPath, bytes, 0700) //nolint:gosec
+	return os.WriteFile(finalPath, bytes, 0o700) //nolint:gosec
 }
 
 func (p singleFilePlugin) Close() error {
@@ -1178,7 +1219,7 @@ func (p dirPlugin) writeToDir(dstRoot string) error {
 			return nil
 		}
 		if d.IsDir() {
-			return os.Mkdir(dstPath, 0700)
+			return os.Mkdir(dstPath, 0o700)
 		}
 
 		src, err := os.Open(srcPath)
@@ -1267,12 +1308,12 @@ func (spec PluginSpec) InstallWithContext(ctx context.Context, content PluginCon
 	}
 
 	// Create an empty partial file to indicate installation is in-progress.
-	if err := os.WriteFile(partialFilePath, nil, 0600); err != nil {
+	if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
 		return err
 	}
 
 	// Create the final directory.
-	if err := os.MkdirAll(finalDir, 0700); err != nil {
+	if err := os.MkdirAll(finalDir, 0o700); err != nil {
 		return err
 	}
 
@@ -1511,7 +1552,8 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []ProjectPlugin) (string, error) {
+	projectPlugins []ProjectPlugin,
+) (string, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, true /* skipMetadata */, projectPlugins)
 	if err != nil {
 		return "", err
@@ -1523,7 +1565,8 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version,
 }
 
 func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
-	projectPlugins []ProjectPlugin) (*PluginInfo, error) {
+	projectPlugins []ProjectPlugin,
+) (*PluginInfo, error) {
 	info, path, err := getPluginInfoAndPath(kind, name, version, false, projectPlugins)
 	if err != nil {
 		return nil, err
@@ -1613,7 +1656,8 @@ func getPluginPath(info *PluginInfo) string {
 //   - an error in all other cases.
 func getPluginInfoAndPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
-	projectPlugins []ProjectPlugin) (*PluginInfo, string, error) {
+	projectPlugins []ProjectPlugin,
+) (*PluginInfo, string, error) {
 	var filename string
 
 	for i, p1 := range projectPlugins {
@@ -1704,7 +1748,7 @@ func getPluginInfoAndPath(
 					// Let's see if the file is executable. On Windows, os.Stat() returns a mode of "-rw-rw-rw" so on
 					// on windows we just trust the fact that the .exe can actually be launched.
 					if stat, err := os.Stat(candidate); err == nil &&
-						(stat.Mode()&0100 != 0 || runtime.GOOS == windowsGOOS) {
+						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
 						logging.V(6).Infof("GetPluginPath(%s, %s, %v): found next to current executable %s",
 							kind, name, version, candidate)
 
@@ -1842,7 +1886,8 @@ func (sp SortedPluginSpec) Swap(i, j int) { sp[i], sp[j] = sp[j], sp[i] }
 // If there exist plugins in the plugin list that don't have a version, SelectCompatiblePlugin will select them if there
 // are no other compatible plugins available.
 func SelectCompatiblePlugin(
-	plugins []PluginInfo, kind PluginKind, name string, requested semver.Range) (PluginInfo, error) {
+	plugins []PluginInfo, kind PluginKind, name string, requested semver.Range,
+) (PluginInfo, error) {
 	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
@@ -1891,7 +1936,8 @@ func SelectCompatiblePlugin(
 
 // ReadCloserProgressBar displays a progress bar for the given closer and returns a wrapper closer to manipulate it.
 func ReadCloserProgressBar(
-	closer io.ReadCloser, size int64, message string, colorization colors.Colorization) io.ReadCloser {
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
+) io.ReadCloser {
 	if size == -1 {
 		return closer
 	}
