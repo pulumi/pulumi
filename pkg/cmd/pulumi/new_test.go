@@ -71,7 +71,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -96,7 +96,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -124,7 +124,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -149,7 +149,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())
@@ -174,7 +174,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, uniqueProjectName, proj.Name.String())

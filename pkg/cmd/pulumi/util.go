@@ -983,7 +983,9 @@ func buildStackName(stackName string) (string, error) {
 		return stackName, nil
 	}
 
-	defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
+	// nil for the project and only check the global settings.
+	defaultOrg, err := workspace.GetBackendConfigDefaultOrg(nil)
 	if err != nil {
 		return "", err
 	}

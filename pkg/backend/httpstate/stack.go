@@ -50,13 +50,13 @@ type cloudBackendReference struct {
 
 func (c cloudBackendReference) String() string {
 	// When stringifying backend references, we take the current project (if present) into account.
-	currentProject, _ := workspace.DetectProject()
+	currentProject := c.b.currentProject
 
 	// If the project names match, we can elide them.
 	if currentProject != nil && c.project == string(currentProject.Name) {
 
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {

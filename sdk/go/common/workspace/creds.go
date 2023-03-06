@@ -17,7 +17,6 @@ package workspace
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -347,19 +346,10 @@ func SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
 	return StorePulumiConfig(config)
 }
 
-func GetBackendConfigDefaultOrg() (string, error) {
+func GetBackendConfigDefaultOrg(project *Project) (string, error) {
 	config, err := GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
-	}
-
-	var project *Project
-	projPath, err := DetectProjectPath()
-	if err == nil && !errors.Is(err, ErrProjectNotFound) {
-		project, err = LoadProject(projPath)
-		if err != nil {
-			return "", fmt.Errorf("could not load current project: %w", err)
-		}
 	}
 
 	backendURL, err := GetCurrentCloudURL(project)
