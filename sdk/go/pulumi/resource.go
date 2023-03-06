@@ -556,11 +556,59 @@ func Protect(o bool) ResourceOption {
 	})
 }
 
+////////////////////////////////////////////////////////////////////////
+// NOTE(Provider and Providers)
+//
+// For Provider vs Providers, there's a bit of complexity.
+//
+// # Background
+//
+// First, here's the desired behavior across languages,
+// as standardized in #8796:
+//
+// - Providers is a bag of providers available to a resource.
+//   These are used by the resource and its children.
+// - Provider passed to a resource indicates that that specific resource
+//   MUST use this provider over all else,
+//   and it should add it to the bag of providers for use by its children.
+//
+// One discrepancy from the above is that originally, for the Provider option,
+// mismatch between the provider package and resource type was an error.
+// However, this appears to have been relaxed over time.
+// In such a case, the provider is added to the bag of providers
+// and used by the children of the resource.
+// This is necessary, for example, for resources to inherit a provider
+// passed to a component resource via the Provider option.
+//
+// # Go-specific difference
+//
+// In other languages, the Provider and Providers options can be provided at
+// most once per resource.
+// In Go, because we use functional options, we allow multiple calls to
+// the Provider and Providers options.
+// This has allowed for the following to be equivalen in Go:
+//
+//	NewFoo(..., Provider(p1), Provider(p2), Provider(p3))
+//	NewFoo(..., Providers(p1, p2, p3))
+//
+// To support this while still having the Provider option take precedence,
+// we need to do the following:
+//
+// 1. All providers (whether passed with Provider or Providers)
+//    are merged into a single map.
+//    Last provider for a given package wins.
+// 2. For the Provider option, we additionally track the last
+//    passed value in a separate field.
+//    If this provider handles the current resource,
+//    it takes precedence over the map.
+////////////////////////////////////////////////////////////////////////
+
 // Provider sets the provider resource to use for a resource's CRUD operations or an invoke's call.
 func Provider(r ProviderResource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
+			ro.Provider = r
 			Providers(r).applyResourceOption(ro)
 		case io != nil:
 			io.Provider = r

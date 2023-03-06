@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -67,93 +68,111 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 
 	// all providers are merged into a map
 	// last specified provider for a given pkg wins
-	p1 := &testProv{foo: "a"}
-	p1.pkg = "aws"
-	p2 := &testProv{foo: "b"}
-	p2.pkg = "aws"
-	p3 := &testProv{foo: "c"}
-	p3.pkg = "azure"
+	aws1 := &testProv{foo: "a"}
+	aws1.pkg = "aws"
+	aws2 := &testProv{foo: "b"}
+	aws2.pkg = "aws"
+	azure := &testProv{foo: "c"}
+	azure.pkg = "azure"
 
 	t.Run("two singleton options for same pkg", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Provider(p1), Provider(p2))
+		opts := merge(Provider(aws1), Provider(aws2))
 		assert.Equal(t, 1, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, aws2, opts.Provider,
+			"Provider should be set to the last specified provider")
 	})
 
 	t.Run("two singleton options for different pkg", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Provider(p1), Provider(p3))
+		opts := merge(Provider(aws1), Provider(azure))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p1, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, azure, opts.Provider,
+			"Provider should be set to the last specified provider")
 	})
 
 	t.Run("singleton and array", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Provider(p1), Providers(p2, p3))
+		opts := merge(Provider(aws1), Providers(aws2, azure))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
 	})
 
 	t.Run("singleton and single value array", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Provider(p1), Providers(p2))
+		opts := merge(Provider(aws1), Providers(aws2))
 		assert.Equal(t, 1, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
 	})
 
 	t.Run("two arrays", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Providers(p1), Providers(p3))
+		opts := merge(Providers(aws1), Providers(azure))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p1, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
 	})
 
 	t.Run("overlapping arrays", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Providers(p1, p2), Providers(p1, p3))
+		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p1, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
 	})
 
-	m1 := map[string]ProviderResource{"aws": p1}
-	m2 := map[string]ProviderResource{"aws": p2}
-	m3 := map[string]ProviderResource{"aws": p2, "azure": p3}
+	m1 := map[string]ProviderResource{"aws": aws1}
+	m2 := map[string]ProviderResource{"aws": aws2}
+	m3 := map[string]ProviderResource{"aws": aws2, "azure": azure}
 
 	t.Run("single value maps", func(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(ProviderMap(m1), ProviderMap(m2))
 		assert.Equal(t, 1, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
 	})
 
 	t.Run("singleton with map", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Provider(p1), ProviderMap(m3))
+		opts := merge(Provider(aws1), ProviderMap(m3))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
 	})
 
 	t.Run("array and map", func(t *testing.T) {
 		t.Parallel()
 
-		opts := merge(Providers(p2, p1), ProviderMap(m3))
+		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
 		assert.Equal(t, 2, len(opts.Providers))
-		assert.Equal(t, p2, opts.Providers["aws"])
-		assert.Equal(t, p3, opts.Providers["azure"])
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
 	})
 }
 
@@ -763,6 +782,94 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
+}
+
+// Verifies that Provider takes precedence over Providers.
+func TestResourceProviderVersusProviders(t *testing.T) {
+	t.Parallel()
+
+	mocks := testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return args.Name + "_id", args.Inputs, nil
+		},
+	}
+
+	p1 := &testProv{
+		ProviderResourceState: ProviderResourceState{pkg: "test"},
+		foo:                   "1",
+	}
+
+	p2 := &testProv{
+		ProviderResourceState: ProviderResourceState{pkg: "test"},
+		foo:                   "2",
+	}
+
+	t.Run("singular, plural", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			res := newTestRes(t, ctx, "myres", Provider(p1), Providers(p2))
+			assert.Equal(t, p1, res.getProvider())
+
+			return nil
+		}, WithMocks("project", "stack", &mocks))
+		require.NoError(t, err)
+	})
+
+	t.Run("plural, singular", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			res := newTestRes(t, ctx, "myres", Providers(p2), Provider(p1))
+			assert.Equal(t, p1, res.getProvider())
+
+			return nil
+		}, WithMocks("project", "stack", &mocks))
+		require.NoError(t, err)
+	})
+}
+
+// Verifies that multiple Provider options passed to a ComponentResource
+// are inherited by its children.
+//
+// See also NOTE(Provider and Providers).
+func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
+	t.Parallel()
+
+	newTestProvider := func(ctx *Context, pkg, name string) ProviderResource {
+		prov := testProv{foo: fmt.Sprintf("%s/%s", pkg, name)}
+		prov.pkg = pkg
+
+		require.NoError(t,
+			ctx.RegisterResource("pulumi:providers:"+pkg, name, nil /* props */, &prov),
+			"error registering provider")
+		return &prov
+	}
+
+	newCustomResource := func(ctx *Context, typ, name string, opts ...ResourceOption) *testRes {
+		res := testRes{foo: name}
+		require.NoError(t,
+			ctx.RegisterResource(typ, name, nil /* props */, &res, opts...))
+		return &res
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		prov1 := newTestProvider(ctx, "pkg1", "prov1")
+		prov2 := newTestProvider(ctx, "pkg2", "prov2")
+
+		var component struct{ ResourceState }
+		require.NoError(t, ctx.RegisterComponentResource(
+			"my:foo:Component", "comp", &component, Provider(prov1), Provider(prov2)))
+
+		res1 := newCustomResource(ctx, "pkg1:index:MyResource", "res1", Parent(&component))
+		res2 := newCustomResource(ctx, "pkg2:index:MyResource", "res2", Parent(&component))
+
+		assert.Equal(t, prov1, res1.provider, "provider 1 not propagated")
+		assert.Equal(t, prov2, res2.provider, "provider 2 not propagated")
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	assert.NoError(t, err)
 }
 
 func assertHasDeps(
