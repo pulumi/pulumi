@@ -162,7 +162,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(nil, server.URL, false)
+		backendGeneric, err := New(nil, server.URL, nil, false)
 		assert.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{

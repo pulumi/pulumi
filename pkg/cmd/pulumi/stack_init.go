@@ -131,7 +131,7 @@ func newStackInitCmd() *cobra.Command {
 			}
 
 			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(ctx, b, stackRef, root, proj, createOpts, !noSelect, secretsProvider)
+			newStack, err := createStack(ctx, b, stackRef, root, createOpts, !noSelect, secretsProvider)
 			if err != nil {
 				return err
 			}

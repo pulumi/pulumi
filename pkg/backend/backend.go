@@ -123,6 +123,9 @@ type Backend interface {
 	// URL returns a URL at which information about this backend may be seen.
 	URL() string
 
+	// SetCurrentProject sets the current ambient project for this backend.
+	SetCurrentProject(proj *workspace.Project)
+
 	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
@@ -152,8 +155,7 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context,
-		stackRef StackReference, root string, project *workspace.Project, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, root string, opts interface{}) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the

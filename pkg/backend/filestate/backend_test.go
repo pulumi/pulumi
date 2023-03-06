@@ -144,14 +144,14 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	defer func() {
@@ -169,7 +169,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Create stack "b" and import a checkpoint with a secret
 	bStackRef, err := b.ParseStackReference("b")
 	assert.NoError(t, err)
-	bStack, err := b.CreateStack(ctx, bStackRef, "", nil, nil)
+	bStack, err := b.CreateStack(ctx, bStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
 	defer func() {
@@ -204,7 +204,7 @@ func TestDrillError(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -222,7 +222,7 @@ func TestCancel(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -233,7 +233,7 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that trying to cancel a stack that isn't locked doesn't error
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.CancelCurrentUpdate(ctx, aStackRef)
@@ -260,7 +260,7 @@ func TestCancel(t *testing.T) {
 	assert.False(t, lockExists)
 
 	// Make another filestate backend which will have a different lockId
-	ob, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	ob, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	otherBackend, ok := ob.(*localBackend)
 	assert.True(t, ok)
@@ -283,7 +283,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -295,7 +295,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 	// Check that creating a new stack doesn't make a backup file
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -326,7 +326,7 @@ func TestRenameWorks(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -338,7 +338,7 @@ func TestRenameWorks(t *testing.T) {
 	// Create a new stack
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
@@ -393,7 +393,7 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	t.Parallel()
 
 	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
-	b, err := New(cmdutil.Diag(), fakeDir)
+	b, err := New(cmdutil.Diag(), fakeDir, nil)
 	assert.Error(t, err)
 	assert.Nil(t, b)
 }
@@ -444,14 +444,14 @@ func TestHtmlEscaping(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
 	assert.NoError(t, err)
-	aStack, err := b.CreateStack(ctx, aStackRef, "", nil, nil)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 	err = b.ImportDeployment(ctx, aStack, udep)
