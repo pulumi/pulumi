@@ -313,6 +313,29 @@ message ConstructRequest {
         repeated string urns = 1; // A list of URNs this property depends on.
     }
 
+    // CustomTimeouts specifies timeouts for resource provisioning operations.
+    // Use it with the [Timeouts] option when creating new resources
+    // to override default timeouts.
+    //
+    // Each timeout is specified as a duration string such as,
+    // "5ms" (5 milliseconds), "40s" (40 seconds),
+    // and "1m30s" (1 minute, 30 seconds).
+    //
+    // The following units are accepted.
+    //
+    //   - ns: nanoseconds
+    //   - us: microseconds
+    //   - µs: microseconds
+    //   - ms: milliseconds
+    //   - s: seconds
+    //   - m: minutes
+    //   - h: hours
+    message CustomTimeouts {
+        string create = 1;
+        string update = 2;
+        string delete = 3;
+    }
+
     string project = 1;             // the project name.
     string stack = 2;               // the name of the stack being deployed into.
     map<string, string> config = 3; // the configuration variables to apply before running.
@@ -325,12 +348,22 @@ message ConstructRequest {
     string parent = 9;                                        // an optional parent URN that this child resource belongs to.
     google.protobuf.Struct inputs = 10;                       // the inputs to the resource constructor.
     map<string, PropertyDependencies> inputDependencies = 11; // a map from property keys to the dependencies of the property.
-    bool protect = 12;                                        // true if the resource should be marked protected.
     map<string, string> providers = 13;                       // the map of providers to use for this resource's children.
-    repeated string aliases = 14;                             // a list of additional URNs that shoud be considered the same.
     repeated string dependencies = 15;                        // a list of URNs that this resource depends on, as observed by the language host.
     repeated string configSecretKeys = 16;                    // the configuration keys that have secret values.
     string organization = 17;                                 // the organization of the stack being deployed into.
+
+    // Resource options:
+    // Do not change field IDs. Add new fields at the end.
+    bool protect                            = 12; // true if the resource should be marked protected.
+    repeated string aliases                 = 14; // a list of additional URNs that shoud be considered the same.
+    repeated string additionalSecretOutputs = 18; // additional output properties that should be treated as secrets.
+    CustomTimeouts customTimeouts           = 19; // default timeouts for CRUD operations on this resource.
+    string deletedWith                      = 20; // URN of a resource that, if deleted, also deletes this resource.
+    bool deleteBeforeReplace                = 21; // whether to delete the resource before replacing it.
+    repeated string ignoreChanges           = 22; // properties that should be ignored during a diff
+    repeated string replaceOnChanges        = 23; // properties that, when changed, trigger a replacement
+    bool retainOnDelete                     = 24; // whether to retain the resource in the cloud provider when it is deleted
 }
 
 message ConstructResponse {
