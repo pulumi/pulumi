@@ -1157,35 +1157,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	additionalSecretOutputs := make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
-	for _, name := range req.GetAdditionalSecretOutputs() {
-		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
-	}
-
-	var timeouts resource.CustomTimeouts
-	if customTimeouts != nil {
-		if customTimeouts.Create != "" {
-			seconds, err := generateTimeoutInSeconds(customTimeouts.Create)
-			if err != nil {
-				return nil, err
-			}
-			timeouts.Create = seconds
-		}
-		if customTimeouts.Delete != "" {
-			seconds, err := generateTimeoutInSeconds(customTimeouts.Delete)
-			if err != nil {
-				return nil, err
-			}
-			timeouts.Delete = seconds
-		}
-		if customTimeouts.Update != "" {
-			seconds, err := generateTimeoutInSeconds(customTimeouts.Update)
-			if err != nil {
-				return nil, err
-			}
-			timeouts.Update = seconds
-		}
-	}
+	additionalSecretOutputs := req.GetAdditionalSecretOutputs()
 
 	var deleteBeforeReplace *bool
 	if deleteBeforeReplaceValue || req.GetDeleteBeforeReplaceDefined() {
@@ -1197,7 +1169,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
 			"providers=%v, replaceOnChanges=%v, retainOnDelete=%v, deletedWith=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
+		aliases, customTimeouts, providerRefs, replaceOnChanges, retainOnDelete, deletedWith)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -1217,12 +1189,28 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		options := plugin.ConstructOptions{
 			// We don't actually need to send a list of aliases to construct anymore because the engine does
 			// all alias construction.
-			Aliases:              []resource.Alias{},
-			Dependencies:         dependencies,
-			Protect:              protect,
-			PropertyDependencies: propertyDependencies,
-			Providers:            providerRefs,
+			Aliases:                 []resource.Alias{},
+			Dependencies:            dependencies,
+			Protect:                 protect,
+			PropertyDependencies:    propertyDependencies,
+			Providers:               providerRefs,
+			AdditionalSecretOutputs: additionalSecretOutputs,
+			DeletedWith:             deletedWith,
+			IgnoreChanges:           ignoreChanges,
+			ReplaceOnChanges:        replaceOnChanges,
+			RetainOnDelete:          retainOnDelete,
 		}
+		if customTimeouts != nil {
+			options.CustomTimeouts = &plugin.CustomTimeouts{
+				Create: customTimeouts.Create,
+				Update: customTimeouts.Update,
+				Delete: customTimeouts.Delete,
+			}
+		}
+		if deleteBeforeReplace != nil {
+			options.DeleteBeforeReplace = *deleteBeforeReplace
+		}
+
 		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
 			return nil, err
@@ -1239,11 +1227,41 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 	} else {
+		additionalSecretKeys := make([]resource.PropertyKey, 0, len(additionalSecretOutputs))
+		for _, name := range additionalSecretOutputs {
+			additionalSecretKeys = append(additionalSecretKeys, resource.PropertyKey(name))
+		}
+
+		var timeouts resource.CustomTimeouts
+		if customTimeouts != nil {
+			if customTimeouts.Create != "" {
+				seconds, err := generateTimeoutInSeconds(customTimeouts.Create)
+				if err != nil {
+					return nil, err
+				}
+				timeouts.Create = seconds
+			}
+			if customTimeouts.Delete != "" {
+				seconds, err := generateTimeoutInSeconds(customTimeouts.Delete)
+				if err != nil {
+					return nil, err
+				}
+				timeouts.Delete = seconds
+			}
+			if customTimeouts.Update != "" {
+				seconds, err := generateTimeoutInSeconds(customTimeouts.Update)
+				if err != nil {
+					return nil, err
+				}
+				timeouts.Update = seconds
+			}
+		}
+
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith),
+				additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith),
 			done: make(chan *RegisterResult),
 		}
 

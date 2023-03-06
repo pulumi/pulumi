@@ -17,12 +17,14 @@ package deploy
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -692,6 +694,225 @@ func TestDisableDefaultProviders(t *testing.T) {
 			assert.Equalf(t, expectedReads, reads, "Reads")
 			assert.Equalf(t, expectedInvokes, int(invokes), "Invokes")
 			assert.Equalf(t, expectedRegisters, registers, "Registers")
+		})
+	}
+}
+
+// Validates that a resource monitor appropriately propagates
+// resource options from a RegisterResourceRequest to a Construct call
+// for the remote component resource (MLC).
+func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
+	t.Parallel()
+
+	// Helper to keep a some test cases simple.
+	// Takes a pointer to a container (slice or map)
+	// and sets it to nil if it's empty.
+	nilIfEmpty := func(s any) {
+		// The code below is roughly equivalent to:
+		//      if len(*s) == 0 {
+		//              *s = nil
+		//      }
+		v := reflect.ValueOf(s) // *T for some T = []T or map[T]*
+		v = v.Elem()            // *T -> T
+		if v.Len() == 0 {
+			// Zero value of a slice or map is nil.
+			v.Set(reflect.Zero(v.Type()))
+		}
+	}
+
+	runInfo := &EvalRunInfo{
+		Proj:   &workspace.Project{Name: "test"},
+		Target: &Target{Name: "test"},
+	}
+
+	newURN := func(t tokens.Type, name string, parent resource.URN) resource.URN {
+		var pt tokens.Type
+		if parent != "" {
+			pt = parent.Type()
+		}
+		return resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, pt, t, tokens.QName(name))
+	}
+
+	// Used when we need a *bool.
+	trueValue, falseValue := true, false
+
+	tests := []struct {
+		desc string
+		give deploytest.ResourceOptions
+		want plugin.ConstructOptions
+	}{
+		{
+			desc: "AdditionalSecretOutputs",
+			give: deploytest.ResourceOptions{
+				AdditionalSecretOutputs: []resource.PropertyKey{"foo"},
+			},
+			want: plugin.ConstructOptions{
+				AdditionalSecretOutputs: []string{"foo"},
+			},
+		},
+		{
+			desc: "CustomTimeouts/Create",
+			give: deploytest.ResourceOptions{
+				CustomTimeouts: &resource.CustomTimeouts{Create: 5},
+			},
+			want: plugin.ConstructOptions{
+				CustomTimeouts: &plugin.CustomTimeouts{Create: "5s"},
+			},
+		},
+		{
+			desc: "CustomTimeouts/Update",
+			give: deploytest.ResourceOptions{
+				CustomTimeouts: &resource.CustomTimeouts{Update: 1},
+			},
+			want: plugin.ConstructOptions{
+				CustomTimeouts: &plugin.CustomTimeouts{Update: "1s"},
+			},
+		},
+		{
+			desc: "CustomTimeouts/Delete",
+			give: deploytest.ResourceOptions{
+				CustomTimeouts: &resource.CustomTimeouts{Delete: 3},
+			},
+			want: plugin.ConstructOptions{
+				CustomTimeouts: &plugin.CustomTimeouts{Delete: "3s"},
+			},
+		},
+		{
+			desc: "DeleteBeforeReplace/true",
+			give: deploytest.ResourceOptions{
+				DeleteBeforeReplace: &trueValue,
+			},
+			want: plugin.ConstructOptions{
+				DeleteBeforeReplace: true,
+			},
+		},
+		{
+			desc: "DeleteBeforeReplace/false",
+			give: deploytest.ResourceOptions{
+				DeleteBeforeReplace: &falseValue,
+			},
+			want: plugin.ConstructOptions{
+				DeleteBeforeReplace: false,
+			},
+		},
+		{
+			desc: "DeletedWith",
+			give: deploytest.ResourceOptions{
+				DeletedWith: newURN("pkgA:m:typB", "resB", ""),
+			},
+			want: plugin.ConstructOptions{
+				DeletedWith: newURN("pkgA:m:typB", "resB", ""),
+			},
+		},
+		{
+			desc: "IgnoreChanges",
+			give: deploytest.ResourceOptions{
+				IgnoreChanges: []string{"foo"},
+			},
+			want: plugin.ConstructOptions{
+				IgnoreChanges: []string{"foo"},
+			},
+		},
+		{
+			desc: "Protect",
+			give: deploytest.ResourceOptions{
+				Protect: true,
+			},
+			want: plugin.ConstructOptions{
+				Protect: true,
+			},
+		},
+		{
+			desc: "ReplaceOnChanges",
+			give: deploytest.ResourceOptions{
+				ReplaceOnChanges: []string{"foo"},
+			},
+			want: plugin.ConstructOptions{
+				ReplaceOnChanges: []string{"foo"},
+			},
+		},
+		{
+			desc: "RetainOnDelete",
+			give: deploytest.ResourceOptions{
+				RetainOnDelete: true,
+			},
+			want: plugin.ConstructOptions{
+				RetainOnDelete: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			give := tt.give
+			give.Remote = true
+			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
+				_, _, _, err := resmon.RegisterResource("pkgA:m:typA", "resA", false, give)
+				require.NoError(t, err, "register resource")
+				return nil
+			}
+			pluginCtx, err := newTestPluginContext(t, program)
+			require.NoError(t, err, "build plugin context")
+
+			evalSource := NewEvalSource(pluginCtx, runInfo, nil, false)
+			defer func() {
+				assert.NoError(t, evalSource.Close(), "close eval source")
+			}()
+
+			var got plugin.ConstructOptions
+			provider := &deploytest.Provider{
+				ConstructF: func(
+					mon *deploytest.ResourceMonitor,
+					typ, name string,
+					parent resource.URN,
+					inputs resource.PropertyMap,
+					options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					// To keep test cases above simple,
+					// nil out properties that are empty when unset.
+					nilIfEmpty(&options.Aliases)
+					nilIfEmpty(&options.Dependencies)
+					nilIfEmpty(&options.PropertyDependencies)
+					nilIfEmpty(&options.Providers)
+
+					got = options
+					return plugin.ConstructResult{
+						URN: newURN(tokens.Type(typ), name, parent),
+					}, nil
+				},
+			}
+
+			ctx := context.Background()
+			iter, res := evalSource.Iterate(ctx, Options{}, &testProviderSource{defaultProvider: provider})
+			require.Nil(t, res, "iterate eval source")
+
+			for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
+				require.Nil(t, res, "iterate eval source")
+				switch ev := ev.(type) {
+				case RegisterResourceEvent:
+					goal := ev.Goal()
+					ev.Done(&RegisterResult{
+						State: &resource.State{
+							Type:         goal.Type,
+							URN:          newURN(goal.Type, string(goal.Name), goal.Parent),
+							Custom:       goal.Custom,
+							ID:           goal.ID,
+							Inputs:       goal.Properties,
+							Parent:       goal.Parent,
+							Dependencies: goal.Dependencies,
+							Provider:     goal.Provider,
+						},
+					})
+				default:
+					t.Fatalf("unexpected event: %#v", ev)
+				}
+			}
+
+			require.NotNil(t, got, "Provider.Construct was not called")
+			assert.Equal(t, tt.want, got, "Provider.Construct options")
 		})
 	}
 }
