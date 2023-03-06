@@ -573,7 +573,6 @@ func TestSecrets(t *testing.T) {
 			break
 		}
 	}
-
 }
 
 // Test that secretness is properly bubbled up with all/apply.
@@ -750,7 +749,6 @@ func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
 	<-c
 	wg1.Wait()
 	wg2.Wait()
-
 }
 
 func TestMixedWaitGroupsAll(t *testing.T) {
@@ -779,16 +777,14 @@ func TestMixedWaitGroupsApply(t *testing.T) {
 	})
 }
 
-type Foo interface {
-}
+type Foo interface{}
 
 type FooInput interface {
 	Input
 
 	ToFooOutput() Output
 }
-type FooArgs struct {
-}
+type FooArgs struct{}
 
 func (FooArgs) ElementType() reflect.Type {
 	return nil
@@ -904,7 +900,7 @@ func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKno
 	for _, v := range deps {
 		depUrns = append(depUrns, v.URN().value.(URN))
 	}
-	var expectedUrns = make([]URN, 0, len(expectedDeps))
+	expectedUrns := make([]URN, 0, len(expectedDeps))
 	for _, v := range expectedDeps {
 		expectedUrns = append(expectedUrns, v.URN().value.(URN))
 	}
@@ -937,7 +933,6 @@ func TestApplyTOutputJoinDeps(t *testing.T) {
 	assertResult(t, outA, 3, true, false, rA)
 	assertResult(t, outAB, 5, true, false, rA, rB)
 	assertResult(t, outB, 5, true, false, rB)
-
 }
 
 // Test that nested Apply operations accumulate state correctly.

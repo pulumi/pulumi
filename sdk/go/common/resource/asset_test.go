@@ -285,7 +285,7 @@ func TestAssetSerialize(t *testing.T) {
 func tempArchive(prefix string, fill bool) (string, error) {
 	for {
 		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32())) //nolint:gosec
-		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		switch {
 		case os.IsExist(err):
 			continue
@@ -301,7 +301,7 @@ func tempArchive(prefix string, fill bool) (string, error) {
 
 				err = w.WriteHeader(&tar.Header{
 					Name: "file",
-					Mode: 0600,
+					Mode: 0o600,
 					Size: 0,
 				})
 			}
@@ -446,10 +446,10 @@ func TestNestedArchive(t *testing.T) {
 
 	// Create temp dir and place some files.
 	dirName := t.TempDir()
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0777))
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	innerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))
@@ -488,8 +488,8 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 
 	// Create temp dir and place some files.
 	dirName := t.TempDir()
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
-	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	outerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))

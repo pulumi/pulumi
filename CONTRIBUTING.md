@@ -34,6 +34,7 @@ You'll want to install the following on your machine:
 - [Python 3.6 or later](https://www.python.org/downloads/)
 - [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
+- [gofumpt](https://github.com/mvdan/gofumpt#installation)
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)

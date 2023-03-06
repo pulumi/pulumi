@@ -103,7 +103,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 
 	// Create a requirements.txt file in the temp directory.
 	requirementsFile := filepath.Join(tempdir, "requirements.txt")
-	assert.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0600))
+	assert.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
 
 	// Create a command to run pip from the virtual environment.
 	pipCmd := VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-r", "requirements.txt")

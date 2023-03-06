@@ -61,7 +61,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 
 	// Create a package directory to install dependencies into.
 	pkgdir := filepath.Join(tempdir, "package")
-	assert.NoError(t, os.Mkdir(pkgdir, 0700))
+	assert.NoError(t, os.Mkdir(pkgdir, 0o700))
 
 	// Write out a minimal package.json file that has at least one dependency.
 	packageJSONFilename := filepath.Join(pkgdir, "package.json")
@@ -71,7 +71,7 @@ func testInstall(t *testing.T, expectedBin string, production bool) {
 	        "@pulumi/pulumi": "latest"
 	    }
 	}`)
-	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0600))
+	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0o600))
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).

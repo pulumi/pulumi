@@ -140,7 +140,7 @@ func getCredsFilePath() (string, error) {
 		pulumiFolder = folder
 	}
 
-	err := os.MkdirAll(pulumiFolder, 0700)
+	err := os.MkdirAll(pulumiFolder, 0o700)
 	if err != nil {
 		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}
@@ -240,7 +240,7 @@ func StoreCredentials(creds Credentials) error {
 		return fmt.Errorf("marshalling credentials object: %w", err)
 	}
 
-	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0600); err != nil {
+	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600); err != nil {
 		return err
 	}
 
@@ -266,7 +266,7 @@ func getConfigFilePath() (string, error) {
 		pulumiFolder = folder
 	}
 
-	err := os.MkdirAll(pulumiFolder, 0700)
+	err := os.MkdirAll(pulumiFolder, 0o700)
 	if err != nil {
 		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
 	}

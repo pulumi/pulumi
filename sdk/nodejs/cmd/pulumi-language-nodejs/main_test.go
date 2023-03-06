@@ -147,9 +147,9 @@ func TestGetRequiredPlugins(t *testing.T) {
 		},
 	}
 	for _, file := range files {
-		err := os.MkdirAll(filepath.Dir(file.path), 0755)
+		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
 		require.NoError(t, err)
-		err = os.WriteFile(file.path, []byte(file.content), 0600)
+		err = os.WriteFile(file.path, []byte(file.content), 0o600)
 		require.NoError(t, err)
 	}
 
@@ -196,9 +196,9 @@ func TestGetRequiredPluginsSymlinkCycles(t *testing.T) {
 		},
 	}
 	for _, file := range files {
-		err := os.MkdirAll(filepath.Dir(file.path), 0755)
+		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
 		require.NoError(t, err)
-		err = os.WriteFile(file.path, []byte(file.content), 0600)
+		err = os.WriteFile(file.path, []byte(file.content), 0o600)
 		require.NoError(t, err)
 	}
 
@@ -226,7 +226,7 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 	t.Parallel()
 
 	dir := filepath.Join(t.TempDir(), "testdir")
-	err := os.Mkdir(dir, 0755)
+	err := os.Mkdir(dir, 0o755)
 	require.NoError(t, err)
 
 	files := []struct {
@@ -251,9 +251,9 @@ func TestGetRequiredPluginsSymlinkCycles2(t *testing.T) {
 		},
 	}
 	for _, file := range files {
-		err := os.MkdirAll(filepath.Dir(file.path), 0755)
+		err := os.MkdirAll(filepath.Dir(file.path), 0o755)
 		require.NoError(t, err)
-		err = os.WriteFile(file.path, []byte(file.content), 0600)
+		err = os.WriteFile(file.path, []byte(file.content), 0o600)
 		require.NoError(t, err)
 	}
 

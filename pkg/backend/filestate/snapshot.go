@@ -35,7 +35,6 @@ func (sp *localSnapshotPersister) SecretsManager() secrets.Manager {
 func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	_, err := sp.backend.saveStack(sp.name, snapshot, sp.sm)
 	return err
-
 }
 
 func (b *localBackend) newSnapshotPersister(stackName tokens.Name, sm secrets.Manager) *localSnapshotPersister {

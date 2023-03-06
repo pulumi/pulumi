@@ -62,8 +62,8 @@ func (e *DiagnosticsError) String() string {
 
 // GenerateLanguageDefintions generates a list of resource definitions from the given resource states.
 func GenerateLanguageDefinitions(w io.Writer, loader schema.Loader, gen LanguageGenerator, states []*resource.State,
-	names NameTable) error {
-
+	names NameTable,
+) error {
 	var hcl2Text bytes.Buffer
 	for i, state := range states {
 		hcl2Def, err := GenerateHCL2Definition(loader, state, names)

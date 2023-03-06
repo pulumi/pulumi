@@ -46,6 +46,7 @@ func assertNoResultsOnPage(e *ptesting.Environment) {
 	assert.Equal(e.T, "", err)
 	assert.Equal(e.T, "No stack updates found on page '10000000'\n", out)
 }
+
 func TestHistoryCommand(t *testing.T) {
 	t.Parallel()
 

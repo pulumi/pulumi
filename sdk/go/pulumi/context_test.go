@@ -106,8 +106,8 @@ func NewLoggingTestResource(
 	ctx *Context,
 	name string,
 	input StringInput,
-	opts ...ResourceOption) (*LoggingTestResource, error) {
-
+	opts ...ResourceOption,
+) (*LoggingTestResource, error) {
 	resource := &LoggingTestResource{}
 	err := ctx.RegisterComponentResource("test:go:NewLoggingTestResource", name, resource, opts...)
 	if err != nil {
@@ -249,7 +249,6 @@ func TestCollapseAliases(t *testing.T) {
 		}, WithMocks("project", "stack", mocks))
 		assert.NoError(t, err)
 	}
-
 }
 
 // Context with which to create a ProviderResource.
@@ -286,13 +285,13 @@ func (rs *Res) i(ctx *Context, t *testing.T) Resource {
 	var err error
 	if rs.parent == nil {
 		err = ctx.RegisterResource(rs.t, rs.name, nil, r)
-
 	} else {
 		err = ctx.RegisterResource(rs.t, rs.name, nil, r, Provider(rs.parent.i(ctx, t)))
 	}
 	assert.NoError(t, err)
 	return r
 }
+
 func TestMergeProviders(t *testing.T) {
 	t.Parallel()
 

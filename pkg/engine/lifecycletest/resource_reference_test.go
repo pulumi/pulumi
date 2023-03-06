@@ -26,8 +26,8 @@ func TestResourceReferences(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					timeout float64, preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := "created-id"
 					if preview {
 						id = ""
@@ -43,7 +43,8 @@ func TestResourceReferences(t *testing.T) {
 					return resource.ID(id), news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}
@@ -98,8 +99,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					timeout float64, preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := "created-id"
 					if preview {
 						id = ""
@@ -116,7 +117,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 					return resource.ID(id), state, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}
@@ -168,8 +170,8 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					timeout float64, preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := "created-id"
 					if preview {
 						id = ""
@@ -184,7 +186,8 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 					return resource.ID(id), news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}
@@ -239,8 +242,8 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			v := &deploytest.Provider{
 				CreateF: func(urn resource.URN, news resource.PropertyMap,
-					timeout float64, preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					timeout float64, preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					id := "created-id"
 					if preview {
 						id = ""
@@ -248,7 +251,8 @@ func TestResourceReferences_GetResource(t *testing.T) {
 					return resource.ID(id), news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
 			}

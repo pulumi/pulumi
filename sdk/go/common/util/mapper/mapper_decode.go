@@ -81,7 +81,8 @@ func (md *mapper) Decode(obj map[string]interface{}, target interface{}) Mapping
 
 // DecodeValue decodes primitive type fields.  For fields of complex types, we use custom deserialization.
 func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key string,
-	target interface{}, optional bool) FieldError {
+	target interface{}, optional bool,
+) FieldError {
 	vdst := reflect.ValueOf(target)
 	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
@@ -143,7 +144,8 @@ var (
 
 // adjustValueForAssignment converts if possible to produce the target type.
 func (md *mapper) adjustValueForAssignment(val reflect.Value,
-	to reflect.Type, ty reflect.Type, key string) (reflect.Value, FieldError) {
+	to reflect.Type, ty reflect.Type, key string,
+) (reflect.Value, FieldError) {
 	for !val.Type().AssignableTo(to) {
 		// The source cannot be assigned directly to the destination.  Go through all known conversions.
 

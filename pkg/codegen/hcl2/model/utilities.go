@@ -59,7 +59,7 @@ func VariableReference(v *Variable) *ScopeTraversalExpression {
 		Parts:     []Traversable{v},
 	}
 	diags := x.Typecheck(false)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error typechecking variable reference: %v", diags)
 	return x
 }
 
@@ -70,6 +70,6 @@ func ConstantReference(c *Constant) *ScopeTraversalExpression {
 		Parts:     []Traversable{c},
 	}
 	diags := x.Typecheck(false)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error typechecking constant reference: %v", diags)
 	return x
 }

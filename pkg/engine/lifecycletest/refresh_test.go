@@ -368,8 +368,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					switch id {
 					case "0", "4":
 						// We want to delete resources A::0 and A::4.
@@ -388,8 +388,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		{
 			Op: Refresh,
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-				_ []Event, res result.Result) result.Result {
-
+				_ []Event, res result.Result,
+			) result.Result {
 				// Should see only refreshes.
 				for _, entry := range entries {
 					if len(refreshTargets) > 0 {
@@ -476,7 +476,7 @@ func TestRefreshBasics(t *testing.T) {
 
 	// combinations.All doesn't return the empty set.  So explicitly test that case (i.e. test no
 	// targets specified)
-	//validateRefreshBasicsCombination(t, names, []string{})
+	// validateRefreshBasicsCombination(t, names, []string{})
 
 	for _, subset := range subsets {
 		validateRefreshBasicsCombination(t, names, subset)
@@ -548,8 +548,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					new, hasNewState := newStates[id]
 					assert.True(t, hasNewState)
 					return new, resource.StatusOK, nil
@@ -563,8 +563,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	p.Steps = []TestStep{{
 		Op: Refresh,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-			_ []Event, res result.Result) result.Result {
-
+			_ []Event, res result.Result,
+		) result.Result {
 			// Should see only refreshes.
 			for _, entry := range entries {
 				if len(refreshTargets) > 0 {
@@ -704,8 +704,8 @@ func TestCanceledRefresh(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					refreshes <- id
 					<-cancelled
 
@@ -729,8 +729,8 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 	validate := func(project workspace.Project, target deploy.Target, entries JournalEntries,
-		_ []Event, res result.Result) result.Result {
-
+		_ []Event, res result.Result,
+	) result.Result {
 		for _, entry := range entries {
 			assert.Equal(t, deploy.OpRefresh, entry.Step.Op())
 			resultOp := entry.Step.(*deploy.RefreshStep).ResultOp()

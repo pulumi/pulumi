@@ -139,7 +139,6 @@ func TestGzip(t *testing.T) {
 	// POST /events/batch
 	_, err = client.BulkDecryptValue(context.Background(), StackIdentifier{}, nil)
 	assert.NoError(t, err)
-
 }
 
 func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
@@ -165,7 +164,6 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	var request apitype.PatchUpdateVerbatimCheckpointRequest
 
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
-
 		reader, err := gzip.NewReader(req.Body)
 		assert.NoError(t, err)
 		defer reader.Close()

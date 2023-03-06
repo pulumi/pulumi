@@ -978,7 +978,7 @@ func addNextFileToTar(r ArchiveReader, tw *tar.Writer, seenFiles map[string]bool
 	sz := data.Size()
 	if err = tw.WriteHeader(&tar.Header{
 		Name: file,
-		Mode: 0600,
+		Mode: 0o600,
 		Size: sz,
 	}); err != nil {
 		return err

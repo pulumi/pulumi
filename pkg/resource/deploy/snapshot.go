@@ -36,8 +36,8 @@ type Snapshot struct {
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
-	resources []*resource.State, ops []resource.Operation) *Snapshot {
-
+	resources []*resource.State, ops []resource.Operation,
+) *Snapshot {
 	return &Snapshot{
 		Manifest:          manifest,
 		SecretsManager:    secretsManager,

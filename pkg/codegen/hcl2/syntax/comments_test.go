@@ -81,8 +81,8 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 }
 
 func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr, n *hclsyntax.LiteralValueExpr,
-	tokens *LiteralValueTokens) {
-
+	tokens *LiteralValueTokens,
+) {
 	index := -1
 	for i := range template.Parts {
 		if template.Parts[i] == n {

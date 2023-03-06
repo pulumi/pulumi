@@ -38,7 +38,8 @@ type Random struct {
 }
 
 func NewProvider(ctx *pulumi.Context, name string,
-	opts ...pulumi.ResourceOption) (pulumi.ProviderResource, error) {
+	opts ...pulumi.ResourceOption,
+) (pulumi.ProviderResource, error) {
 	provider := Provider{}
 	err := ctx.RegisterResource("pulumi:providers:testprovider",
 		"provider", nil, &provider, opts...)
@@ -53,7 +54,8 @@ type Provider struct {
 }
 
 func NewRandom(ctx *pulumi.Context,
-	name string, args *RandomArgs, opts ...pulumi.ResourceOption) (*Random, error) {
+	name string, args *RandomArgs, opts ...pulumi.ResourceOption,
+) (*Random, error) {
 	if args == nil || args.Length == nil {
 		return nil, errors.New("missing required argument 'Length'")
 	}

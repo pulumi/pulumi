@@ -57,7 +57,6 @@ func newConfigCmd() *cobra.Command {
 			}
 
 			project, _, err := readProject()
-
 			if err != nil {
 				return err
 			}
@@ -112,7 +111,6 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			}
 
 			project, _, err := readProject()
-
 			if err != nil {
 				return err
 			}
@@ -163,7 +161,8 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 
 func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
-	destinationProjectStack *workspace.ProjectStack) error {
+	destinationProjectStack *workspace.ProjectStack,
+) error {
 	var decrypter config.Decrypter
 	key, err := parseConfigKey(configKey)
 	if err != nil {
@@ -206,8 +205,8 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 
 func copyEntireConfigMap(currentStack backend.Stack,
 	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
-	destinationProjectStack *workspace.ProjectStack) error {
-
+	destinationProjectStack *workspace.ProjectStack,
+) error {
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
 	if currentConfig.HasSecureValue() {
@@ -507,7 +506,6 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			}
 
 			project, _, err := readProject()
-
 			if err != nil {
 				return err
 			}
@@ -783,8 +781,8 @@ func listConfig(ctx context.Context,
 	project *workspace.Project,
 	stack backend.Stack,
 	showSecrets bool,
-	jsonOut bool) error {
-
+	jsonOut bool,
+) error {
 	ps, err := loadProjectStack(project, stack)
 	if err != nil {
 		return err
@@ -945,11 +943,9 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 	return fmt.Errorf("configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
 }
 
-var (
-	// keyPattern is the regular expression a configuration key must match before we check (and error) if we think
-	// it is a password
-	keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
-)
+// keyPattern is the regular expression a configuration key must match before we check (and error) if we think
+// it is a password
+var keyPattern = regexp.MustCompile("(?i)passwd|pass|password|pwd|secret|token")
 
 const (
 	// maxEntropyCheckLength is the maximum length of a possible secret for entropy checking.
@@ -985,7 +981,8 @@ func getStackConfiguration(
 	ctx context.Context,
 	stack backend.Stack,
 	project *workspace.Project,
-	sm secrets.Manager) (backend.StackConfiguration, error) {
+	sm secrets.Manager,
+) (backend.StackConfiguration, error) {
 	var cfg config.Map
 
 	defaultStackConfig := backend.StackConfiguration{}

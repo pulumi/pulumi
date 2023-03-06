@@ -33,7 +33,7 @@ import (
 func newPluginRmCmd() *cobra.Command {
 	var all bool
 	var yes bool
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rm [KIND [NAME [VERSION]]]",
 		Args:  cmdutil.MaximumNArgs(3),
 		Short: "Remove one or more plugins from the download cache",

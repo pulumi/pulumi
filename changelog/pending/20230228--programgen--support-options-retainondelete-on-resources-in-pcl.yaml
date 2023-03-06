@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Support `options.retainOnDelete` on resources in PCL.

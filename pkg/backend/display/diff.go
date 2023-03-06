@@ -36,7 +36,6 @@ import (
 
 // ShowDiffEvents displays the engine events with the diff view.
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
-
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
 	stdout := opts.Stdout
@@ -93,7 +92,6 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 }
 
 func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
-
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
@@ -144,7 +142,6 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 }
 
 func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader bool, opts Options) string {
-
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
@@ -164,9 +161,9 @@ func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader 
 		planTo = "to "
 	}
 
-	var changeKindCount = 0
-	var changeCount = 0
-	var sameCount = changes[deploy.OpSame]
+	changeKindCount := 0
+	changeCount := 0
+	sameCount := changes[deploy.OpSame]
 
 	// Now summarize all of the changes; we print sames a little differently.
 	for _, op := range deploy.StepOps {
@@ -290,8 +287,8 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 }
 
 func renderDiffResourceOperationFailedEvent(
-	payload engine.ResourceOperationFailedPayload, opts Options) string {
-
+	payload engine.ResourceOperationFailedPayload, opts Options,
+) string {
 	// It's not actually useful or interesting to print out any details about
 	// the resource state here, because we always assume that the resource state
 	// is unknown if an error occurs.
@@ -307,8 +304,8 @@ func renderDiff(
 	metadata engine.StepEventMetadata,
 	planning, debug bool,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts Options) {
-
+	opts Options,
+) {
 	indent := getIndent(metadata, seen)
 	summary := getResourcePropertiesSummary(metadata, indent)
 
@@ -335,8 +332,8 @@ func renderDiff(
 func renderDiffResourcePreEvent(
 	payload engine.ResourcePreEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts Options) string {
-
+	opts Options,
+) string {
 	seen[payload.Metadata.URN] = payload.Metadata
 	if payload.Metadata.Op == deploy.OpRefresh || payload.Metadata.Op == deploy.OpImport {
 		return ""
@@ -352,8 +349,8 @@ func renderDiffResourcePreEvent(
 func renderDiffResourceOutputsEvent(
 	payload engine.ResourceOutputsEventPayload,
 	seen map[resource.URN]engine.StepEventMetadata,
-	opts Options) string {
-
+	opts Options,
+) string {
 	out := &bytes.Buffer{}
 	if shouldShow(payload.Metadata, opts) || isRootStack(payload.Metadata) {
 		// If this is the output step for an import, we actually want to display the diff at this point.

@@ -37,6 +37,9 @@ type ResourceOptions struct {
 	DependsOn model.Expression
 	// Whether or not the resource is protected.
 	Protect model.Expression
+	// Whether the resource should be left in the cloud provider
+	// when it's deleted from the Pulumi state.
+	RetainOnDelete model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
 	// The version of the provider for this resource.

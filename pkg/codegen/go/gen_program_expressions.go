@@ -434,7 +434,6 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 			} else {
 				g.Fgenf(w, "%d", i)
 			}
-
 		} else {
 			f, _ := bf.Float64()
 			if isPulumiType {
@@ -467,8 +466,8 @@ func (g *generator) genObjectConsExpression(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	isInput bool) {
-
+	isInput bool,
+) {
 	isInput = isInput || isInputty(destType)
 
 	typeName := g.argumentTypeName(expr, destType, isInput)
@@ -487,8 +486,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	w io.Writer,
 	expr *model.ObjectConsExpression,
 	destType model.Type,
-	typeName string) {
-
+	typeName string,
+) {
 	if len(expr.Items) == 0 {
 		g.Fgenf(w, "nil")
 		return
@@ -567,7 +566,8 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 }
 
 func (g *generator) genScopeTraversalExpression(
-	w io.Writer, expr *model.ScopeTraversalExpression, destType model.Type) {
+	w io.Writer, expr *model.ScopeTraversalExpression, destType model.Type,
+) {
 	rootName := expr.RootName
 
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
@@ -921,8 +921,8 @@ func (g *generator) argumentTypeNamePtr(expr model.Expression, destType model.Ty
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
-	traversal hcl.Traversal, parts []model.Traversable, isRootResource bool) {
-
+	traversal hcl.Traversal, parts []model.Traversable, isRootResource bool,
+) {
 	for i, part := range traversal {
 		var key cty.Value
 		switch part := part.(type) {
@@ -968,7 +968,8 @@ func (nameInfo) Format(name string) string {
 
 // lowerExpression amends the expression with intrinsics for Go generation.
 func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
-	model.Expression, []interface{}) {
+	model.Expression, []interface{},
+) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
@@ -978,8 +979,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
-	var bufferSize = len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
-	var temps = make([]interface{}, 0, bufferSize)
+	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
+	temps := make([]interface{}, 0, bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}

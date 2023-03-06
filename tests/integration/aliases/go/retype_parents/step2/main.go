@@ -55,8 +55,8 @@ func NewComponentSix(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOp
 }
 
 func NewComponentSixParent(ctx *pulumi.Context, name string,
-	opts ...pulumi.ResourceOption) (*ComponentSixParent, error) {
-
+	opts ...pulumi.ResourceOption,
+) (*ComponentSixParent, error) {
 	comp := &ComponentSixParent{}
 	aliases := make([]pulumi.Alias, 0)
 	for i := 0; i < 10; i++ {

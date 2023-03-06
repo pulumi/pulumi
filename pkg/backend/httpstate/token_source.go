@@ -69,7 +69,6 @@ func (ts *tokenSource) handleRequests(
 		currentToken string,
 	) (string, time.Time, error),
 ) {
-
 	renewTicker := time.NewTicker(duration / 8)
 	defer renewTicker.Stop()
 

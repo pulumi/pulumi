@@ -15,7 +15,7 @@ linters:
     - errcheck
     - prealloc
     - goconst
-    - gofmt
+    - gofumpt
     - revive
     - gosec
     - govet

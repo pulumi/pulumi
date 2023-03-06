@@ -3,7 +3,6 @@ package gen
 import (
 	"bytes"
 	"os"
-
 	"path/filepath"
 	"testing"
 

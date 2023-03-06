@@ -474,13 +474,13 @@ func TestPythonResourceArgs(t *testing.T) {
 	assert.NoError(t, os.RemoveAll(outdir))
 	for f, contents := range files {
 		outfile := filepath.Join(outdir, f)
-		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0755))
+		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0o755))
 		if outfile == filepath.Join(outdir, "setup.py") {
 			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
 		}
-		assert.NoError(t, os.WriteFile(outfile, contents, 0600))
+		assert.NoError(t, os.WriteFile(outfile, contents, 0o600))
 	}
-	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0600))
+	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0o600))
 
 	// Test the program.
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -618,10 +618,9 @@ func TestConstructPlainPython(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
-			localProviders :=
-				[]integration.LocalDependency{
-					{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
-				}
+			localProviders := []integration.LocalDependency{
+				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
+			}
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, localProviders, test.env...))
 		})
@@ -629,7 +628,8 @@ func TestConstructPlainPython(t *testing.T) {
 }
 
 func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localProviders []integration.LocalDependency,
-	env ...string) *integration.ProgramTestOptions {
+	env ...string,
+) *integration.ProgramTestOptions {
 	return &integration.ProgramTestOptions{
 		Env: env,
 		Dir: filepath.Join("construct_component_plain", "python"),

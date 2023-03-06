@@ -118,9 +118,11 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	assert.Nil(t, d2)
 	// all updates:
 	d3a1 := NewArrayProperty([]PropertyValue{
-		NewStringProperty("element one"), NewNumberProperty(2), NewNullProperty()})
+		NewStringProperty("element one"), NewNumberProperty(2), NewNullProperty(),
+	})
 	d3a2 := NewArrayProperty([]PropertyValue{
-		NewNumberProperty(1), NewNullProperty(), NewStringProperty("element three")})
+		NewNumberProperty(1), NewNullProperty(), NewStringProperty("element three"),
+	})
 	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d3a1), NewPropertyValue(d3a2))
 	d3 := d3a1.Diff(d3a2)
 	assert.NotNil(t, d3)
@@ -136,9 +138,11 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	}
 	// update one, keep one, delete one:
 	d4a1 := NewArrayProperty([]PropertyValue{
-		NewStringProperty("element one"), NewNumberProperty(2), NewBoolProperty(true)})
+		NewStringProperty("element one"), NewNumberProperty(2), NewBoolProperty(true),
+	})
 	d4a2 := NewArrayProperty([]PropertyValue{
-		NewStringProperty("element 1"), NewNumberProperty(2)})
+		NewStringProperty("element 1"), NewNumberProperty(2),
+	})
 	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d4a1), NewPropertyValue(d4a2))
 	d4 := d4a1.Diff(d4a2)
 	assert.NotNil(t, d4)
@@ -164,9 +168,11 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 	}
 	// keep one, update one, add one:
 	d5a1 := NewArrayProperty([]PropertyValue{
-		NewStringProperty("element one"), NewNumberProperty(2)})
+		NewStringProperty("element one"), NewNumberProperty(2),
+	})
 	d5a2 := NewArrayProperty([]PropertyValue{
-		NewStringProperty("element 1"), NewNumberProperty(2), NewBoolProperty(true)})
+		NewStringProperty("element 1"), NewNumberProperty(2), NewBoolProperty(true),
+	})
 	assertDeepEqualsIffEmptyDiff(t, NewPropertyValue(d5a1), NewPropertyValue(d5a2))
 	d5 := d5a1.Diff(d5a2)
 	assert.NotNil(t, d5)

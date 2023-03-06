@@ -114,7 +114,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		if runtime.GOOS == "windows" {
 			return !info.IsDir()
 		}
-		return info.Mode()&0111 != 0 && !info.IsDir()
+		return info.Mode()&0o111 != 0 && !info.IsDir()
 	}
 
 	// No file separators, so we try to look up the schema

@@ -16,16 +16,17 @@ package tools
 
 import (
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 )
 
 // EnsureDir ensures that a target directory exists (like `mkdir -p`), returning a non-nil error if any problem occurs.
 func EnsureDir(dir string) error {
-	return os.MkdirAll(dir, 0700)
+	return os.MkdirAll(dir, 0o700)
 }
 
 // EnsureFileDir ensures that a target file's parent directory exists, returning a non-nil error if any problem occurs.

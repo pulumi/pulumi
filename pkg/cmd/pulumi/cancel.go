@@ -29,7 +29,7 @@ import (
 func newCancelCmd() *cobra.Command {
 	var yes bool
 	var stack string
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "cancel [<stack-name>]",
 		Args:  cmdutil.MaximumNArgs(1),
 		Short: "Cancel a stack's currently running update, if any",

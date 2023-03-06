@@ -50,9 +50,11 @@ import (
 
 var pulumiOrg = getTestOrg()
 
-const pName = "testproj"
-const agent = "pulumi/pulumi/test"
-const pulumiTestOrg = "pulumi-test"
+const (
+	pName         = "testproj"
+	agent         = "pulumi/pulumi/test"
+	pulumiTestOrg = "pulumi-test"
+)
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
@@ -193,7 +195,7 @@ func TestRemoveWithForce(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	const permalinkSearchStr = "https://app.pulumi.com"
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
 	assert.Nil(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
@@ -280,7 +282,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	const permalinkSearchStr = "https://app.pulumi.com"
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
 	assert.Nil(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
@@ -303,7 +305,6 @@ func TestNewStackLocalSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -512,7 +513,6 @@ func TestNewStackRemoteSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -607,7 +607,6 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -717,7 +716,6 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -827,7 +825,6 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -924,7 +921,6 @@ func TestNewStackInlineSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1024,7 +1020,6 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 			// -- pulumi refresh --
 
 			ref, err := s.Refresh(ctx)
-
 			if err != nil {
 				t.Errorf("refresh failed, err: %v", err)
 				t.FailNow()
@@ -1044,7 +1039,6 @@ func TestUpsertStackInlineSourceParallel(t *testing.T) {
 			assert.Equal(t, "succeeded", dRes.Summary.Result)
 		})
 	}
-
 }
 
 func TestNestedStackFails(t *testing.T) {
@@ -1226,7 +1220,6 @@ func TestProgressStreams(t *testing.T) {
 	// -- pulumi refresh --
 	var refOut bytes.Buffer
 	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(&refOut))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1416,6 +1409,56 @@ func TestNestedConfig(t *testing.T) {
 	}
 	assert.False(t, list.Secret)
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
+}
+
+func TestTagFunctions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+	ws := s.Workspace()
+
+	// -- lists tag values --
+	tags, err := ws.ListTags(ctx, stackName)
+	if err != nil {
+		t.Errorf("failed to list tags, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, pName, tags["pulumi:project"])
+
+	// -- sets tag values --
+	err = ws.SetTag(ctx, stackName, "foo", "bar")
+	if err != nil {
+		t.Errorf("set tag failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- gets a single tag value --
+	tag, err := ws.GetTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("get tag failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "bar", tag)
+
+	// -- removes tag value --
+	err = ws.RemoveTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("remove tag failed, err: %v", err)
+		t.FailNow()
+	}
+	tags, _ = ws.ListTags(ctx, stackName)
+	assert.NotContains(t, tags, "foo", "failed to remove tag")
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -1663,9 +1706,11 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
-const PARSE = `Unable to parse`
-const MAJOR = `Major version mismatch.`
-const MINIMUM = `Minimum version requirement failed.`
+const (
+	PARSE   = `Unable to parse`
+	MAJOR   = `Major version mismatch.`
+	MINIMUM = `Minimum version requirement failed.`
+)
 
 var minVersionTests = []struct {
 	name           string

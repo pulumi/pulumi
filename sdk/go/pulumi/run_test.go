@@ -225,7 +225,6 @@ func TestReadResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			assert.Equal(t, "test:resource:type", args.TypeToken)
 			assert.Equal(t, "resA", args.Name)
 			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -333,11 +332,9 @@ type testInstanceResource struct {
 	CustomResourceState
 }
 
-type testInstanceResourceArgs struct {
-}
+type testInstanceResourceArgs struct{}
 
-type testInstanceResourceInputs struct {
-}
+type testInstanceResourceInputs struct{}
 
 func (*testInstanceResourceInputs) ElementType() reflect.Type {
 	return reflect.TypeOf((*testInstanceResourceArgs)(nil)).Elem()
@@ -375,7 +372,8 @@ func (o testInstanceResourceOutput) ToTestInstanceResourceOutput() testInstanceR
 }
 
 func (o testInstanceResourceOutput) ToTestInstanceResourceOutputWithContext(
-	ctx context.Context) testInstanceResourceOutput {
+	ctx context.Context,
+) testInstanceResourceOutput {
 	return o
 }
 
@@ -422,7 +420,6 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			switch args.TypeToken {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
@@ -477,7 +474,6 @@ func TestRemoteComponent(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			switch args.TypeToken {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
@@ -1014,7 +1010,6 @@ func TestResourceInput(t *testing.T) {
 			default:
 				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
-
 		},
 	}
 

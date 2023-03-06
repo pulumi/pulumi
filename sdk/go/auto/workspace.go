@@ -59,6 +59,14 @@ type Workspace interface {
 	RemoveAllConfig(context.Context, string, []string) error
 	// RefreshConfig gets and sets the config map used with the last Update for Stack matching stack name.
 	RefreshConfig(context.Context, string) (ConfigMap, error)
+	// GetTag returns the value associated with the specified stack name and key.
+	GetTag(context.Context, string, string) (string, error)
+	// SetTag sets the specified key-value pair on the provided stack name.
+	SetTag(context.Context, string, string, string) error
+	// RemoveTag removes the specified key-value pair on the provided stack name.
+	RemoveTag(context.Context, string, string) error
+	// ListTags returns the tag map for the specified stack name.
+	ListTags(context.Context, string) (map[string]string, error)
 	// GetEnvVars returns the environment values scoped to the current workspace.
 	GetEnvVars() map[string]string
 	// SetEnvVars sets the specified map of environment values scoped to the current workspace.

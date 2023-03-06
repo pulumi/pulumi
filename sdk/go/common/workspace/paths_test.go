@@ -44,10 +44,9 @@ func TestDetectProjectAndPath(t *testing.T) {
 	assert.NoError(t, err)
 
 	yamlPath := filepath.Join(tmpDir, "Pulumi.yaml")
-	yamlContents :=
-		"name: some_project\ndescription: Some project\nruntime: nodejs\n"
+	yamlContents := "name: some_project\ndescription: Some project\nruntime: nodejs\n"
 
-	err = os.WriteFile(yamlPath, []byte(yamlContents), 0600)
+	err = os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	assert.NoError(t, err)
 
 	project, path, err := DetectProjectAndPath()
@@ -107,7 +106,7 @@ func TestProjectStackPath(t *testing.T) {
 			err = os.WriteFile(
 				filepath.Join(tmpDir, "Pulumi.yaml"),
 				[]byte(tt.yamlContents),
-				0600)
+				0o600)
 			assert.NoError(t, err)
 
 			_, path, err := DetectProjectStackPath("my_stack")

@@ -7,7 +7,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -19,7 +18,9 @@ func BenchmarkLoadPackage(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		_, err := NewPackageCache().loadPackageSchema(loader, "aws", "")
-		contract.AssertNoError(err)
+		if err != nil {
+			b.Fatalf("failed to load package schema: %v", err)
+		}
 	}
 }
 
@@ -51,5 +52,4 @@ func TestGenEnum(t *testing.T) {
 	}, safeEnumFunc, unsafeEnumFunc)
 	assert.Equal(t, d.Summary, `"Bar" is not a valid value of the enum "my:enum"`)
 	assert.Equal(t, d.Detail, `Valid members are "foo", "bar"`)
-
 }

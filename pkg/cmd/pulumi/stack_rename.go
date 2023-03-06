@@ -30,7 +30,7 @@ import (
 
 func newStackRenameCmd() *cobra.Command {
 	var stack string
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rename <new-stack-name>",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Rename an existing stack",

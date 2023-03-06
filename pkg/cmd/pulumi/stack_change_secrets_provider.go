@@ -31,7 +31,7 @@ import (
 
 func newStackChangeSecretsProviderCmd() *cobra.Command {
 	var stack string
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "change-secrets-provider <new-secrets-provider>",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Change the secrets provider for a stack",
@@ -60,7 +60,6 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			project, _, err := readProject()
-
 			if err != nil {
 				return err
 			}
@@ -95,12 +94,11 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			}
 
 			secretsProvider := args[0]
-			rotateProvider :=
-				// If we're setting the secrets provider to the same provider then do a rotation.
-				secretsProvider == currentProjectStack.SecretsProvider ||
-					// passphrase doesn't get saved to stack state, so if we're changing to passphrase see if
-					// the current secrets provider is empty
-					((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
+			// If we're setting the secrets provider to the same provider then do a rotation.
+			rotateProvider := secretsProvider == currentProjectStack.SecretsProvider ||
+				// passphrase doesn't get saved to stack state, so if we're changing to passphrase see if
+				// the current secrets provider is empty
+				((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 			// Create the new secrets provider and set to the currentStack
 			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
 				false /*creatingStack*/); err != nil {
@@ -123,7 +121,8 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig config.Map, decrypter config.Decrypter) error {
+	currentConfig config.Map, decrypter config.Decrypter,
+) error {
 	// The order of operations here should be to load the secrets manager current stack
 	// Get the newly created secrets manager for the stack
 	newSecretsManager, err := getStackSecretsManager(currentStack)

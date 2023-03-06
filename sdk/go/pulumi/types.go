@@ -40,8 +40,10 @@ type Output interface {
 	getState() *OutputState
 }
 
-var outputType = reflect.TypeOf((*Output)(nil)).Elem()
-var inputType = reflect.TypeOf((*Input)(nil)).Elem()
+var (
+	outputType = reflect.TypeOf((*Output)(nil)).Elem()
+	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+)
 
 var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
 
@@ -313,8 +315,10 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 	return out
 }
 
-var outputStateType = reflect.TypeOf((*OutputState)(nil))
-var outputTypeToOutputState sync.Map // map[reflect.Type]int
+var (
+	outputStateType         = reflect.TypeOf((*OutputState)(nil))
+	outputTypeToOutputState sync.Map // map[reflect.Type]int
+)
 
 func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
@@ -366,8 +370,10 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(nil)
 }
 
-var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
-var errorType = reflect.TypeOf((*error)(nil)).Elem()
+var (
+	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+)
 
 // applier is a normalized version of a function
 // passed into either ApplyT or ApplyTWithContext.

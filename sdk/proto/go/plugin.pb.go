@@ -21,10 +21,11 @@
 package pulumirpc
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -241,12 +242,15 @@ func file_pulumi_plugin_proto_rawDescGZIP() []byte {
 	return file_pulumi_plugin_proto_rawDescData
 }
 
-var file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_pulumi_plugin_proto_goTypes = []interface{}{
-	(*PluginInfo)(nil),       // 0: pulumirpc.PluginInfo
-	(*PluginDependency)(nil), // 1: pulumirpc.PluginDependency
-	(*PluginAttach)(nil),     // 2: pulumirpc.PluginAttach
-}
+var (
+	file_pulumi_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_pulumi_plugin_proto_goTypes  = []interface{}{
+		(*PluginInfo)(nil),       // 0: pulumirpc.PluginInfo
+		(*PluginDependency)(nil), // 1: pulumirpc.PluginDependency
+		(*PluginAttach)(nil),     // 2: pulumirpc.PluginAttach
+	}
+)
+
 var file_pulumi_plugin_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type

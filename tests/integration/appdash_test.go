@@ -36,7 +36,6 @@ func WalkTracesWithDescendants(store *appdash.MemoryStore, visit func(t *appdash
 	var recur func(t *appdash.Trace) error
 	recur = func(t *appdash.Trace) error {
 		err := visit(t)
-
 		if err != nil {
 			return err
 		}

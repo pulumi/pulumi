@@ -258,7 +258,6 @@ func RewriteShorthandConfigValues(project map[string]interface{}) map[string]int
 	}
 
 	for key, value := range config {
-
 		if isPrimitiveValue(value) || isArray(value) {
 			configTypeDefinition := make(map[string]interface{})
 			if configKeyIsNamespacedByProject(projectName, key) {
@@ -328,7 +327,6 @@ func SimplifyMarshalledProject(raw interface{}) (map[string]interface{}, error) 
 }
 
 func ValidateProject(raw interface{}) error {
-
 	project, err := SimplifyMarshalledProject(raw)
 	if err != nil {
 		return err
@@ -387,7 +385,6 @@ func InferFullTypeName(typeName string, itemsType *ProjectConfigItemsType) strin
 // We use this to validate the default config values alongside their type definition but
 // also to validate config values coming from individual stacks.
 func ValidateConfigValue(typeName string, itemsType *ProjectConfigItemsType, value interface{}) bool {
-
 	if typeName == stringTypeName {
 		_, ok := value.(string)
 		return ok
@@ -716,11 +713,11 @@ func save(path string, value interface{}, mkDirAll bool) error {
 	}
 
 	if mkDirAll {
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
 	}
 
 	//nolint:gosec
-	return os.WriteFile(path, b, 0644)
+	return os.WriteFile(path, b, 0o644)
 }

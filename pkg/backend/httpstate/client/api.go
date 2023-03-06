@@ -175,8 +175,8 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 func pulumiAPICall(ctx context.Context,
 	requestSpan opentracing.Span,
 	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
-	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
-
+	tok accessToken, opts httpCallOptions,
+) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = cleanPath(path)
@@ -322,8 +322,8 @@ type defaultRESTClient struct {
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-	respObj interface{}, tok accessToken, opts httpCallOptions) error {
-
+	respObj interface{}, tok accessToken, opts httpCallOptions,
+) error {
 	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},
 		opentracing.Tag{Key: "path", Value: path},

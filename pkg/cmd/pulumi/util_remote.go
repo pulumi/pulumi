@@ -78,7 +78,6 @@ func validateUnsupportedRemoteFlags(
 	planFilePath string,
 	stackConfigFile string,
 ) error {
-
 	if expectNop {
 		return errors.New("--expect-no-changes is not supported with --remote")
 	}
@@ -218,8 +217,8 @@ func (r *RemoteArgs) applyFlags(cmd *cobra.Command) {
 
 // runDeployment kicks off a remote deployment.
 func runDeployment(ctx context.Context, opts display.Options, operation apitype.PulumiOperation, stack, url string,
-	args RemoteArgs) result.Result {
-
+	args RemoteArgs,
+) result.Result {
 	// Validate args.
 	if url == "" {
 		return result.FromError(errors.New("the url arg must be specified"))
@@ -321,6 +320,7 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 			Git: &apitype.SourceContextGit{
 				RepoURL: url,
 				Branch:  args.gitBranch,
+				Commit:  args.gitCommit,
 				RepoDir: args.gitRepoDir,
 				GitAuth: gitAuth,
 			},

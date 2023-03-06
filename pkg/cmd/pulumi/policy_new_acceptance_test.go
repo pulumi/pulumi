@@ -30,7 +30,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	tempdir := t.TempDir()
 	chdir(t, tempdir)
 
-	var args = newPolicyArgs{
+	args := newPolicyArgs{
 		interactive:       false,
 		yes:               true,
 		templateNameOrURL: "aws-typescript",

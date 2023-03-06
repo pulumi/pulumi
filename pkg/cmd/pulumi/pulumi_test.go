@@ -36,5 +36,4 @@ func TestIsDevVersion(t *testing.T) {
 	assert.True(t, isDevVersion(alphaVer))
 	assert.True(t, isDevVersion(betaVer))
 	assert.True(t, isDevVersion(rcVer))
-
 }

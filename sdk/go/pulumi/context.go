@@ -352,7 +352,6 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 			KeepResources: true,
 		}),
 	)
-
 	if err != nil {
 		return err
 	}
@@ -581,7 +580,8 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 //	var resource MyResource
 //	err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 func (ctx *Context) ReadResource(
-	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
+	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption,
+) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -723,8 +723,8 @@ func (ctx *Context) ReadResource(
 //	var resource MyResource
 //	err := ctx.RegisterResource(tok, name, props, &resource, opts...)
 func (ctx *Context) RegisterResource(
-	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
-
+	t, name string, props Input, resource Resource, opts ...ResourceOption,
+) error {
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
 
@@ -775,7 +775,8 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
+	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption,
+) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -965,14 +966,14 @@ func (ctx *Context) registerResource(
 }
 
 func (ctx *Context) RegisterComponentResource(
-	t, name string, resource ComponentResource, opts ...ResourceOption) error {
-
+	t, name string, resource ComponentResource, opts ...ResourceOption,
+) error {
 	return ctx.RegisterResource(t, name, nil /*props*/, resource, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
-	t, name string, props Input, resource ComponentResource, opts ...ResourceOption) error {
-
+	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
+) error {
 	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
 }
 
@@ -990,8 +991,8 @@ type resourceState struct {
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
 func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
-	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
-
+	options *resourceOptions,
+) (Input, *resourceOptions, []ResourceTransformation, error) {
 	transformations := options.Transformations
 	if options.Parent != nil {
 		transformations = append(transformations, options.Parent.getTransformations()...)
@@ -1023,8 +1024,8 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 // checks all possible sources of providers and merges them with preference given to the most specific
 func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderResource,
-	providerMap map[string]ProviderResource) (map[string]ProviderResource, error) {
-
+	providerMap map[string]ProviderResource,
+) (map[string]ProviderResource, error) {
 	// copy parent providers
 	result := make(map[string]ProviderResource)
 	if parent != nil {
@@ -1124,8 +1125,8 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
 	provider ProviderResource, version, pluginDownloadURL string, aliases []URNOutput,
-	transformations []ResourceTransformation) *resourceState {
-
+	transformations []ResourceTransformation,
+) *resourceState {
 	// Ensure that the input res is a pointer to a struct. Note that we don't fail if it is not, and we probably
 	// ought to.
 	res := reflect.ValueOf(resourceV)
@@ -1232,8 +1233,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 
 // resolve resolves the resource outputs using the given error and/or values.
 func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInputs, urn, id string,
-	result *structpb.Struct, deps map[string][]Resource) {
-
+	result *structpb.Struct, deps map[string][]Resource,
+) {
 	dryrun := ctx.DryRun()
 
 	var inprops resource.PropertyMap
@@ -1388,8 +1389,8 @@ func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) 
 func (ctx *Context) mapAliases(aliases []Alias,
 	resourceType string,
 	name string,
-	parent Resource) ([]*pulumirpc.Alias, error) {
-
+	parent Resource,
+) ([]*pulumirpc.Alias, error) {
 	aliasSpecs := make([]*pulumirpc.Alias, 0, len(aliases))
 	await := func(input StringInput) (string, error) {
 		if input == nil {
@@ -1509,8 +1510,8 @@ func (ctx *Context) mapAliases(aliases []Alias,
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
-	state *resourceState, remote, custom bool) (*resourceInputs, error) {
-
+	state *resourceState, remote, custom bool,
+) (*resourceInputs, error) {
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
 	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote, custom)
@@ -1629,7 +1630,6 @@ type resourceOpts struct {
 func (ctx *Context) getOpts(
 	res Resource, t string, provider ProviderResource, opts *resourceOptions, remote, custom bool,
 ) (resourceOpts, error) {
-
 	var importID ID
 	if opts.Import != nil {
 		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())

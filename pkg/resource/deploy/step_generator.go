@@ -164,7 +164,8 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 
 // generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
 func (sg *stepGenerator) generateURN(
-	parent resource.URN, ty tokens.Type, name tokens.QName) (resource.URN, result.Result) {
+	parent resource.URN, ty tokens.Type, name tokens.QName,
+) (resource.URN, result.Result) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
 	if sg.urns[urn] {
@@ -179,7 +180,6 @@ func (sg *stepGenerator) generateURN(
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
-
 	// Some event settings are based on the parent settings so make sure our parent is correct.
 	parent, res := sg.checkParent(event.Parent(), event.Type())
 	if res != nil {
@@ -392,7 +392,8 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 func (sg *stepGenerator) inheritedChildAlias(
 	childType tokens.Type,
 	childName, parentName tokens.QName,
-	parentAlias resource.URN) resource.URN {
+	parentAlias resource.URN,
+) resource.URN {
 	// If the child name has the parent name as a prefix, then we make the assumption that
 	// it was constructed from the convention of using '{name}-details' as the name of the
 	// child resource.  To ensure this is aliased correctly, we must then also replace the
@@ -589,7 +590,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		if sg.opts.GeneratePlan {
 			newResourcePlan := &ResourcePlan{
 				Seed: randomSeed,
-				Goal: NewGoalPlan(nil, goal)}
+				Goal: NewGoalPlan(nil, goal),
+			}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 
@@ -645,7 +647,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		} else {
 			newResourcePlan := &ResourcePlan{
 				Seed: randomSeed,
-				Goal: NewGoalPlan(inputDiff, goal)}
+				Goal: NewGoalPlan(inputDiff, goal),
+			}
 			sg.deployment.newPlans.set(urn, newResourcePlan)
 		}
 	}
@@ -853,8 +856,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 func (sg *stepGenerator) generateStepsFromDiff(
 	event RegisterResourceEvent, urn resource.URN, old, new *resource.State,
 	oldInputs, oldOutputs, inputs resource.PropertyMap,
-	prov plugin.Provider, goal *resource.Goal, randomSeed []byte) ([]Step, result.Result) {
-
+	prov plugin.Provider, goal *resource.Goal, randomSeed []byte,
+) ([]Step, result.Result) {
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
 	allowUnknowns := sg.deployment.preview
 
@@ -1225,8 +1228,8 @@ func (sg *stepGenerator) getTargetDependents(targetsOpt UrnTargets) map[resource
 // will include the targetsOpt resources, but may contain more than just that, if there are dependent
 // or child resources that require the targets to exist (and so are implicated in the deletion).
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
-	targetsOpt UrnTargets) (map[resource.URN]bool, result.Result) {
-
+	targetsOpt UrnTargets,
+) (map[resource.URN]bool, result.Result) {
 	if !targetsOpt.IsConstrained() {
 		// no specific targets, so we won't filter down anything
 		return nil, nil
@@ -1450,8 +1453,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 // diff returns a DiffResult for the given resource.
 func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
-
+	ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	// If this resource is marked for replacement, just return a "replace" diff that blames the id.
 	if sg.isTargetedReplace(urn) {
 		return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"id"}}, nil
@@ -1487,8 +1490,8 @@ func (sg *stepGenerator) diff(urn resource.URN, old, new *resource.State, oldInp
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
 func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []string) (plugin.DiffResult, error) {
-
+	ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	contract.Requiref(prov != nil, "prov", "must not be nil")
 
 	// Grab the diff from the provider. At this point we know that there were changes to the Pulumi inputs, so if the
@@ -1516,14 +1519,15 @@ func diffResource(urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 
 // issueCheckErrors prints any check errors to the diagnostics error sink.
 func issueCheckErrors(deployment *Deployment, new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure) bool {
+	failures []plugin.CheckFailure,
+) bool {
 	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
 }
 
 // issueCheckErrors prints any check errors to the given printer function.
 func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.State, urn resource.URN,
-	failures []plugin.CheckFailure) bool {
-
+	failures []plugin.CheckFailure,
+) bool {
 	if len(failures) == 0 {
 		return false
 	}
@@ -1543,8 +1547,8 @@ func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.S
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
 func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
-	ignoreChanges []string) (resource.PropertyMap, result.Result) {
-
+	ignoreChanges []string,
+) (resource.PropertyMap, result.Result) {
 	ignoredInputs := resource.NewObjectProperty(inputs.Copy())
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
@@ -1580,8 +1584,8 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 }
 
 func (sg *stepGenerator) loadResourceProvider(
-	urn resource.URN, custom bool, provider string, typ tokens.Type) (plugin.Provider, result.Result) {
-
+	urn resource.URN, custom bool, provider string, typ tokens.Type,
+) (plugin.Provider, result.Result) {
 	// If this is not a custom resource, then it has no provider by definition.
 	if !custom {
 		return nil, nil
@@ -1634,14 +1638,14 @@ const initErrorSpecialKey = "#initerror"
 // applyReplaceOnChanges adjusts a DiffResult returned from a provider to apply the ReplaceOnChange
 // settings in the desired state and init errors from the previous state.
 func applyReplaceOnChanges(diff plugin.DiffResult,
-	replaceOnChanges []string, hasInitErrors bool) (plugin.DiffResult, error) {
-
+	replaceOnChanges []string, hasInitErrors bool,
+) (plugin.DiffResult, error) {
 	// No further work is necessary for DiffNone unless init errors are present.
 	if diff.Changes != plugin.DiffSome && !hasInitErrors {
 		return diff, nil
 	}
 
-	var replaceOnChangePaths = make([]resource.PropertyPath, 0, len(replaceOnChanges))
+	replaceOnChangePaths := make([]resource.PropertyPath, 0, len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
 		path, err := resource.ParsePropertyPath(p)
 		if err != nil {
@@ -1689,7 +1693,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 			}
 		}
 	}
-	var modifiedReplaceKeys = make([]resource.PropertyKey, 0, len(modifiedReplaceKeysMap))
+	modifiedReplaceKeys := make([]resource.PropertyKey, 0, len(modifiedReplaceKeysMap))
 	for k := range modifiedReplaceKeysMap {
 		modifiedReplaceKeys = append(modifiedReplaceKeys, k)
 	}
@@ -1903,8 +1907,8 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 
 // newStepGenerator creates a new step generator that operates on the given deployment.
 func newStepGenerator(
-	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt UrnTargets) *stepGenerator {
-
+	deployment *Deployment, opts Options, updateTargetsOpt, replaceTargetsOpt UrnTargets,
+) *stepGenerator {
 	return &stepGenerator{
 		deployment:           deployment,
 		opts:                 opts,

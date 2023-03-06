@@ -219,7 +219,6 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		})
 		if err == nil {
 			break
-
 		}
 		assume = nil
 		t.Logf("AssumeRole failed: %v", err)

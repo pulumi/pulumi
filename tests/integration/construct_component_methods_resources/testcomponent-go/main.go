@@ -39,8 +39,8 @@ type ComponentCreateRandomeResult struct {
 }
 
 func (c *Component) CreateRandom(ctx *pulumi.Context, args *ComponentCreateRandomArgs) (*ComponentCreateRandomeResult,
-	error) {
-
+	error,
+) {
 	random, err := NewRandom(ctx, "myrandom", &RandomArgs{Length: args.Length}, pulumi.Parent(c))
 	if err != nil {
 		return nil, err
@@ -51,8 +51,10 @@ func (c *Component) CreateRandom(ctx *pulumi.Context, args *ComponentCreateRando
 	}, nil
 }
 
-const providerName = "testcomponent"
-const version = "0.0.1"
+const (
+	providerName = "testcomponent"
+	version      = "0.0.1"
+)
 
 type module struct {
 	version semver.Version
@@ -82,7 +84,8 @@ func main() {
 		Name:    providerName,
 		Version: version,
 		Construct: func(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs,
-			options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
+			options pulumi.ResourceOption,
+		) (*pulumiprovider.ConstructResult, error) {
 			if typ != "testcomponent:index:Component" {
 				return nil, fmt.Errorf("unknown resource type %s", typ)
 			}
@@ -93,8 +96,8 @@ func main() {
 			return pulumiprovider.NewConstructResult(component)
 		},
 		Call: func(ctx *pulumi.Context, tok string,
-			args pulumiprovider.CallArgs) (*pulumiprovider.CallResult, error) {
-
+			args pulumiprovider.CallArgs,
+		) (*pulumiprovider.CallResult, error) {
 			if tok != "testcomponent:index:Component/createRandom" {
 				return nil, fmt.Errorf("unknown method %s", tok)
 			}

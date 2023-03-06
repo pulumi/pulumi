@@ -24,8 +24,8 @@ func TestImportOption(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
@@ -43,13 +43,13 @@ func TestImportOption(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo": resource.NewStringProperty("bar"),
@@ -276,8 +276,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+					olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					if olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
@@ -290,13 +290,13 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						// This ID is deliberately not the same as the ID used to import.
 						ID: "id",
@@ -446,8 +446,8 @@ const importSchema = `{
 }`
 
 func diffImportResource(urn resource.URN, id resource.ID,
-	olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
-
+	olds, news resource.PropertyMap, ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	if olds["foo"].DeepEquals(news["foo"]) && olds["frob"].DeepEquals(news["frob"]) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
@@ -477,13 +477,13 @@ func TestImportPlan(t *testing.T) {
 				},
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -534,13 +534,13 @@ func TestImportIgnoreChanges(t *testing.T) {
 			return &deploytest.Provider{
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
-
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -593,12 +593,13 @@ func TestImportPlanExistingImport(t *testing.T) {
 				},
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -679,12 +680,13 @@ func TestImportPlanEmptyState(t *testing.T) {
 				},
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -729,12 +731,13 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 				},
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -788,12 +791,13 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				},
 				DiffF: diffImportResource,
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
-					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
 				ReadF: func(urn resource.URN, id resource.ID,
-					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
-
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{
 						Inputs: resource.PropertyMap{
 							"foo":  resource.NewStringProperty("bar"),
@@ -809,7 +813,8 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 				},
 				CheckF: func(
 					urn resource.URN, olds, news resource.PropertyMap,
-					randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					randomSeed []byte,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					// Error unless "foo" and "frob" are in news
 
 					if _, has := news["foo"]; !has {

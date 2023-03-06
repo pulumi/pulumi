@@ -69,7 +69,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 }
 
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
-	map[string][]byte, hcl.Diagnostics, error) {
+	map[string][]byte, hcl.Diagnostics, error,
+) {
 	packages, contexts := map[string]*schema.Package{}, map[string]map[string]*pkgContext{}
 	packageDefs, err := programPackageDefs(program)
 	if err != nil {
@@ -252,7 +253,7 @@ require (
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := os.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -294,7 +295,8 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 
 // genPreamble generates package decl, imports, and opens the main func
 func (g *generator) genPreamble(w io.Writer, program *pcl.Program, stdImports, pulumiImports,
-	preambleHelperMethods codegen.StringSet) {
+	preambleHelperMethods codegen.StringSet,
+) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
@@ -368,7 +370,8 @@ func (g *generator) collectImports(
 	program *pcl.Program,
 	stdImports,
 	pulumiImports,
-	preambleHelperMethods codegen.StringSet) {
+	preambleHelperMethods codegen.StringSet,
+) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
@@ -381,7 +384,6 @@ func (g *generator) collectImports(
 				} else if mod == "" {
 					continue
 				}
-
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -442,7 +444,8 @@ func (g *generator) collectImports(
 func (g *generator) collectConvertImports(
 	program *pcl.Program,
 	call *model.FunctionCallExpression,
-	pulumiImports codegen.StringSet) {
+	pulumiImports codegen.StringSet,
+) {
 	if schemaType, ok := pcl.GetSchemaForType(call.Type()); ok {
 		// Sometimes code for a `__convert` call does not
 		// really use the import of the result type. In such
@@ -478,7 +481,6 @@ func (g *generator) getVersionPath(program *pcl.Program, pkg string) (string, er
 	}
 
 	return "", fmt.Errorf("could not find package version information for pkg: %s", pkg)
-
 }
 
 func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
@@ -526,7 +528,6 @@ func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
 
 // genPostamble closes the method
 func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
-
 	g.Fprint(w, "return nil\n")
 	g.Fprintf(w, "})\n")
 	g.Fprintf(w, "}\n")
@@ -611,7 +612,6 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 }
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
-
 	resName, resNameVar := r.LogicalName(), makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	originalMod := mod
@@ -707,7 +707,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	} else {
 		instantiate(resNameVar, fmt.Sprintf("%q", resName), w)
 	}
-
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
@@ -715,6 +714,7 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }
+
 func (g *generator) genTemps(w io.Writer, temps []interface{}) {
 	singleReturn := ""
 	g.genTempsMultiReturn(w, temps, singleReturn)

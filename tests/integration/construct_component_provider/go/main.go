@@ -17,7 +17,8 @@ type Provider struct {
 }
 
 func NewProvider(ctx *pulumi.Context,
-	name string, args *ProviderArgs, opts ...pulumi.ResourceOption) (*Provider, error) {
+	name string, args *ProviderArgs, opts ...pulumi.ResourceOption,
+) (*Provider, error) {
 	if args == nil {
 		args = &ProviderArgs{}
 	}

@@ -222,7 +222,7 @@ func (r *reporter) defaultExport(dir string) error {
 	}
 
 	if info, err := os.Stat(dir); os.IsNotExist(err) {
-		err := os.MkdirAll(dir, 0700)
+		err := os.MkdirAll(dir, 0o700)
 		if err != nil {
 			return err
 		}
@@ -240,6 +240,5 @@ func (r *reporter) defaultExport(dir string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0600)
-
+	return os.WriteFile(path, data, 0o600)
 }

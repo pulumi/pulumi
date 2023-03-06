@@ -79,8 +79,8 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 func makeImportFile(
 	typ, name, id string,
 	properties []string,
-	parentSpec, providerSpec, version string) (importFile, error) {
-
+	parentSpec, providerSpec, version string,
+) (importFile, error) {
 	nameTable := map[string]resource.URN{}
 	res := importSpec{
 		Type:       tokens.Type(typ),
@@ -250,7 +250,8 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 
 func getCurrentDeploymentForStack(
 	ctx context.Context,
-	s backend.Stack) (*deploy.Snapshot, error) {
+	s backend.Stack,
+) (*deploy.Snapshot, error) {
 	deployment, err := s.ExportDeployment(ctx)
 	if err != nil {
 		return nil, err
@@ -274,8 +275,8 @@ type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnosti
 
 func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import, protectResources bool) (bool, error) {
-
+	imports []deploy.Import, protectResources bool,
+) (bool, error) {
 	defer func() {
 		v := recover()
 		if v != nil {
@@ -498,7 +499,7 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}

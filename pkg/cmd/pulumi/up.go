@@ -197,7 +197,8 @@ func newUpCmd() *cobra.Command {
 
 	// up implementation used when the source of the Pulumi program is a template name or a URL to a template.
 	upTemplateNameOrURL := func(ctx context.Context,
-		templateNameOrURL string, opts backend.UpdateOptions) result.Result {
+		templateNameOrURL string, opts backend.UpdateOptions,
+	) result.Result {
 		// Retrieve the template repo.
 		repo, err := workspace.RetrieveTemplates(templateNameOrURL, false, workspace.TemplateKindPulumiProject)
 		if err != nil {
@@ -394,7 +395,7 @@ func newUpCmd() *cobra.Command {
 		}
 	}
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:        "up [template|url]",
 		Aliases:    []string{"update"},
 		SuggestFor: []string{"apply", "deploy", "push"},
@@ -436,7 +437,7 @@ func newUpCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			var displayType = display.DisplayProgress
+			displayType := display.DisplayProgress
 			if diffDisplay {
 				displayType = display.DisplayDiff
 			}
@@ -653,8 +654,8 @@ func handleConfig(
 	configArray []string,
 	yes bool,
 	path bool,
-	opts display.Options) error {
-
+	opts display.Options,
+) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backend.ErrNoPreviousDeployment {
@@ -704,9 +705,7 @@ func handleConfig(
 	return nil
 }
 
-var (
-	templateKey = config.MustMakeKey("pulumi", "template")
-)
+var templateKey = config.MustMakeKey("pulumi", "template")
 
 // isPreconfiguredEmptyStack returns true if the url matches the value of `pulumi:template` in stackConfig,
 // the stackConfig values satisfy the config requirements of templateConfig, and the snapshot is empty.
@@ -716,8 +715,8 @@ func isPreconfiguredEmptyStack(
 	url string,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	stackConfig config.Map,
-	snap *deploy.Snapshot) bool {
-
+	snap *deploy.Snapshot,
+) bool {
 	// Does stackConfig have a `pulumi:template` value and does it match url?
 	if stackConfig == nil {
 		return false

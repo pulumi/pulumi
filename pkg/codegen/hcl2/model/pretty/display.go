@@ -600,7 +600,6 @@ func (l *List) string(tg *tagGenerator) string {
 		s += v
 	}
 	return s
-
 }
 
 func (l *List) columns(i int) Formatter {

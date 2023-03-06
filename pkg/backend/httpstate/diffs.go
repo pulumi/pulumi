@@ -71,7 +71,6 @@ func (dds *deploymentDiffState) ShouldDiff(new json.RawMessage) bool {
 }
 
 func (dds *deploymentDiffState) Diff(ctx context.Context, deployment json.RawMessage) (deploymentDiff, error) {
-
 	if !dds.CanDiff() {
 		return deploymentDiff{}, fmt.Errorf("Diff() cannot be called before Saved()")
 	}

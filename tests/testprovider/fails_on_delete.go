@@ -41,7 +41,8 @@ func (p *failsOnDeleteResourceProvider) Diff(ctx context.Context, req *rpc.DiffR
 }
 
 func (p *failsOnDeleteResourceProvider) Create(
-	ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+	ctx context.Context, req *rpc.CreateRequest,
+) (*rpc.CreateResponse, error) {
 	p.id++
 	return &rpc.CreateResponse{
 		Id: fmt.Sprintf("%v", p.id),
@@ -56,7 +57,8 @@ func (p *failsOnDeleteResourceProvider) Read(ctx context.Context, req *rpc.ReadR
 }
 
 func (p *failsOnDeleteResourceProvider) Update(
-	ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+	ctx context.Context, req *rpc.UpdateRequest,
+) (*rpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 

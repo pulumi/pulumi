@@ -107,7 +107,6 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 	}
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-
 		header := c.Long
 		if header == "" {
 			header = c.Short
@@ -284,7 +283,6 @@ func NewPulumiCmd() *cobra.Command {
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
 	setCommandGroups(cmd, []commandGroup{
-
 		// Common commands:
 		{
 			Name: "Stack Management Commands",
@@ -446,7 +444,7 @@ func cacheVersionInfo(latest semver.Version, oldest semver.Version) error {
 		return err
 	}
 
-	file, err := os.OpenFile(updateCheckFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
+	file, err := os.OpenFile(updateCheckFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
 	if err != nil {
 		return err
 	}
@@ -475,7 +473,7 @@ func getCachedVersionInfo() (semver.Version, semver.Version, error) {
 		return semver.Version{}, semver.Version{}, errors.New("cached expired")
 	}
 
-	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0600)
+	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0o600)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}

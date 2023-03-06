@@ -78,7 +78,8 @@ const pulumiPackage = "pulumi"
 
 func GenerateProgramWithOptions(
 	program *pcl.Program,
-	options GenerateProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
+	options GenerateProgramOptions,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
@@ -229,7 +230,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
-		err := os.WriteFile(outPath, data, 0600)
+		err := os.WriteFile(outPath, data, 0o600)
 		if err != nil {
 			return fmt.Errorf("could not write output program: %w", err)
 		}
@@ -310,7 +311,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 				var info CSharpPackageInfo
 				if r.Schema != nil && r.Schema.PackageReference != nil {
 					def, err := r.Schema.PackageReference.Definition()
-					contract.AssertNoError(err)
+					contract.AssertNoErrorf(err, "error loading definition for package %q", r.Schema.PackageReference.Name())
 					if csharpinfo, ok := def.Language["csharp"].(CSharpPackageInfo); ok {
 						info = csharpinfo
 					}
@@ -338,7 +339,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
 			}
 			return n, nil
 		})
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
 	if g.asyncInit {
@@ -429,7 +430,7 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 	pcl.FixupPulumiPackageTokens(r)
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -451,7 +452,7 @@ func (g *generator) resourceTypeName(r *pcl.Resource) string {
 
 func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]string {
 	// Extract language-specific property names from schema
-	var csharpInputPropertyNameMap = make(map[string]string)
+	csharpInputPropertyNameMap := make(map[string]string)
 	if r.Schema != nil {
 		for _, inputProperty := range r.Schema.InputProperties {
 			if val1, ok := inputProperty.Language["csharp"]; ok {
@@ -468,7 +469,7 @@ func (g *generator) extractInputPropertyNameMap(r *pcl.Resource) map[string]stri
 func (g *generator) resourceArgsTypeName(r *pcl.Resource) string {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := r.DecomposeToken()
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
@@ -491,7 +492,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string) {
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diags := pcl.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)
 	namespace := namespaceName(namespaces, module)
@@ -540,7 +541,7 @@ func (g *generator) argumentTypeNameWithSuffix(expr model.Expression, destType m
 	}
 
 	pkg, _, member, diags := pcl.DecomposeToken(token, tokenRange)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error decomposing token: %v", diags)
 	module := g.tokenToModules[pkg](token)
 	namespaces := g.namespaces[pkg]
 	rootNamespace := namespaceName(namespaces, pkg)

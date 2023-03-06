@@ -154,7 +154,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string, output
 		})
 	}
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
@@ -213,7 +213,6 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := funcName + argsTypeSuffix
@@ -231,7 +230,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	}
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
@@ -250,7 +249,6 @@ func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outp
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := title(funcName+argsTypeSuffix, "java")
@@ -267,7 +265,7 @@ func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outp
 		})
 	}
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	params = append(params, formalParam{
 		Name:         "options",
@@ -305,7 +303,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 			}
 
 			def, err := mod.pkg.Definition()
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 			typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod,
 				schemaType, true /*input*/)
@@ -461,7 +459,7 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	}
 
 	def, err := mod.pkg.Definition()
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	packageDetails := packageDetails{
 		DisplayName:    getPackageDisplayName(def.Name),

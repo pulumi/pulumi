@@ -77,7 +77,8 @@ func (p *languageRuntime) About() (plugin.AboutInfo, error) {
 }
 
 func (p *languageRuntime) GetProgramDependencies(
-	info plugin.ProgInfo, transitiveDependencies bool) ([]plugin.DependencyInfo, error) {
+	info plugin.ProgInfo, transitiveDependencies bool,
+) ([]plugin.DependencyInfo, error) {
 	return nil, nil
 }
 

@@ -21,6 +21,8 @@ import (
 const failMsg = "A failure has occurred"
 
 // Fail unconditionally abandons the process.
+//
+// Deprecated: Use Failf.
 func Fail() {
 	failfast(failMsg)
 }

@@ -63,7 +63,7 @@ const (
 	VCSRepoOwner = "vcs.owner"
 	// VCSRepoName is the name of the repo, if the local git repo's remote origin is a cloud host.
 	VCSRepoName = "vcs.repo"
-	//VCSRepoKind is the cloud host where the repo is hosted.
+	// VCSRepoKind is the cloud host where the repo is hosted.
 	VCSRepoKind = "vcs.kind"
 
 	// CISystem is the name of the CI system running the pulumi operation.

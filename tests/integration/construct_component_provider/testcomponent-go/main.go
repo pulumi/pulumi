@@ -47,8 +47,10 @@ func NewComponent(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOptio
 	return component, nil
 }
 
-const providerName = "testcomponent"
-const version = "0.0.1"
+const (
+	providerName = "testcomponent"
+	version      = "0.0.1"
+)
 
 type pkg struct {
 	version semver.Version
@@ -72,8 +74,8 @@ func main() {
 	pulumi.RegisterResourcePackage(providerName, &pkg{semver.MustParse(version)})
 
 	if err := provider.ComponentMain(providerName, version, nil, func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-
+		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+	) (*pulumiprovider.ConstructResult, error) {
 		if typ != "testcomponent:index:Component" {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
