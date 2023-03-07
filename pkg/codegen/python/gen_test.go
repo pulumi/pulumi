@@ -30,6 +30,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
@@ -194,8 +195,10 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
+
+		outw := iotest.LogWriter(t)
+		cmd.Stderr = outw
+		cmd.Stdout = outw
 		return cmd.Run()
 	}
 

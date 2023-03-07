@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,9 +37,10 @@ func TestRunCommandLog(t *testing.T) {
 		t.Skip("Couldn't find Node on PATH")
 	}
 
+	testw := iotest.LogWriter(t)
 	opts := &ProgramTestOptions{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdout: testw,
+		Stderr: testw,
 	}
 
 	tempdir := t.TempDir()

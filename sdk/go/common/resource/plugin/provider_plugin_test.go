@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -346,9 +347,10 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	testw := iotest.LogWriter(t)
 	sink := diag.DefaultSink(
-		os.Stdout,
-		os.Stderr,
+		testw,
+		testw,
 		diag.FormatOptions{
 			Color: colors.Never,
 		},
