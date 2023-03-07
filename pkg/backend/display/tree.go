@@ -211,6 +211,9 @@ func (r *treeRenderer) frame(locked, done bool) {
 		systemMessagesHeight += 3 // Account for padding + title
 	}
 
+	// Enable autoscrolling if the display is scrolled to its maximum offset.
+	autoscroll := r.treeTableOffset == r.maxTreeTableOffset
+
 	// Layout the display. The extra '1' accounts for the fact that we terminate each line with a newline.
 	totalHeight := treeTableHeight + systemMessagesHeight + 1
 	r.maxTreeTableOffset = 0
@@ -235,6 +238,10 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 		treeTableHeight = termHeight - systemMessagesHeight - 1
 		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
+
+		if autoscroll {
+			r.treeTableOffset = r.maxTreeTableOffset
+		}
 
 		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
 
@@ -317,6 +324,26 @@ func (r *treeRenderer) handleEvents() {
 			case "down":
 				if r.treeTableOffset < r.maxTreeTableOffset {
 					r.treeTableOffset++
+				}
+				r.markDirty()
+			case "page-up":
+				_, termHeight, err := r.term.Size()
+				contract.IgnoreError(err)
+
+				if r.treeTableOffset > termHeight {
+					r.treeTableOffset -= termHeight
+				} else {
+					r.treeTableOffset = 0
+				}
+				r.markDirty()
+			case "page-down":
+				_, termHeight, err := r.term.Size()
+				contract.IgnoreError(err)
+
+				if r.maxTreeTableOffset-r.treeTableOffset > termHeight {
+					r.treeTableOffset += termHeight
+				} else {
+					r.treeTableOffset = r.maxTreeTableOffset
 				}
 				r.markDirty()
 			}

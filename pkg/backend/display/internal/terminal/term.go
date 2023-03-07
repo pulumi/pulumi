@@ -154,64 +154,166 @@ func (t *terminal) ShowCursor() {
 	t.info.ShowCursor(t.out)
 }
 
+type stateFunc func(b byte) stateFunc
+
+// ansiKind
+type ansiKind int
+
+const (
+	ansiError   ansiKind = iota // ansiError indicates a decoding error
+	ansiKey                     // ansiKey indicates a normal keypress
+	ansiEscape                  // ansiEscape indicates an ANSI escape sequence
+	ansiControl                 // ansiControl indicates an ANSI control sequence
+)
+
+// ansiDecoder is responsible for decoding ANSI escape and control sequences as per ECMA-48 et. al.
+//
+//   - ANSI escape sequences are of the form "'\x1b' (intermediate bytes) <final byte>", where intermediate bytes are in
+//     the range [0x20, 0x30) and the final byte is in the range [0x30, 0x7f)
+//   - ANSI control sequences are of the form "'\x1b' '[' (parameter bytes) (intermediate bytes) <final byte>", where
+//     parameter bytes are in the range [0x30, 0x40), intermediate bytes are in the range [0x20, 0x30), and the final
+//     byte is in the range [0x40, 0x7f). Note that in most references (incl. ECMA-48), "'\x1b' '['" is referred to as
+//     a Control Sequence Indicator, or CSI.
+//
+// Any sequence that is introduced with a byte that is not '\x1b' is treated as a normal keypress.
+//
+// No post-processing is done on the decoded sequences to ensure that e.g. the parameter count, etc. is valid--any such
+// processing is up to the consumer.
+type ansiDecoder struct {
+	kind         ansiKind // the kind of the decoded sequence.
+	params       []byte   // the decoded control sequence's parameter bytes, if any
+	intermediate []byte   // the decoded escape or control sequence's intermediate bytes, if any.
+	final        byte     // the final byte of the sequence.
+}
+
+// stateControlIntermediate decodes optional intermediate bytes and the final byte of a control sequence.
+func (d *ansiDecoder) stateControlIntermediate(b byte) stateFunc {
+	if b >= 0x20 && b < 0x30 {
+		d.intermediate = append(d.intermediate, b)
+		return d.stateControlIntermediate
+	}
+	if b >= 0x40 && b < 0x7f {
+		d.kind = ansiControl
+	}
+	d.final = b
+	return nil
+}
+
+// stateControl decodes optional parameter bytes of a control sequence.
+func (d *ansiDecoder) stateControl(b byte) stateFunc {
+	if b >= 0x30 && b < 0x40 {
+		d.params = append(d.params, b)
+		return d.stateControl
+	}
+	return d.stateControlIntermediate(b)
+}
+
+// stateEscapeIntermediate decodes optional intermediate bytes and the final byte of an escape sequence.
+func (d *ansiDecoder) stateEscapeIntermediate(b byte) stateFunc {
+	if b >= 0x20 && b < 0x30 {
+		d.intermediate = append(d.intermediate, b)
+		return d.stateEscapeIntermediate
+	}
+	if b >= 0x30 && b < 0x7f {
+		d.kind = ansiEscape
+	}
+	d.final = b
+	return nil
+}
+
+// stateEscape determines whether a sequence beginning with '\x1b' is an escape sequence or a control sequence.
+func (d *ansiDecoder) stateEscape(b byte) stateFunc {
+	if b == '[' {
+		return d.stateControl
+	}
+	return d.stateEscapeIntermediate(b)
+}
+
+// stateInit is the initial state for the decoder.
+func (d *ansiDecoder) stateInit(b byte) stateFunc {
+	if b == 0x1b {
+		return d.stateEscape
+	}
+	d.kind, d.final = ansiKey, b
+	return nil
+}
+
+// decode decodes the next key, escape sequence, or control sequence from in. The results are left in the decoder.
+func (d *ansiDecoder) decode(in io.Reader) error {
+	state := d.stateInit
+	for {
+		var b [1]byte
+		if _, err := in.Read(b[:]); err != nil {
+			return err
+		}
+
+		next := state(b[0])
+		if next == nil {
+			return nil
+		}
+		state = next
+	}
+}
+
+const (
+	KeyCtrlC    = "ctrl+c"
+	KeyDown     = "down"
+	KeyPageDown = "page-down"
+	KeyPageUp   = "page-up"
+	KeyUp       = "up"
+)
+
+// ReadKey reads a keypress from the terminal.
 func (t *terminal) ReadKey() (string, error) {
 	if t.in == nil {
 		return "", io.EOF
 	}
 
-	type stateFunc func(b byte) (stateFunc, string)
-
-	var stateIntermediate stateFunc
-	stateIntermediate = func(b byte) (stateFunc, string) {
-		if b >= 0x20 && b < 0x30 {
-			return stateIntermediate, ""
+	// Decode an ANSI sequence from the input.
+	var d ansiDecoder
+	if err := d.decode(t.in); err != nil {
+		if errors.Is(err, cancelreader.ErrCanceled) {
+			err = io.EOF
 		}
-		switch b {
+		return "", err
+	}
+
+	// Turn the decoded sequence into a key name.
+	//
+	// Some of these are described by ECMA-48, while others are described by the xterm or DEC docs:
+	// - https://www.ecma-international.org/wp-content/uploads/ECMA-48_5th_edition_june_1991.pdf
+	// - https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+	// - https://vt100.net/docs/vt510-rm/contents.html
+	switch d.kind {
+	case ansiKey:
+		if d.final == 3 {
+			// ETX: \x03
+			return KeyCtrlC, nil
+		}
+		return string([]byte{d.final}), nil
+	case ansiEscape:
+		return fmt.Sprintf("<escape %v>", d.final), nil
+	case ansiControl:
+		switch d.final {
 		case 'A':
-			return nil, "up"
+			// CUU - Cursor Up: CSI (Pn) A
+			return KeyUp, nil
 		case 'B':
-			return nil, "down"
-		default:
-			return nil, "<control>"
-		}
-	}
-	var stateParameter stateFunc
-	stateParameter = func(b byte) (stateFunc, string) {
-		if b >= 0x30 && b < 0x40 {
-			return stateParameter, ""
-		}
-		return stateIntermediate(b)
-	}
-	stateBracket := func(b byte) (stateFunc, string) {
-		if b == '[' {
-			return stateParameter, ""
-		}
-		return nil, "<control>"
-	}
-	stateEscape := func(b byte) (stateFunc, string) {
-		if b == 0x1b {
-			return stateBracket, ""
-		}
-		if b == 3 {
-			return nil, "ctrl+c"
-		}
-		return nil, string([]byte{b})
-	}
-
-	state := stateEscape
-	for {
-		var b [1]byte
-		if _, err := t.in.Read(b[:]); err != nil {
-			if errors.Is(err, cancelreader.ErrCanceled) {
-				err = io.EOF
+			// CUD - Cursor Down: CSI (Pn) B
+			return KeyDown, nil
+		case '~':
+			// DECFNK - Function Key: CSI Ps1 (; Ps2) ~
+			switch string(d.params) {
+			case "5":
+				// Page Up: CSI 5 ~
+				return KeyPageUp, nil
+			case "6":
+				// Page Down: CSI 6 ~
+				return KeyPageDown, nil
 			}
-			return "", err
 		}
-
-		next, key := state(b[0])
-		if next == nil {
-			return key, nil
-		}
-		state = next
+		return fmt.Sprintf("<control %v>", d.final), nil
+	default:
+		return "", errors.New("invalid control sequence")
 	}
 }
