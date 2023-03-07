@@ -60,7 +60,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -83,7 +83,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, stackName, loadStackName(t))
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process
@@ -107,7 +107,7 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 	err := runNew(context.Background(), args)
 	assert.NoError(t, err)
 
-	removeStack(t, stackName)
+	removeStack(t, tempdir, stackName)
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
@@ -201,9 +201,10 @@ func loadStackName(t *testing.T) string {
 	return w.Settings().Stack
 }
 
-func removeStack(t *testing.T, name string) {
+func removeStack(t *testing.T, dir, name string) {
+	project := loadProject(t, dir)
 	ctx := context.Background()
-	b, err := currentBackend(ctx, nil, display.Options{})
+	b, err := currentBackend(ctx, project, display.Options{})
 	assert.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	assert.NoError(t, err)

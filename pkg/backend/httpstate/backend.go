@@ -622,7 +622,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(b.currentProject)
 		if err != nil {
 			return nil, err
 		}
@@ -639,13 +639,12 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	if qualifiedName.Project == "" {
-		currentProject, projectErr := workspace.DetectProject()
-		if projectErr != nil {
-			return nil, fmt.Errorf("If you're using the --stack flag, "+
-				"pass the fully qualified name (org/project/stack): %w", projectErr)
+		if b.currentProject == nil {
+			return nil, fmt.Errorf("If you're using the --stack flag, " +
+				"pass the fully qualified name (org/project/stack)")
 		}
 
-		qualifiedName.Project = currentProject.Name.String()
+		qualifiedName.Project = b.currentProject.Name.String()
 	}
 
 	if !tokens.IsName(qualifiedName.Name) {
