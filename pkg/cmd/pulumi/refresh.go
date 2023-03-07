@@ -441,9 +441,9 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 	for {
 		option := ""
 		options := []string{
-			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 			"clear (the CREATE failed; remove the pending CREATE)",
 			"skip (do nothing)",
+			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 		}
 		if err := survey.AskOne(&survey.Select{
 			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
@@ -455,6 +455,10 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 		var err error
 		switch option {
 		case options[0]:
+			return nil, nil
+		case options[1]:
+			return &op, nil
+		case options[2]:
 			var id string
 			err = survey.AskOne(&survey.Input{
 				Message: "ID: ",
@@ -464,10 +468,6 @@ func interactiveFixPendingCreate(op resource.Operation) (*resource.Operation, er
 				op.Type = resource.OperationTypeImporting
 				return &op, nil
 			}
-		case options[1]:
-			return nil, nil
-		case options[2]:
-			return &op, nil
 		default:
 			return nil, fmt.Errorf("unknown option: %q", option)
 		}

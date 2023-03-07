@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Reorder options to handle pending creates. Users can now hold enter to select the clear option which should be more ergonomic.
