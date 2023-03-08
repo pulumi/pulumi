@@ -15,10 +15,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -26,9 +30,7 @@ import (
 )
 
 func newWhoAmICmd() *cobra.Command {
-	var jsonOut bool
-	var verbose bool
-
+	var whocmd whoAmICmd
 	cmd := &cobra.Command{
 		Use:   "whoami",
 		Short: "Display the current logged-in user",
@@ -37,55 +39,63 @@ func newWhoAmICmd() *cobra.Command {
 			"Displays the username of the currently logged in user.",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			ctx := commandContext()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			// Try to read the current project
-			project, _, err := readProject()
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			b, err := currentBackend(ctx, project, opts)
-			if err != nil {
-				return err
-			}
-
-			name, orgs, err := b.CurrentUser()
-			if err != nil {
-				return err
-			}
-
-			if jsonOut {
-				return printJSON(WhoAmIJSON{
-					User:          name,
-					Organizations: orgs,
-					URL:           b.URL(),
-				})
-			}
-
-			if verbose {
-				fmt.Printf("User: %s\n", name)
-				fmt.Printf("Organizations: %s\n", strings.Join(orgs, ", "))
-				fmt.Printf("Backend URL: %s\n", b.URL())
-			} else {
-				fmt.Println(name)
-			}
-
-			return nil
+			return whocmd.Run(commandContext())
 		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+		&whocmd.jsonOut, "json", "j", false, "Emit output as JSON")
 
 	cmd.PersistentFlags().BoolVarP(
-		&verbose, "verbose", "v", false,
+		&whocmd.verbose, "verbose", "v", false,
 		"Print detailed whoami information")
 
 	return cmd
+}
+
+type whoAmICmd struct {
+	jsonOut bool
+	verbose bool
+}
+
+func (cmd *whoAmICmd) Run(ctx context.Context) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return err
+	}
+
+	b, err := currentBackend(ctx, project, opts)
+	if err != nil {
+		return err
+	}
+
+	name, orgs, err := b.CurrentUser()
+	if err != nil {
+		return err
+	}
+
+	if cmd.jsonOut {
+		return printJSON(WhoAmIJSON{
+			User:          name,
+			Organizations: orgs,
+			URL:           b.URL(),
+		})
+	}
+
+	if cmd.verbose {
+		fmt.Printf("User: %s\n", name)
+		fmt.Printf("Organizations: %s\n", strings.Join(orgs, ", "))
+		fmt.Printf("Backend URL: %s\n", b.URL())
+	} else {
+		fmt.Print(name)
+	}
+
+	return nil
 }
 
 // WhoAmIJSON is the shape of the --json output of this command.
