@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	resourceConfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1873,7 +1874,8 @@ func TestSaveStackSettings(t *testing.T) {
 	// first load settings for created stack
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
-	stackConfig.SecretsProvider = "passphrase"
+	// Set the config value and save it
+	stackConfig.Config[resourceConfig.MustMakeKey(pName, "bar")] = resourceConfig.NewValue("baz")
 	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi up --
@@ -1885,10 +1887,15 @@ func TestSaveStackSettings(t *testing.T) {
 	}
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+	assert.Equal(t, "baz", res.Outputs["exp_cfg"].Value)
 
 	reloaded, err := s.workspace.StackSettings(ctx, stackName)
 	assert.NoError(t, err)
-	assert.Equal(t, stackConfig, reloaded)
+	// Check each field because if we check the whole struct it picks up the 'raw' field which does differ.
+	assert.Equal(t, stackConfig.SecretsProvider, reloaded.SecretsProvider)
+	assert.Equal(t, stackConfig.EncryptedKey, reloaded.EncryptedKey)
+	assert.Equal(t, stackConfig.EncryptionSalt, reloaded.EncryptionSalt)
+	assert.Equal(t, stackConfig.Config, reloaded.Config)
 
 	// -- pulumi destroy --
 
