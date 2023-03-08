@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -47,6 +48,7 @@ type generator struct {
 
 	asyncMain     bool
 	configCreated bool
+	isComponent   bool
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -59,9 +61,6 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 	g.Formatter = format.NewFormatter(g)
 
-	// Creating a list to store and later print helper methods if they turn out to be needed
-	preambleHelperMethods := codegen.NewStringSet()
-
 	packages, err := program.PackageSnapshots()
 	if err != nil {
 		return nil, nil, err
@@ -73,7 +72,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	var index bytes.Buffer
-	err = g.genPreamble(&index, program, preambleHelperMethods)
+	err = g.genPreamble(&index, program)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -139,6 +138,21 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	files := map[string][]byte{
 		"index.ts": index.Bytes(),
 	}
+
+	for componentDir, component := range program.CollectComponents() {
+		componentName := filepath.Base(componentDir)
+		componentGenerator := &generator{
+			program:     component.Program,
+			isComponent: true,
+		}
+
+		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
+
+		var componentBuffer bytes.Buffer
+		componentGenerator.genComponentResourceDefinition(&componentBuffer, componentName, component)
+		files[componentName+".ts"] = componentBuffer.Bytes()
+	}
+
 	return files, g.diagnostics, nil
 }
 
@@ -284,13 +298,15 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 	}
 }
 
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelperMethods codegen.StringSet) error {
-	// Print the @pulumi/pulumi import at the top.
-	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
+type programImports struct {
+	importStatements      []string
+	preambleHelperMethods codegen.StringSet
+}
 
-	// Accumulate other imports for the various providers and packages. Don't emit them yet, as we need to sort them
-	// later on.
+func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
+	preambleHelperMethods := codegen.NewStringSet()
+
 	npmToPuPkgName := make(map[string]string)
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
@@ -301,9 +317,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			pkgName := "@pulumi/" + pkg
 			if r.Schema != nil && r.Schema.PackageReference != nil {
 				def, err := r.Schema.PackageReference.Definition()
-				if err != nil {
-					return err
-				}
+				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", r.Schema.Token)
 				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 					pkgName = info.PackageName
 				}
@@ -327,9 +341,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
-	sortedVals := importSet.SortedValues()
-	imports := make([]string, 0, len(sortedVals))
-	for _, pkg := range sortedVals {
+	sortedValues := importSet.SortedValues()
+	imports := make([]string, 0, len(sortedValues))
+	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
@@ -343,17 +357,181 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 	sort.Strings(imports)
 
+	return programImports{
+		importStatements:      imports,
+		preambleHelperMethods: preambleHelperMethods,
+	}
+}
+
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
+	// Print the @pulumi/pulumi import at the top.
+	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
+
+	programImports := g.collectProgramImports(program)
+
 	// Now sort the imports and emit them.
-	for _, i := range imports {
+	for _, i := range programImports.importStatements {
 		g.Fprintln(w, i)
 	}
 	g.Fprint(w, "\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
-	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
 		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
 	}
 	return nil
+}
+
+func componentElementType(pclType model.Type) string {
+	switch pclType {
+	case model.BoolType:
+		return "bool"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "double"
+	case model.StringType:
+		return "string"
+	default:
+		switch pclType := pclType.(type) {
+		case *model.ListType:
+			elementType := componentElementType(pclType.ElementType)
+			return fmt.Sprintf("%s[]", elementType)
+		case *model.MapType:
+			elementType := componentElementType(pclType.ElementType)
+			return fmt.Sprintf("{ [k: string]: %s }", elementType)
+		case *model.OutputType:
+			// something is already an output
+			// get only the element type because we are wrapping these in Output<T> anyway
+			return componentElementType(pclType.ElementType)
+		default:
+			return "any"
+		}
+	}
+}
+
+func componentInputType(pclType model.Type) string {
+	elementType := componentElementType(pclType)
+	return fmt.Sprintf("pulumi.Input<%s>", elementType)
+}
+
+func componentOutputType(pclType model.Type) string {
+	elementType := componentElementType(pclType)
+	return fmt.Sprintf("pulumi.Output<%s>", elementType)
+}
+
+func (g *generator) genComponentResourceDefinition(w io.Writer, componentName string, component *pcl.Component) {
+	// Print the @pulumi/pulumi import at the top.
+	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
+
+	programImports := g.collectProgramImports(component.Program)
+
+	// Now sort the imports and emit them.
+	for _, i := range programImports.importStatements {
+		g.Fprintln(w, i)
+	}
+	g.Fprint(w, "\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range programImports.preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
+	}
+
+	configVars := component.Program.ConfigVariables()
+
+	if len(configVars) > 0 {
+		// generate a component args type
+		g.Fgenf(w, "export interface %sArgs {\n", title(componentName))
+		g.Indented(func() {
+			for _, configVar := range configVars {
+				optional := "?"
+				if configVar.DefaultValue == nil {
+					optional = ""
+				}
+
+				g.Fgenf(w, "%s", g.Indent)
+				typeName := componentInputType(configVar.Type())
+				g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+			}
+		})
+		g.Fgenf(w, "}\n\n")
+	}
+
+	outputs := component.Program.OutputVariables()
+
+	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", title(componentName))
+	g.Indented(func() {
+		for _, output := range outputs {
+			var outputType string
+			switch expr := output.Value.(type) {
+			case *model.ScopeTraversalExpression:
+				resource, ok := expr.Parts[0].(*pcl.Resource)
+				if ok && len(expr.Parts) == 1 {
+					pkg, module, memberName, diagnostics := resourceTypeName(resource)
+					g.diagnostics = append(g.diagnostics, diagnostics...)
+
+					if module != "" {
+						module = "." + module
+					}
+
+					qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+					// special case: the output is a Resource type
+					outputType = fmt.Sprintf("pulumi.Output<%s>", qualifiedMemberName)
+				} else {
+					outputType = componentOutputType(expr.Type())
+				}
+			default:
+				outputType = componentOutputType(expr.Type())
+			}
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
+		}
+
+		token := fmt.Sprintf("components:index:%s", title(componentName))
+
+		if len(configVars) == 0 {
+			g.Fgenf(w, "%s", g.Indent)
+			g.Fgen(w, "constructor(name: string, opts?: pulumi.ComponentResourceOptions) {\n")
+			g.Indented(func() {
+				g.Fgenf(w, "%s", g.Indent)
+				g.Fgenf(w, "super(\"%s\", name, {}, opts);\n\n", token)
+			})
+		} else {
+			g.Fgenf(w, "%s", g.Indent)
+			argsTypeName := title(componentName) + "Args"
+			g.Fgenf(w, "constructor(name: string, args: %s, opts?: pulumi.ComponentResourceOptions) {\n",
+				argsTypeName)
+			g.Indented(func() {
+				g.Fgenf(w, "%s", g.Indent)
+				g.Fgenf(w, "super(\"%s\", name, args, opts);\n\n", token)
+			})
+		}
+
+		// generate component resources and local variables
+		g.Indented(func() {
+			for _, node := range component.Program.Nodes {
+				switch node := node.(type) {
+				case *pcl.LocalVariable:
+					g.genLocalVariable(w, node)
+				case *pcl.Resource:
+					if node.Options == nil {
+						node.Options = &pcl.ResourceOptions{}
+					}
+
+					if node.Options.Parent == nil {
+						node.Options.Parent = model.ConstantReference(&model.Constant{
+							Name: "this",
+						})
+					}
+					g.genResource(w, node)
+					g.Fgen(w, "\n")
+				}
+			}
+		})
+
+		g.Fgenf(w, "%s}\n", g.Indent)
+	})
+	g.Fgen(w, "}\n")
 }
 
 func (g *generator) genNode(w io.Writer, n pcl.Node) {
@@ -416,7 +594,14 @@ func moduleName(module string, pkg schema.PackageReference) string {
 // and the count variable name, if any.
 func (g *generator) makeResourceName(baseName, count string) string {
 	if count == "" {
+		if g.isComponent {
+			return fmt.Sprintf("`${name}-%s`", baseName)
+		}
 		return fmt.Sprintf(`"%s"`, baseName)
+	}
+
+	if g.isComponent {
+		return fmt.Sprintf("`${name}-%s-${%s}`", baseName, count)
 	}
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }

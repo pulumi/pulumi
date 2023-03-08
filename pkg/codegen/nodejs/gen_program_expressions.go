@@ -656,6 +656,26 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	if g.isComponent {
+		if expr.RootName == "this" {
+			// special case for parent: this
+			g.Fgenf(w, "%s", expr.RootName)
+			return
+		}
+
+		configVars := map[string]*pcl.ConfigVariable{}
+		for _, configVar := range g.program.ConfigVariables() {
+			configVars[configVar.Name()] = configVar
+		}
+
+		if _, isConfig := configVars[expr.RootName]; isConfig {
+			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
+				g.Fgenf(w, "args.%s", expr.RootName)
+				return
+			}
+		}
+	}
+
 	rootName := makeValidIdentifier(expr.RootName)
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"

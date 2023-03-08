@@ -83,3 +83,4 @@ __pycache__
 # Temporary files
 *.tmp
 test-results/
+yarn-error.log
