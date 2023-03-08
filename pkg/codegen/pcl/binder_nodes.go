@@ -61,6 +61,9 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	case *Resource:
 		diags := b.bindResource(node)
 		diagnostics = append(diagnostics, diags...)
+	case *Component:
+		diags := b.bindComponent(node)
+		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)

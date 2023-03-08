@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -121,33 +120,39 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.Program, error) {
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
-	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
+	files, err := os.ReadDir(directory)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
 		}
+		fileName := file.Name()
+		path := filepath.Join(directory, fileName)
 
 		if filepath.Ext(path) == ".pp" {
 			file, err := os.Open(path)
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 
 			err = parser.ParseFile(file, filepath.Base(path))
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 			diags := parser.Diagnostics
 			if diags.HasErrors() {
-				return diags
+				return nil, nil, diags
 			}
 		}
-		return nil
-	})
+	}
+
 	if err != nil {
 		return nil, nil, err
 	}
 
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, pdiags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.DirPath(directory),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	if err != nil {
 		return nil, nil, err
 	}

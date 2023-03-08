@@ -15,19 +15,76 @@
 package pcl
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-// Component represents a component definition in a program.
-//
-// TODO(pdg): implement
+// Component represents a component reference in a program.
 type Component struct {
-	Syntax *hclsyntax.Block
+	node
 
-	InputTypes  map[string]model.Type
-	OutputTypes map[string]model.Type
+	syntax *hclsyntax.Block
 
-	Children []*Resource
-	Locals   []*LocalVariable
+	// The name visible to API calls related to the component. Used as the Name argument in component
+	// constructors, and through those calls to RegisterResource. Must not be modified during code
+	// generation to ensure that components are not renamed (deleted and recreated).
+	logicalName string
+
+	// the name of block declaration
+	name string
+
+	// The location of the source for the component.
+	source string
+
+	// the full (absolute) path of the component directory
+	dirPath string
+
+	// The inner Program that makes up this Component.
+	Program *Program
+
+	// The type of the resource variable.
+	VariableType model.Type
+
+	// The definition of the component.
+	Definition *model.Block
+
+	// The component's input attributes, in source order.
+	Inputs []*model.Attribute
+
+	// The component resource's options, if any.
+	Options *ResourceOptions
+}
+
+// SyntaxNode returns the syntax node associated with the component.
+func (c *Component) SyntaxNode() hclsyntax.Node {
+	return c.syntax
+}
+
+func (c *Component) Name() string {
+	return c.name
+}
+
+func (c *Component) LogicalName() string {
+	if c.logicalName != "" {
+		return c.logicalName
+	}
+
+	return c.Name()
+}
+
+func (c *Component) DirPath() string {
+	return c.dirPath
+}
+
+func (c *Component) Type() model.Type {
+	return c.VariableType
+}
+
+func (c *Component) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	return c.VariableType.Traverse(traverser)
+}
+
+func (c *Component) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(c.Definition, pre, post)
 }

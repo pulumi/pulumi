@@ -254,6 +254,56 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 	return s.root, nil
 }
 
+func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
+	resourceOptions := &ResourceOptions{}
+	diagnostics := hcl.Diagnostics{}
+	for _, item := range options.Body.Items {
+		switch item := item.(type) {
+		case *model.Attribute:
+			var t model.Type
+			switch item.Name {
+			case "range":
+				t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
+					model.NewMapType(model.DynamicType))
+				resourceOptions.Range = item.Value
+			case "parent":
+				t = model.DynamicType
+				resourceOptions.Parent = item.Value
+			case "provider":
+				t = model.DynamicType
+				resourceOptions.Provider = item.Value
+			case "dependsOn":
+				t = model.NewListType(model.DynamicType)
+				resourceOptions.DependsOn = item.Value
+			case "protect":
+				t = model.BoolType
+				resourceOptions.Protect = item.Value
+			case "retainOnDelete":
+				t = model.BoolType
+				resourceOptions.RetainOnDelete = item.Value
+			case "ignoreChanges":
+				t = model.NewListType(ResourcePropertyType)
+				resourceOptions.IgnoreChanges = item.Value
+			case "version":
+				t = model.StringType
+				resourceOptions.Version = item.Value
+			case "pluginDownloadURL":
+				t = model.StringType
+				resourceOptions.PluginDownloadURL = item.Value
+			default:
+				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
+				continue
+			}
+			if model.InputType(t).ConversionFrom(item.Value.Type()) == model.NoConversion {
+				diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(t), item.Value))
+			}
+		case *model.Block:
+			diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+		}
+	}
+	return resourceOptions, diagnostics
+}
+
 // bindResourceBody binds the body of a resource.
 func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
@@ -399,51 +449,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	// Typecheck the options block.
 	if options != nil {
-		resourceOptions := &ResourceOptions{}
-		for _, item := range options.Body.Items {
-			switch item := item.(type) {
-			case *model.Attribute:
-				var t model.Type
-				switch item.Name {
-				case "range":
-					t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
-						model.NewMapType(model.DynamicType))
-					resourceOptions.Range = item.Value
-				case "parent":
-					t = model.DynamicType
-					resourceOptions.Parent = item.Value
-				case "provider":
-					t = model.DynamicType
-					resourceOptions.Provider = item.Value
-				case "dependsOn":
-					t = model.NewListType(model.DynamicType)
-					resourceOptions.DependsOn = item.Value
-				case "protect":
-					t = model.BoolType
-					resourceOptions.Protect = item.Value
-				case "retainOnDelete":
-					t = model.BoolType
-					resourceOptions.RetainOnDelete = item.Value
-				case "ignoreChanges":
-					t = model.NewListType(ResourcePropertyType)
-					resourceOptions.IgnoreChanges = item.Value
-				case "version":
-					t = model.StringType
-					resourceOptions.Version = item.Value
-				case "pluginDownloadURL":
-					t = model.StringType
-					resourceOptions.PluginDownloadURL = item.Value
-				default:
-					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
-					continue
-				}
-				if model.InputType(t).ConversionFrom(item.Value.Type()) == model.NoConversion {
-					diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(t), item.Value))
-				}
-			case *model.Block:
-				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
-			}
-		}
+		resourceOptions, optionsDiags := bindResourceOptions(options)
+		diagnostics = append(diagnostics, optionsDiags...)
 		node.Options = resourceOptions
 	}
 
