@@ -56,9 +56,24 @@ func newWhoAmICmd() *cobra.Command {
 type whoAmICmd struct {
 	jsonOut bool
 	verbose bool
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *whoAmICmd) Run(ctx context.Context) error {
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = currentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow the top-level function
+
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
@@ -80,7 +95,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.jsonOut {
-		return printJSON(WhoAmIJSON{
+		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:          name,
 			Organizations: orgs,
 			URL:           b.URL(),
@@ -88,11 +103,11 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.verbose {
-		fmt.Printf("User: %s\n", name)
-		fmt.Printf("Organizations: %s\n", strings.Join(orgs, ", "))
-		fmt.Printf("Backend URL: %s\n", b.URL())
+		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
+		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
+		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
 	} else {
-		fmt.Print(name)
+		fmt.Fprint(cmd.Stdout, name)
 	}
 
 	return nil
