@@ -81,7 +81,7 @@ type Workspace interface {
 	WhoAmI(context.Context) (string, error)
 	// WhoAmIDetails returns detailed information about the currently
 	// logged-in Pulumi identity.
-	WhoAmIDetails(ctx context.Context) (WhoAmIDetailedInfo, error)
+	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
@@ -137,8 +137,8 @@ type StackSummary struct {
 	URL              string `json:"url,omitempty"`
 }
 
-// WhoAmIDetailedInfo contains detailed information about the currently logged-in Pulumi identity.
-type WhoAmIDetailedInfo struct {
+// WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
+type WhoAmIResult struct {
 	User          string   `json:"user"`
 	Organizations []string `json:"organizations,omitempty"`
 	URL           string   `json:"url"`
