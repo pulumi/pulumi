@@ -308,8 +308,9 @@ func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	return strings.TrimSpace(stdout), nil
 }
 
-// WhoAmIDetailed returns the currently authenticated user
-func (l *LocalWorkspace) WhoAmIDetailed(ctx context.Context) (WhoAmIDetailedInfo, error) {
+// WhoAmIDetails returns detailed information about the currently
+// logged-in Pulumi identity.
+func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIDetailedInfo, error) {
 	var whoAmIDetailedInfo WhoAmIDetailedInfo
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami", "--json")
 	if err != nil {

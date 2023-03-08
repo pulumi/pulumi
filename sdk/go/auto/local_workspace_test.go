@@ -2297,7 +2297,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.FailNow()
 	}
 
-	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetailed(ctx)
+	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetails(ctx)
 	if err != nil {
 		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
 		t.FailNow()

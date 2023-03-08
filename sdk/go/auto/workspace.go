@@ -79,8 +79,9 @@ type Workspace interface {
 	PulumiVersion() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
-	// WhoAmIDetailed returns detailed information about the currently logged-in Pulumi identity, including backendUrl.
-	WhoAmIDetailed(ctx context.Context) (WhoAmIDetailedInfo, error)
+	// WhoAmIDetails returns detailed information about the currently
+	// logged-in Pulumi identity.
+	WhoAmIDetails(ctx context.Context) (WhoAmIDetailedInfo, error)
 	// Stack returns a summary of the currently selected stack, if any.
 	Stack(context.Context) (*StackSummary, error)
 	// CreateStack creates and sets a new stack with the stack name, failing if one already exists.
