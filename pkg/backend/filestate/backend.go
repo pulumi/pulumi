@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"path"
@@ -148,11 +147,6 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
-type pulumiState struct {
-	// Version is the current version of the state store
-	Version int `json:"version,omitempty" yaml:"version,omitempty"`
-}
-
 func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
@@ -198,47 +192,9 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 
 	// Check if there is a .pulumi/Pulumi.yaml file in the bucket
 	b := &wrappedBucket{bucket: bucket}
-	pulumiYamlPath := filepath.Join(workspace.BookkeepingDir, "Pulumi.yaml")
-	pulumiYaml, err := b.ReadAll(ctx, pulumiYamlPath)
+	pulumiState, err := ensurePulumiMeta(ctx, b)
 	if err != nil {
-		if gcerrors.Code(err) != gcerrors.NotFound {
-			return nil, fmt.Errorf("could not read 'Pulumi.yaml': %w", err)
-		}
-	}
-
-	var pulumiState pulumiState
-	if err != nil {
-		// We'll only get here if err is NotFound, at this point we want to see if this is a fresh new store,
-		// in which case we'll write the new Pulumi.yaml, or if there's existing data here we'll fallback to
-		// non-project mode.
-		bucketIter := b.bucket.List(&blob.ListOptions{
-			Delimiter: "/",
-			Prefix:    workspace.BookkeepingDir,
-		})
-		_, err := bucketIter.Next(ctx)
-		if err == io.EOF {
-			// It's an empty bucket, turn on project mode
-			pulumiState.Version = 1
-			pulumiYaml, err = yaml.Marshal(&pulumiState)
-			contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
-			err := b.WriteAll(ctx, pulumiYamlPath, pulumiYaml, nil)
-			if err != nil {
-				return nil, fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
-			}
-		}
-	} else {
-		err = yaml.Unmarshal(pulumiYaml, &pulumiState)
-		if err != nil {
-			return nil, fmt.Errorf("state store corrupted, could not unmarshal 'Pulumi.yaml': %w", err)
-		}
-		if pulumiState.Version < 1 {
-			return nil, fmt.Errorf("state store corrupted, 'Pulumi.yaml' reports an invalid version of %d", pulumiState.Version)
-		}
-		if pulumiState.Version > 1 {
-			return nil, fmt.Errorf(
-				"state store unsupported, 'Pulumi.yaml' reports an version of %d unsupported by this version of pulumi",
-				pulumiState.Version)
-		}
+		return nil, err
 	}
 
 	// Allocate a unique lock ID for this backend instance.
@@ -342,7 +298,7 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 		}
 	}
 
-	var pulumiState pulumiState
+	var pulumiState pulumiMeta
 	pulumiState.Version = 1
 	pulumiYaml, err := yaml.Marshal(&pulumiState)
 	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
