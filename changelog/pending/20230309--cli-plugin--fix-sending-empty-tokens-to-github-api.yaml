@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Fix sending empty tokens to GitHub API.
