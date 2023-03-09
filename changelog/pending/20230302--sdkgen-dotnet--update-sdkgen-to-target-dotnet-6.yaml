@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/dotnet
-  description: Update sdkgen to target dotnet 6.

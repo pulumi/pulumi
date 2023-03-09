@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Enable programmatic tagging of stacks (Python only)

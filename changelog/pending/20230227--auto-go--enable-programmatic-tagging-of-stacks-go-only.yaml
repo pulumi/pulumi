@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Enable programmatic tagging of stacks (Go only)
