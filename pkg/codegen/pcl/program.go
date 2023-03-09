@@ -191,6 +191,34 @@ func (p *Program) CollectComponents() map[string]*Component {
 	return components
 }
 
+func (p *Program) collectPackageSnapshots(seenPackages map[string]*schema.Package) error {
+	packages, err := p.PackageSnapshots()
+	if err != nil {
+		return err
+	}
+
+	for _, pkg := range packages {
+		if _, seen := seenPackages[pkg.Name]; !seen {
+			seenPackages[pkg.Name] = pkg
+		}
+	}
+
+	for _, component := range p.CollectComponents() {
+		err = component.Program.collectPackageSnapshots(seenPackages)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *Program) CollectNestedPackageSnapshots() (map[string]*schema.Package, error) {
+	seenPackages := map[string]*schema.Package{}
+	err := p.collectPackageSnapshots(seenPackages)
+	return seenPackages, err
+}
+
 // ConfigVariables returns the config variable nodes of the program
 func (p *Program) ConfigVariables() []*ConfigVariable {
 	var configVars []*ConfigVariable

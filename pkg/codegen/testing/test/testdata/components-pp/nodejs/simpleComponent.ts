@@ -18,5 +18,6 @@ export class SimpleComponent extends pulumi.ComponentResource {
             parent: this,
         });
 
+        this.registerOutputs();
     }
 }

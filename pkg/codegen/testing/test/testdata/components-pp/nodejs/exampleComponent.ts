@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as random from "@pulumi/random";
+import { SimpleComponent } from "./simpleComponent";
 
 interface ExampleComponentArgs {
     input: pulumi.Input<string>,
@@ -17,5 +18,13 @@ export class ExampleComponent extends pulumi.ComponentResource {
             parent: this,
         });
 
+        const simpleComponent = new SimpleComponent(`${name}-simpleComponent`, {
+            parent: this,
+        });
+
+        this.result = password.result;
+        this.registerOutputs({
+            result: password.result,
+        });
     }
 }

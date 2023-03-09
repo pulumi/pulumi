@@ -182,6 +182,19 @@ func GenerateProgramWithOptions(
 						switch node := node.(type) {
 						case *pcl.LocalVariable:
 							componentGenerator.genLocalVariable(&componentBuffer, node)
+						case *pcl.Component:
+							// set options { parent = this } for the component resource
+							// where "this" is a reference to the component resource itself
+							if node.Options == nil {
+								node.Options = &pcl.ResourceOptions{}
+							}
+
+							if node.Options.Parent == nil {
+								node.Options.Parent = model.ConstantReference(&model.Constant{
+									Name: "this",
+								})
+							}
+							componentGenerator.genComponent(&componentBuffer, node)
 						case *pcl.Resource:
 							// set options { parent = this } for the resource
 							// where "this" is a reference to the component resource itself
@@ -217,28 +230,6 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return GenerateProgramWithOptions(program, defaultOptions)
 }
 
-func collectPackages(program *pcl.Program, seenPackages map[string]*schema.Package) error {
-	packages, err := program.PackageSnapshots()
-	if err != nil {
-		return err
-	}
-
-	for _, pkg := range packages {
-		if _, seen := seenPackages[pkg.Name]; !seen {
-			seenPackages[pkg.Name] = pkg
-		}
-	}
-
-	for _, component := range program.CollectComponents() {
-		err = collectPackages(component.Program, seenPackages)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
@@ -271,8 +262,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 `)
 
 	// For each package add a PackageReference line
-	packages := map[string]*schema.Package{}
-	err = collectPackages(program, packages)
+	packages, err := program.CollectNestedPackageSnapshots()
 	if err != nil {
 		return err
 	}
@@ -562,7 +552,7 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 				}
 
 				g.Fprintf(w, "%s[Output(\"%s\")]\n", g.Indent, outputVar.LogicalName())
-				g.Fprintf(w, "%spublic %s %s { get; private set; } = null!;\n",
+				g.Fprintf(w, "%spublic %s %s { get; private set; }\n",
 					g.Indent,
 					outputType,
 					Title(outputVar.Name()))
@@ -903,14 +893,14 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("$\"%s-{%s}\"", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
+func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOptionsType string) string {
 	if opts == nil {
 		return ""
 	}
 	var result bytes.Buffer
 	appendOption := func(name string, value model.Expression) {
 		if result.Len() == 0 {
-			_, err := fmt.Fprintf(&result, ", new CustomResourceOptions\n%s{", g.Indent)
+			_, err := fmt.Fprintf(&result, ", new %s\n%s{", resourceOptionsType, g.Indent)
 			g.Indent += "    "
 			contract.IgnoreError(err)
 		}
@@ -1019,7 +1009,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 					g.Fgenf(w, " %.v,\n", attr.Value)
 				}
 			})
-			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options))
+			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "CustomResourceOptions"))
 		}
 	}
 
@@ -1069,7 +1059,19 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	variableName := makeValidIdentifier(r.Name())
 	argsName := componentName + "Args"
 
+	configVars := r.Program.ConfigVariables()
+
 	instantiate := func(resName string) {
+		if len(configVars) == 0 {
+			// there is no args type for this component
+			g.Fgenf(w, "new %s(%s%s)",
+				qualifiedMemberName,
+				resName,
+				g.genResourceOptions(r.Options, "ComponentResourceOptions"))
+
+			return
+		}
+
 		if len(r.Inputs) == 0 && r.Options == nil {
 			// only resource name is provided
 			g.Fgenf(w, "new %s(%s)", qualifiedMemberName, resName)
@@ -1087,7 +1089,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 					g.Fgenf(w, " %.v,\n", attr.Value)
 				}
 			})
-			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options))
+			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "ComponentResourceOptions"))
 		}
 	}
 

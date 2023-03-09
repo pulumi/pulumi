@@ -13,7 +13,7 @@ namespace Components
     public class ExampleComponent : global::Pulumi.ComponentResource
     {
         [Output("result")]
-        public Output<string> Result { get; private set; } = null!;
+        public Output<string> Result { get; private set; }
         public ExampleComponent(string name, ExampleComponentArgs args, ComponentResourceOptions? opts = null)
             : base("components:index:ExampleComponent", name, args, opts)
         {
@@ -23,6 +23,11 @@ namespace Components
                 Special = true,
                 OverrideSpecial = args.Input,
             }, new CustomResourceOptions
+            {
+                Parent = this,
+            });
+
+            var simpleComponent = new Components.SimpleComponent($"{name}-simpleComponent", new ComponentResourceOptions
             {
                 Parent = this,
             });

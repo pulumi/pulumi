@@ -7,6 +7,8 @@ resource password "random:index/randomPassword:RandomPassword" {
   overrideSpecial = input
 }
 
+component simpleComponent "../simpleComponent" {}
+
 output result {
     value = password.result
 }
