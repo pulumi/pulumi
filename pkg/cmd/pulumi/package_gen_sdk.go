@@ -95,7 +95,7 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 		}
 	case "nodejs":
 		f = nodejs.GeneratePackage
-	case "python": //nolint:goconst
+	case "python":
 		f = python.GeneratePackage
 	case "java":
 		f = javagen.GeneratePackage

@@ -14,7 +14,6 @@ linters:
   enable:
     - errcheck
     - prealloc
-    - goconst
     - gofumpt
     - revive
     - gosec

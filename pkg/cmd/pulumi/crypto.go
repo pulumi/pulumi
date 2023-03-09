@@ -60,7 +60,6 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
 	var sm secrets.Manager
-	//nolint:goconst
 	if ps.SecretsProvider != passphrase.Type && ps.SecretsProvider != "default" && ps.SecretsProvider != "" {
 		sm, err = cloud.NewCloudSecretsManager(
 			ps, ps.SecretsProvider, false /* rotateSecretsProvider */)

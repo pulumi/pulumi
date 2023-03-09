@@ -127,7 +127,6 @@ func newDestroyCmd() *cobra.Command {
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			//nolint:goconst
 			if suppressPermalink == "true" {
 				opts.Display.SuppressPermalink = true
 			} else {
@@ -157,7 +156,6 @@ func newDestroyCmd() *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using self-managed backends
 			// this can be re-enabled by explicitly passing "false" to the `suppress-permalink` flag
-			//nolint:goconst
 			if suppressPermalink != "false" && filestateBackend {
 				opts.Display.SuppressPermalink = true
 			}

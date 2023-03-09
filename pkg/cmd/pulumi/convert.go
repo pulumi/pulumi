@@ -176,11 +176,11 @@ func runConvert(
 		projectGenerator = gogen.GenerateProject
 	case "typescript":
 		projectGenerator = nodejs.GenerateProject
-	case "python": //nolint:goconst
+	case "python":
 		projectGenerator = python.GenerateProject
-	case "java": //nolint:goconst
+	case "java":
 		projectGenerator = javagen.GenerateProject
-	case "yaml": //nolint:goconst
+	case "yaml":
 		projectGenerator = yamlgen.GenerateProject
 	case "pulumi", "pcl":
 		if e.GetBool(env.Dev) {
