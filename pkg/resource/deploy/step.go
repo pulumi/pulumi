@@ -242,6 +242,23 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
+		if providers.IsProviderType(s.New().URN.Type()) {
+			providerName := s.new.URN.QualifiedType().Name().String()
+			for k, v := range s.Deployment().Target().Config {
+				if k.Namespace() == providerName {
+					keyName := resource.PropertyKey(k.Name())
+					// Explicit config overrides stack config, so ignore the stack value if the key is already present.
+					if s.New().Inputs.HasValue(keyName) {
+						continue
+					}
+					decrypted, err := v.Value(s.Deployment().Target().Decrypter)
+					if err != nil {
+						return resource.StatusOK, nil, err
+					}
+					s.new.Inputs[keyName] = resource.NewStringProperty(decrypted)
+				}
+			}
+		}
 		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
