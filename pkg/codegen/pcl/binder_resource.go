@@ -433,6 +433,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "pluginDownloadURL":
 					t = model.StringType
 					resourceOptions.PluginDownloadURL = item.Value
+				case "deletedWith":
+					t = model.DynamicType
+					resourceOptions.DeletedWith = item.Value
 				default:
 					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 					continue

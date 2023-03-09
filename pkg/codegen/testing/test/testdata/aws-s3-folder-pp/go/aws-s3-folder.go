@@ -36,7 +36,7 @@ func main() {
 				Key:         pulumi.String(val0),
 				Source:      pulumi.NewFileAsset(fmt.Sprintf("%v/%v", siteDir, val0)),
 				ContentType: pulumi.String(val0),
-			})
+			}, pulumi.DeletedWith(siteBucket))
 			if err != nil {
 				return err
 			}

@@ -11,6 +11,7 @@ siteDir = "www" // directory for content files
 resource files "aws:s3:BucketObject" {
     options {
 		range = readDir(siteDir)
+		deletedWith = siteBucket
     }
 
 	bucket = siteBucket.id // Reference the s3.Bucket object
