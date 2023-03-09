@@ -13,8 +13,6 @@
         ],
         // Uses https://github.com/mvdan/gofumpt for formatting.
         "formatting.gofumpt": true,
-        // Experimental but seems to work and means we don't need a vscode instance per go.mod file.
-        "experimentalWorkspaceModule": true,
     },
 
     "python.testing.pytestArgs": [
