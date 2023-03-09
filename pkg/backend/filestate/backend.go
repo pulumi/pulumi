@@ -216,34 +216,40 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		projectMode:    pulumiState.Version != 0,
 	}
 
+	if !backend.projectMode {
+		return backend, nil
+	}
+
 	// If we're in project mode warn about any old stack files
-	if backend.projectMode {
-		files, err := listBucket(b, backend.stackPath(nil))
+	files, err := listBucket(b, backend.stackPath(nil))
+	if err != nil {
 		// If there's an error listing don't fail, just don't print the warnings
-		if err == nil {
-			for _, file := range files {
-				if !file.IsDir {
-					objName := objectName(file)
-					// Skip files without valid extensions (e.g., *.bak files).
-					ext := filepath.Ext(objName)
-					// But accept gzip compression
-					if ext == encoding.GZIPExt {
-						objName = strings.TrimSuffix(objName, encoding.GZIPExt)
-						ext = filepath.Ext(objName)
-					}
+		return backend, nil
+	}
 
-					if _, has := encoding.Marshalers[ext]; !has {
-						continue
-					}
-
-					// This looks like a stack file! Warn about it
-					name := objName[:len(objName)-len(ext)]
-					d.Warningf(&diag.Diag{
-						Message: "Found legacy stack file '%s', you should run 'pulumi state migrate'",
-					}, name)
-				}
-			}
+	for _, file := range files {
+		if file.IsDir {
+			continue
 		}
+
+		objName := objectName(file)
+		// Skip files without valid extensions (e.g., *.bak files).
+		ext := filepath.Ext(objName)
+		// But accept gzip compression
+		if ext == encoding.GZIPExt {
+			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+			ext = filepath.Ext(objName)
+		}
+
+		if _, has := encoding.Marshalers[ext]; !has {
+			continue
+		}
+
+		// This looks like a stack file! Warn about it
+		name := objName[:len(objName)-len(ext)]
+		d.Warningf(&diag.Diag{
+			Message: "Found legacy stack file '%s', you should run 'pulumi state migrate'",
+		}, name)
 	}
 
 	return backend, nil

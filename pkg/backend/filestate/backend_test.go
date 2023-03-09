@@ -1,8 +1,10 @@
 package filestate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	user "github.com/tweekmonster/luser"
+	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -20,6 +23,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -1033,6 +1038,38 @@ func TestLegacyUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, stackFileExists)
 }
+
+func TestNew_legacyFileWarning(t *testing.T) {
+	t.Parallel()
+
+	// Verifies the names of files printed in warnings
+	// when legacy files are found while running in project mode.
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	// Set up a legacy stack file with a newer version file.
+	ctx := context.Background()
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/Pulumi.yaml", []byte("version: 1"), nil))
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/a.json", []byte(`{}`), nil))
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/b.json.gz", []byte(`{}`), nil))
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/c.json.bak", []byte(`{}`), nil)) // should ignore
+
+	var buff bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
+	_, err = New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+	require.NoError(t, err)
+
+	stderr := buff.String()
+	assert.Contains(t, stderr, "Found legacy stack file 'a', you should run 'pulumi state migrate'")
+	assert.Contains(t, stderr, "Found legacy stack file 'b', you should run 'pulumi state migrate'")
+}
+
 
 // markLegacyStore marks the given directory as a legacy store.
 // This is done by dropping a single file into the bookkeeping directory.
