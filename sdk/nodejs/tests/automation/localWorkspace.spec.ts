@@ -91,7 +91,7 @@ describe("LocalWorkspace", () => {
     describe("Tag methods: get/set/remove/list", () => {
         const projectName = "testProjectName";
         const runtime = "nodejs";
-        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, "testStack");
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const projectSettings: ProjectSettings = {
             name: projectName,
             runtime,
