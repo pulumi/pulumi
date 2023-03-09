@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `--json` flag to `pulumi whoami` to emit output as JSON

@@ -2340,6 +2340,41 @@ func TestConfigSecretWarnings(t *testing.T) {
 	validate(previewEvents)
 }
 
+func TestWhoAmIDetailed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetails(ctx)
+	if err != nil {
+		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
+		t.FailNow()
+	}
+	assert.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
+	assert.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
+
+	// cleanup
+	_, err = s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed during cleanup, err: %v", err)
+		t.FailNow()
+	}
+	err = s.Workspace().RemoveStack(ctx, s.Name())
+	if err != nil {
+		t.Errorf("failed to remove stack during cleanup. Resources have leaked, err: %v", err)
+		t.FailNow()
+	}
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")

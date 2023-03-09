@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.57.1 (2023-03-09)
+
+
+### Bug Fixes
+
+- [cli/plugin] Fix sending empty tokens to GitHub API.
+  [#12392](https://github.com/pulumi/pulumi/pull/12392)
+
 ## 3.57.0 (2023-03-08)
 
 

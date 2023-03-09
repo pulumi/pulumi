@@ -245,6 +245,17 @@ describe("LocalWorkspace", () => {
             await ws.removeStack(name);
         }
     });
+    it(`returns valid whoami result`, async () => {
+        const projectName = "node_test";
+        const projectSettings: ProjectSettings = {
+            name: projectName,
+            runtime: "nodejs",
+        };
+        const ws = await LocalWorkspace.create({ projectSettings });
+        const whoAmIResult = await ws.whoAmI();
+        assert(whoAmIResult.user !== null);
+        assert(whoAmIResult.url !== null);
+    });
     it(`stack status methods`, async () => {
         const projectName = "node_test";
         const projectSettings: ProjectSettings = {
