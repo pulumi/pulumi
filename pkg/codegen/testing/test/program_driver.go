@@ -232,6 +232,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
+		Directory:   "components",
+		Description: "Components",
+		Skip:        allProgLanguages.Except("dotnet"),
+		SkipCompile: allProgLanguages.Except("dotnet"),
+	},
+	{
 		Directory:   "retain-on-delete",
 		Description: "Generate RetainOnDelete option",
 	},
@@ -435,6 +441,13 @@ func TestProgramCodegen(
 				tt.Directory + ".pp": {Body: parser.Files[0].Body, Bytes: parser.Files[0].Bytes},
 			}
 			opts := append(tt.BindOptions, pcl.PluginHost(utils.NewHost(testdataPath)))
+			rootProgramPath := filepath.Join(testdataPath, tt.Directory+"-pp")
+			absoluteProgramPath, err := filepath.Abs(rootProgramPath)
+			if err != nil {
+				t.Fatalf("failed to bind program: unable to find the absolute path of %v", rootProgramPath)
+			}
+			opts = append(opts, pcl.DirPath(absoluteProgramPath))
+			opts = append(opts, pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
 			program, diags, err := pcl.BindProgram(parser.Files, opts...)
 			if err != nil {
@@ -487,22 +500,47 @@ func TestProgramCodegen(
 			if pulumiAccept {
 				err := os.WriteFile(expectedFile, files[testcase.OutputFile], 0o600)
 				require.NoError(t, err)
+				// generate the rest of the files
+				for fileName, content := range files {
+					if fileName != testcase.OutputFile {
+						outputPath := filepath.Join(testDir, fileName)
+						err := os.WriteFile(outputPath, content, 0o600)
+						require.NoError(t, err, "Failed to write file %s", outputPath)
+					}
+				}
 			} else {
 				assert.Equal(t, string(expected), string(files[testcase.OutputFile]))
+				// assert that the content is correct for the rest of the files
+				for fileName, content := range files {
+					if fileName != testcase.OutputFile {
+						outputPath := filepath.Join(testDir, fileName)
+						outputContent, err := os.ReadFile(outputPath)
+						require.NoError(t, err)
+						assert.Equal(t, string(outputContent), string(content))
+					}
+				}
 			}
 			if !skipCompile && testcase.Check != nil && !tt.SkipCompile.Has(testcase.Language) {
 				extraPulumiPackages := codegen.NewStringSet()
-				for _, n := range program.Nodes {
-					if r, isResource := n.(*pcl.Resource); isResource {
-						pkg, _, _, _ := r.DecomposeToken()
-						if pkg != "pulumi" {
-							extraPulumiPackages.Add(pkg)
-						}
-					}
-				}
+				collectExtraPulumiPackages(program, extraPulumiPackages)
 				testcase.Check(t, expectedFile, extraPulumiPackages)
 			}
 		})
+	}
+}
+
+func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
+	for _, n := range program.Nodes {
+		if r, isResource := n.(*pcl.Resource); isResource {
+			pkg, _, _, _ := r.DecomposeToken()
+			if pkg != "pulumi" {
+				extraPulumiPackages.Add(pkg)
+			}
+		}
+
+		if component, isComponent := n.(*pcl.Component); isComponent {
+			collectExtraPulumiPackages(component.Program, extraPulumiPackages)
+		}
 	}
 }
 

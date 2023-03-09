@@ -34,12 +34,26 @@ const (
 	LogicalNamePropertyKey = "__logicalName"
 )
 
+type ComponentProgramBinderArgs struct {
+	binderDirPath      string
+	binderLoader       schema.Loader
+	componentSource    string
+	componentNodeRange hcl.Range
+}
+
+type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
+
 type bindOptions struct {
 	allowMissingVariables  bool
 	allowMissingProperties bool
 	skipResourceTypecheck  bool
 	loader                 schema.Loader
 	packageCache           *PackageCache
+	// the directory path of the PCL program being bound
+	// we use this to locate the source of the component blocks
+	// which refer to a component resource in a relative directory
+	dirPath                string
+	componentProgramBinder ComponentProgramBinder
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -87,6 +101,18 @@ func Loader(loader schema.Loader) BindOption {
 func Cache(cache *PackageCache) BindOption {
 	return func(options *bindOptions) {
 		options.packageCache = cache
+	}
+}
+
+func DirPath(path string) BindOption {
+	return func(options *bindOptions) {
+		options.dirPath = path
+	}
+}
+
+func ComponentBinder(binder ComponentProgramBinder) BindOption {
+	return func(options *bindOptions) {
+		options.componentProgramBinder = binder
 	}
 }
 
@@ -153,6 +179,10 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	// Now bind the nodes.
 	for _, n := range b.nodes {
 		diagnostics = append(diagnostics, b.bindNode(n)...)
+	}
+
+	if diagnostics.HasErrors() {
+		return nil, diagnostics, diagnostics
 	}
 
 	return &Program{
@@ -259,6 +289,21 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
 					return nil, err
 				}
+			case "component":
+				if len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "components must have exactly two labels"))
+					continue
+				}
+				name := item.Labels[0]
+				source := item.Labels[1]
+
+				v := &Component{
+					name:   name,
+					syntax: item,
+					source: source,
+				}
+				diags := b.declareNode(name, v)
+				diagnostics = append(diagnostics, diags...)
 			}
 		}
 	}

@@ -26,7 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
-// Node represents a single definition in a program or component. Nodes may be config, locals, resources, or outputs.
+// Node represents a single definition in a program or component.
+// Nodes may be config, locals, resources, components, or outputs.
 type Node interface {
 	model.Definition
 
@@ -166,4 +167,52 @@ func (p *Program) Source() map[string]string {
 		source[file.Name] = string(file.Bytes)
 	}
 	return source
+}
+
+// collectComponentsRecursive is a helper function to find all used components in a program
+// and recursively searches of nested components from sub programs.
+func (p *Program) collectComponentsRecursive(components map[string]*Component) {
+	for _, node := range p.Nodes {
+		switch node := node.(type) {
+		case *Component:
+			if _, seen := components[node.DirPath()]; !seen {
+				components[node.DirPath()] = node
+				node.Program.collectComponentsRecursive(components)
+			}
+		}
+	}
+}
+
+// CollectComponents finds all used components in a program and recursively searches of nested components
+// from sub programs.
+func (p *Program) CollectComponents() map[string]*Component {
+	components := map[string]*Component{}
+	p.collectComponentsRecursive(components)
+	return components
+}
+
+// ConfigVariables returns the config variable nodes of the program
+func (p *Program) ConfigVariables() []*ConfigVariable {
+	var configVars []*ConfigVariable
+	for _, node := range p.Nodes {
+		switch node := node.(type) {
+		case *ConfigVariable:
+			configVars = append(configVars, node)
+		}
+	}
+
+	return configVars
+}
+
+// OutputVariables returns the output variable nodes of the program
+func (p *Program) OutputVariables() []*OutputVariable {
+	var outputs []*OutputVariable
+	for _, node := range p.Nodes {
+		switch node := node.(type) {
+		case *OutputVariable:
+			outputs = append(outputs, node)
+		}
+	}
+
+	return outputs
 }

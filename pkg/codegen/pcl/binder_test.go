@@ -65,11 +65,20 @@ func TestBindProgram(t *testing.T) {
 				var bindError error
 				var diags hcl.Diagnostics
 				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				absoluteFolderPath, err := filepath.Abs(folderPath)
+				if err != nil {
+					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
+				}
+				options := append(
+					bindOptions[v.Name()],
+					loader,
+					pcl.DirPath(absoluteFolderPath),
+					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 				// PCL binder options are taken from program_driver.go
-				_, diags, bindError = pcl.BindProgram(parser.Files, append(bindOptions[v.Name()], loader)...)
+				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
 
 				assert.NoError(t, bindError)
-				if diags.HasErrors() {
+				if diags.HasErrors() || program == nil {
 					t.Fatalf("failed to bind program: %v", diags)
 				}
 			})

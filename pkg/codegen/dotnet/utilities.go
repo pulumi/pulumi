@@ -126,11 +126,11 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 	switch functionName {
 	case "filebase64":
 		return `private static string ReadFileBase64(string path) {
-		return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)))
+		return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path)));
 	}`, true
 	case "filebase64sha256":
 		return `private static string ComputeFileBase64Sha256(string path) {
-		var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+		var fileData = System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path));
 		var hashData = SHA256.Create().ComputeHash(fileData);
 		return Convert.ToBase64String(hashData);
 	}`, true

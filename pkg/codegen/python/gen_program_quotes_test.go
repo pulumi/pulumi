@@ -19,12 +19,14 @@ resource vpcSubnet "aws:ec2:Subnet" {
 
 	cidrBlock = "10.100.${range.key}.0/24"
 	availabilityZone = range.value
+	vpcId = 1
 }
 
 resource rta "aws:ec2:RouteTableAssociation" {
 	options { range = zones.names }
 
 	subnetId = vpcSubnet[range.key].id
+	routeTableId = 1
 }
 `
 	program, diags := parseAndBindProgram(t, source, "lower_property_access.pp")
