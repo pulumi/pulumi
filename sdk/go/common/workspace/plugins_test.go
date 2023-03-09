@@ -281,6 +281,7 @@ func TestPluginDownload(t *testing.T) {
 		require.NoError(t, err)
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
+				assert.Equal(t, "", req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{
@@ -480,6 +481,7 @@ func TestPluginDownload(t *testing.T) {
 		version := semver.MustParse("4.30.0")
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			if req.URL.String() == "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/tags/v4.30.0" {
+				assert.Equal(t, "", req.Header.Get("Authorization"))
 				assert.Equal(t, "application/json", req.Header.Get("Accept"))
 				// Minimal JSON from the releases API to get the test to pass
 				return newMockReadCloserString(`{

@@ -238,7 +238,12 @@ func newGitlabSource(url *url.URL, name string, kind PluginKind) (*gitlabSource,
 }
 
 func (source *gitlabSource) newHTTPRequest(url, accept string) (*http.Request, error) {
-	req, err := buildHTTPRequest(url, fmt.Sprintf("Bearer %s", source.token))
+	var authorization string
+	if source.token != "" {
+		authorization = fmt.Sprintf("Bearer %s", source.token)
+	}
+
+	req, err := buildHTTPRequest(url, authorization)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +360,12 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 }
 
 func (source *githubSource) newHTTPRequest(url, accept string) (*http.Request, error) {
-	req, err := buildHTTPRequest(url, fmt.Sprintf("token %s", source.token))
+	var authorization string
+	if source.token != "" {
+		authorization = fmt.Sprintf("token %s", source.token)
+	}
+
+	req, err := buildHTTPRequest(url, authorization)
 	if err != nil {
 		return nil, err
 	}
