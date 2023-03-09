@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Autoscroll the interactive display and support pgup/pgdown

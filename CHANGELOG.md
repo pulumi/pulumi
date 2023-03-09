@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.57.0 (2023-03-08)
+
+
+### Features
+
+- [cli/display] Autoscroll the interactive display and support pgup/pgdown
+  [#12363](https://github.com/pulumi/pulumi/pull/12363)
+
+- [programgen] Support `options.retainOnDelete` on resources in PCL.
+  [#12305](https://github.com/pulumi/pulumi/pull/12305)
+
+- [sdkgen/dotnet] Update sdkgen to target dotnet 6.
+  [#12333](https://github.com/pulumi/pulumi/pull/12333)
+
+- [programgen/{dotnet,go,nodejs,python}] Adds support for generating RetainOnDelete options.
+  [#12306](https://github.com/pulumi/pulumi/pull/12306)
+
+- [auto/go] Enable programmatic tagging of stacks (Go only)
+  [#12329](https://github.com/pulumi/pulumi/pull/12329)
+
+- [auto/python] Enable programmatic tagging of stacks (Python only)
+  [#12275](https://github.com/pulumi/pulumi/pull/12275)
+
+- [sdk/go] Adds `NewResourceOptions` to preview the effect of a list of `ResourceOption` values.
+  [#12124](https://github.com/pulumi/pulumi/pull/12124)
+
+- [sdk/python] Added support for shimless Python plugins.
+  [#12362](https://github.com/pulumi/pulumi/pull/12362)
+
+
+### Bug Fixes
+
+- [cli/display] Reorder options to handle pending creates. Users can now hold enter to select the clear option which should be more ergonomic.
+  [#12375](https://github.com/pulumi/pulumi/pull/12375)
+
+- [auto/{dotnet,go,nodejs,python}] Fix support for specifying a git commit for remote workspaces
+  [#11716](https://github.com/pulumi/pulumi/pull/11716)
+
+- [auto/go] Fetch commits before checkout
+  [#12331](https://github.com/pulumi/pulumi/pull/12331)
+
+- [auto/go] The various workspace load routines (e.g. LoadProject) are no longer singularly cached.
+  [#12370](https://github.com/pulumi/pulumi/pull/12370)
+
+- [sdk/go] Fixes overwrite of the Provider option by the Providers option due to ordering.
+  [#12296](https://github.com/pulumi/pulumi/pull/12296)
+
+- [auto/nodejs] Fixes issue with specifying a git username for remote workspaces
+  [#12269](https://github.com/pulumi/pulumi/pull/12269)
+
+- [sdk/python] Fixes Component Resources not correctly propagating the provider option to its children.
+  [#12292](https://github.com/pulumi/pulumi/pull/12292)
+
+
+### Miscellaneous
+
+- [sdk/go] common/util/contract: Deprecate functions that don't accept printf-style arguments.
+  [#12350](https://github.com/pulumi/pulumi/pull/12350)
+
 ## 3.56.0 (2023-03-02)
 
 
