@@ -176,7 +176,6 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType) func(member *sc
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
-	//nolint:goconst
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]

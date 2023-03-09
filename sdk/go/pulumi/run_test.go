@@ -1,4 +1,3 @@
-//nolint:goconst
 package pulumi
 
 import (

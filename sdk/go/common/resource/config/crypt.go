@@ -117,7 +117,7 @@ func NewBlindingDecrypter() Decrypter {
 type blindingCrypter struct{}
 
 func (b blindingCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
-	return "[secret]", nil //nolint:goconst
+	return "[secret]", nil
 }
 
 func (b blindingCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {

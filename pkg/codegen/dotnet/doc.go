@@ -85,7 +85,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		namespaces:    d.Namespaces,
 		rootNamespace: info.GetRootNamespace(),
 	}
-	qualifier := "Inputs" //nolint:goconst
+	qualifier := "Inputs"
 	if !input {
 		qualifier = "Outputs"
 	}

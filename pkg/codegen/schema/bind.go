@@ -449,7 +449,6 @@ func (t *types) externalPackage() PackageReference {
 	return t.pkg.Reference()
 }
 
-//nolint:goconst
 func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 	switch name {
 	case "boolean":
@@ -886,7 +885,6 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 		return t.bindTypeSpecOneOf(path, spec, inputShape)
 	}
 
-	//nolint:goconst
 	switch spec.Type {
 	case "boolean", "integer", "number", "string":
 		typ, typDiags := t.bindPrimitiveType(path+"/type", spec.Type)
