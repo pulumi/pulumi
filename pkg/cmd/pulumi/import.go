@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -74,6 +75,25 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	}
 
 	return name, urn, nil
+}
+
+func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
+	nameTable := map[string]resource.URN{}
+	specs := make([]importSpec, len(resources))
+	for i, res := range resources {
+		specs[i] = importSpec{
+			Type:              tokens.Type(res.Type),
+			Name:              tokens.QName(res.Name),
+			ID:                resource.ID(res.ID),
+			Version:           res.Version,
+			PluginDownloadURL: res.PluginDownloadURL,
+		}
+	}
+
+	return importFile{
+		NameTable: nameTable,
+		Resources: specs,
+	}, nil
 }
 
 func makeImportFile(
@@ -123,13 +143,14 @@ func makeImportFile(
 }
 
 type importSpec struct {
-	Type       tokens.Type  `json:"type"`
-	Name       tokens.QName `json:"name"`
-	ID         resource.ID  `json:"id"`
-	Parent     string       `json:"parent"`
-	Provider   string       `json:"provider"`
-	Version    string       `json:"version"`
-	Properties []string     `json:"properties"`
+	Type              tokens.Type  `json:"type"`
+	Name              tokens.QName `json:"name"`
+	ID                resource.ID  `json:"id"`
+	Parent            string       `json:"parent"`
+	Provider          string       `json:"provider"`
+	Version           string       `json:"version"`
+	PluginDownloadURL string       `json:"pluginDownloadUrl"`
+	Properties        []string     `json:"properties"`
 }
 
 type importFile struct {
@@ -205,11 +226,12 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 		}
 
 		imp := deploy.Import{
-			Type:       spec.Type,
-			Name:       spec.Name,
-			ID:         spec.ID,
-			Protect:    protectResources,
-			Properties: spec.Properties,
+			Type:              spec.Type,
+			Name:              spec.Name,
+			ID:                spec.ID,
+			Protect:           protectResources,
+			Properties:        spec.Properties,
+			PluginDownloadURL: spec.PluginDownloadURL,
 		}
 
 		if spec.Parent != "" {
@@ -273,7 +295,8 @@ func getCurrentDeploymentForStack(
 
 type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
-func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
+func generateImportedDefinitions(ctx *plugin.Context,
+	out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool,
 ) (bool, error) {
@@ -317,15 +340,6 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.Name, projectNa
 		return false, nil
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return false, err
-	}
-	sink := cmdutil.Diag()
-	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-	if err != nil {
-		return false, err
-	}
 	loader := schema.NewPluginLoader(ctx.Host)
 	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
 		files, _, err := programGenerator(p)
@@ -369,6 +383,8 @@ func newImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+
+	var from string
 
 	cmd := &cobra.Command{
 		Use:   "import [type] [name] [id]",
@@ -446,19 +462,53 @@ func newImportCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return result.FromError(fmt.Errorf("get working directory: %w", err))
+			}
+			sink := cmdutil.Diag()
+			pCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+			if err != nil {
+				return result.FromError(fmt.Errorf("create plugin context: %w", err))
+			}
+
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
+				}
+				if from != "" {
+					return result.Errorf("a converter may not be specified in conjunction with an import file")
 				}
 				f, err := readImportFile(importFilePath)
 				if err != nil {
 					return result.FromError(fmt.Errorf("could not read import file: %w", err))
 				}
 				importFile = f
+			} else if from != "" {
+				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
+					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
+				}
+				converter, err := plugin.NewConverter(pCtx, from, nil)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				logging.Warningf("Plugin converters are currently experimental")
+
+				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{})
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				f, err := makeImportFileFromResourceList(resp.Resources)
+				if err != nil {
+					return result.FromError(err)
+				}
+				importFile = f
 			} else {
 				if len(args) < 3 {
-					return result.Errorf("an inline resource must be specified if no import file is used")
+					return result.Errorf("an inline resource must be specified if no converter or import file is used")
 				}
 				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {
@@ -614,7 +664,7 @@ func newImportCmd() *cobra.Command {
 				}
 
 				validImports, err := generateImportedDefinitions(
-					output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
 					protectResources)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {
@@ -705,6 +755,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&protectResources, "protect", "", true,
 		"Allow resources to be imported with protection from deletion enabled")
+	cmd.PersistentFlags().StringVar(
+		&from, "from", "",
+		"Invoke a converter to import the resources")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

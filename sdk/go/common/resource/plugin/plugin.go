@@ -314,7 +314,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		pluginDir := filepath.Dir(bin)
 
 		var runtimeInfo workspace.ProjectRuntimeInfo
-		if kind == workspace.ResourcePlugin {
+		if kind == workspace.ResourcePlugin || kind == workspace.ConverterPlugin {
 			proj, err := workspace.LoadPluginProject(filepath.Join(pluginDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return nil, fmt.Errorf("loading PulumiPlugin.yaml: %w", err)
