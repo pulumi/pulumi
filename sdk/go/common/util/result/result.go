@@ -15,10 +15,10 @@
 package result
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // Result represents the result of a computation that can fail. The Result type revolves around two
@@ -76,7 +76,7 @@ func Bail() Result {
 // Errorf produces a Result that represents an internal Pulumi error,
 // constructed from the given format string and arguments.
 func Errorf(msg string, args ...interface{}) Result {
-	err := errors.Errorf(msg, args...)
+	err := fmt.Errorf(msg, args...)
 	return FromError(err)
 }
 
