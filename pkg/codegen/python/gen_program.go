@@ -236,7 +236,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 						}
 					}
 				}
-				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}

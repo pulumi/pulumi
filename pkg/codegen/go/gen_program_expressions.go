@@ -262,6 +262,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64sha256":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "filebase64sha256OrPanic(%v)", expr.Args[0])
+	case "notImplemented":
+		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case pcl.Invoke:
 		if expr.Signature.MultiArgumentInputs {
 			panic(fmt.Errorf("go program-gen does not implement MultiArgumentInputs for function '%v'",

@@ -415,7 +415,7 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 				}
 
 				// Checking to see if this function call deserves its own dedicated helper method in the preamble
-				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}

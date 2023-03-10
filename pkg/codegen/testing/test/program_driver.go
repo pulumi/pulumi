@@ -241,6 +241,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "retain-on-delete",
 		Description: "Generate RetainOnDelete option",
 	},
+	{
+		Directory:   "throw-not-implemented",
+		Description: "Function notImplemented is compiled to a runtime error at call-site",
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

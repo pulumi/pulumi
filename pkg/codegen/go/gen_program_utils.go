@@ -59,7 +59,7 @@ func (p *promptToInputArrayHelper) getInputItemType() string {
 // necessary. Because many tasks in Go such as reading a file require extensive error
 // handling, it is much prettier to encapsulate that error handling boilerplate as its
 // own function in the preamble.
-func getHelperMethodIfNeeded(functionName string) (string, bool) {
+func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "readFile":
 		return `func readFileOrPanic(path string) pulumi.StringPtrInput {
@@ -91,6 +91,11 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 				hash := sha1.Sum([]byte(input))
 				return hex.EncodeToString(hash[:])
 			}`, true
+	case "notImplemented":
+		return fmt.Sprintf(`
+%sfunc notImplemented(message string) pulumi.AnyOutput {
+%s  panic(message)
+%s}`, indent, indent, indent), true
 	default:
 		return "", false
 	}
