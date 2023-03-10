@@ -33,17 +33,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// printViewLive prints an update's permalink prefaced with `View Live: `. This message is printed in non-interactive
-// scenarios in order to maintain backwards compatibility with older versions of the Automation API, the message is
-// not changed for non-interactive scenarios.
-func printViewLive(out io.Writer, opts Options, permalink string) {
+// printPermalinkNonInteractive prints an update's permalink prefaced with `View Live: `.
+// This message is printed in non-interactive scenarios.
+// In order to maintain backwards compatibility with older versions of the Automation API,
+// the message is not changed for non-interactive scenarios.
+func printPermalinkNonInteractive(out io.Writer, opts Options, permalink string) {
 	printPermalink(out, opts, "View Live", permalink)
 }
 
-// printOpenInBrowser print's an update's permalink prefaced with `Open in Browser (Ctrl+O): `. This is printed in
-// interactive scenarios that use the tree renderer.
-func printOpenInBrowser(term terminal.Terminal, opts Options, permalink string) {
-	printPermalink(term, opts, "Open in Browser (Ctrl+O)", permalink)
+// printPermalinkInteractive prints an update's permalink prefaced with `View in Browser (Ctrl+O): `.
+// This is printed in interactive scenarios that use the tree renderer.
+func printPermalinkInteractive(term terminal.Terminal, opts Options, permalink string) {
+	printPermalink(term, opts, "View in Browser (Ctrl+O)", permalink)
 }
 
 func printPermalink(out io.Writer, opts Options, message, permalink string) {
@@ -78,7 +79,7 @@ func ShowEvents(
 	}
 
 	if opts.Type != DisplayProgress {
-		printViewLive(os.Stdout, opts, permalink)
+		printPermalinkNonInteractive(os.Stdout, opts, permalink)
 	}
 
 	switch opts.Type {
