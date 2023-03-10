@@ -243,7 +243,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	},
 	{
 		Directory:   "throw-not-implemented",
-		Description: "Function throwNotImplemented is compiled to a runtime error at call-site",
+		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
 }
 
