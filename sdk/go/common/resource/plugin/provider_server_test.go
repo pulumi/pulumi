@@ -45,8 +45,10 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 type stubProvider struct {
 	Provider
 
-	ReadFunc func(urn resource.URN, id resource.ID,
-		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
+	ReadFunc func(
+		urn resource.URN, id resource.ID,
+		inputs, state resource.PropertyMap,
+	) (ReadResult, resource.Status, error)
 
 	ConfigureFunc func(resource.PropertyMap) error
 }
@@ -58,8 +60,12 @@ func (p *stubProvider) Configure(inputs resource.PropertyMap) error {
 	return p.Provider.Configure(inputs)
 }
 
-func (p *stubProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
+func (p *stubProvider) Read(
+	urn resource.URN,
+	id resource.ID,
+	inputs,
+	state resource.PropertyMap,
+) (ReadResult, resource.Status, error) {
 	if p.ReadFunc != nil {
 		return p.ReadFunc(urn, id, inputs, state)
 	}
@@ -71,8 +77,10 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	provider := stubProvider{
-		ReadFunc: func(urn resource.URN, id resource.ID,
-			inputs, state resource.PropertyMap) (ReadResult, resource.Status, error) {
+		ReadFunc: func(
+			urn resource.URN, id resource.ID,
+			inputs, state resource.PropertyMap,
+		) (ReadResult, resource.Status, error) {
 			return ReadResult{
 				ID: resource.ID("none"),
 				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
