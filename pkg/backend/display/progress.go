@@ -246,10 +246,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 
 	var renderer progressRenderer
 	if isInteractive {
-		printOpenInBrowser(term, opts, permalink)
+		printPermalinkInteractive(term, opts, permalink)
 		renderer = newInteractiveRenderer(term, permalink, opts)
 	} else {
-		printViewLive(stdout, opts, permalink)
+		printPermalinkNonInteractive(stdout, opts, permalink)
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 

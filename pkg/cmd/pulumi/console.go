@@ -18,7 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/skratchdot/open-golang/open"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -104,7 +104,7 @@ func newConsoleCmd() *cobra.Command {
 
 // launchConsole attempts to open the console in the browser using the specified URL.
 func launchConsole(url string) {
-	if openErr := open.Run(url); openErr != nil {
+	if openErr := browser.OpenURL(url); openErr != nil {
 		fmt.Printf("We couldn't launch your web browser for some reason. \n"+
 			"Please visit: %s", url)
 	}

@@ -34,6 +34,7 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pkg/browser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -57,7 +58,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/skratchdot/open-golang/open"
 )
 
 const (
@@ -210,7 +210,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project
 	go serveBrowserLoginServer(l, nonce, finalWelcomeURL, c)
 
 	// Launch the web browser and navigate to the login URL.
-	if openErr := open.Run(u.String()); openErr != nil {
+	if openErr := browser.OpenURL(u.String()); openErr != nil {
 		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
 			"to finish the login process.", u)
 	} else {

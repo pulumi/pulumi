@@ -23,11 +23,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/skratchdot/open-golang/open"
 )
 
 type treeRenderer struct {
@@ -371,7 +371,7 @@ func (r *treeRenderer) handleEvents() {
 				sigint()
 			case terminal.KeyCtrlO:
 				if r.permalink != "" {
-					if err := open.Run(r.permalink); err != nil {
+					if err := browser.OpenURL(r.permalink); err != nil {
 						r.showStatusMessage(colors.Red+"could not open browser"+colors.Reset, 5*time.Second)
 					}
 				}
