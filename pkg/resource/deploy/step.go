@@ -55,6 +55,42 @@ type Step interface {
 	Deployment() *Deployment // the owning deployment.
 }
 
+// loadSharedProviderConfig iterates all project and stack configuration, and copies any keys that match the provider
+// namespace into the Step inputs. This function is a no-op for non-Provider resources.
+func loadSharedProviderConfig(s Step) error {
+	if !providers.IsProviderType(s.New().URN.Type()) {
+		return nil
+	}
+
+	providerName := s.New().URN.QualifiedType().Name().String()
+
+	// Iterate the config items from stack/project config.
+	for k, v := range s.Deployment().Target().Config {
+		// Ignore keys that don't match the current provider's namespace.
+		if k.Namespace() != providerName {
+			continue
+		}
+
+		keyName := resource.PropertyKey(k.Name())
+		// Explicit config overrides stack config, so ignore the stack value if the key is already present.
+		if s.New().Inputs.HasValue(keyName) {
+			continue
+		}
+		decrypted, err := v.Value(s.Deployment().Target().Decrypter)
+		if err != nil {
+			return err
+		}
+
+		keyValue := resource.NewStringProperty(decrypted)
+		if v.Secure() {
+			keyValue = resource.MakeSecret(resource.NewStringProperty(decrypted))
+		}
+		s.New().Inputs[keyName] = keyValue
+	}
+
+	return nil
+}
+
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
 	deployment *Deployment           // the current deployment.
@@ -242,23 +278,11 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		if providers.IsProviderType(s.New().URN.Type()) {
-			providerName := s.new.URN.QualifiedType().Name().String()
-			for k, v := range s.Deployment().Target().Config {
-				if k.Namespace() == providerName {
-					keyName := resource.PropertyKey(k.Name())
-					// Explicit config overrides stack config, so ignore the stack value if the key is already present.
-					if s.New().Inputs.HasValue(keyName) {
-						continue
-					}
-					decrypted, err := v.Value(s.Deployment().Target().Decrypter)
-					if err != nil {
-						return resource.StatusOK, nil, err
-					}
-					s.new.Inputs[keyName] = resource.NewStringProperty(decrypted)
-				}
-			}
+		err = loadSharedProviderConfig(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
 		}
+
 		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
@@ -534,6 +558,11 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
+		err = loadSharedProviderConfig(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
+
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
 			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
@@ -712,6 +741,11 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 		s.new.Outputs = resource.PropertyMap{}
 	} else {
 		prov, err := getProvider(s)
+		if err != nil {
+			return resource.StatusOK, nil, err
+		}
+
+		err = loadSharedProviderConfig(s)
 		if err != nil {
 			return resource.StatusOK, nil, err
 		}
@@ -983,6 +1017,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err != nil {
 		return resource.StatusOK, nil, err
 	}
+
+	err = loadSharedProviderConfig(s)
+	if err != nil {
+		return resource.StatusOK, nil, err
+	}
+
 	read, rst, err := prov.Read(s.new.URN, s.new.ID, nil, nil)
 	if err != nil {
 		if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
