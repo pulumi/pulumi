@@ -31,7 +31,7 @@ func newStateUpgradeCommand() *cobra.Command {
 
 This only has an effect on the filestate backend.
 `,
-		Args: cmdutil.ExactArgs(1),
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 
