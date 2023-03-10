@@ -1206,6 +1206,12 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 			return object, "json", true
 		}
 
+		// Only attempt to decode a YAML value if the representation is a multi-line string.
+		// This avoids decoding simple strings like "foo: bar" or "-" as YAML.
+		if !strings.ContainsAny(repr, "\r\n") {
+			return nil, "", false
+		}
+
 		r.Reset(repr)
 		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
 			translated, ok := p.translateYAMLValue(object)
