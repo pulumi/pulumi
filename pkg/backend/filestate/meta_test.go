@@ -91,11 +91,6 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 			give:    `version: foo`,
 			wantErr: "could not unmarshal 'Pulumi.yaml'",
 		},
-		{
-			desc:    "unsupported version",
-			give:    `version: 42`,
-			wantErr: "version of 42 unsupported by this version of pulumi",
-		},
 	}
 
 	for _, tt := range tests {

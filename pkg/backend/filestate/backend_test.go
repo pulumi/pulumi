@@ -824,7 +824,7 @@ func TestLegacyFolderStructure(t *testing.T) {
 	lb, ok := b.(*localBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
-	assert.False(t, lb.projectMode)
+	assert.IsType(t, &legacyReferenceStore{}, lb.store)
 
 	// Check that list stack shows that stack
 	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
@@ -888,7 +888,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	lb, ok := b.(*localBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
-	assert.True(t, lb.projectMode)
+	assert.IsType(t, &projectReferenceStore{}, lb.store)
 
 	// Make a dummy stack file in the new project location
 	err = os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks", "testproj"), os.ModePerm)
@@ -1002,11 +1002,11 @@ func TestLegacyUpgrade(t *testing.T) {
 	lb, ok := b.(*localBackend)
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
-	assert.False(t, lb.projectMode)
+	assert.IsType(t, &legacyReferenceStore{}, lb.store)
 
 	err = lb.Upgrade(ctx)
 	require.NoError(t, err)
-	assert.True(t, lb.projectMode)
+	assert.IsType(t, &projectReferenceStore{}, lb.store)
 
 	// Check that a has been moved
 	aStackRef, err := lb.parseStackReference("organization/project/a")
@@ -1070,6 +1070,25 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	assert.Contains(t, stderr, "Found legacy stack file 'b', you should run 'pulumi state migrate'")
 }
 
+func TestNew_unsupportedStoreVersion(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that we fail to initialize a backend if the store version is
+	// newer than the CLI version.
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	// Set up a Pulumi.yaml "from the future".
+	ctx := context.Background()
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/Pulumi.yaml", []byte("version: 999999999"), nil))
+
+	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), nil)
+	assert.ErrorContains(t, err, "state store unsupported")
+	assert.ErrorContains(t, err, "'Pulumi.yaml' version (999999999) is not supported")
+}
 
 // markLegacyStore marks the given directory as a legacy store.
 // This is done by dropping a single file into the bookkeeping directory.

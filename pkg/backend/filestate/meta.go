@@ -62,11 +62,6 @@ func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 		if state.Version < 1 {
 			return nil, fmt.Errorf("state store corrupted, 'Pulumi.yaml' reports an invalid version of %d", state.Version)
 		}
-		if state.Version > 1 {
-			return nil, fmt.Errorf(
-				"state store unsupported, 'Pulumi.yaml' reports an version of %d unsupported by this version of pulumi",
-				state.Version)
-		}
 		return &state, nil
 	}
 
