@@ -15,15 +15,21 @@
 package main
 
 import (
+	"context"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
 )
 
 func newStateUpgradeCommand() *cobra.Command {
+	var sucmd stateUpgradeCmd
+
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Migrates the current backend to the latest supported version",
@@ -33,22 +39,38 @@ This only has an effect on the filestate backend.
 `,
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-			ctx := commandContext()
-
-			b, err := currentBackend(ctx, nil, display.Options{Color: cmdutil.GetGlobalColorization()})
-			if err != nil {
+			if err := sucmd.Run(commandContext()); err != nil {
 				return result.FromError(err)
 			}
-
-			if lb, is := b.(filestate.Backend); is {
-				err = lb.Upgrade(ctx)
-				if err != nil {
-					return result.FromError(err)
-				}
-			}
-
 			return nil
 		}),
 	}
 	return cmd
+}
+
+// stateUpgradeCmd implements the 'pulumi state upgrade' command.
+type stateUpgradeCmd struct {
+	// Used to mock out the currentBackend function for testing.
+	// Defaults to currentBackend function.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = currentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow top-level currentBackend
+
+	b, err := currentBackend(ctx, nil, display.Options{Color: cmdutil.GetGlobalColorization()})
+	if err != nil {
+		return err
+	}
+
+	if lb, is := b.(filestate.Backend); is {
+		if err := lb.Upgrade(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

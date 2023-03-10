@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,4 +76,63 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 			assert.ErrorContains(t, cmd.ValidateArgs(args), tt.wantErr)
 		})
 	}
+}
+
+func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	cmd := stateUpgradeCmd{
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &stubFileBackend{
+				UpgradeF: func(context.Context) error {
+					called = true
+					return nil
+				},
+			}, nil
+		},
+	}
+
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.True(t, called, "Upgrade was never called")
+}
+
+func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
+	t.Parallel()
+
+	cmd := stateUpgradeCmd{
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &backend.MockBackend{}, nil
+		},
+	}
+
+	// Non-filestate backend is already up-to-date.
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+}
+
+func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
+	t.Parallel()
+
+	giveErr := errors.New("great sadness")
+	cmd := stateUpgradeCmd{
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return nil, giveErr
+		},
+	}
+
+	err := cmd.Run(context.Background())
+	assert.ErrorIs(t, err, giveErr)
+}
+
+type stubFileBackend struct {
+	filestate.Backend
+
+	UpgradeF func(context.Context) error
+}
+
+func (f *stubFileBackend) Upgrade(ctx context.Context) error {
+	return f.UpgradeF(ctx)
 }
