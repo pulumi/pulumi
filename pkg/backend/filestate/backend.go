@@ -270,63 +270,44 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 }
 
 func (b *localBackend) Upgrade(ctx context.Context) error {
-	files, err := listBucket(b.bucket, b.stackPath(nil))
+	// We don't use the existing b.store because
+	// this may already be a projectReferenceStore
+	// with new legacy files introduced to it accidentally.
+	olds, err := (&legacyReferenceStore{b: b}).ListReferences()
 	if err != nil {
-		return err
+		return fmt.Errorf("read old references: %w", err)
 	}
-	for _, file := range files {
-		if !file.IsDir {
-			objName := objectName(file)
-			// Skip files without valid extensions (e.g., *.bak files).
-			ext := filepath.Ext(objName)
-			// But accept gzip compression
-			if ext == encoding.GZIPExt {
-				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
-				ext = filepath.Ext(objName)
-			}
 
-			if _, has := encoding.Marshalers[ext]; !has {
-				continue
+	newStore := &projectReferenceStore{b: b}
+	for _, old := range olds {
+		chk, err := b.getCheckpoint(old)
+		if err != nil {
+			return err
+		}
+		// Try and find the project name from _any_ resource URN
+		var project tokens.Name
+		if chk.Latest != nil {
+			for _, res := range chk.Latest.Resources {
+				project = tokens.Name(res.URN.Project())
+				break
 			}
+		}
+		if project == "" {
+			return fmt.Errorf("no project found for stack %v", old)
+		}
 
-			// This looks like a stack file! Move it to the right project folder
-			name := tokens.Name(objName[:len(objName)-len(ext)])
-			// make an old style stack ref
-			old := &localBackendReference{name: name, b: b}
-
-			chk, err := b.getCheckpoint(old)
-			if err != nil {
-				return err
-			}
-			// Try and find the project name from _any_ resource URN
-			var project tokens.Name
-			if chk.Latest != nil {
-				for _, res := range chk.Latest.Resources {
-					project = tokens.Name(res.URN.Project())
-					break
-				}
-			}
-			if project == "" {
-				return fmt.Errorf("could not determine project for stack file %s", objName)
-			}
-
-			new := &localBackendReference{name: name, project: project, b: b}
-			err = b.renameStack(ctx, old, new)
-			if err != nil {
-				return err
-			}
+		new := newStore.newReference(project, old.Name())
+		if err := b.renameStack(ctx, old, new); err != nil {
+			return fmt.Errorf("upgrade stack %v to %v: %w", old, new, err)
 		}
 	}
 
-	var pulumiState pulumiMeta
-	pulumiState.Version = 1
-	pulumiYaml, err := yaml.Marshal(&pulumiState)
+	pulumiYaml, err := yaml.Marshal(&pulumiMeta{Version: 1})
 	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
-	err = b.bucket.WriteAll(ctx, "Pulumi.yaml", pulumiYaml, nil)
-	if err != nil {
+	if err = b.bucket.WriteAll(ctx, "Pulumi.yaml", pulumiYaml, nil); err != nil {
 		return fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
 	}
-	b.store = &projectReferenceStore{b: b}
+	b.store = newStore
 
 	return nil
 }

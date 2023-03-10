@@ -50,6 +50,12 @@ type projectReferenceStore struct {
 
 var _ referenceStore = (*projectReferenceStore)(nil)
 
+// newReference builds a new localBackendReference with the provided arguments.
+// This DOES NOT modify the underlying storage.
+func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBackendReference {
+	return &localBackendReference{name: name, project: project, b: p.b}
+}
+
 func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
 	var name, project, org string
 	split := strings.Split(stackRef, "/")
@@ -103,7 +109,7 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 			name)
 	}
 
-	return &localBackendReference{name: tokens.Name(name), project: tokens.Name(project), b: p.b}, nil
+	return p.newReference(tokens.Name(project), tokens.Name(name)), nil
 }
 
 func (p *projectReferenceStore) ConvertReference(ref backend.StackReference) (*localBackendReference, error) {
@@ -166,11 +172,7 @@ func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, erro
 
 				// Read in this stack's information.
 				name := objName[:len(objName)-len(ext)]
-				stacks = append(stacks, &localBackendReference{
-					project: tokens.Name(projName),
-					name:    tokens.Name(name),
-					b:       p.b,
-				})
+				stacks = append(stacks, p.newReference(tokens.Name(projName), tokens.Name(name)))
 			}
 		}
 	}
@@ -219,6 +221,10 @@ func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error
 	stacks := make([]*localBackendReference, 0, len(files))
 
 	for _, file := range files {
+		if file.IsDir {
+			continue
+		}
+
 		objName := objectName(file)
 		// Skip files without valid extensions (e.g., *.bak files).
 		ext := filepath.Ext(objName)
