@@ -334,4 +334,11 @@ var pulumiBuiltins = map[string]*model.Function{
 	"cwd": model.NewFunction(model.StaticFunctionSignature{
 		ReturnType: model.StringType,
 	}),
+	"notImplemented": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "errorMessage",
+			Type: model.StringType,
+		}},
+		ReturnType: model.DynamicType,
+	}),
 }
