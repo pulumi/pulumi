@@ -331,7 +331,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 }
 
 func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
-	urn, id := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
 	state, err := UnmarshalProperties(req.GetProperties(), p.unmarshalOptions("state"))
 	if err != nil {
@@ -343,7 +343,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, err := p.provider.Read(urn, id, inputs, state)
+	result, _, err := p.provider.Read(urn, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +359,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         string(id),
+		Id:         string(result.ID),
 		Properties: rpcState,
 		Inputs:     rpcInputs,
 	}, nil
