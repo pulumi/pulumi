@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Changes the check version warning to an info message.

@@ -247,7 +247,7 @@ func NewPulumiCmd() *cobra.Command {
 
 			checkVersionMsg, ok := <-updateCheckResult
 			if ok && checkVersionMsg != nil && !isJSON {
-				cmdutil.Diag().Warningf(checkVersionMsg)
+				cmdutil.Diag().Infoerrf(checkVersionMsg)
 			}
 
 			logging.Flush()
