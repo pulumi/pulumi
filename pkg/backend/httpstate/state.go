@@ -109,7 +109,7 @@ func (u *cloudUpdate) recordEngineEvents(startingSeqNumber int, events []engine.
 // posting them to the Pulumi service.
 func (u *cloudUpdate) RecordAndDisplayEvents(
 	label string, action apitype.UpdateKind, stackRef backend.StackReference, op backend.UpdateOperation,
-	events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool,
+	permalink string, events <-chan engine.Event, done chan<- bool, opts display.Options, isPreview bool,
 ) {
 	// We take the channel of engine events and pass them to separate components that will display
 	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
@@ -129,7 +129,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 
 	// Start the Go-routines for displaying and persisting events.
 	go display.ShowEvents(
-		label, action, stackRef.Name(), op.Proj.Name,
+		label, action, stackRef.Name(), op.Proj.Name, permalink,
 		displayEvents, displayEventsDone, opts, isPreview)
 	go persistEngineEvents(
 		u, opts.Debug, /* persist debug events */

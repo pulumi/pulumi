@@ -811,7 +811,7 @@ var ErrParsePermalinkFailed = errors.New("failed to get permalink")
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
 // or refresh operation. This will error for alternate, local backends.
 func GetPermalink(stdout string) (string, error) {
-	const permalinkSearchStr = "View Live: |Permalink: "
+	const permalinkSearchStr = `View Live: |View in Browser: |View in Browser \(Ctrl\+O\): |Permalink: `
 	startRegex := regexp.MustCompile(permalinkSearchStr)
 	endRegex := regexp.MustCompile("\n")
 

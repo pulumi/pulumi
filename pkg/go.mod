@@ -77,7 +77,6 @@ require (
 	github.com/pulumi/pulumi-java/pkg v0.8.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.34.1-0.20221214173921-8e65b1f9fdd5
 	github.com/pulumi/pulumi-yaml v1.0.4
-	github.com/rivo/uniseg v0.2.0
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	golang.org/x/mod v0.6.0
@@ -219,6 +218,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

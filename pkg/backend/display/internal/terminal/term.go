@@ -257,6 +257,7 @@ func (d *ansiDecoder) decode(in io.Reader) error {
 
 const (
 	KeyCtrlC    = "ctrl+c"
+	KeyCtrlO    = "ctrl+o"
 	KeyDown     = "down"
 	KeyPageDown = "page-down"
 	KeyPageUp   = "page-up"
@@ -286,9 +287,11 @@ func (t *terminal) ReadKey() (string, error) {
 	// - https://vt100.net/docs/vt510-rm/contents.html
 	switch d.kind {
 	case ansiKey:
-		if d.final == 3 {
-			// ETX: \x03
+		switch d.final {
+		case 3: // ETX
 			return KeyCtrlC, nil
+		case 15: // SI
+			return KeyCtrlO, nil
 		}
 		return string([]byte{d.final}), nil
 	case ansiEscape:

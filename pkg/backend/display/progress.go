@@ -216,7 +216,7 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
+	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
 	stdin := opts.Stdin
 	if stdin == nil {
@@ -246,8 +246,10 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 
 	var renderer progressRenderer
 	if isInteractive {
-		renderer = newInteractiveRenderer(term, opts)
+		printOpenInBrowser(term, opts, permalink)
+		renderer = newInteractiveRenderer(term, permalink, opts)
 	} else {
+		printViewLive(stdout, opts, permalink)
 		renderer = newNonInteractiveRenderer(stdout, op, opts)
 	}
 

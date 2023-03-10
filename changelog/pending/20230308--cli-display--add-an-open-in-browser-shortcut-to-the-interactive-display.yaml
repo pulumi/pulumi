@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Add an open in browser shortcut to the interactive display

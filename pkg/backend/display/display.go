@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -32,12 +33,34 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// printViewLive prints an update's permalink prefaced with `View Live: `. This message is printed in non-interactive
+// scenarios in order to maintain backwards compatibility with older versions of the Automation API, the message is
+// not changed for non-interactive scenarios.
+func printViewLive(out io.Writer, opts Options, permalink string) {
+	printPermalink(out, opts, "View Live", permalink)
+}
+
+// printOpenInBrowser print's an update's permalink prefaced with `Open in Browser (Ctrl+O): `. This is printed in
+// interactive scenarios that use the tree renderer.
+func printOpenInBrowser(term terminal.Terminal, opts Options, permalink string) {
+	printPermalink(term, opts, "Open in Browser (Ctrl+O)", permalink)
+}
+
+func printPermalink(out io.Writer, opts Options, message, permalink string) {
+	if !opts.SuppressPermalink && permalink != "" {
+		// Print a URL at the beginning of the update pointing to the Pulumi Service.
+		headline := colors.SpecHeadline + message + ": " + colors.Underline + colors.BrightBlue + permalink +
+			colors.Reset + "\n\n"
+		fmt.Fprint(out, opts.Color.Colorize(headline))
+	}
+}
+
 // ShowEvents reads events from the `events` channel until it is closed, displaying each event as
 // it comes in. Once all events have been read from the channel and displayed, it closes the `done`
 // channel so the caller can await all the events being written.
 func ShowEvents(
 	op string, action apitype.UpdateKind, stack tokens.Name, proj tokens.PackageName,
-	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
+	permalink string, events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool,
 ) {
 	if opts.EventLogPath != "" {
 		events, done = startEventLogger(events, done, opts)
@@ -54,11 +77,15 @@ func ShowEvents(
 		return
 	}
 
+	if opts.Type != DisplayProgress {
+		printViewLive(os.Stdout, opts, permalink)
+	}
+
 	switch opts.Type {
 	case DisplayDiff:
 		ShowDiffEvents(op, events, done, opts)
 	case DisplayProgress:
-		ShowProgressEvents(op, action, stack, proj, events, done, opts, isPreview)
+		ShowProgressEvents(op, action, stack, proj, permalink, events, done, opts, isPreview)
 	case DisplayQuery:
 		contract.Failf("DisplayQuery can only be used in query mode, which should be invoked " +
 			"directly instead of through ShowEvents")
