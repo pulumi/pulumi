@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Fixes an ID handling bug in provider_server Read implementation

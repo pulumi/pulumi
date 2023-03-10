@@ -45,6 +45,11 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 type stubProvider struct {
 	Provider
 
+	ReadFunc func(
+		urn resource.URN, id resource.ID,
+		inputs, state resource.PropertyMap,
+	) (ReadResult, resource.Status, error)
+
 	ConfigureFunc func(resource.PropertyMap) error
 }
 
@@ -53,4 +58,45 @@ func (p *stubProvider) Configure(inputs resource.PropertyMap) error {
 		return p.ConfigureFunc(inputs)
 	}
 	return p.Provider.Configure(inputs)
+}
+
+func (p *stubProvider) Read(
+	urn resource.URN,
+	id resource.ID,
+	inputs,
+	state resource.PropertyMap,
+) (ReadResult, resource.Status, error) {
+	if p.ReadFunc != nil {
+		return p.ReadFunc(urn, id, inputs, state)
+	}
+	return p.Provider.Read(urn, id, inputs, state)
+}
+
+// When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.
+func TestProviderServer_Read_respects_ID(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	provider := stubProvider{
+		ReadFunc: func(
+			urn resource.URN, id resource.ID,
+			inputs, state resource.PropertyMap,
+		) (ReadResult, resource.Status, error) {
+			return ReadResult{
+				ID: resource.ID("none"),
+				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+					"result": resource.NewSecretProperty(&resource.Secret{
+						Element: resource.NewStringProperty(string(id)),
+					}),
+				}),
+			}, resource.StatusOK, nil
+		},
+	}
+	secret := "supersecretpassword"
+	srv := NewProviderServer(&provider)
+	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{
+		Urn: "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
+		Id:  secret,
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, secret, resp.Id)
 }
