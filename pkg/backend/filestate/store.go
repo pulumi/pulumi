@@ -53,7 +53,11 @@ var _ referenceStore = (*projectReferenceStore)(nil)
 // newReference builds a new localBackendReference with the provided arguments.
 // This DOES NOT modify the underlying storage.
 func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBackendReference {
-	return &localBackendReference{name: name, project: project, b: p.b}
+	return &localBackendReference{
+		name:           name,
+		project:        project,
+		currentProject: p.b.currentProjectName(),
+	}
 }
 
 func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
@@ -85,12 +89,11 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	}
 
 	if project == "" {
-		if p.b.currentProject == nil {
+		project = p.b.currentProjectName()
+		if project == "" {
 			return nil, fmt.Errorf("if you're using the --stack flag, " +
 				"pass the fully qualified name (organization/project/stack)")
 		}
-
-		project = p.b.currentProject.Name.String()
 	}
 
 	if len(project) > 100 {
@@ -196,7 +199,10 @@ func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendRef
 			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %q",
 			stackRef)
 	}
-	return &localBackendReference{name: tokens.Name(stackRef), b: p.b}, nil
+	return &localBackendReference{
+		name: tokens.Name(stackRef),
+		// currentProject is not relevant for legacy stacks
+	}, nil
 }
 
 func (p *legacyReferenceStore) ConvertReference(ref backend.StackReference) (*localBackendReference, error) {
@@ -242,7 +248,7 @@ func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error
 		name := objName[:len(objName)-len(ext)]
 		stacks = append(stacks, &localBackendReference{
 			name: tokens.Name(name),
-			b:    p.b,
+			// currentProject is not relevant for legacy stacks
 		})
 	}
 
