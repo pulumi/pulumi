@@ -20,6 +20,11 @@ on:
         default: true
         description: "Build targets to produce, false builds only for Linux amd64."
         type: boolean
+      test-codegen:
+        required: false
+        default: true
+        description: "Whether to run per-language codegen tests."
+        type: boolean
       lint:
         required: false
         default: true
@@ -89,6 +94,7 @@ jobs:
         id: matrix
         env:
           BUILD_ALL_TARGETS: ${{ inputs.build-all-targets }}
+          TEST_CODEGEN: ${{ inputs.test-codegen }}
           TEST_VERSION_SETS: ${{ inputs.test-version-sets }}
           INPUT_INTEGRATION_TEST_PLATFORMS: ${{ inputs.integration-test-platforms }}
           INPUT_ACCEPTANCE_TEST_PLATFORMS: ${{ inputs.acceptance-test-platforms }}
@@ -122,14 +128,22 @@ jobs:
             ]'
           fi
 
+          CODEGEN_TESTS_FLAG=--codegen-tests
+          PKG_UNIT_TEST_PARTITIONS=7
+          if [ "${TEST_CODEGEN}" = "false" ]; then
+            CODEGEN_TESTS_FLAG=--no-codegen-tests
+            PKG_UNIT_TEST_PARTITIONS=3
+          fi
+
           UNIT_TEST_MATRIX=$(
             ./scripts/get-job-matrix.py \
             -vvv \
             generate-matrix \
             --kind unit-test \
+            "$CODEGEN_TESTS_FLAG" \
             --platform ubuntu-latest \
             --version-set current \
-            --partition-module pkg 7 \
+            --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
             --partition-module tests 2
           )
@@ -139,6 +153,7 @@ jobs:
             -vvv \
             generate-matrix \
             --kind integration-test \
+            "$CODEGEN_TESTS_FLAG" \
             --platform "${INTEGRATION_PLATFORMS[@]}" \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
@@ -152,6 +167,7 @@ jobs:
             -vvv \
             generate-matrix \
             --kind acceptance-test \
+            "$CODEGEN_TESTS_FLAG" \
             --tags all xplatform_acceptance \
             --platform "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
