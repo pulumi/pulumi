@@ -184,6 +184,14 @@ export abstract class Resource {
     private readonly __protect: boolean;
 
     /**
+     * If set, the providers Delete method will not be called for this resource
+     * if specified URN is being deleted as well.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    private readonly __deletedWith?: Resource;
+
+    /**
      * A collection of transformations to apply as part of resource registration.
      *
      * Note: This is marked optional only because older versions of this library may not have had
@@ -332,6 +340,10 @@ export abstract class Resource {
                 opts.protect = parent.__protect;
             }
 
+            if (opts.deletedWith === undefined) {
+                opts.deletedWith = parent.__deletedWith;
+            }
+
             this.__providers = parent.__providers;
         }
 
@@ -366,6 +378,7 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
+        this.__deletedWith = opts.deletedWith;
         this.__prov = custom ? opts.provider : undefined;
         this.__version = opts.version;
         this.__pluginDownloadURL = opts.pluginDownloadURL;

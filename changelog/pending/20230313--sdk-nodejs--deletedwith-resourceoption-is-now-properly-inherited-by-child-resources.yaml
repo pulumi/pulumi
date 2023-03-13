@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: `deletedWith` ResourceOption is now properly inherited by child resources.

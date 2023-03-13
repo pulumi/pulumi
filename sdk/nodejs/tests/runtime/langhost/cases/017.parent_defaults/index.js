@@ -79,3 +79,23 @@ createComponents("double-nest-2", (name, parent) => {
 		createResources(name, undefined, parent);
 	}, parent);
 });
+
+{
+    const inheritedFolder = new Resource("inherited-folder", undefined, {})
+
+    const uninheritedFolder = new Resource("uninherited-folder", undefined, {})
+
+    // Test deletedWith
+    const project = new Resource("project", undefined, {
+        deletedWith: inheritedFolder,
+    })
+
+    const dep1 = new Resource("should-be-deleted-with-inherited-folder", undefined, {
+        parent: project,
+    })
+
+    const dep2 = new Resource("should-be-deleted-with-uninherited-folder", undefined, {
+        parent: project,
+        deletedWith: uninheritedFolder,
+    })
+}

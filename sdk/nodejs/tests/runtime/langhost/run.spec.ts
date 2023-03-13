@@ -54,7 +54,7 @@ interface RunCase {
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
         propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
-        replaceOnChanges?: string[], providers?: any) => {
+        replaceOnChanges?: string[], providers?: any, deletedWith?: string) => {
         urn: URN | undefined; id: ID | undefined; props: any | undefined;
     };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
@@ -484,7 +484,9 @@ describe("rpc", () => {
         // A test of parent default behaviors.
         "parent_defaults": {
             program: path.join(base, "017.parent_defaults"),
-            expectResourceCount: 240,
+            // 240 resources corresponding to the original tests
+            // 5 resources for deletedWith tests
+            expectResourceCount: 240+5,
             registerResource: parentDefaultsRegisterResource,
         },
         "logging": {
@@ -777,12 +779,12 @@ describe("rpc", () => {
         "component_opt_single_provider": {
             program: path.join(base, "041.component_opt_single_provider"),
             expectResourceCount: 240,
-            registerResource: parentDefaultsRegisterResource,
+            registerResource: componentParentDefaultsRegisterResource,
         },
         "component_opt_providers_array": {
             program: path.join(base, "042.component_opt_providers_array"),
             expectResourceCount: 240,
-            registerResource: parentDefaultsRegisterResource,
+            registerResource: componentParentDefaultsRegisterResource,
         },
         "depends_on_non_resource": {
             program: path.join(base, "043.depends_on_non_resource"),
@@ -1341,9 +1343,10 @@ describe("rpc", () => {
                                     .reduce((o: any, [key, value]: any) => {
                                         return { ...o, [key]: value };
                                     }, {});
+                                const deletedWith: string = req.getDeletedwith();
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
                                     custom, protect, parent, provider, propertyDeps, ignoreChanges, version,
-                                    importID, replaceOnChanges, providers);
+                                    importID, replaceOnChanges, providers, deletedWith);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));
@@ -1469,6 +1472,79 @@ describe("rpc", () => {
 });
 
 function parentDefaultsRegisterResource(
+    ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+    custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+    propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+    replaceOnChanges?: string[], providers?: any, deletedWith?: string) {
+
+    if (custom && !t.startsWith("pulumi:providers:")) {
+        let expectProtect = false;
+        let expectDeletedWith: string = "";
+        let expectProviderName = "";
+
+        const rpath = name.split("/");
+        for (let i = 1; i < rpath.length; i++) {
+            switch (rpath[i]) {
+            case "c0":
+            case "r0":
+                // Pass through parent values
+                break;
+            case "c1":
+            case "r1":
+                // Force protect to false
+                expectProtect = false;
+                break;
+            case "c2":
+            case "r2":
+                // Force protect to true
+                expectProtect = true;
+                break;
+            case "c3":
+            case "r3":
+                // Force provider
+                expectProviderName = `${rpath.slice(0, i).join("/")}-p`;
+                break;
+            default:
+                assert.fail(`unexpected path element in name: ${rpath[i]}`);
+            }
+        }
+
+        // r3 explicitly overrides its provider.
+        if (rpath[rpath.length - 1] === "r3") {
+            expectProviderName = `${rpath.slice(0, rpath.length - 1).join("/")}-p`;
+        }
+
+        switch (name) {
+        case "inherited-folder":
+            break;
+        case "uninherited-folder":
+            break;
+        case "project":
+            // deletedWith: inheritedFolder,
+            expectDeletedWith = "test:index:Resource::inherited-folder";
+            break;
+        case "should-be-deleted-with-inherited-folder":
+            // parent: project,
+            expectDeletedWith = "test:index:Resource::inherited-folder";
+            break;
+        case "should-be-deleted-with-uninherited-folder":
+            expectDeletedWith = "test:index:Resource::uninherited-folder";
+            break;
+        default:
+            break;
+        }
+
+        const providerName = provider!.split("::").reduce((_, v) => v);
+
+        assert.strictEqual(`${name}.protect: ${protect!}`, `${name}.protect: ${expectProtect}`);
+        assert.strictEqual(`${name}.provider: ${providerName}`, `${name}.provider: ${expectProviderName}`);
+        assert.strictEqual(`${name}.deletedWith: ${deletedWith}`, `${name}.deletedWith: ${expectDeletedWith}`);
+    }
+
+    return { urn: makeUrn(t, name), id: name, props: {} };
+}
+
+function componentParentDefaultsRegisterResource(
     ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
     custom?: boolean, protect?: boolean, parent?: string, provider?: string) {
 
