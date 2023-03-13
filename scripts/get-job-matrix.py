@@ -72,7 +72,7 @@ def is_unit_test(pkg: str) -> bool:
         or pkg in INTEGRATION_TEST_PACKAGES
     )
 
-# Keep this in sync with .github/labeler.yml.
+# Keep this in sync with filters defined in .github/workflows/on-pr.yml.
 CODEGEN_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/pkg/v3/codegen/docs",
     "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",

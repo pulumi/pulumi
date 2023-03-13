@@ -45,23 +45,35 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
-  # Labels the PR based on affected paths.
-  # Configuration is in .github/labeler.yml.
-  label:
-    name: Add CI labels
-    permissions:
-      contents: read
-      pull-requests: write
+  # Determines which files have changed
+  # so we can avoid running expensive tests
+  # if they're not necessary.
+  inspect:
+    name: Inspect changed files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v4
+      - uses: dorny/paths-filter@v2
+        id: changes
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          filters: |
+            # If files matching any of these patterns change,
+            # we will run codegen tests for pull requests.
+            test-codegen:
+              - 'pkg/codegen/docs/**'
+              - 'pkg/codegen/dotnet/**'
+              - 'pkg/codegen/go/**'
+              - 'pkg/codegen/nodejs/**'
+              - 'pkg/codegen/python/**'
+    outputs:
+      # Add an entry here for every named pattern
+      # defined in filters.
+      test-codegen: ${{ steps.changes.outputs.test-codegen }}
 
   ci:
     name: CI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, label]
+    needs: [info, inspect]
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
@@ -73,12 +85,12 @@ jobs:
       lint: true
       build-all-targets: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
       # codegen tests take quite a while to run.
-      # Run them only if ci/test or ci/test-codegen is set.
-      # The latter is set by the label action if relevant files change.
-      codegen-tests:  >- # No newlines or trailing newline.
+      # Run them only if ci/test is set,
+      # or if one of the codegen files changed.
+      test-codegen:  >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test') ||
-          contains(github.event.pull_request.labels.*.name, 'ci/test-codegen')
+          (needs.inspect.outputs.test-codegen == 'true')
         }}
       test-version-sets: >- # No newlines or trailing newline.
         ${{
