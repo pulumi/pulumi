@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -56,8 +58,12 @@ type Step interface {
 }
 
 // loadSharedProviderConfig iterates all project and stack configuration, and copies any keys that match the provider
-// namespace into the Step inputs. This function is a no-op for non-Provider resources.
+// namespace into the Step inputs. This function is a no-op for non-Provider resources, and is disabled by default.
+// Opt in to this feature by setting the `PULUMI_SHARED_PROVIDER_CONFIG` environment variable.
 func loadSharedProviderConfig(s Step) error {
+	if !cmdutil.IsTruthy(os.Getenv("PULUMI_SHARED_PROVIDER_CONFIG")) {
+		return nil
+	}
 	if !providers.IsProviderType(s.New().URN.Type()) {
 		return nil
 	}
