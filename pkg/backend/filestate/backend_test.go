@@ -144,9 +144,9 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
@@ -204,9 +204,9 @@ func TestDrillError(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Get a non-existent stack and expect a nil error because it won't be found.
 	stackRef, err := b.ParseStackReference("dev")
@@ -222,9 +222,9 @@ func TestCancel(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Check that trying to cancel a stack that isn't created yet doesn't error
 	aStackRef, err := b.ParseStackReference("a")
@@ -260,7 +260,7 @@ func TestCancel(t *testing.T) {
 	assert.False(t, lockExists)
 
 	// Make another filestate backend which will have a different lockId
-	ob, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	ob, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	otherBackend, ok := ob.(*localBackend)
 	assert.True(t, ok)
@@ -283,9 +283,9 @@ func TestRemoveMakesBackups(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
 	lb, ok := b.(*localBackend)
@@ -326,9 +326,9 @@ func TestRenameWorks(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Grab the bucket interface to test with
 	lb, ok := b.(*localBackend)
@@ -393,7 +393,8 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	t.Parallel()
 
 	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
-	b, err := New(diagtest.LogSink(t), fakeDir, nil)
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), fakeDir, nil)
 	assert.Error(t, err)
 	assert.Nil(t, b)
 }
@@ -444,9 +445,9 @@ func TestHtmlEscaping(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	assert.NoError(t, err)
 	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
 
 	// Create stack "a" and import a checkpoint with a secret
 	aStackRef, err := b.ParseStackReference("a")
