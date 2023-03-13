@@ -267,11 +267,9 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return errors.New("result must be a pointer to a struct or map value")
 	}
 
-	options := &invokeOptions{}
-	for _, o := range opts {
-		if o != nil {
-			o.applyInvokeOption(options)
-		}
+	options, err := NewInvokeOptions(opts...)
+	if err != nil {
+		return err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
@@ -378,11 +376,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 
 	output = ctx.newOutput(reflect.TypeOf(output))
 
-	options := &invokeOptions{}
-	for _, o := range opts {
-		if o != nil {
-			o.applyInvokeOption(options)
-		}
+	options, err := NewInvokeOptions(opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
