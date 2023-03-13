@@ -150,7 +150,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return err
+		return err // sample change to test https://github.com/pulumi/pulumi/pull/12421
 	}
 	if diagnostics.HasErrors() {
 		return diagnostics
