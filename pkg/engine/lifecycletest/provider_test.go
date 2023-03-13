@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -1478,4 +1479,115 @@ func TestProviderVersionAssignment(t *testing.T) {
 			p.Run(t, &deploy.Snapshot{})
 		})
 	}
+}
+
+// TestDeletedWithOptionInheritance checks that a resource that sets its parent to another resource inherits
+// that resource's DeletedWith option.
+func TestDeletedWithOptionInheritance(t *testing.T) {
+	t.Parallel()
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parentUrn, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			DeletedWith: "expect-this",
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parentUrn,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN, id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	for _, res := range snap.Resources[1:] {
+		assert.Equal(t, resource.URN("expect-this"), res.DeletedWith)
+	}
+	assert.Nil(t, res)
+}
+
+// TestDeletedWithOptionInheritanceMLC checks that an MLC's DeletedWith option is propagated to resources that
+// set an MLC as its parent. MLC's are remote and at the time of writing their RegisterResource call asks the
+// resource monitor to ask the constructor to call the necessary RegisterResource calls on the program's behalf.
+func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
+	t.Parallel()
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parentUrn, _, _, err := monitor.RegisterResource("pkgA:m:typComponent", "resA", false, deploytest.ResourceOptions{
+			Remote:      true,
+			DeletedWith: "expect-this",
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: parentUrn,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(
+					urn resource.URN, id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string,
+					parent resource.URN, inputs resource.PropertyMap, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					require.Equal(t, "resA", name)
+					require.Equal(t, "pkgA:m:typComponent", typ)
+
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+						DeletedWith: options.DeletedWith,
+					})
+					require.NoError(t, err)
+
+					_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+						Parent: urn,
+					})
+					require.NoError(t, err)
+					return plugin.ConstructResult{
+						URN: urn,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	for _, res := range snap.Resources[1:] {
+		assert.Equal(t, resource.URN("expect-this"), res.DeletedWith)
+	}
+	assert.Nil(t, res)
 }

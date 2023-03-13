@@ -1106,3 +1106,61 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	assert.True(t, registered181)
 // 	assert.True(t, registered182)
 // }
+
+func TestResourceInheritsOptionsFromParent(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name              string
+		parentDeletedWith resource.URN
+		childDeletedWith  resource.URN
+		wantDeletedWith   resource.URN
+	}{
+		{
+			// Children missing DeletedWith should inherit DeletedWith
+			name:              "inherit",
+			parentDeletedWith: "parent-deleted-with",
+			childDeletedWith:  "",
+			wantDeletedWith:   "parent-deleted-with",
+		},
+		{
+			// Children with DeletedWith should not inherit DeletedWith
+			name:              "override",
+			parentDeletedWith: "parent-deleted-with",
+			childDeletedWith:  "this-value-is-set-and-should-not-change",
+			wantDeletedWith:   "this-value-is-set-and-should-not-change",
+		},
+		{
+			// Children with DeletedWith should not inherit empty DeletedWith.
+			name:              "keep",
+			parentDeletedWith: "",
+			childDeletedWith:  "this-value-is-set-and-should-not-change",
+			wantDeletedWith:   "this-value-is-set-and-should-not-change",
+		},
+	}
+
+	for _, tt := range tests {
+		test := tt
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			parentURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent")
+			parentGoal := &resource.Goal{
+				Parent:      "",
+				Type:        parentURN.Type(),
+				DeletedWith: test.parentDeletedWith,
+			}
+
+			childURN := resource.NewURN("a", "proj", "d:e:f", "a:b:c", "child")
+			goal := &resource.Goal{
+				Parent:      parentURN,
+				Type:        childURN.Type(),
+				Name:        childURN.Name(),
+				DeletedWith: test.childDeletedWith,
+			}
+
+			newGoal := inheritFromParent(*goal, *parentGoal)
+
+			assert.Equal(t, test.wantDeletedWith, newGoal.DeletedWith)
+		})
+	}
+}
