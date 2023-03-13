@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -241,13 +240,14 @@ func runConvert(
 		if err != nil {
 			return result.FromError(fmt.Errorf("plugin source %q: %w", from, err))
 		}
+		defer contract.IgnoreClose(converter)
 
 		targetDirectory, err := os.MkdirTemp("", "pulumi-convert")
 		if err != nil {
 			return result.FromError(fmt.Errorf("create temporary directory: %w", err))
 		}
 
-		logging.Warningf("Plugin converters are currently experimental")
+		pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
 		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,

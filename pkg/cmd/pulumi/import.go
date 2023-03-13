@@ -39,12 +39,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -493,8 +493,9 @@ func newImportCmd() *cobra.Command {
 				if err != nil {
 					return result.FromError(err)
 				}
+				defer contract.IgnoreClose(converter)
 
-				logging.Warningf("Plugin converters are currently experimental")
+				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{})
 				if err != nil {
