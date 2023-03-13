@@ -235,35 +235,16 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	}
 
 	// If we're in project mode warn about any old stack files.
-	files, err := listBucket(b, backend.stackPath(nil))
+	refs, err := (&legacyReferenceStore{b: backend}).ListReferences()
 	if err != nil {
 		// If there's an error listing don't fail, just don't print the warnings
 		return backend, nil
 	}
 
-	for _, file := range files {
-		if file.IsDir {
-			continue
-		}
-
-		objName := objectName(file)
-		// Skip files without valid extensions (e.g., *.bak files).
-		ext := filepath.Ext(objName)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
-			ext = filepath.Ext(objName)
-		}
-
-		if _, has := encoding.Marshalers[ext]; !has {
-			continue
-		}
-
-		// This looks like a stack file! Warn about it
-		name := objName[:len(objName)-len(ext)]
+	for _, ref := range refs {
 		d.Warningf(&diag.Diag{
-			Message: "Found legacy stack file '%s', you should run 'pulumi state migrate'",
-		}, name)
+			Message: "Found legacy stack file '%s', you should run 'pulumi state upgrade'",
+		}, ref.Name())
 	}
 
 	return backend, nil

@@ -1066,8 +1066,8 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	require.NoError(t, err)
 
 	stderr := buff.String()
-	assert.Contains(t, stderr, "Found legacy stack file 'a', you should run 'pulumi state migrate'")
-	assert.Contains(t, stderr, "Found legacy stack file 'b', you should run 'pulumi state migrate'")
+	assert.Contains(t, stderr, "Found legacy stack file 'a', you should run 'pulumi state upgrade'")
+	assert.Contains(t, stderr, "Found legacy stack file 'b', you should run 'pulumi state upgrade'")
 }
 
 func TestNew_unsupportedStoreVersion(t *testing.T) {
