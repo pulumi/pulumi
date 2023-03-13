@@ -1,3 +1,18 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package iotest provides testing utilities for code that uses the io package.
 package iotest
 
 import (
@@ -19,6 +34,8 @@ type logWriter struct {
 		Helper()
 	}
 
+	prefix string
+
 	// Holds buffered text for the next write or flush
 	// if we haven't yet seen a newline.
 	buff bytes.Buffer
@@ -37,7 +54,13 @@ var _ io.Writer = (*logWriter)(nil)
 // The returned writer is safe for concurrent use
 // from multiple parallel tests.
 func LogWriter(t testing.TB) io.Writer {
-	w := logWriter{t: t}
+	return LogWriterPrefixed(t, "")
+}
+
+// LogWriterPrefixed is a variant of LogWriter
+// that prepends the given prefix to each line.
+func LogWriterPrefixed(t testing.TB, prefix string) io.Writer {
+	w := logWriter{t: t, prefix: prefix}
 	t.Cleanup(w.flush)
 	return &w
 }
@@ -68,13 +91,13 @@ func (w *logWriter) Write(bs []byte) (int, error) {
 		if w.buff.Len() == 0 {
 			// Nothing buffered from a prior partial write.
 			// This is the majority case.
-			w.t.Logf("%s", line)
+			w.t.Logf("%s%s", w.prefix, line)
 			continue
 		}
 
 		// There's a prior partial write. Join and flush.
 		w.buff.Write(line)
-		w.t.Logf("%s", w.buff.String())
+		w.t.Logf("%s%s", w.prefix, w.buff.String())
 		w.buff.Reset()
 	}
 	return total, nil
@@ -83,6 +106,7 @@ func (w *logWriter) Write(bs []byte) (int, error) {
 // flush flushes buffered text, even if it doesn't end with a newline.
 func (w *logWriter) flush() {
 	if w.buff.Len() > 0 {
-		w.t.Logf("%s", w.buff.String())
+		w.t.Logf("%s%s", w.prefix, w.buff.String())
+		w.buff.Reset()
 	}
 }

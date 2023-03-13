@@ -350,7 +350,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 
 	stack := newStack(stackRef, file, nil, b)
-	fmt.Printf("Created stack '%s'\n", stack.Ref())
+	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
 
 	return stack, nil
 }
