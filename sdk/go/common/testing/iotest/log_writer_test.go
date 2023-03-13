@@ -1,3 +1,17 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package iotest
 
 import (
@@ -14,7 +28,8 @@ func TestLogWriter(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		desc string
+		desc   string
+		prefix string // prefix string, if any
 
 		writes []string // individual write calls
 		want   []string // expected log output
@@ -52,6 +67,43 @@ func TestLogWriter(t *testing.T) {
 				"bazqux",
 			},
 		},
+		{
+			desc:   "prefixed/empty strings",
+			prefix: "out: ",
+			writes: []string{"", "", ""},
+		},
+		{
+			desc:   "prefixed/no newline",
+			prefix: "out: ",
+			writes: []string{"foo", "bar", "baz"},
+			want:   []string{"out: foobarbaz"},
+		},
+		{
+			desc:   "prefixed/newline separated",
+			prefix: "out: ",
+			writes: []string{
+				"foo\n",
+				"bar\n",
+				"baz\n\n",
+				"qux",
+			},
+			want: []string{
+				"out: foo",
+				"out: bar",
+				"out: baz",
+				"out: ",
+				"out: qux",
+			},
+		},
+		{
+			desc:   "prefixed/partial line",
+			prefix: "out: ",
+			writes: []string{"foo", "bar\nbazqux"},
+			want: []string{
+				"out: foobar",
+				"out: bazqux",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -60,7 +112,7 @@ func TestLogWriter(t *testing.T) {
 			t.Parallel()
 
 			fakeT := fakeT{TB: t}
-			w := LogWriter(&fakeT)
+			w := LogWriterPrefixed(&fakeT, tt.prefix)
 
 			for _, input := range tt.writes {
 				n, err := w.Write([]byte(input))
