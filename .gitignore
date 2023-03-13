@@ -16,6 +16,7 @@ venv/
 
 # Ignore user-provided go.work files.
 /go.work
+/go.work.sum
 
 **/.idea/
 *.iml

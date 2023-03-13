@@ -354,6 +354,12 @@ func newGithubSource(url *url.URL, name string, kind PluginKind) (*githubSource,
 		// github.com/pulumi/pulumi-converter-aws rather than github.com/pulumi/pulumi-aws which would clash
 		// with the providers of the same name.
 		repository = "pulumi-converter-" + name
+		if name == "yaml" {
+			// We special case the yaml converter plugin to be in the pulumi-yaml repo. It's not ideal but its
+			// to have this hardcoded here than having to deal with two repos for YAML, and long term this
+			// should go away and be replaced with a registry lookup.
+			repository = "pulumi-yaml"
+		}
 	}
 	if len(parts) == 2 {
 		repository = parts[1]
