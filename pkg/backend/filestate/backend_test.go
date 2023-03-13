@@ -22,8 +22,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func TestMassageBlobPath(t *testing.T) {
@@ -144,7 +144,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -204,7 +204,7 @@ func TestDrillError(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -222,7 +222,7 @@ func TestCancel(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -260,7 +260,7 @@ func TestCancel(t *testing.T) {
 	assert.False(t, lockExists)
 
 	// Make another filestate backend which will have a different lockId
-	ob, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	ob, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	otherBackend, ok := ob.(*localBackend)
 	assert.True(t, ok)
@@ -283,7 +283,7 @@ func TestRemoveMakesBackups(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -326,7 +326,7 @@ func TestRenameWorks(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -393,7 +393,7 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	t.Parallel()
 
 	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
-	b, err := New(cmdutil.Diag(), fakeDir, nil)
+	b, err := New(diagtest.LogSink(t), fakeDir, nil)
 	assert.Error(t, err)
 	assert.Nil(t, b)
 }
@@ -444,7 +444,7 @@ func TestHtmlEscaping(t *testing.T) {
 
 	// Login to a temp dir filestate backend
 	tmpDir := t.TempDir()
-	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := New(diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 

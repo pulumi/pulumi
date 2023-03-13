@@ -29,8 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -78,9 +78,9 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	}
 }
 
-func newTestPluginContext(program deploytest.ProgramFunc) (*plugin.Context, error) {
-	sink := cmdutil.Diag()
-	statusSink := cmdutil.Diag()
+func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin.Context, error) {
+	sink := diagtest.LogSink(t)
+	statusSink := diagtest.LogSink(t)
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(sink, statusSink, host, nil, "", nil, false, nil)
@@ -207,7 +207,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	}
 
 	// Create and iterate an eval source.
-	ctx, err := newTestPluginContext(fixedProgram(steps))
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
@@ -290,7 +290,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	}
 
 	// Create and iterate an eval source.
-	ctx, err := newTestPluginContext(fixedProgram(steps))
+	ctx, err := newTestPluginContext(t, fixedProgram(steps))
 	assert.NoError(t, err)
 
 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
@@ -403,7 +403,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	}
 
 	// Create and iterate an eval source.
-	ctx, err := newTestPluginContext(program)
+	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
 	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
@@ -476,7 +476,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	}
 
 	// Create and iterate an eval source.
-	ctx, err := newTestPluginContext(program)
+	ctx, err := newTestPluginContext(t, program)
 	assert.NoError(t, err)
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
@@ -655,7 +655,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			}
 
 			// Create and iterate an eval source.
-			ctx, err := newTestPluginContext(program)
+			ctx, err := newTestPluginContext(t, program)
 			assert.NoError(t, err)
 
 			iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)

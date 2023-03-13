@@ -5,14 +5,14 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
 )
 
 func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
 	cwd, err := os.Getwd()
 	require.NoError(b, err)
-	sink := cmdutil.Diag()
+	sink := diagtest.LogSink(b)
 	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
