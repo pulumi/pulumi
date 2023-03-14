@@ -88,10 +88,16 @@ type localBackend struct {
 
 	// The current project, if any.
 	currentProject *workspace.Project
+
+	// The store controls the layout of stacks in the backend.
+	store referenceStore
 }
 
 type localBackendReference struct {
 	name tokens.Name
+
+	// referenceStore that created this reference.
+	store referenceStore
 }
 
 func (r *localBackendReference) String() string {
@@ -105,6 +111,11 @@ func (r *localBackendReference) Name() tokens.Name {
 func (r *localBackendReference) FullyQualifiedName() tokens.QName {
 	return r.Name().Q()
 }
+
+// Helper methods that delegate to the underlying referenceStore.
+func (r *localBackendReference) StackBasePath() string { return r.store.StackBasePath(r) }
+func (r *localBackendReference) HistoryDir() string    { return r.store.HistoryDir(r) }
+func (r *localBackendReference) BackupDir() string     { return r.store.BackupDir(r) }
 
 func IsFileStateBackendURL(urlstr string) bool {
 	u, err := url.Parse(urlstr)
@@ -176,15 +187,18 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 
 	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
-	return &localBackend{
+	wbucket := &wrappedBucket{bucket: bucket}
+	backend := &localBackend{
 		d:              d,
 		originalURL:    originalURL,
 		url:            u,
-		bucket:         &wrappedBucket{bucket: bucket},
+		bucket:         wbucket,
 		lockID:         lockID.String(),
 		gzip:           gzipCompression,
 		currentProject: project,
-	}, nil
+		store:          newLegacyReferenceStore(wbucket),
+	}
+	return backend, nil
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
@@ -241,11 +255,11 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 }
 
 func (b *localBackend) getReference(ref backend.StackReference) (*localBackendReference, error) {
-	localStackRef, is := ref.(*localBackendReference)
-	if !is {
+	stackRef, ok := ref.(*localBackendReference)
+	if !ok {
 		return nil, fmt.Errorf("bad stack reference type")
 	}
-	return localStackRef, nil
+	return stackRef, nil
 }
 
 func (b *localBackend) local() {}
@@ -261,10 +275,6 @@ func (b *localBackend) Name() string {
 
 func (b *localBackend) URL() string {
 	return b.originalURL
-}
-
-func (b *localBackend) StateDir() string {
-	return workspace.BookkeepingDir
 }
 
 func (b *localBackend) SetCurrentProject(project *workspace.Project) {
@@ -302,12 +312,7 @@ func (b *localBackend) ParseStackReference(stackRef string) (backend.StackRefere
 }
 
 func (b *localBackend) parseStackReference(stackRef string) (*localBackendReference, error) {
-	if !tokens.IsName(stackRef) || len(stackRef) > 100 {
-		return nil, fmt.Errorf(
-			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %s",
-			stackRef)
-	}
-	return &localBackendReference{name: tokens.Name(stackRef)}, nil
+	return b.store.ParseReference(stackRef)
 }
 
 // ValidateStackName verifies the stack name is valid for the local backend.
@@ -889,43 +894,7 @@ func (b *localBackend) CurrentUser() (string, []string, error) {
 }
 
 func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
-	// Read the stack directory.
-	path := b.stackPath(nil)
-
-	files, err := listBucket(b.bucket, path)
-	if err != nil {
-		return nil, fmt.Errorf("error listing stacks: %w", err)
-	}
-	stacks := make([]*localBackendReference, 0, len(files))
-
-	for _, file := range files {
-		// Ignore directories.
-		if file.IsDir {
-			continue
-		}
-
-		// Skip files without valid extensions (e.g., *.bak files).
-		stackfn := objectName(file)
-		ext := filepath.Ext(stackfn)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			stackfn = strings.TrimSuffix(stackfn, encoding.GZIPExt)
-			ext = filepath.Ext(stackfn)
-		}
-
-		if _, has := encoding.Marshalers[ext]; !has {
-			continue
-		}
-
-		// Read in this stack's information.
-		name := tokens.Name(stackfn[:len(stackfn)-len(ext)])
-
-		stacks = append(stacks, &localBackendReference{
-			name: name,
-		})
-	}
-
-	return stacks, nil
+	return b.store.ListReferences()
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
