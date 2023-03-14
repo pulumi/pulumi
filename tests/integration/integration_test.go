@@ -673,3 +673,120 @@ plugins:
 		assert.Contains(t, stderr, "error: ")
 	}
 }
+
+// TestSharedProviderConfig validates that providers correctly include shared configuration when the feature is enabled.
+// The following cases are checked:
+// 1. Default providers load stack configuration
+// 2. First-class providers load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is set.
+// 2.1 Provider arguments take precedence over project/stack configuration.
+// 2.2 Config values that are JSON strings are merged rather than overwritten.
+// 3. First-class providers do not load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is not set.
+func TestSharedProviderConfig(t *testing.T) {
+	t.Parallel()
+
+	validateShared := func(t *testing.T, stdout []byte) {
+		deployment := &apitype.UntypedDeployment{}
+		err := json.Unmarshal(stdout, deployment)
+		assert.NoError(t, err)
+		data := &apitype.DeploymentV3{}
+		err = json.Unmarshal(deployment.Deployment, data)
+		assert.NoError(t, err)
+		for _, resource := range data.Resources {
+			switch {
+			case providers.IsDefaultProvider(resource.URN):
+				assert.Contains(t, resource.Inputs, "test")
+				assert.Equal(t, resource.Inputs["test"], "value")
+			case providers.IsProviderType(resource.Type):
+				assert.Contains(t, resource.Inputs, "proxy")
+				var proxyObj map[string]any
+				err = json.Unmarshal([]byte(resource.Inputs["proxy"].(string)), &proxyObj)
+				assert.NoError(t, err)
+
+				assert.Contains(t, proxyObj, "url")
+				assert.Equalf(t, proxyObj["url"].(string), "http://override",
+					"expected Provider arg to override stack config value")
+
+				// Matching Provider argument not present, so use the value from the stack config.
+				assert.Contains(t, proxyObj, "username")
+				assert.Equalf(t, proxyObj["username"].(string), "anon",
+					"missing stack config value")
+
+				assert.Containsf(t, resource.Inputs, "foo/bar", "missing stack config value")
+
+				assert.NotContainsf(t, resource.Inputs, "oof/rab",
+					"unexpected stack config value from another namespace")
+
+				assert.Containsf(t, resource.Inputs, "testsecret", "missing stack config value")
+				assert.IsType(t, map[string]any{}, resource.Inputs["testsecret"],
+					"secret value appears as string rather than ciphertext")
+				assert.Contains(t, resource.Inputs["testsecret"], "ciphertext")
+			}
+		}
+		assert.Greater(t, len(data.Resources), 1, "We should construct more then just the stack")
+	}
+
+	validateDefault := func(t *testing.T, stdout []byte) {
+		deployment := &apitype.UntypedDeployment{}
+		err := json.Unmarshal(stdout, deployment)
+		assert.NoError(t, err)
+		data := &apitype.DeploymentV3{}
+		err = json.Unmarshal(deployment.Deployment, data)
+		assert.NoError(t, err)
+		for _, resource := range data.Resources {
+			switch {
+			case providers.IsDefaultProvider(resource.URN):
+				assert.Contains(t, resource.Inputs, "test")
+				assert.Equal(t, resource.Inputs["test"], "value")
+			case providers.IsProviderType(resource.Type):
+				assert.Contains(t, resource.Inputs, "proxy")
+				var proxyObj map[string]any
+				err = json.Unmarshal([]byte(resource.Inputs["proxy"].(string)), &proxyObj)
+				assert.NoError(t, err)
+
+				assert.Contains(t, proxyObj, "url")
+				assert.Equal(t, proxyObj["url"].(string), "http://override")
+
+				// Stack config should not be included by default.
+				assert.NotContainsf(t, proxyObj, "username", "stack config should not be present")
+				assert.NotContainsf(t, resource.Inputs, "foo/bar", "stack config should not be present")
+				assert.NotContainsf(t, resource.Inputs, "testsecret", "stack config should not be present")
+			}
+		}
+		assert.Greater(t, len(data.Resources), 1, "We should construct more then just the stack")
+	}
+
+	testCases := []struct {
+		name         string
+		shared       bool
+		validateFunc func(t *testing.T, stdout []byte)
+	}{
+		{"shared", true, validateShared},
+		{"default", false, validateDefault},
+	}
+
+	for _, testCase := range testCases {
+		//nolint:paralleltest // uses parallel programtest
+		t.Run(testCase.name, func(t *testing.T) {
+			var env []string
+			if testCase.shared {
+				env = append(env, "PULUMI_SHARED_PROVIDER_CONFIG=1")
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: env,
+				Config: map[string]string{
+					"other:oof/rab": "zab",
+					"random:test":   "value",
+					"tls:proxy":     `{"username": "anon"}`,
+					"tls:foo/bar":   "baz",
+				},
+				Secrets: map[string]string{
+					"tls:testsecret": "verysecret",
+				},
+				Dir:                    "provider_shared_config",
+				ExportStateValidator:   testCase.validateFunc,
+				SkipPreview:            true,
+				SkipEmptyPreviewUpdate: true,
+			})
+		})
+	}
+}

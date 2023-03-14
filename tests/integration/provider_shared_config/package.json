@@ -1,0 +1,13 @@
+{
+    "name": "typescript",
+    "devDependencies": {
+        "@types/node": "latest"
+    },
+    "dependencies": {
+        "@pulumi/random": "^4.12.0",
+        "@pulumi/tls": "^4.10.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}
