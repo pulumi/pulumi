@@ -15,11 +15,13 @@
 package deploy
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/imdario/mergo"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -78,18 +80,35 @@ func loadSharedProviderConfig(s Step) error {
 		}
 
 		keyName := resource.PropertyKey(k.Name())
-		// Explicit config overrides stack config, so ignore the stack value if the key is already present.
-		if s.New().Inputs.HasValue(keyName) {
-			continue
-		}
-		decrypted, err := v.Value(s.Deployment().Target().Decrypter)
+		configV, err := v.Value(s.Deployment().Target().Decrypter)
 		if err != nil {
 			return err
 		}
 
-		keyValue := resource.NewStringProperty(decrypted)
+		if s.New().Inputs.HasValue(keyName) {
+			argV := s.New().Inputs[keyName].StringValue()
+
+			// Check if the values are JSON strings, and merge them if so.
+			var arg, cfg map[string]any
+			if json.Unmarshal([]byte(argV), &arg) == nil && json.Unmarshal([]byte(configV), &cfg) == nil {
+				err = mergo.Merge(&cfg, arg)
+				if err != nil {
+					return err
+				}
+				merged, err := json.Marshal(cfg)
+				if err != nil {
+					return err
+				}
+				configV = string(merged)
+			} else {
+				// Explicit config overrides stack config, so ignore the stack value if the key is already present.
+				continue
+			}
+		}
+
+		keyValue := resource.NewStringProperty(configV)
 		if v.Secure() {
-			keyValue = resource.MakeSecret(resource.NewStringProperty(decrypted))
+			keyValue = resource.MakeSecret(resource.NewStringProperty(configV))
 		}
 		s.New().Inputs[keyName] = keyValue
 	}
