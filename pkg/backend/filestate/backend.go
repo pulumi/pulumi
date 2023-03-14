@@ -104,7 +104,8 @@ type localBackendReference struct {
 	name    tokens.Name
 	project tokens.Name
 
-	currentProject string // name of the current project, if any
+	// Backend that created this reference.
+	b *localBackend
 
 	// referenceStore that created this reference.
 	//
@@ -122,7 +123,7 @@ func (r *localBackendReference) String() string {
 	// For project scoped references when stringifying backend references,
 	// we take the current project (if present) into account.
 	// If the project names match, we can elide them.
-	if string(r.project) == r.currentProject {
+	if r.b.currentProject != nil && string(r.project) == string(r.b.currentProject.Name) {
 		return string(r.name)
 	}
 
@@ -388,13 +389,6 @@ func (b *localBackend) StateDir() string {
 
 func (b *localBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
-}
-
-func (b *localBackend) currentProjectName() string {
-	if b.currentProject != nil {
-		return b.currentProject.Name.String()
-	}
-	return ""
 }
 
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,

@@ -79,10 +79,10 @@ var _ referenceStore = (*projectReferenceStore)(nil)
 // This DOES NOT modify the underlying storage.
 func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBackendReference {
 	return &localBackendReference{
-		name:           name,
-		project:        project,
-		store:          p,
-		currentProject: p.b.currentProjectName(),
+		name:    name,
+		project: project,
+		store:   p,
+		b:       p.b,
 	}
 }
 
@@ -134,11 +134,12 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	}
 
 	if project == "" {
-		project = p.b.currentProjectName()
-		if project == "" {
+		if p.b.currentProject == nil {
 			return nil, fmt.Errorf("if you're using the --stack flag, " +
 				"pass the fully qualified name (organization/project/stack)")
 		}
+
+		project = p.b.currentProject.Name.String()
 	}
 
 	if len(project) > 100 {
@@ -240,7 +241,7 @@ func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendRefer
 	return &localBackendReference{
 		name:  name,
 		store: p,
-		// currentProject is not relevant for legacy stacks
+		b:     p.b,
 	}
 }
 

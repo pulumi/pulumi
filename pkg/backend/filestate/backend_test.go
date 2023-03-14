@@ -859,6 +859,35 @@ func TestInvalidStateFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// Verifies that the StackReference.String method
+// takes the current project name into account,
+// even if the current project name changes
+// after the stack reference is created.
+func TestStackReferenceString_currentProjectChange(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(dir), nil)
+	require.NoError(t, err)
+
+	foo, err := b.ParseStackReference("organization/proj1/foo")
+	require.NoError(t, err)
+
+	bar, err := b.ParseStackReference("organization/proj2/bar")
+	require.NoError(t, err)
+
+	assert.Equal(t, "organization/proj1/foo", foo.String())
+	assert.Equal(t, "organization/proj2/bar", bar.String())
+
+	// Change the current project name
+	b.SetCurrentProject(&workspace.Project{Name: "proj1"})
+
+	assert.Equal(t, "foo", foo.String())
+	assert.Equal(t, "organization/proj2/bar", bar.String())
+}
+
 func TestUnsupportedStateFile(t *testing.T) {
 	t.Parallel()
 
