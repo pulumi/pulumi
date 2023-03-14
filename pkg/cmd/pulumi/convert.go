@@ -114,7 +114,10 @@ func writeOutPclFiles(directory *pcl.ProgramDirectory) error {
 		}
 
 		if entry.Directory != nil {
-			writeOutPclFiles(entry.Directory)
+			err := writeOutPclFiles(entry.Directory)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

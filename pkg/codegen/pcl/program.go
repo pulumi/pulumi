@@ -188,7 +188,7 @@ func (p *Program) Source() map[string]string {
 // SourceFiles returns an in-memory representation of all files used to construct a Program,
 // including source files of used components
 func (p *Program) SourceFiles(directory string) *ProgramDirectory {
-	var entries []*ProgramFileOrDirectory
+	entries := make([]*ProgramFileOrDirectory, 0)
 	for _, file := range p.files {
 		entries = append(entries, &ProgramFileOrDirectory{
 			File: &ProgramFile{
