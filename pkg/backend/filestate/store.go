@@ -181,9 +181,7 @@ func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) er
 	return nil
 }
 
-func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
-	// The first level of the bucket is the project name.
-	// The second level of the bucket is the stack name.
+func (p *projectReferenceStore) ListProjects() ([]tokens.Name, error) {
 	path := StacksDir
 
 	files, err := listBucket(p.b.bucket, path)
@@ -191,47 +189,69 @@ func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, erro
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
 
-	var stacks []*localBackendReference
+	projects := make([]tokens.Name, 0, len(files))
 	for _, file := range files {
-		if file.IsDir {
-			projName := objectName(file)
-			// If this isn't a valid Name it won't be a project directory, so skip it
-			if !tokens.IsName(projName) {
+		if !file.IsDir {
+			continue // ignore files
+		}
+
+		projName := objectName(file)
+		if !tokens.IsName(projName) {
+			// If this isn't a valid Name
+			// it won't be a project directory,
+			// so skip it.
+			continue
+		}
+
+		projects = append(projects, tokens.Name(projName))
+	}
+
+	return projects, nil
+}
+
+func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
+	// The first level of the bucket is the project name.
+	// The second level of the bucket is the stack name.
+	path := StacksDir
+
+	projects, err := p.ListProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	var stacks []*localBackendReference
+	for _, projName := range projects {
+		// TODO: Could we improve the efficiency here by firstly making listBucket return an enumerator not
+		// eagerly collecting all keys into a slice, and secondly by getting listBucket to return all
+		// descendent items not just the immediate children. We could then do the necessary splitting by
+		// file paths here to work out project names.
+		projectFiles, err := listBucket(p.b.bucket, filepath.Join(path, projName.String()))
+		if err != nil {
+			return nil, fmt.Errorf("error listing stacks: %w", err)
+		}
+
+		for _, projectFile := range projectFiles {
+			// Can ignore directories at this level
+			if projectFile.IsDir {
 				continue
 			}
 
-			// TODO: Could we improve the efficiency here by firstly making listBucket return an enumerator not
-			// eagerly collecting all keys into a slice, and secondly by getting listBucket to return all
-			// descendent items not just the immediate children. We could then do the necessary splitting by
-			// file paths here to work out project names.
-			projectFiles, err := listBucket(p.b.bucket, filepath.Join(path, projName))
-			if err != nil {
-				return nil, fmt.Errorf("error listing stacks: %w", err)
+			objName := objectName(projectFile)
+			// Skip files without valid extensions (e.g., *.bak files).
+			ext := filepath.Ext(objName)
+			// But accept gzip compression
+			if ext == encoding.GZIPExt {
+				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+				ext = filepath.Ext(objName)
 			}
 
-			for _, projectFile := range projectFiles {
-				// Can ignore directories at this level
-				if projectFile.IsDir {
-					continue
-				}
-
-				objName := objectName(projectFile)
-				// Skip files without valid extensions (e.g., *.bak files).
-				ext := filepath.Ext(objName)
-				// But accept gzip compression
-				if ext == encoding.GZIPExt {
-					objName = strings.TrimSuffix(objName, encoding.GZIPExt)
-					ext = filepath.Ext(objName)
-				}
-
-				if _, has := encoding.Marshalers[ext]; !has {
-					continue
-				}
-
-				// Read in this stack's information.
-				name := objName[:len(objName)-len(ext)]
-				stacks = append(stacks, p.newReference(tokens.Name(projName), tokens.Name(name)))
+			if _, has := encoding.Marshalers[ext]; !has {
+				continue
 			}
+
+			// Read in this stack's information.
+			name := objName[:len(objName)-len(ext)]
+			stacks = append(stacks, p.newReference(projName, tokens.Name(name)))
 		}
 	}
 

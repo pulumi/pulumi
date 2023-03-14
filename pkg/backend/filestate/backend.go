@@ -433,7 +433,14 @@ func (b *localBackend) ValidateStackName(stackRef string) error {
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	projects, err := b.getLocalProjects()
+	projStore, ok := b.store.(*projectReferenceStore)
+	if !ok {
+		// Legacy stores don't have projects
+		// so the project does not exist.
+		return false, nil
+	}
+
+	projects, err := projStore.ListProjects()
 	if err != nil {
 		return false, err
 	}
@@ -1051,31 +1058,6 @@ func (b *localBackend) CurrentUser() (string, []string, error) {
 
 func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
 	return b.store.ListReferences()
-}
-
-func (b *localBackend) getLocalProjects() ([]tokens.Name, error) {
-	files, err := listBucket(b.bucket, StacksDir)
-	if err != nil {
-		return nil, fmt.Errorf("error listing projects: %w", err)
-	}
-	projects := make([]tokens.Name, 0, len(files))
-
-	for _, file := range files {
-		// Ignore files.
-		if !file.IsDir {
-			continue
-		}
-
-		// Skip directories without valid names
-		objName := objectName(file)
-		if !tokens.IsName(objName) {
-			continue
-		}
-
-		projects = append(projects, tokens.Name(objName))
-	}
-
-	return projects, nil
 }
 
 // GetStackTags fetches the stack's existing tags.
