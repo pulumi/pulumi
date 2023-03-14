@@ -17,6 +17,7 @@ package pcl
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -161,12 +162,56 @@ func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
 	return values, nil
 }
 
+type ProgramFile struct {
+	FileName string
+	Content  []byte
+}
+
+type ProgramDirectory struct {
+	Path    string
+	Entries []*ProgramFileOrDirectory
+}
+
+type ProgramFileOrDirectory struct {
+	File      *ProgramFile
+	Directory *ProgramDirectory
+}
+
 func (p *Program) Source() map[string]string {
 	source := make(map[string]string)
 	for _, file := range p.files {
 		source[file.Name] = string(file.Bytes)
 	}
 	return source
+}
+
+// SourceFiles returns an in-memory representation of all files used to construct a Program,
+// including source files of used components
+func (p *Program) SourceFiles(directory string) *ProgramDirectory {
+	var entries []*ProgramFileOrDirectory
+	for _, file := range p.files {
+		entries = append(entries, &ProgramFileOrDirectory{
+			File: &ProgramFile{
+				FileName: file.Name,
+				Content:  file.Bytes,
+			},
+		})
+	}
+
+	for _, node := range p.Nodes {
+		switch node := node.(type) {
+		case *Component:
+			componentDirectory := filepath.Join(directory, node.source)
+			entries = append(entries, &ProgramFileOrDirectory{
+				Directory: node.Program.SourceFiles(componentDirectory),
+			})
+		}
+	}
+
+	return &ProgramDirectory{
+		Path:    directory,
+		Entries: entries,
+	}
 }
 
 // collectComponentsRecursive is a helper function to find all used components in a program

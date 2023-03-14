@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: PCL program.SourceFiles() returns the full directory tree of files

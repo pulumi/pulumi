@@ -95,25 +95,43 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
-// pclGenerateProject writes out a pcl.Program directly as .pp files
-func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
-	if directory != "." {
-		err := os.MkdirAll(directory, 0o755)
+func writeOutPclFiles(directory *pcl.ProgramDirectory) error {
+	if _, err := os.Stat(directory.Path); os.IsNotExist(err) {
+		// directory does not exist, create it
+		err := os.MkdirAll(directory.Path, 0o755)
 		if err != nil {
 			return fmt.Errorf("could not create output directory: %w", err)
 		}
 	}
 
-	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
-	for file, source := range p.Source() {
-		outputFile := path.Join(directory, file)
-		err := os.WriteFile(outputFile, []byte(source), 0o600)
-		if err != nil {
-			return fmt.Errorf("could not write output program: %w", err)
+	for _, entry := range directory.Entries {
+		if entry.File != nil {
+			outputFile := path.Join(directory.Path, entry.File.FileName)
+			err := os.WriteFile(outputFile, entry.File.Content, 0o600)
+			if err != nil {
+				return fmt.Errorf("could not write output program: %w", err)
+			}
+		}
+
+		if entry.Directory != nil {
+			writeOutPclFiles(entry.Directory)
 		}
 	}
 
 	return nil
+}
+
+// pclGenerateProject writes out a pcl.Program directly as .pp files
+func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
+	if directory == "." {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		directory = cwd
+	}
+
+	return writeOutPclFiles(p.SourceFiles(directory))
 }
 
 // pclEject

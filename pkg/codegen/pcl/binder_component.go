@@ -15,7 +15,6 @@
 package pcl
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -117,8 +116,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 					return nil, diagnostics, err
 				}
 
-				err = parser.ParseFile(file,
-					fmt.Sprintf("%s/%s", filepath.Base(componentSourceDir), filepath.Base(path)))
+				err = parser.ParseFile(file, fileName)
 
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
