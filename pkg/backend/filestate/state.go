@@ -364,7 +364,7 @@ func (b *localBackend) backupStack(ref *localBackendReference) error {
 
 func (b *localBackend) stackPath(ref *localBackendReference) string {
 	if ref == nil {
-		return b.store.StackDir()
+		return StacksDir
 	}
 
 	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the

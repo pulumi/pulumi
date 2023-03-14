@@ -27,19 +27,31 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// These should be constants
+// but we can't make a constant from filepath.Join.
+var (
+	// StacksDir is a path under the state's root directory
+	// where the filestate backend stores stack information.
+	StacksDir = filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+
+	// HistoriesDir is a path under the state's root directory
+	// where the filestate backend stores histories for all stacks.
+	HistoriesDir = filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
+
+	// BackupsDir is a path under the state's root directory
+	// where the filestate backend stores backups of stacks.
+	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
+)
+
 // referenceStore stores and provides access to stack information.
 //
 // Each implementation of referenceStore is a different version of the stack
 // storage format.
 type referenceStore interface {
-	// StackDir returns the path to the directory
-	// where stack snapshots are stored.
-	StackDir() string
-
 	// StackBasePath returns the base path to for the file
 	// where snapshots of this stack are stored.
 	//
-	// This must be under StackDir().
+	// This must be under StacksDir.
 	//
 	// This is the path to the file without the extension.
 	// The real file path is StackBasePath + ".json"
@@ -48,10 +60,14 @@ type referenceStore interface {
 
 	// HistoryDir returns the path to the directory
 	// where history for this stack is stored.
+	//
+	// This must be under HistoriesDir.
 	HistoryDir(*localBackendReference) string
 
 	// BackupDir returns the path to the directory
 	// where backups for this stack are stored.
+	//
+	// This must be under BackupsDir.
 	BackupDir(*localBackendReference) string
 
 	// ListReferences lists all stack references in the store.
@@ -86,23 +102,19 @@ func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBa
 	}
 }
 
-func (p *projectReferenceStore) StackDir() string {
-	return filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
-}
-
 func (p *projectReferenceStore) StackBasePath(ref *localBackendReference) string {
 	contract.Requiref(ref.project != "", "ref.project", "must not be empty")
-	return filepath.Join(p.StackDir(), fsutil.NamePath(ref.project), fsutil.NamePath(ref.name))
+	return filepath.Join(StacksDir, fsutil.NamePath(ref.project), fsutil.NamePath(ref.name))
 }
 
 func (p *projectReferenceStore) HistoryDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
-	return filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
 }
 
 func (p *projectReferenceStore) BackupDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
-	return filepath.Join(workspace.BookkeepingDir, workspace.BackupDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+	return filepath.Join(BackupsDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
 }
 
 func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
@@ -171,7 +183,7 @@ func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) er
 func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
 	// The first level of the bucket is the project name.
 	// The second level of the bucket is the stack name.
-	path := p.b.stackPath(nil)
+	path := StacksDir
 
 	files, err := listBucket(p.b.bucket, path)
 	if err != nil {
@@ -245,23 +257,19 @@ func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendRefer
 	}
 }
 
-func (p *legacyReferenceStore) StackDir() string {
-	return filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
-}
-
 func (p *legacyReferenceStore) StackBasePath(ref *localBackendReference) string {
 	contract.Requiref(ref.project == "", "ref.project", "must be empty")
-	return filepath.Join(p.StackDir(), fsutil.NamePath(ref.name))
+	return filepath.Join(StacksDir, fsutil.NamePath(ref.name))
 }
 
 func (p *legacyReferenceStore) HistoryDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
-	return filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir, fsutil.NamePath(stack.name))
+	return filepath.Join(HistoriesDir, fsutil.NamePath(stack.name))
 }
 
 func (p *legacyReferenceStore) BackupDir(stack *localBackendReference) string {
 	contract.Requiref(stack.project == "", "ref.project", "must be empty")
-	return filepath.Join(workspace.BookkeepingDir, workspace.BackupDir, fsutil.NamePath(stack.name))
+	return filepath.Join(BackupsDir, fsutil.NamePath(stack.name))
 }
 
 func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
@@ -281,10 +289,7 @@ func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) err
 }
 
 func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error) {
-	// Read the stack directory.
-	path := p.b.stackPath(nil)
-
-	files, err := listBucket(p.b.bucket, path)
+	files, err := listBucket(p.b.bucket, StacksDir)
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}

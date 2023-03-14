@@ -1053,10 +1053,7 @@ func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
 }
 
 func (b *localBackend) getLocalProjects() ([]tokens.Name, error) {
-	// Read the stack directory.
-	path := b.stackPath(nil)
-
-	files, err := listBucket(b.bucket, path)
+	files, err := listBucket(b.bucket, StacksDir)
 	if err != nil {
 		return nil, fmt.Errorf("error listing projects: %w", err)
 	}
