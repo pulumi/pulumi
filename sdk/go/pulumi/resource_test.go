@@ -784,6 +784,63 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 	})
 }
 
+// Verifies that if we pass an explicit provider to the provider plugin
+// via the Provider() option,
+// that the provider propagates this down to its children.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/12430
+func TestRemoteComponentResourcePropagatesProvider(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var prov struct{ ProviderResourceState }
+		require.NoError(t,
+			ctx.RegisterResource("pulumi:providers:aws", "myprovider", nil /* props */, &prov),
+			"error registering provider")
+
+		var comp struct{ ResourceState }
+		require.NoError(t,
+			ctx.RegisterRemoteComponentResource("awsx:ec2:Vpc", "myvpc", nil /* props */, &comp, Provider(&prov)),
+			"error registering component")
+
+		var custom struct{ ResourceState }
+		require.NoError(t,
+			ctx.RegisterResource("aws:ec2/vpc:Vpc", "myvpc", nil /* props */, &custom, Parent(&comp)),
+			"error registering resource")
+
+		assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.Name {
+			case "myprovider":
+				assert.Equal(t, "pulumi:providers:aws", args.RegisterRPC.Type)
+
+			case "myvpc":
+				// The remote component resource and the custom resource both
+				// have the same name.
+				//
+				// However, only the custom resource should have the provider set.
+				switch args.RegisterRPC.Type {
+				case "awsx:ec2:Vpc":
+					assert.Empty(t, args.Provider,
+						"provider must not be set on remote component resource")
+
+				case "aws:ec2/vpc:Vpc":
+					assert.NotEmpty(t, args.Provider,
+						"provider must be set on component resource")
+
+				default:
+					assert.Fail(t, "unexpected resource type: %s", args.RegisterRPC.Type)
+				}
+			}
+
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}))
+	assert.NoError(t, err)
+}
+
 // Verifies that Provider takes precedence over Providers.
 func TestResourceProviderVersusProviders(t *testing.T) {
 	t.Parallel()
