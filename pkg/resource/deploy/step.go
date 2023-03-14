@@ -91,7 +91,7 @@ func loadSharedProviderConfig(s Step) error {
 			// Check if the values are JSON strings, and merge them if so.
 			var arg, cfg map[string]any
 			if json.Unmarshal([]byte(argV), &arg) == nil && json.Unmarshal([]byte(configV), &cfg) == nil {
-				err = mergo.Merge(&cfg, arg)
+				err = mergo.Merge(&cfg, arg, mergo.WithOverride)
 				if err != nil {
 					return err
 				}

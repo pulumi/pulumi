@@ -695,7 +695,7 @@ func TestSharedProviderConfig(t *testing.T) {
 			switch {
 			case providers.IsDefaultProvider(resource.URN):
 				assert.Contains(t, resource.Inputs, "test")
-				assert.Equal(t, resource.Inputs["test"], "value")
+				assert.Equal(t, "value", resource.Inputs["test"])
 			case providers.IsProviderType(resource.Type):
 				assert.Contains(t, resource.Inputs, "proxy")
 				var proxyObj map[string]any
@@ -703,13 +703,12 @@ func TestSharedProviderConfig(t *testing.T) {
 				assert.NoError(t, err)
 
 				assert.Contains(t, proxyObj, "url")
-				assert.Equalf(t, proxyObj["url"].(string), "http://override",
+				assert.Equalf(t, "http://override", proxyObj["url"],
 					"expected Provider arg to override stack config value")
 
 				// Matching Provider argument not present, so use the value from the stack config.
 				assert.Contains(t, proxyObj, "username")
-				assert.Equalf(t, proxyObj["username"].(string), "anon",
-					"missing stack config value")
+				assert.Equalf(t, "anon", proxyObj["username"], "missing stack config value")
 
 				assert.Containsf(t, resource.Inputs, "foo/bar", "missing stack config value")
 
@@ -736,7 +735,7 @@ func TestSharedProviderConfig(t *testing.T) {
 			switch {
 			case providers.IsDefaultProvider(resource.URN):
 				assert.Contains(t, resource.Inputs, "test")
-				assert.Equal(t, resource.Inputs["test"], "value")
+				assert.Equal(t, "value", resource.Inputs["test"])
 			case providers.IsProviderType(resource.Type):
 				assert.Contains(t, resource.Inputs, "proxy")
 				var proxyObj map[string]any
@@ -744,7 +743,7 @@ func TestSharedProviderConfig(t *testing.T) {
 				assert.NoError(t, err)
 
 				assert.Contains(t, proxyObj, "url")
-				assert.Equal(t, proxyObj["url"].(string), "http://override")
+				assert.Equal(t, "http://override", proxyObj["url"])
 
 				// Stack config should not be included by default.
 				assert.NotContainsf(t, proxyObj, "username", "stack config should not be present")
@@ -776,7 +775,7 @@ func TestSharedProviderConfig(t *testing.T) {
 				Config: map[string]string{
 					"other:oof/rab": "zab",
 					"random:test":   "value",
-					"tls:proxy":     `{"username": "anon"}`,
+					"tls:proxy":     `{"url": "http://default", "username": "anon"}`,
 					"tls:foo/bar":   "baz",
 				},
 				Secrets: map[string]string{
