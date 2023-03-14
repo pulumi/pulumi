@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -886,6 +888,59 @@ func TestStackReferenceString_currentProjectChange(t *testing.T) {
 
 	assert.Equal(t, "foo", foo.String())
 	assert.Equal(t, "organization/proj2/bar", bar.String())
+}
+
+// Verifies that there's no data race in calling StackReference.String
+// and localBackend.SetCurrentProject concurrently.
+func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
+	t.Parallel()
+
+	const N = 1000
+
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(dir), nil)
+	require.NoError(t, err)
+
+	projects := make([]*workspace.Project, N)
+	refs := make([]backend.StackReference, N)
+	for i := 0; i < N; i++ {
+		name := fmt.Sprintf("proj%d", i)
+		projects[i] = &workspace.Project{Name: tokens.PackageName(name)}
+		refs[i], err = b.ParseStackReference(fmt.Sprintf("organization/%v/foo", name))
+		require.NoError(t, err)
+	}
+
+	// To exercise this data race, we'll have two goroutines.
+	// One goroutine will call StackReference.String repeatedly
+	// on all the stack references,
+	// and the other goroutine will call localBackend.SetCurrentProject
+	// with all the projects.
+
+	var wg sync.WaitGroup
+	ready := make(chan struct{}) // both goroutines wait on this
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ready
+		for i := 0; i < N; i++ {
+			_ = refs[i].String()
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ready
+		for i := 0; i < N; i++ {
+			b.SetCurrentProject(projects[i])
+		}
+	}()
+
+	close(ready) // start racing
+	wg.Wait()
 }
 
 func TestUnsupportedStateFile(t *testing.T) {

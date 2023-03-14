@@ -146,12 +146,13 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	}
 
 	if project == "" {
-		if p.b.currentProject == nil {
+		currentProject := p.b.currentProject.Load()
+		if currentProject == nil {
 			return nil, fmt.Errorf("if you're using the --stack flag, " +
 				"pass the fully qualified name (organization/project/stack)")
 		}
 
-		project = p.b.currentProject.Name.String()
+		project = currentProject.Name.String()
 	}
 
 	if len(project) > 100 {

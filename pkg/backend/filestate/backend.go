@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -91,7 +92,7 @@ type localBackend struct {
 	gzip bool
 
 	// The current project, if any.
-	currentProject *workspace.Project
+	currentProject atomic.Pointer[workspace.Project]
 
 	// The store controls the layout of stacks in the backend.
 	// We use different layouts based on the version of the backend
@@ -123,7 +124,7 @@ func (r *localBackendReference) String() string {
 	// For project scoped references when stringifying backend references,
 	// we take the current project (if present) into account.
 	// If the project names match, we can elide them.
-	if r.b.currentProject != nil && string(r.project) == string(r.b.currentProject.Name) {
+	if proj := r.b.currentProject.Load(); proj != nil && string(r.project) == string(proj.Name) {
 		return string(r.name)
 	}
 
@@ -222,14 +223,14 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
 	backend := &localBackend{
-		d:              d,
-		originalURL:    originalURL,
-		url:            u,
-		bucket:         b,
-		lockID:         lockID.String(),
-		gzip:           gzipCompression,
-		currentProject: project,
+		d:           d,
+		originalURL: originalURL,
+		url:         u,
+		bucket:      b,
+		lockID:      lockID.String(),
+		gzip:        gzipCompression,
 	}
+	backend.currentProject.Store(project)
 
 	projectMode := true
 	switch v := pulumiState.Version; v {
@@ -388,7 +389,7 @@ func (b *localBackend) StateDir() string {
 }
 
 func (b *localBackend) SetCurrentProject(project *workspace.Project) {
-	b.currentProject = project
+	b.currentProject.Store(project)
 }
 
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
@@ -502,7 +503,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject.Load())
 
 	if err = validation.ValidateStackProperties(stackName.Name().String(), tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
