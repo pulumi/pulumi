@@ -40,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -304,7 +303,7 @@ func (b *localBackend) removeStack(ref *localBackendReference) error {
 	file := b.stackPath(ref)
 	backupTarget(b.bucket, file, false)
 
-	historyDir := b.historyDirectory(ref)
+	historyDir := ref.HistoryDir()
 	return removeAllByPrefix(b.bucket, historyDir)
 }
 
@@ -346,7 +345,7 @@ func (b *localBackend) backupStack(ref *localBackendReference) error {
 	}
 
 	// Get the backup directory.
-	backupDir := b.backupDirectory(ref)
+	backupDir := ref.BackupDir()
 
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
@@ -364,20 +363,14 @@ func (b *localBackend) backupStack(ref *localBackendReference) error {
 }
 
 func (b *localBackend) stackPath(ref *localBackendReference) string {
-	path := filepath.Join(b.StateDir(), workspace.StackDir)
 	if ref == nil {
-		return path
+		return b.store.StackDir()
 	}
 
 	// We can't use listBucket here for as we need to do a partial prefix match on filename, while the
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
-	var plainPath string
-	if ref.project != "" {
-		plainPath = filepath.ToSlash(filepath.Join(path, fsutil.NamePath(ref.project), fsutil.NamePath(ref.name)) + ".json")
-	} else {
-		plainPath = filepath.ToSlash(filepath.Join(path, fsutil.NamePath(ref.name)) + ".json")
-	}
+	plainPath := ref.StackBasePath() + ".json"
 	gzipedPath := plainPath + ".gz"
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
@@ -413,28 +406,12 @@ func (b *localBackend) stackPath(ref *localBackendReference) string {
 	return plainPath
 }
 
-func (b *localBackend) historyDirectory(stack *localBackendReference) string {
-	contract.Requiref(stack != nil, "stack", "must not be nil")
-	if stack.project == "" {
-		return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack.name))
-	}
-	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
-}
-
-func (b *localBackend) backupDirectory(stack *localBackendReference) string {
-	contract.Requiref(stack != nil, "stack", "must not be nil")
-	if stack.project == "" {
-		return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack.name))
-	}
-	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
-}
-
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
 func (b *localBackend) getHistory(stack *localBackendReference, pageSize int, page int) ([]backend.UpdateInfo, error) {
 	contract.Requiref(stack != nil, "stack", "must not be nil")
 
-	dir := b.historyDirectory(stack)
+	dir := stack.HistoryDir()
 	// TODO: we could consider optimizing the list operation using `page` and `pageSize`.
 	// Unfortunately, this is mildly invasive given the gocloud List API.
 	allFiles, err := listBucket(b.bucket, dir)
@@ -507,8 +484,8 @@ func (b *localBackend) renameHistory(oldName *localBackendReference, newName *lo
 	contract.Requiref(oldName != nil, "oldName", "must not be nil")
 	contract.Requiref(newName != nil, "newName", "must not be nil")
 
-	oldHistory := b.historyDirectory(oldName)
-	newHistory := b.historyDirectory(newName)
+	oldHistory := oldName.HistoryDir()
+	newHistory := newName.HistoryDir()
 
 	allFiles, err := listBucket(b.bucket, oldHistory)
 	if err != nil {
@@ -550,7 +527,7 @@ func (b *localBackend) renameHistory(oldName *localBackendReference, newName *lo
 func (b *localBackend) addToHistory(ref *localBackendReference, update backend.UpdateInfo) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	dir := b.historyDirectory(ref)
+	dir := ref.HistoryDir()
 
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", ref.name, time.Now().UnixNano()))

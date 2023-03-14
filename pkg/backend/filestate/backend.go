@@ -105,6 +105,12 @@ type localBackendReference struct {
 	project tokens.Name
 
 	currentProject string // name of the current project, if any
+
+	// referenceStore that created this reference.
+	//
+	// This is necessary because the referenceStore for a backend
+	// may change over time.
+	store referenceStore
 }
 
 func (r *localBackendReference) String() string {
@@ -138,6 +144,12 @@ func (r *localBackendReference) FullyQualifiedName() tokens.QName {
 	}
 	return tokens.QName(fmt.Sprintf("organization/%s/%s", r.project, r.name))
 }
+
+// Helper methods that delegate to the underlying referenceStore.
+func (r *localBackendReference) Validate() error       { return r.store.ValidateReference(r) }
+func (r *localBackendReference) StackBasePath() string { return r.store.StackBasePath(r) }
+func (r *localBackendReference) HistoryDir() string    { return r.store.HistoryDir(r) }
+func (r *localBackendReference) BackupDir() string     { return r.store.BackupDir(r) }
 
 func IsFileStateBackendURL(urlstr string) bool {
 	u, err := url.Parse(urlstr)
@@ -348,7 +360,11 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 }
 
 func (b *localBackend) getReference(ref backend.StackReference) (*localBackendReference, error) {
-	return b.store.ConvertReference(ref)
+	stackRef, ok := ref.(*localBackendReference)
+	if !ok {
+		return nil, fmt.Errorf("bad stack reference type")
+	}
+	return stackRef, stackRef.Validate()
 }
 
 func (b *localBackend) local() {}

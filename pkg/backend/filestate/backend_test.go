@@ -550,7 +550,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 	err = lb.addToHistory(aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
 	assert.NoError(t, err)
 	// And pollute the history folder
-	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory(aStackRef), "randomfile.txt"), []byte{0, 13}, nil)
+	err = lb.bucket.WriteAll(ctx, path.Join(aStackRef.HistoryDir(), "randomfile.txt"), []byte{0, 13}, nil)
 	assert.NoError(t, err)
 
 	// Rename the stack
@@ -620,7 +620,7 @@ func TestRenameWorks_project(t *testing.T) {
 	err = lb.addToHistory(aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
 	assert.NoError(t, err)
 	// And pollute the history folder
-	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory(aStackRef), "randomfile.txt"), []byte{0, 13}, nil)
+	err = lb.bucket.WriteAll(ctx, path.Join(aStackRef.HistoryDir(), "randomfile.txt"), []byte{0, 13}, nil)
 	assert.NoError(t, err)
 
 	// Rename the stack

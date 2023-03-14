@@ -20,9 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // referenceStore stores and provides access to stack information.
@@ -30,14 +32,37 @@ import (
 // Each implementation of referenceStore is a different version of the stack
 // storage format.
 type referenceStore interface {
+	// StackDir returns the path to the directory
+	// where stack snapshots are stored.
+	StackDir() string
+
+	// StackBasePath returns the base path to for the file
+	// where snapshots of this stack are stored.
+	//
+	// This must be under StackDir().
+	//
+	// This is the path to the file without the extension.
+	// The real file path is StackBasePath + ".json"
+	// or StackBasePath + ".json.gz".
+	StackBasePath(*localBackendReference) string
+
+	// HistoryDir returns the path to the directory
+	// where history for this stack is stored.
+	HistoryDir(*localBackendReference) string
+
+	// BackupDir returns the path to the directory
+	// where backups for this stack are stored.
+	BackupDir(*localBackendReference) string
+
+	// ListReferences lists all stack references in the store.
 	ListReferences() ([]*localBackendReference, error)
 
 	// ParseReference parses a localBackendReference from a string.
 	ParseReference(ref string) (*localBackendReference, error)
 
-	// ConvertReference converts a StackReference to a localBackendReference,
-	// ensuring that it's a valid localBackendReference.
-	ConvertReference(ref backend.StackReference) (*localBackendReference, error)
+	// ValidateReference verifies that the provided reference is valid
+	// returning an error if it is not.
+	ValidateReference(*localBackendReference) error
 }
 
 // projectReferenceStore is a referenceStore that stores stack
@@ -56,8 +81,28 @@ func (p *projectReferenceStore) newReference(project, name tokens.Name) *localBa
 	return &localBackendReference{
 		name:           name,
 		project:        project,
+		store:          p,
 		currentProject: p.b.currentProjectName(),
 	}
+}
+
+func (p *projectReferenceStore) StackDir() string {
+	return filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+}
+
+func (p *projectReferenceStore) StackBasePath(ref *localBackendReference) string {
+	contract.Requiref(ref.project != "", "ref.project", "must not be empty")
+	return filepath.Join(p.StackDir(), fsutil.NamePath(ref.project), fsutil.NamePath(ref.name))
+}
+
+func (p *projectReferenceStore) HistoryDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
+	return filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
+}
+
+func (p *projectReferenceStore) BackupDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project != "", "ref.project", "must not be empty")
+	return filepath.Join(workspace.BookkeepingDir, workspace.BackupDir, fsutil.NamePath(stack.project), fsutil.NamePath(stack.name))
 }
 
 func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
@@ -115,15 +160,11 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 	return p.newReference(tokens.Name(project), tokens.Name(name)), nil
 }
 
-func (p *projectReferenceStore) ConvertReference(ref backend.StackReference) (*localBackendReference, error) {
-	localStackRef, ok := ref.(*localBackendReference)
-	if !ok {
-		return nil, fmt.Errorf("bad stack reference type")
+func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) error {
+	if ref.project == "" {
+		return fmt.Errorf("bad stack reference, project was not set")
 	}
-	if localStackRef.project == "" {
-		return nil, fmt.Errorf("bad stack reference, project was not set")
-	}
-	return localStackRef, nil
+	return nil
 }
 
 func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
@@ -193,27 +234,49 @@ type legacyReferenceStore struct {
 
 var _ referenceStore = (*legacyReferenceStore)(nil)
 
+// newReference builds a new localBackendReference with the provided arguments.
+// This DOES NOT modify the underlying storage.
+func (p *legacyReferenceStore) newReference(name tokens.Name) *localBackendReference {
+	return &localBackendReference{
+		name:  name,
+		store: p,
+		// currentProject is not relevant for legacy stacks
+	}
+}
+
+func (p *legacyReferenceStore) StackDir() string {
+	return filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+}
+
+func (p *legacyReferenceStore) StackBasePath(ref *localBackendReference) string {
+	contract.Requiref(ref.project == "", "ref.project", "must be empty")
+	return filepath.Join(p.StackDir(), fsutil.NamePath(ref.name))
+}
+
+func (p *legacyReferenceStore) HistoryDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project == "", "ref.project", "must be empty")
+	return filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir, fsutil.NamePath(stack.name))
+}
+
+func (p *legacyReferenceStore) BackupDir(stack *localBackendReference) string {
+	contract.Requiref(stack.project == "", "ref.project", "must be empty")
+	return filepath.Join(workspace.BookkeepingDir, workspace.BackupDir, fsutil.NamePath(stack.name))
+}
+
 func (p *legacyReferenceStore) ParseReference(stackRef string) (*localBackendReference, error) {
 	if !tokens.IsName(stackRef) || len(stackRef) > 100 {
 		return nil, fmt.Errorf(
 			"stack names are limited to 100 characters and may only contain alphanumeric, hyphens, underscores, or periods: %q",
 			stackRef)
 	}
-	return &localBackendReference{
-		name: tokens.Name(stackRef),
-		// currentProject is not relevant for legacy stacks
-	}, nil
+	return p.newReference(tokens.Name(stackRef)), nil
 }
 
-func (p *legacyReferenceStore) ConvertReference(ref backend.StackReference) (*localBackendReference, error) {
-	localStackRef, ok := ref.(*localBackendReference)
-	if !ok {
-		return nil, fmt.Errorf("bad stack reference type")
+func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) error {
+	if ref.project != "" {
+		return fmt.Errorf("bad stack reference, project was set")
 	}
-	if localStackRef.project != "" {
-		return nil, fmt.Errorf("bad stack reference, project was set")
-	}
-	return localStackRef, nil
+	return nil
 }
 
 func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error) {
@@ -246,10 +309,7 @@ func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error
 
 		// Read in this stack's information.
 		name := objName[:len(objName)-len(ext)]
-		stacks = append(stacks, &localBackendReference{
-			name: tokens.Name(name),
-			// currentProject is not relevant for legacy stacks
-		})
+		stacks = append(stacks, p.newReference(tokens.Name(name)))
 	}
 
 	return stacks, nil
