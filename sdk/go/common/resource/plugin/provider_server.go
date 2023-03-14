@@ -32,13 +32,13 @@ import (
 type providerServer struct {
 	pulumirpc.UnsafeResourceProviderServer // opt out of forward compat
 
-	provider      Provider
+	provider      ProviderWithContext
 	keepSecrets   bool
 	keepResources bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
-	return &providerServer{provider: provider}
+	return &providerServer{provider: toProviderWithContext(provider)}
 }
 
 func (p *providerServer) unmarshalOptions(label string) MarshalOptions {
@@ -129,7 +129,7 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	schema, err := p.provider.GetSchema(int(req.GetVersion()))
+	schema, err := p.provider.GetSchemaWithContext(ctx, int(req.GetVersion()))
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 }
 
 func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
-	info, err := p.provider.GetPluginInfo()
+	info, err := p.provider.GetPluginInfoWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (p *providerServer) Attach(ctx context.Context, req *pulumirpc.PluginAttach
 }
 
 func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
-	if err := p.provider.SignalCancellation(); err != nil {
+	if err := p.provider.SignalCancellationWithContext(ctx); err != nil {
 		return nil, err
 	}
 	return &pbempty.Empty{}, nil
@@ -180,7 +180,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.CheckConfig(urn, state, inputs, true)
+	newInputs, failures, err := p.provider.CheckConfigWithContext(ctx, urn, state, inputs, true)
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
@@ -211,7 +211,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 		return nil, err
 	}
 
-	diff, err := p.provider.DiffConfig(urn, state, inputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.DiffConfigWithContext(ctx, urn, state, inputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
@@ -246,7 +246,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 	}
 
-	if err := p.provider.Configure(inputs); err != nil {
+	if err := p.provider.ConfigureWithContext(ctx, inputs); err != nil {
 		return nil, err
 	}
 
@@ -268,7 +268,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.Check(urn, state, inputs, true, req.RandomSeed)
+	newInputs, failures, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +299,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 		return nil, err
 	}
 
-	diff, err := p.provider.Diff(urn, id, state, inputs, true, req.GetIgnoreChanges())
+	diff, err := p.provider.DiffWithContext(ctx, urn, id, state, inputs, true, req.GetIgnoreChanges())
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		return nil, err
 	}
 
-	id, state, _, err := p.provider.Create(urn, inputs, req.GetTimeout(), req.GetPreview())
+	id, state, _, err := p.provider.CreateWithContext(ctx, urn, inputs, req.GetTimeout(), req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	result, _, err := p.provider.Read(urn, requestID, inputs, state)
+	result, _, err := p.provider.ReadWithContext(ctx, urn, requestID, inputs, state)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
+	newState, _, err := p.provider.UpdateWithContext(ctx, urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
 		req.GetPreview())
 	if err != nil {
 		return nil, err
@@ -400,7 +400,7 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 		return nil, err
 	}
 
-	if _, err = p.provider.Delete(urn, id, state, req.GetTimeout()); err != nil {
+	if _, err = p.provider.DeleteWithContext(ctx, urn, id, state, req.GetTimeout()); err != nil {
 		return nil, err
 	}
 
@@ -469,7 +469,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		PropertyDependencies: propertyDependencies,
 	}
 
-	result, err := p.provider.Construct(info, typ, name, parent, inputs, options)
+	result, err := p.provider.ConstructWithContext(ctx, info, typ, name, parent, inputs, options)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +501,7 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		return nil, err
 	}
 
-	result, failures, err := p.provider.Invoke(tokens.ModuleMember(req.GetTok()), args)
+	result, failures, err := p.provider.InvokeWithContext(ctx, tokens.ModuleMember(req.GetTok()), args)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +530,7 @@ func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
 		return err
 	}
 
-	failures, err := p.provider.StreamInvoke(tokens.ModuleMember(req.GetTok()), args,
+	failures, err := p.provider.StreamInvokeWithContext(server.Context(), tokens.ModuleMember(req.GetTok()), args,
 		func(item resource.PropertyMap) error {
 			rpcItem, err := MarshalProperties(item, p.marshalOptions("item"))
 			if err != nil {
@@ -588,7 +588,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		ArgDependencies: argDependencies,
 	}
 
-	result, err := p.provider.Call(tokens.ModuleMember(req.GetTok()), args, info, options)
+	result, err := p.provider.CallWithContext(ctx, tokens.ModuleMember(req.GetTok()), args, info, options)
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +627,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 func (p *providerServer) GetMapping(ctx context.Context,
 	req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
-	data, provider, err := p.provider.GetMapping(req.Key)
+	data, provider, err := p.provider.GetMappingWithContext(ctx, req.Key)
 	if err != nil {
 		return nil, err
 	}
