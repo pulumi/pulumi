@@ -96,12 +96,10 @@ func newConvertCmd() *cobra.Command {
 }
 
 func writeOutPclFiles(directory *pcl.ProgramDirectory) error {
-	if _, err := os.Stat(directory.Path); os.IsNotExist(err) {
-		// directory does not exist, create it
-		err := os.MkdirAll(directory.Path, 0o755)
-		if err != nil {
-			return fmt.Errorf("could not create output directory: %w", err)
-		}
+	// create the directory if it doesn't already exist
+	err := os.MkdirAll(directory.Path, 0o755)
+	if err != nil {
+		return fmt.Errorf("could not create output directory: %w", err)
 	}
 
 	for _, entry := range directory.Entries {
@@ -134,6 +132,7 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 		directory = cwd
 	}
 
+	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
 	return writeOutPclFiles(p.SourceFiles(directory))
 }
 
