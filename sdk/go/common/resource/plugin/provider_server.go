@@ -41,6 +41,10 @@ func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 	return &providerServer{provider: toProviderWithContext(provider)}
 }
 
+func NewProviderServerWithContext(provider ProviderWithContext) pulumirpc.ResourceProviderServer {
+	return &providerServer{provider: provider}
+}
+
 func (p *providerServer) unmarshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
 		Label:         label,
