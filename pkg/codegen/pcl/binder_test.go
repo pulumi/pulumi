@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/afero"
+
 	"github.com/hashicorp/hcl/v2"
 
 	"github.com/stretchr/testify/assert"
@@ -84,4 +86,75 @@ func TestBindProgram(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestWritingProgramSource(t *testing.T) {
+	t.Parallel()
+	// STEP 1: Bind the program from {test-data}/components
+	componentsDir := "components-pp"
+	folderPath := filepath.Join(testdataPath, componentsDir)
+	files, err := os.ReadDir(folderPath)
+	if err != nil {
+		t.Fatalf("could not read test data: %v", err)
+	}
+	parser := syntax.NewParser()
+	for _, fileName := range files {
+		fileName := fileName.Name()
+		if filepath.Ext(fileName) != ".pp" {
+			continue
+		}
+
+		path := filepath.Join(folderPath, fileName)
+		contents, err := os.ReadFile(path)
+		require.NoErrorf(t, err, "could not read %v", path)
+
+		err = parser.ParseFile(bytes.NewReader(contents), fileName)
+		require.NoErrorf(t, err, "could not read %v", path)
+		require.False(t, parser.Diagnostics.HasErrors(), "failed to parse files")
+	}
+
+	var bindError error
+	var diags hcl.Diagnostics
+	absoluteProgramPath, err := filepath.Abs(folderPath)
+	if err != nil {
+		t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
+	}
+
+	program, diags, bindError := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absoluteProgramPath),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	assert.NoError(t, bindError)
+	if diags.HasErrors() || program == nil {
+		t.Fatalf("failed to bind program: %v", diags)
+	}
+
+	// STEP 2: assert the resulting files
+	fs := afero.NewMemMapFs()
+	writingFilesError := program.WriteSourceFiles(absoluteProgramPath, fs)
+	assert.NoError(t, writingFilesError, "failed to write source files")
+
+	// Assert main file exists
+	mainFileExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "components.pp"))
+	assert.NoError(t, err, "failed to get the main file")
+	assert.True(t, mainFileExists, "main program file should exist at the root")
+
+	// Assert directories "simpleComponent" and "exampleComponent" are present
+	simpleComponentDirExists, err := afero.DirExists(fs, filepath.Join(absoluteProgramPath, "simpleComponent"))
+	assert.NoError(t, err, "failed to get the simple component dir")
+	assert.True(t, simpleComponentDirExists, "simple component dir exists")
+
+	exampleComponentDirExists, err := afero.DirExists(fs, filepath.Join(absoluteProgramPath, "exampleComponent"))
+	assert.NoError(t, err, "failed to get the example component dir")
+	assert.True(t, exampleComponentDirExists, "example component dir exists")
+
+	// Assert simpleComponent/main.pp and exampleComponent/main.pp exist
+	simpleMainExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "simpleComponent", "main.pp"))
+	assert.NoError(t, err, "failed to get the main file of simple component")
+	assert.True(t, simpleMainExists, "main program file of simple component should exist")
+
+	exampleMainExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "exampleComponent", "main.pp"))
+	assert.NoError(t, err, "failed to get the main file of example component")
+	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }

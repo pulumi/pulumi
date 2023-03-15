@@ -100,7 +100,7 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 	if directory == "." {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("get working directory: %w", err)
 		}
 		directory = cwd
 	}
