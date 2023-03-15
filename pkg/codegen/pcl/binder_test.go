@@ -132,29 +132,29 @@ func TestWritingProgramSource(t *testing.T) {
 
 	// STEP 2: assert the resulting files
 	fs := afero.NewMemMapFs()
-	writingFilesError := program.WriteSourceFiles(absoluteProgramPath, fs)
+	writingFilesError := program.WriteSource(fs)
 	assert.NoError(t, writingFilesError, "failed to write source files")
 
 	// Assert main file exists
-	mainFileExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "components.pp"))
+	mainFileExists, err := afero.Exists(fs, "/components.pp")
 	assert.NoError(t, err, "failed to get the main file")
 	assert.True(t, mainFileExists, "main program file should exist at the root")
 
 	// Assert directories "simpleComponent" and "exampleComponent" are present
-	simpleComponentDirExists, err := afero.DirExists(fs, filepath.Join(absoluteProgramPath, "simpleComponent"))
+	simpleComponentDirExists, err := afero.DirExists(fs, "/simpleComponent")
 	assert.NoError(t, err, "failed to get the simple component dir")
 	assert.True(t, simpleComponentDirExists, "simple component dir exists")
 
-	exampleComponentDirExists, err := afero.DirExists(fs, filepath.Join(absoluteProgramPath, "exampleComponent"))
+	exampleComponentDirExists, err := afero.DirExists(fs, "/exampleComponent")
 	assert.NoError(t, err, "failed to get the example component dir")
 	assert.True(t, exampleComponentDirExists, "example component dir exists")
 
 	// Assert simpleComponent/main.pp and exampleComponent/main.pp exist
-	simpleMainExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "simpleComponent", "main.pp"))
+	simpleMainExists, err := afero.Exists(fs, "/simpleComponent/main.pp")
 	assert.NoError(t, err, "failed to get the main file of simple component")
 	assert.True(t, simpleMainExists, "main program file of simple component should exist")
 
-	exampleMainExists, err := afero.Exists(fs, filepath.Join(absoluteProgramPath, "exampleComponent", "main.pp"))
+	exampleMainExists, err := afero.Exists(fs, "/exampleComponent/main.pp")
 	assert.NoError(t, err, "failed to get the main file of example component")
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }

@@ -205,11 +205,11 @@ func (p *Program) writeSourceFiles(directory string, fs afero.Fs, seenPaths map[
 	return nil
 }
 
-// WriteSourceFiles writes the source files of the program, including those files of used components into the
+// WriteSource writes the source files of the program, including those files of used components into the
 // provided file system starting from a root directory.
-func (p *Program) WriteSourceFiles(directory string, fs afero.Fs) error {
+func (p *Program) WriteSource(fs afero.Fs) error {
 	seenPaths := map[string]bool{}
-	return p.writeSourceFiles(directory, fs, seenPaths)
+	return p.writeSourceFiles("/", fs, seenPaths)
 }
 
 // collectComponentsRecursive is a helper function to find all used components in a program

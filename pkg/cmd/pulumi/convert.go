@@ -107,7 +107,7 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 
 	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
 	fs := afero.NewOsFs()
-	return p.WriteSourceFiles(directory, fs)
+	return p.WriteSource(afero.NewBasePathFs(fs, directory))
 }
 
 // pclEject
