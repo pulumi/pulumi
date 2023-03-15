@@ -1062,8 +1062,8 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 
 // getProvider gets the provider for the resource.
 func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
-	if provider == nil {
-		pkg := getPackage(t)
+	pkg := getPackage(t)
+	if provider == nil || provider.getPackage() != pkg {
 		provider = providers[pkg]
 	}
 	return provider
