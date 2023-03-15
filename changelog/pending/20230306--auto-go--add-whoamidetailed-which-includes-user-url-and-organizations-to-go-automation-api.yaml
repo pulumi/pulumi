@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/go
-  description: Add WhoAmIDetails which includes user, url and organizations to Go Automation API

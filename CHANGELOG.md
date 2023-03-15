@@ -1,5 +1,47 @@
 # Changelog
 
+## 3.58.0 (2023-03-15)
+
+
+### Features
+
+- [auto/go] Add WhoAmIDetails which includes user, url and organizations to Go Automation API
+  [#12374](https://github.com/pulumi/pulumi/pull/12374)
+
+- [auto/nodejs] Add url and organizations to WhoAmIResult for NodeJS Automation API
+  [#12374](https://github.com/pulumi/pulumi/pull/12374)
+
+- [auto/python] Add url and organizations to WhoAmIResult for Python Automation API
+  [#12374](https://github.com/pulumi/pulumi/pull/12374)
+
+- [cli] Add `--json` flag to `pulumi whoami` to emit output as JSON
+  [#12374](https://github.com/pulumi/pulumi/pull/12374)
+
+- [cli/display] Add a view in browser shortcut to the interactive display.
+  [#12412](https://github.com/pulumi/pulumi/pull/12412)
+  [#12380](https://github.com/pulumi/pulumi/pull/12380)
+
+- [programgen/dotnet] PCL components and dotnet program-gen implementation
+  [#12361](https://github.com/pulumi/pulumi/pull/12361)
+
+- [programgen/{dotnet,go,nodejs,python}] Add "NotImplemented" PCL function intrinsic
+  [#12409](https://github.com/pulumi/pulumi/pull/12409)
+
+- [sdk/go] Adds `NewInvokeOptions` to preview the effect of a list of `InvokeOption` values.
+  [#12128](https://github.com/pulumi/pulumi/pull/12128)
+
+
+### Bug Fixes
+
+- [cli/display] Do not treat single-line strings as YAML values
+  [#12406](https://github.com/pulumi/pulumi/pull/12406)
+
+- [sdk/go] Fixes an ID handling bug in provider_server Read implementation
+  [#12410](https://github.com/pulumi/pulumi/pull/12410)
+
+- [sdk/go] Fixes use of Provider option from parent resources with mismatched packages.
+  [#12433](https://github.com/pulumi/pulumi/pull/12433)
+
 ## 3.57.1 (2023-03-09)
 
 
