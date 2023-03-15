@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/nodejs
-  description: Add url and organizations to WhoAmIResult for NodeJS Automation API

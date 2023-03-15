@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go
-  description: Adds `NewInvokeOptions` to preview the effect of a list of `InvokeOption` values.
