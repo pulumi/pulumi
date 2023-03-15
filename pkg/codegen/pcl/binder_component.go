@@ -139,7 +139,8 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 
 		componentProgram, programDiags, err := BindProgram(parser.Files,
 			Loader(loader),
-			DirPath(componentSourceDir))
+			DirPath(componentSourceDir),
+			ComponentBinder(ComponentProgramBinderFromFileSystem()))
 
 		return componentProgram, programDiags, err
 	}

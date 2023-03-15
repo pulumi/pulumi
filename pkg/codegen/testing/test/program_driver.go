@@ -234,8 +234,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "components",
 		Description: "Components",
-		Skip:        allProgLanguages.Except("dotnet"),
-		SkipCompile: allProgLanguages.Except("dotnet"),
+		Skip:        allProgLanguages.Except("dotnet").Except("nodejs"),
+		SkipCompile: allProgLanguages.Except("dotnet").Except("nodejs"),
 	},
 	{
 		Directory:   "retain-on-delete",
