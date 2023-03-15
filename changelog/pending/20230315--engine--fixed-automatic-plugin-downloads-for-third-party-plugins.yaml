@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fixed automatic plugin downloads for third-party plugins.

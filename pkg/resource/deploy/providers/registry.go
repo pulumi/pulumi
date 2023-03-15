@@ -17,11 +17,14 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -99,13 +102,112 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-func loadProvider(pkg tokens.Package, version *semver.Version, host plugin.Host,
-	builtins plugin.Provider,
+// InstallProviderError is returned by loadProvider if we couldn't find or install the provider
+type InstallProviderError struct {
+	// The name of the provider
+	Name string
+	// The requested version of the plugin, if any.
+	Version *semver.Version
+	// The pluginDownloadURL, if any.
+	PluginDownloadURL string
+	// The underlying error that occurred during the download or install.
+	Err error
+}
+
+func (err *InstallProviderError) Error() string {
+	var server string
+	if err.PluginDownloadURL != "" {
+		server = fmt.Sprintf(" --server %s", err.PluginDownloadURL)
+	}
+
+	if err.Version != nil {
+		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+			" at version v%[3]s"+
+			", install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s%[4]s`: %[5]v",
+			workspace.ResourcePlugin, err.Name, err.Version, server, err.Err)
+	}
+
+	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
+		", install the plugin using `pulumi plugin install %[1]s %[2]s%[3]s`: %[4]v",
+		workspace.ResourcePlugin, err.Name, server, err.Err)
+}
+
+func (err *InstallProviderError) Unwrap() error {
+	return err.Err
+}
+
+func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
+	host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
 	if builtins != nil && pkg == builtins.Pkg() {
 		return builtins, nil
 	}
 
+	provider, err := host.Provider(pkg, version)
+	if err == nil {
+		return provider, nil
+	}
+
+	// host.Provider _might_ return MissingError,  this could be due to the fact that a transitive
+	// version of a plugin is required which are not picked up by initial pass of required plugin
+	// installations or because of bugs in GetRequiredPlugins. Instead of reporting an error, we first try to
+	// install the plugin now, and only error if we can't do that.
+	var me *workspace.MissingError
+	if !errors.As(err, &me) {
+		// Not a MissingError, return the original error.
+		return nil, err
+	}
+
+	// Try to install the plugin, we have all the specific information we need to do so here while once we
+	// call into `host.Provider` we no longer have the download URL or checksums.
+	pluginSpec := workspace.PluginSpec{
+		Kind:              workspace.ResourcePlugin,
+		Name:              string(pkg),
+		Version:           version,
+		PluginDownloadURL: downloadURL,
+		Checksums:         checksums,
+	}
+
+	if pluginSpec.Version == nil {
+		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
+		if err != nil {
+			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
+		}
+	}
+
+	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
+		host.Log(diag.Info, "", fmt.Sprintf("Downloading provider: %s", pluginSpec.Name), 0)
+		return stream
+	}
+
+	retry := func(err error, attempt int, limit int, delay time.Duration) {
+		host.Log(diag.Warning, "", fmt.Sprintf("error downloading provider: %s\n"+
+			"Will retry in %v [%d/%d]", err, delay, attempt, limit), 0)
+	}
+
+	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
+	downloadedFile, err := workspace.DownloadToFile(pluginSpec, wrapper, retry)
+	if err != nil {
+		return nil, &InstallProviderError{
+			Name:              string(pkg),
+			Version:           version,
+			PluginDownloadURL: downloadURL,
+			Err:               fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
+		}
+	}
+
+	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
+	err = pluginSpec.Install(downloadedFile, false)
+	if err != nil {
+		return nil, &InstallProviderError{
+			Name:              string(pkg),
+			Version:           version,
+			PluginDownloadURL: downloadURL,
+			Err:               fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
+		}
+	}
+
+	// Try to load the provider again, this time it should succeed.
 	return host.Provider(pkg, version)
 }
 
@@ -148,7 +250,12 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 		if err != nil {
 			return nil, fmt.Errorf("could not parse version for %v provider '%v': %v", providerPkg, urn, err)
 		}
-		provider, err := loadProvider(providerPkg, version, host, builtins)
+		downloadURL, err := GetProviderDownloadURL(res.Inputs)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse download URL for %v provider '%v': %v", providerPkg, urn, err)
+		}
+		// TODO: We should thread checksums through here.
+		provider, err := loadProvider(providerPkg, version, downloadURL, nil, host, builtins)
 		if err != nil {
 			return nil, fmt.Errorf("could not load plugin for %v provider '%v': %v", providerPkg, urn, err)
 		}
@@ -273,7 +380,12 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	if err != nil {
 		return nil, []plugin.CheckFailure{{Property: "version", Reason: err.Error()}}, nil
 	}
-	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, r.host, r.builtins)
+	downloadURL, err := GetProviderDownloadURL(news)
+	if err != nil {
+		return nil, []plugin.CheckFailure{{Property: "pluginDownloadURL", Reason: err.Error()}}, nil
+	}
+	// TODO: We should thread checksums through here.
+	provider, err := loadProvider(GetProviderPackage(urn.Type()), version, downloadURL, nil, r.host, r.builtins)
 	if err != nil {
 		return nil, nil, err
 	}

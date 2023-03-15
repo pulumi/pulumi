@@ -41,7 +41,6 @@ import (
 	"github.com/cheggaaa/pb"
 	"github.com/djherbis/times"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -123,31 +122,41 @@ func parsePluginDownloadURLOverrides(overrides string) (pluginDownloadOverrideAr
 	return result, nil
 }
 
-// InstallPluginError is returned by functions that are unable to download and install a plugin
-type InstallPluginError struct {
-	// The name of the plugin
-	Name string
-	// The kind of the plugin
-	Kind PluginKind
-	// The requested version of the plugin, if any.
-	Version *semver.Version
-	// the underlying error that occurred during the download or install
-	UnderlyingError error
+// MissingError is returned by functions that attempt to load plugins if a plugin can't be located.
+type MissingError struct {
+	// Kind of the plugin that couldn't be found.
+	kind PluginKind
+	// Name of the plugin that couldn't be found.
+	name string
+	// Optional version of the plugin that couldn't be found.
+	version *semver.Version
+	// includeAmbient is true if we search $PATH for this plugin
+	includeAmbient bool
 }
 
-func (err *InstallPluginError) Error() string {
-	if err.Version != nil {
-		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s' "+
-			"at version v%[3]s, "+
-			"install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s`.\n"+
-			"Underlying error: %[4]s",
-			err.Kind, err.Name, err.Version.String(), err.UnderlyingError.Error())
+// NewMissingError allocates a new error indicating the given plugin info was not found.
+func NewMissingError(kind PluginKind, name string, version *semver.Version, includeAmbient bool) error {
+	return &MissingError{
+		kind:           kind,
+		name:           name,
+		version:        version,
+		includeAmbient: includeAmbient,
+	}
+}
+
+func (err *MissingError) Error() string {
+	includePath := ""
+	if err.includeAmbient {
+		includePath = " or on your $PATH"
 	}
 
-	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s', "+
-		"install the plugin using `pulumi plugin install %[1]s %[2]s`.\n"+
-		"Underlying error: %[3]s",
-		err.Kind, err.Name, err.UnderlyingError.Error())
+	if err.version != nil {
+		return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace at version v%[3]s%[4]s",
+			err.kind, err.name, err.version, includePath)
+	}
+
+	return fmt.Sprintf("no %[1]s plugin 'pulumi-%[1]s-%[2]s' found in the workspace%[3]s",
+		err.kind, err.name, includePath)
 }
 
 // PluginSource deals with downloading a specific version of a plugin, or looking up the latest version of it.
@@ -1605,62 +1614,6 @@ func GetPluginInfo(kind PluginKind, name string, version *semver.Version,
 	return info, nil
 }
 
-func attemptToDownloadAndInstallPlugin(kind PluginKind, name string, version *semver.Version) error {
-	pluginSpec := PluginSpec{
-		Kind: kind,
-		Name: name,
-	}
-
-	if version == nil {
-		latestVersion, err := pluginSpec.GetLatestVersion()
-		if err != nil {
-			return &InstallPluginError{
-				Name:            name,
-				Kind:            kind,
-				UnderlyingError: err,
-			}
-		}
-
-		version = latestVersion
-	}
-
-	pluginSpec.Version = version
-
-	withProgress := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		header := fmt.Sprintf("Downloading plugin %s v%s", pluginSpec.Name, version.String())
-		return ReadCloserProgressBar(stream, size, header, colors.Always)
-	}
-
-	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		cmdutil.Diag().Warningf(
-			diag.Message("", "Error downloading plugin: %s\nWill retry in %v [%d/%d]"), err, delay, attempt, limit)
-	}
-
-	downloadedFile, err := DownloadToFile(pluginSpec, withProgress, retry)
-	if err != nil {
-		downloadError := fmt.Errorf("error downloading plugin %s to file: %w", pluginSpec.Name, err)
-		return &InstallPluginError{
-			Name:            name,
-			Kind:            kind,
-			Version:         version,
-			UnderlyingError: downloadError,
-		}
-	}
-
-	logging.V(1).Infof("installing plugin %s", pluginSpec.Name)
-	pluginInstallError := pluginSpec.Install(downloadedFile, false)
-	if pluginInstallError != nil {
-		return &InstallPluginError{
-			Name:            name,
-			Kind:            kind,
-			Version:         version,
-			UnderlyingError: pluginInstallError,
-		}
-	}
-
-	return nil
-}
-
 // Given a PluginInfo try to find the executable file that corresponds to it
 func getPluginPath(info *PluginInfo) string {
 	var path string
@@ -1808,17 +1761,7 @@ func getPluginInfoAndPath(
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
 		candidate, err := SelectCompatiblePlugin(plugins, kind, name, semver.MustParseRange(version.String()))
 		if err != nil {
-			// could not find a compatible plugin
-			// this could be due to the fact that a transitive version of a plugin is required
-			// which are not picked up by initial pass of required plugin installations
-			// so instead of reporting an error, we just install that required plugin
-			if err = attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
-				return nil, "", err
-			}
-
-			// downloaded the missing plugin successfully
-			// restart the plugin retrieval
-			return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
+			return nil, "", NewMissingError(kind, name, version, includeAmbient)
 		}
 		match = &candidate
 	} else {
@@ -1854,13 +1797,7 @@ func getPluginInfoAndPath(
 		return match, matchPath, nil
 	}
 
-	if err := attemptToDownloadAndInstallPlugin(kind, name, version); err != nil {
-		return nil, "", err
-	}
-
-	// downloaded the missing plugin successfully
-	// restart the plugin retrieval
-	return getPluginInfoAndPath(kind, name, version, skipMetadata, projectPlugins)
+	return nil, "", NewMissingError(kind, name, version, includeAmbient)
 }
 
 // SortedPluginInfo is a wrapper around PluginInfo that allows for sorting by version.
