@@ -17,7 +17,7 @@ package pcl
 import (
 	"fmt"
 	"io"
-	"path/filepath"
+	"path"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/spf13/afero"
 )
 
 // Node represents a single definition in a program or component.
@@ -162,21 +163,6 @@ func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
 	return values, nil
 }
 
-type ProgramFile struct {
-	FileName string
-	Content  []byte
-}
-
-type ProgramDirectory struct {
-	Path    string
-	Entries []*ProgramFileOrDirectory
-}
-
-type ProgramFileOrDirectory struct {
-	File      *ProgramFile
-	Directory *ProgramDirectory
-}
-
 func (p *Program) Source() map[string]string {
 	source := make(map[string]string)
 	for _, file := range p.files {
@@ -185,33 +171,45 @@ func (p *Program) Source() map[string]string {
 	return source
 }
 
-// SourceFiles returns an in-memory representation of all files used to construct a Program,
-// including source files of used components
-func (p *Program) SourceFiles(directory string) *ProgramDirectory {
-	entries := make([]*ProgramFileOrDirectory, 0)
+// writeSourceFiles writes the source files of the program, including those files of used components into the
+// provided file system starting from a root directory.
+func (p *Program) writeSourceFiles(directory string, fs afero.Fs, seenPaths map[string]bool) error {
+	// create the directory if it doesn't already exist
+	err := fs.MkdirAll(directory, 0o755)
+	if err != nil {
+		return fmt.Errorf("could not create output directory: %w", err)
+	}
+
 	for _, file := range p.files {
-		entries = append(entries, &ProgramFileOrDirectory{
-			File: &ProgramFile{
-				FileName: file.Name,
-				Content:  file.Bytes,
-			},
-		})
+		outputFile := path.Join(directory, file.Name)
+		err := afero.WriteFile(fs, outputFile, file.Bytes, 0o600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
 	}
 
 	for _, node := range p.Nodes {
 		switch node := node.(type) {
 		case *Component:
-			componentDirectory := filepath.Join(directory, node.source)
-			entries = append(entries, &ProgramFileOrDirectory{
-				Directory: node.Program.SourceFiles(componentDirectory),
-			})
+			componentDirectory := path.Join(directory, node.source)
+			if _, seen := seenPaths[componentDirectory]; !seen {
+				seenPaths[componentDirectory] = true
+				err = node.Program.writeSourceFiles(componentDirectory, fs, seenPaths)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
-	return &ProgramDirectory{
-		Path:    directory,
-		Entries: entries,
-	}
+	return nil
+}
+
+// WriteSourceFiles writes the source files of the program, including those files of used components into the
+// provided file system starting from a root directory.
+func (p *Program) WriteSourceFiles(directory string, fs afero.Fs) error {
+	seenPaths := map[string]bool{}
+	return p.writeSourceFiles(directory, fs, seenPaths)
 }
 
 // collectComponentsRecursive is a helper function to find all used components in a program

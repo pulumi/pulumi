@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -41,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/afero"
 )
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
@@ -95,33 +95,6 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
-func writeOutPclFiles(directory *pcl.ProgramDirectory) error {
-	// create the directory if it doesn't already exist
-	err := os.MkdirAll(directory.Path, 0o755)
-	if err != nil {
-		return fmt.Errorf("could not create output directory: %w", err)
-	}
-
-	for _, entry := range directory.Entries {
-		if entry.File != nil {
-			outputFile := path.Join(directory.Path, entry.File.FileName)
-			err := os.WriteFile(outputFile, entry.File.Content, 0o600)
-			if err != nil {
-				return fmt.Errorf("could not write output program: %w", err)
-			}
-		}
-
-		if entry.Directory != nil {
-			err := writeOutPclFiles(entry.Directory)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
 	if directory == "." {
@@ -133,7 +106,8 @@ func pclGenerateProject(directory string, project workspace.Project, p *pcl.Prog
 	}
 
 	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
-	return writeOutPclFiles(p.SourceFiles(directory))
+	fs := afero.NewOsFs()
+	return p.WriteSourceFiles(directory, fs)
 }
 
 // pclEject
