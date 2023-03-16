@@ -248,14 +248,14 @@ func TestCancel(t *testing.T) {
 	err = lb.Lock(ctx, aStackRef)
 	assert.NoError(t, err)
 	// check the lock file exists
-	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	lockExists, err := lb.bucket.Exists(ctx, lb.lockPath(aStackRef))
 	assert.NoError(t, err)
 	assert.True(t, lockExists)
 	// Call CancelCurrentUpdate
 	err = lb.CancelCurrentUpdate(ctx, aStackRef)
 	assert.NoError(t, err)
 	// Now check the lock file no longer exists
-	lockExists, err = lb.bucket.Exists(ctx, lb.lockPath(aStackRef.Name()))
+	lockExists, err = lb.bucket.Exists(ctx, lb.lockPath(aStackRef))
 	assert.NoError(t, err)
 	assert.False(t, lockExists)
 
@@ -293,17 +293,17 @@ func TestRemoveMakesBackups(t *testing.T) {
 	assert.NotNil(t, lb)
 
 	// Check that creating a new stack doesn't make a backup file
-	aStackRef, err := b.ParseStackReference("a")
+	aStackRef, err := lb.parseStackReference("a")
 	assert.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
 	// Check the stack file now exists, but the backup file doesn't
-	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
 	assert.NoError(t, err)
 	assert.True(t, stackFileExists)
-	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	backupFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef)+".bak")
 	assert.NoError(t, err)
 	assert.False(t, backupFileExists)
 
@@ -313,10 +313,10 @@ func TestRemoveMakesBackups(t *testing.T) {
 	assert.False(t, removed)
 
 	// Check the stack file is now gone, but the backup file exists
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
 	assert.NoError(t, err)
 	assert.False(t, stackFileExists)
-	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name())+".bak")
+	backupFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef)+".bak")
 	assert.NoError(t, err)
 	assert.True(t, backupFileExists)
 }
@@ -336,49 +336,51 @@ func TestRenameWorks(t *testing.T) {
 	assert.NotNil(t, lb)
 
 	// Create a new stack
-	aStackRef, err := b.ParseStackReference("a")
+	aStackRef, err := lb.parseStackReference("a")
 	assert.NoError(t, err)
 	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
 
 	// Check the stack file now exists
-	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
 	assert.NoError(t, err)
 	assert.True(t, stackFileExists)
 
 	// Fake up some history
-	err = lb.addToHistory("a", backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	err = lb.addToHistory(aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
 	assert.NoError(t, err)
 	// And pollute the history folder
-	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory("a"), "randomfile.txt"), []byte{0, 13}, nil)
+	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory(aStackRef), "randomfile.txt"), []byte{0, 13}, nil)
 	assert.NoError(t, err)
 
 	// Rename the stack
-	bStackRef, err := b.RenameStack(ctx, aStack, "b")
+	bStackRefI, err := b.RenameStack(ctx, aStack, "b")
 	assert.NoError(t, err)
-	assert.Equal(t, "b", bStackRef.String())
+	assert.Equal(t, "b", bStackRefI.String())
+	bStackRef := bStackRefI.(*localBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
 	assert.NoError(t, err)
 	assert.True(t, stackFileExists)
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef.Name()))
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(aStackRef))
 	assert.NoError(t, err)
 	assert.False(t, stackFileExists)
 
 	// Rename again
 	bStack, err := b.GetStack(ctx, bStackRef)
 	assert.NoError(t, err)
-	cStackRef, err := b.RenameStack(ctx, bStack, "c")
+	cStackRefI, err := b.RenameStack(ctx, bStack, "c")
 	assert.NoError(t, err)
-	assert.Equal(t, "c", cStackRef.String())
+	assert.Equal(t, "c", cStackRefI.String())
+	cStackRef := cStackRefI.(*localBackendReference)
 
 	// Check the new stack file now exists and the old one is gone
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(cStackRef.Name()))
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(cStackRef))
 	assert.NoError(t, err)
 	assert.True(t, stackFileExists)
-	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef.Name()))
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(bStackRef))
 	assert.NoError(t, err)
 	assert.False(t, stackFileExists)
 
@@ -465,7 +467,7 @@ func TestHtmlEscaping(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, lb)
 
-	chkpath := lb.stackPath("a")
+	chkpath := lb.stackPath(aStackRef.(*localBackendReference))
 	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
 	assert.NoError(t, err)
 	state := string(bytes)
