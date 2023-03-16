@@ -206,7 +206,7 @@ func (p *Program) writeSourceFiles(directory string, fs afero.Fs, seenPaths map[
 }
 
 // WriteSource writes the source files of the program, including those files of used components into the
-// provided file system starting from a root directory.
+// provided file system.
 func (p *Program) WriteSource(fs afero.Fs) error {
 	seenPaths := map[string]bool{}
 	return p.writeSourceFiles("/", fs, seenPaths)
