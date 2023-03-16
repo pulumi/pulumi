@@ -677,10 +677,10 @@ plugins:
 // TestSharedProviderConfig validates that providers correctly include shared configuration when the feature is enabled.
 // The following cases are checked:
 // 1. Default providers load stack configuration
-// 2. First-class providers load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is set.
+// 2. Explicit providers load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is set.
 // 2.1 Provider arguments take precedence over project/stack configuration.
 // 2.2 Config values that are JSON strings are merged rather than overwritten.
-// 3. First-class providers do not load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is not set.
+// 3. Explicit providers do not load project/stack config if the `PULUMI_SHARED_PROVIDER_CONFIG` flag is not set.
 func TestSharedProviderConfig(t *testing.T) {
 	t.Parallel()
 

@@ -1,7 +1,7 @@
 import * as random from "@pulumi/random";
 import * as tls from "@pulumi/tls";
 
-// Create a first-class Provider.
+// Create an explicit Provider.
 new tls.Provider("test", {
     proxy: {
         url: "http://override",
