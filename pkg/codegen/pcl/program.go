@@ -17,6 +17,7 @@ package pcl
 import (
 	"fmt"
 	"io"
+	"path"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/spf13/afero"
 )
 
 // Node represents a single definition in a program or component.
@@ -167,6 +169,47 @@ func (p *Program) Source() map[string]string {
 		source[file.Name] = string(file.Bytes)
 	}
 	return source
+}
+
+// writeSourceFiles writes the source files of the program, including those files of used components into the
+// provided file system starting from a root directory.
+func (p *Program) writeSourceFiles(directory string, fs afero.Fs, seenPaths map[string]bool) error {
+	// create the directory if it doesn't already exist
+	err := fs.MkdirAll(directory, 0o755)
+	if err != nil {
+		return fmt.Errorf("could not create output directory: %w", err)
+	}
+
+	for _, file := range p.files {
+		outputFile := path.Join(directory, file.Name)
+		err := afero.WriteFile(fs, outputFile, file.Bytes, 0o600)
+		if err != nil {
+			return fmt.Errorf("could not write output program: %w", err)
+		}
+	}
+
+	for _, node := range p.Nodes {
+		switch node := node.(type) {
+		case *Component:
+			componentDirectory := path.Join(directory, node.source)
+			if _, seen := seenPaths[componentDirectory]; !seen {
+				seenPaths[componentDirectory] = true
+				err = node.Program.writeSourceFiles(componentDirectory, fs, seenPaths)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// WriteSource writes the source files of the program, including those files of used components into the
+// provided file system.
+func (p *Program) WriteSource(fs afero.Fs) error {
+	seenPaths := map[string]bool{}
+	return p.writeSourceFiles("/", fs, seenPaths)
 }
 
 // collectComponentsRecursive is a helper function to find all used components in a program

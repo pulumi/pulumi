@@ -79,6 +79,7 @@ require (
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
+	github.com/spf13/afero v1.9.5
 	golang.org/x/mod v0.6.0
 	golang.org/x/term v0.5.0
 	google.golang.org/protobuf v1.28.1
@@ -226,7 +227,6 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
-	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect

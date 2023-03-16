@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: PCL program.WriteSource(afero.Fs) writes the full directory tree of PCL source files.
