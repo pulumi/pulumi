@@ -81,10 +81,10 @@ func contains(slice []string, item string) bool {
 func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 	return func(args ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error) {
 		var diagnostics hcl.Diagnostics
-		binderDirPath := args.binderDirPath
-		componentSource := args.componentSource
-		nodeRange := args.componentNodeRange
-		loader := args.binderLoader
+		binderDirPath := args.BinderDirPath
+		componentSource := args.ComponentSource
+		nodeRange := args.ComponentNodeRange
+		loader := args.BinderLoader
 		// bind the component here as if it was a new program
 		// this becomes the DirPath for the new binder
 		componentSourceDir := filepath.Join(binderDirPath, componentSource)
@@ -162,10 +162,10 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
-		binderLoader:       b.options.loader,
-		binderDirPath:      b.options.dirPath,
-		componentSource:    node.source,
-		componentNodeRange: node.SyntaxNode().Range(),
+		BinderLoader:       b.options.loader,
+		BinderDirPath:      b.options.dirPath,
+		ComponentSource:    node.source,
+		ComponentNodeRange: node.SyntaxNode().Range(),
 	})
 	if err != nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))

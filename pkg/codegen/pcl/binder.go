@@ -35,10 +35,10 @@ const (
 )
 
 type ComponentProgramBinderArgs struct {
-	binderDirPath      string
-	binderLoader       schema.Loader
-	componentSource    string
-	componentNodeRange hcl.Range
+	BinderDirPath      string
+	BinderLoader       schema.Loader
+	ComponentSource    string
+	ComponentNodeRange hcl.Range
 }
 
 type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
