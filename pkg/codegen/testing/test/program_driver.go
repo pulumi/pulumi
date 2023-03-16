@@ -245,6 +245,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
+	{
+		Directory:   "python-reserved",
+		Description: "Test python reserved words aren't used",
+		Skip:        allProgLanguages.Except("python"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
