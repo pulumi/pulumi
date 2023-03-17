@@ -139,8 +139,12 @@ type Backend interface {
 
 	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
 	SupportsTags() bool
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
+
+	// SupportsTeams tells whether a stack can have granular team permissions assigned to it.
+	SupportsTeams() bool
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
@@ -155,7 +159,7 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, root string, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, root string, opts CreateStackOptions) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
@@ -357,4 +361,42 @@ func (c *backendClient) GetStackResourceOutputs(
 		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
 	}
 	return pm, nil
+}
+
+// CreateStackOptions provides options for stack creation. At present,
+// options only apply to the Service.
+type CreateStackOptions interface {
+	// Teams returns the list of teams who should have access to
+	// the newly created stack. This method is only approperate
+	// for backends which support teams (i.e. the Service).
+	Teams() []string
+}
+
+// These are the options that can be supplied during stack creation.
+// For httpstate backends, teams can be non-empty. Other backends should
+// provide a nil or empty set of teams since teams are only supported by
+// http backends.
+type StandardCreateStackOpts struct {
+	// Service Only: this is the list of teams what will be given permissions
+	// on the stack after creation.
+	teams []string
+}
+
+// Assert that this type fulfills the backend.StackCreateOptions interface.
+var _ CreateStackOptions = &StandardCreateStackOpts{}
+
+// This is the constructor for CreateStackOptions
+// Backends that don't support teams should pass a nil or empty slice.
+func NewStandardCreateStackOpts(teams []string) *StandardCreateStackOpts {
+	return &StandardCreateStackOpts{
+		teams: teams,
+	}
+}
+
+// Teams returns a list of teams intened to be assigned to this stack after creation.
+func (opts *StandardCreateStackOpts) Teams() []string {
+	if opts == nil {
+		return []string{}
+	}
+	return opts.teams
 }

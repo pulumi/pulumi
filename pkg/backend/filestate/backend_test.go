@@ -3,6 +3,7 @@ package filestate
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func TestMassageBlobPath(t *testing.T) {
@@ -472,4 +474,28 @@ func TestHtmlEscaping(t *testing.T) {
 	assert.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
+}
+
+func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
+	t.Parallel()
+	// Here, we provide options that illegally specify a team on a
+	// backend that does not support teams. We expect this to create
+	// an error later when we call CreateStack.
+	illegalOptions := backend.NewStandardCreateStackOpts([]string{"red-team"})
+
+	// • Create a mock local backend
+	tmpDir := t.TempDir()
+	dirURI := fmt.Sprintf("file://%s", filepath.ToSlash(tmpDir))
+	local, err := New(context.Background(), cmdutil.Diag(), dirURI, nil)
+	assert.NoError(t, err)
+	ctx := context.Background()
+
+	// • Simulate `pulumi stack init`, passing non-nil init options
+	fakeStackRef, err := local.ParseStackReference("foobar")
+	assert.NoError(t, err)
+	assert.Panics(t, func() {
+		// • Expect an error.
+		_, err := local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+		assert.NoError(t, err)
+	})
 }

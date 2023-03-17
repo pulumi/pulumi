@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/service
+  description: Add "--teams" flag to assign team name to stack during init

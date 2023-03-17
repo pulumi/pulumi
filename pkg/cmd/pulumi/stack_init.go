@@ -17,9 +17,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -35,6 +37,8 @@ func newStackInitCmd() *cobra.Command {
 	var stackName string
 	var stackToCopy string
 	var noSelect bool
+	// teams is the list of teams who should have access to this stack, once created.
+	var teams []string
 
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
@@ -130,7 +134,12 @@ func newStackInitCmd() *cobra.Command {
 				return projectErr
 			}
 
-			var createOpts interface{} // Backend-specific config options, none currently.
+			// Backend-specific config options. Currently only applicable to the HTTP backend.
+			createOpts, err := validateCreateStackOpts(stackName, b, teams)
+			if err != nil {
+				return err
+			}
+
 			newStack, err := createStack(ctx, b, stackRef, root, createOpts, !noSelect, secretsProvider)
 			if err != nil {
 				return err
@@ -172,5 +181,53 @@ func newStackInitCmd() *cobra.Command {
 		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
 	cmd.PersistentFlags().BoolVar(
 		&noSelect, "no-select", false, "Do not select the stack")
+	cmd.PersistentFlags().StringArrayVar(&teams, "teams", nil, "A list of team "+
+		"names that should have permission to read and update this stack,"+
+		" once created")
 	return cmd
+}
+
+// This function constructs a createStackOptions object if
+// valid, otherwise returning nil. Most backends expect nil
+// options, and error if options are non-nil.
+func validateCreateStackOpts(stackName string, b backend.Backend, teams []string) (backend.CreateStackOptions, error) {
+	// • If the user provided teams but the backend doesn't support them,
+	//   return an error.
+	if len(teams) > 0 && !b.SupportsTeams() {
+		return nil, newTeamsUnsupportedError(stackName, b.Name())
+	}
+	// • Otherwise, validate the teams and pass them along.
+	//   Remove any strings from the list that are empty or just whitespace.
+	validatedTeams := teams[:0] // reuse storage.
+	for _, team := range teams {
+		teamStr := strings.TrimSpace(team)
+		if len(teamStr) > 0 {
+			validatedTeams = append(validatedTeams, teamStr)
+		}
+	}
+
+	// • We can return stack options that contain the provided teams.
+	//   since this will be zerod for non-Service backends.
+	return backend.NewStandardCreateStackOpts(validatedTeams), nil
+}
+
+// TeamsUnsupportedError is the error returned when the --teams
+// flag is provided on a backend that doesn't support teams.
+type teamsUnsupportedError struct {
+	stackName   string
+	backendType string
+}
+
+// NewTeamsUnsupportedError constructs an error for when users provide the --teams flag
+// for non-Service backends, or when options with teams are incorrectly provided to
+// a backend during stack creation.
+func newTeamsUnsupportedError(stackName, backendType string) *teamsUnsupportedError {
+	return &teamsUnsupportedError{
+		stackName:   stackName,
+		backendType: backendType,
+	}
+}
+
+func (err teamsUnsupportedError) Error() string {
+	return fmt.Sprintf("The stack %s uses the %s backend, which does not supports teams", err.stackName, err.backendType)
 }
