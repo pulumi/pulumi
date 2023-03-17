@@ -351,7 +351,7 @@ func TestRenameWorks(t *testing.T) {
 	err = lb.addToHistory(aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
 	assert.NoError(t, err)
 	// And pollute the history folder
-	err = lb.bucket.WriteAll(ctx, path.Join(lb.historyDirectory(aStackRef), "randomfile.txt"), []byte{0, 13}, nil)
+	err = lb.bucket.WriteAll(ctx, path.Join(aStackRef.HistoryDir(), "randomfile.txt"), []byte{0, 13}, nil)
 	assert.NoError(t, err)
 
 	// Rename the stack
@@ -405,11 +405,13 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 // an error when the stack name is the empty string.TestParseEmptyStackFails
 func TestParseEmptyStackFails(t *testing.T) {
 	t.Parallel()
-	// ParseStackReference does use the method receiver
-	// (it is a total function disguised as a method.)
-	var b *localBackend
-	stackName := ""
-	_, err := b.ParseStackReference(stackName)
+
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	_, err = b.ParseStackReference("")
 	assert.Error(t, err)
 }
 
