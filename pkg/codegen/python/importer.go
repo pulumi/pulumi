@@ -54,6 +54,15 @@ type PackageInfo struct {
 
 	// Respect the Pkg.Version field for emitted code.
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
+
+	// The PyProject field is a feature toggle for generating a pyproject.toml
+	// in addition to setup.py. In the near future, this struct will allow
+	// overrides for the generated TOML fields. Currently, it only serves
+	// to enable or disable the feature.
+	// Default: OFF.
+	PyProject struct {
+		Enabled bool `json:"enabled,omitempty"`
+	} `json:"pyproject,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
