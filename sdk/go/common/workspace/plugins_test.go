@@ -724,6 +724,7 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		_, err = source.GetLatestVersion(getHTTPResponse)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "rate limit exceeded")
+		assert.Contains(t, err.Error(), "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})
 }
 
