@@ -18,16 +18,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremotepreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-const remoteTestRepo = "https://github.com/pulumi/test-repo.git"
+const (
+	remoteTestRepo       = "https://github.com/pulumi/test-repo.git"
+	remoteTestRepoBranch = "refs/heads/master"
+)
 
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
 	opts ...RemoteWorkspaceOption) (RemoteStack, error),
@@ -111,8 +117,26 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 	}
 }
 
-func testRemoteStackGitSource(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
-	opts ...RemoteWorkspaceOption) (RemoteStack, error),
+// fetchCommitHash runs `git ls-remote URL branch` to determine the latest commit for the given repo
+// URL and branch.
+func fetchCommitHash(url, branch string) (string, error) {
+	cmd := exec.Command("git", "ls-remote", url, branch)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("git ls-remote: %w", err)
+	}
+	out := strings.TrimSpace(string(output))
+	fields := strings.Fields(out)
+	if len(fields) == 0 {
+		return "", fmt.Errorf("could not determine commit hash from %q", out)
+	}
+	return fields[0], nil
+}
+
+func testRemoteStackGitSource(
+	t *testing.T,
+	fn func(ctx context.Context, stackName string, repo GitRepo, opts ...RemoteWorkspaceOption) (RemoteStack, error),
+	useCommitHash bool,
 ) {
 	// This test requires the service with access to Pulumi Deployments.
 	// Set PULUMI_ACCESS_TOKEN to an access token with access to Pulumi Deployments
@@ -130,8 +154,14 @@ func testRemoteStackGitSource(t *testing.T, fn func(ctx context.Context, stackNa
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	repo := GitRepo{
 		URL:         remoteTestRepo,
-		Branch:      "refs/heads/master",
 		ProjectPath: "goproj",
+	}
+	if useCommitHash {
+		commitHash, err := fetchCommitHash(remoteTestRepo, remoteTestRepoBranch)
+		require.NoError(t, err)
+		repo.CommitHash = commitHash
+	} else {
+		repo.Branch = remoteTestRepoBranch
 	}
 
 	// initialize
@@ -217,7 +247,7 @@ func TestNewRemoteStackGitSourceErrors(t *testing.T) {
 
 func TestNewRemoteStackGitSource(t *testing.T) {
 	t.Parallel()
-	testRemoteStackGitSource(t, NewRemoteStackGitSource)
+	testRemoteStackGitSource(t, NewRemoteStackGitSource, true /*useCommitHash*/)
 }
 
 func TestUpsertRemoteStackGitSourceErrors(t *testing.T) {
@@ -227,7 +257,7 @@ func TestUpsertRemoteStackGitSourceErrors(t *testing.T) {
 
 func TestUpsertRemoteStackGitSource(t *testing.T) {
 	t.Parallel()
-	testRemoteStackGitSource(t, UpsertRemoteStackGitSource)
+	testRemoteStackGitSource(t, UpsertRemoteStackGitSource, false /*useCommitHash*/)
 }
 
 func TestIsFullyQualifiedStackName(t *testing.T) {
