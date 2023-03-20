@@ -139,10 +139,10 @@ func (ctx *Context) Close() error {
 //
 // WARNING: Calling this function without ever closing `c` will leak go routines.
 func (ctx *Context) WithCancelChannel(c <-chan struct{}) *Context {
-	copy := *ctx
+	newCtx := *ctx
 	go func() {
 		<-c
-		copy.Close()
+		newCtx.Close()
 	}()
-	return &copy
+	return &newCtx
 }

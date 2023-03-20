@@ -239,11 +239,7 @@ func StoreCredentials(creds Credentials) error {
 		return fmt.Errorf("marshalling credentials object: %w", err)
 	}
 
-	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600); err != nil {
-		return err
-	}
-
-	return nil
+	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
 }
 
 type BackendConfig struct {

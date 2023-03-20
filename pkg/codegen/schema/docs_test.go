@@ -207,9 +207,8 @@ func TestReferenceRenderer(t *testing.T) {
 
 		if _, ok := seenNames[name]; ok {
 			continue
-		} else {
-			seenNames[name] = struct{}{}
 		}
+		seenNames[name] = struct{}{}
 
 		t.Run(f.Name(), func(t *testing.T) {
 			t.Parallel()

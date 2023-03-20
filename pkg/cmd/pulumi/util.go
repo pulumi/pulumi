@@ -213,11 +213,7 @@ func createSecretsManager(
 	}
 
 	// Handle if the configuration changed any of EncryptedKey, etc
-	if err := saveProjectStackAfterSecretManger(stack, oldConfig, ps); err != nil {
-		return err
-	}
-
-	return nil
+	return saveProjectStackAfterSecretManger(stack, oldConfig, ps)
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.

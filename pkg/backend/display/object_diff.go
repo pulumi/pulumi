@@ -39,15 +39,15 @@ import (
 func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
-		if par, has := seen[p]; !has {
+		par, has := seen[p]
+		if !has {
 			// This can happen during deletes, since we delete children before parents.
 			// TODO[pulumi/pulumi#340]: we need to figure out how best to display this sequence; at the very
 			//     least, it would be ideal to preserve the indentation.
 			break
-		} else {
-			indent++
-			p = par.Res.Parent
 		}
+		indent++
+		p = par.Res.Parent
 	}
 	return indent
 }
@@ -713,8 +713,8 @@ func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxk
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	if add, isadd := diff.Adds[key]; isadd {
 		p.printAdd(add, titleFunc)
-	} else if delete, isdelete := diff.Deletes[key]; isdelete {
-		p.printDelete(delete, titleFunc)
+	} else if del, isdelete := diff.Deletes[key]; isdelete {
+		p.printDelete(del, titleFunc)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
 		p.printPropertyValueDiff(titleFunc, update)
 	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
@@ -739,8 +739,8 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 
 			if add, isadd := a.Adds[i]; isadd {
 				elemPrinter.printAdd(add, elemTitleFunc)
-			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				elemPrinter.printDelete(delete, elemTitleFunc)
+			} else if del, isdelete := a.Deletes[i]; isdelete {
+				elemPrinter.printDelete(del, elemTitleFunc)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				elemPrinter.printPropertyValueDiff(elemTitleFunc, update)
 			} else if same, issame := a.Sames[i]; issame && !p.summary {
@@ -979,7 +979,6 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interf
 			titleFunc := propertyTitlePrinter("\""+oldName+"\"", maxkey)
 			p.indented(1).printDelete(assetOrArchiveToPropertyValue(oldAssets[oldName]), titleFunc)
 			i++
-			continue
 		} else {
 			contract.Assertf(addNew, "expected to print new asset")
 			newName := newNames[j]

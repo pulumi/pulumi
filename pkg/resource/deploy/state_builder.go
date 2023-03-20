@@ -105,9 +105,9 @@ func (sb *stateBuilder) updateURNSlice(
 	if !needsUpdate {
 		return false, slice
 	}
-	copy := make([]resource.URN, len(slice))
+	updated := make([]resource.URN, len(slice))
 	for i, urn := range slice {
-		copy[i] = update(urn)
+		updated[i] = update(urn)
 	}
-	return true, copy
+	return true, updated
 }

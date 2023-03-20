@@ -1364,13 +1364,13 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 
 			properties = make([]*schema.Property, len(obj.Properties))
 			for i, p := range obj.Properties {
-				copy := *p
+				newp := *p
 				if required.Has(p.Name) {
-					copy.Type = codegen.RequiredType(&copy)
+					newp.Type = codegen.RequiredType(&newp)
 				} else {
-					copy.Type = codegen.OptionalType(&copy)
+					newp.Type = codegen.OptionalType(&newp)
 				}
-				properties[i] = &copy
+				properties[i] = &newp
 			}
 		}
 	}

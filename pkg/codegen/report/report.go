@@ -122,11 +122,11 @@ func WrapGen(reporter Reporter, title, language string, files []*syntax.File, f 
 func (r *reporter) Report(title, language string, files []*syntax.File, diags hcl.Diagnostics, err error) {
 	r.m.Lock()
 	defer r.m.Unlock()
-	if panicErr := recover(); panicErr != nil {
-		if panic, ok := panicErr.(error); ok {
-			err = fmt.Errorf("panic: %w", panic)
+	if panicVal := recover(); panicVal != nil {
+		if panicErr, ok := panicVal.(error); ok {
+			err = fmt.Errorf("panic: %w", panicErr)
 		} else {
-			err = fmt.Errorf("panic: %v", panicErr)
+			err = fmt.Errorf("panic: %v", panicVal)
 		}
 	}
 	failed := diags.HasErrors() || err != nil
