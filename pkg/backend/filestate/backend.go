@@ -330,9 +330,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	root string, opts backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	// Before locking the stack, validate that the options provided are valid.
-	if teamCount := len(opts.Teams()); teamCount > 0 {
-		return nil, &internalIllegalTeamsError{}
-	}
+	contract.Requiref(opts == nil || len(opts.Teams()) == 0, "opts.Teams", "must be empty: filestate doesn't support teams")
 
 	localStackRef, err := b.getReference(stackRef)
 	if err != nil {
@@ -973,22 +971,4 @@ func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	}
 
 	return nil
-}
-
-// internalIllegalTeamsError occurs when a Pulumi developer provides a backend
-// with illegal options on StackCreate. This occurs when stack creation inputs
-// aren't validated, or are incorrectly validated. If the backends receives
-// unexpected options, it will create this error, because otherwise the user's
-// request would silently behave differently than expected.
-type internalIllegalTeamsError struct{}
-
-func (internalIllegalTeamsError) Error() string {
-	// This link points users to create a bug report.
-	ghIssuesRef := "https://github.com/pulumi/pulumi/issues/new" +
-		"?assignees=&labels=kind%2Fbug%2Cneeds-triage&template=bug.yaml"
-	return fmt.Sprintf(
-		"A backend was used with invalid creation options. "+
-			"This is a bug. We would really appreciate it if you could report this bug at %s",
-		ghIssuesRef,
-	)
 }

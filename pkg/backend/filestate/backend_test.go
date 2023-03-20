@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func TestMassageBlobPath(t *testing.T) {
@@ -486,7 +485,7 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	// • Create a mock local backend
 	tmpDir := t.TempDir()
 	dirURI := fmt.Sprintf("file://%s", filepath.ToSlash(tmpDir))
-	local, err := New(context.Background(), cmdutil.Diag(), dirURI, nil)
+	local, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
 	assert.NoError(t, err)
 	ctx := context.Background()
 
@@ -494,8 +493,8 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	fakeStackRef, err := local.ParseStackReference("foobar")
 	assert.NoError(t, err)
 	assert.Panics(t, func() {
-		// • Expect an error.
-		_, err := local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
-		assert.NoError(t, err)
+		// • Expect a panic.
+		local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+		assert.Fail(t, "This statement should be unreachable.")
 	})
 }
