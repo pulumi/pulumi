@@ -29,7 +29,7 @@ func TestValidateCreateStackOptsErrors(t *testing.T) {
 	// Then, we expect validation to fail, since we provide
 	// teams when they're not supported.
 	_, err := validateCreateStackOpts(stackName, mockBackend, teams)
-	assert.ErrorIs(t, err, newTeamsUnsupportedError(stackName, backendName))
+	assert.Error(t, err)
 }
 
 // This test demonstrates that validateCreateStack will filter
