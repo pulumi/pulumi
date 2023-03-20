@@ -346,8 +346,6 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 	defer b.Unlock(ctx, stackRef)
 
-	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
-
 	stackName := localStackRef.FullyQualifiedName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
