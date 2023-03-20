@@ -1,5 +1,8 @@
-config input string {
-}
+config input string { }
+
+config cidrBlocks "map(string)" { }
+
+config ipAddress "list(int)" { }
 
 resource password "random:index/randomPassword:RandomPassword" {
   length = 16

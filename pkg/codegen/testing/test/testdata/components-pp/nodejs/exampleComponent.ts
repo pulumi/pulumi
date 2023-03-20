@@ -4,6 +4,8 @@ import { SimpleComponent } from "./simpleComponent";
 
 interface ExampleComponentArgs {
     input: pulumi.Input<string>,
+    cidrBlocks: pulumi.Input<Record<string, pulumi.Input<string>>>,
+    ipAddress: pulumi.Input<number[]>,
 }
 
 export class ExampleComponent extends pulumi.ComponentResource {
