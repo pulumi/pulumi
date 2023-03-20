@@ -943,18 +943,13 @@ func TestDownloadToFile_retries(t *testing.T) {
 	// while numRetries is the number of times the retry function is called.
 	// These should match--the function is called on all failures.
 	var numRetries int
-	_, err := DownloadToFile(
-		spec,
-		func(stream io.ReadCloser, size int64) io.ReadCloser {
-			// wrapper: no-op
-			return stream
-		},
-		func(err error, attempt, limit int, delay time.Duration) {
+	_, err := (&pluginDownloader{
+		OnRetry: func(err error, attempt, limit int, delay time.Duration) {
 			assert.Equal(t, 5, limit, "unexpected retry limit")
 			numRetries++
 			assert.Equal(t, numRetries, attempt, "unexpected attempt number")
 		},
-	)
+	}).DownloadToFile(spec)
 	assert.ErrorContains(t, err, "failed to download plugin: myplugin-1.0.0")
 	assert.Equal(t, numRequests, numRetries)
 }
