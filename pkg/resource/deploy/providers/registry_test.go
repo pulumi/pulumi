@@ -952,5 +952,5 @@ func TestLoadProvider_missingError(t *testing.T) {
 		"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
 	assert.ErrorContains(t, err,
 		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
-	assert.Equal(t, 6, count)
+	assert.Equal(t, 5, count)
 }

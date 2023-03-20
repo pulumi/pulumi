@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python"
@@ -1087,6 +1088,9 @@ type pluginDownloader struct {
 	// delay is the amount of time that will be slept before the next attempt.
 	// DO NOT sleep in this function. It's for observation only.
 	OnRetry func(err error, attempt int, limit int, delay time.Duration)
+
+	// Controls how to sleep between retries.
+	After func(time.Duration) <-chan time.Time // == time.After
 }
 
 // copyBuffer copies from src to dst until either EOF is reached on src or an error occurs.
@@ -1177,38 +1181,53 @@ func (d *pluginDownloader) tryDownloadToFile(pkgPlugin PluginSpec) (string, erro
 
 func (d *pluginDownloader) downloadToFileWithRetry(pkgPlugin PluginSpec) (string, error) {
 	delay := 80 * time.Millisecond
-	for attempt := 0; ; attempt++ {
-		tempFile, readErr, writeErr := d.tryDownloadToFile(pkgPlugin)
-		if readErr == nil && writeErr == nil {
-			return tempFile, nil
-		}
-		if writeErr != nil {
-			return "", writeErr
-		}
+	backoff := 2.0
+	maxAttempts := 5
 
-		// If the readErr is a checksum error don't retry
-		var checksumErr *checksumError
-		if errors.As(readErr, &checksumErr) {
-			return "", readErr
-		}
+	_, path, err := (&retry.Retryer{
+		After: d.After,
+	}).Until(context.Background(), retry.Acceptor{
+		Delay:   &delay,
+		Backoff: &backoff,
+		Accept: func(attempt int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			if attempt >= maxAttempts {
+				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
+			}
 
-		// Don't retry, since the request was processed and rejected.
-		var downloadErr *downloadError
-		if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
-			return "", readErr
-		}
+			tempFile, readErr, writeErr := d.tryDownloadToFile(pkgPlugin)
+			if readErr == nil && writeErr == nil {
+				return true, tempFile, nil
+			}
+			if writeErr != nil {
+				// Writes are local. If they fail,
+				// there's no point retrying.
+				return false, "", writeErr
+			}
 
-		// Don't attempt more than 5 times
-		attempts := 5
-		if readErr != nil && attempt >= attempts {
-			return "", readErr
-		}
-		if d.OnRetry != nil {
-			d.OnRetry(readErr, attempt+1, attempts, delay)
-		}
-		time.Sleep(delay)
-		delay = delay * 2
+			// If the readErr is a checksum error don't retry.
+			var checksumErr *checksumError
+			if errors.As(readErr, &checksumErr) {
+				return false, "", readErr
+			}
+
+			// Don't retry, since the request was processed and rejected.
+			var downloadErr *downloadError
+			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
+				return false, "", readErr
+			}
+
+			if d.OnRetry != nil {
+				d.OnRetry(readErr, attempt+1, maxAttempts, nextRetryTime)
+			}
+
+			return false, "", nil
+		},
+	})
+	if err != nil {
+		return "", err
 	}
+
+	return path.(string), nil
 }
 
 // DownloadToFile downloads the given PluginSpec to a temporary file
