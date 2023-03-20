@@ -837,7 +837,10 @@ func (b *cloudBackend) CreateStack(
 
 	// Collect the names of any teams who should have access to the
 	// newly created stack.
-	teams := opts.Teams()
+	var teams []string
+	if opts != nil {
+		teams = opts.Teams()
+	}
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags, teams)
 	if err != nil {
