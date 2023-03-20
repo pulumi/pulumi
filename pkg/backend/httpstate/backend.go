@@ -820,10 +820,14 @@ func currentProjectContradictsWorkspace(project *workspace.Project, stack client
 
 func (b *cloudBackend) CreateStack(
 	ctx context.Context, stackRef backend.StackReference, root string,
-	opts backend.CreateStackOptions,
+	opts *backend.CreateStackOptions,
 ) (
 	backend.Stack, error,
 ) {
+	if opts == nil {
+		opts = &backend.CreateStackOptions{}
+	}
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -835,14 +839,7 @@ func (b *cloudBackend) CreateStack(
 
 	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
 
-	// Collect the names of any teams who should have access to the
-	// newly created stack.
-	var teams []string
-	if opts != nil {
-		teams = opts.Teams()
-	}
-
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, teams)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {

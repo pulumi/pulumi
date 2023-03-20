@@ -83,7 +83,7 @@ func TestValidateCreateStackOptsFiltersWhitespace(t *testing.T) {
 			observed, err := validateCreateStackOpts(stackName, mockBackend, tc.inputTeams)
 			assert.Nil(t, err)
 			assert.NotNil(t, observed)
-			teams := observed.Teams()
+			teams := observed.Teams
 			assert.ElementsMatch(t, teams, tc.expectedTeams)
 		})
 	}

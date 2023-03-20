@@ -480,7 +480,7 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	// Here, we provide options that illegally specify a team on a
 	// backend that does not support teams. We expect this to create
 	// an error later when we call CreateStack.
-	illegalOptions := backend.NewStandardCreateStackOpts([]string{"red-team"})
+	illegalOptions := &backend.CreateStackOptions{Teams: []string{"red-team"}}
 
 	// • Create a mock local backend
 	tmpDir := t.TempDir()

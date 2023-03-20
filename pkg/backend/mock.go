@@ -45,7 +45,7 @@ type MockBackend struct {
 	ValidateStackNameF     func(s string) error
 	DoesProjectExistF      func(context.Context, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
-	CreateStackF           func(context.Context, StackReference, string, CreateStackOptions) (Stack, error)
+	CreateStackF           func(context.Context, StackReference, string, *CreateStackOptions) (Stack, error)
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
@@ -172,7 +172,7 @@ func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (S
 }
 
 func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
-	root string, opts CreateStackOptions,
+	root string, opts *CreateStackOptions,
 ) (Stack, error) {
 	if be.CreateStackF != nil {
 		return be.CreateStackF(ctx, stackRef, root, opts)

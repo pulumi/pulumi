@@ -190,7 +190,7 @@ func newStackInitCmd() *cobra.Command {
 // This function constructs a createStackOptions object if
 // valid, otherwise returning nil. Most backends expect nil
 // options, and error if options are non-nil.
-func validateCreateStackOpts(stackName string, b backend.Backend, teams []string) (backend.CreateStackOptions, error) {
+func validateCreateStackOpts(stackName string, b backend.Backend, teams []string) (*backend.CreateStackOptions, error) {
 	// • If the user provided teams but the backend doesn't support them,
 	//   return an error.
 	if len(teams) > 0 && !b.SupportsTeams() {
@@ -208,7 +208,9 @@ func validateCreateStackOpts(stackName string, b backend.Backend, teams []string
 
 	// • We can return stack options that contain the provided teams.
 	//   since this will be zerod for non-Service backends.
-	return backend.NewStandardCreateStackOpts(validatedTeams), nil
+	return &backend.CreateStackOptions{
+		Teams: validatedTeams,
+	}, nil
 }
 
 // TeamsUnsupportedError is the error returned when the --teams

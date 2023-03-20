@@ -327,11 +327,11 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	root string, opts backend.CreateStackOptions,
+	root string, opts *backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	// Before locking the stack, validate that the options provided are valid.
 	contract.Requiref(
-		opts == nil || len(opts.Teams()) == 0,
+		opts == nil || len(opts.Teams) == 0,
 		"opts.Teams", "must be empty: filestate doesn't support teams",
 	)
 
