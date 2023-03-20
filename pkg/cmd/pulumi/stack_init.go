@@ -168,14 +168,12 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
-	// Backend-specific config options. Currently only applicable to the HTTP backend.
-	createOpts, err := validateCreateStackOpts(cmd.stackName, b, cmd.teams)
-	if err != nil {
-		return err
-	}
-
+	createOpts := newCreateStackOptions(cmd.teams)
 	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
+		if errors.Is(err, backend.ErrTeamsNotSupported) {
+			return newTeamsUnsupportedError(cmd.stackName, b.Name())
+		}
 		return err
 	}
 
@@ -207,30 +205,21 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-// This function constructs a createStackOptions object if
-// valid, otherwise returning nil. Most backends expect nil
-// options, and error if options are non-nil.
-func validateCreateStackOpts(stackName string, b backend.Backend, teams []string) (*backend.CreateStackOptions, error) {
-	// • If the user provided teams but the backend doesn't support them,
-	//   return an error.
-	if len(teams) > 0 && !b.SupportsTeams() {
-		return nil, newTeamsUnsupportedError(stackName, b.Name())
-	}
-	// • Otherwise, validate the teams and pass them along.
-	//   Remove any strings from the list that are empty or just whitespace.
-	validatedTeams := teams[:0] // reuse storage.
+// newCreateStackOptions constructs a backend.CreateStackOptions object
+// from the provided options.
+func newCreateStackOptions(teams []string) *backend.CreateStackOptions {
+	// Remove any strings from the list that are empty or just whitespace.
+	validTeams := teams[:0] // reuse storage.
 	for _, team := range teams {
-		teamStr := strings.TrimSpace(team)
-		if len(teamStr) > 0 {
-			validatedTeams = append(validatedTeams, teamStr)
+		team = strings.TrimSpace(team)
+		if len(team) > 0 {
+			validTeams = append(validTeams, team)
 		}
 	}
 
-	// • We can return stack options that contain the provided teams.
-	//   since this will be zerod for non-Service backends.
 	return &backend.CreateStackOptions{
-		Teams: validatedTeams,
-	}, nil
+		Teams: validTeams,
+	}
 }
 
 // TeamsUnsupportedError is the error returned when the --teams

@@ -570,10 +570,6 @@ func (b *cloudBackend) SupportsTags() bool {
 	return true
 }
 
-func (b *cloudBackend) SupportsTeams() bool {
-	return true
-}
-
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
