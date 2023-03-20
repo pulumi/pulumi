@@ -41,6 +41,13 @@ issues:
     - linters: [revive]
       text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
 
+    # staticcheck already has smarter checks for empty blocks.
+    # revive's empty-block linter has false positives.
+    # For example, as of writing this, the following is not allowed.
+    #   for foo() { }
+    - linters: [revive]
+      text: 'empty-block: this block is empty, you can remove it'
+
   exclude:
     # https://github.com/pulumi/pulumi/issues/9469
     - 'Name is deprecated: Name returns the variable or declaration name of the resource'
