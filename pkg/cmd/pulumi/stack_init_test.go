@@ -29,7 +29,7 @@ func TestValidateCreateStackOpts(t *testing.T) {
 			validTeams: []string{},
 		},
 		{
-			name:       "a aingle valid team is provided",
+			name:       "a single valid team is provided",
 			rawTeams:   []string{"TeamRocket"},
 			validTeams: []string{"TeamRocket"},
 		},
