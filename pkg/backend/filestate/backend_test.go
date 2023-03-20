@@ -494,7 +494,10 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Panics(t, func() {
 		// • Expect a panic.
-		local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+		_, err := local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
 		assert.Fail(t, "This statement should be unreachable.")
+		// The linter complains if we don't check this error, even though
+		// the code should be unreachable.
+		assert.NoError(t, err)
 	})
 }

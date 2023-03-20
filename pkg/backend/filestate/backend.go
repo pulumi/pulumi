@@ -330,7 +330,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	root string, opts backend.CreateStackOptions,
 ) (backend.Stack, error) {
 	// Before locking the stack, validate that the options provided are valid.
-	contract.Requiref(opts == nil || len(opts.Teams()) == 0, "opts.Teams", "must be empty: filestate doesn't support teams")
+	contract.Requiref(
+		opts == nil || len(opts.Teams()) == 0,
+		"opts.Teams", "must be empty: filestate doesn't support teams",
+	)
 
 	localStackRef, err := b.getReference(stackRef)
 	if err != nil {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -71,7 +70,7 @@ func TestValidateCreateStackOptsFiltersWhitespace(t *testing.T) {
 
 	for _, tc := range cases {
 		tc := tc
-		t.Run(fmt.Sprintf("%s", tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			stackName := "dev"
 			mockBackend := &backend.MockBackend{
