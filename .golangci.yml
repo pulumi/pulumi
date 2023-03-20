@@ -48,6 +48,13 @@ issues:
     - linters: [revive]
       text: 'empty-block: this block is empty, you can remove it'
 
+    # We *frequently* use the term 'new' in the context of properties
+    # (new and old properties),
+    # and we rarely use the 'new' built-in function.
+    # It's fine to ignore these cases.
+    - linters: [revive]
+      text: 'redefines-builtin-id: redefinition of the built-in function new'
+
   exclude:
     # https://github.com/pulumi/pulumi/issues/9469
     - 'Name is deprecated: Name returns the variable or declaration name of the resource'
