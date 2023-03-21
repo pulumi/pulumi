@@ -3,7 +3,7 @@ config input string {
 }
 
 config cidrBlocks "map(string)" {
-    description = "The main CIDR blocks for the VPC"
+    description = "The main CIDR blocks for the VPC\nIt is a map of strings"
 }
 
 config ipAddress "list(int)" { }
