@@ -493,7 +493,8 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	fakeStackRef, err := local.ParseStackReference("foobar")
 	assert.NoError(t, err)
 	assert.Panics(t, func() {
-		// • Expect a panic.
+		// • Expect a panic because the options provided illegally
+		//   include a team.
 		_, err := local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
 		assert.Fail(t, "This statement should be unreachable.")
 		// The linter complains if we don't check this error, even though
