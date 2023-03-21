@@ -17,6 +17,8 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/blang/semver"
@@ -860,4 +862,97 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
 	assert.Nil(t, inputs)
+}
+
+func TestInstallProviderErrorText(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	err := errors.New("some error")
+	tests := []struct {
+		Name          string
+		Err           InstallProviderError
+		ExpectedError string
+	}{
+		{
+			Name: "Just name",
+			Err: InstallProviderError{
+				Err:  err,
+				Name: "myplugin",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
+				" install the plugin using `pulumi plugin install resource myplugin`: some error",
+		},
+		{
+			Name: "Name and version",
+			Err: InstallProviderError{
+				Err:     err,
+				Name:    "myplugin",
+				Version: &v1,
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
+				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`: some error",
+		},
+		{
+			Name: "Name and version and URL",
+			Err: InstallProviderError{
+				Err:               err,
+				Name:              "myplugin",
+				Version:           &v1,
+				PluginDownloadURL: "github://owner/repo",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
+				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0" +
+				" --server github://owner/repo`: some error",
+		},
+		{
+			Name: "Name and URL",
+			Err: InstallProviderError{
+				Err:               err,
+				Name:              "myplugin",
+				PluginDownloadURL: "github://owner/repo",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
+				" install the plugin using `pulumi plugin install resource myplugin" +
+				" --server github://owner/repo`: some error",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.ExpectedError, tt.Err.Error())
+		})
+	}
+}
+
+func TestLoadProvider_missingError(t *testing.T) {
+	t.Parallel()
+
+	var count int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	version := semver.MustParse("1.2.3")
+	loader := newLoader(t, "myplugin", "1.2.3",
+		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
+			return nil, workspace.NewMissingError(
+				workspace.ResourcePlugin, "myplugin", &version, false /* ambient */)
+		})
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	_, err := loadProvider(
+		"myplugin", &version, srv.URL,
+		nil, host, nil /* builtins */)
+	assert.ErrorContains(t, err,
+		"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
+	assert.ErrorContains(t, err,
+		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
+	// TODO[pulumi/pulumi#12456]: This should probably be 5, but we're currently retrying in
+	// getHTTPResponse as well as DownloadToFile.
+	assert.Equal(t, 30, count)
 }

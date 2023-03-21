@@ -938,3 +938,76 @@ func TestPluginBadSource(t *testing.T) {
 	assert.ErrorContains(t, err, "unknown plugin source scheme: strange-scheme")
 	assert.Nil(t, source)
 }
+
+func TestMissingErrorText(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	tests := []struct {
+		Name           string
+		Plugin         PluginInfo
+		IncludeAmbient bool
+		ExpectedError  string
+	}{
+		{
+			Name: "ResourceWithVersion",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    ResourcePlugin,
+				Version: &v1,
+			},
+			IncludeAmbient: true,
+			ExpectedError: "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0 " +
+				"or on your $PATH",
+		},
+		{
+			Name: "ResourceWithVersion_ExcludeAmbient",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    ResourcePlugin,
+				Version: &v1,
+			},
+			IncludeAmbient: false,
+			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v0.1.0",
+		},
+		{
+			Name: "ResourceWithoutVersion",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    ResourcePlugin,
+				Version: nil,
+			},
+			IncludeAmbient: true,
+			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace or on your $PATH",
+		},
+		{
+			Name: "ResourceWithoutVersion_ExcludeAmbient",
+			Plugin: PluginInfo{
+				Name:    "myplugin",
+				Kind:    ResourcePlugin,
+				Version: nil,
+			},
+			IncludeAmbient: false,
+			ExpectedError:  "no resource plugin 'pulumi-resource-myplugin' found in the workspace",
+		},
+		{
+			Name: "LanguageWithoutVersion",
+			Plugin: PluginInfo{
+				Name:    "dotnet",
+				Kind:    LanguagePlugin,
+				Version: nil,
+			},
+			IncludeAmbient: true,
+			ExpectedError:  "no language plugin 'pulumi-language-dotnet' found in the workspace or on your $PATH",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
+			err := NewMissingError(tt.Plugin.Kind, tt.Plugin.Name, tt.Plugin.Version, tt.IncludeAmbient)
+			assert.Equal(t, tt.ExpectedError, err.Error())
+		})
+	}
+}
