@@ -28,6 +28,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// ErrBail indicates that the command failed,
+// but has already printed its error message.
+//
+// If a command returns ErrBail,
+// we will exit the program with a non-zero exit code
+// but will not print an error message.
+var ErrBail = result.ErrBail
+
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
 func DetailedError(err error) string {
 	msg := errorMessage(err)
@@ -91,6 +99,9 @@ func runPostCommandHooks(c *cobra.Command, args []string) error {
 // callstack which might prohibit reaping of child processes, resources, etc.  And we wish to avoid
 // the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly
 // prints usage.
+//
+// If run returns [ErrBail], we will not print an error message,
+// but will still be a non-zero exit code.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 		if err := run(cmd, args); err != nil {

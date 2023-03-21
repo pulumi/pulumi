@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,6 +67,17 @@ func (r *simpleResult) GoString() string {
 	return fmt.Sprintf("&simpleResult{err: %#v}", r.err)
 }
 
+// ErrBail is an error that can be returned by a function
+// to indicate that the function failed to complete successfully.
+// It's an error variant of [Bail].
+//
+// This will cause a non-zero exit code for the Pulumi CLI
+// but it will not print output to the CLI.
+//
+// Use this in functions that returns errors which are fed into [FromError],
+// and you want to use [Bail].
+var ErrBail = errors.New("bail")
+
 // Bail produces a Result that represents a computation that failed to complete
 // successfully but is not a bug in Pulumi.
 func Bail() Result {
@@ -87,14 +98,20 @@ func Error(msg string) Result {
 	return FromError(err)
 }
 
-// FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil'
-// error.  A 'nil' error means that there was no problem, and in that case a 'nil' result should be
-// used instead.
+// FromError produces a Result that wraps an internal Pulumi error.
+// Do not call this with a 'nil' error.
+// A 'nil' error means that there was no problem,
+// and in that case a 'nil' result should be used instead.
+// If the error is [ErrBail], then a [Bail] result is returned.
 func FromError(err error) Result {
 	if err == nil {
 		panic("FromError should not be called with a nil-error.  " +
 			"If there is no error, then a nil result should be returned.  " +
 			"Caller should check for this first.")
+	}
+
+	if errors.Is(err, ErrBail) {
+		return Bail()
 	}
 
 	return &simpleResult{err: err}
