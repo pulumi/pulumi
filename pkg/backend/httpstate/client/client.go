@@ -441,22 +441,18 @@ func (pc *Client) Log3rdPartySecretsProviderDecryptionEvent(ctx context.Context,
 	secretName string,
 ) error {
 	req := apitype.Log3rdPartyDecryptionEvent{SecretName: secretName}
-	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-decryption"),
-		nil, &req, nil); err != nil {
-		return err
-	}
-	return nil
+	return pc.restCall(
+		ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-decryption"),
+		nil, &req, nil)
 }
 
 func (pc *Client) LogBulk3rdPartySecretsProviderDecryptionEvent(ctx context.Context, stack StackIdentifier,
 	command string,
 ) error {
 	req := apitype.Log3rdPartyDecryptionEvent{CommandName: command}
-	if err := pc.restCall(ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-batch-decryption"), nil,
-		&req, nil); err != nil {
-		return err
-	}
-	return nil
+	return pc.restCall(
+		ctx, "POST", path.Join(getStackPath(stack, "decrypt"), "log-batch-decryption"),
+		nil, &req, nil)
 }
 
 // BulkDecryptValue decrypts a ciphertext value in the context of the indicated stack.

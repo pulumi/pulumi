@@ -111,28 +111,28 @@ type ArrayDiff struct {
 
 // Len computes the length of this array, taking into account adds, deletes, sames, and updates.
 func (diff *ArrayDiff) Len() int {
-	len := 0
+	length := 0
 	for i := range diff.Adds {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Deletes {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Sames {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Updates {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
-	return len
+	return length
 }
 
 // IgnoreKeyFunc is the callback type for Diff's ignore option.

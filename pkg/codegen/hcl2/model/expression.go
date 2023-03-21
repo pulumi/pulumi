@@ -2148,8 +2148,8 @@ func (x *SplatExpression) GetTrailingTrivia() syntax.TriviaList {
 	if parens := x.Tokens.GetParentheses(); parens.Any() {
 		return parens.GetTrailingTrivia()
 	}
-	if close := x.Tokens.GetClose(); close != nil {
-		return close.TrailingTrivia
+	if closeTok := x.Tokens.GetClose(); closeTok != nil {
+		return closeTok.TrailingTrivia
 	}
 	return x.Tokens.GetStar().TrailingTrivia
 }

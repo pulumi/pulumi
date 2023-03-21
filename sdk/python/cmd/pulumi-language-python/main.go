@@ -860,11 +860,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	if err := closer.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return closer.Close()
 }
 
 func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
@@ -1008,9 +1004,5 @@ func (host *pythonLanguageHost) RunPlugin(
 		return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
 	}
 
-	if err := closer.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return closer.Close()
 }

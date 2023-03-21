@@ -425,14 +425,14 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	if mod == nil {
 		return nil
 	}
-	copy := *mod
-	copy.docGenContext = dctx
-	children := make([]*modContext, 0, len(copy.children))
-	for _, c := range copy.children {
+	newctx := *mod
+	newctx.docGenContext = dctx
+	children := make([]*modContext, 0, len(newctx.children))
+	for _, c := range newctx.children {
 		children = append(children, c.withDocGenContext(dctx))
 	}
-	copy.children = children
-	return &copy
+	newctx.children = children
+	return &newctx
 }
 
 func resourceName(r *schema.Resource) string {

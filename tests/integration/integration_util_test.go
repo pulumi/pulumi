@@ -279,12 +279,12 @@ func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn fu
 			if err := mutex.Lock(); err != nil {
 				time.Sleep(1 * time.Second)
 				continue
-			} else {
-				defer func() {
-					assert.NoError(t, mutex.Unlock())
-				}()
-				break
 			}
+
+			defer func() {
+				assert.NoError(t, mutex.Unlock())
+			}()
+			break
 		}
 
 		// Context may hav expired

@@ -503,11 +503,7 @@ func (rp *ResourcePlan) checkOutputs(
 	contract.Assertf(rp.Goal != nil, "resource plan goal must be set")
 
 	// Check that the property diffs meet the constraints set in the plan.
-	if err := checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff); err != nil {
-		return err
-	}
-
-	return nil
+	return checkDiff(oldOutputs, newOutputs, rp.Goal.OutputDiff)
 }
 
 func (rp *ResourcePlan) checkGoal(

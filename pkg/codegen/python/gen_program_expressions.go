@@ -133,13 +133,13 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
-	close := "]"
+	closedelim := "]"
 	if expr.Key != nil {
 		// Dictionary comprehension
 		//
 		// TODO(pdg): grouping
 		g.Fgenf(w, "{%.v: %.v", expr.Key, expr.Value)
-		close = "}"
+		closedelim = "}"
 	} else {
 		// List comprehension
 		g.Fgenf(w, "[%.v", expr.Value)
@@ -155,7 +155,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		g.Fgenf(w, " if %.v", expr.Condition)
 	}
 
-	g.Fprint(w, close)
+	g.Fprint(w, closedelim)
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {

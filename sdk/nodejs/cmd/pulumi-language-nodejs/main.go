@@ -775,11 +775,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	if err := closer.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return closer.Close()
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {

@@ -787,14 +787,14 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 		pkg.importedLanguages = map[string]struct{}{}
 	}
 
-	any := false
+	found := false
 	for lang := range languages {
 		if _, ok := pkg.importedLanguages[lang]; !ok {
-			any = true
+			found = true
 			break
 		}
 	}
-	if !any {
+	if !found {
 		return nil
 	}
 

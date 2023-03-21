@@ -148,22 +148,22 @@ func (m *tokenMapper) collectLabelTokens(r hcl.Range) Token {
 	if str.Raw.Type != hclsyntax.TokenQuotedLit || len(str.LeadingTrivia) != 0 || len(str.TrailingTrivia) != 0 {
 		return m.tokens.atPos(r.Start)
 	}
-	close := tokens[2]
-	if close.Raw.Type != hclsyntax.TokenCQuote || len(close.LeadingTrivia) != 0 {
+	closeTok := tokens[2]
+	if closeTok.Raw.Type != hclsyntax.TokenCQuote || len(closeTok.LeadingTrivia) != 0 {
 		return m.tokens.atPos(r.Start)
 	}
 	return Token{
 		Raw: hclsyntax.Token{
 			Type:  hclsyntax.TokenQuotedLit,
-			Bytes: append(append(open.Raw.Bytes, str.Raw.Bytes...), close.Raw.Bytes...),
+			Bytes: append(append(open.Raw.Bytes, str.Raw.Bytes...), closeTok.Raw.Bytes...),
 			Range: hcl.Range{
 				Filename: open.Raw.Range.Filename,
 				Start:    open.Raw.Range.Start,
-				End:      close.Raw.Range.End,
+				End:      closeTok.Raw.Range.End,
 			},
 		},
 		LeadingTrivia:  open.LeadingTrivia,
-		TrailingTrivia: close.TrailingTrivia,
+		TrailingTrivia: closeTok.TrailingTrivia,
 	}
 }
 
@@ -326,12 +326,12 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 	var parens Parentheses
 	startParens, endParens := n.Range().Start.Byte-1, n.Range().End.Byte
 	for {
-		open, close := m.tokens.atOffset(startParens), m.tokens.atOffset(endParens)
-		if open.Raw.Type != hclsyntax.TokenOParen || close.Raw.Type != hclsyntax.TokenCParen {
+		openTok, closeTok := m.tokens.atOffset(startParens), m.tokens.atOffset(endParens)
+		if openTok.Raw.Type != hclsyntax.TokenOParen || closeTok.Raw.Type != hclsyntax.TokenCParen {
 			break
 		}
-		parens.Open, parens.Close = append(parens.Open, open), append(parens.Close, close)
-		startParens, endParens = open.Range().Start.Byte-1, close.Range().End.Byte
+		parens.Open, parens.Close = append(parens.Open, openTok), append(parens.Close, closeTok)
+		startParens, endParens = openTok.Range().Start.Byte-1, closeTok.Range().End.Byte
 	}
 	if m.isSingleFunctionCallArg() && len(parens.Open) > 0 {
 		parens.Open, parens.Close = parens.Open[:len(parens.Open)-1], parens.Close[:len(parens.Close)-1]
@@ -378,8 +378,8 @@ func (m *tokenMapper) Exit(n hclsyntax.Node) hcl.Diagnostics {
 
 			var openElse, elset, closeElse *Token
 			if endifOrElse.Raw.Type == hclsyntax.TokenIdent && string(endifOrElse.Raw.Bytes) == "else" {
-				open, t, close := openEndifOrElse, endifOrElse, closeEndifOrElse
-				openElse, elset, closeElse = &open, &t, &close
+				openTok, t, closeTok := openEndifOrElse, endifOrElse, closeEndifOrElse
+				openElse, elset, closeElse = &openTok, &t, &closeTok
 
 				openEndifOrElse = m.tokens.atPos(falseRange.End)
 				endifOrElse = m.tokens.atPos(openEndifOrElse.Range().End)

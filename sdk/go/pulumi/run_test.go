@@ -922,7 +922,7 @@ func TestExportResource(t *testing.T) {
 		},
 	}
 
-	var any Output
+	var anyout Output
 	err := RunErr(func(ctx *Context) error {
 		var res testResource2
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
@@ -930,14 +930,14 @@ func TestExportResource(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		any = Any(&res)
+		anyout = Any(&res)
 
-		ctx.Export("any", any)
+		ctx.Export("any", anyout)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	state := any.getState()
+	state := anyout.getState()
 	assert.NotNil(t, state.value)
 }
 

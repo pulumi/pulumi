@@ -110,11 +110,8 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := workspace.SetBackendConfigDefaultOrg(cloudURL, orgName); err != nil {
-				return err
-			}
 
-			return nil
+			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
 		}),
 	}
 
