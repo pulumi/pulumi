@@ -231,5 +231,10 @@ func newTeamsUnsupportedError(stackName, backendType string) *teamsUnsupportedEr
 }
 
 func (err teamsUnsupportedError) Error() string {
-	return fmt.Sprintf("stack %s uses the %s backend: %s does not support --teams", err.stackName, err.backendType, err.backendType)
+	return fmt.Sprintf(
+		"stack %s uses the %s backend: %s does not support --teams",
+		err.stackName,
+		err.backendType,
+		err.backendType,
+	)
 }
