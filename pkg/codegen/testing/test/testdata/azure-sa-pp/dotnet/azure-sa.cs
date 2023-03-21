@@ -5,7 +5,9 @@ using Azure = Pulumi.Azure;
 return await Deployment.RunAsync(() => 
 {
     var config = new Config();
+    // The name of the storage account
     var storageAccountNameParam = config.Require("storageAccountNameParam");
+    // The name of the resource group
     var resourceGroupNameParam = config.Require("resourceGroupNameParam");
     var resourceGroupVar = Azure.Core.GetResourceGroup.Invoke(new()
     {

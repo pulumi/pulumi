@@ -10,7 +10,9 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
+		// The name of the storage account
 		storageAccountNameParam := cfg.Require("storageAccountNameParam")
+		// The name of the resource group
 		resourceGroupNameParam := cfg.Require("resourceGroupNameParam")
 		resourceGroupVar, err := core.LookupResourceGroup(ctx, &core.LookupResourceGroupArgs{
 			Name: resourceGroupNameParam,

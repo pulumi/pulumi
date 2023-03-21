@@ -2,7 +2,9 @@ import pulumi
 import pulumi_azure as azure
 
 config = pulumi.Config()
+# The name of the storage account
 storage_account_name_param = config.require("storageAccountNameParam")
+# The name of the resource group
 resource_group_name_param = config.require("resourceGroupNameParam")
 resource_group_var = azure.core.get_resource_group(name=resource_group_name_param)
 location_param = config.get("locationParam")

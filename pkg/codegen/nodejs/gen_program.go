@@ -464,6 +464,13 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				if configVar.DefaultValue == nil {
 					optional = ""
 				}
+				if configVar.Description != "" {
+					g.Fgenf(w, "%s/**\n", g.Indent)
+					for _, line := range strings.Split(configVar.Description, "\n") {
+						g.Fgenf(w, "%s * %s\n", g.Indent, line)
+					}
+					g.Fgenf(w, "%s */\n", g.Indent)
+				}
 
 				g.Fgenf(w, "%s", g.Indent)
 				typeName := componentInputType(configVar.Type())
@@ -944,6 +951,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	getOrRequire := "get"
 	if v.DefaultValue == nil {
 		getOrRequire = "require"
+	}
+
+	if v.Description != "" {
+		for _, line := range strings.Split(v.Description, "\n") {
+			g.Fgenf(w, "%s// %s\n", g.Indent, line)
+		}
 	}
 
 	name := makeValidIdentifier(v.Name())

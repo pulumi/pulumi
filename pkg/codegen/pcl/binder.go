@@ -333,6 +333,19 @@ func getStringAttrValue(attr *model.Attribute) (string, *hcl.Diagnostic) {
 	}
 }
 
+// Returns the value of constant boolean attribute
+func getBooleanAttributeValue(attr *model.Attribute) (bool, *hcl.Diagnostic) {
+	switch lit := attr.Syntax.Expr.(type) {
+	case *hclsyntax.LiteralValueExpr:
+		if lit.Val.Type() != cty.Bool {
+			return false, boolAttributeError(attr)
+		}
+		return lit.Val.True(), nil
+	default:
+		return false, boolAttributeError(attr)
+	}
+}
+
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {

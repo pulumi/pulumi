@@ -32,7 +32,9 @@ type ConfigVariable struct {
 	Definition *model.Block
 	// The default value for the config variable, if any.
 	DefaultValue model.Expression
-
+	Description  string
+	// Whether the config variable is nullable
+	Nullable bool
 	// The name visible to API calls related to the config. Used as the argument when
 	// fetching config variables. Must not be modified during code generation to ensure
 	// that valid config calls don't become invalid.

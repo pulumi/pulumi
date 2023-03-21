@@ -891,6 +891,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getOrRequire = "Require"
 	}
 
+	if v.Description != "" {
+		for _, line := range strings.Split(v.Description, "\n") {
+			g.Fgenf(w, "%s// %s\n", g.Indent, line)
+		}
+	}
+
 	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
 		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
