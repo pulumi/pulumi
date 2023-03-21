@@ -568,6 +568,11 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 	g.genTemps(w, temps)
 
+	if v.Description != "" {
+		for _, line := range strings.Split(v.Description, "\n") {
+			g.Fgenf(w, "%s# %s\n", g.Indent, line)
+		}
+	}
 	name := PyName(v.Name())
 	g.Fgenf(w, "%s%s = config.%s%s(\"%s\")\n", g.Indent, name, getOrRequire, getType, v.LogicalName())
 	if defaultValue != nil {

@@ -1,7 +1,9 @@
 config storageAccountNameParam string {
+    description = "The name of the storage account"
 }
 
 config resourceGroupNameParam string {
+    description = "The name of the resource group"
 }
 
 resourceGroupVar = invoke("azure:core/getResourceGroup:getResourceGroup", {

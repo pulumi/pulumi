@@ -3,7 +3,14 @@ import * as random from "@pulumi/random";
 import { SimpleComponent } from "./simpleComponent";
 
 interface ExampleComponentArgs {
+    /**
+     * A simple input
+     */
     input: pulumi.Input<string>,
+    /**
+     * The main CIDR blocks for the VPC
+     * It is a map of strings
+     */
     cidrBlocks: pulumi.Input<Record<string, pulumi.Input<string>>>,
     ipAddress: pulumi.Input<number[]>,
 }

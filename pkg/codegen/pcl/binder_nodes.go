@@ -119,6 +119,25 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 			node.logicalName = logicalName
 		}
 	}
+
+	if descriptionAttr, ok := block.Body.Attribute("description"); ok {
+		description, diags := getStringAttrValue(descriptionAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Description = description
+		}
+	}
+
+	if nullableAttr, ok := block.Body.Attribute("nullable"); ok {
+		nullable, diags := getBooleanAttributeValue(nullableAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Nullable = nullable
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

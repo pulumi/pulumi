@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,go,nodejs,python
+  description: Implement description as comments or docstring for config variables in program-gen

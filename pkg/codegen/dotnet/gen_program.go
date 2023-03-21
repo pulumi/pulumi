@@ -517,6 +517,13 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			g.Indented(func() {
 				for _, configVar := range configVars {
 					inputType := componentInputType(configVar.Type())
+					if configVar.Description != "" {
+						g.Fgenf(w, "%s/// <summary>\n", g.Indent)
+						for _, line := range strings.Split(configVar.Description, "\n") {
+							g.Fgenf(w, "%s/// %s\n", g.Indent, line)
+						}
+						g.Fgenf(w, "%s/// </summary>\n", g.Indent)
+					}
 					g.Fprintf(w, "%s[Input(\"%s\")]\n", g.Indent, configVar.LogicalName())
 					g.Fprintf(w, "%spublic %s %s { get; set; } = ",
 						g.Indent,
@@ -1149,6 +1156,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	getOrRequire := "Get"
 	if v.DefaultValue == nil {
 		getOrRequire = "Require"
+	}
+
+	if v.Description != "" {
+		for _, line := range strings.Split(v.Description, "\n") {
+			g.Fgenf(w, "%s// %s\n", g.Indent, line)
+		}
 	}
 
 	name := makeValidIdentifier(v.Name())

@@ -6,8 +6,15 @@ namespace Components
 {
     public class ExampleComponentArgs : global::Pulumi.ResourceArgs
     {
+        /// <summary>
+        /// A simple input
+        /// </summary>
         [Input("input")]
         public Input<string> Input { get; set; } = null!;
+        /// <summary>
+        /// The main CIDR blocks for the VPC
+        /// It is a map of strings
+        /// </summary>
         [Input("cidrBlocks")]
         public InputMap<string> CidrBlocks { get; set; } = null!;
         [Input("ipAddress")]

@@ -1,6 +1,10 @@
-config input string { }
+config input string {
+    description = "A simple input"
+}
 
-config cidrBlocks "map(string)" { }
+config cidrBlocks "map(string)" {
+    description = "The main CIDR blocks for the VPC\nIt is a map of strings"
+}
 
 config ipAddress "list(int)" { }
 
