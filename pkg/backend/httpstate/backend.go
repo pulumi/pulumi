@@ -570,6 +570,10 @@ func (b *cloudBackend) SupportsTags() bool {
 	return true
 }
 
+func (b *cloudBackend) SupportsTeams() bool {
+	return true
+}
+
 func (b *cloudBackend) SupportsOrganizations() bool {
 	return true
 }
@@ -816,9 +820,14 @@ func currentProjectContradictsWorkspace(project *workspace.Project, stack client
 
 func (b *cloudBackend) CreateStack(
 	ctx context.Context, stackRef backend.StackReference, root string,
-	_ interface{} /* No custom options for httpstate backend. */) (
+	opts *backend.CreateStackOptions,
+) (
 	backend.Stack, error,
 ) {
+	if opts == nil {
+		opts = &backend.CreateStackOptions{}
+	}
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -830,7 +839,7 @@ func (b *cloudBackend) CreateStack(
 
 	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags)
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {

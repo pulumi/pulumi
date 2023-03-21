@@ -40,11 +40,12 @@ type MockBackend struct {
 	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 	SupportsTagsF          func() bool
 	SupportsOrganizationsF func() bool
+	SupportsTeamsF         func() bool
 	ParseStackReferenceF   func(s string) (StackReference, error)
 	ValidateStackNameF     func(s string) error
 	DoesProjectExistF      func(context.Context, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
-	CreateStackF           func(context.Context, StackReference, string, interface{}) (Stack, error)
+	CreateStackF           func(context.Context, StackReference, string, *CreateStackOptions) (Stack, error)
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
 	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
@@ -128,6 +129,13 @@ func (be *MockBackend) SupportsTags() bool {
 	panic("not implemented")
 }
 
+func (be *MockBackend) SupportsTeams() bool {
+	if be.SupportsTeamsF != nil {
+		return be.SupportsTeamsF()
+	}
+	panic("not implemented")
+}
+
 func (be *MockBackend) SupportsOrganizations() bool {
 	if be.SupportsOrganizationsF != nil {
 		return be.SupportsOrganizationsF()
@@ -164,7 +172,7 @@ func (be *MockBackend) GetStack(ctx context.Context, stackRef StackReference) (S
 }
 
 func (be *MockBackend) CreateStack(ctx context.Context, stackRef StackReference,
-	root string, opts interface{},
+	root string, opts *CreateStackOptions,
 ) (Stack, error) {
 	if be.CreateStackF != nil {
 		return be.CreateStackF(ctx, stackRef, root, opts)

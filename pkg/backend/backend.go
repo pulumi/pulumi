@@ -139,8 +139,12 @@ type Backend interface {
 
 	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
 	SupportsTags() bool
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
+
+	// SupportsTeams tells whether a stack can have granular team permissions assigned to it.
+	SupportsTeams() bool
 
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
@@ -155,7 +159,7 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, root string, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
 
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
@@ -357,4 +361,14 @@ func (c *backendClient) GetStackResourceOutputs(
 		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
 	}
 	return pm, nil
+}
+
+// CreateStackOptions provides options for stack creation.
+// At present, options only apply to the Service.
+type CreateStackOptions struct {
+	// Teams is a list of teams who should have access to
+	// the newly created stack.
+	// This option is only appropriate for backends
+	// which support teams (i.e. the Pulumi Service).
+	Teams []string
 }
