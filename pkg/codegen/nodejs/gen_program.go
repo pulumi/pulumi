@@ -403,11 +403,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 func componentElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
-		return "bool"
-	case model.IntType:
-		return "int"
-	case model.NumberType:
-		return "double"
+		return "boolean"
+	case model.IntType, model.NumberType:
+		return "number"
 	case model.StringType:
 		return "string"
 	default:
@@ -417,7 +415,7 @@ func componentElementType(pclType model.Type) string {
 			return fmt.Sprintf("%s[]", elementType)
 		case *model.MapType:
 			elementType := componentElementType(pclType.ElementType)
-			return fmt.Sprintf("{ [k: string]: %s }", elementType)
+			return fmt.Sprintf("Record<string, pulumi.Input<%s>>", elementType)
 		case *model.OutputType:
 			// something is already an output
 			// get only the element type because we are wrapping these in Output<T> anyway

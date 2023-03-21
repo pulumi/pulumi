@@ -8,6 +8,10 @@ namespace Components
     {
         [Input("input")]
         public Input<string> Input { get; set; } = null!;
+        [Input("cidrBlocks")]
+        public InputMap<string> CidrBlocks { get; set; } = null!;
+        [Input("ipAddress")]
+        public InputList<int> IpAddress { get; set; } = null!;
     }
 
     public class ExampleComponent : global::Pulumi.ComponentResource

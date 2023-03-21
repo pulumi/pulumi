@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/afero"
 
@@ -157,4 +161,109 @@ func TestWritingProgramSource(t *testing.T) {
 	exampleMainExists, err := afero.Exists(fs, "/exampleComponent/main.pp")
 	assert.NoError(t, err, "failed to get the main file of example component")
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
+}
+
+func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(text), name)
+	if err != nil {
+		t.Fatalf("could not read %v: %v", name, err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
+	}
+
+	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+
+	program, diags, err := pcl.BindProgram(parser.Files, options...)
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
+	return program, diags
+}
+
+func TestConfigNodeTypedString(t *testing.T) {
+	t.Parallel()
+	source := "config cidrBlock string { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "cidrBlock")
+	assert.Equal(t, config.Type(), model.StringType, "the type is a string")
+}
+
+func TestConfigNodeTypedInt(t *testing.T) {
+	t.Parallel()
+	source := "config count int { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "count")
+	assert.Equal(t, config.Type(), model.IntType, "the type is a string")
+}
+
+func TestConfigNodeTypedStringList(t *testing.T) {
+	t.Parallel()
+	source := "config names \"list(string)\" { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "names")
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.Equal(t, listType.ElementType, model.StringType, "the element type is a string")
+}
+
+func TestConfigNodeTypedIntList(t *testing.T) {
+	t.Parallel()
+	source := "config names \"list(int)\" { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "names")
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.Equal(t, listType.ElementType, model.IntType, "the element type is an int")
+}
+
+func TestConfigNodeTypedStringMap(t *testing.T) {
+	t.Parallel()
+	source := "config names \"map(string)\" { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "names")
+	mapType, ok := config.Type().(*model.MapType)
+	assert.True(t, ok, "the type of config is a map type")
+	assert.Equal(t, mapType.ElementType, model.StringType, "the element type is a string")
+}
+
+func TestConfigNodeTypedIntMap(t *testing.T) {
+	t.Parallel()
+	source := "config names \"map(int)\" { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "names")
+	mapType, ok := config.Type().(*model.MapType)
+	assert.True(t, ok, "the type of config is a map type")
+	assert.Equal(t, mapType.ElementType, model.IntType, "the element type is an int")
 }
