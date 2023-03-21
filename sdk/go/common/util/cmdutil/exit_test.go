@@ -31,7 +31,7 @@ func TestRunFunc_Bail(t *testing.T) {
 	require.NoError(t, err)
 
 	cmd := exec.Command(exe, "-test.run=^TestFakeCommand$")
-	cmd.Env = []string{"TEST_FAKE=1"}
+	cmd.Env = append(os.Environ(), "TEST_FAKE=1")
 
 	// Write output to the buffer and to the test logger.
 	var buff bytes.Buffer
