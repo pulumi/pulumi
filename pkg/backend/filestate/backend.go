@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -171,14 +171,6 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		}
 	}
 
-	isAcc, err := bucket.IsAccessible(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to check if bucket %s is accessible: %w", u, err)
-	}
-	if !isAcc {
-		return nil, fmt.Errorf("bucket %s is not accessible", u)
-	}
-
 	// Allocate a unique lock ID for this backend instance.
 	lockID, err := uuid.NewV4()
 	if err != nil {
@@ -188,6 +180,8 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
 
 	wbucket := &wrappedBucket{bucket: bucket}
+	bucket = nil // prevent accidental use of unwrapped bucket
+
 	backend := &localBackend{
 		d:              d,
 		originalURL:    originalURL,
@@ -198,6 +192,19 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		currentProject: project,
 		store:          newLegacyReferenceStore(wbucket),
 	}
+
+	// Read the Pulumi state metadata
+	// and ensure that it is compatible with this version of the CLI.
+	meta, err := ensurePulumiMeta(ctx, wbucket)
+	if err != nil {
+		return nil, err
+	}
+	if meta.Version != 0 {
+		return nil, fmt.Errorf(
+			"state store unsupported: 'Pulumi.yaml' version (%d) is not supported "+
+				"by this version of the Pulumi CLI", meta.Version)
+	}
+
 	return backend, nil
 }
 

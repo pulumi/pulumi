@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	user "github.com/tweekmonster/luser"
+	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -503,4 +505,24 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 		// the code should be unreachable.
 		assert.NoError(t, err)
 	})
+}
+
+func TestNew_unsupportedStoreVersion(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that we fail to initialize a backend if the store version is
+	// newer than the CLI version.
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	// Set up a Pulumi.yaml "from the future".
+	ctx := context.Background()
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/Pulumi.yaml", []byte("version: 999999999"), nil))
+
+	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), nil)
+	assert.ErrorContains(t, err, "state store unsupported")
+	assert.ErrorContains(t, err, "'Pulumi.yaml' version (999999999) is not supported")
 }
