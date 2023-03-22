@@ -1163,6 +1163,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err != nil {
 		return nil, err
 	}
+	defer pulumiCtx.Close()
 
 	err = func() (err error) {
 		defer func() {
