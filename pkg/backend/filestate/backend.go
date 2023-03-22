@@ -129,7 +129,31 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
+// New constructs a new filestate backend using the default options
+// and the given project as the current project.
 func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
+	return NewWithOptions(ctx, d, originalURL, &Options{Project: project})
+}
+
+// Options defines the optional parameters for the filestate backend.
+type Options struct {
+	// Project is the current ambient project for the backend, if any.
+	//
+	// This may be changed with SetCurrentProject after the backend is created.
+	Project *workspace.Project
+}
+
+// New constructs a new filestate backend,
+// using the given URL as the root for storage.
+// The URL must use one of the schemes supported by the go-cloud blob package.
+// Thes inclue: file, s3, gs, azblob.
+//
+// Options may be nil to use the default options.
+func NewWithOptions(ctx context.Context, d diag.Sink, originalURL string, opts *Options) (Backend, error) {
+	if opts == nil {
+		opts = &Options{}
+	}
+
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -192,7 +216,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		gzip:        gzipCompression,
 		store:       newLegacyReferenceStore(wbucket),
 	}
-	backend.currentProject.Store(project)
+	backend.currentProject.Store(opts.Project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
