@@ -14,12 +14,12 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, Mapping, Any, List, Optional
+from typing import Any, Callable, List, Mapping, Optional
 
-from ._stack_settings import StackSettings
-from ._project_settings import ProjectSettings
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
+from ._project_settings import ProjectSettings
+from ._stack_settings import StackSettings
 from ._tag import TagMap
 
 PulumiFn = Callable[[], None]
@@ -56,11 +56,14 @@ class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
-    url: str
+    url: Optional[str]
     organizations: Optional[List[str]]
 
     def __init__(
-        self, user: str, url: str, organizations: Optional[List[str]] = None
+        self,
+        user: str,
+        url: Optional[str] = None,
+        organizations: Optional[List[str]] = None,
     ) -> None:
         self.user = user
         self.url = url

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -352,17 +352,27 @@ func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 // WhoAmIDetails returns detailed information about the currently
 // logged-in Pulumi identity.
 func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error) {
-	var whoAmIDetailedInfo WhoAmIResult
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami", "--json")
-	if err != nil {
-		return whoAmIDetailedInfo, newAutoError(
-			fmt.Errorf("could not retrieve WhoAmIDetailedInfo: %w", err), stdout, stderr, errCode)
+	// 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
+	if l.pulumiVersion.GTE(semver.Version{Major: 3, Minor: 58}) {
+		var whoAmIDetailedInfo WhoAmIResult
+		stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami", "--json")
+		if err != nil {
+			return whoAmIDetailedInfo, newAutoError(
+				fmt.Errorf("could not retrieve WhoAmIDetailedInfo: %w", err), stdout, stderr, errCode)
+		}
+		err = json.Unmarshal([]byte(stdout), &whoAmIDetailedInfo)
+		if err != nil {
+			return whoAmIDetailedInfo, fmt.Errorf("unable to unmarshal WhoAmIDetailedInfo: %w", err)
+		}
+		return whoAmIDetailedInfo, nil
 	}
-	err = json.Unmarshal([]byte(stdout), &whoAmIDetailedInfo)
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
 	if err != nil {
-		return whoAmIDetailedInfo, fmt.Errorf("unable to unmarshal WhoAmIDetailedInfo: %w", err)
+		return WhoAmIResult{}, newAutoError(
+			fmt.Errorf("could not determine authenticated user: %w", err), stdout, stderr, errCode)
 	}
-	return whoAmIDetailedInfo, nil
+	return WhoAmIResult{User: strings.TrimSpace(stdout)}, nil
 }
 
 // Stack returns a summary of the currently selected stack, if any.
