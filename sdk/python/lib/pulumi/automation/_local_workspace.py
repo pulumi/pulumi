@@ -1,4 +1,4 @@
-# Copyright 2016-2022, Pulumi Corporation.
+# Copyright 2016-2023, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,31 +14,32 @@
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
-import json
 from datetime import datetime
-from typing import Optional, List, Mapping, Callable, Union, TYPE_CHECKING
-from semver import VersionInfo
-import yaml
+from typing import TYPE_CHECKING, Callable, List, Mapping, Optional, Union
 
-from ._config import ConfigMap, ConfigValue, _SECRET_SENTINEL
+import yaml
+from semver import VersionInfo
+
+from ._cmd import CommandResult, OnOutput, _run_pulumi_cmd
+from ._config import _SECRET_SENTINEL, ConfigMap, ConfigValue
+from ._minimum_version import _MINIMUM_VERSION
+from ._output import OutputMap, OutputValue
 from ._project_settings import ProjectSettings
+from ._stack import _DATETIME_FORMAT, Stack
 from ._stack_settings import StackSettings
+from ._tag import TagMap
 from ._workspace import (
-    Workspace,
+    Deployment,
     PluginInfo,
+    PulumiFn,
     StackSummary,
     WhoAmIResult,
-    PulumiFn,
-    Deployment,
+    Workspace,
 )
-from ._stack import _DATETIME_FORMAT, Stack
-from ._output import OutputMap, OutputValue
-from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
-from ._minimum_version import _MINIMUM_VERSION
 from .errors import InvalidVersionError
-from ._tag import TagMap
 
 if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
@@ -295,9 +296,19 @@ class LocalWorkspace(Workspace):
         return json.loads(result.stdout)
 
     def who_am_i(self) -> WhoAmIResult:
-        result = self._run_pulumi_cmd_sync(["whoami", "--json"])
-        who_am_i_json = json.loads(result.stdout)
-        return WhoAmIResult(**who_am_i_json)
+        # Assume an old version. Doesn't really matter what this is as long as it's pre-3.58.
+        ver = VersionInfo(3)
+        if self.__pulumi_version is not None:
+            ver = VersionInfo.parse(self.__pulumi_version)
+
+        # 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
+        if ver >= VersionInfo(3, 58):
+            result = self._run_pulumi_cmd_sync(["whoami", "--json"])
+            who_am_i_json = json.loads(result.stdout)
+            return WhoAmIResult(**who_am_i_json)
+
+        result = self._run_pulumi_cmd_sync(["whoami"])
+        return WhoAmIResult(user=result.stdout.strip())
 
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()

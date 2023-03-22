@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/go,nodejs,python
+  description: Fix calling WhoAmI against pre 3.58 CLIs.

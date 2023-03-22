@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import { ProjectSettings } from "./projectSettings";
 import { RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
-import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 import { TagMap } from "./tag";
+import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
@@ -547,8 +547,22 @@ export class LocalWorkspace implements Workspace {
      * Returns the currently authenticated user.
      */
     async whoAmI(): Promise<WhoAmIResult> {
-        const result = await this.runPulumiCmd(["whoami", "--json"]);
-        return JSON.parse(result.stdout);
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.58.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
+        if (ver.compare("3.58.0") >= 0) {
+            const result = await this.runPulumiCmd(["whoami", "--json"]);
+            return JSON.parse(result.stdout);
+        }
+        else
+        {
+            const result = await this.runPulumiCmd(["whoami"]);
+            return {user: result.stdout.trim()};
+        }
     }
     /**
      * Returns a summary of the currently selected stack, if any.

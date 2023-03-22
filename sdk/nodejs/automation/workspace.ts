@@ -289,7 +289,7 @@ export type PulumiFn = () => Promise<Record<string, any> | void>;
  */
 export interface WhoAmIResult {
     user: string;
-    url: string;
+    url?: string;
     organizations?: string[];
 }
 
