@@ -164,8 +164,13 @@ if __name__ == "__main__":
             try:
                 return runpy.run_path(args.PROGRAM, run_name='__main__')
             except ImportError as e:
+                def fix_module_file(m: str) -> str:
+                    # Work around python 11 reporting "<frozen runpy>" rather
+                    # than runpy.__file__ in the traceback.
+                    return runpy.__file__ if m == "<frozen runpy>" else m
+
                 # detect if the main pulumi python program does not exist
-                stack_modules = [f.filename for f in traceback.extract_tb(e.__traceback__)]
+                stack_modules = [fix_module_file(f.filename) for f in traceback.extract_tb(e.__traceback__)]
                 unique_modules = set(module for module in stack_modules)
                 last_module_name = stack_modules[-1]
 
