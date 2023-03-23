@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.59.0 (2023-03-22)
+
+
+### Features
+
+- [programgen] PCL program.WriteSource(afero.Fs) writes the full directory tree of PCL source files.
+  [#12428](https://github.com/pulumi/pulumi/pull/12428)
+
+- [programgen/{dotnet,go,nodejs,python}] Implement description as comments or docstring for config variables in program-gen
+  [#12464](https://github.com/pulumi/pulumi/pull/12464)
+
+- [programgen/{dotnet,nodejs}] Component resources implementation including nested components
+  [#12398](https://github.com/pulumi/pulumi/pull/12398)
+
+- [backend/service] Add "--teams" flag to assign team name to stack during init
+  [#11974](https://github.com/pulumi/pulumi/pull/11974)
+
+
+### Bug Fixes
+
+- [auto/go] Fix memory leak in stack.Up() in Automation API.
+  [#12475](https://github.com/pulumi/pulumi/pull/12475)
+
+- [auto/{go,nodejs,python}] Fix calling WhoAmI against pre 3.58 CLIs.
+  [#12466](https://github.com/pulumi/pulumi/pull/12466)
+
+- [engine] Fixed automatic plugin downloads for third-party plugins.
+  [#12441](https://github.com/pulumi/pulumi/pull/12441)
+
+- [programgen/python] Fix handling of reserved words in imports.
+  [#12447](https://github.com/pulumi/pulumi/pull/12447)
+
+
+### Miscellaneous
+
+- [ci] Bumps python version in matrix to 3.11
+  [#11238](https://github.com/pulumi/pulumi/pull/11238)
+
 ## 3.58.0 (2023-03-15)
 
 

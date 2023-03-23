@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/dotnet,nodejs
-  description: Component resources implementation including nested components
