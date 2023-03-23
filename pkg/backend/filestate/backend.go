@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -64,6 +65,22 @@ import (
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
 // to enable gzip compression when using the filestate backend.
 const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
+
+// TODO[pulumi/pulumi#12539]:
+// This section contains names of environment variables
+// that affect the behavior of the backend.
+//
+// These must all be registered in common/env so that they're available
+// with the 'pulumi env' command.
+// However, we don't currently use env.Value() to access their values
+// because it prevents us from overriding the definition of os.Getenv
+// in tests.
+var (
+	// PulumiFilestateNoLegacyWarningEnvVar is an env var that must be truthy
+	// to disable the warning printed by the filestate backend
+	// when it detects that the state has both, project-scoped and legacy stacks.
+	PulumiFilestateNoLegacyWarningEnvVar = env.SelfManagedStateNoLegacyWarning.Var().Name()
+)
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -241,17 +258,55 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		return nil, err
 	}
 
+	// projectMode tracks whether the current state supports project-scoped stacks.
+	// Historically, the filestate backend did not support this.
+	// To avoid breaking old stacks, we use legacy mode for existing states.
+	// We use project mode only if one of the following is true:
+	//
+	//  - The state has a single .pulumi/meta.yaml file
+	//    and the version is 1 or greater.
+	//  - The state is entirely new
+	//    so there's no risk of breaking old stacks.
+	//
+	// All actual logic of project mode vs legacy mode is handled by the referenceStore.
+	// This boolean just helps us warn users about unmigrated stacks.
+	var projectMode bool
 	switch meta.Version {
 	case 0:
 		backend.store = newLegacyReferenceStore(wbucket)
 	case 1:
 		backend.store = newProjectReferenceStore(wbucket, backend.currentProject.Load)
+		projectMode = true
 	default:
 		return nil, fmt.Errorf(
 			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
 				"by this version of the Pulumi CLI", meta.Version)
 	}
 
+	// If we're not in project mode, or we've disabled the warning, we're done.
+	if !projectMode || cmdutil.IsTruthy(os.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
+		return backend, nil
+	}
+	// Otherwise, warn about any old stack files.
+	// This is possible if a user creates a new stack with a new CLI,
+	// but someone else interacts with the same state with an old CLI.
+
+	refs, err := newLegacyReferenceStore(wbucket).ListReferences()
+	if err != nil {
+		// If there's an error listing don't fail, just don't print the warnings
+		return backend, nil
+	}
+	if len(refs) == 0 {
+		return backend, nil
+	}
+
+	var msg strings.Builder
+	msg.WriteString("Found legacy stack files in state store:\n")
+	for _, ref := range refs {
+		fmt.Fprintf(&msg, "  - %s\n", ref.Name())
+	}
+	msg.WriteString("Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.")
+	d.Warningf(diag.Message("", msg.String()))
 	return backend, nil
 }
 

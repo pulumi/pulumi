@@ -68,3 +68,9 @@ fail without a --force parameter.`)
 
 var DebugGRPC = env.String("DEBUG_GRPC", `Enables debug tracing of Pulumi gRPC internals.
 The variable should be set to the log file to which gRPC debug traces will be sent.`)
+
+// Environment variables that affect the self-managed backend.
+var (
+	SelfManagedStateNoLegacyWarning = env.Bool("SELF_MANAGED_STATE_NO_LEGACY_WARNING",
+		"Disables the warning about legacy stack files mixed with project-scoped stack files.")
+)

@@ -1,9 +1,11 @@
 package filestate
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -24,6 +26,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -729,6 +733,78 @@ func TestProjectNameMustMatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "c", cStack.Ref().String())
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "c.json"))
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestNew_legacyFileWarning(t *testing.T) {
+	// Verifies the names of files printed in warnings
+	// when legacy files are found while running in project mode.
+
+	tests := []struct {
+		desc    string
+		files   map[string]string
+		env     map[string]string
+		wantOut string
+	}{
+		{
+			desc: "no legacy stacks",
+			files: map[string]string{
+				// Should ignore non-stack files.
+				".pulumi/foo/extraneous_file": "",
+			},
+		},
+		{
+			desc: "legacy stacks",
+			files: map[string]string{
+				".pulumi/stacks/a.json":     "{}",
+				".pulumi/stacks/b.json":     "{}",
+				".pulumi/stacks/c.json.bak": "{}", // should ignore backup files
+			},
+			wantOut: "warning: Found legacy stack files in state store:\n" +
+				"  - a\n" +
+				"  - b\n" +
+				"Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.\n",
+		},
+		{
+			desc: "warning opt-out",
+			files: map[string]string{
+				".pulumi/stacks/a.json": "{}",
+				".pulumi/stacks/b.json": "{}",
+			},
+			env: map[string]string{
+				"PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING": "true",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+
+			stateDir := t.TempDir()
+			bucket, err := fileblob.OpenBucket(stateDir, nil)
+			require.NoError(t, err)
+
+			ctx := context.Background()
+			require.NoError(t,
+				bucket.WriteAll(ctx, ".pulumi/meta.yaml", []byte("version: 1"), nil),
+				"write meta.yaml")
+
+			for path, contents := range tt.files {
+				require.NoError(t, bucket.WriteAll(ctx, path, []byte(contents), nil),
+					"write %q", path)
+			}
+
+			var buff bytes.Buffer
+			sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
+			_, err = New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantOut, buff.String())
+		})
+	}
 }
 
 func TestNew_unsupportedStoreVersion(t *testing.T) {
