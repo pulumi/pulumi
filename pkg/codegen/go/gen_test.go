@@ -419,6 +419,7 @@ func TestTitle(t *testing.T) {
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
+	t.Parallel()
 	pkgSpec := schema.PackageSpec{
 		Name:      "test",
 		Version:   "0.0.1",
