@@ -10,7 +10,8 @@ permissions:
 
 on:
   pull_request:
-
+    paths-ignore:
+      - '.version'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
