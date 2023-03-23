@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Improve CLI upgrade instructions for macOS.

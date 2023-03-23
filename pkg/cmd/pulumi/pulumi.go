@@ -535,7 +535,7 @@ func getUpgradeCommand() string {
 		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
 	}
 	if isBrew {
-		return "$ brew upgrade pulumi"
+		return "$ brew update && brew upgrade pulumi"
 	}
 
 	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, workspace.BookkeepingDir, "bin") {
