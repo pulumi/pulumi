@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: Fixes emission of dup types breaking Go compilation when chunking >500 helper types
