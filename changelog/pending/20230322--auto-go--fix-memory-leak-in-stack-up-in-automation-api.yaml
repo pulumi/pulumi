@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Fix memory leak in stack.Up() in Automation API.
