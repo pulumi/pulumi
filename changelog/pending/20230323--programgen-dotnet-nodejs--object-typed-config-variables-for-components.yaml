@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,nodejs
+  description: Object-typed config variables for components
