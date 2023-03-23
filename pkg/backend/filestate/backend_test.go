@@ -1016,3 +1016,35 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 	assert.Contains(t, string(deployment.Deployment), createdStr)
 	assert.Contains(t, string(deployment.Deployment), modifiedStr)
 }
+
+func TestUpgrade_manyFailures(t *testing.T) {
+	t.Parallel()
+
+	const (
+		numStacks    = 100
+		badStackBody = `{"latest": {"resources": []}}`
+	)
+
+	tmpDir := t.TempDir()
+
+	bucket, err := fileblob.OpenBucket(tmpDir, nil)
+	require.NoError(t, err)
+	ctx := context.Background()
+	for i := 0; i < numStacks; i++ {
+		stackPath := path.Join(".pulumi", "stacks", fmt.Sprintf("stack-%d.json", i))
+		require.NoError(t, bucket.WriteAll(ctx, stackPath, []byte(badStackBody), nil))
+	}
+
+	var output bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &output, diag.FormatOptions{Color: colors.Never})
+
+	// Login to a temp dir filestate backend
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+
+	require.NoError(t, b.Upgrade(ctx))
+	out := output.String()
+	for i := 0; i < numStacks; i++ {
+		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
+	}
+}

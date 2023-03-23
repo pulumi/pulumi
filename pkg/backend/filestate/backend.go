@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -346,16 +347,59 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 	}
 
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
-	var upgraded int
-	for _, old := range olds {
-		if err := b.upgradeStack(ctx, newStore, old); err != nil {
-			b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
-			continue
-		}
-		upgraded++
+
+	// There's no limit to the number of stacks we need to upgrade.
+	// We don't want to overload the system with too many concurrent upgrades.
+	// We'll run a fixed pool of goroutines to upgrade stacks.
+	// They'll work their way through the list of old stacks
+	// using nextIdx to track which stack to upgrade next.
+	var (
+		// Index into olds for goroutines to track
+		// which stack they're upgrading.
+		nextIdx atomic.Int64
+
+		// Number of stacks successfully upgraded.
+		upgraded atomic.Int64
+
+		wg sync.WaitGroup
+	)
+
+	// GOMAXPROCS defaults to the number of cores on the system,
+	// so this should be a reasonable default.
+	numWorkers := runtime.GOMAXPROCS(0)
+	if count := len(olds); count < numWorkers {
+		// Don't need more workers than work.
+		numWorkers = count
 	}
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				// Add returns the new value of the atomic,
+				// so we need to subtract 1 from the result.
+				idx := nextIdx.Add(1) - 1
+
+				// List of old stacks has been exhausted.
+				// We're done.
+				if idx >= int64(len(olds)) {
+					return
+				}
+
+				old := olds[idx]
+				if err := b.upgradeStack(ctx, newStore, old); err != nil {
+					b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
+				} else {
+					upgraded.Add(1)
+				}
+			}
+		}()
+	}
+	wg.Wait()
 	b.store = newStore
-	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded)
+	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded.Load())
 	return nil
 }
 
