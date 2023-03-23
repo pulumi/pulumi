@@ -15,10 +15,15 @@
 package diag
 
 import (
+	"bytes"
+	"fmt"
 	"io"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -63,4 +68,70 @@ func TestEscape(t *testing.T) {
 	// Passing % chars in the format string, on the other hand, should.
 	pmiss, smiss := sink.Stringify(Error, Message("", "lots of %v %s %d chars"))
 	assert.Equal(t, "error: lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars\n", pmiss+smiss)
+}
+
+func TestDefaultSink_concurrency(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that we can safely log to the sink concurrently.
+
+	const (
+		NumWorkers = 10  // number of concurrent loggers
+		NumLogs    = 100 // number of logs per worker
+	)
+
+	levels := []Severity{Debug, Info, Infoerr, Warning, Error}
+	var out bytes.Buffer
+	sink := DefaultSink(&out, &out, FormatOptions{
+		Debug: true,
+		Color: colors.Never,
+	})
+
+	var wg sync.WaitGroup
+	for i := 0; i < NumWorkers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			for j := 0; j < NumLogs; j++ {
+				for _, level := range levels {
+					sink.Logf(level, Message("", "worker(%d) log(%d) level(%s)"), i, j, level)
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	got := out.String()
+	assert.Equal(t,
+		len(levels)*NumWorkers*NumLogs,
+		strings.Count(got, "\n"))
+
+	for i := 0; i < NumWorkers; i++ {
+		for j := 0; j < NumLogs; j++ {
+			for _, level := range levels {
+				want := fmt.Sprintf("worker(%d) log(%d) level(%s)\n", i, j, level)
+				require.Contains(t, got, want)
+				// Require instead of assert to avoid flooding
+				// the test log in case of failures.
+			}
+		}
+	}
+}
+
+func TestDefaultSink_uncomparableWriters(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that we don't panic
+	// when a writer is not comparable with ==.
+
+	out := struct {
+		io.Writer
+		// Slices are not comparable with ==.
+		Foo []string
+	}{Writer: io.Discard}
+
+	assert.NotPanics(t, func() {
+		DefaultSink(out, out, FormatOptions{Color: colors.Never})
+	})
 }
