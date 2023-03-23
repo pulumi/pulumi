@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -87,7 +88,7 @@ type localBackend struct {
 	gzip bool
 
 	// The current project, if any.
-	currentProject *workspace.Project
+	currentProject atomic.Pointer[workspace.Project]
 
 	// The store controls the layout of stacks in the backend.
 	store referenceStore
@@ -183,15 +184,15 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	bucket = nil // prevent accidental use of unwrapped bucket
 
 	backend := &localBackend{
-		d:              d,
-		originalURL:    originalURL,
-		url:            u,
-		bucket:         wbucket,
-		lockID:         lockID.String(),
-		gzip:           gzipCompression,
-		currentProject: project,
-		store:          newLegacyReferenceStore(wbucket),
+		d:           d,
+		originalURL: originalURL,
+		url:         u,
+		bucket:      wbucket,
+		lockID:      lockID.String(),
+		gzip:        gzipCompression,
+		store:       newLegacyReferenceStore(wbucket),
 	}
+	backend.currentProject.Store(project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
@@ -285,7 +286,7 @@ func (b *localBackend) URL() string {
 }
 
 func (b *localBackend) SetCurrentProject(project *workspace.Project) {
-	b.currentProject = project
+	b.currentProject.Store(project)
 }
 
 func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
@@ -367,7 +368,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject.Load())
 
 	if err = validation.ValidateStackProperties(stackName.Name().String(), tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
