@@ -12,6 +12,26 @@ interface ExampleComponentArgs {
      * It is a map of strings
      */
     cidrBlocks: pulumi.Input<Record<string, pulumi.Input<string>>>,
+    /**
+     * GitHub app parameters, see your github app. Ensure the key is the base64-encoded `.pem` file (the output of `base64 app.private-key.pem`, not the content of `private-key.pem`).
+     */
+    githubApp: {
+        id?: pulumi.Input<string>,
+        keyBase64?: pulumi.Input<string>,
+        webhookSecret?: pulumi.Input<string>,
+    },
+    /**
+     * A list of servers
+     */
+    servers: {
+        name?: pulumi.Input<string>,
+    }[],
+    /**
+     * A map between for zones
+     */
+    deploymentZones: Record<string, {
+        zone?: pulumi.Input<string>,
+    }>,
     ipAddress: pulumi.Input<number[]>,
 }
 
@@ -23,6 +43,14 @@ export class ExampleComponent extends pulumi.ComponentResource {
             length: 16,
             special: true,
             overrideSpecial: args.input,
+        }, {
+            parent: this,
+        });
+
+        const githubPassword = new random.RandomPassword(`${name}-githubPassword`, {
+            length: 16,
+            special: true,
+            overrideSpecial: args.githubApp.webhookSecret,
         }, {
             parent: this,
         });

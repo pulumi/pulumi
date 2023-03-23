@@ -436,6 +436,28 @@ func componentOutputType(pclType model.Type) string {
 	return fmt.Sprintf("pulumi.Output<%s>", elementType)
 }
 
+func (g *generator) genObjectTypedConfig(w io.Writer, objectType *model.ObjectType) {
+	attributeKeys := []string{}
+	for attributeKey := range objectType.Properties {
+		attributeKeys = append(attributeKeys, attributeKey)
+	}
+
+	// get deterministically sorted keys
+	sort.Strings(attributeKeys)
+
+	g.Fgenf(w, "{\n")
+	g.Indented(func() {
+		for _, attributeKey := range attributeKeys {
+			attributeType := objectType.Properties[attributeKey]
+			optional := "?"
+			g.Fgenf(w, "%s", g.Indent)
+			typeName := componentInputType(attributeType)
+			g.Fgenf(w, "%s%s: %s,\n", attributeKey, optional, typeName)
+		}
+	})
+	g.Fgenf(w, "%s}", g.Indent)
+}
+
 func (g *generator) genComponentResourceDefinition(w io.Writer, componentName string, component *pcl.Component) {
 	// Print the @pulumi/pulumi import at the top.
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
@@ -456,7 +478,6 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	configVars := component.Program.ConfigVariables()
 
 	if len(configVars) > 0 {
-		// generate a component args type
 		g.Fgenf(w, "interface %sArgs {\n", title(componentName))
 		g.Indented(func() {
 			for _, configVar := range configVars {
@@ -473,8 +494,38 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 
 				g.Fgenf(w, "%s", g.Indent)
-				typeName := componentInputType(configVar.Type())
-				g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+				switch configVarType := configVar.Type().(type) {
+				case *model.ObjectType:
+					// generate pulumi.Input<{...}>
+					g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+					g.genObjectTypedConfig(w, configVarType)
+					g.Fgen(w, ",\n")
+				case *model.ListType:
+					switch elementType := configVarType.ElementType.(type) {
+					case *model.ObjectType:
+						// generate pulumi.Input<{...}[]>
+						g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
+						g.genObjectTypedConfig(w, elementType)
+						g.Fgen(w, "[],\n")
+					default:
+						typeName := componentInputType(configVar.Type())
+						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+					}
+				case *model.MapType:
+					switch elementType := configVarType.ElementType.(type) {
+					case *model.ObjectType:
+						// generate pulumi.Input<Record<string, {...}>>
+						g.Fgenf(w, "%s%s: Record<string, ", configVar.Name(), optional)
+						g.genObjectTypedConfig(w, elementType)
+						g.Fgen(w, ">,\n")
+					default:
+						typeName := componentInputType(configVar.Type())
+						g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+					}
+				default:
+					typeName := componentInputType(configVar.Type())
+					g.Fgenf(w, "%s%s: %s,\n", configVar.Name(), optional, typeName)
+				}
 			}
 		})
 		g.Fgenf(w, "}\n\n")

@@ -664,6 +664,18 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
+	switch argType := expr.Type().(type) {
+	case *model.ObjectType:
+		if len(argType.Annotations) > 0 {
+			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
+				fullTypeName := fmt.Sprintf("Components.%sArgs.%s",
+					configMetadata.ComponentName,
+					configMetadata.TypeName)
+				g.genObjectConsExpressionWithTypeName(w, expr, fullTypeName, false, nil)
+				return
+			}
+		}
+	}
 	g.genObjectConsExpression(w, expr, expr.Type())
 }
 
@@ -822,6 +834,7 @@ func (g *generator) withinFunctionInvoke(run func()) {
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	rootName := makeValidIdentifier(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {
@@ -830,13 +843,11 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 		if _, isConfig := configVars[expr.RootName]; isConfig {
 			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
-				g.Fgenf(w, "args.%s", Title(expr.RootName))
-				return
+				rootName = fmt.Sprintf("args.%s", Title(expr.RootName))
 			}
 		}
 	}
 
-	rootName := makeValidIdentifier(expr.RootName)
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
 	}

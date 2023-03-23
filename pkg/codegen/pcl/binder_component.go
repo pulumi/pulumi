@@ -57,7 +57,7 @@ func componentInputs(program *Program) map[string]componentInput {
 		switch node := node.(type) {
 		case *ConfigVariable:
 			inputs[node.LogicalName()] = componentInput{
-				required: node.DefaultValue == nil,
+				required: node.DefaultValue == nil && !node.Nullable,
 				key:      node.LogicalName(),
 			}
 		}
