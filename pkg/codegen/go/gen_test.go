@@ -16,6 +16,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -415,4 +416,111 @@ func TestTitle(t *testing.T) {
 	assert.Equal("WaldoThudFred", Title("waldo-ThudFred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
+}
+
+func TestRegressTypeDuplicatesInChunking(t *testing.T) {
+	t.Parallel()
+	pkgSpec := schema.PackageSpec{
+		Name:      "test",
+		Version:   "0.0.1",
+		Resources: make(map[string]schema.ResourceSpec),
+		Types: map[string]schema.ComplexTypeSpec{
+			"test:index:PolicyStatusAutogenRules": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"imageExtractors": {
+							TypeSpec: schema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &schema.TypeSpec{
+									Type: "array",
+									Items: &schema.TypeSpec{
+										Type: "object",
+										Ref:  "#/types/test:index:Im",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"test:index:Im": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"path": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"path"},
+				},
+			},
+		},
+	}
+
+	// Need to ref PolicyStatusAutogenRules in input position to trigger the code path.
+	pkgSpec.Resources["test:index:Res"] = schema.ResourceSpec{
+		InputProperties: map[string]schema.PropertySpec{
+			"a": {
+				TypeSpec: schema.TypeSpec{
+					Ref: "#/types/test:index:PolicyStatusAutogenRules",
+				},
+			},
+		},
+	}
+
+	// Need to have N>500 but N<1000 to obtain 2 chunks.
+	for i := 0; i < 750; i++ {
+		ttok := fmt.Sprintf("test:index:Typ%d", i)
+		pkgSpec.Types[ttok] = schema.ComplexTypeSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type:     "object",
+				Required: []string{"x"},
+				Properties: map[string]schema.PropertySpec{
+					"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
+		}
+	}
+
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	t.Logf("%v", diags.Error())
+	require.False(t, diags.HasErrors())
+
+	fs, err := GeneratePackage("tests", pkg)
+	require.NoError(t, err)
+
+	for f := range fs {
+		t.Logf("Generated %v", f)
+	}
+
+	// Expect to see two chunked files (chunking at n=500).
+	assert.Contains(t, fs, "test/pulumiTypes.go")
+	assert.Contains(t, fs, "test/pulumiTypes1.go")
+	assert.NotContains(t, fs, "test/pulumiTypes2.go")
+
+	// The types defined in the chunks should be mutually exclusive.
+	typedefs := func(s string) []string {
+		var types []string
+		for _, line := range strings.Split(s, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "type") {
+				types = append(types, line)
+			}
+		}
+		sort.Strings(types)
+		return types
+	}
+
+	typedefs1 := typedefs(string(fs["test/pulumiTypes.go"]))
+	typedefs2 := typedefs(string(fs["test/pulumiTypes1.go"]))
+
+	for _, typ := range typedefs1 {
+		assert.NotContains(t, typedefs2, typ)
+	}
+
+	for _, typ := range typedefs2 {
+		assert.NotContains(t, typedefs1, typ)
+	}
 }

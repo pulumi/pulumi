@@ -3817,8 +3817,14 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 			types = types[len(chunk):]
 
+			// To avoid duplicating collection types into every chunk, only pass known to chunk i=0.
+			known := sortedKnownTypes
+			if i != 0 {
+				known = nil
+			}
+
 			buffer := &bytes.Buffer{}
-			err := generateTypes(buffer, pkg, chunk, sortedKnownTypes)
+			err := generateTypes(buffer, pkg, chunk, known)
 			if err != nil {
 				return nil, err
 			}
