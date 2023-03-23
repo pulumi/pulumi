@@ -10,8 +10,8 @@ name: Pull Request
 on:
   pull_request:
     paths:
-      - '!.version'
-
+      - '**' # Run if any file changes…
+      - '!.version' # …except if only this file changes and nothing else.
 jobs:
   no-op:
     name: Skip CI on .version changes
