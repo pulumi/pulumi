@@ -447,11 +447,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.genRange(w, call, true)
 				return
 			}
-			g.Fgenf(w, "%.20v.Select((v, k)", expr.Args[0])
+			g.Fgenf(w, "%.20v.Select((v, k) => new { Key = k, Value = v })", expr.Args[0])
 		case *model.MapType, *model.ObjectType:
-			g.genNYI(w, "MapOrObjectEntries")
+			g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Args[0])
 		}
-		g.Fgenf(w, " => new { Key = k, Value = v })")
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":

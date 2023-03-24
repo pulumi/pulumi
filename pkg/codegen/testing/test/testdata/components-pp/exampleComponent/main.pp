@@ -35,6 +35,22 @@ resource githubPassword "random:index/randomPassword:RandomPassword" {
   overrideSpecial = githubApp.webhookSecret
 }
 
+# Example of iterating a list of objects
+resource serverPasswords "random:index/randomPassword:RandomPassword" {
+   options { range = length(servers) }
+   length = 16
+   special = true
+   overrideSpecial = servers[range.value].name
+}
+
+# Example of iterating a map of objects
+resource zonePasswords "random:index/randomPassword:RandomPassword" {
+   options { range = deploymentZones }
+   length = 16
+   special = true
+   overrideSpecial = range.value.zone
+}
+
 component simpleComponent "../simpleComponent" {}
 
 output result {

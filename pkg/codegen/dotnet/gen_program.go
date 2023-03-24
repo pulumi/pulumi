@@ -375,7 +375,7 @@ type programUsings struct {
 }
 
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
-	systemUsings := codegen.NewStringSet("System.Collections.Generic")
+	systemUsings := codegen.NewStringSet("System.Linq", "System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {

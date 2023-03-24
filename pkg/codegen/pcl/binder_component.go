@@ -169,11 +169,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	})
 	if err != nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))
+		node.VariableType = model.DynamicType
 		return diagnostics
 	}
 
 	if programDiags.HasErrors() || componentProgram == nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), programDiags.Error()))
+		node.VariableType = model.DynamicType
 		return diagnostics
 	}
 

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Pulumi;
 using Random = Pulumi.Random;
 
@@ -85,6 +86,35 @@ namespace Components
                 Parent = this,
             });
 
+            // Example of iterating a list of objects
+            var serverPasswords = new List<Random.RandomPassword>();
+            for (var rangeIndex = 0; rangeIndex < args.Servers.Length; rangeIndex++)
+            {
+                var range = new { Value = rangeIndex };
+                serverPasswords.Add(new Random.RandomPassword($"{name}-serverPasswords-{range.Value}", new()
+                {
+                    Length = 16,
+                    Special = true,
+                    OverrideSpecial = args.Servers[range.Value].Name,
+                }, new CustomResourceOptions
+                {
+                    Parent = this,
+                }));
+            }
+            // Example of iterating a map of objects
+            var zonePasswords = new List<Random.RandomPassword>();
+            foreach (var range in args.DeploymentZones.Select(pair => new { pair.Key, pair.Value }))
+            {
+                zonePasswords.Add(new Random.RandomPassword($"{name}-zonePasswords-{range.Key}", new()
+                {
+                    Length = 16,
+                    Special = true,
+                    OverrideSpecial = range.Value.Zone,
+                }, new CustomResourceOptions
+                {
+                    Parent = this,
+                }));
+            }
             var simpleComponent = new Components.SimpleComponent($"{name}-simpleComponent", new ComponentResourceOptions
             {
                 Parent = this,
