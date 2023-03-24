@@ -89,8 +89,6 @@ func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, interface
 	// Loop until the condition is accepted or the context expires, whichever comes first.
 	try := 0
 	for {
-		// Compute the next retry time so the callback can access it.
-		delay = time.Duration(float64(delay) * backoff)
 		if delay > maxDelay {
 			delay = maxDelay
 		}
@@ -109,6 +107,7 @@ func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, interface
 			return false, nil, nil
 		}
 
+		delay = time.Duration(float64(delay) * backoff)
 		try++
 	}
 }

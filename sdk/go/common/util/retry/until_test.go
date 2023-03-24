@@ -39,10 +39,10 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 	})
 	assert.ErrorIs(t, err, errTooManyTries)
 	assert.Equal(t, []time.Duration{
+		1 * time.Second,
 		2 * time.Second,
 		4 * time.Second,
 		8 * time.Second,
-		16 * time.Second,
 	}, afterRec.Sleeps)
 	assert.Equal(t, 4, attempts)
 }
