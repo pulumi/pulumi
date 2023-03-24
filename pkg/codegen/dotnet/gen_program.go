@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -428,7 +429,7 @@ func configObjectTypeName(variableName string) string {
 	return Title(variableName) + "Args"
 }
 
-func componentInputElementType(variableName string, pclType model.Type) string {
+func componentInputElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
 		return "bool"
@@ -440,28 +441,24 @@ func componentInputElementType(variableName string, pclType model.Type) string {
 		return "string"
 	default:
 		switch pclType := pclType.(type) {
-		case *model.ObjectType:
-			return configObjectTypeName(variableName)
 		case *model.ListType, *model.MapType:
-			return componentInputType(variableName, pclType)
+			return componentInputType(pclType)
 		default:
 			return dynamicType
 		}
 	}
 }
 
-func componentInputType(variableName string, pclType model.Type) string {
+func componentInputType(pclType model.Type) string {
 	switch pclType := pclType.(type) {
 	case *model.ListType:
-		elementType := componentInputElementType(variableName, pclType.ElementType)
+		elementType := componentInputElementType(pclType.ElementType)
 		return fmt.Sprintf("InputList<%s>", elementType)
 	case *model.MapType:
-		elementType := componentInputElementType(variableName, pclType.ElementType)
+		elementType := componentInputElementType(pclType.ElementType)
 		return fmt.Sprintf("InputMap<%s>", elementType)
-	case *model.ObjectType:
-		return fmt.Sprintf("%s", configObjectTypeName(variableName))
 	default:
-		elementType := componentInputElementType(variableName, pclType)
+		elementType := componentInputElementType(pclType)
 		return fmt.Sprintf("Input<%s>", elementType)
 	}
 }
@@ -539,6 +536,16 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
+func sortedPropertyNames(properties map[string]model.Type) []string {
+	propertyNames := []string{}
+	for propertyName := range properties {
+		propertyNames = append(propertyNames, propertyName)
+	}
+
+	sort.Strings(propertyNames)
+	return propertyNames
+}
+
 func (g *generator) genComponentPreamble(w io.Writer, componentName string, component *pcl.Component) {
 	// Accumulate other using statements for the various providers and packages. Don't emit them yet, as we need
 	// to sort them later on.
@@ -568,8 +575,10 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 					g.Fprintf(w, "%spublic class %s : global::Pulumi.ResourceArgs\n", g.Indent, objectTypeName)
 					g.Fprintf(w, "%s{\n", g.Indent)
 					g.Indented(func() {
-						for propertyName, propertyType := range objectType.Properties {
-							inputType := componentInputType(propertyName, propertyType)
+						propertyNames := sortedPropertyNames(objectType.Properties)
+						for _, propertyName := range propertyNames {
+							propertyType := objectType.Properties[propertyName]
+							inputType := componentInputType(propertyType)
 							g.Fprintf(w, "%s[Input(\"%s\")]\n", g.Indent, propertyName)
 							g.Fprintf(w, "%spublic %s? %s { get; set; }\n",
 								g.Indent,
@@ -581,7 +590,28 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 				}
 
 				for _, configVar := range configVars {
-					inputType := componentInputType(configVar.Name(), configVar.Type())
+					// for simple values, get the primitive type
+					inputType := componentInputType(configVar.Type())
+					switch configType := configVar.Type().(type) {
+					case *model.ObjectType:
+						// for objects of type T, generate T as is
+						inputType = configObjectTypeName(configVar.Name())
+					case *model.ListType:
+						// for list(T) where T is an object type, generate T[]
+						switch configType.ElementType.(type) {
+						case *model.ObjectType:
+							objectTypeName := configObjectTypeName(configVar.Name())
+							inputType = fmt.Sprintf("%s[]", objectTypeName)
+						}
+					case *model.MapType:
+						// for map(T) where T is an object type, generate Dictionary<string, T>
+						switch configType.ElementType.(type) {
+						case *model.ObjectType:
+							objectTypeName := configObjectTypeName(configVar.Name())
+							inputType = fmt.Sprintf("Dictionary<string, %s>", objectTypeName)
+						}
+					}
+
 					if configVar.Description != "" {
 						g.Fgenf(w, "%s/// <summary>\n", g.Indent)
 						for _, line := range strings.Split(configVar.Description, "\n") {

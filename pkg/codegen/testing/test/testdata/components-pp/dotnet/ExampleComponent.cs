@@ -8,12 +8,12 @@ namespace Components
     {
         public class GithubAppArgs : global::Pulumi.ResourceArgs
         {
-            [Input("webhookSecret")]
-            public Input<string>? WebhookSecret { get; set; }
             [Input("id")]
             public Input<string>? Id { get; set; }
             [Input("keyBase64")]
             public Input<string>? KeyBase64 { get; set; }
+            [Input("webhookSecret")]
+            public Input<string>? WebhookSecret { get; set; }
         }
 
         public class ServersArgs : global::Pulumi.ResourceArgs
@@ -48,12 +48,12 @@ namespace Components
         /// A list of servers
         /// </summary>
         [Input("servers")]
-        public InputList<ServersArgs> Servers { get; set; } = null!;
+        public ServersArgs[] Servers { get; set; } = null!;
         /// <summary>
         /// A map between for zones
         /// </summary>
         [Input("deploymentZones")]
-        public InputMap<DeploymentZonesArgs> DeploymentZones { get; set; } = null!;
+        public Dictionary<string, DeploymentZonesArgs> DeploymentZones { get; set; } = null!;
         [Input("ipAddress")]
         public InputList<int> IpAddress { get; set; } = null!;
     }
