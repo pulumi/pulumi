@@ -54,7 +54,7 @@ type ResourceState struct {
 	name              string
 	transformations   []ResourceTransformation
 
-	remoteComponent bool
+	keepDep bool
 }
 
 func (s *ResourceState) URN() URNOutput {
@@ -130,12 +130,12 @@ func (s *ResourceState) addTransformation(t ResourceTransformation) {
 	s.transformations = append(s.transformations, t)
 }
 
-func (s *ResourceState) markRemoteComponent() {
-	s.remoteComponent = true
+func (s *ResourceState) setKeepDependency() {
+	s.keepDep = true
 }
 
-func (s *ResourceState) isRemoteComponent() bool {
-	return s.remoteComponent
+func (s *ResourceState) keepDependency() bool {
+	return s.keepDep
 }
 
 func (*ResourceState) isResource() {}
@@ -144,9 +144,7 @@ func (ctx *Context) newDependencyResource(urn URN) Resource {
 	var res ResourceState
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
-
-	// For the purposes of dependency management, dependency resources are treated like remote components.
-	res.remoteComponent = true
+	res.keepDep = true
 	return &res
 }
 
@@ -229,11 +227,13 @@ type Resource interface {
 	// addTransformation adds a single transformation to the resource.
 	addTransformation(t ResourceTransformation)
 
-	// markRemoteComponent marks this resource as a remote component resource.
-	markRemoteComponent()
+	// setKeepDependency marks this resource as a resource that should be kept as a dependency.
+	// This is done for remote component resources, dependency resources, and rehydrated component resources.
+	setKeepDependency()
 
-	// isRemoteComponent returns true if this is not a local (i.e. in-process) component resource.
-	isRemoteComponent() bool
+	// keepDependency returns true if the resource should be kept as a dependency, which is the case for
+	// remote component resources, dependency resources, and rehydrated component resources.
+	keepDependency() bool
 }
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
