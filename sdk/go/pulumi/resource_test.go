@@ -37,6 +37,10 @@ type testRes struct {
 	foo string
 }
 
+type testComp struct {
+	ResourceState
+}
+
 type testProv struct {
 	ProviderResourceState
 	// equality identifier used for testing
@@ -1310,4 +1314,32 @@ func (i *interceptingResourceMonitor) RegisterResource(
 		i.afterRegisterResource(in, resp, err)
 	}
 	return resp, err
+}
+
+func TestRehydratedComponentConsideredRemote(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var component testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"test:index:MyComponent",
+			"component",
+			&component))
+		require.False(t, component.keepDependency())
+
+		urn, _, _, err := component.URN().awaitURN(context.TODO())
+		require.NoError(t, err)
+
+		var rehydrated testComp
+		require.NoError(t, ctx.RegisterResource(
+			"test:index:MyComponent",
+			"component",
+			nil,
+			&rehydrated,
+			URN_(string(urn))))
+		require.True(t, rehydrated.keepDependency())
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
 }

@@ -779,11 +779,6 @@ func (ctx *Context) registerResource(
 		return errors.New("resource name argument (for URN creation) cannot be empty")
 	}
 
-	_, custom := resource.(CustomResource)
-	if !custom && remote {
-		resource.markRemoteComponent()
-	}
-
 	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
 		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
 	}
@@ -818,6 +813,12 @@ func (ctx *Context) registerResource(
 		contract.IgnoreError(err)
 
 		options.Parent = nil
+	}
+
+	_, custom := resource.(CustomResource)
+	isRemoteComponentOrRehydratedComponent := !custom && (remote || options.URN != "")
+	if isRemoteComponentOrRehydratedComponent {
+		resource.setKeepDependency()
 	}
 
 	parent := options.Parent
@@ -902,7 +903,7 @@ func (ctx *Context) registerResource(
 		}
 
 		var resp *pulumirpc.RegisterResourceResponse
-		if len(options.URN) > 0 {
+		if options.URN != "" {
 			resp, err = ctx.getResource(options.URN)
 			if err != nil {
 				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)

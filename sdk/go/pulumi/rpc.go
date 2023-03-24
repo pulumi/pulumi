@@ -65,7 +65,7 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 // addDependency adds a dependency on the given resource to the set of deps.
 //
 // The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
-// or a remote component resource:
+// a remote component resource, a dependency resource, or a rehydrated component resource:
 //
 //   - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
 //   - Local component resources act as aggregations of their descendents. Rather than adding the component resource
@@ -73,6 +73,8 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 //   - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
 //     with respect to dependencies: the construction of a remote component always waits on the construction of its
 //     children.
+//   - Dependency resources are added directly to the set.
+//   - Rehydrated component resources are added directly to the set.
 //
 // In other words, if we had:
 //
@@ -96,7 +98,9 @@ func addDependency(ctx context.Context, deps urnSet, res Resource) error {
 				return err
 			}
 		}
-		if !res.isRemoteComponent() {
+		// keepDependency() returns true for remote component resources, dependency resources,
+		// and rehydrated component resources.
+		if !res.keepDependency() {
 			return nil
 		}
 	}
