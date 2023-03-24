@@ -519,3 +519,38 @@ func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 	}
 	panic("not implemented")
 }
+
+//
+// Mock stack reference
+//
+
+// MockStackReference is a mock implementation of [StackReference].
+// Set the fields on this struct to control the behavior of the mock.
+type MockStackReference struct {
+	StringV             string
+	NameV               tokens.Name
+	FullyQualifiedNameV tokens.QName
+}
+
+var _ StackReference = (*MockStackReference)(nil)
+
+func (r *MockStackReference) String() string {
+	if r.StringV != "" {
+		return r.StringV
+	}
+	panic("not implemented")
+}
+
+func (r *MockStackReference) Name() tokens.Name {
+	if r.NameV != "" {
+		return r.NameV
+	}
+	panic("not implemented")
+}
+
+func (r *MockStackReference) FullyQualifiedName() tokens.QName {
+	if r.FullyQualifiedNameV != "" {
+		return r.FullyQualifiedNameV
+	}
+	panic("not implemented")
+}

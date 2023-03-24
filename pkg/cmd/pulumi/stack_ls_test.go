@@ -73,30 +73,18 @@ func newContToken(s string) backend.ContinuationToken {
 	return &s
 }
 
-// mockStackSummary implements the backend.StackReference interface.
-type mockStackReference struct {
-	name string
-}
-
-func (msr *mockStackReference) Name() tokens.Name {
-	return tokens.Name(msr.name)
-}
-
-func (msr *mockStackReference) FullyQualifiedName() tokens.QName {
-	return msr.Name().Q()
-}
-
-func (msr *mockStackReference) String() string {
-	return msr.name
-}
-
 // mockStackSummary implements the backend.StackSummary interface.
 type mockStackSummary struct {
 	name string
 }
 
 func (mss *mockStackSummary) Name() backend.StackReference {
-	return &mockStackReference{mss.name}
+	name := tokens.Name(mss.name)
+	return &backend.MockStackReference{
+		NameV:               name,
+		FullyQualifiedNameV: name.Q(),
+		StringV:             name.String(),
+	}
 }
 
 func (mss *mockStackSummary) LastUpdate() *time.Time {
