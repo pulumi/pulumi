@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -497,7 +498,20 @@ func newImportCmd() *cobra.Command {
 
 				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
-				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{})
+				mapper, err := convert.NewPluginMapper(pCtx.Host, from, nil)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				mapperServer := convert.NewMapperServer(mapper)
+				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				if err != nil {
+					return result.FromError(err)
+				}
+
+				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
+					MapperAddress: grpcServer.Addr(),
+				})
 				if err != nil {
 					return result.FromError(err)
 				}
