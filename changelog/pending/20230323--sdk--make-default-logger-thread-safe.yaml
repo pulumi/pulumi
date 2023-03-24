@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk
-  description: Make default logger thread-safe.

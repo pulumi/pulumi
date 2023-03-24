@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.59.1 (2023-03-24)
+
+
+### Bug Fixes
+
+- [sdk] Make default logger thread-safe.
+  [#12485](https://github.com/pulumi/pulumi/pull/12485)
+
+- [sdk/go] Track rehydrated components as dependencies.
+  [#12494](https://github.com/pulumi/pulumi/pull/12494)
+
+- [sdkgen/go] Fixes emission of dup types breaking Go compilation when chunking >500 helper types.
+  [#12484](https://github.com/pulumi/pulumi/pull/12484)
+
+
+### Miscellaneous
+
+- [cli] Improve CLI upgrade instructions for macOS.
+  [#12483](https://github.com/pulumi/pulumi/pull/12483)
+
 ## 3.59.0 (2023-03-22)
 
 
