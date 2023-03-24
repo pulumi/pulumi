@@ -23,6 +23,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -142,6 +143,9 @@ func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
 			// things like providers failing to start.
 			return nil, fmt.Errorf("could not create provider '%s': %w", pluginSpec.name, err)
 		}
+		defer func() {
+			contract.IgnoreError(l.host.CloseProvider(providerPlugin))
+		}()
 
 		data, mappedProvider, err := providerPlugin.GetMapping(l.conversionKey)
 		if err != nil {
@@ -154,6 +158,30 @@ func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
 			// Don't overwrite entries, the first wins
 			if _, has := l.entries[mappedProvider]; !has {
 				l.entries[mappedProvider] = data
+			}
+
+			// If this was the provider we we're looking for we can now return it
+			if mappedProvider == provider {
+				return data, nil
+			}
+		}
+		// TODO: Temporary hack to work around the fact that most of the plugins return a mapping for "tf" but
+		// not "terraform" but they're the same thing.
+		if l.conversionKey == "terraform" {
+			// Copy-pasta of the above _but_ we'll delete this whole if block once the plugins have had a
+			// chance to update.
+			data, mappedProvider, err := providerPlugin.GetMapping("tf")
+			if err != nil {
+				// This was an error calling GetMapping, not just that GetMapping returned a nil result. It's
+				// fine for GetMapping to return (nil, nil).
+				return nil, fmt.Errorf("could not get mapping for provider '%s': %w", pluginSpec.name, err)
+			}
+			// A provider returns empty if it didn't have a mapping
+			if mappedProvider != "" && len(data) != 0 {
+				// Don't overwrite entries, the first wins
+				if _, has := l.entries[mappedProvider]; !has {
+					l.entries[mappedProvider] = data
+				}
 
 				// If this was the provider we we're looking for we can now return it
 				if mappedProvider == provider {
