@@ -912,7 +912,7 @@ func (spec PluginSpec) GetLatestVersion() (*semver.Version, error) {
 	if err != nil {
 		return nil, err
 	}
-	return source.GetLatestVersion(getHTTPResponse)
+	return source.GetLatestVersion(getHTTPResponseWithRetry)
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
@@ -962,6 +962,29 @@ func buildHTTPRequest(pluginEndpoint string, authorization string) (*http.Reques
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
+	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
+	// detailed api logs that may include credentials.
+	logging.V(11).Infof("plugin install request headers: %v", req.Header)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// As above this might include authentication information, but also to be consistent at what level headers
+	// print at.
+	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		contract.IgnoreClose(resp.Body)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL, resp.Header)
+	}
+
+	return resp.Body, resp.ContentLength, nil
+}
+
+func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
