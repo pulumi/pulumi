@@ -17,7 +17,6 @@ package filestate
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 
@@ -63,7 +62,7 @@ type pulumiMeta struct {
 // "PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT" to "1".
 // ensurePulumiMeta uses the provided 'getenv' function
 // to read the environment variable.
-func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
+func ensurePulumiMeta(ctx context.Context, b Bucket, getenv func(string) string) (*pulumiMeta, error) {
 	meta, err := readPulumiMeta(ctx, b)
 	if err != nil {
 		return nil, err
@@ -92,7 +91,7 @@ func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 	if empty {
 		// Allow opting into legacy mode for new states
 		// by setting the environment variable.
-		v, err := strconv.ParseBool(os.Getenv(PulumiFilestateLegacyLayoutEnvVar))
+		v, err := strconv.ParseBool(getenv(PulumiFilestateLegacyLayoutEnvVar))
 		if err == nil {
 			useLegacy = v
 		}

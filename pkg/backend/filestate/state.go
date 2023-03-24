@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -258,7 +257,7 @@ func (b *localBackend) saveCheckpoint(
 	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", ref.FullyQualifiedName(), file, backupFile)
 
 	// And if we are retaining historical checkpoint information, write it out again
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
+	if cmdutil.IsTruthy(b.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
 		if err = b.bucket.WriteAll(context.TODO(), fmt.Sprintf("%v.%v", file, time.Now().UnixNano()), byts, nil); err != nil {
 			return backupFile, "", fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 		}
@@ -334,7 +333,7 @@ func (b *localBackend) backupStack(ref *localBackendReference) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Exit early if backups are disabled.
-	if cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
+	if cmdutil.IsTruthy(b.Getenv(DisableCheckpointBackupsEnvVar)) {
 		return nil
 	}
 

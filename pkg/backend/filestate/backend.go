@@ -115,6 +115,8 @@ type localBackend struct {
 
 	gzip bool
 
+	Getenv func(string) string // == os.Getenv
+
 	// The current project, if any.
 	currentProject atomic.Pointer[workspace.Project]
 
@@ -198,6 +200,29 @@ const FilePathPrefix = "file://"
 // The URL must use one of the schemes supported by the go-cloud blob package.
 // Thes inclue: file, s3, gs, azblob.
 func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
+	return newLocalBackend(ctx, d, originalURL, project, nil)
+}
+
+type localBackendOptions struct {
+	// Getenv specifies how to get environment variables.
+	//
+	// Defaults to os.Getenv.
+	Getenv func(string) string
+}
+
+// newLocalBackend builds a filestate backend implementation
+// with the given options.
+func newLocalBackend(
+	ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project,
+	opts *localBackendOptions,
+) (*localBackend, error) {
+	if opts == nil {
+		opts = &localBackendOptions{}
+	}
+	if opts.Getenv == nil {
+		opts.Getenv = os.Getenv
+	}
+
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
 			originalURL, strings.Join(blob.DefaultURLMux().BucketSchemes(), ", "))
@@ -246,7 +271,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		return nil, err
 	}
 
-	gzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateGzipEnvVar))
+	gzipCompression := cmdutil.IsTruthy(opts.Getenv(PulumiFilestateGzipEnvVar))
 
 	wbucket := &wrappedBucket{bucket: bucket}
 	bucket = nil // prevent accidental use of unwrapped bucket
@@ -258,13 +283,14 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		bucket:      wbucket,
 		lockID:      lockID.String(),
 		gzip:        gzipCompression,
+		Getenv:      opts.Getenv,
 	}
 	backend.currentProject.Store(project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
 	// The version in the metadata file informs which store we use.
-	meta, err := ensurePulumiMeta(ctx, wbucket)
+	meta, err := ensurePulumiMeta(ctx, wbucket, opts.Getenv)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +321,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
-	if !projectMode || cmdutil.IsTruthy(os.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
+	if !projectMode || cmdutil.IsTruthy(opts.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
 		return backend, nil
 	}
 	// Otherwise, warn about any old stack files.
