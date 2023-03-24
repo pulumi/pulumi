@@ -496,14 +496,14 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				g.Fgenf(w, "%s", g.Indent)
 				switch configVarType := configVar.Type().(type) {
 				case *model.ObjectType:
-					// generate pulumi.Input<{...}>
+					// generate {...}
 					g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
 					g.genObjectTypedConfig(w, configVarType)
 					g.Fgen(w, ",\n")
 				case *model.ListType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
-						// generate pulumi.Input<{...}[]>
+						// generate {...}[]
 						g.Fgenf(w, "%s%s: ", configVar.Name(), optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, "[],\n")
@@ -514,7 +514,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				case *model.MapType:
 					switch elementType := configVarType.ElementType.(type) {
 					case *model.ObjectType:
-						// generate pulumi.Input<Record<string, {...}>>
+						// generate Record<string, {...}>
 						g.Fgenf(w, "%s%s: Record<string, ", configVar.Name(), optional)
 						g.genObjectTypedConfig(w, elementType)
 						g.Fgen(w, ">,\n")
