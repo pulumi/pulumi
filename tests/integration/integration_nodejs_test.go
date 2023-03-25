@@ -911,41 +911,7 @@ func TestConstructUnknownNode(t *testing.T) {
 
 // Test methods on remote components.
 func TestConstructMethodsNode(t *testing.T) {
-	t.Parallel()
-
-	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
-
-	tests := []struct {
-		componentDir string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
-	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.componentDir, func(t *testing.T) {
-			localProvider := integration.LocalDependency{
-				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
-			}
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir:            filepath.Join(testDir, "nodejs"),
-				Dependencies:   []string{"@pulumi/pulumi"},
-				LocalProviders: []integration.LocalDependency{localProvider},
-				Quick:          true,
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
-				},
-			})
-		})
-	}
+	testConstructMethods(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestConstructMethodsUnknownNode(t *testing.T) {

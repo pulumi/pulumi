@@ -574,58 +574,7 @@ func TestConstructUnknownGo(t *testing.T) {
 }
 
 func TestConstructMethodsGo(t *testing.T) {
-	t.Parallel()
-
-	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
-
-	tests := []struct {
-		componentDir string
-		env          []string
-	}{
-		{
-			componentDir: "testcomponent",
-		},
-		{
-			componentDir: "testcomponent-python",
-		},
-		{
-			componentDir: "testcomponent-go",
-		},
-	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.componentDir, func(t *testing.T) {
-			localProvider := integration.LocalDependency{
-				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
-			}
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env: test.env,
-				Dir: filepath.Join(testDir, "go"),
-				Dependencies: []string{
-					"github.com/pulumi/pulumi/sdk/v3",
-				},
-				LocalProviders: []integration.LocalDependency{localProvider},
-				Quick:          true,
-				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
-
-					// TODO[pulumi/pulumi#12471]: Only the Go SDK has been fixed such that rehydrated
-					// components are kept as dependencies. So only check this for the provider written
-					// in Go. Once the other SDKs are fixed, we can test the other providers as well.
-					if test.componentDir == "testcomponent-go" {
-						var componentURN string
-						for _, res := range stackInfo.Deployment.Resources {
-							if res.URN.Name() == "component" {
-								componentURN = string(res.URN)
-							}
-						}
-						assert.Contains(t, stackInfo.Outputs["messagedeps"], componentURN)
-					}
-				},
-			})
-		})
-	}
+	testConstructMethods(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
 func TestConstructMethodsUnknownGo(t *testing.T) {
