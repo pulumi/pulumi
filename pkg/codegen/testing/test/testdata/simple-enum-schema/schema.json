@@ -244,11 +244,13 @@
       "namespaces": {
         "plant": "Plant",
         "tree/v1": "Tree.V1"
-      }
+      },
+      "respectSchemaVersion": true
     },
     "go": {
       "importBasePath": "simple-enum-schema/plant",
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "respectSchemaVersion": true
     },
     "nodejs": {
       "dependencies": {
@@ -262,7 +264,8 @@
     "python": {
       "moduleNameOverrides": {
         "tree/v1": "tree/v1"
-      }
+      },
+      "respectSchemaVersion": true
     }
   }
 }

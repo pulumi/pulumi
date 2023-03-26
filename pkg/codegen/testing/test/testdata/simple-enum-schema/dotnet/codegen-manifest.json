@@ -13,6 +13,7 @@
     "Tree/V1/RubberTree.cs",
     "Utilities.cs",
     "logo.png",
-    "pulumi-plugin.json"
+    "pulumi-plugin.json",
+    "version.txt"
   ]
 }
