@@ -43,9 +43,13 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	generateInitHash := func() string {
-		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		pkg, diags, err := schema.BindSpec(pkgSpec, nil)
 		if err != nil {
 			t.Error(err)
+			return ""
+		}
+		if diags.HasErrors() {
+			t.Error(diags)
 			return ""
 		}
 

@@ -553,6 +553,7 @@
             "title": "C# Language Overrides Definition",
             "description": "Describes C# specific settings",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "compatibility": {
                     "description": "",
@@ -577,6 +578,7 @@
             "title": "Go Language Overrides Definition",
             "description": "Describes Go specific settings",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "generateExtraInputTypes": {
                     "description": "",
@@ -600,6 +602,7 @@
             "title": "NodeJS Language Overrides Definition",
             "description": "Describes NodeJS specific settings",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "packageName": {
                     "description": "NPM package name (includes @namespace)",
@@ -644,6 +647,7 @@
             "title": "Python Language Overrides Definition",
             "description": "Describes Python specific settings",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "packageName": {
                     "description": "NPM package name (includes @namespace)",
@@ -672,6 +676,7 @@
             "title": "Java Language Overrides Definition",
             "description": "Describes Java specific settings",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "packages": {
                     "$ref": "#/$defs/schemaStringMap"

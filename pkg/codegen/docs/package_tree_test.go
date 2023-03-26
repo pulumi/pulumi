@@ -28,8 +28,9 @@ func TestGeneratePackageTree(t *testing.T) {
 	dctx := newDocGenContext()
 	testPackageSpec := newTestPackageSpec()
 
-	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
-	assert.NoError(t, err, "importing spec")
+	schemaPkg, diags, err := schema.BindSpec(testPackageSpec, nil)
+	assert.NoError(t, err, "binding spec")
+	assert.False(t, diags.HasErrors(), "binding spec")
 
 	dctx.initialize(unitTestTool, schemaPkg)
 	pkgTree, err := dctx.generatePackageTree()

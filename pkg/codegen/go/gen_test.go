@@ -157,9 +157,12 @@ func readSchemaFile(file string) *schema.Package {
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	pkg, err := schema.ImportSpec(pkgSpec, map[string]schema.Language{"go": Importer})
+	pkg, diags, err := schema.BindSpec(pkgSpec, nil)
 	if err != nil {
 		panic(err)
+	}
+	if diags.HasErrors() {
+		panic(diags)
 	}
 
 	return pkg
@@ -357,7 +360,7 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
-	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
+	importedPkg, err := schema.ImportSpec(spec, nil)
 	assert.NoError(t, err)
 	return importedPkg
 }

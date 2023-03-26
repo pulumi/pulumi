@@ -151,9 +151,12 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil)
+			pkg, diags, err := BindSpec(spec, nil)
 			if err != nil {
-				t.Fatalf("could not import package: %v", err)
+				t.Fatalf("could not bind package: %v", err)
+			}
+			if diags.HasErrors() {
+				t.Fatalf("could not bind package: %v", diags)
 			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread

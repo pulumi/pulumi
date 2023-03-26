@@ -466,8 +466,9 @@ func TestPythonResourceArgs(t *testing.T) {
 	assert.NoError(t, err)
 	var spec schema.PackageSpec
 	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
-	pkg, err := schema.ImportSpec(spec, nil)
+	pkg, diags, err := schema.BindSpec(spec, nil)
 	assert.NoError(t, err)
+	assert.False(t, diags.HasErrors())
 	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{})
 	assert.NoError(t, err)
 	outdir := filepath.Join(testdir, "lib")
