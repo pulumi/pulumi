@@ -140,6 +140,9 @@ type modContext struct {
 	extraSourceFiles []string
 	tool             string
 
+	// The version of the package, iff it's set and RespectSchemaVersion is true.
+	packageVersion string
+
 	// Name overrides set in NodeJSInfo
 	modToPkg                map[string]string // Module name -> package name
 	compatibility           string            // Toggle compatibility mode for a specified target.
@@ -1937,8 +1940,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, nil, nil, nil)
-		err := mod.genUtilitiesFile(buffer)
+		err := mod.genUtilitiesFile(buffer, mod.packageVersion)
 		if err != nil {
 			return err
 		}
@@ -2480,6 +2482,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
+	var packageVersion string
+	if pkg.Version != nil && info.RespectSchemaVersion {
+		packageVersion = pkg.Version.String()
+	}
+
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
 
@@ -2498,6 +2505,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 				modToPkg:                     info.ModuleToPackage,
 				disableUnionOutputTypes:      info.DisableUnionOutputTypes,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
+				packageVersion:               packageVersion,
 			}
 
 			if modName != "" {
@@ -2720,71 +2728,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	return files, nil
 }
 
-func (mod *modContext) genUtilitiesFile(w io.Writer) error {
-	const body = `
-export function getEnv(...vars: string[]): string | undefined {
-    for (const v of vars) {
-        const value = process.env[v];
-        if (value) {
-            return value;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvBoolean(...vars: string[]): boolean | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        // NOTE: these values are taken from https://golang.org/src/strconv/atob.go?s=351:391#L1, which is what
-        // Terraform uses internally when parsing boolean values.
-        if (["1", "t", "T", "true", "TRUE", "True"].find(v => v === s) !== undefined) {
-            return true;
-        }
-        if (["0", "f", "F", "false", "FALSE", "False"].find(v => v === s) !== undefined) {
-            return false;
-        }
-    }
-    return undefined;
-}
-
-export function getEnvNumber(...vars: string[]): number | undefined {
-    const s = getEnv(...vars);
-    if (s !== undefined) {
-        const f = parseFloat(s);
-        if (!isNaN(f)) {
-            return f;
-        }
-    }
-    return undefined;
-}
-
-export function getVersion(): string {
-    let version = require('./package.json').version;
-    // Node allows for the version to be prefixed by a "v", while semver doesn't.
-    // If there is a v, strip it off.
-    if (version.indexOf('v') === 0) {
-        version = version.slice(1);
-    }
-    return version;
-}
-
-/** @internal */
-export function resourceOptsDefaults(): any {
-    return { version: getVersion()%s };
-}
-
-/** @internal */
-export function lazyLoad(exports: any, props: string[], loadModule: any) {
-    for (let property of props) {
-        Object.defineProperty(exports, property, {
-            enumerable: true,
-            get: function() {
-                return loadModule()[property];
-            },
-        });
-    }
-}
-`
+func (mod *modContext) genUtilitiesFile(w io.Writer, packageVersion string) error {
 	def, err := mod.pkg.Definition()
 	if err != nil {
 		return err
@@ -2793,8 +2737,12 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 	if url := def.PluginDownloadURL; url != "" {
 		pluginDownloadURL = fmt.Sprintf(", pluginDownloadURL: %q", url)
 	}
-	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
-	return err
+
+	return nodejsUtilitiesTemplate.Execute(w, nodejsUtilitiesTemplateContext{
+		Version:           packageVersion,
+		PluginDownloadURL: pluginDownloadURL,
+		Tool:              mod.tool,
+	})
 }
 
 func genInstallScript(pluginDownloadURL string) string {

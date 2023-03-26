@@ -136,6 +136,9 @@ type modContext struct {
 	compatibility          string
 	dictionaryConstructors bool
 
+	// The version of the package, iff it's set and RespectSchemaVersion is true.
+	version string
+
 	// If types in the Input namespace are used.
 	fullyQualifiedInputs bool
 
@@ -1985,12 +1988,14 @@ func (mod *modContext) genUtilities() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	err = csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
 		Name:              namespaceName(mod.namespaces, mod.pkg.Name()),
 		Namespace:         mod.namespaceName,
 		ClassName:         "Utilities",
 		Tool:              mod.tool,
 		PluginDownloadURL: def.PluginDownloadURL,
+		Version:           mod.version,
 	})
 	if err != nil {
 		return "", err
@@ -2172,7 +2177,6 @@ func genPackageMetadata(pkg *schema.Package,
 	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
 	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
 		version = pkg.Version.String()
-		files.Add("version.txt", []byte(version))
 	}
 
 	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version)
@@ -2348,6 +2352,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 			if modName != "" {
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
+			version := ""
+			if p.Version() != nil && info.RespectSchemaVersion {
+				version = p.Version().String()
+			}
 			mod = &modContext{
 				pkg:                          p,
 				mod:                          modName,
@@ -2360,6 +2368,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				compatibility:                info.Compatibility,
 				dictionaryConstructors:       info.DictionaryConstructors,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
+				version:                      version,
 			}
 
 			if modName != "" {

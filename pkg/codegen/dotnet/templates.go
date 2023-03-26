@@ -82,6 +82,9 @@ namespace {{.Namespace}}
             return dst;
         }
 
+        {{if .Version -}}
+        public static string Version => "{{.Version}}";
+        {{- else -}}
         private readonly static string version;
         public static string Version => version;
 
@@ -98,6 +101,7 @@ namespace {{.Namespace}}
                 version = parts[1].Trim();
             }
         }
+        {{- end}}
     }
 
     internal sealed class {{.Name}}ResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
@@ -117,6 +121,7 @@ type csharpUtilitiesTemplateContext struct {
 	ClassName         string
 	Tool              string
 	PluginDownloadURL string
+	Version           string
 }
 
 // TODO(pdg): parameterize package name
@@ -159,10 +164,12 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
+  {{ if not .Version -}}
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
+  {{- end }}
 
   <ItemGroup>
     <EmbeddedResource Include="pulumi-plugin.json" />
@@ -194,9 +201,9 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 var csharpProjectFileTemplate = template.Must(template.New("CSharpProject").Funcs(template.FuncMap{
 	// ispulumipkg is used in the template to conditionally emit `ExcludeAssets="contentFiles"`
 	// for `<PackageReference>`s that start with "Pulumi.", to prevent the references's contentFiles
-	// from being included in this project's package. Otherwise, if a reference has version.txt
+	// from being included in this project's package. Otherwise, if a reference has pulumi-plugin.json
 	// in its contentFiles, and we don't exclude contentFiles for the reference, the reference's
-	// version.txt will be used over this project's version.txt.
+	// pulumi-plugin.json will be used over this project's pulumi-plugin.json.
 	"ispulumipkg": func(s string) bool {
 		return strings.HasPrefix(s, "Pulumi.")
 	},

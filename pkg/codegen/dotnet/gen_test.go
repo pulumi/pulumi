@@ -3,6 +3,7 @@ package dotnet
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -32,8 +33,23 @@ var buildMutex sync.Mutex
 func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	versionPath := filepath.Join(pwd, "version.txt")
 	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
-		err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0o600)
+		// We only need to write this file if the .csproj doesn't have a <Version> tag
+		var csproj string
+		dir, err := os.ReadDir(pwd)
 		require.NoError(t, err)
+		for _, file := range dir {
+			if filepath.Ext(file.Name()) == ".csproj" {
+				csproj = file.Name()
+				break
+			}
+		}
+		assert.NotEmpty(t, csproj)
+		csprojBytes, err := os.ReadFile(filepath.Join(pwd, csproj))
+		require.NoError(t, err)
+		if !strings.Contains(string(csprojBytes), "<Version>") {
+			err := os.WriteFile(versionPath, []byte("0.0.0\n"), 0o600)
+			require.NoError(t, err)
+		}
 	} else if err != nil {
 		require.NoError(t, err)
 	}

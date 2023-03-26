@@ -35,10 +35,7 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="version.txt" />
-    <None Include="version.txt" Pack="True" PackagePath="content" />
-  </ItemGroup>
+  
 
   <ItemGroup>
     <EmbeddedResource Include="pulumi-plugin.json" />

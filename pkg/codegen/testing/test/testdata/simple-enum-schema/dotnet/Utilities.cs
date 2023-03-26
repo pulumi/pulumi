@@ -56,22 +56,7 @@ namespace Pulumi.Plant
             return dst;
         }
 
-        private readonly static string version;
-        public static string Version => version;
-
-        static Utilities()
-        {
-            var assembly = global::System.Reflection.IntrospectionExtensions.GetTypeInfo(typeof(Utilities)).Assembly;
-            using var stream = assembly.GetManifestResourceStream("Pulumi.Plant.version.txt");
-            using var reader = new global::System.IO.StreamReader(stream ?? throw new global::System.NotSupportedException("Missing embedded version.txt file"));
-            version = reader.ReadToEnd().Trim();
-            var parts = version.Split("\n");
-            if (parts.Length == 2)
-            {
-                // The first part is the provider name.
-                version = parts[1].Trim();
-            }
-        }
+        public static string Version => "0.0.1";
     }
 
     internal sealed class PlantResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute

@@ -19,7 +19,6 @@
     "TypeUses.cs",
     "Utilities.cs",
     "logo.png",
-    "pulumi-plugin.json",
-    "version.txt"
+    "pulumi-plugin.json"
   ]
 }

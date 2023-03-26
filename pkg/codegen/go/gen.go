@@ -3673,14 +3673,17 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	files := codegen.Fs{}
 
+	packageVersion := ""
+	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
+		packageVersion = pkg.Version.String()
+	}
+
 	// Generate pulumi-plugin.json
 	pulumiPlugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
-	}
-	if goPkgInfo.RespectSchemaVersion && pkg.Version != nil {
-		pulumiPlugin.Version = pkg.Version.String()
+		Version:  packageVersion,
 	}
 	pulumiPluginJSON, err := pulumiPlugin.JSON()
 	if err != nil {
@@ -3850,7 +3853,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
 			}
 
-			err := pkg.GenUtilitiesFile(buffer, packageRegex)
+			err := pkg.GenUtilitiesFile(buffer, packageRegex, packageVersion)
 			if err != nil {
 				return nil, err
 			}
@@ -3924,87 +3927,19 @@ func goPackage(name string) string {
 	return strings.ReplaceAll(name, "-", "")
 }
 
-func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error {
-	const utilitiesFile = `
-type envParser func(v string) interface{}
-
-func parseEnvBool(v string) interface{} {
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return nil
-	}
-	return b
-}
-
-func parseEnvInt(v string) interface{} {
-	i, err := strconv.ParseInt(v, 0, 0)
-	if err != nil {
-		return nil
-	}
-	return int(i)
-}
-
-func parseEnvFloat(v string) interface{} {
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return nil
-	}
-	return f
-}
-
-func parseEnvStringArray(v string) interface{} {
-	var result pulumi.StringArray
-	for _, item := range strings.Split(v, ";") {
-		result = append(result, pulumi.String(item))
-	}
-	return result
-}
-
-func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
-	for _, v := range vars {
-		if value := os.Getenv(v); value != "" {
-			if parser != nil {
-				return parser(value)
-			}
-			return value
-		}
-	}
-	return def
-}
-
-// PkgVersion uses reflection to determine the version of the current package.
-// If a version cannot be determined, v1 will be assumed. The second return
-// value is always nil.
-func PkgVersion() (semver.Version, error) {
-	type sentinal struct{}
-	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile(%q)
-	if match := re.FindStringSubmatch(pkgPath); match != nil {
-		vStr := match[1]
-		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
-		}
-		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
-	}
-	return semver.Version{Major: 1}, nil
-}
-
-// isZero is a null safe check for if a value is it's types zero value.
-func isZero(v interface{}) bool {
-	if v == nil {
-		return true
-	}
-	return reflect.ValueOf(v).IsZero()
-}
-`
-	_, err := fmt.Fprintf(w, utilitiesFile, packageRegex)
+func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string, packageVersion string) error {
+	err := goUtilitiesTemplate.Execute(w, goUtilitiesTemplateContext{
+		PackageRegex: packageRegex,
+		Version:      packageVersion,
+		Tool:         pkg.tool,
+	})
 	if err != nil {
 		return err
 	}
-	return pkg.GenPkgDefaultOpts(w)
+	return pkg.GenPkgDefaultOpts(w, packageVersion)
 }
 
-func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
+func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer, packageVersion string) error {
 	p, err := pkg.pkg.Definition()
 	if err != nil {
 		return err
@@ -4022,14 +3957,8 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 }
 `
 	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
-	version := ""
-	if info := p.Language["go"]; info != nil {
-		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
-			version = fmt.Sprintf(", pulumi.Version(%q)", p.Version.String())
-		}
-	}
 	for _, typ := range []string{"Resource", "Invoke"} {
-		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, version)
+		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, packageVersion)
 		if err != nil {
 			return err
 		}
