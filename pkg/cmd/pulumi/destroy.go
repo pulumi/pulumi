@@ -264,7 +264,7 @@ func newDestroyCmd() *cobra.Command {
 					" associated with this stack.\n", protectedCount)
 			} else if res == nil && len(*targets) == 0 {
 				if !jsonDisplay && !remove {
-					fmt.Printf("Run `pulumi stack rm %s` to also delete the stack history and configuration\n", s.Ref())
+					fmt.Printf("Run `pulumi stack rm %s` to delete the stack history and configuration\n", s.Ref())
 				} else if remove {
 					_, err = s.Remove(ctx, false)
 					if err != nil {
