@@ -566,6 +566,10 @@
                 },
                 "rootNamespace": {
                     "desciption": "Root namespace for the generated .NET SDK"
+                },
+                "respectSchemaVersion": {
+                    "description": "Respect the Pkg.Version field for emitted code.",
+                    "type": "boolean"
                 }
             }
         },
@@ -585,6 +589,10 @@
                 "importBasePath": {
                     "description": "Base import path for the Go package",
                     "type": "string"
+                },
+                "respectSchemaVersion": {
+                    "description": "Respect the Pkg.Version field for emitted code.",
+                    "type": "boolean"
                 }
             }
         },
@@ -625,6 +633,10 @@
                 "typescriptVersion": {
                     "description": "Typescript Version",
                     "type": "string"
+                },
+                "respectSchemaVersion": {
+                    "description": "Respect the Pkg.Version field for emitted code.",
+                    "type": "boolean"
                 }
             }
         },
@@ -649,6 +661,10 @@
                 "requires": {
                     "description": "Python package dependencies for the generated Python SDK",
                     "$ref": "#/$defs/schemaStringMap"
+                },
+                "respectSchemaVersion": {
+                    "description": "Respect the Pkg.Version field for emitted code.",
+                    "type": "boolean"
                 }
             }
         },

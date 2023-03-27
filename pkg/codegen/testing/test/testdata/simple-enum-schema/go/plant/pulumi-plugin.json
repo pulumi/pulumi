@@ -1,4 +1,5 @@
 {
   "resource": true,
-  "name": "plant"
+  "name": "plant",
+  "version": "0.0.1"
 }

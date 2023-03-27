@@ -21,8 +21,7 @@
             "packageReferences": {
                 "Pulumi": "3.33.2",
                 "Pulumi.GoogleNative": "0.20.0"
-            },
-            "respectSchemaVersion": true
+            }
         },
         "nodejs": {
             "dependencies": {
@@ -33,13 +32,11 @@
                 "typescript": "^3.7.0",
                 "@types/node": "ts3.7"
             },
-            "respectSchemaVersion": true,
             "pluginVersion": "3.2.1"
         },
         "go": {
             "importBasePath": "enum-reference/example",
-            "generateExtraInputTypes": true,
-            "respectSchemaVersion": true
+            "generateExtraInputTypes": true
         }
     }
 }
