@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: "Revert #12292 to unbreak some users."
