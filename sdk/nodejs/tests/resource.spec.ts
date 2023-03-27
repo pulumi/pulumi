@@ -201,3 +201,29 @@ class MyCustomResource extends CustomResource {
         super("test:index:MyCustomResource", name, {}, opts);
     }
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12032
+describe("parent and dependsOn are the same 12032", () => {
+    runtime.setMocks({
+        call: (_) => {
+            throw new Error("unexpected call");
+        },
+        newResource: (args) => {
+            return { id: `${args.name}_id`, state: {} };
+        },
+    });
+
+    // https://github.com/pulumi/pulumi/issues/12161
+    it("runs without error", async () => {
+        const parent = new ComponentResource("pkg:index:first", "first")
+        const child = new ComponentResource("pkg:index:second", "second", {}, {
+            parent,
+            dependsOn: parent,
+        });
+
+        // This would result in warnings about leaked promises before the fix.
+        new MyCustomResource("myresource", {
+            parent: child,
+        });
+    });
+})
