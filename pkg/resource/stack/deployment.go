@@ -329,6 +329,8 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 		ImportID:                res.ImportID,
 		RetainOnDelete:          res.RetainOnDelete,
 		DeletedWith:             res.DeletedWith,
+		Created:                 res.Created,
+		Modified:                res.Modified,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -338,6 +340,7 @@ func SerializeResource(res *resource.State, enc config.Encrypter, showSecrets bo
 	return v3Resource, nil
 }
 
+// SerializeOperation serializes a resource in a pending state.
 func SerializeOperation(op resource.Operation, enc config.Encrypter, showSecrets bool) (apitype.OperationV2, error) {
 	res, err := SerializeResource(op.Resource, enc, showSecrets)
 	if err != nil {
@@ -514,9 +517,10 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,
 		res.PropertyDependencies, res.PendingReplacement, res.AdditionalSecretOutputs, res.Aliases, res.CustomTimeouts,
-		res.ImportID, res.RetainOnDelete, res.DeletedWith), nil
+		res.ImportID, res.RetainOnDelete, res.DeletedWith, res.Created, res.Modified), nil
 }
 
+// DeserializeOperation hydrates a pending resource/operation pair.
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
 	enc config.Encrypter,
 ) (resource.Operation, error) {

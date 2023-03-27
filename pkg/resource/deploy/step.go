@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -270,7 +271,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.old.Delete = true
 	}
 
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// Create should set the Create and Modified timestamps as the resource state has been created.
+		now := time.Now().UTC()
+		s.new.Created = &now
+		s.new.Modified = &now
+
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -505,8 +513,10 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Always propagate the ID, even in previews and refreshes.
+	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.ID = s.old.ID
+	s.new.Created = s.old.Created
+	s.new.Modified = s.old.Modified
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
@@ -538,7 +548,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// UpdateStep doesn't create, but does modify state.
+		// Change the Modified timestamp.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -729,8 +745,26 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	if s.replacing {
 		s.old.Delete = true
 	}
+	// Propagate timestamps on Read.
+	if s.old != nil {
+		s.new.Created = s.old.Created
+		s.new.Modified = s.old.Modified
+	}
+	complete := func() {
+		var inputsChange, outputsChange bool
+		if s.old != nil {
+			inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
+		}
 
-	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
+		// Only update the Modified timestamp if read provides new values that differ
+		// from the old state.
+		if inputsChange || outputsChange {
+			now := time.Now().UTC()
+			s.new.Modified = &now
+		}
+		s.event.Done(&ReadResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -840,7 +874,23 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified)
+		complete = func() {
+			var inputsChange, outputsChange bool
+			if s.old != nil {
+				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
+				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+			}
+
+			// Only update the Modified timestamp if refresh provides new values that differ
+			// from the old state.
+			if inputsChange || outputsChange {
+				// The refresh has identified an incongruence between the provider and state
+				// updated the Modified timestamp to track this.
+				now := time.Now().UTC()
+				s.new.Modified = &now
+			}
+		}
 	} else {
 		s.new = nil
 	}
@@ -945,7 +995,15 @@ func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		// Set Created to now as the resource has been created in the state.
+		s.new.Created = &now
+
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 
 	// If this is a planned import, ensure that the resource does not exist in the old state file.
 	if s.planned {
@@ -993,7 +1051,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
-		s.new.DeletedWith)
+		s.new.DeletedWith, nil, nil)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {

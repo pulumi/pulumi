@@ -70,3 +70,55 @@ func TestV1ToV2(t *testing.T) {
 	}, v2.Dependencies)
 	assert.Empty(t, v2.Provider)
 }
+
+func TestV2ToV3(t *testing.T) {
+	t.Parallel()
+
+	v2 := apitype.ResourceV2{
+		URN:    resource.URN("foo"),
+		Custom: true,
+		Delete: true,
+		ID:     resource.ID("bar"),
+		Type:   tokens.Type("special"),
+		Inputs: map[string]interface{}{
+			"foo_in": "baz",
+		},
+		Outputs: map[string]interface{}{
+			"foo_out": "out",
+		},
+		Parent:   resource.URN("parent"),
+		Protect:  true,
+		External: false,
+		Dependencies: []resource.URN{
+			resource.URN("dep1"),
+			resource.URN("dep2"),
+		},
+		Provider:   "provider",
+		InitErrors: []string{"error"},
+	}
+
+	v3 := UpToResourceV3(v2)
+
+	assert.Equal(t, resource.URN("foo"), v3.URN)
+	assert.True(t, v3.Custom)
+	assert.True(t, v3.Delete)
+	assert.Equal(t, resource.ID("bar"), v3.ID)
+	assert.Equal(t, tokens.Type("special"), v3.Type)
+	assert.Equal(t, map[string]interface{}{
+		"foo_in": "baz",
+	}, v3.Inputs)
+	assert.Equal(t, map[string]interface{}{
+		"foo_out": "out",
+	}, v3.Outputs)
+	assert.Equal(t, resource.URN("parent"), v3.Parent)
+	assert.True(t, v3.Protect)
+	assert.False(t, v3.External)
+	assert.Equal(t, []resource.URN{
+		resource.URN("dep1"),
+		resource.URN("dep2"),
+	}, v3.Dependencies)
+	assert.Equal(t, "provider", v3.Provider)
+	assert.Equal(t, []string{"error"}, v3.InitErrors)
+	assert.Nil(t, v3.Created)
+	assert.Nil(t, v3.Modified)
+}

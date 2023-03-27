@@ -329,6 +329,10 @@ type ResourceV3 struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
+	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
+	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
+	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

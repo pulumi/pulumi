@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: engine
+    description: Enhances the state schema to track fields `Created`, `Modified` per each resource. The timestamp is captured in RFC3339. It pertains to timestamps of state modification done by the engine.

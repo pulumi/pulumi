@@ -600,6 +600,11 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					// Only the inputs and outputs should have changed (if anything changed).
 					old.Inputs = expected.Inputs
 					old.Outputs = expected.Outputs
+
+					// Discard timestamps for refresh test.
+					new.Modified = nil
+					old.Modified = nil
+
 					assert.Equal(t, old, new)
 				}
 			}
@@ -758,8 +763,10 @@ func TestCanceledRefresh(t *testing.T) {
 					assert.Equal(t, deploy.OpUpdate, resultOp)
 				}
 
-				// Only the outputs should have changed (if anything changed).
+				// Only the outputs and Modified timestamp should have changed (if anything changed).
 				old.Outputs = expected
+				old.Modified = new.Modified
+
 				assert.Equal(t, old, new)
 			}
 		}
@@ -796,7 +803,11 @@ func TestCanceledRefresh(t *testing.T) {
 				assert.Fail(t, "refreshed resource was not deleted")
 			} else {
 				old := oldResources[int(idx)]
+
+				// Only the outputs and Modified timestamp should have changed (if anything changed).
 				old.Outputs = expected
+				old.Modified = r.Modified
+
 				assert.Equal(t, old, r)
 			}
 		} else {

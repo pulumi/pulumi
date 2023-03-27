@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,6 +111,14 @@ func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
 }
 
 func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.UntypedDeployment, error) {
+	return makeUntypedDeploymentTimestamp(name, phrase, state, nil, nil)
+}
+
+func makeUntypedDeploymentTimestamp(
+	name tokens.QName,
+	phrase, state string,
+	created, modified *time.Time,
+) (*apitype.UntypedDeployment, error) {
 	sm, err := passphrase.NewPassphraseSecretsManager(phrase, state)
 	if err != nil {
 		return nil, err
@@ -122,6 +131,8 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 			Inputs: resource.PropertyMap{
 				resource.PropertyKey("secret"): resource.MakeSecret(resource.NewStringProperty("s3cr3t")),
 			},
+			Created:  created,
+			Modified: modified,
 		},
 	}
 
@@ -525,4 +536,22 @@ func TestNew_unsupportedStoreVersion(t *testing.T) {
 	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), nil)
 	assert.ErrorContains(t, err, "state store unsupported")
 	assert.ErrorContains(t, err, "'Pulumi.yaml' version (999999999) is not supported")
+}
+
+// TestSerializeTimestampRFC3339 captures our expectations that Created and Modified will be serialized to
+// RFC3339.
+func TestSerializeTimestampRFC3339(t *testing.T) {
+	t.Parallel()
+
+	created := time.Now().UTC()
+	modified := created.Add(time.Hour)
+
+	deployment, err := makeUntypedDeploymentTimestamp("b", "123abc",
+		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==", &created, &modified)
+	assert.NoError(t, err)
+
+	createdStr := created.Format(time.RFC3339Nano)
+	modifiedStr := modified.Format(time.RFC3339Nano)
+	assert.Contains(t, string(deployment.Deployment), createdStr)
+	assert.Contains(t, string(deployment.Deployment), modifiedStr)
 }
