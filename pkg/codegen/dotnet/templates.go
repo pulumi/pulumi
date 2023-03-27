@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -131,6 +131,9 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <PackageProjectUrl>{{.Package.Homepage}}</PackageProjectUrl>
     <RepositoryUrl>{{.Package.Repository}}</RepositoryUrl>
     <PackageIcon>logo.png</PackageIcon>
+    {{- if .Version }}
+    <Version>{{.Version}}</Version>
+    {{- end }}
 
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>

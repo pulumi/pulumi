@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/dotnet
+  description: respectSchemaVersion now writes the package version to the .csproj file.
