@@ -1,15 +1,47 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
-// When a backend that doesn't support the --teams during stack creation
-// is provided the flag, we expect a validation error from
-// validateCreateStackOpts.
+// When a backend doesn't support the --teams flag,
+// stack creation should fail.
+func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
+	t.Parallel()
+
+	mockBackend := &backend.MockBackend{
+		NameF: func() string {
+			return "mock"
+		},
+		ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+			return &backend.MockStackReference{}, nil
+		},
+		ValidateStackNameF: func(name string) error {
+			assert.Equal(t, "dev", name, "stack name mismatch")
+			return nil
+		},
+		SupportsTeamsF: func() bool {
+			return false
+		},
+	}
+	cmd := &stackInitCmd{
+		teams:     []string{"red", "blue"},
+		stackName: "dev",
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), nil /* args */)
+	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
+}
+
 func TestValidateCreateStackOptsErrors(t *testing.T) {
 	t.Parallel()
 
