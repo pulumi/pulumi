@@ -2168,7 +2168,14 @@ func genPackageMetadata(pkg *schema.Package,
 	projectReferences []string,
 	files codegen.Fs,
 ) error {
-	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences)
+	version := ""
+	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
+	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
+		version = pkg.Version.String()
+		files.Add("version.txt", []byte(version))
+	}
+
+	projectFile, err := genProjectFile(pkg, assemblyName, packageReferences, projectReferences, version)
 	if err != nil {
 		return err
 	}
@@ -2181,12 +2188,7 @@ func genPackageMetadata(pkg *schema.Package,
 		Resource: true,
 		Name:     pkg.Name,
 		Server:   pkg.PluginDownloadURL,
-	}
-
-	lang, ok := pkg.Language["csharp"].(CSharpPackageInfo)
-	if pkg.Version != nil && ok && lang.RespectSchemaVersion {
-		files.Add("version.txt", []byte(pkg.Version.String()))
-		pulumiPlugin.Version = pkg.Version.String()
+		Version:  version,
 	}
 
 	plugin, err := (pulumiPlugin).JSON()
@@ -2205,6 +2207,7 @@ func genProjectFile(pkg *schema.Package,
 	assemblyName string,
 	packageReferences map[string]string,
 	projectReferences []string,
+	version string,
 ) ([]byte, error) {
 	if packageReferences == nil {
 		packageReferences = map[string]string{}
@@ -2234,6 +2237,7 @@ func genProjectFile(pkg *schema.Package,
 		Package:           pkg,
 		PackageReferences: packageReferences,
 		ProjectReferences: projectReferences,
+		Version:           version,
 	})
 	if err != nil {
 		return nil, err
