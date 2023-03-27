@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk
-  description: "common: Fix extraneous backoff during retries."

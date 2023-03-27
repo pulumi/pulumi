@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.60.0 (2023-03-27)
+
+
+### Features
+
+- [engine] Enhances the state schema to track fields `Created`, `Modified` per each resource. The timestamp is captured in RFC3339. It pertains to timestamps of state modification done by the engine.
+  [#12082](https://github.com/pulumi/pulumi/pull/12082)
+
+- [engine] DeletedWith ResourceOption is now inherited from its parent across SDKs.
+  [#12446](https://github.com/pulumi/pulumi/pull/12446)
+
+- [programgen/{dotnet,nodejs}] Object-typed config variables for components
+  [#12488](https://github.com/pulumi/pulumi/pull/12488)
+
+
+### Bug Fixes
+
+- [sdk] common: Fix extraneous backoff during retries.
+  [#12502](https://github.com/pulumi/pulumi/pull/12502)
+
+- [sdkgen/dotnet] respectSchemaVersion now writes the package version to the .csproj file.
+  [#12518](https://github.com/pulumi/pulumi/pull/12518)
+
+- [sdk/python] Revert #12292 to unbreak some users.
+  [#12522](https://github.com/pulumi/pulumi/pull/12522)
+
+- [sdkgen/{dotnet,go,nodejs,python}] Add respectSchemaVersion to schema.
+  [#12511](https://github.com/pulumi/pulumi/pull/12511)
+
 ## 3.59.1 (2023-03-24)
 
 
