@@ -510,7 +510,7 @@ func annotateObjectTypedConfig(componentName string, typeName string, objectType
 	return objectType
 }
 
-// collectObjectTypedConfigVariables Returns the object types in config variables are need to be generated emitted
+// collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
 // as classes.
 func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*model.ObjectType {
 	objectTypes := map[string]*model.ObjectType{}
