@@ -202,7 +202,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := urnSet{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(context.TODO(), allDeps); err != nil {
+			if err := ds.addURNs(context.TODO(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -1339,6 +1339,37 @@ func TestRehydratedComponentConsideredRemote(t *testing.T) {
 			URN_(string(urn))))
 		require.True(t, rehydrated.keepDependency())
 
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12032
+func TestParentAndDependsOnAreTheSame12032(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var parent testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"pkg:index:first",
+			"first",
+			&parent))
+		var child testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"pkg:index:second",
+			"second",
+			&child,
+			Parent(&parent),
+			DependsOn([]Resource{&parent})))
+
+		// This would freeze before the fix.
+		var custom testRes
+		require.NoError(t, ctx.RegisterResource(
+			"foo:bar:baz",
+			"myresource",
+			nil,
+			&custom,
+			Parent(&child)))
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
 	require.NoError(t, err)

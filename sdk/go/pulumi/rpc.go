@@ -91,10 +91,16 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 // * Cust4 because it is a child of a custom resource
 // * Comp2 because it is a non-remote component resoruce
 // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
-func addDependency(ctx context.Context, deps urnSet, res Resource) error {
+func addDependency(ctx context.Context, deps urnSet, res, from Resource) error {
 	if _, custom := res.(CustomResource); !custom {
+		// If `res` is the same as `from`, exit early to avoid depending on
+		// children that haven't been registered yet.
+		if res == from {
+			return nil
+		}
+
 		for _, child := range res.getChildren() {
-			if err := addDependency(ctx, deps, child); err != nil {
+			if err := addDependency(ctx, deps, child, from); err != nil {
 				return err
 			}
 		}
@@ -117,7 +123,7 @@ func addDependency(ctx context.Context, deps urnSet, res Resource) error {
 func expandDependencies(ctx context.Context, deps []Resource) (urnSet, error) {
 	urns := urnSet{}
 	for _, r := range deps {
-		if err := addDependency(ctx, urns, r); err != nil {
+		if err := addDependency(ctx, urns, r, nil /* from */); err != nil {
 			return nil, err
 		}
 	}

@@ -608,7 +608,9 @@ func CompositeInvoke(opts ...InvokeOption) InvokeOption {
 type dependencySet interface {
 	// Adds URNs for addURNs from this set
 	// into the given urnSet.
-	addURNs(context.Context, urnSet) error
+	// Optionally pass the last Resource arg to short-circuit component
+	// children cycles.
+	addURNs(context.Context, urnSet, Resource) error
 }
 
 // urnDependencySet is a dependencySet built from a constant set of URNs.
@@ -616,7 +618,7 @@ type urnDependencySet urnSet
 
 var _ dependencySet = (urnDependencySet)(nil)
 
-func (us urnDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+func (us urnDependencySet) addURNs(ctx context.Context, urns urnSet, _ Resource) error {
 	urns.union(urnSet(us))
 	return nil
 }
@@ -634,9 +636,9 @@ type resourceDependencySet []Resource
 
 var _ dependencySet = (resourceDependencySet)(nil)
 
-func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+func (rs resourceDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
 	for _, r := range rs {
-		if err := addDependency(ctx, urns, r); err != nil {
+		if err := addDependency(ctx, urns, r, from); err != nil {
 			return err
 		}
 	}
@@ -663,7 +665,7 @@ type resourceArrayInputDependencySet struct{ input ResourceArrayInput }
 
 var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 
-func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet) error {
+func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
 	out := ra.input.ToResourceArrayOutput()
 
 	value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
@@ -681,7 +683,7 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 	toplevelDeps := out.dependencies()
 
 	for _, r := range append(resources, toplevelDeps...) {
-		if err := addDependency(ctx, urns, r); err != nil {
+		if err := addDependency(ctx, urns, r, from); err != nil {
 			return err
 		}
 	}
