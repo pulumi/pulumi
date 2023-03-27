@@ -32,7 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// provider reflects a resource plugin, loaded dynamically for a single package.
+// converter reflects a converter plugin, loaded dynamically from another process over gRPC.
 type converter struct {
 	name      string
 	plug      *plugin                   // the actual plugin process wrapper.
@@ -107,7 +107,9 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	label := fmt.Sprintf("%s.ConvertState", c.label())
 	logging.V(7).Infof("%s executing", label)
 
-	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{})
+	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
+		MapperTarget: req.MapperAddress,
+	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s converter received rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
@@ -136,6 +138,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	_, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
+		MapperTarget:    req.MapperAddress,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

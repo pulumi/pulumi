@@ -7,6 +7,23 @@ component exampleComponent "./exampleComponent" {
         "one" = "uno"
         "two" = "dos"
     }
+    githubApp = {
+        id = "example id"
+        keyBase64 = "base64 encoded key"
+        webhookSecret = "very important secret"
+    }
+    servers = [
+        { name = "First" },
+        { name = "Second" }
+    ]
+    deploymentZones = {
+        "first" = {
+            zone = "First zone"
+        }, 
+        "second" = {
+            zone = "Second zone"
+        }
+    }
 }
 
 output result {

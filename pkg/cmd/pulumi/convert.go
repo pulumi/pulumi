@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -243,9 +243,16 @@ func runConvert(
 
 		pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
+		mapperServer := convert.NewMapperServer(mapper)
+		grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+		if err != nil {
+			return result.FromError(err)
+		}
+
 		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,
 			TargetDirectory: targetDirectory,
+			MapperAddress:   grpcServer.Addr(),
 		})
 		if err != nil {
 			return result.FromError(err)

@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -374,7 +375,7 @@ type programUsings struct {
 }
 
 func (g *generator) usingStatements(program *pcl.Program) programUsings {
-	systemUsings := codegen.NewStringSet("System.Collections.Generic")
+	systemUsings := codegen.NewStringSet("System.Linq", "System.Collections.Generic")
 	pulumiUsings := codegen.NewStringSet()
 	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
@@ -422,6 +423,10 @@ func (g *generator) usingStatements(program *pcl.Program) programUsings {
 		pulumiUsings:        pulumiUsings,
 		pulumiHelperMethods: preambleHelperMethods,
 	}
+}
+
+func configObjectTypeName(variableName string) string {
+	return Title(variableName) + "Args"
 }
 
 func componentInputElementType(pclType model.Type) string {
@@ -491,6 +496,56 @@ func componentOutputType(pclType model.Type) string {
 	return fmt.Sprintf("Output<%s>", elementType)
 }
 
+type ObjectTypeFromConfigMetadata = struct {
+	TypeName      string
+	ComponentName string
+}
+
+func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
+	objectType.Annotations = append(objectType.Annotations, &ObjectTypeFromConfigMetadata{
+		TypeName:      typeName,
+		ComponentName: componentName,
+	})
+
+	return objectType
+}
+
+// collectObjectTypedConfigVariables returns the object types in config variables need to be emitted
+// as classes.
+func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*model.ObjectType {
+	objectTypes := map[string]*model.ObjectType{}
+	for _, config := range component.Program.ConfigVariables() {
+		componentName := Title(component.Name())
+		typeName := configObjectTypeName(config.Name())
+		switch configType := config.Type().(type) {
+		case *model.ObjectType:
+			objectTypes[config.Name()] = annotateObjectTypedConfig(componentName, typeName, configType)
+		case *model.ListType:
+			switch elementType := configType.ElementType.(type) {
+			case *model.ObjectType:
+				objectTypes[config.Name()] = annotateObjectTypedConfig(componentName, typeName, elementType)
+			}
+		case *model.MapType:
+			switch elementType := configType.ElementType.(type) {
+			case *model.ObjectType:
+				objectTypes[config.Name()] = annotateObjectTypedConfig(componentName, typeName, elementType)
+			}
+		}
+	}
+
+	return objectTypes
+}
+
+func sortedPropertyNames(properties map[string]model.Type) []string {
+	propertyNames := []string{}
+	for propertyName := range properties {
+		propertyNames = append(propertyNames, propertyName)
+	}
+
+	sort.Strings(propertyNames)
+	return propertyNames
+}
+
 func (g *generator) genComponentPreamble(w io.Writer, componentName string, component *pcl.Component) {
 	// Accumulate other using statements for the various providers and packages. Don't emit them yet, as we need
 	// to sort them later on.
@@ -511,12 +566,52 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 	g.Fprintf(w, "{\n")
 	g.Indented(func() {
 		if len(configVars) > 0 {
-			// generate resource args for this component
 			g.Fprintf(w, "%spublic class %sArgs : global::Pulumi.ResourceArgs\n", g.Indent, componentName)
 			g.Fprintf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
+				// generate resource args for this component
+				for variableName, objectType := range collectObjectTypedConfigVariables(component) {
+					objectTypeName := configObjectTypeName(variableName)
+					g.Fprintf(w, "%spublic class %s : global::Pulumi.ResourceArgs\n", g.Indent, objectTypeName)
+					g.Fprintf(w, "%s{\n", g.Indent)
+					g.Indented(func() {
+						propertyNames := sortedPropertyNames(objectType.Properties)
+						for _, propertyName := range propertyNames {
+							propertyType := objectType.Properties[propertyName]
+							inputType := componentInputType(propertyType)
+							g.Fprintf(w, "%s[Input(\"%s\")]\n", g.Indent, propertyName)
+							g.Fprintf(w, "%spublic %s? %s { get; set; }\n",
+								g.Indent,
+								inputType,
+								Title(propertyName))
+						}
+					})
+					g.Fprintf(w, "%s}\n\n", g.Indent)
+				}
+
 				for _, configVar := range configVars {
+					// for simple values, get the primitive type
 					inputType := componentInputType(configVar.Type())
+					switch configType := configVar.Type().(type) {
+					case *model.ObjectType:
+						// for objects of type T, generate T as is
+						inputType = configObjectTypeName(configVar.Name())
+					case *model.ListType:
+						// for list(T) where T is an object type, generate T[]
+						switch configType.ElementType.(type) {
+						case *model.ObjectType:
+							objectTypeName := configObjectTypeName(configVar.Name())
+							inputType = fmt.Sprintf("%s[]", objectTypeName)
+						}
+					case *model.MapType:
+						// for map(T) where T is an object type, generate Dictionary<string, T>
+						switch configType.ElementType.(type) {
+						case *model.ObjectType:
+							objectTypeName := configObjectTypeName(configVar.Name())
+							inputType = fmt.Sprintf("Dictionary<string, %s>", objectTypeName)
+						}
+					}
+
 					if configVar.Description != "" {
 						g.Fgenf(w, "%s/// <summary>\n", g.Indent)
 						for _, line := range strings.Split(configVar.Description, "\n") {
@@ -972,6 +1067,74 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 	return result.String()
 }
 
+func AnnotateComponentInputs(component *pcl.Component) {
+	componentName := Title(component.Name())
+	configVars := component.Program.ConfigVariables()
+
+	for index := range component.Inputs {
+		attribute := component.Inputs[index]
+		switch expr := attribute.Value.(type) {
+		case *model.ObjectConsExpression:
+			for _, configVar := range configVars {
+				if configVar.Name() == attribute.Name {
+					switch configVar.Type().(type) {
+					case *model.ObjectType:
+						expr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
+							switch exprType := objectExprType.(type) {
+							case *model.ObjectType:
+								typeName := configObjectTypeName(configVar.Name())
+								annotateObjectTypedConfig(componentName, typeName, exprType)
+							}
+
+							return expr
+						})
+					case *model.MapType:
+						for _, item := range expr.Items {
+							switch mapValue := item.Value.(type) {
+							case *model.ObjectConsExpression:
+								mapValue.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
+									switch exprType := objectExprType.(type) {
+									case *model.ObjectType:
+										typeName := configObjectTypeName(configVar.Name())
+										annotateObjectTypedConfig(componentName, typeName, exprType)
+									}
+
+									return mapValue
+								})
+							}
+						}
+					}
+				}
+			}
+		case *model.TupleConsExpression:
+			for _, configVar := range configVars {
+				if configVar.Name() == attribute.Name {
+					switch listType := configVar.Type().(type) {
+					case *model.ListType:
+						switch listType.ElementType.(type) {
+						case *model.ObjectType:
+							for _, item := range expr.Expressions {
+								switch itemExpr := item.(type) {
+								case *model.ObjectConsExpression:
+									itemExpr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
+										switch exprType := objectExprType.(type) {
+										case *model.ObjectType:
+											typeName := configObjectTypeName(configVar.Name())
+											annotateObjectTypedConfig(componentName, typeName, exprType)
+										}
+										return itemExpr
+									})
+								}
+							}
+						}
+					}
+				}
+			}
+
+		}
+	}
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
@@ -988,7 +1151,6 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	pcl.AnnotateResourceInputs(r)
-
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 	argsName := g.resourceArgsTypeName(r)
@@ -1065,6 +1227,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 	argsName := componentName + "Args"
+
+	AnnotateComponentInputs(r)
 
 	configVars := r.Program.ConfigVariables()
 

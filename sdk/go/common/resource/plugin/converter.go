@@ -28,7 +28,9 @@ type ResourceImport struct {
 	PluginDownloadURL string
 }
 
-type ConvertStateRequest struct{}
+type ConvertStateRequest struct {
+	MapperAddress string
+}
 
 type ConvertStateResponse struct {
 	Resources []ResourceImport
@@ -37,6 +39,7 @@ type ConvertStateResponse struct {
 type ConvertProgramRequest struct {
 	SourceDirectory string
 	TargetDirectory string
+	MapperAddress   string
 }
 
 type ConvertProgramResponse struct{}
