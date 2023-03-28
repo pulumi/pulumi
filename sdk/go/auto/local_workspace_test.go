@@ -1347,6 +1347,284 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
 }
 
+func TestConfigWithOptions(t *testing.T) {
+	t.Parallel()
+
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+	// test backward compatibility
+	err = s.SetConfigWithOptions(ctx, "key1", ConfigValue{"value1", false}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test new flag without subPath
+	err = s.SetConfigWithOptions(ctx, "key2", ConfigValue{"value2", false}, &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test new flag with subPath
+	err = s.SetConfigWithOptions(ctx, "key3.subKey1", ConfigValue{"value3", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test old method and key as secret
+	err = s.SetConfigWithOptions(ctx, "key4", ConfigValue{"value4", true}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath and key as secret
+	err = s.SetConfigWithOptions(ctx, "key5.subKey1", ConfigValue{"value5", true}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	err = s.SetConfigWithOptions(ctx, "key6.subKey1", ConfigValue{"value6", true}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	err = s.SetConfigWithOptions(ctx, "key7.subKey1", ConfigValue{"value7", true}, &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath
+	err = s.SetConfigWithOptions(ctx, "key7.subKey2", ConfigValue{"value8", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath
+	err = s.SetConfigWithOptions(ctx, "key7.subKey3", ConfigValue{"value9", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test backward compatibility
+	cv1, err := s.GetConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test new flag without subPath
+	cv2, err := s.GetConfigWithOptions(ctx, "key2", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test new flag with subPath
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test old method and key as secret
+	cv4, err := s.GetConfigWithOptions(ctx, "key4", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test subPath and key as secret
+	cv5, err := s.GetConfigWithOptions(ctx, "key5.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test string with dots
+	cv6, err := s.GetConfigWithOptions(ctx, "key6.subKey1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test string with dots
+	cv7, err := s.GetConfigWithOptions(ctx, "key7.subKey1", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	cv8, err := s.GetConfigWithOptions(ctx, "key7.subKey2", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	cv9, err := s.GetConfigWithOptions(ctx, "key7.subKey3", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equalf(t, "value1", cv1.Value, "wrong key")
+	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
+	assert.Equalf(t, "value2", cv2.Value, "wrong key")
+	assert.Equalf(t, false, cv2.Secret, "key should not be secret")
+	assert.Equalf(t, "value3", cv3.Value, "wrong key")
+	assert.Equalf(t, false, cv3.Secret, "sub-key should not be secret")
+	assert.Equalf(t, "value4", cv4.Value, "wrong key")
+	assert.Equalf(t, true, cv4.Secret, "key should be secret")
+	assert.Equalf(t, "value5", cv5.Value, "wrong key")
+	assert.Equalf(t, true, cv5.Secret, "key should be secret")
+	assert.Equalf(t, "value6", cv6.Value, "wrong key")
+	assert.Equalf(t, true, cv6.Secret, "key should be secret")
+	assert.Equalf(t, "value7", cv7.Value, "wrong key")
+	assert.Equalf(t, true, cv7.Secret, "key should be secret")
+	assert.Equalf(t, "value8", cv8.Value, "wrong key")
+	assert.Equalf(t, false, cv8.Secret, "key should be secret")
+	assert.Equalf(t, "value9", cv9.Value, "wrong key")
+	assert.Equalf(t, false, cv9.Secret, "key should be secret")
+
+	err = s.RemoveConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key2", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key3", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key4", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key5", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key6.subKey1", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key7.subKey1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t, "{\"subKey2\":\"value8\",\"subKey3\":\"value9\"}",
+		cfg["testproj:key7"].Value, "subKey2 and subKey3 have been removed")
+}
+
+func TestConfigAllWithOptions(t *testing.T) {
+	t.Parallel()
+
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
+		"key1": ConfigValue{
+			Value:  "value1",
+			Secret: false,
+		},
+		"key2": ConfigValue{
+			Value:  "value2",
+			Secret: true,
+		},
+		"key3.subKey1": ConfigValue{
+			Value:  "value3",
+			Secret: false,
+		},
+		"key3.subKey2": ConfigValue{
+			Value:  "value4",
+			Secret: false,
+		},
+		"key3.subKey3": ConfigValue{
+			Value:  "value5",
+			Secret: false,
+		},
+		"key4.subKey1": ConfigValue{
+			Value:  "value6",
+			Secret: true,
+		},
+	}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the first item
+	cv1, err := s.GetConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the second item
+	cv2, err := s.GetConfigWithOptions(ctx, "key2", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv4, err := s.GetConfigWithOptions(ctx, "key3.subKey2", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the fourth item
+	cv5, err := s.GetConfigWithOptions(ctx, "key4.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equalf(t, "value1", cv1.Value, "wrong key")
+	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
+	assert.Equalf(t, "value2", cv2.Value, "wrong key")
+	assert.Equalf(t, true, cv2.Secret, "key should be secret")
+	assert.Equalf(t, "value3", cv3.Value, "wrong key")
+	assert.Equalf(t, false, cv3.Secret, "key should not be secret")
+	assert.Equalf(t, "value4", cv4.Value, "wrong key")
+	assert.Equalf(t, false, cv4.Secret, "key should not be secret")
+	assert.Equalf(t, "value6", cv5.Value, "wrong key")
+	assert.Equalf(t, true, cv5.Secret, "key should be secret")
+
+	err = s.RemoveAllConfigWithOptions(ctx,
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t,
+		"{\"subKey3\":\"value5\"}", cfg["testproj:key3"].Value, "key subKey3 has been removed")
+}
+
 func TestNestedConfig(t *testing.T) {
 	t.Parallel()
 
