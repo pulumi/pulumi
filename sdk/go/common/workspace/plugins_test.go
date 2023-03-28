@@ -21,10 +21,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -896,6 +898,67 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDownloadToFile_retries(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that DownloadToFile retries on transient errors
+	// when trying to download plugins,
+	// and that it calls the wrapper and retry functions as expected.
+	//
+	// Regression test for https://github.com/pulumi/pulumi/issues/12456.
+
+	var numRequests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method, "expected GET request")
+		assert.Regexp(t, `/pulumi-language-myplugin-v1.0.0-\S+\.tar\.gz`, r.URL.Path,
+			"unexpected URL path")
+
+		// Fails all requests with a 500 error.
+		// This will cause every download attempt to fail
+		// and be retried.
+		w.WriteHeader(http.StatusInternalServerError)
+
+		numRequests++
+	}))
+	t.Cleanup(server.Close)
+	defer func() {
+		assert.Equal(t, 5, numRequests,
+			"server received more requests than expected")
+	}()
+
+	// Create a fake plugin.
+	version := semver.MustParse("1.0.0")
+	spec := PluginSpec{
+		Name:              "myplugin",
+		Kind:              LanguagePlugin,
+		Version:           &version,
+		PluginDownloadURL: server.URL,
+		PluginDir:         t.TempDir(),
+	}
+
+	// numRetries is tracked separately from numRequests.
+	// numRequests is the number of requests received by the server,
+	// while numRetries is the number of times the retry function is called.
+	// These should match--the function is called on all failures.
+	var numRetries int
+	currentTime := time.Now()
+	_, err := (&pluginDownloader{
+		OnRetry: func(err error, attempt, limit int, delay time.Duration) {
+			assert.Equal(t, 5, limit, "unexpected retry limit")
+			numRetries++
+			assert.Equal(t, numRetries, attempt, "unexpected attempt number")
+		},
+		After: func(d time.Duration) <-chan time.Time {
+			currentTime = currentTime.Add(d)
+			ch := make(chan time.Time, 1)
+			ch <- currentTime
+			return ch
+		},
+	}).DownloadToFile(spec)
+	assert.ErrorContains(t, err, "failed to download plugin: myplugin-1.0.0")
+	assert.Equal(t, numRequests, numRetries)
 }
 
 //nolint:paralleltest // changes directory for process

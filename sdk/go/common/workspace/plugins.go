@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	"github.com/pulumi/pulumi/sdk/v3/python"
@@ -912,7 +913,7 @@ func (spec PluginSpec) GetLatestVersion() (*semver.Version, error) {
 	if err != nil {
 		return nil, err
 	}
-	return source.GetLatestVersion(getHTTPResponse)
+	return source.GetLatestVersion(getHTTPResponseWithRetry)
 }
 
 // Download fetches an io.ReadCloser for this plugin and also returns the size of the response (if known).
@@ -962,6 +963,29 @@ func buildHTTPRequest(pluginEndpoint string, authorization string) (*http.Reques
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
+	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
+	// detailed api logs that may include credentials.
+	logging.V(11).Infof("plugin install request headers: %v", req.Header)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, -1, err
+	}
+
+	// As above this might include authentication information, but also to be consistent at what level headers
+	// print at.
+	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		contract.IgnoreClose(resp.Body)
+		return nil, -1, newDownloadError(resp.StatusCode, req.URL, resp.Header)
+	}
+
+	return resp.Body, resp.ContentLength, nil
+}
+
+func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
 	logging.V(9).Infof("full plugin download url: %s", req.URL)
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
@@ -1045,134 +1069,173 @@ func (spec PluginSpec) Install(tgz io.ReadCloser, reinstall bool) error {
 	return spec.InstallWithContext(context.Background(), tarPlugin{tgz}, reinstall)
 }
 
-// DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
-// This has some retry logic to re-attempt the download if it errors for any reason.
-func DownloadToFile(
-	pkgPlugin PluginSpec,
-	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
-	retry func(err error, attempt int, limit int, delay time.Duration),
-) (*os.File, error) {
-	// This is an internal helper that's pretty much just a copy of io.Copy except it returns read and
-	// write errors separately. We only want to retry if the read (i.e. download) fails, if the write
-	// fails thats probably due to file permissions or space limitations and there's no point retrying.
-	copyBuffer := func(dst io.Writer, src io.Reader) (written int64, readErr error, writeErr error) {
-		size := 32 * 1024
-		if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
-			if l.N < 1 {
-				size = 1
-			} else {
-				size = int(l.N)
-			}
-		}
-		buf := make([]byte, size)
+// pluginDownloader is responsible for downloading plugins from PluginSpecs.
+//
+// It allows hooking into various stages of the download process
+// to allow for custom behavior and progress reporting.
+//
+// All fields are optional.
+type pluginDownloader struct {
+	// WrapStream wraps the stream returned by the plugin source.
+	// This is useful for things like reporting progress.
+	WrapStream func(stream io.ReadCloser, size int64) io.ReadCloser
 
-		for {
-			nr, er := src.Read(buf)
-			if nr > 0 {
-				nw, ew := dst.Write(buf[0:nr])
-				if nw < 0 || nr < nw {
-					nw = 0
-					if ew == nil {
-						ew = errors.New("invalid write result")
-					}
-				}
-				written += int64(nw)
-				if ew != nil {
-					return written, nil, ew
-				}
-				if nr != nw {
-					return written, nil, io.ErrShortWrite
-				}
-			}
-			if er != nil {
-				if er == io.EOF {
-					er = nil
-				}
-				return written, er, nil
-			}
+	// OnRetry receives a notification when a download fails
+	// and is about to be retried.
+	// err is the error that caused the retry.
+	// attempt is the number of the attempt that failed (starting at 1).
+	// limit is the maximum number of attempts.
+	// delay is the amount of time that will be slept before the next attempt.
+	// DO NOT sleep in this function. It's for observation only.
+	OnRetry func(err error, attempt int, limit int, delay time.Duration)
+
+	// Controls how to sleep between retries.
+	After func(time.Duration) <-chan time.Time // == time.After
+}
+
+// copyBuffer copies from src to dst until either EOF is reached on src or an error occurs.
+//
+// This is an internal helper that's pretty much just a copy of io.Copy except it returns read and
+// write errors separately. We only want to retry if the read (i.e. download) fails, if the write
+// fails thats probably due to file permissions or space limitations and there's no point retrying.
+func (d *pluginDownloader) copyBuffer(dst io.Writer, src io.Reader) (written int64, readErr error, writeErr error) {
+	size := 32 * 1024
+	if l, ok := src.(*io.LimitedReader); ok && int64(size) > l.N {
+		if l.N < 1 {
+			size = 1
+		} else {
+			size = int(l.N)
 		}
 	}
+	buf := make([]byte, size)
 
-	tryDownload := func(dst io.WriteCloser) (error, error) {
-		defer dst.Close()
-		tarball, expectedByteCount, err := pkgPlugin.Download()
-		if err != nil {
-			return err, nil
-		}
-		if wrapper != nil {
-			tarball = wrapper(tarball, expectedByteCount)
-		}
-		defer tarball.Close()
-		copiedByteCount, readErr, writerErr := copyBuffer(dst, tarball)
-		if readErr != nil || writerErr != nil {
-			return readErr, writerErr
-		}
-		if copiedByteCount != expectedByteCount {
-			return nil, fmt.Errorf("expected %d bytes but copied %d when downloading plugin %s",
-				expectedByteCount, copiedByteCount, pkgPlugin)
-		}
-		return nil, nil
-	}
-
-	tryDownloadToFile := func() (string, error, error) {
-		file, err := os.CreateTemp("" /* default temp dir */, "pulumi-plugin-tar")
-		if err != nil {
-			return "", nil, err
-		}
-		readErr, writeErr := tryDownload(file)
-		if readErr != nil || writeErr != nil {
-			err2 := os.Remove(file.Name())
-			if err2 != nil {
-				// only one of readErr or writeErr will be set
-				err := readErr
-				if err == nil {
-					err = writeErr
+	for {
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw < 0 || nr < nw {
+				nw = 0
+				if ew == nil {
+					ew = errors.New("invalid write result")
 				}
-
-				return "", nil, fmt.Errorf("error while removing tempfile: %v. Context: %w", err2, err)
 			}
-			return "", readErr, writeErr
+			written += int64(nw)
+			if ew != nil {
+				return written, nil, ew
+			}
+			if nr != nw {
+				return written, nil, io.ErrShortWrite
+			}
 		}
-		return file.Name(), nil, nil
+		if er != nil {
+			if er == io.EOF {
+				er = nil
+			}
+			return written, er, nil
+		}
 	}
+}
 
-	downloadToFileWithRetry := func() (string, error) {
-		delay := 80 * time.Millisecond
-		for attempt := 0; ; attempt++ {
-			tempFile, readErr, writeErr := tryDownloadToFile()
+func (d *pluginDownloader) tryDownload(pkgPlugin PluginSpec, dst io.WriteCloser) (error, error) {
+	defer dst.Close()
+	tarball, expectedByteCount, err := pkgPlugin.Download()
+	if err != nil {
+		return err, nil
+	}
+	if d.WrapStream != nil {
+		tarball = d.WrapStream(tarball, expectedByteCount)
+	}
+	defer tarball.Close()
+	copiedByteCount, readErr, writerErr := d.copyBuffer(dst, tarball)
+	if readErr != nil || writerErr != nil {
+		return readErr, writerErr
+	}
+	if copiedByteCount != expectedByteCount {
+		return nil, fmt.Errorf("expected %d bytes but copied %d when downloading plugin %s",
+			expectedByteCount, copiedByteCount, pkgPlugin)
+	}
+	return nil, nil
+}
+
+func (d *pluginDownloader) tryDownloadToFile(pkgPlugin PluginSpec) (string, error, error) {
+	file, err := os.CreateTemp("" /* default temp dir */, "pulumi-plugin-tar")
+	if err != nil {
+		return "", nil, err
+	}
+	readErr, writeErr := d.tryDownload(pkgPlugin, file)
+	if readErr != nil || writeErr != nil {
+		err2 := os.Remove(file.Name())
+		if err2 != nil {
+			// only one of readErr or writeErr will be set
+			err := readErr
+			if err == nil {
+				err = writeErr
+			}
+
+			return "", nil, fmt.Errorf("error while removing tempfile: %v. Context: %w", err2, err)
+		}
+		return "", readErr, writeErr
+	}
+	return file.Name(), nil, nil
+}
+
+func (d *pluginDownloader) downloadToFileWithRetry(pkgPlugin PluginSpec) (string, error) {
+	delay := 80 * time.Millisecond
+	backoff := 2.0
+	maxAttempts := 5
+
+	_, path, err := (&retry.Retryer{
+		After: d.After,
+	}).Until(context.Background(), retry.Acceptor{
+		Delay:   &delay,
+		Backoff: &backoff,
+		Accept: func(attempt int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			if attempt >= maxAttempts {
+				return false, nil, fmt.Errorf("failed all %d attempts", maxAttempts)
+			}
+
+			tempFile, readErr, writeErr := d.tryDownloadToFile(pkgPlugin)
 			if readErr == nil && writeErr == nil {
-				return tempFile, nil
+				return true, tempFile, nil
 			}
 			if writeErr != nil {
-				return "", writeErr
+				// Writes are local. If they fail,
+				// there's no point retrying.
+				return false, "", writeErr
 			}
 
-			// If the readErr is a checksum error don't retry
+			// If the readErr is a checksum error don't retry.
 			var checksumErr *checksumError
 			if errors.As(readErr, &checksumErr) {
-				return "", readErr
+				return false, "", readErr
 			}
 
 			// Don't retry, since the request was processed and rejected.
 			var downloadErr *downloadError
 			if errors.As(readErr, &downloadErr) && (downloadErr.code == 404 || downloadErr.code == 403) {
-				return "", readErr
+				return false, "", readErr
 			}
 
-			// Don't attempt more than 5 times
-			attempts := 5
-			if readErr != nil && attempt >= attempts {
-				return "", readErr
+			if d.OnRetry != nil {
+				d.OnRetry(readErr, attempt+1, maxAttempts, nextRetryTime)
 			}
-			if retry != nil {
-				retry(readErr, attempt+1, attempts, delay)
-			}
-			time.Sleep(delay)
-			delay = delay * 2
-		}
+
+			return false, "", nil
+		},
+	})
+	if err != nil {
+		return "", err
 	}
 
-	tarball, err := downloadToFileWithRetry()
+	return path.(string), nil
+}
+
+// DownloadToFile downloads the given PluginSpec to a temporary file
+// and returns that temporary file.
+//
+// This has some retry logic to re-attempt the download if it errors for any reason.
+func (d *pluginDownloader) DownloadToFile(pkgPlugin PluginSpec) (*os.File, error) {
+	tarball, err := d.downloadToFileWithRetry(pkgPlugin)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
 	}
@@ -1181,6 +1244,19 @@ func DownloadToFile(
 		return nil, fmt.Errorf("failed to open downloaded plugin: %s: %w", pkgPlugin, err)
 	}
 	return reader, nil
+}
+
+// DownloadToFile downloads the given PluginInfo to a temporary file and returns that temporary file.
+// This has some retry logic to re-attempt the download if it errors for any reason.
+func DownloadToFile(
+	pkgPlugin PluginSpec,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+	retry func(err error, attempt int, limit int, delay time.Duration),
+) (*os.File, error) {
+	return (&pluginDownloader{
+		WrapStream: wrapper,
+		OnRetry:    retry,
+	}).DownloadToFile(pkgPlugin)
 }
 
 type PluginContent interface {
