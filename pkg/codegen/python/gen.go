@@ -50,6 +50,12 @@ type typeDetails struct {
 
 type imports codegen.StringSet
 
+// defaultMinPythonVersion is what we use as the minimum version field in generated
+// package metadata if the schema does not provide a vaule. This version corresponds
+// to the minimum supported version as listed in the reference documentation:
+// https://www.pulumi.com/docs/reference/pkg/python/pulumi/
+const defaultMinPythonVersion = ">=3.6"
+
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
 }
@@ -2125,6 +2131,7 @@ func genPackageMetadata(
 		fmt.Fprintf(w, "      python_requires='%s',\n", minPython)
 	} else {
 		cmdutil.Diag().Infof(&diag.Diag{Message: err.Error()})
+		fmt.Fprintf(w, "      python_requires='%s',\n", defaultMinPythonVersion)
 	}
 	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
