@@ -60,7 +60,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"gopkg.in/yaml.v3"
 )
 
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
@@ -332,6 +331,20 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 		return fmt.Errorf("read old references: %w", err)
 	}
 
+	// It's important that we attempt to write the new metadata file
+	// before we attempt the upgrade.
+	// This ensures that if permissions are borked for any reason,
+	// (e.g., we can write to .pulumi/*/*" but not ".pulumi/*.")
+	// we don't leave the bucket in a completely inaccessible state.
+	meta := pulumiMeta{Version: 1}
+	if err := meta.WriteTo(ctx, b.bucket); err != nil {
+		var s strings.Builder
+		fmt.Fprintf(&s, "Could not write new state metadata file: %v\n", err)
+		fmt.Fprintf(&s, "Please verify that the storage is writable, and try again.")
+		b.d.Errorf(diag.RawMessage("", s.String()))
+		return errors.New("state upgrade failed")
+	}
+
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
 	var upgraded int
 	for _, old := range olds {
@@ -341,14 +354,7 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 		}
 		upgraded++
 	}
-
-	pulumiYaml, err := yaml.Marshal(&pulumiMeta{Version: 1})
-	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiState to yaml")
-	if err = b.bucket.WriteAll(ctx, "Pulumi.yaml", pulumiYaml, nil); err != nil {
-		return fmt.Errorf("could not write 'Pulumi.yaml': %w", err)
-	}
 	b.store = newStore
-
 	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded)
 	return nil
 }

@@ -938,6 +938,47 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 	assert.Equal(t, tokens.QName("organization/project/foo"), ref.FullyQualifiedName())
 }
 
+// If an upgrade failed because we couldn't write the meta.yaml,
+// the stacks should be left in legacy mode.
+func TestLegacyUpgrade_writeMetaError(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), nil))
+
+	// To prevent a write to meta.yaml, we'll create a directory with that name.
+	// The system will reject creating a file with the same name.
+	require.NoError(t, os.MkdirAll(filepath.Join(stateDir, ".pulumi", "meta.yaml"), 0o755))
+
+	var buff bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+	require.NoError(t, err)
+
+	require.Error(t, b.Upgrade(ctx))
+
+	stderr := buff.String()
+	assert.Contains(t, stderr, "error: Could not write new state metadata file")
+	assert.Contains(t, stderr, "Please verify that the storage is writable")
+
+	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "foo.json"),
+		"foo.json should not have been upgraded")
+}
+
 func TestNew_unsupportedStoreVersion(t *testing.T) {
 	t.Parallel()
 
