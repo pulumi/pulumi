@@ -34,6 +34,10 @@ var pulumiMetaPath = filepath.Join(workspace.BookkeepingDir, "Pulumi.yaml")
 // This file specifies metadata for the backend,
 // including a version number that the backend can use
 // to maintain compatibility with older versions of the CLI.
+//
+// The metadata file is not written for legacy layouts.
+// However, there was a short period of time where it was written,
+// so we should still allow for Version 0 when reading these files.
 type pulumiMeta struct {
 	// Version is the current version of the state store.
 	//
@@ -45,8 +49,7 @@ type pulumiMeta struct {
 	Version int `json:"version" yaml:"version"`
 }
 
-// ensurePulumiMeta loads the Pulumi state metadata file from the bucket,
-// creating it if it does not exist.
+// ensurePulumiMeta loads the Pulumi state metadata file from the bucket.
 //
 // Unlike [readPulumiMeta],
 // the result of this function will always be non-nil if the error is nil.
@@ -63,9 +66,13 @@ func ensurePulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 		return meta, nil
 	}
 
-	// If there's no metadata file, we need to create one.
+	// If there's no metadata file, we need to create one
+	// with the latest version.
+	//
+	// Implementation detail:
+	// For version 0, we don't write the file.
+	// However, for future versions, we will write it.
 	meta = &pulumiMeta{Version: 0}
-
 	if err := meta.WriteTo(ctx, b); err != nil {
 		return nil, err
 	}
@@ -111,6 +118,16 @@ func readPulumiMeta(ctx context.Context, b Bucket) (*pulumiMeta, error) {
 
 // WriteTo writes the metadata to the bucket, overwriting any existing metadata.
 func (m *pulumiMeta) WriteTo(ctx context.Context, b Bucket) error {
+	if m.Version == 0 {
+		// We don't want to write a metadata file
+		// for legacy layouts.
+		//
+		// This allows for cases where a user has
+		// strict permission controls on their bucket,
+		// and doesn't expect a file outside .pulumi/stacks/.
+		return nil
+	}
+
 	bs, err := yaml.Marshal(m)
 	contract.AssertNoErrorf(err, "Could not marshal filestate.pulumiMeta to YAML")
 
