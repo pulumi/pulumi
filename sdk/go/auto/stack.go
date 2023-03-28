@@ -671,6 +671,11 @@ func (s *Stack) GetConfig(ctx context.Context, key string) (ConfigValue, error) 
 	return s.Workspace().GetConfig(ctx, s.Name(), key)
 }
 
+// GetConfigWithOptions returns the config value associated with the specified key using the optional ConfigOptions.
+func (s *Stack) GetConfigWithOptions(ctx context.Context, key string, opts *ConfigOptions) (ConfigValue, error) {
+	return s.Workspace().GetConfigWithOptions(ctx, s.Name(), key, opts)
+}
+
 // GetAllConfig returns the full config map.
 func (s *Stack) GetAllConfig(ctx context.Context) (ConfigMap, error) {
 	return s.Workspace().GetAllConfig(ctx, s.Name())
@@ -681,9 +686,19 @@ func (s *Stack) SetConfig(ctx context.Context, key string, val ConfigValue) erro
 	return s.Workspace().SetConfig(ctx, s.Name(), key, val)
 }
 
+// SetConfigWithOptions sets the specified config key-value pair using the optional ConfigOptions.
+func (s *Stack) SetConfigWithOptions(ctx context.Context, key string, val ConfigValue, opts *ConfigOptions) error {
+	return s.Workspace().SetConfigWithOptions(ctx, s.Name(), key, val, opts)
+}
+
 // SetAllConfig sets all values in the provided config map.
 func (s *Stack) SetAllConfig(ctx context.Context, config ConfigMap) error {
 	return s.Workspace().SetAllConfig(ctx, s.Name(), config)
+}
+
+// SetAllConfigWithOptions sets all values in the provided config map using the optional ConfigOptions.
+func (s *Stack) SetAllConfigWithOptions(ctx context.Context, config ConfigMap, opts *ConfigOptions) error {
+	return s.Workspace().SetAllConfigWithOptions(ctx, s.Name(), config, opts)
 }
 
 // RemoveConfig removes the specified config key-value pair.
@@ -691,9 +706,19 @@ func (s *Stack) RemoveConfig(ctx context.Context, key string) error {
 	return s.Workspace().RemoveConfig(ctx, s.Name(), key)
 }
 
+// RemoveConfigWithOptions removes the specified config key-value pair using the optional ConfigOptions.
+func (s *Stack) RemoveConfigWithOptions(ctx context.Context, key string, opts *ConfigOptions) error {
+	return s.Workspace().RemoveConfigWithOptions(ctx, s.Name(), key, opts)
+}
+
 // RemoveAllConfig removes all values in the provided list of keys.
 func (s *Stack) RemoveAllConfig(ctx context.Context, keys []string) error {
 	return s.Workspace().RemoveAllConfig(ctx, s.Name(), keys)
+}
+
+// RemoveAllConfigWithOptions removes all values in the provided list of keys using the optional ConfigOptions.
+func (s *Stack) RemoveAllConfigWithOptions(ctx context.Context, keys []string, opts *ConfigOptions) error {
+	return s.Workspace().RemoveAllConfigWithOptions(ctx, s.Name(), keys, opts)
 }
 
 // RefreshConfig gets and sets the config map used with the last Update.

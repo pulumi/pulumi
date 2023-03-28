@@ -47,16 +47,32 @@ type Workspace interface {
 	// GetConfig returns the value associated with the specified stack name and key,
 	// scoped to the current workspace.
 	GetConfig(context.Context, string, string) (ConfigValue, error)
+	// GetConfigWithOptions returns the value associated with the specified stack name and key
+	// using the optional ConfigOptions,
+	// scoped to the current workspace.
+	GetConfigWithOptions(context.Context, string, string, *ConfigOptions) (ConfigValue, error)
 	// GetAllConfig returns the config map for the specified stack name, scoped to the current workspace.
 	GetAllConfig(context.Context, string) (ConfigMap, error)
 	// SetConfig sets the specified key-value pair on the provided stack name.
 	SetConfig(context.Context, string, string, ConfigValue) error
+	// SetConfigWithOptions sets the specified key-value pair on the provided stack name
+	// using the optional ConfigOptions.
+	SetConfigWithOptions(context.Context, string, string, ConfigValue, *ConfigOptions) error
 	// SetAllConfig sets all values in the provided config map for the specified stack name.
 	SetAllConfig(context.Context, string, ConfigMap) error
+	// SetAllConfigWithOptions sets all values in the provided config map for the specified stack name
+	// using the optional ConfigOptions.
+	SetAllConfigWithOptions(context.Context, string, ConfigMap, *ConfigOptions) error
 	// RemoveConfig removes the specified key-value pair on the provided stack name.
 	RemoveConfig(context.Context, string, string) error
+	// RemoveConfigWithOptions removes the specified key-value pair on the provided stack name
+	// using the optional ConfigOptions.
+	RemoveConfigWithOptions(context.Context, string, string, *ConfigOptions) error
 	// RemoveAllConfig removes all values in the provided key list for the specified stack name.
 	RemoveAllConfig(context.Context, string, []string) error
+	// RemoveAllConfigWithOptions removes all values in the provided key list for the specified stack name
+	// using the optional ConfigOptions.
+	RemoveAllConfigWithOptions(context.Context, string, []string, *ConfigOptions) error
 	// RefreshConfig gets and sets the config map used with the last Update for Stack matching stack name.
 	RefreshConfig(context.Context, string) (ConfigMap, error)
 	// GetTag returns the value associated with the specified stack name and key.
@@ -129,6 +145,12 @@ type Workspace interface {
 type ConfigValue struct {
 	Value  string
 	Secret bool
+}
+
+// ConfigOptions is a configuration option used by a Pulumi program.
+// Allows to use the path flag while getting/setting the configuration.
+type ConfigOptions struct {
+	Path bool
 }
 
 // ConfigMap is a map of ConfigValue used by Pulumi programs.
