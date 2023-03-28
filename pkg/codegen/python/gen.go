@@ -20,6 +20,7 @@ package python
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -2127,7 +2128,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
 	// Remind the user that the schema should specify the minimum
 	// Python version.
-	if minPython, err := info.minimumPythonVersion(); err == nil {
+	if minPython, err := minimumPythonVersion(info); err == nil {
 		fmt.Fprintf(w, "      python_requires='%s',\n", minPython)
 	} else {
 		cmdutil.Diag().Infof(&diag.Diag{Message: err.Error()})
@@ -2219,6 +2220,21 @@ func genPackageMetadata(
 
 	fmt.Fprintf(w, "      zip_safe=False)\n")
 	return w.String(), nil
+}
+
+// errNoMinimumPythonVersion is a non-fatal error indicating that the schema
+// did not provide a minimum version of Python for the Package.
+var errNoMinimumPythonVersion = errors.New("the schema does not provide a minimum version of Python required for this provider. It's recommended to provide a minimum version so package users can understand the package's requirements")
+
+// minimumPythonVersion returns a string containing the version
+// constraint specifying the minimumal version of Python required
+// by this package. For example, ">=3.8" is satified by all versions
+// of Python greater than or equal to Python 3.8.
+func minimumPythonVersion(info PackageInfo) (string, error) {
+	if info.PythonRequires != "" {
+		return info.PythonRequires, nil
+	}
+	return "", errNoMinimumPythonVersion
 }
 
 func pep440VersionToSemver(v string) (semver.Version, error) {
