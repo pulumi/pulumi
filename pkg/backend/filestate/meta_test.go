@@ -44,14 +44,14 @@ func TestEnsurePulumiMeta(t *testing.T) {
 		{
 			desc: "version 0",
 			give: map[string]string{
-				".pulumi/Pulumi.yaml": `version: 0`,
+				".pulumi/meta.yaml": `version: 0`,
 			},
 			want: pulumiMeta{Version: 0},
 		},
 		{
 			desc: "future version",
 			give: map[string]string{
-				".pulumi/Pulumi.yaml": `version: 42`,
+				".pulumi/meta.yaml": `version: 42`,
 			},
 			want: pulumiMeta{Version: 42},
 		},
@@ -80,23 +80,23 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 
 	tests := []struct {
 		desc    string
-		give    string // contents of Pulumi.yaml
+		give    string // contents of meta.yaml
 		wantErr string
 	}{
 		{
 			desc:    "empty",
 			give:    ``,
-			wantErr: `corrupt store: missing version in ".pulumi/Pulumi.yaml"`,
+			wantErr: `corrupt store: missing version in ".pulumi/meta.yaml"`,
 		},
 		{
 			desc:    "other fields",
 			give:    `foo: bar`,
-			wantErr: `corrupt store: missing version in ".pulumi/Pulumi.yaml"`,
+			wantErr: `corrupt store: missing version in ".pulumi/meta.yaml"`,
 		},
 		{
 			desc:    "corrupt version",
 			give:    `version: foo`,
-			wantErr: `corrupt store: unmarshal ".pulumi/Pulumi.yaml"`,
+			wantErr: `corrupt store: unmarshal ".pulumi/meta.yaml"`,
 		},
 	}
 
@@ -107,7 +107,7 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 
 			b := memblob.OpenBucket(nil)
 			ctx := context.Background()
-			require.NoError(t, b.WriteAll(ctx, ".pulumi/Pulumi.yaml", []byte(tt.give), nil))
+			require.NoError(t, b.WriteAll(ctx, ".pulumi/meta.yaml", []byte(tt.give), nil))
 
 			_, err := ensurePulumiMeta(context.Background(), b)
 			assert.ErrorContains(t, err, tt.wantErr)
@@ -156,7 +156,7 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 		Version: 0,
 	}).WriteTo(ctx, bucket))
 
-	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "Pulumi.yaml"))
+	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
 }
 
 // Verify that we don't create a metadata file with version 0 in new buckets.
@@ -168,5 +168,5 @@ func TestNew_noMetaOnInit(t *testing.T) {
 	_, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
-	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "Pulumi.yaml"))
+	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
 }

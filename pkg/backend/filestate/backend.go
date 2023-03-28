@@ -202,7 +202,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	}
 	if meta.Version != 0 {
 		return nil, fmt.Errorf(
-			"state store unsupported: 'Pulumi.yaml' version (%d) is not supported "+
+			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
 				"by this version of the Pulumi CLI", meta.Version)
 	}
 

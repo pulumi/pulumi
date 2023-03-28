@@ -528,14 +528,14 @@ func TestNew_unsupportedStoreVersion(t *testing.T) {
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
 	require.NoError(t, err)
 
-	// Set up a Pulumi.yaml "from the future".
+	// Set up a meta.yaml "from the future".
 	ctx := context.Background()
 	require.NoError(t,
-		bucket.WriteAll(ctx, ".pulumi/Pulumi.yaml", []byte("version: 999999999"), nil))
+		bucket.WriteAll(ctx, ".pulumi/meta.yaml", []byte("version: 999999999"), nil))
 
 	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), nil)
 	assert.ErrorContains(t, err, "state store unsupported")
-	assert.ErrorContains(t, err, "'Pulumi.yaml' version (999999999) is not supported")
+	assert.ErrorContains(t, err, "'meta.yaml' version (999999999) is not supported")
 }
 
 // TestSerializeTimestampRFC3339 captures our expectations that Created and Modified will be serialized to
