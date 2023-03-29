@@ -172,7 +172,8 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
-			return newTeamsUnsupportedError(cmd.stackName, b.Name())
+			return fmt.Errorf("stack %s uses the %s backend: "+
+				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
 		}
 		return err
 	}
@@ -220,30 +221,4 @@ func newCreateStackOptions(teams []string) *backend.CreateStackOptions {
 	return &backend.CreateStackOptions{
 		Teams: validTeams,
 	}
-}
-
-// TeamsUnsupportedError is the error returned when the --teams
-// flag is provided on a backend that doesn't support teams.
-type teamsUnsupportedError struct {
-	stackName   string
-	backendType string
-}
-
-// NewTeamsUnsupportedError constructs an error for when users provide the --teams flag
-// for non-Service backends, or when options with teams are incorrectly provided to
-// a backend during stack creation.
-func newTeamsUnsupportedError(stackName, backendType string) *teamsUnsupportedError {
-	return &teamsUnsupportedError{
-		stackName:   stackName,
-		backendType: backendType,
-	}
-}
-
-func (err teamsUnsupportedError) Error() string {
-	return fmt.Sprintf(
-		"stack %s uses the %s backend: %s does not support --teams",
-		err.stackName,
-		err.backendType,
-		err.backendType,
-	)
 }
