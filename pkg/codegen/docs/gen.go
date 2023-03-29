@@ -175,6 +175,9 @@ type docGenContext struct {
 	// langModuleNameLookup is a map of module name to its language-specific
 	// name.
 	langModuleNameLookup map[string]string
+
+	// Maps a *modContext, *schema.Resource, or *schema.Function to the link that was assigned to it.
+	moduleConflictLinkMap map[interface{}]string
 }
 
 // modules is a map of a module name and information
@@ -214,10 +217,11 @@ func newDocGenContext() *docGenContext {
 	}
 
 	return &docGenContext{
-		supportedLanguages:   supportedLanguages,
-		snippetLanguages:     []string{"csharp", "go", "python", "typescript", "yaml", "java"},
-		langModuleNameLookup: map[string]string{},
-		docHelpers:           docHelpers,
+		supportedLanguages:    supportedLanguages,
+		snippetLanguages:      []string{"csharp", "go", "python", "typescript", "yaml", "java"},
+		langModuleNameLookup:  map[string]string{},
+		docHelpers:            docHelpers,
+		moduleConflictLinkMap: map[interface{}]string{},
 	}
 }
 
@@ -1753,62 +1757,192 @@ func (mod *modContext) getModuleFileName() string {
 	return mod.mod
 }
 
+// moduleConflictResolver holds module-level information for resolving naming conflicts.
+// It shares information with the top-level docGenContext
+// to ensure the same name is used across modules that reference each other.
+type moduleConflictResolver struct {
+	dctx *docGenContext
+	seen map[string]struct{}
+}
+
+func (dctx *docGenContext) newModuleConflictResolver() moduleConflictResolver {
+	return moduleConflictResolver{
+		dctx: dctx,
+		seen: map[string]struct{}{},
+	}
+}
+
+// getSafeName returns a documentation name for an item
+// that is unique within the module.
+//
+// if the item has already been resolved by any module,
+// the previously-resolved name is returned.
+func (r *moduleConflictResolver) getSafeName(name string, item interface{}) string {
+	if safeName, ok := r.dctx.moduleConflictLinkMap[item]; ok {
+		return safeName
+	}
+
+	var prefixes []string
+	switch item.(type) {
+	case *schema.Resource:
+		prefixes = []string{"", "res-"}
+	case *schema.Function:
+		prefixes = []string{"", "fn-"}
+	case *modContext:
+		prefixes = []string{"", "mod-"}
+	default:
+		prefixes = []string{""}
+	}
+	for _, prefix := range prefixes {
+		candidate := prefix + name
+		if _, exists := r.seen[candidate]; exists {
+			continue
+		}
+		r.seen[candidate] = struct{}{}
+		r.dctx.moduleConflictLinkMap[item] = candidate
+		return candidate
+	}
+
+	glog.Error("skipping unresolvable duplicate file name: ", name)
+	return ""
+}
+
 func (mod *modContext) gen(fs codegen.Fs) error {
-	dctx := mod.docGenContext
+	glog.V(4).Infoln("genIndex for", mod.mod)
+
 	modName := mod.getModuleFileName()
+	conflictResolver := mod.docGenContext.newModuleConflictResolver()
 
-	addFile := func(name, contents string) {
-		p := path.Join(modName, name, "_index.md")
-		fs.Add(p, []byte(contents))
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
+
+	modTitle := modName
+	if modTitle == "" {
+		// An empty string indicates that this is the root module.
+		if def.DisplayName != "" {
+			modTitle = def.DisplayName
+		} else {
+			modTitle = getPackageDisplayName(mod.pkg.Name())
+		}
 	}
 
-	// Resources
+	// addFileTemplated executes template tmpl with data,
+	// and adds a file $dirName/_index.md with the result.
+	addFileTemplated := func(dirName, tmpl string, data interface{}) error {
+		var buff bytes.Buffer
+		if err := mod.docGenContext.templates.ExecuteTemplate(&buff, tmpl, data); err != nil {
+			return err
+		}
+		p := path.Join(modName, dirName, "_index.md")
+		fs.Add(p, buff.Bytes())
+		return nil
+	}
+
+	// If there are submodules, list them.
+	modules := make([]indexEntry, 0, len(mod.children))
+	for _, mod := range mod.children {
+		modName := mod.getModuleFileName()
+		displayName := modFilenameToDisplayName(modName)
+		safeName := conflictResolver.getSafeName(displayName, mod)
+		if safeName == "" {
+			continue // unresolved conflict
+		}
+		modules = append(modules, indexEntry{
+			Link:        getModuleLink(safeName),
+			DisplayName: displayName,
+		})
+	}
+	sortIndexEntries(modules)
+
+	// If there are resources in the root, list them.
+	resources := make([]indexEntry, 0, len(mod.resources))
 	for _, r := range mod.resources {
-		data := mod.genResource(r)
-
 		title := resourceName(r)
-		buffer := &bytes.Buffer{}
+		link := getResourceLink(title)
+		link = conflictResolver.getSafeName(link, r)
+		if link == "" {
+			continue // unresolved conflict
+		}
 
-		err := dctx.templates.ExecuteTemplate(buffer, "resource.tmpl", data)
-		if err != nil {
+		data := mod.genResource(r)
+		if err := addFileTemplated(link, "resource.tmpl", data); err != nil {
 			return err
 		}
 
-		resourceFileName := strings.ToLower(title)
-		// Handle file generation for resources named `index`. We prepend a double underscore
-		// here, since this ends up resulting in route of .../<module>/index which has trouble
-		// resolving and returns a 404 in the browser, likely due to `index` being some sort
-		// of reserved keyword.
-		if resourceFileName == "index" {
-			resourceFileName = "--index"
-		}
-
-		addFile(resourceFileName, buffer.String())
+		resources = append(resources, indexEntry{
+			Link:        link + "/",
+			DisplayName: title,
+		})
 	}
+	sortIndexEntries(resources)
 
-	// Functions
+	// If there are functions in the root, list them.
+	functions := make([]indexEntry, 0, len(mod.functions))
 	for _, f := range mod.functions {
-		data := mod.genFunction(f)
+		name := tokenToName(f.Token)
+		link := getFunctionLink(name)
+		link = conflictResolver.getSafeName(link, f)
+		if link == "" {
+			continue // unresolved conflict
+		}
 
-		buffer := &bytes.Buffer{}
-		err := dctx.templates.ExecuteTemplate(buffer, "function.tmpl", data)
-		if err != nil {
+		data := mod.genFunction(f)
+		if err := addFileTemplated(link, "function.tmpl", data); err != nil {
 			return err
 		}
 
-		addFile(strings.ToLower(tokenToName(f.Token)), buffer.String())
+		functions = append(functions, indexEntry{
+			Link:        link + "/",
+			DisplayName: strings.Title(name),
+		})
+	}
+	sortIndexEntries(functions)
+
+	version := ""
+	if mod.pkg.Version() != nil {
+		version = mod.pkg.Version().String()
 	}
 
-	// Generate the index files.
-	idxData := mod.genIndex()
-	buffer := &bytes.Buffer{}
-	err := dctx.templates.ExecuteTemplate(buffer, "index.tmpl", idxData)
-	if err != nil {
-		return err
+	packageDetails := packageDetails{
+		DisplayName:    getPackageDisplayName(def.Name),
+		Repository:     def.Repository,
+		RepositoryName: getRepositoryName(def.Repository),
+		License:        def.License,
+		Notes:          def.Attribution,
+		Version:        version,
 	}
 
-	fs.Add(path.Join(modName, "_index.md"), buffer.Bytes())
-	return nil
+	var modTitleTag string
+	var packageDescription string
+	// The same index.tmpl template is used for both top level package and module pages, if modules not present,
+	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
+	// top level page when generating title tags.
+	if len(modules) > 0 {
+		modTitleTag = fmt.Sprintf("%s Package", getPackageDisplayName(modTitle))
+	} else {
+		modTitleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), modTitle)
+		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.",
+			mod.pkg.Name(), modTitle)
+	}
+
+	// Generate the index file.
+	idxData := indexData{
+		Tool:               mod.tool,
+		PackageDescription: packageDescription,
+		Title:              modTitle,
+		TitleTag:           modTitleTag,
+		Resources:          resources,
+		Functions:          functions,
+		Modules:            modules,
+		PackageDetails:     packageDetails,
+	}
+
+	// If this is the root module, write out the package description.
+	if mod.mod == "" {
+		idxData.PackageDescription = mod.pkg.Description()
+	}
+
+	return addFileTemplated("", "index.tmpl", idxData)
 }
 
 // indexEntry represents an individual entry on an index page.
@@ -1831,138 +1965,14 @@ type indexData struct {
 	PackageDetails packageDetails
 }
 
-// indexEntrySorter implements the sort.Interface for sorting
-// a slice of indexEntry struct types.
-type indexEntrySorter struct {
-	entries []indexEntry
-}
-
-// Len is part of sort.Interface. Returns the length of the
-// entries slice.
-func (s *indexEntrySorter) Len() int {
-	return len(s.entries)
-}
-
-// Swap is part of sort.Interface.
-func (s *indexEntrySorter) Swap(i, j int) {
-	s.entries[i], s.entries[j] = s.entries[j], s.entries[i]
-}
-
-// Less is part of sort.Interface. It sorts the entries by their
-// display name in an ascending order.
-func (s *indexEntrySorter) Less(i, j int) bool {
-	return s.entries[i].DisplayName < s.entries[j].DisplayName
-}
-
 func sortIndexEntries(entries []indexEntry) {
 	if len(entries) == 0 {
 		return
 	}
 
-	sorter := &indexEntrySorter{
-		entries: entries,
-	}
-
-	sort.Sort(sorter)
-}
-
-// genIndex emits an _index.md file for the module.
-func (mod *modContext) genIndex() indexData {
-	glog.V(4).Infoln("genIndex for", mod.mod)
-	modules := make([]indexEntry, 0, len(mod.children))
-	resources := make([]indexEntry, 0, len(mod.resources))
-	functions := make([]indexEntry, 0, len(mod.functions))
-
-	modName := mod.getModuleFileName()
-	title := modName
-
-	def, err := mod.pkg.Definition()
-	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
-
-	// An empty string indicates that this is the root module.
-	if title == "" {
-		if def.DisplayName != "" {
-			title = def.DisplayName
-		} else {
-			title = getPackageDisplayName(mod.pkg.Name())
-		}
-	}
-
-	// If there are submodules, list them.
-	for _, mod := range mod.children {
-		modName := mod.getModuleFileName()
-		displayName := modFilenameToDisplayName(modName)
-		modules = append(modules, indexEntry{
-			Link:        getModuleLink(displayName),
-			DisplayName: displayName,
-		})
-	}
-	sortIndexEntries(modules)
-
-	// If there are resources in the root, list them.
-	for _, r := range mod.resources {
-		name := resourceName(r)
-		resources = append(resources, indexEntry{
-			Link:        getResourceLink(name) + "/",
-			DisplayName: name,
-		})
-	}
-	sortIndexEntries(resources)
-
-	// If there are functions in the root, list them.
-	for _, f := range mod.functions {
-		name := tokenToName(f.Token)
-		functions = append(functions, indexEntry{
-			Link:        getFunctionLink(name) + "/",
-			DisplayName: strings.Title(name),
-		})
-	}
-	sortIndexEntries(functions)
-
-	version := ""
-	if mod.pkg.Version() != nil {
-		version = mod.pkg.Version().String()
-	}
-
-	packageDetails := packageDetails{
-		DisplayName:    getPackageDisplayName(def.Name),
-		Repository:     def.Repository,
-		RepositoryName: getRepositoryName(def.Repository),
-		License:        def.License,
-		Notes:          def.Attribution,
-		Version:        version,
-	}
-
-	var titleTag string
-	var packageDescription string
-	// The same index.tmpl template is used for both top level package and module pages, if modules not present,
-	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
-	// top level page when generating title tags.
-	if len(modules) > 0 {
-		titleTag = fmt.Sprintf("%s Package", getPackageDisplayName(title))
-	} else {
-		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), title)
-		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.",
-			mod.pkg.Name(), title)
-	}
-
-	data := indexData{
-		Tool:               mod.tool,
-		PackageDescription: packageDescription,
-		Title:              title,
-		TitleTag:           titleTag,
-		Resources:          resources,
-		Functions:          functions,
-		Modules:            modules,
-		PackageDetails:     packageDetails,
-	}
-
-	// If this is the root module, write out the package description.
-	if mod.mod == "" {
-		data.PackageDescription = mod.pkg.Description()
-	}
-
-	return data
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].DisplayName < entries[j].DisplayName
+	})
 }
 
 // getPackageDisplayName uses the title lookup map to look for a

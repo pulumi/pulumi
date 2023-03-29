@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: docs
+  description: Fix filename clashes between resources and functions on case-insensitive filesystems in docsgen.

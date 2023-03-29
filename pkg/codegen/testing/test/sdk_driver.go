@@ -246,6 +246,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "docs-collision",
+		Description: "Tests that resources and functions with the same name do not clobber each other.",
+		Skip:        allLanguages.Except("docs/any"),
+	},
+	{
 		Directory:   "other-owned",
 		Description: "CSharp rootNamespaces",
 		// We only test in dotnet, because we are testing a change in a dotnet
