@@ -26,9 +26,9 @@ import (
 )
 
 // Path inside the bucket where we store the metadata file.
-var pulumiMetaPath = filepath.Join(workspace.BookkeepingDir, "Pulumi.yaml")
+var pulumiMetaPath = filepath.Join(workspace.BookkeepingDir, "meta.yaml")
 
-// pulumiMeta holds the contents of the .pulumi/Pulumi.yaml file
+// pulumiMeta holds the contents of the .pulumi/meta.yaml file
 // in a filestate backend.
 //
 // This file specifies metadata for the backend,
