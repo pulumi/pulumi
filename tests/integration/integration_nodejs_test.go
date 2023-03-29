@@ -1309,6 +1309,25 @@ func TestCustomResourceTypeNameDynamicNode(t *testing.T) {
 	})
 }
 
+// Tests errors in dynamic provider methods
+func TestErrorCreateDynamicNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("dynamic", "nodejs-error-create"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			foundError := false
+			for _, event := range stack.Events {
+				if event.ResOpFailedEvent != nil {
+					foundError = true
+					assert.Equal(t, apitype.OpType("create"), event.ResOpFailedEvent.Metadata.Op)
+				}
+			}
+			assert.True(t, foundError, "Did not see create error")
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 func TestRegression12301Node(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
