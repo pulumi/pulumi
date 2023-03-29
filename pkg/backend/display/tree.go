@@ -21,7 +21,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
@@ -35,17 +34,20 @@ type treeRenderer struct {
 
 	opts Options
 
-	term terminal.Terminal
+	term       terminal.Terminal
+	termWidth  int
+	termHeight int
 
 	permalink string
 
 	dirty  bool // True if the display has changed since the last redraw.
 	rewind int  // The number of lines we need to rewind to redraw the entire screen.
 
-	treeTableRows         []string
+	nodes                 []*treeNode
 	systemMessages        []string
 	statusMessage         string
 	statusMessageDeadline time.Time
+	reflowed              bool // True if the table has been reflowed.
 
 	ticker *time.Ticker
 	keys   chan string
@@ -145,26 +147,7 @@ func (r *treeRenderer) render(display *ProgressDisplay) {
 	rootNodes := display.generateTreeNodes()
 	rootNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(rootNodes)
 	sortNodes(rootNodes)
-	display.addIndentations(rootNodes, true /*isRoot*/, "")
-
-	maxSuffixLength := 0
-	for _, v := range display.suffixesArray {
-		runeCount := utf8.RuneCountInString(v)
-		if runeCount > maxSuffixLength {
-			maxSuffixLength = runeCount
-		}
-	}
-
-	var treeTableRows [][]string
-	var maxColumnLengths []int
-	display.convertNodesToRows(rootNodes, maxSuffixLength, &treeTableRows, &maxColumnLengths)
-	removeInfoColumnIfUnneeded(treeTableRows)
-
-	r.treeTableRows = r.treeTableRows[:0]
-	for _, row := range treeTableRows {
-		rendered := renderRow(row, maxColumnLengths)
-		r.treeTableRows = append(r.treeTableRows, rendered)
-	}
+	r.nodes = rootNodes
 
 	// Convert system events into lines.
 	r.systemMessages = r.systemMessages[:0]
@@ -200,23 +183,43 @@ func (r *treeRenderer) frame(locked, done bool) {
 		defer r.m.Unlock()
 	}
 
+	// Determine whether or not the terminal has been resized since the last frame. If it has, we want to invalidate
+	// the last reflow decision and re-render.
+	termWidth, termHeight, err := r.term.Size()
+	contract.IgnoreError(err)
+	if termWidth != r.termWidth || termHeight != r.termHeight {
+		r.termWidth, r.termHeight = termWidth, termHeight
+		r.reflowed, r.dirty = false, true
+	}
+
 	if !done && !r.dirty {
 		return
 	}
 	r.dirty = false
 
-	termWidth, termHeight, err := r.term.Size()
-	contract.IgnoreError(err)
-
-	treeTableRows := r.treeTableRows
 	systemMessages := r.systemMessages
 	statusMessage := r.statusMessage
 
+	treeTableRows := generateRows(r.nodes, r.reflowed)
+	columnWidths := measureColumns(treeTableRows)
+
+	// Figure out if we need to reflow the tree table.
+	if !r.reflowed && rowWidth(columnWidths) > termWidth {
+		treeTableRows = generateRows(r.nodes, true /*reflow*/)
+		columnWidths = measureColumns(treeTableRows)
+		r.reflowed = true
+	}
+
+	treeTable := make([]string, len(treeTableRows))
+	for i, row := range treeTableRows {
+		treeTable[i] = renderRow(row, columnWidths)
+	}
+
 	var treeTableHeight int
 	var treeTableHeader string
-	if len(r.treeTableRows) > 0 {
-		treeTableHeader, treeTableRows = treeTableRows[0], treeTableRows[1:]
-		treeTableHeight = 1 + len(treeTableRows)
+	if len(treeTable) > 0 {
+		treeTableHeader, treeTable = treeTable[0], treeTable[1:]
+		treeTableHeight = 1 + len(treeTable)
 	}
 
 	systemMessagesHeight := len(systemMessages)
@@ -259,14 +262,14 @@ func (r *treeRenderer) frame(locked, done bool) {
 		mergeLastLine := systemMessagesHeight == 0 && statusMessageHeight != 0
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
-		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
+		r.maxTreeTableOffset = len(treeTable) - treeTableHeight + 1
 		scrollable := r.maxTreeTableOffset != 0
 
 		if autoscroll {
 			r.treeTableOffset = r.maxTreeTableOffset
 		}
 
-		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
+		treeTable = treeTable[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
 
 		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
 
@@ -312,7 +315,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Render the tree table.
 	r.overln(r.clampLine(treeTableHeader, termWidth))
-	for _, row := range treeTableRows {
+	for _, row := range treeTable {
 		r.overln(r.clampLine(row, termWidth))
 	}
 	if treeTableFooter != "" {
