@@ -615,8 +615,8 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			"    will set the value of `parent` to a map `{nested: value, other: value2}`.\n" +
 			"  - `pulumi config set-all --path --plaintext '[\"parent.name\"].[\"nested.name\"]'=value` will set the \n" +
 			"    value of `parent.name` to a map `nested.name: value`." +
-			"The --json flag can be used to set multiple configuration values from a json input, the json input musst be \n"+
-			"in the same format as the output of `pulumi config --json`. \n"+
+			"The --json flag can be used to set multiple configuration values from a json input, the json input musst be \n" +
+			"in the same format as the output of `pulumi config --json`. \n" +
 			"When using the --json flag it's not possible to use the --plaintext and --secret arguments",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -644,7 +644,7 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-		
+
 			for _, ptArg := range plaintextArgs {
 				key, value, err := parseKeyValuePair(ptArg)
 				if err != nil {
@@ -678,19 +678,19 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 					return err
 				}
 			}
-            
+
 			if rawJsonArgs != "" {
 				configJsonValue, err := parseJsonConfig(rawJsonArgs)
-				
-				if err != nil {
-					return err
-				} 
-			
-				err = setConfigFromJsonValue(ctx,stack,ps,configJsonValue)
+
 				if err != nil {
 					return err
 				}
-				
+
+				err = setConfigFromJsonValue(ctx, stack, ps, configJsonValue)
+				if err != nil {
+					return err
+				}
+
 			}
 
 			return saveProjectStack(stack, ps)
@@ -713,77 +713,77 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 	return setCmd
 }
 
-func parseJsonConfig(jsonConfig string) (map[string]configValueJSON,error){
+func parseJsonConfig(jsonConfig string) (map[string]configValueJSON, error) {
 	config := make(map[string]configValueJSON)
-	err := json.Unmarshal([]byte(jsonConfig),&config)
+	err := json.Unmarshal([]byte(jsonConfig), &config)
 	if err != nil {
-		return config,err
+		return config, err
 	}
-	return config,nil
+	return config, nil
 }
 
-func encryptValue(ctx context.Context, stack backend.Stack,value string)(string,error){
+func encryptValue(ctx context.Context, stack backend.Stack, value string) (string, error) {
 	c, cerr := getStackEncrypter(stack)
-				if cerr != nil {
-					return "",cerr
-				}
-				enc, eerr := c.EncryptValue(ctx, value)
-				if eerr != nil {
-					return "",eerr
-				}
-				return enc,nil
+	if cerr != nil {
+		return "", cerr
+	}
+	enc, eerr := c.EncryptValue(ctx, value)
+	if eerr != nil {
+		return "", eerr
+	}
+	return enc, nil
 }
 
-func setKeyValuePairFromJson(ctx context.Context, stack backend.Stack,ps *workspace.ProjectStack,key config.Key,jsonValue configValueJSON)(error){
-	var value config.Value 
+func setKeyValuePairFromJson(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, key config.Key, jsonValue configValueJSON) error {
+	var value config.Value
 	if jsonValue.ObjectValue != nil {
 		if jsonValue.Secret {
-			enc,err := encryptValue(ctx,stack,*jsonValue.Value)
+			enc, err := encryptValue(ctx, stack, *jsonValue.Value)
 			if err != nil {
 				return err
 			}
-            value = config.NewSecureObjectValue(enc)	
-		}else{
+			value = config.NewSecureObjectValue(enc)
+		} else {
 			value = config.NewObjectValue(*jsonValue.Value)
 		}
-		err := ps.Config.Set(key,value,true)
+		err := ps.Config.Set(key, value, true)
 		if err != nil {
-					return err
+			return err
 		}
 		return nil
 	}
-	
+
 	if jsonValue.Secret {
-		enc,err := encryptValue(ctx,stack,*jsonValue.Value)
-			if err != nil {
-				return err
-			}
-	    value = config.NewSecureValue(enc)
-	}else{
+		enc, err := encryptValue(ctx, stack, *jsonValue.Value)
+		if err != nil {
+			return err
+		}
+		value = config.NewSecureValue(enc)
+	} else {
 		value = config.NewValue(*jsonValue.Value)
 	}
-	err := ps.Config.Set(key,value,false)
+	err := ps.Config.Set(key, value, false)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func setConfigFromJsonValue(ctx context.Context, stack backend.Stack,ps *workspace.ProjectStack,jsonValues map[string]configValueJSON) (error){
+func setConfigFromJsonValue(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, jsonValues map[string]configValueJSON) error {
 	for keyName, element := range jsonValues {
 		if element.Value == nil {
 			return fmt.Errorf("invalid json input, all config entries must have values")
 		}
-        key,err := parseConfigKey(keyName)
+		key, err := parseConfigKey(keyName)
 		if err != nil {
 			return err
 		}
-		
-		err = setKeyValuePairFromJson(ctx,stack,ps,key,element)
-        if err != nil {
+
+		err = setKeyValuePairFromJson(ctx, stack, ps, key, element)
+		if err != nil {
 			return err
 		}
-    }
+	}
 
 	return nil
 }
