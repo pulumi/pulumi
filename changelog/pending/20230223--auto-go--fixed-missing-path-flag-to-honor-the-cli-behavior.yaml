@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Added support for the path option for config operations

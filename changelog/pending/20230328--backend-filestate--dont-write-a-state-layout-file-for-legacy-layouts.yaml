@@ -1,7 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: |
-    Don't write a state metadata file for legacy layouts.
-    This should prevent permissioning issues for users
-    with tight access control to the storage backend.

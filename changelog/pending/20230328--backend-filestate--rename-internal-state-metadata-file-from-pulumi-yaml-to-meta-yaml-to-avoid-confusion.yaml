@@ -1,8 +1,0 @@
-changes:
-- type: chore
-  scope: backend/filestate
-  description: |
-    Rename state metadata file from .pulumi/Pulumi.yaml to .pulumi/meta.yaml.
-    This is an internal detail to the self-managed backend's storage format
-    intended to avoid confusion with Pulumi project files,
-    and should not affect most users.
