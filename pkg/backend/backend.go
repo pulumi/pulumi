@@ -143,9 +143,6 @@ type Backend interface {
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
-	// SupportsTeams tells whether a stack can have granular team permissions assigned to it.
-	SupportsTeams() bool
-
 	// ParseStackReference takes a string representation and parses it to a reference which may be used for other
 	// methods in this backend.
 	ParseStackReference(s string) (StackReference, error)
@@ -363,6 +360,10 @@ func (c *backendClient) GetStackResourceOutputs(
 	return pm, nil
 }
 
+// ErrTeamsNotSupported is returned by backends
+// which do not support the teams feature.
+var ErrTeamsNotSupported = errors.New("teams are not supported")
+
 // CreateStackOptions provides options for stack creation.
 // At present, options only apply to the Service.
 type CreateStackOptions struct {
@@ -370,5 +371,8 @@ type CreateStackOptions struct {
 	// the newly created stack.
 	// This option is only appropriate for backends
 	// which support teams (i.e. the Pulumi Service).
+	//
+	// The backend may return ErrTeamsNotSupported
+	// if Teams is specified but not supported.
 	Teams []string
 }

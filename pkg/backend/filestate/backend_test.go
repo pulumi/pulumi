@@ -507,15 +507,8 @@ func TestLocalBackendRejectsStackInitOptions(t *testing.T) {
 	// • Simulate `pulumi stack init`, passing non-nil init options
 	fakeStackRef, err := local.ParseStackReference("foobar")
 	assert.NoError(t, err)
-	assert.Panics(t, func() {
-		// • Expect a panic because the options provided illegally
-		//   include a team.
-		_, err := local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
-		assert.Fail(t, "This statement should be unreachable.")
-		// The linter complains if we don't check this error, even though
-		// the code should be unreachable.
-		assert.NoError(t, err)
-	})
+	_, err = local.CreateStack(ctx, fakeStackRef, "", illegalOptions)
+	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
 }
 
 func TestNew_unsupportedStoreVersion(t *testing.T) {

@@ -295,11 +295,6 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-// Teams are only supported in the Service backend.
-func (b *localBackend) SupportsTeams() bool {
-	return false
-}
-
 func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
 	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
 ) {
@@ -342,11 +337,9 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	root string, opts *backend.CreateStackOptions,
 ) (backend.Stack, error) {
-	// Before locking the stack, validate that the options provided are valid.
-	contract.Requiref(
-		opts == nil || len(opts.Teams) == 0,
-		"opts.Teams", "must be empty: filestate doesn't support teams",
-	)
+	if opts != nil && len(opts.Teams) > 0 {
+		return nil, backend.ErrTeamsNotSupported
+	}
 
 	localStackRef, err := b.getReference(stackRef)
 	if err != nil {

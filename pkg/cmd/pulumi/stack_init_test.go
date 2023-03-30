@@ -8,6 +8,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
@@ -26,8 +27,14 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 			assert.Equal(t, "dev", name, "stack name mismatch")
 			return nil
 		},
-		SupportsTeamsF: func() bool {
-			return false
+		CreateStackF: func(
+			ctx context.Context,
+			ref backend.StackReference,
+			projectRoot string,
+			opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			assert.NotEmpty(t, opts.Teams, "expected teams to be set")
+			return nil, backend.ErrTeamsNotSupported
 		},
 	}
 	cmd := &stackInitCmd{
@@ -42,81 +49,53 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
 }
 
-func TestValidateCreateStackOptsErrors(t *testing.T) {
-	t.Parallel()
-
-	// First, we create a mock backend that doesn't support teams.
-	stackName := "dev"
-	teams := []string{"red", "blue"}
-	backendName := "mock"
-	mockBackend := &backend.MockBackend{
-		NameF: func() string {
-			return backendName
-		},
-		SupportsTeamsF: func() bool {
-			return false
-		},
-	}
-	// Then, we expect validation to fail, since we provide
-	// teams when they're not supported.
-	_, err := validateCreateStackOpts(stackName, mockBackend, teams)
-	assert.Error(t, err)
-}
-
-// This test demonstrates that validateCreateStack will filter
+// This test demonstrates that newCreateStackOptions will filter
 // out teams consisting exclusively of whitespace. NB: It's not intended
 // to fully validate the correctness of team names. For example, it doesn't
 // check for illegal punctuation, length, or other measures of correctness.
 // To keep the codebase DRY, we pass along team names as-is to the Service,
 // with the exception of trimming whitespace, and allow the Service to
 // validate them.
-func TestValidateCreateStackOptsFiltersWhitespace(t *testing.T) {
+func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 	t.Parallel()
 
-	cases := []struct {
-		name                      string
-		inputTeams, expectedTeams []string
+	tests := []struct {
+		name      string
+		giveTeams []string
+		wantTeams []string
 	}{
 		{
-			name: "Input Is Empty",
+			name: "empty",
 			// no raw or valid teams
-			inputTeams:    []string{},
-			expectedTeams: []string{},
+			giveTeams: []string{},
+			wantTeams: []string{},
 		},
 		{
-			name:          "a single valid team is provided",
-			inputTeams:    []string{"TeamRocket"},
-			expectedTeams: []string{"TeamRocket"},
+			name:      "single valid",
+			giveTeams: []string{"TeamRocket"},
+			wantTeams: []string{"TeamRocket"},
 		},
 		{
-			name:          "only invalid teams are provided",
-			inputTeams:    []string{" ", "\t", "\n"},
-			expectedTeams: []string{},
+			name:      "all invalid",
+			giveTeams: []string{" ", "\t", "\n"},
+			wantTeams: []string{},
 		},
 		{
-			name:          "mixed valid and invalid teams are provided",
-			inputTeams:    []string{" ", "Edward", "\t", "Jacob", "\n"},
-			expectedTeams: []string{"Edward", "Jacob"},
+			name:      "valid and invalid",
+			giveTeams: []string{" ", "Edward", "\t", "Jacob", "\n"},
+			wantTeams: []string{"Edward", "Jacob"},
 		},
 	}
 
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			stackName := "dev"
-			mockBackend := &backend.MockBackend{
-				SupportsTeamsF: func() bool {
-					return true
-				},
-			}
 			// If the test case provides at least one valid team,
 			// then the options should be non-nil.
-			observed, err := validateCreateStackOpts(stackName, mockBackend, tc.inputTeams)
-			assert.Nil(t, err)
-			assert.NotNil(t, observed)
-			teams := observed.Teams
-			assert.ElementsMatch(t, teams, tc.expectedTeams)
+			got := newCreateStackOptions(tt.giveTeams)
+			require.NotNil(t, got)
+			assert.ElementsMatch(t, tt.wantTeams, got.Teams)
 		})
 	}
 }
