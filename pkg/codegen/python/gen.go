@@ -20,6 +20,7 @@ package python
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -49,6 +50,12 @@ type typeDetails struct {
 }
 
 type imports codegen.StringSet
+
+// defaultMinPythonVersion is what we use as the minimum version field in generated
+// package metadata if the schema does not provide a vaule. This version corresponds
+// to the minimum supported version as listed in the reference documentation:
+// https://www.pulumi.com/docs/reference/pkg/python/pulumi/
+const defaultMinPythonVersion = ">=3.7"
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
@@ -2119,9 +2126,12 @@ func genPackageMetadata(
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
-	if pythonRequires != "" {
-		fmt.Fprintf(w, "      python_requires='%s',\n", pythonRequires)
+	// Supply a default Python version if the schema does not provide one.
+	pythonVersion := defaultMinPythonVersion
+	if minPythonVersion, err := minimumPythonVersion(info); err == nil {
+		pythonVersion = minPythonVersion
 	}
+	fmt.Fprintf(w, "      python_requires='%s',\n", pythonVersion)
 	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
@@ -2208,6 +2218,21 @@ func genPackageMetadata(
 
 	fmt.Fprintf(w, "      zip_safe=False)\n")
 	return w.String(), nil
+}
+
+// errNoMinimumPythonVersion is a non-fatal error indicating that the schema
+// did not provide a minimum version of Python for the Package.
+var errNoMinimumPythonVersion = errors.New("the schema does not provide a minimum version of Python required for this provider. It's recommended to provide a minimum version so package users can understand the package's requirements")
+
+// minimumPythonVersion returns a string containing the version
+// constraint specifying the minimumal version of Python required
+// by this package. For example, ">=3.8" is satified by all versions
+// of Python greater than or equal to Python 3.8.
+func minimumPythonVersion(info PackageInfo) (string, error) {
+	if info.PythonRequires != "" {
+		return info.PythonRequires, nil
+	}
+	return "", errNoMinimumPythonVersion
 }
 
 func pep440VersionToSemver(v string) (semver.Version, error) {

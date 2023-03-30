@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: In codegen, use 3.7 as a default if not provided.
