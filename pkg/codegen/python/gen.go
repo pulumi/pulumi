@@ -2126,14 +2126,12 @@ func genPackageMetadata(
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
-	// Remind the user that the schema should specify the minimum
-	// Python version.
-	if minPython, err := minimumPythonVersion(info); err == nil {
-		fmt.Fprintf(w, "      python_requires='%s',\n", minPython)
-	} else {
-		cmdutil.Diag().Infof(&diag.Diag{Message: err.Error()})
-		fmt.Fprintf(w, "      python_requires='%s',\n", defaultMinPythonVersion)
+	// Supply a default Python version if the schema does not provide one.
+	pythonVersion := defaultMinPythonVersion
+	if minPythonVersion, err := minimumPythonVersion(info); err == nil {
+		pythonVersion = minPythonVersion
 	}
+	fmt.Fprintf(w, "      python_requires='%s',\n", pythonVersion)
 	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))

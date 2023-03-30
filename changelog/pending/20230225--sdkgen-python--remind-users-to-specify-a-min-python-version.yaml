@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: sdkgen/python
-  description: Remind users to specify a min Python version, and use 3.7 as a default if not provided.
+  description: In codegen, use 3.7 as a default if not provided.
