@@ -342,3 +342,79 @@ config:
 	assert.Equal(t, "[\"third\"]", thirdValue["value"])
 	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
 }
+
+
+
+func TestSetAllCommandWithJsonFlag(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	
+	integration.CreateBasicPulumiRepo(e)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+
+	// check config is empty
+	stdout, _ := e.RunCommand("pulumi", "config")
+	assert.Equal(t, "KEY  VALUE", strings.Trim(stdout, "\r\n"))
+	
+	// set config from json 
+	jsonInput := "{\n  \"pulumi-test:key1\": {\n    \"value\": \"value1\",\n    \"secret\": false\n  },\n  \"pulumi-test:myList\": {\n    \"value\": \"[\\\"foo\\\"]\",\n    \"objectValue\": [\n      \"foo\"\n    ],\n    \"secret\": false\n  },\n  \"pulumi-test:myList[0]\": {\n    \"value\": \"foo\",\n    \"secret\": false\n  },\n  \"pulumi-test:my_token\": {\n    \"value\": \"my_secret_token\",\n    \"secret\": true\n  },\n  \"pulumi-test:outer\": {\n    \"value\": \"{\\\"inner\\\":\\\"value2\\\"}\",\n    \"objectValue\": {\n      \"inner\": \"value2\"\n    },\n    \"secret\": false\n  },\n  \"pulumi-test:outer.inner\": {\n    \"value\": \"value2\",\n    \"secret\": false\n  }\n}\n"
+	e.RunCommand("pulumi", "config", "set-all","--json",jsonInput)
+
+	// retrieve config in json format
+	jsonOutputWithSecrets, _:= e.RunCommand("pulumi", "config", "--json","--show-secrets")
+    var config map[string]interface{}
+	jsonError := json.Unmarshal([]byte(jsonOutputWithSecrets), &config)
+	assert.Nil(t, jsonError)
+
+	
+    // retrieve config in json format without secrets
+	jsonOutputWithoutSecrets, _:= e.RunCommand("pulumi", "config", "--json")
+	var configWithoutSecrets map[string]interface{}
+	jsonError = json.Unmarshal([]byte(jsonOutputWithoutSecrets), &configWithoutSecrets)
+	assert.Nil(t, jsonError)
+
+	// assert that key1 has correct value
+	assert.Equal(t, "value1", config["pulumi-test:key1"].(map[string]interface{})["value"])
+
+	// assert that myList has correct value and object value
+	assert.Equal(t, "[\"foo\"]", config["pulumi-test:myList"].(map[string]interface{})["value"])
+	myListObject := config["pulumi-test:myList"].(map[string]interface{})
+	myListObjectValue := myListObject["objectValue"].([]interface {})
+	assert.Contains(t,myListObjectValue,"foo")
+    assert.Len(t,myListObjectValue,1)
+
+	// assert that myList[0] has correct value, that is not an object
+	assert.Equal(t, "foo", config["pulumi-test:myList[0]"].(map[string]interface{})["value"])
+	_,ok := config["pulumi-test:myList[0]"].(map[string]interface{})["objectValue"]
+	assert.Equal(t,false,ok)
+
+	// assert that my_token key is in the config and it has the correct value 
+	myTokenValue := config["pulumi-test:my_token"].(map[string]interface{})["value"]
+    assert.Equal(t,"my_secret_token",myTokenValue)
+
+    // assert that my_token key is in the config and it has no value in the config without secrets
+	_,ok = configWithoutSecrets["pulumi-test:my_token"].(map[string]interface{})["value"]
+    assert.Equal(t,false,ok)
+
+	// assert that outer key has correct object value
+	outerObject := config["pulumi-test:outer"].(map[string]interface{})
+    outerObjectValue := outerObject["objectValue"].(map[string]interface{})
+    assert.Equal(t,"value2",outerObjectValue["inner"])
+
+	// assert that outer.inner key has no object value and that it has the correct value
+	assert.Equal(t, "value2", config["pulumi-test:outer.inner"].(map[string]interface{})["value"])
+	_,ok = config["pulumi-test:outer.inner"].(map[string]interface{})["objectValue"]
+	assert.Equal(t,false,ok)
+
+	// remove configs
+	e.RunCommand("pulumi", "config", "rm-all", "--path", "outer.inner", "myList[0]")
+	e.RunCommand("pulumi", "config", "rm-all",
+		"outer.inner", "myList[0]", "outer", "myList", "key1", "my_token")
+}
