@@ -4743,3 +4743,115 @@ func TestTimestampTracking(t *testing.T) {
 		}
 	}
 }
+
+func TestComponentToCustomUpdate(t *testing.T) {
+	// Test for https://github.com/pulumi/pulumi/issues/12550, check that if we change a component resource
+	// into a custom resource the engine handles that best it can. This depends on the provider being able to
+	// cope with the component state being passed as custom state.
+
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					id := resource.ID("")
+					if !preview {
+						id = resource.ID("1")
+					}
+					return id, news, resource.StatusOK, nil
+				},
+				DeleteF: func(urn resource.URN,
+					id resource.ID, olds resource.PropertyMap, timeout float64,
+				) (resource.Status, error) {
+					return resource.StatusOK, nil
+				},
+				DiffF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(urn resource.URN,
+					id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool,
+				) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	createA := func(monitor *deploytest.ResourceMonitor) {
+		_, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+			Inputs: insA,
+		})
+		assert.NoError(t, err)
+	}
+
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		createA(monitor)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resources
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	assert.Len(t, snap.Resources, 1)
+	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
+	assert.False(t, snap.Resources[0].Custom)
+
+	// Now update A from a component to custom with an alias
+	createA = func(monitor *deploytest.ResourceMonitor) {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: insA,
+			Aliases: []resource.Alias{
+				{
+					Type: "prog::myType",
+				},
+			},
+		})
+		assert.NoError(t, err)
+	}
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	// Assert that A is now a custom
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	// Now two because we'll have a provider now
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, tokens.Type("pkgA:m:typA"), snap.Resources[1].Type)
+	assert.True(t, snap.Resources[1].Custom)
+
+	// Now update A back to a component (with an alias)
+	createA = func(monitor *deploytest.ResourceMonitor) {
+		_, _, _, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{
+			Inputs: insA,
+			Aliases: []resource.Alias{
+				{
+					Type: "pkgA:m:typA",
+				},
+			},
+		})
+		assert.NoError(t, err)
+	}
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	// Assert that A is now a custom
+	assert.Nil(t, res)
+	assert.NotNil(t, snap)
+	// Back to one because the provider should have been cleaned up as well
+	assert.Len(t, snap.Resources, 1)
+	assert.Equal(t, tokens.Type("prog::myType"), snap.Resources[0].Type)
+	assert.False(t, snap.Resources[0].Custom)
+}
