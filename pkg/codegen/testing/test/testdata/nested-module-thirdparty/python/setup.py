@@ -38,7 +38,7 @@ def readme():
 
 
 setup(name='foo_bar',
-      python_requires='>=3.6',
+      python_requires='>=3.7',
       version=VERSION,
       long_description=readme(),
       long_description_content_type='text/markdown',

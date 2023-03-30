@@ -55,7 +55,7 @@ type imports codegen.StringSet
 // package metadata if the schema does not provide a vaule. This version corresponds
 // to the minimum supported version as listed in the reference documentation:
 // https://www.pulumi.com/docs/reference/pkg/python/pulumi/
-const defaultMinPythonVersion = ">=3.6"
+const defaultMinPythonVersion = ">=3.7"
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
