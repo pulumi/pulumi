@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix updating a resource from a component to custom resource.

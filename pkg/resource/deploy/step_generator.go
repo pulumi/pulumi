@@ -1424,7 +1424,14 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	}
 
 	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): observed provider diff", urn)
-	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): %s => %s", urn, old.Provider, new.Provider)
+	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): %v => %v", urn, old.Provider, new.Provider)
+
+	// If we're changing from a component resource to a non-component resource, there is no old provider to
+	// diff against and trigger a delete but we need to Create the new custom resource. If we're changing from
+	// a custom resource to a component resource, we should always trigger a replace.
+	if old.Provider == "" || new.Provider == "" {
+		return true, nil
+	}
 
 	oldRef, err := providers.ParseReference(old.Provider)
 	if err != nil {
