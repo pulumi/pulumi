@@ -55,9 +55,6 @@ type stepGenerator struct {
 	creates  map[resource.URN]bool // set of URNs created in this deployment
 	sames    map[resource.URN]bool // set of URNs that were not changed in this deployment
 
-	// track the resource goals. This is used to set default resource options inherited from the resource's parent.
-	resourceGoals map[resource.URN]*resource.Goal
-
 	// set of URNs that would have been created, but were filtered out because the user didn't
 	// specify them with --target
 	skippedCreates map[resource.URN]bool
@@ -427,51 +424,22 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-// configureGoal mutates the passed goal to inherit the correct ResourceOptions from its parent.
-func (sg *stepGenerator) configureGoal(goal *resource.Goal) result.Result {
-	originalParent := goal.Parent
-
-	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	p, res := sg.checkParent(goal.Parent, goal.Type)
-	if res != nil {
-		return res
-	}
-
-	if p != "" {
-		parentGoal, ok := sg.resourceGoals[p]
-		if !ok {
-			return result.Errorf("could not find parent goal %v (originally %v)", p, originalParent)
-		}
-
-		// Make resource goal inherit parent's default resource options if left unset.
-		if goal.DeletedWith == "" {
-			goal.DeletedWith = parentGoal.DeletedWith
-		}
-	}
-
-	goal.Parent = p
-	return nil
-}
-
 func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
 	var invalid bool // will be set to true if this object fails validation.
 
 	goal := event.Goal()
 
-	// Configure Goal's parent and inherited ResourceOptions.
-	res := sg.configureGoal(goal)
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, res := sg.checkParent(goal.Parent, goal.Type)
 	if res != nil {
 		return nil, res
 	}
+	goal.Parent = parent
 
 	urn, res := sg.generateURN(goal.Parent, goal.Type, goal.Name)
 	if res != nil {
 		return nil, res
 	}
-
-	// Store the resource's goal. This is used to determine the parent's resource options to inherit
-	// by child resources.
-	sg.resourceGoals[urn] = goal
 
 	// Generate the aliases for this resource
 	aliases := make(map[resource.URN]struct{}, 0)
@@ -1967,7 +1935,6 @@ func newStepGenerator(
 		replaces:             make(map[resource.URN]bool),
 		updates:              make(map[resource.URN]bool),
 		deletes:              make(map[resource.URN]bool),
-		resourceGoals:        make(map[resource.URN]*resource.Goal),
 		skippedCreates:       make(map[resource.URN]bool),
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
