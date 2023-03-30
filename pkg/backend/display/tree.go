@@ -266,6 +266,10 @@ func (r *treeRenderer) frame(locked, done bool) {
 			r.treeTableOffset = r.maxTreeTableOffset
 		}
 
+		if treeTableHeight <= 0 {
+			// Ensure that the treeTableHeight is at least 1 to avoid going out of bounds.
+			treeTableHeight = 1
+		}
 		treeTableRows = treeTableRows[r.treeTableOffset : r.treeTableOffset+treeTableHeight-1]
 
 		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
@@ -292,6 +296,12 @@ func (r *treeRenderer) frame(locked, done bool) {
 			statusMessageHeight, statusMessage = 0, ""
 		}
 
+		if padding < 0 {
+			// Padding can potentially go negative on very small terminals.
+			// This will cause a panic. To avoid this, we clamp the padding to 0.
+			// The user won't be able to see anything anyway.
+			padding = 0
+		}
 		treeTableFooter = r.opts.Color.Colorize(prefix + strings.Repeat(" ", padding) + footer)
 
 		if systemMessagesHeight > 0 {
