@@ -1,5 +1,47 @@
 # Changelog
 
+## 3.60.1 (2023-03-30)
+
+
+### Features
+
+- [sdkgen/python] In codegen, use 3.7 as a default if not provided.
+  [#12287](https://github.com/pulumi/pulumi/pull/12287)
+
+
+### Bug Fixes
+
+- [backend/filestate] Don't write a state metadata file for legacy layouts.
+This should prevent permissioning issues for users
+with tight access control to the storage backend.
+
+  [#12537](https://github.com/pulumi/pulumi/pull/12537)
+
+- [docs] Fix filename clashes between resources and functions on case-insensitive filesystems in docsgen.
+  [#12453](https://github.com/pulumi/pulumi/pull/12453)
+
+- [engine] Fix updating a resource from a component to custom resource.
+  [#12561](https://github.com/pulumi/pulumi/pull/12561)
+
+- [engine] Revert PR moving deletedWith inheritance logic to the engine as `get` resources and packaged components are incompatible.
+  [#12564](https://github.com/pulumi/pulumi/pull/12564)
+
+- [sdk] Fix multiplied retries when downloading plugins.
+  [#12504](https://github.com/pulumi/pulumi/pull/12504)
+
+- [auto/go] Added support for the path option for config operations
+  [#12265](https://github.com/pulumi/pulumi/pull/12265)
+
+
+### Miscellaneous
+
+- [backend/filestate] Rename state metadata file from .pulumi/Pulumi.yaml to .pulumi/meta.yaml.
+This is an internal detail to the self-managed backend's storage format
+intended to avoid confusion with Pulumi project files,
+and should not affect most users.
+
+  [#12538](https://github.com/pulumi/pulumi/pull/12538)
+
 ## 3.60.0 (2023-03-27)
 
 
