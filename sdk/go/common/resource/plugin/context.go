@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ type Context struct {
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 
 	cancelFuncs []context.CancelFunc
+	cancelLock  *sync.Mutex // Guards cancelFuncs.
 	baseContext context.Context
 }
 
@@ -94,6 +95,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 		Pwd:             pwd,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
+		cancelLock:      &sync.Mutex{},
 	}
 	if host == nil {
 		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins)
@@ -113,14 +115,23 @@ func (ctx *Context) Request() context.Context {
 	}
 	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
 	c, cancel := context.WithCancel(c)
+	ctx.cancelLock.Lock()
 	ctx.cancelFuncs = append(ctx.cancelFuncs, cancel)
+	ctx.cancelLock.Unlock()
 	return c
 }
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
 	defer func() {
-		for _, cancel := range ctx.cancelFuncs {
+		// It is possible that cancelFuncs may be appended while this function is running.
+		// Capture the current value of cancelFuncs and set cancelFuncs to nil to prevent cancelFuncs
+		// from being appended to while we are iterating over it.
+		ctx.cancelLock.Lock()
+		cancelFuncs := ctx.cancelFuncs
+		ctx.cancelFuncs = nil
+		ctx.cancelLock.Unlock()
+		for _, cancel := range cancelFuncs {
 			cancel()
 		}
 	}()
