@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
@@ -87,7 +88,9 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 
 // objectName returns the filename of a ListObject (an object from a bucket).
 func objectName(obj *blob.ListObject) string {
-	_, filename := path.Split(obj.Key)
+	// If obj.Key ends in "/" we want to trim that to get the name just before
+	key := strings.TrimSuffix(obj.Key, "/")
+	_, filename := path.Split(key)
 	return filename
 }
 

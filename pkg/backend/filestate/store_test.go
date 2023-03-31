@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob/memblob"
@@ -39,6 +40,82 @@ func TestLegacyReferenceStore_referencePaths(t *testing.T) {
 	assert.Equal(t, ".pulumi/stacks/foo", ref.StackBasePath())
 	assert.Equal(t, ".pulumi/history/foo", ref.HistoryDir())
 	assert.Equal(t, ".pulumi/backups/foo", ref.BackupDir())
+}
+
+func TestProjectReferenceStore_referencePaths(t *testing.T) {
+	t.Parallel()
+
+	bucket := memblob.OpenBucket(nil)
+	store := newProjectReferenceStore(bucket, func() *workspace.Project {
+		return &workspace.Project{Name: "test"}
+	})
+
+	ref, err := store.ParseReference("organization/myproject/mystack")
+	require.NoError(t, err)
+
+	assert.Equal(t, ".pulumi/stacks/myproject/mystack", ref.StackBasePath())
+	assert.Equal(t, ".pulumi/history/myproject/mystack", ref.HistoryDir())
+	assert.Equal(t, ".pulumi/backups/myproject/mystack", ref.BackupDir())
+}
+
+func TestProjectReferenceStore_ParseReference(t *testing.T) {
+	t.Parallel()
+
+	bucket := memblob.OpenBucket(nil)
+	store := newProjectReferenceStore(bucket, func() *workspace.Project {
+		return &workspace.Project{Name: "currentProject"}
+	})
+
+	tests := []struct {
+		desc string
+		give string
+
+		fqname  tokens.QName
+		name    tokens.Name
+		project tokens.Name
+		str     string
+	}{
+		{
+			desc:    "simple",
+			give:    "foo",
+			fqname:  "organization/currentProject/foo",
+			name:    "foo",
+			project: "currentProject",
+			str:     "foo",
+			// truncated because project name is the same as current project
+		},
+		{
+			desc:    "organization",
+			give:    "organization/foo",
+			fqname:  "organization/currentProject/foo",
+			name:    "foo",
+			project: "currentProject",
+			str:     "foo",
+		},
+		{
+			desc:    "fully qualified",
+			give:    "organization/project/foo",
+			fqname:  "organization/project/foo",
+			name:    "foo",
+			project: "project",
+			str:     "organization/project/foo", // doesn't match current project
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			ref, err := store.ParseReference(tt.give)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.fqname, ref.FullyQualifiedName())
+			assert.Equal(t, tt.name, ref.Name())
+			assert.Equal(t, tt.project, ref.Project())
+			assert.Equal(t, tt.str, ref.String())
+		})
+	}
 }
 
 func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
@@ -69,6 +146,69 @@ func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
 			assert.Error(t, err)
 			// If we ever make error messages here more specific,
 			// we can add assert.ErrorContains here.
+		})
+	}
+}
+
+func TestProjectReferenceStore_ParseReference_errors(t *testing.T) {
+	t.Parallel()
+
+	bucket := memblob.OpenBucket(nil)
+	store := newProjectReferenceStore(bucket, func() *workspace.Project {
+		return nil // current project is not set
+	})
+
+	tests := []struct {
+		desc    string
+		give    string
+		wantErr string
+	}{
+		{
+			desc:    "empty",
+			wantErr: "must not be empty",
+		},
+		{
+			desc:    "bad organization",
+			give:    "foo/bar/baz",
+			wantErr: "organization name must be 'organization'",
+		},
+		{
+			desc:    "long project name",
+			give:    "organization/" + strings.Repeat("a", 101) + "/foo",
+			wantErr: "project names are limited to 100 characters",
+		},
+		{
+			desc:    "long project stack name",
+			give:    "organization/foo/" + strings.Repeat("a", 101),
+			wantErr: "stack names are limited to 100 characters",
+		},
+		{
+			desc:    "no current project",
+			give:    "organization/foo",
+			wantErr: "pass the fully qualified name",
+		},
+		{
+			desc:    "invalid project name",
+			give:    "organization/foo:bar/baz",
+			wantErr: "may only contain alphanumeric",
+		},
+		{
+			desc:    "invalid stack name",
+			give:    "organization/foo/baz:qux",
+			wantErr: "may only contain alphanumeric",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotEmpty(t, tt.wantErr,
+				"bad test case: wantErr must be non-empty")
+
+			_, err := store.ParseReference(tt.give)
+			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
@@ -146,6 +286,112 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestProjectReferenceStore_List(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+
+		// List of file paths relative to the storage root
+		// that should exist before ListReferences is called.
+		files []string
+
+		// List of fully-qualified stack names that should be returned
+		// by ListReferences.
+		stacks []tokens.QName
+
+		// List of project names that should be returned by ListProjects.
+		projects []tokens.Name
+	}{
+		{
+			desc:     "empty",
+			stacks:   []tokens.QName{},
+			projects: []tokens.Name{},
+		},
+		{
+			desc: "json",
+			files: []string{
+				".pulumi/stacks/proj/foo.json",
+			},
+			stacks:   []tokens.QName{"organization/proj/foo"},
+			projects: []tokens.Name{"proj"},
+		},
+		{
+			desc: "gzipped",
+			files: []string{
+				".pulumi/stacks/foo/bar.json.gz",
+			},
+			stacks:   []tokens.QName{"organization/foo/bar"},
+			projects: []tokens.Name{"foo"},
+		},
+		{
+			desc: "multiple",
+			files: []string{
+				".pulumi/stacks/a/foo.json",
+				".pulumi/stacks/b/bar.json.gz",
+				".pulumi/stacks/c/baz.json",
+			},
+			stacks: []tokens.QName{
+				"organization/a/foo",
+				"organization/b/bar",
+				"organization/c/baz",
+			},
+			projects: []tokens.Name{"a", "b", "c"},
+		},
+		{
+			desc: "extraneous files and directories",
+			files: []string{
+				".pulumi/stacks/a/foo.json",
+				".pulumi/stacks/foo.json",
+				".pulumi/stacks/bar/baz/qux.json", // nested too deep
+				".pulumi/stacks/a b/c.json",       // bad project name
+			},
+			stacks:   []tokens.QName{"organization/a/foo"},
+			projects: []tokens.Name{"a", "bar"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			bucket := memblob.OpenBucket(nil)
+			store := newProjectReferenceStore(bucket, func() *workspace.Project {
+				return &workspace.Project{Name: "test"}
+			})
+
+			ctx := context.Background()
+			for _, f := range tt.files {
+				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
+			}
+
+			t.Run("Projects", func(t *testing.T) {
+				t.Parallel()
+
+				projects, err := store.ListProjects()
+				require.NoError(t, err)
+
+				assert.Equal(t, tt.projects, projects)
+			})
+
+			t.Run("References", func(t *testing.T) {
+				t.Parallel()
+
+				refs, err := store.ListReferences()
+				require.NoError(t, err)
+
+				got := make([]tokens.QName, len(refs))
+				for i, ref := range refs {
+					got[i] = ref.FullyQualifiedName()
+				}
+
+				assert.Equal(t, tt.stacks, got)
+			})
 		})
 	}
 }

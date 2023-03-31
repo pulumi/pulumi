@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -64,6 +65,29 @@ import (
 // PulumiFilestateGzipEnvVar is an env var that must be truthy
 // to enable gzip compression when using the filestate backend.
 const PulumiFilestateGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_GZIP"
+
+// TODO[pulumi/pulumi#12539]:
+// This section contains names of environment variables
+// that affect the behavior of the backend.
+//
+// These must all be registered in common/env so that they're available
+// with the 'pulumi env' command.
+// However, we don't currently use env.Value() to access their values
+// because it prevents us from overriding the definition of os.Getenv
+// in tests.
+var (
+	// PulumiFilestateNoLegacyWarningEnvVar is an env var that must be truthy
+	// to disable the warning printed by the filestate backend
+	// when it detects that the state has both, project-scoped and legacy stacks.
+	PulumiFilestateNoLegacyWarningEnvVar = env.SelfManagedStateNoLegacyWarning.Var().Name()
+
+	// PulumiFilestateLegacyLayoutEnvVar is the name of an environment variable
+	// that can be set to force the use of the legacy layout
+	// when initializing an empty bucket for filestate.
+	//
+	// This opt-out is intended to be removed in a future release.
+	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
+)
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -91,29 +115,65 @@ type localBackend struct {
 	currentProject atomic.Pointer[workspace.Project]
 
 	// The store controls the layout of stacks in the backend.
+	// We use different layouts based on the version of the backend
+	// specified in the metadata file.
+	// If the metadata file is missing, we use the legacy layout.
 	store referenceStore
 }
 
 type localBackendReference struct {
-	name tokens.Name
+	name    tokens.Name
+	project tokens.Name
+
+	// A thread-safe way to get the current project.
+	// The function reference or the pointer returned by the function may be nil.
+	currentProject func() *workspace.Project
 
 	// referenceStore that created this reference.
+	//
+	// This is necessary because
+	// the referenceStore for a backend may change over time,
+	// but the store for this reference should not.
 	store referenceStore
 }
 
 func (r *localBackendReference) String() string {
-	return string(r.name)
+	// If project is blank this is a legacy non-project scoped stack reference, just return the name.
+	if r.project == "" {
+		return string(r.name)
+	}
+
+	if r.currentProject != nil {
+		proj := r.currentProject()
+		// For project scoped references when stringifying backend references,
+		// we take the current project (if present) into account.
+		// If the project names match, we can elide them.
+		if proj != nil && string(r.project) == string(proj.Name) {
+			return string(r.name)
+		}
+	}
+
+	// Else return a new style fully qualified reference.
+	return fmt.Sprintf("organization/%s/%s", r.project, r.name)
 }
 
 func (r *localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
+func (r *localBackendReference) Project() tokens.Name {
+	return r.project
+}
+
 func (r *localBackendReference) FullyQualifiedName() tokens.QName {
-	return r.Name().Q()
+	if r.project == "" {
+		return r.name.Q()
+	}
+	return tokens.QName(fmt.Sprintf("organization/%s/%s", r.project, r.name))
 }
 
 // Helper methods that delegate to the underlying referenceStore.
+func (r *localBackendReference) Validate() error       { return r.store.ValidateReference(r) }
 func (r *localBackendReference) StackBasePath() string { return r.store.StackBasePath(r) }
 func (r *localBackendReference) HistoryDir() string    { return r.store.HistoryDir(r) }
 func (r *localBackendReference) BackupDir() string     { return r.store.BackupDir(r) }
@@ -129,6 +189,10 @@ func IsFileStateBackendURL(urlstr string) bool {
 
 const FilePathPrefix = "file://"
 
+// New constructs a new filestate backend,
+// using the given URL as the root for storage.
+// The URL must use one of the schemes supported by the go-cloud blob package.
+// Thes inclue: file, s3, gs, azblob.
 func New(ctx context.Context, d diag.Sink, originalURL string, project *workspace.Project) (Backend, error) {
 	if !IsFileStateBackendURL(originalURL) {
 		return nil, fmt.Errorf("local URL %s has an illegal prefix; expected one of: %s",
@@ -190,22 +254,66 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 		bucket:      wbucket,
 		lockID:      lockID.String(),
 		gzip:        gzipCompression,
-		store:       newLegacyReferenceStore(wbucket),
 	}
 	backend.currentProject.Store(project)
 
 	// Read the Pulumi state metadata
 	// and ensure that it is compatible with this version of the CLI.
+	// The version in the metadata file informs which store we use.
 	meta, err := ensurePulumiMeta(ctx, wbucket)
 	if err != nil {
 		return nil, err
 	}
-	if meta.Version != 0 {
+
+	// projectMode tracks whether the current state supports project-scoped stacks.
+	// Historically, the filestate backend did not support this.
+	// To avoid breaking old stacks, we use legacy mode for existing states.
+	// We use project mode only if one of the following is true:
+	//
+	//  - The state has a single .pulumi/meta.yaml file
+	//    and the version is 1 or greater.
+	//  - The state is entirely new
+	//    so there's no risk of breaking old stacks.
+	//
+	// All actual logic of project mode vs legacy mode is handled by the referenceStore.
+	// This boolean just helps us warn users about unmigrated stacks.
+	var projectMode bool
+	switch meta.Version {
+	case 0:
+		backend.store = newLegacyReferenceStore(wbucket)
+	case 1:
+		backend.store = newProjectReferenceStore(wbucket, backend.currentProject.Load)
+		projectMode = true
+	default:
 		return nil, fmt.Errorf(
 			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
 				"by this version of the Pulumi CLI", meta.Version)
 	}
 
+	// If we're not in project mode, or we've disabled the warning, we're done.
+	if !projectMode || cmdutil.IsTruthy(os.Getenv(PulumiFilestateNoLegacyWarningEnvVar)) {
+		return backend, nil
+	}
+	// Otherwise, warn about any old stack files.
+	// This is possible if a user creates a new stack with a new CLI,
+	// but someone else interacts with the same state with an old CLI.
+
+	refs, err := newLegacyReferenceStore(wbucket).ListReferences()
+	if err != nil {
+		// If there's an error listing don't fail, just don't print the warnings
+		return backend, nil
+	}
+	if len(refs) == 0 {
+		return backend, nil
+	}
+
+	var msg strings.Builder
+	msg.WriteString("Found legacy stack files in state store:\n")
+	for _, ref := range refs {
+		fmt.Fprintf(&msg, "  - %s\n", ref.Name())
+	}
+	msg.WriteString("Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.")
+	d.Warningf(diag.Message("", msg.String()))
 	return backend, nil
 }
 
@@ -267,7 +375,7 @@ func (b *localBackend) getReference(ref backend.StackReference) (*localBackendRe
 	if !ok {
 		return nil, fmt.Errorf("bad stack reference type")
 	}
-	return stackRef, nil
+	return stackRef, stackRef.Validate()
 }
 
 func (b *localBackend) local() {}
@@ -330,8 +438,54 @@ func (b *localBackend) ValidateStackName(stackRef string) error {
 }
 
 func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	// Local backends don't really have multiple projects, so just return false here.
+	projStore, ok := b.store.(*projectReferenceStore)
+	if !ok {
+		// Legacy stores don't have projects
+		// so the project does not exist.
+		return false, nil
+	}
+
+	// TODO[pulumi/pulumi#12547]:
+	// This could be faster if we list "$project/" instead of all projects.
+	projects, err := projStore.ListProjects()
+	if err != nil {
+		return false, err
+	}
+
+	for _, project := range projects {
+		if string(project) == projectName {
+			return true, nil
+		}
+	}
+
 	return false, nil
+}
+
+// Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
+// If the CWD is not in a Pulumi project, does not contradict.
+// If the project name in Pulumi.yaml is "foo", a stack with a name of bar/foo should not work.
+func currentProjectContradictsWorkspace(stack *localBackendReference) bool {
+	contract.Requiref(stack != nil, "stack", "is nil")
+
+	if stack.project == "" {
+		return false
+	}
+
+	projPath, err := workspace.DetectProjectPath()
+	if err != nil {
+		return false
+	}
+
+	if projPath == "" {
+		return false
+	}
+
+	proj, err := workspace.LoadProject(projPath)
+	if err != nil {
+		return false
+	}
+
+	return proj.Name.String() != stack.project.String()
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -351,6 +505,10 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, err
 	}
 	defer b.Unlock(ctx, stackRef)
+
+	if currentProjectContradictsWorkspace(localStackRef) {
+		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
+	}
 
 	stackName := localStackRef.FullyQualifiedName()
 	if stackName == "" {
@@ -615,6 +773,10 @@ func (b *localBackend) apply(
 	localStackRef, err := b.getReference(stackRef)
 	if err != nil {
 		return nil, nil, result.FromError(err)
+	}
+
+	if currentProjectContradictsWorkspace(localStackRef) {
+		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
 	stackName := stackRef.FullyQualifiedName()

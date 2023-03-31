@@ -16,6 +16,7 @@ package filestate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -127,7 +128,7 @@ func (b *localBackend) getTarget(
 	}
 	return &deploy.Target{
 		Name:         stack.Name(),
-		Organization: "", // filestate has no organizations
+		Organization: "organization", // filestate has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
@@ -552,4 +553,27 @@ func (b *localBackend) addToHistory(ref *localBackendReference, update backend.U
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	checkpointFile := fmt.Sprintf("%s.checkpoint.%s", pathPrefix, ext)
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(ref), nil)
+}
+
+// isPulumiDirEmpty reports whether the .pulumi directory inside the bucket
+// (used by us for bookkeeping) is empty.
+// This will ignore files in the bucket outside of the .pulumi directory.
+func isPulumiDirEmpty(ctx context.Context, b Bucket) (bool, error) {
+	iter := b.List(&blob.ListOptions{
+		Delimiter: "/",
+		Prefix:    workspace.BookkeepingDir,
+	})
+
+	if _, err := iter.Next(ctx); err != nil {
+		if errors.Is(err, io.EOF) {
+			return true, nil
+		}
+		// io.EOF is expected if the bucket is empty
+		// but all other errors are not.
+		return false, fmt.Errorf("list bucket: %w", err)
+	}
+
+	// If we get here, iter.Next succeeded,
+	// so the bucket is not empty.
+	return false, nil
 }

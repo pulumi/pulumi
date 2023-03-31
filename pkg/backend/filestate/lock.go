@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -64,12 +65,16 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 		return err
 	}
 
+	// lockPath may return a path with backslashes (\) on Windows.
+	// We need to convert it to a slash path (/) to compare it to
+	// the keys in the bucket which are always slash paths.
+	wantLock := filepath.ToSlash(b.lockPath(stackRef))
 	var lockKeys []string
 	for _, file := range allFiles {
 		if file.IsDir {
 			continue
 		}
-		if file.Key != b.lockPath(stackRef) {
+		if file.Key != wantLock {
 			lockKeys = append(lockKeys, file.Key)
 		}
 	}
