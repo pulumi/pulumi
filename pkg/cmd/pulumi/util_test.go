@@ -18,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -354,4 +355,98 @@ func TestStackLoadOption(t *testing.T) {
 				"SetCurrent did not match")
 		})
 	}
+}
+
+// TestGetUpdateMetadata tests that the update metadata is correctly populated
+// when running a Pulumi program.
+func TestPulumiCLIMetadata(t *testing.T) {
+	t.Parallel()
+
+	cmd := &cobra.Command{
+		Use: "my-cli-command",
+	}
+
+	cmd.PersistentFlags().String(
+		"name", "",
+		"This is a mock string flag that is set on the command.")
+
+	cmd.PersistentFlags().Int(
+		"age", 0,
+		"This is a mock int flag that is set on the command.")
+
+	cmd.PersistentFlags().Bool(
+		"human", false,
+		"This is a mock boolean flag that is set on the command.")
+
+	cmd.PersistentFlags().Bool(
+		"unused", false,
+		"This is an unused boolean flag that is NOT set on the command.")
+
+	actualEnv := map[string]string{}
+
+	getEnv := func() []string { // This is the function that returns the environment variables.
+		return []string{
+			// Checks that a normal flag is set in the environment.
+			"PULUMI_SKIP_UPDATE_CHECK=1",
+			// Checks that a flag is set in the environment to 'false'.
+			"PULUMI_EXPERIMENTAL=0",
+			// Checks that a non boolean flag set to true is 'set'.
+			"PULUMI_STRING_FLAG=true",
+			// Checks that an old and forgotten CLI flag is detected.
+			"PULUMI_DEPRECATED_FLAG=1.2.3",
+		}
+	}
+
+	subCmd := &cobra.Command{
+		Use: "subcommand",
+		Run: func(cmd *cobra.Command, args []string) {
+			addPulumiCLIMetadataToEnvironment(actualEnv, cmd.Flags(), getEnv)
+		},
+	}
+
+	cmd.AddCommand(subCmd)
+	cmd.SetArgs([]string{"subcommand", "--name", "pulumipus", "--age", "100", "--human"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err, "Expected command to execute successfully")
+
+	// Check that normal flags are set in the environment.
+	for _, flagName := range []string{
+		"pulumi.version",
+		"pulumi.arch",
+		"pulumi.os",
+	} {
+		switch flagName {
+		case "pulumi.version":
+		default:
+			value := actualEnv[flagName]
+			assert.NotEmpty(t, value, "Expected %s to be set in update environment map", flagName)
+		}
+		// Set these to a known sentinel value to keep the later check from failing.
+		actualEnv[flagName] = "SKIP"
+	}
+
+	// Check that sensitive flags are not leaked in the environment.
+	assert.Equal(t, map[string]string{
+		// These have unknown runtime values across machines and are set to a sentinel value in the test.
+		"pulumi.version": "SKIP",
+		"pulumi.arch":    "SKIP",
+		"pulumi.os":      "SKIP",
+
+		// CLI flags
+		"pulumi.flag.name":  "set",
+		"pulumi.flag.age":   "set",
+		"pulumi.flag.human": "true",
+
+		// Environment variables
+
+		// Env Vars are considered truthy if they are "1" or "true" case-insensitive.
+		"pulumi.env.PULUMI_SKIP_UPDATE_CHECK": "true",
+		// The following is a boolean flag that is set to "0", which is falsey.
+		"pulumi.env.PULUMI_EXPERIMENTAL": "false",
+		// The following is truthy, but NOT a boolean flag.
+		"pulumi.env.PULUMI_STRING_FLAG": "set",
+		// The following is falsey, but NOT a boolean flag.
+		"pulumi.env.PULUMI_DEPRECATED_FLAG": "set",
+	}, actualEnv)
 }

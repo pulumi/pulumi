@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/filestate,service
+  description: Add more information to `pulumi stack history` (Update CLI Args, Environment Variables, Pulumi Version, OS, Architecture).
