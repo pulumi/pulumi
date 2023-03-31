@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -73,13 +74,13 @@ func NewContext(d, statusD diag.Sink, host Host, _ ConfigSource,
 
 	root := ""
 	return NewContextWithRoot(d, statusD, host, pwd, root, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins)
+		disableProviderPreview, parentSpan, plugins, nil)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
 func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
-	parentSpan opentracing.Span, plugins *workspace.Plugins,
+	parentSpan opentracing.Span, plugins *workspace.Plugins, config map[config.Key]string,
 ) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
@@ -98,7 +99,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 		cancelLock:      &sync.Mutex{},
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins)
+		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins, config)
 		if err != nil {
 			return nil, err
 		}

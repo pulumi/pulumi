@@ -318,6 +318,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			cmdutil.Diag(),
 			false,
 			span,
+			nil,
 		)
 		if err != nil {
 			return err

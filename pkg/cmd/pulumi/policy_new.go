@@ -204,6 +204,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 			cmdutil.Diag(),
 			false,
 			span,
+			nil,
 		)
 		if err != nil {
 			return err

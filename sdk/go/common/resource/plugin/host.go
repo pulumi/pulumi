@@ -96,7 +96,7 @@ type Host interface {
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
-	disableProviderPreview bool, plugins *workspace.Plugins,
+	disableProviderPreview bool, plugins *workspace.Plugins, config map[config.Key]string,
 ) (Host, error) {
 	// Create plugin info from providers
 	projectPlugins := make([]workspace.ProjectPlugin, 0)
@@ -134,6 +134,7 @@ func NewDefaultHost(ctx *Context, runtimeOptions map[string]interface{},
 		languageLoadRequests:    make(chan pluginLoadRequest),
 		loadRequests:            make(chan pluginLoadRequest),
 		disableProviderPreview:  disableProviderPreview,
+		config:                  config,
 		closer:                  new(sync.Once),
 		projectPlugins:          projectPlugins,
 	}
@@ -226,6 +227,7 @@ type defaultHost struct {
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
 	server                  *hostServer                      // the server's RPC machinery.
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
+	config                  map[config.Key]string            // the configuration map for the stack, if any.
 
 	closer         *sync.Once
 	projectPlugins []workspace.ProjectPlugin
@@ -343,7 +345,22 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// Try to load and bind to a plugin.
-		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions, host.disableProviderPreview)
+
+		result := make(map[string]string)
+		for k, v := range host.config {
+			if tokens.Package(k.Namespace()) != pkg {
+				continue
+			}
+			result[k.Name()] = v
+		}
+		jsonConfig, err := json.Marshal(result)
+		if err != nil {
+			return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
+		}
+
+		plug, err := NewProvider(
+			host, host.ctx, pkg, version,
+			host.runtimeOptions, host.disableProviderPreview, string(jsonConfig))
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {

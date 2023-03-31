@@ -128,7 +128,7 @@ func (p *pluginConfigPromise) Fulfill(cfg pluginConfig, err error) {
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
-	options map[string]interface{}, disableProviderPreview bool,
+	options map[string]interface{}, disableProviderPreview bool, jsonConfig string,
 ) (Provider, error) {
 	// See if this is a provider we just want to attach to
 	var plug *plugin
@@ -180,6 +180,9 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		env := os.Environ()
 		for k, v := range options {
 			env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
+		}
+		if jsonConfig != "" {
+			env = append(env, fmt.Sprintf("PULUMI_CONFIG=%s", jsonConfig))
 		}
 		plug, err = newPlugin(ctx, ctx.Pwd, path, prefix,
 			workspace.ResourcePlugin, []string{host.ServerAddr()}, env, providerPluginDialOptions(ctx, pkg, ""))

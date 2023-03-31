@@ -1347,3 +1347,19 @@ func TestRegression12301Node(t *testing.T) {
 		},
 	})
 }
+
+// Tests provider config is passed through to provider processes.
+func TestPulumiConfig(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("dynamic", "nodejs-pulumi-config"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Config: map[string]string{
+			"pulumi-nodejs:id": "testing123",
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Len(t, stack.Outputs, 1)
+			assert.Contains(t, stack.Outputs, "rid")
+			assert.Equal(t, "testing123", stack.Outputs["rid"].(string))
+		},
+	})
+}

@@ -127,7 +127,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
+			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
 			addError(err, "Failed to create plugin context")
 		} else {
