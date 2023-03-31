@@ -1659,6 +1659,21 @@ func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 	return plugins, nil
 }
 
+// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary.
+// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
+func IsPluginBundled(kind PluginKind, name string) bool {
+	return (kind == LanguagePlugin && name == "nodejs") ||
+		(kind == LanguagePlugin && name == "go") ||
+		(kind == LanguagePlugin && name == "python") ||
+		(kind == LanguagePlugin && name == "dotnet") ||
+		(kind == LanguagePlugin && name == "yaml") ||
+		(kind == LanguagePlugin && name == "java") ||
+		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
+		(kind == ResourcePlugin && name == "pulumi-python") ||
+		(kind == AnalyzerPlugin && name == "policy") ||
+		(kind == AnalyzerPlugin && name == "policy-python")
+}
+
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
 // using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
@@ -1777,15 +1792,6 @@ func getPluginInfoAndPath(
 		}
 	}
 
-	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
-	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.
-	// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
-	isBundled := kind == LanguagePlugin ||
-		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == ResourcePlugin && name == "pulumi-python") ||
-		(kind == AnalyzerPlugin && name == "policy") ||
-		(kind == AnalyzerPlugin && name == "policy-python")
-
 	// At some point in the future, bundled plugins will be located in the plugin cache, just like regular
 	// plugins (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they
 	// ship next to the `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check
@@ -1793,7 +1799,7 @@ func getPluginInfoAndPath(
 	// path on the command line or has done symlink magic such that `pulumi` is on the path, but the bundled
 	// plugins are not, or has simply set IGNORE_AMBIENT_PLUGINS. So, if possible, look next to the instance
 	// of `pulumi` that is running to find this bundled plugin.
-	if isBundled {
+	if IsPluginBundled(kind, name) {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
 			fullPath, fullErr := filepath.EvalSymlinks(exePath)

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -81,15 +82,26 @@ type pluginInstallCmd struct {
 	checksum  string
 
 	diag  diag.Sink
+	env   env.Env
 	color colors.Colorization
+
+	pluginGetLatestVersion func(
+		workspace.PluginSpec,
+	) (*semver.Version, error) // == workspace.PluginSpec.GetLatestVersion
 }
 
 func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
+	if cmd.env == nil {
+		cmd.env = env.Global()
+	}
 	if cmd.diag == nil {
 		cmd.diag = cmdutil.Diag()
 	}
 	if cmd.color == "" {
 		cmd.color = cmdutil.GetGlobalColorization()
+	}
+	if cmd.pluginGetLatestVersion == nil {
+		cmd.pluginGetLatestVersion = (workspace.PluginSpec).GetLatestVersion
 	}
 
 	// Parse the kind, name, and version, if specified.
@@ -132,6 +144,20 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 			Checksums:         checksums,
 		}
 
+		// Bundled plugins are generally not installable with this command. They are expected to be
+		// distributed with Pulumi itself. But we turn this check off if PULUMI_DEV is set so we can
+		// test installing plugins that are being moved to their own distribution (such as when we move
+		// pulumi-nodejs).
+		if !cmd.env.GetBool(env.Dev) && workspace.IsPluginBundled(pluginSpec.Kind, pluginSpec.Name) {
+			return fmt.Errorf(
+				"the %v %v plugin is bundled with Pulumi, and cannot be directly installed"+
+					" with this command. If you need to reinstall this plugin, reinstall"+
+					" Pulumi via your package manager or install script.",
+				pluginSpec.Name,
+				pluginSpec.Kind,
+			)
+		}
+
 		// Try and set known plugin download URLs
 		if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec); urlSet {
 			cmd.diag.Infof(
@@ -140,7 +166,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 
 		// If we don't have a version try to look one up
 		if version == nil {
-			latestVersion, err := pluginSpec.GetLatestVersion()
+			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec)
 			if err != nil {
 				return err
 			}
