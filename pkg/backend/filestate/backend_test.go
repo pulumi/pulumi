@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sync"
 	"testing"
@@ -553,13 +554,18 @@ func TestLegacyFolderStructure(t *testing.T) {
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
 }
 
-//nolint:paralleltest // uses t.Setenv
 func TestOptIntoLegacyFolderStructure(t *testing.T) {
-	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")
+	t.Parallel()
 
 	tmpDir := t.TempDir()
 	ctx := context.Background()
-	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	b, err := newLocalBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
+		&localBackendOptions{
+			Getenv: mapGetenv(map[string]string{
+				"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT": "true",
+			}),
+		},
+	)
 	require.NoError(t, err)
 
 	// Verify that a new stack is created in the legacy location.
@@ -753,8 +759,9 @@ func TestProjectNameMustMatch(t *testing.T) {
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "my-project", "c.json"))
 }
 
-//nolint:paralleltest // uses t.Setenv
 func TestNew_legacyFileWarning(t *testing.T) {
+	t.Parallel()
+
 	// Verifies the names of files printed in warnings
 	// when legacy files are found while running in project mode.
 
@@ -797,10 +804,9 @@ func TestNew_legacyFileWarning(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			for k, v := range tt.env {
-				t.Setenv(k, v)
-			}
+			t.Parallel()
 
 			stateDir := t.TempDir()
 			bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -818,7 +824,11 @@ func TestNew_legacyFileWarning(t *testing.T) {
 
 			var buff bytes.Buffer
 			sink := diag.DefaultSink(io.Discard, &buff, diag.FormatOptions{Color: colors.Never})
-			_, err = New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+
+			_, err = newLocalBackend(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil,
+				&localBackendOptions{
+					Getenv: mapGetenv(tt.env),
+				})
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantOut, buff.String())
@@ -1046,5 +1056,85 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	out := output.String()
 	for i := 0; i < numStacks; i++ {
 		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
+	}
+}
+
+func TestCreateStack_gzip(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	b, err := newLocalBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
+		&workspace.Project{Name: "testproj"},
+		&localBackendOptions{
+			Getenv: mapGetenv(map[string]string{
+				"PULUMI_SELF_MANAGED_STATE_GZIP": "true",
+			}),
+		},
+	)
+	require.NoError(t, err)
+
+	fooRef, err := b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, fooRef, "", nil)
+	require.NoError(t, err)
+
+	// With PULUMI_SELF_MANAGED_STATE_GZIP enabled,
+	// we'll store state into gzipped files.
+	assert.FileExists(t, filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json.gz"))
+}
+
+func TestCreateStack_retainCheckpoints(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := context.Background()
+	b, err := newLocalBackend(
+		ctx,
+		diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir),
+		&workspace.Project{Name: "testproj"},
+		&localBackendOptions{
+			Getenv: mapGetenv(map[string]string{
+				"PULUMI_RETAIN_CHECKPOINTS": "true",
+			}),
+		},
+	)
+	require.NoError(t, err)
+
+	fooRef, err := b.ParseStackReference("foo")
+	require.NoError(t, err)
+
+	_, err = b.CreateStack(ctx, fooRef, "", nil)
+	require.NoError(t, err)
+
+	// With PULUMI_RETAIN_CHECKPOINTS enabled,
+	// we'll make copies of files under $orig.$timestamp.
+	// Since we can't predict the timestamp,
+	// we'll just check that there's at least one file
+	// with a timestamp extension.
+	got, err := filepath.Glob(
+		filepath.Join(stateDir, ".pulumi", "stacks", "testproj", "foo.json.*"))
+	require.NoError(t, err)
+
+	checkpointExtRe := regexp.MustCompile(`^\.[0-9]+$`)
+	var found bool
+	for _, f := range got {
+		if checkpointExtRe.MatchString(filepath.Ext(f)) {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found,
+		"file with a timestamp extension not found in %v", got)
+}
+
+// mapGetenv builds an os.Getenv-like function
+// that returns values from the given map.
+func mapGetenv(m map[string]string) func(string) string {
+	return func(key string) string {
+		return m[key]
 	}
 }

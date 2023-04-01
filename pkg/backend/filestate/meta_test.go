@@ -26,8 +26,9 @@ import (
 	"gocloud.dev/blob/memblob"
 )
 
-//nolint:paralleltest // uses t.Setenv
 func TestEnsurePulumiMeta(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc string
 		give map[string]string // files in the bucket
@@ -99,9 +100,7 @@ func TestEnsurePulumiMeta(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
-			for k, v := range tt.env {
-				t.Setenv(k, v)
-			}
+			t.Parallel()
 
 			b := memblob.OpenBucket(nil)
 			ctx := context.Background()
@@ -109,7 +108,7 @@ func TestEnsurePulumiMeta(t *testing.T) {
 				require.NoError(t, b.WriteAll(ctx, name, []byte(body), nil))
 			}
 
-			state, err := ensurePulumiMeta(ctx, b)
+			state, err := ensurePulumiMeta(ctx, b, mapGetenv(tt.env))
 			require.NoError(t, err)
 			assert.Equal(t, &tt.want, state)
 		})
@@ -150,7 +149,7 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, b.WriteAll(ctx, ".pulumi/meta.yaml", []byte(tt.give), nil))
 
-			_, err := ensurePulumiMeta(context.Background(), b)
+			_, err := ensurePulumiMeta(context.Background(), b, mapGetenv(nil))
 			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
@@ -183,7 +182,7 @@ func TestMeta_roundTrip(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, tt.give.WriteTo(ctx, b))
 
-			got, err := ensurePulumiMeta(ctx, b)
+			got, err := ensurePulumiMeta(ctx, b, mapGetenv(nil))
 			require.NoError(t, err)
 			assert.Equal(t, &tt.give, got)
 		})
