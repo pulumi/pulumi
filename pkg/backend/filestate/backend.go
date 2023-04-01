@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -93,6 +94,9 @@ var (
 type Backend interface {
 	backend.Backend
 	local() // at the moment, no local specific info, so just use a marker function.
+
+	// Upgrade to the latest state store version.
+	Upgrade(ctx context.Context) error
 }
 
 type localBackend struct {
@@ -296,6 +300,7 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	}
 	// Otherwise, warn about any old stack files.
 	// This is possible if a user creates a new stack with a new CLI,
+	// or migrates it to project mode with `pulumi state upgrade`,
 	// but someone else interacts with the same state with an old CLI.
 
 	refs, err := newLegacyReferenceStore(wbucket).ListReferences()
@@ -312,9 +317,123 @@ func New(ctx context.Context, d diag.Sink, originalURL string, project *workspac
 	for _, ref := range refs {
 		fmt.Fprintf(&msg, "  - %s\n", ref.Name())
 	}
+	msg.WriteString("Please run 'pulumi state upgrade' to migrate them to the new format.\n")
 	msg.WriteString("Set PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1 to disable this warning.")
 	d.Warningf(diag.Message("", msg.String()))
 	return backend, nil
+}
+
+func (b *localBackend) Upgrade(ctx context.Context) error {
+	// We don't use the existing b.store because
+	// this may already be a projectReferenceStore
+	// with new legacy files introduced to it accidentally.
+	olds, err := newLegacyReferenceStore(b.bucket).ListReferences()
+	if err != nil {
+		return fmt.Errorf("read old references: %w", err)
+	}
+
+	// It's important that we attempt to write the new metadata file
+	// before we attempt the upgrade.
+	// This ensures that if permissions are borked for any reason,
+	// (e.g., we can write to .pulumi/*/*" but not ".pulumi/*.")
+	// we don't leave the bucket in a completely inaccessible state.
+	meta := pulumiMeta{Version: 1}
+	if err := meta.WriteTo(ctx, b.bucket); err != nil {
+		var s strings.Builder
+		fmt.Fprintf(&s, "Could not write new state metadata file: %v\n", err)
+		fmt.Fprintf(&s, "Please verify that the storage is writable, and try again.")
+		b.d.Errorf(diag.RawMessage("", s.String()))
+		return errors.New("state upgrade failed")
+	}
+
+	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
+
+	// There's no limit to the number of stacks we need to upgrade.
+	// We don't want to overload the system with too many concurrent upgrades.
+	// We'll run a fixed pool of goroutines to upgrade stacks.
+	// They'll work their way through the list of old stacks
+	// using nextIdx to track which stack to upgrade next.
+	var (
+		// Index into olds for goroutines to track
+		// which stack they're upgrading.
+		nextIdx atomic.Int64
+
+		// Number of stacks successfully upgraded.
+		upgraded atomic.Int64
+
+		wg sync.WaitGroup
+	)
+
+	// GOMAXPROCS defaults to the number of cores on the system,
+	// so this should be a reasonable default.
+	numWorkers := runtime.GOMAXPROCS(0)
+	if count := len(olds); count < numWorkers {
+		// Don't need more workers than work.
+		numWorkers = count
+	}
+
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				// Add returns the new value of the atomic,
+				// so we need to subtract 1 from the result.
+				idx := nextIdx.Add(1) - 1
+
+				// List of old stacks has been exhausted.
+				// We're done.
+				if idx >= int64(len(olds)) {
+					return
+				}
+
+				old := olds[idx]
+				if err := b.upgradeStack(ctx, newStore, old); err != nil {
+					b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
+				} else {
+					upgraded.Add(1)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	b.store = newStore
+	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded.Load())
+	return nil
+}
+
+// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
+func (b *localBackend) upgradeStack(
+	ctx context.Context,
+	newStore *projectReferenceStore,
+	old *localBackendReference,
+) error {
+	contract.Requiref(old.project == "", "old.project", "must be empty")
+
+	chk, err := b.getCheckpoint(old)
+	if err != nil {
+		return err
+	}
+
+	// Try and find the project name from _any_ resource URN
+	var project tokens.Name
+	if chk.Latest != nil {
+		for _, res := range chk.Latest.Resources {
+			project = tokens.Name(res.URN.Project())
+			break
+		}
+	}
+	if project == "" {
+		return errors.New("no project found")
+	}
+
+	new := newStore.newReference(project, old.Name())
+	if err := b.renameStack(ctx, old, new); err != nil {
+		return fmt.Errorf("rename to %v: %w", new, err)
+	}
+
+	return nil
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
