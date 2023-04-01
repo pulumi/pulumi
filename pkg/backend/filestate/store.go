@@ -15,8 +15,10 @@
 package filestate
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"gocloud.dev/blob"
 )
 
 // These should be constants
@@ -232,49 +235,63 @@ func (p *projectReferenceStore) ListProjects() ([]tokens.Name, error) {
 func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
 	// The first level of the bucket is the project name.
 	// The second level of the bucket is the stack name.
-	path := StacksDir
-
-	projects, err := p.ListProjects()
-	if err != nil {
-		return nil, err
-	}
+	ctx := context.TODO()
+	prefix := filepath.ToSlash(StacksDir) + "/"
+	iter := p.bucket.List(&blob.ListOptions{
+		Prefix: prefix,
+		// Don't set the Delimiter.
+		// This will treat the entire bucket as a flat list,
+		// returning only files under the prefix.
+	})
 
 	var stacks []*localBackendReference
-	for _, projName := range projects {
-		// TODO: Could we improve the efficiency here by firstly making listBucket return an enumerator not
-		// eagerly collecting all keys into a slice, and secondly by getting listBucket to return all
-		// descendent items not just the immediate children. We could then do the necessary splitting by
-		// file paths here to work out project names.
-		projectFiles, err := listBucket(p.bucket, filepath.Join(path, projName.String()))
+	for {
+		file, err := iter.Next(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("error listing stacks: %w", err)
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return nil, fmt.Errorf("list bucket: %w", err)
 		}
 
-		for _, projectFile := range projectFiles {
-			// Can ignore directories at this level
-			if projectFile.IsDir {
-				continue
-			}
-
-			objName := objectName(projectFile)
-			// Skip files without valid extensions (e.g., *.bak files).
-			ext := filepath.Ext(objName)
-			// But accept gzip compression
-			if ext == encoding.GZIPExt {
-				objName = strings.TrimSuffix(objName, encoding.GZIPExt)
-				ext = filepath.Ext(objName)
-			}
-
-			if _, has := encoding.Marshalers[ext]; !has {
-				continue
-			}
-
-			// Read in this stack's information.
-			name := objName[:len(objName)-len(ext)]
-			stacks = append(stacks, p.newReference(projName, tokens.Name(name)))
+		if file.IsDir {
+			continue
 		}
+
+		// Key is in the form,
+		//   $StacksDir/$projName/$stackName.json[.gz]
+		// We want to extract projName and stackName from it.
+
+		parts := strings.Split(strings.TrimPrefix(file.Key, prefix), "/")
+		if len(parts) != 2 {
+			continue // skip paths too shallow or too deep
+		}
+		projName := parts[0]
+		objName := parts[1]
+
+		if !tokens.IsName(projName) {
+			// If this isn't a valid Name
+			// it won't be a project directory,
+			// so skip it.
+			continue
+		}
+
+		// Skip files without valid extensions (e.g., *.bak files).
+		ext := filepath.Ext(objName)
+		// But accept gzip compression
+		if ext == encoding.GZIPExt {
+			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+			ext = filepath.Ext(objName)
+		}
+
+		if _, has := encoding.Marshalers[ext]; !has {
+			continue
+		}
+
+		// Read in this stack's information.
+		name := objName[:len(objName)-len(ext)]
+		stacks = append(stacks, p.newReference(tokens.Name(projName), tokens.Name(name)))
 	}
-
 	return stacks, nil
 }
 
