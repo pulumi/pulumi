@@ -52,6 +52,7 @@ func newUpCmd() *cobra.Command {
 	var execAgent string
 	var stackName string
 	var configArray []string
+	var runtimeConfigArray []string
 	var path bool
 	var client string
 
@@ -123,6 +124,11 @@ func newUpCmd() *cobra.Command {
 		configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
 		if configErr != nil {
 			return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
+		}
+
+		err = applyRuntimeConfigValues(cfg.Config, runtimeConfigArray, path)
+		if err != nil {
+			return result.FromError(fmt.Errorf("applying runtime config values: %w", err))
 		}
 
 		targetURNs, replaceURNs := []string{}, []string{}
@@ -515,6 +521,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update")
+	cmd.PersistentFlags().StringArrayVar(
+		&runtimeConfigArray, "runtime-config", []string{},
+		"Config used at runtime without persisting to the local config file")
 	cmd.PersistentFlags().BoolVar(
 		&path, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
