@@ -95,7 +95,7 @@
         "tests/provider.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
-        "tests/run.spec.ts",
+        "tests/pkg.spec.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/registrations.spec.ts",

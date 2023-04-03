@@ -16,7 +16,7 @@ import * as fs from "fs";
 import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsnode from "ts-node";
+import * as tsnode from "pulumi-ts-node";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";

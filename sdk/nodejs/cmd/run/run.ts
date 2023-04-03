@@ -17,7 +17,7 @@ import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as semver from "semver";
-import * as tsnode from "ts-node";
+import * as tsnode from "pulumi-ts-node";
 import * as url from "url";
 import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
@@ -27,6 +27,7 @@ import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
+import { loadTSNode } from "./pkg";
 
 import * as mod from ".";
 
@@ -183,6 +184,7 @@ export function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
+    packageObject: Record<string, any>, // the loaded package.json file    
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
     const tracingUrl: string | boolean = argv["tracing"];
     // Start tracing. Before exiting, gracefully shutdown tracing, exporting
@@ -216,7 +218,7 @@ export function run(
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
         const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
-        const tsn: typeof tsnode = require("ts-node");
+        const tsn = loadTSNode(packageObject);
         tsn.register({
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which

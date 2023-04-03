@@ -15,16 +15,18 @@
 import * as assert from "assert";
 // TODO(@Robbie): Question: how do I import a function for a unit test
 //                without exporting that function?
-import { hasPkgDeclared, loadOrDefault } from "../cmd/run/pkg";
+import { hasPkgDeclared, loadOrDefault, loadTSNode } from "../cmd/run/pkg";
 import * as sinon from "sinon";
 
+// Create a sampe package.json, loaded into memory as a record.
+const pkgs: Record<string, any> = {
+    'dependencies': {
+        "myDep": "3.4.0",
+        "rightPad": "9.0.0",
+    },
+};
+
 describe("hasPkgDeclared", () => {
-    const pkgs: Record<string, any> = {
-        'dependencies': {
-            "myDep": "3.4.0",
-            "rightPad": "9.0.0",
-        },
-    };
     it("finds packages declared in a record", () => {
         assert.strictEqual(hasPkgDeclared("myDep", pkgs), true);
         assert.strictEqual(hasPkgDeclared("rightPad", pkgs), true);
@@ -34,7 +36,9 @@ describe("hasPkgDeclared", () => {
         assert.strictEqual(hasPkgDeclared("fooman", pkgs), false);
         assert.strictEqual(hasPkgDeclared("barman", pkgs), false);
     });
+});
 
+describe("loadOrDefault", () => {
     it("should prefer the user's package over a fallback.", () => {
         const spy = sinon.spy();
         assert.throws(() => {
@@ -59,3 +63,10 @@ describe("hasPkgDeclared", () => {
         assert.ok(spy.called);
     });
 });
+
+describe("loadTSNode", () => {
+    it("should load TS-Node from the Pulumi alias", () => {
+         loadTSNode(pkgs);
+    });
+});
+
