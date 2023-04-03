@@ -15,7 +15,8 @@
 import * as assert from "assert";
 // TODO(@Robbie): Question: how do I import a function for a unit test
 //                without exporting that function?
-import { hasPkgDeclared } from "../cmd/run/pkg";
+import { hasPkgDeclared, loadOrDefault } from "../cmd/run/pkg";
+import * as sinon from "sinon";
 
 describe("hasPkgDeclared", () => {
     const pkgs: Record<string, any> = {
@@ -32,5 +33,29 @@ describe("hasPkgDeclared", () => {
     it("doesn't find non-existant packages", () => {
         assert.strictEqual(hasPkgDeclared("fooman", pkgs), false);
         assert.strictEqual(hasPkgDeclared("barman", pkgs), false);
+    });
+
+    it("should prefer the user's package over a fallback.", () => {
+        const spy = sinon.spy();
+        assert.throws(() => {
+            loadOrDefault({
+                moduleName: "rightPad",
+                pkg: pkgs,
+                defaultLoader: spy,
+            });
+        },
+        /Error: Cannot find module 'rightPad'/,
+        );
+        assert.ok(spy.notCalled);
+    });
+
+    it("should fallback to a backup package when the user's package isn't specified.", () => {
+        const spy = sinon.spy();
+        loadOrDefault({
+            moduleName: "fake-module",
+            pkg: pkgs,
+            defaultLoader: spy,
+        });
+        assert.ok(spy.called);
     });
 });
