@@ -14,6 +14,9 @@
 
 import * as assert from "assert";
 import * as pkg from "../../runtime/closure/package";
+// TODO(@Robbie): Question: how do I import a function for a unit test
+//                without exporting that function?
+import { hasPkgDeclared } from "../../cmd/run/run";
 
 describe("module", () => {
     it("remaps exports correctly for mockpackage", () => {
@@ -145,5 +148,23 @@ describe("conditional import/require package exports", () => {
 describe("error cases", () => {
     it("returns the original module if package.json not found", () => {
         assert.strictEqual(pkg.getModuleFromPath("this-mod/main-require.cjs"), "this-mod/main-require.cjs");
+    });
+});
+
+describe("hasPkgDeclared", () => {
+    const pkgs: Record<string, any> = {
+        'dependencies': {
+            "myDep": "3.4.0",
+            "rightPad": "9.0.0",
+        },
+    };
+    it("finds packages declared in a record", () => {
+        assert.strictEqual(hasPkgDeclared("myDep", pkgs), true);
+        assert.strictEqual(hasPkgDeclared("rightPad", pkgs), true);
+    });
+
+    it("doesn't find non-existant packages", () => {
+        assert.strictEqual(hasPkgDeclared("fooman", pkgs), false);
+        assert.strictEqual(hasPkgDeclared("barman", pkgs), false);
     });
 });
