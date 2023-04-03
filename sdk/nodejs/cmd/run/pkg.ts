@@ -49,7 +49,7 @@ export function loadTSNode(pkg: Record<string, any>): any {
     moduleName: "ts-node",
     defaultLoader: (name: string) => {
       log.warn("Falling backt o Pulumi TS-Node.");
-      return defaultLoader("pulumi-ts-node");
+      return defaultLoader("ts-node");
     },
     pkg,
   });  
