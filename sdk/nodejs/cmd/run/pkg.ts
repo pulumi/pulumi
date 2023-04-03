@@ -1,3 +1,5 @@
+import * as log from "../../log";
+
 /** 
  * @internal 
  * Returns true if the package.json file has installation instructions
@@ -42,9 +44,25 @@ const defaultLoader = (name: string): any => require(name);
   * It accepts the user's loaded package.json file as an argument.
   */
 export function loadTSNode(pkg: Record<string, any>): any {
+  log.warn("Loading TS-Node");
   return loadOrDefault({
     moduleName: "ts-node",
-    defaultLoader: (name: string) => defaultLoader("pulumi-ts-node"),
+    defaultLoader: (name: string) => {
+      log.warn("Falling backt o Pulumi TS-Node.");
+      return defaultLoader("pulumi-ts-node");
+    },
+    pkg,
+  });  
+}
+
+export function loadTypeScript(pkg: Record<string, any>): any {
+  log.warn("Loading TypeScript.");
+  return loadOrDefault({
+    moduleName: "typescript",
+    defaultLoader: (name: string) => {
+      log.warn("Falling back to Pulumi TypeScript.");
+      return defaultLoader("pulumi-typescript");
+    },
     pkg,
   });  
 }

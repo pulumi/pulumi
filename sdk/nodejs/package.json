@@ -30,7 +30,7 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.5.6",
-        "typescript": "~3.8.3",
+        "pulumi-typescript": "npm:typescript@~3.8.3",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -53,7 +53,8 @@
         "mockpackage": "file:tests/mockpackage",
         "nyc": "^15.1.0",
         "sinon": "^14.0.0",
-        "ts-node": "^10.9.1"
+        "ts-node": "^10.9.1",
+        "typescript": "~3.8.3"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"

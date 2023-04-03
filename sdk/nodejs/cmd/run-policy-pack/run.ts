@@ -146,6 +146,7 @@ export interface RunOpts {
 
     argv: minimist.ParsedArgs;
     programStarted: () => void;
+    packageObject: Record<string, any>;
     reportLoggedError: (err: Error) => void;
     runInStack: boolean;
     typeScript: boolean;
@@ -169,7 +170,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
     if (opts.typeScript) {
         const skipProject = !fs.existsSync(tsConfigPath);
-        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath, opts.packageObject);
         const tsn: typeof tsnode = require("ts-node");
         tsn.register({
             typeCheck: true,

@@ -217,7 +217,7 @@ export function run(
     span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
         const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath, packageObject);
         const tsn = loadTSNode(packageObject);
         tsn.register({
             transpileOnly,
