@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/dotnet
-  description: Fix a whitespace error in generated .csproj files.

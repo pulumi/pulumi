@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.61.0 (2023-04-03)
+
+
+### Features
+
+- [backend/filestate] Add support for project-scoped stacks.
+  Newly initialized backends will automatically use this mode.
+  Set PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=1 to opt-out of this.
+  This mode needs write access to the root of the .pulumi directory;
+  if you're using a cloud storage, be sure to update your ACLs.
+
+  [#12437](https://github.com/pulumi/pulumi/pull/12437)
+
+- [cli/state] Add 'upgrade' subcommand to upgrade a Pulumi self-managed state to use project layout.
+  [#12438](https://github.com/pulumi/pulumi/pull/12438)
+
+
+### Bug Fixes
+
+- [cli/display] Fix a bug in the interactive update tree display where small terminals would cause the Pulumi CLI to panic.
+  [#12571](https://github.com/pulumi/pulumi/pull/12571)
+
+- [sdkgen/dotnet] Fix a whitespace error in generated .csproj files.
+  [#12577](https://github.com/pulumi/pulumi/pull/12577)
+
+
+### Miscellaneous
+
+- [backend/filestate] Print a warning if a project-scoped backend has non-project stacks in it.
+Disable this warning by setting PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1.
+
+  [#12437](https://github.com/pulumi/pulumi/pull/12437)
+
 ## 3.60.1 (2023-03-30)
 
 
