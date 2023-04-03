@@ -444,12 +444,3 @@ ${defaultMessage}`);
     span.end();
     return stackOutputs;
 }
-
-/** 
- *  Returns true if the package.json file has installation instructions
- *  for the given package name.
- * @interal 
- */
-export function hasPkgDeclared(name: string, pkg: Record<string, any>): boolean {
-    return pkg['dependencies']?.[name] ?? false
-}

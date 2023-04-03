@@ -65,6 +65,7 @@
 
         "cmd/dynamic-provider/index.ts",
         "cmd/run/index.ts",
+        "cmd/run/pkg.ts",
         "cmd/run/run.ts",
         "cmd/run/tracing.ts",
         "cmd/run-policy-pack/index.ts",
@@ -94,6 +95,7 @@
         "tests/provider.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",
+        "tests/run.spec.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
         "tests/runtime/closureLoader.spec.ts",
         "tests/runtime/registrations.spec.ts",
