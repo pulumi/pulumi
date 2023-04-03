@@ -25,12 +25,12 @@
         "js-yaml": "^3.14.0",
         "minimist": "^1.2.6",
         "normalize-package-data": "^2.4.0",
-        "pulumi-ts-node": "npm:ts-node@^7.0.1",
+        "pulumi-typescript": "npm:typescript@~3.8.3",
         "read-package-tree": "^5.3.1",
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.5.6",
-        "pulumi-typescript": "npm:typescript@~3.8.3",
+        "ts-node": "git@github.com:pulumi/ts-node.git#v7.0.1",
         "upath": "^1.1.0"
     },
     "devDependencies": {
@@ -53,7 +53,6 @@
         "mockpackage": "file:tests/mockpackage",
         "nyc": "^15.1.0",
         "sinon": "^14.0.0",
-        "ts-node": "^10.9.1",
         "typescript": "~3.8.3"
     },
     "pulumi": {
@@ -70,5 +69,6 @@
     },
     "//": [
         "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
-    ]
+    ],
+    "packageManager": "yarn@3.3.0"
 }
