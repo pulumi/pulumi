@@ -20,13 +20,13 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.0.0
-	github.com/golang/protobuf v1.5.2
+	github.com/golang/protobuf v1.5.3
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20220608213341-c488b8fa1db3
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/hcl/v2 v2.16.1
+	github.com/hashicorp/hcl/v2 v2.16.2
 	github.com/iancoleman/strcase v0.2.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/mitchellh/copystructure v1.2.0
@@ -44,7 +44,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zclconf/go-cty v1.12.1
+	github.com/zclconf/go-cty v1.13.1
 	gocloud.dev v0.27.0
 	gocloud.dev/secrets/hashivault v0.27.0
 	golang.org/x/crypto v0.3.0 // indirect
@@ -74,7 +74,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
-	github.com/pulumi/pulumi-java/pkg v0.8.0
+	github.com/pulumi/pulumi-java/pkg v0.9.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.34.1-0.20221214173921-8e65b1f9fdd5
 	github.com/pulumi/pulumi-yaml v1.0.4
 	github.com/segmentio/encoding v0.3.5
@@ -82,7 +82,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	golang.org/x/mod v0.6.0
 	golang.org/x/term v0.5.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.29.0
 )
 
 require (
