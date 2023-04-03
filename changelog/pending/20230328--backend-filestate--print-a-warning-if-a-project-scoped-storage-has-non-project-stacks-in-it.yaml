@@ -1,6 +1,0 @@
-changes:
-- type: chore
-  scope: backend/filestate
-  description: |
-    Print a warning if a project-scoped storage has non-project stacks in it.
-    Disable this warning by setting PULUMI_SELF_MANAGED_STATE_NO_LEGACY_WARNING=1.

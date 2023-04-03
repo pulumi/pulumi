@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Add 'upgrade' subcommand to upgrade a Pulumi self-managed state to use project layout.
