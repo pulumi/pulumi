@@ -277,7 +277,7 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
 
-			refs, err := store.ListReferences()
+			refs, err := store.ListReferences(ctx)
 			require.NoError(t, err)
 
 			got := make([]tokens.QName, len(refs))
@@ -373,7 +373,7 @@ func TestProjectReferenceStore_List(t *testing.T) {
 			t.Run("Projects", func(t *testing.T) {
 				t.Parallel()
 
-				projects, err := store.ListProjects()
+				projects, err := store.ListProjects(ctx)
 				require.NoError(t, err)
 
 				assert.Equal(t, tt.projects, projects)
@@ -382,7 +382,7 @@ func TestProjectReferenceStore_List(t *testing.T) {
 			t.Run("References", func(t *testing.T) {
 				t.Parallel()
 
-				refs, err := store.ListReferences()
+				refs, err := store.ListReferences(ctx)
 				require.NoError(t, err)
 
 				got := make([]tokens.QName, len(refs))
