@@ -82,7 +82,7 @@ require (
 	github.com/spf13/afero v1.9.5
 	golang.org/x/mod v0.6.0
 	golang.org/x/term v0.5.0
-	google.golang.org/protobuf v1.29.0
+	google.golang.org/protobuf v1.29.1
 )
 
 require (
