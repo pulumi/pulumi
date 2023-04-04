@@ -370,9 +370,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, runtimeErrProj, func(ctx *pulumi.Context) error {
-		var x []string
-		ctx.Export("a", pulumi.String(x[0]))
-		return nil
+		panic("great sadness")
 	})
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)

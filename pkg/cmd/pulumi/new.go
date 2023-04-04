@@ -279,7 +279,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	appendFileName := "Pulumi.yaml.append"
 	appendFile := filepath.Join(root, appendFileName)
-	os.Remove(appendFile)
+	err = os.Remove(appendFile)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -627,9 +627,6 @@ func promptAndCreateStack(ctx context.Context, b backend.Backend, prompt promptF
 			return nil, err
 		}
 		formattedStackName, err := buildStackName(stackName)
-		if err != nil {
-			return nil, err
-		}
 		if err != nil {
 			return nil, err
 		}

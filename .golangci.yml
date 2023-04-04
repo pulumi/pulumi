@@ -33,6 +33,8 @@ linters-settings:
     # pre-emptively.
     # Don't complain about these.
     allow-unused: true
+  govet:
+    enable: [nilness]
 
 issues:
   exclude-rules:
