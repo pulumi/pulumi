@@ -88,7 +88,7 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	cmd := stateUpgradeCmd{
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &stubFileBackend{
-				UpgradeF: func(context.Context) error {
+				UpgradeF: func(context.Context, *filestate.UpgradeOptions) error {
 					called = true
 					return nil
 				},
@@ -110,7 +110,7 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	cmd := stateUpgradeCmd{
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &stubFileBackend{
-				UpgradeF: func(context.Context) error {
+				UpgradeF: func(context.Context, *filestate.UpgradeOptions) error {
 					t.Fatal("Upgrade should not be called")
 					return nil
 				},
@@ -158,9 +158,11 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 type stubFileBackend struct {
 	filestate.Backend
 
-	UpgradeF func(context.Context) error
+	UpgradeF func(context.Context, *filestate.UpgradeOptions) error
 }
 
-func (f *stubFileBackend) Upgrade(ctx context.Context) error {
-	return f.UpgradeF(ctx)
+var _ filestate.Backend = (*stubFileBackend)(nil)
+
+func (f *stubFileBackend) Upgrade(ctx context.Context, opts *filestate.UpgradeOptions) error {
+	return f.UpgradeF(ctx, opts)
 }

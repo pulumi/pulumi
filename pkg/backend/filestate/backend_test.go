@@ -953,7 +953,7 @@ func TestLegacyUpgrade(t *testing.T) {
 	assert.NotNil(t, lb)
 	assert.IsType(t, &legacyReferenceStore{}, lb.store)
 
-	err = lb.Upgrade(ctx)
+	err = lb.Upgrade(ctx, nil /* opts */)
 	require.NoError(t, err)
 	assert.IsType(t, &projectReferenceStore{}, lb.store)
 
@@ -979,7 +979,7 @@ func TestLegacyUpgrade(t *testing.T) {
 	}`), os.ModePerm)
 	require.NoError(t, err)
 
-	err = lb.Upgrade(ctx)
+	err = lb.Upgrade(ctx, nil /* opts */)
 	require.NoError(t, err)
 
 	// Check that b has been moved
@@ -1021,7 +1021,7 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
 	require.NoError(t, err)
 
-	require.NoError(t, b.Upgrade(ctx))
+	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
 	assert.Contains(t, buff.String(), `Skipping stack "bar": no project found`)
 
 	exists, err := bucket.Exists(ctx, ".pulumi/stacks/project/foo.json")
@@ -1064,7 +1064,7 @@ func TestLegacyUpgrade_writeMetaError(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
 	require.NoError(t, err)
 
-	require.Error(t, b.Upgrade(ctx))
+	require.Error(t, b.Upgrade(ctx, nil /* opts */))
 
 	stderr := buff.String()
 	assert.Contains(t, stderr, "error: Could not write new state metadata file")
@@ -1137,7 +1137,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
-	require.NoError(t, b.Upgrade(ctx))
+	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
 	out := output.String()
 	for i := 0; i < numStacks; i++ {
 		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))

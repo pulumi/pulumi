@@ -89,13 +89,16 @@ var (
 	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
 )
 
+// UpgradeOptions customizes the behavior of the upgrade operation.
+type UpgradeOptions struct{}
+
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
 	local() // at the moment, no local specific info, so just use a marker function.
 
 	// Upgrade to the latest state store version.
-	Upgrade(ctx context.Context) error
+	Upgrade(ctx context.Context, opts *UpgradeOptions) error
 }
 
 type localBackend struct {
@@ -348,7 +351,11 @@ func newLocalBackend(
 	return backend, nil
 }
 
-func (b *localBackend) Upgrade(ctx context.Context) error {
+func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
+	if opts == nil {
+		opts = &UpgradeOptions{}
+	}
+
 	// We don't use the existing b.store because
 	// this may already be a projectReferenceStore
 	// with new legacy files introduced to it accidentally.
