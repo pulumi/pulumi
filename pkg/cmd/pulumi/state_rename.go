@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,6 +40,75 @@ func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn
 		}
 	}
 	return updatedDependencies
+}
+
+// stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
+func stateRenameOperation(urn resource.URN, newResourceName string, opts display.Options, snap *deploy.Snapshot) error {
+	// Check whether the input URN corresponds to an existing resource
+	existingResources := edit.LocateResource(snap, urn)
+	if len(existingResources) != 1 {
+		return errors.New("The input URN does not correspond to an existing resource")
+	}
+
+	inputResource := existingResources[0]
+	oldUrn := inputResource.URN
+	// update the URN with only the name part changed
+	newUrn := oldUrn.Rename(newResourceName)
+	// Check whether the new URN _does not_ correspond to an existing resource
+	candidateResources := edit.LocateResource(snap, newUrn)
+	if len(candidateResources) > 0 {
+		return errors.New("The chosen new name for the state corresponds to an already existing resource")
+	}
+
+	// Update the URN of the input resource
+	inputResource.URN = newUrn
+	// Update the dependants of the input resource
+	for _, existingResource := range snap.Resources {
+		// update resources other than the input resource
+		if existingResource.URN != inputResource.URN {
+			// Update dependencies
+			existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldUrn, newUrn)
+			// Update property dependencies
+			for property, dependencies := range existingResource.PropertyDependencies {
+				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldUrn, newUrn)
+			}
+		}
+	}
+
+	updateProvider := func(newRef providers.Reference) error {
+		// Loop through all resources and rename references to the provider.
+		for _, curResource := range snap.Resources {
+
+			if curResource.Provider == "" {
+				// Skip resources that don't use a provider.
+				continue
+			}
+			curResourceProviderRef, err := providers.ParseReference(curResource.Provider)
+			if err != nil {
+				return err
+			}
+
+			// Skip resources that don't use the renamed provider.
+			if curResourceProviderRef.URN() != oldUrn {
+				continue
+			}
+
+			// Update the provider.
+			curResource.Provider = newRef.String()
+		}
+		return nil
+	}
+
+	// If the renamed resource is a Provider, fix all resources referring to the old name.
+	if providers.IsProviderType(inputResource.Type) {
+		newRef, err := providers.NewReference(newUrn, inputResource.ID)
+		if err != nil {
+			return err
+		}
+		return updateProvider(newRef)
+	}
+
+	return nil
 }
 
 func newStateRenameCommand() *cobra.Command {
@@ -72,38 +142,7 @@ pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:
 			}
 
 			res := runTotalStateEdit(ctx, stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-				// Check whether the input URN corresponds to an existing resource
-				existingResources := edit.LocateResource(snap, urn)
-				if len(existingResources) != 1 {
-					return errors.New("The input URN does not correspond to an existing resource")
-				}
-
-				inputResource := existingResources[0]
-				oldUrn := inputResource.URN
-				// update the URN with only the name part changed
-				newUrn := oldUrn.Rename(newResourceName)
-				// Check whether the new URN _does not_ correspond to an existing resource
-				candidateResources := edit.LocateResource(snap, newUrn)
-				if len(candidateResources) > 0 {
-					return errors.New("The chosen new name for the state corresponds to an already existing resource")
-				}
-
-				// Update the URN of the input resource
-				inputResource.URN = newUrn
-				// Update the dependants of the input resource
-				for _, existingResource := range snap.Resources {
-					// update resources other than the input resource
-					if existingResource.URN != inputResource.URN {
-						// Update dependencies
-						existingResource.Dependencies = updateDependencies(existingResource.Dependencies, oldUrn, newUrn)
-						// Update property dependencies
-						for property, dependencies := range existingResource.PropertyDependencies {
-							existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldUrn, newUrn)
-						}
-					}
-				}
-
-				return nil
+				return stateRenameOperation(urn, newResourceName, opts, snap)
 			})
 
 			if res != nil {
