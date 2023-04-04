@@ -91,7 +91,23 @@ var (
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.
-type UpgradeOptions struct{}
+type UpgradeOptions struct {
+	// ProjectsForDetachedStacks is an optional function that is able to
+	// backfill project names for stacks that have no project specified otherwise.
+	//
+	// It is called with a list of stack names that have no project specified.
+	// It should return a list of project names to use for each stack name
+	// in the same order.
+	// If a returned name is blank, the stack at that position will be skipped
+	// in the upgrade process.
+	//
+	// The length of 'projects' MUST match the length of 'stacks'.
+	// If it does not, the upgrade will panic.
+	//
+	// If this function is not specified,
+	// stacks without projects will be skipped during the upgrade.
+	ProjectsForDetachedStacks func(stacks []tokens.Name) (projects []tokens.Name, err error)
+}
 
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
@@ -394,6 +410,45 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 
 	if err := pool.Wait(); err != nil {
 		return err
+	}
+
+	// If there are any stacks without projects
+	// and the user provided a callback to fill them,
+	// use it to fill in the missing projects.
+	if opts.ProjectsForDetachedStacks != nil {
+		var (
+			// Names of stacks in 'olds' that don't have a project
+			detached []tokens.Name
+
+			// reverseIdx[i] is the index of detached[i]
+			// in olds and projects.
+			//
+			// In other words:
+			//
+			//   detached[i] == olds[reverseIdx[i]].Name()
+			//   projects[reverseIdx[i]] == ""
+			reverseIdx []int
+		)
+		for i, ref := range olds {
+			if projects[i] == "" {
+				detached = append(detached, ref.Name())
+				reverseIdx = append(reverseIdx, i)
+			}
+		}
+
+		if len(detached) != 0 {
+			detachedProjects, err := opts.ProjectsForDetachedStacks(detached)
+			if err != nil {
+				return err
+			}
+			contract.Assertf(len(detached) == len(detachedProjects),
+				"ProjectsForDetachedStacks returned the wrong number of projects: "+
+					"expected %d, got %d", len(detached), len(detachedProjects))
+
+			for i, project := range detachedProjects {
+				projects[reverseIdx[i]] = project
+			}
+		}
 	}
 
 	// It's important that we attempt to write the new metadata file
