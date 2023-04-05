@@ -219,6 +219,7 @@ export function run(
         const tsn: typeof tsnode = require("ts-node");
         tsn.register({
             transpileOnly,
+            swc: transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
             // use (Which might just be ./tsconfig.yaml)
