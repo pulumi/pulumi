@@ -261,7 +261,7 @@ func newConfigGetCmd(stack *string) *cobra.Command {
 			"The `--path` flag can be used to get a value inside a map or list:\n\n" +
 			"  - `pulumi config get --path outer.inner` will get the value of the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
-			"  - `pulumi config get --path names[0]` will get the value of the first item, " +
+			"  - `pulumi config get --path 'names[0]'` will get the value of the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -303,7 +303,7 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 			"The `--path` flag can be used to remove a value inside a map or list:\n\n" +
 			"  - `pulumi config rm --path outer.inner` will remove the `inner` key, " +
 			"if the value of `outer` is a map `inner: value`.\n" +
-			"  - `pulumi config rm --path names[0]` will remove the first item, " +
+			"  - `pulumi config rm --path 'names[0]'` will remove the first item, " +
 			"if the value of `names` is a list.",
 		Args: cmdutil.SpecificArgs([]string{"key"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -355,9 +355,9 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 		Short: "Remove multiple configuration values",
 		Long: "Remove multiple configuration values.\n\n" +
 			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
-			"  - `pulumi config rm-all --path  outer.inner foo[0] key1` will remove the \n" +
+			"  - `pulumi config rm-all --path  outer.inner 'foo[0]' key1` will remove the \n" +
 			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
-			"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the literal" +
+			"  - `pulumi config rm-all outer.inner 'foo[0]' key1` will remove the literal" +
 			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -492,7 +492,7 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 			"If a value is not present on the command line, pulumi will prompt for the value. Multi-line values\n" +
 			"may be set by piping a file to standard in.\n\n" +
 			"The `--path` flag can be used to set a value inside a map or list:\n\n" +
-			"  - `pulumi config set --path names[0] a` " +
+			"  - `pulumi config set --path 'names[0]' a` " +
 			"will set the value to a list with the first item `a`.\n" +
 			"  - `pulumi config set --path parent.nested value` " +
 			"will set the value of `parent` to a map `nested: value`.\n" +
