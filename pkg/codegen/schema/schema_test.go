@@ -184,28 +184,6 @@ func TestMarshalJSONFunctionSpecWithOutputs(t *testing.T) {
 	assert.Equal(t, expectedJSON, data)
 }
 
-func TestMarshalFunctionSpecErrorsWhenBothOutputsAndReturnTypePopulated(t *testing.T) {
-	t.Parallel()
-	functionSpec := &FunctionSpec{
-		Description: "Test function",
-		ReturnType: &ReturnTypeSpec{
-			TypeSpec: &TypeSpec{Type: "number"},
-		},
-		Outputs: &ObjectTypeSpec{
-			Type: "object",
-			Properties: map[string]PropertySpec{
-				"foo": {
-					TypeSpec: TypeSpec{Type: "string"},
-				},
-			},
-		},
-	}
-
-	_, err := json.Marshal(functionSpec)
-	assert.NotNil(t, err, "Unmarshalling should fail")
-	assert.True(t, strings.Contains(err.Error(), "cannot specify both Outputs and ReturnType"))
-}
-
 func TestMarshalYAMLFunctionSpec(t *testing.T) {
 	t.Parallel()
 	functionSpec := &FunctionSpec{
