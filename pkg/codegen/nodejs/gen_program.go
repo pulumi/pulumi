@@ -420,6 +420,14 @@ func componentElementType(pclType model.Type) string {
 			// something is already an output
 			// get only the element type because we are wrapping these in Output<T> anyway
 			return componentElementType(pclType.ElementType)
+		case *model.UnionType:
+			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
+				return componentElementType(pclType.ElementTypes[1])
+			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
+				return componentElementType(pclType.ElementTypes[0])
+			} else {
+				return "any"
+			}
 		default:
 			return "any"
 		}

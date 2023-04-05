@@ -234,8 +234,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "components",
 		Description: "Components",
-		Skip:        allProgLanguages.Except("dotnet").Except("nodejs"),
-		SkipCompile: allProgLanguages.Except("dotnet").Except("nodejs"),
+		Skip:        codegen.NewStringSet("go"),
+		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{
 		Directory:   "entries-function",
