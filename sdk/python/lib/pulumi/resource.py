@@ -848,7 +848,7 @@ class Resource:
         if len(type_components) == 3:
             [pkg, _, _] = type_components
 
-        opts.provider, providers = self._get_providers(t, pkg, opts)
+        opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
@@ -863,7 +863,7 @@ class Resource:
             raise ValueError(
                 f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'"
             )
-        self._providers = providers
+        self._providers = opts.providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
         if opts.urn is not None:
