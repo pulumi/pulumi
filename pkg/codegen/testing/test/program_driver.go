@@ -238,6 +238,14 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages.Except("dotnet").Except("nodejs"),
 	},
 	{
+		Directory:   "entries-function",
+		Description: "Using the entries function",
+		// go and dotnet do not support GenForExpression yet
+		// Todo: https://github.com/pulumi/pulumi/issues/12606
+		Skip:        allProgLanguages.Except("nodejs").Except("python"),
+		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
+	},
+	{
 		Directory:   "retain-on-delete",
 		Description: "Generate RetainOnDelete option",
 	},

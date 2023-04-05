@@ -179,7 +179,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		// TODO(pdg): grouping
 		g.Fgenf(w, ".reduce((__obj, %s) => { ...__obj, [%.v]: %.v })", reduceParams, expr.Key, expr.Value)
 	} else {
-		g.Fgenf(w, ".map(%s => %.v)", fnParams, expr.Value)
+		g.Fgenf(w, ".map(%s => (%.v))", fnParams, expr.Value)
 	}
 }
 

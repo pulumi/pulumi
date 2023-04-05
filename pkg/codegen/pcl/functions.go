@@ -36,7 +36,11 @@ func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature
 		keyType, valueType, diagnostics = keyT, valueT, append(diagnostics, diags...)
 	}
 
-	signature.ReturnType = model.NewListType(model.NewTupleType(keyType, valueType))
+	elementType := model.NewObjectType(map[string]model.Type{
+		"key":   keyType,
+		"value": valueType,
+	})
+	signature.ReturnType = model.NewListType(elementType)
 	return signature, diagnostics
 }
 
