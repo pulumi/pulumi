@@ -1363,3 +1363,9 @@ func TestPulumiConfig(t *testing.T) {
 		},
 	})
 }
+
+func TestConstructProviderPropagationNode(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderPropagation(t, "nodejs", []string{"@pulumi/pulumi"})
+}

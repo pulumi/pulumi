@@ -1025,3 +1025,11 @@ func TestDeletedWithPython(t *testing.T) {
 		Quick: true,
 	})
 }
+
+func TestConstructProviderPropagationPython(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderPropagation(t, "python", []string{
+		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+	})
+}

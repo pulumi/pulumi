@@ -852,3 +852,9 @@ func TestDeletedWithGo(t *testing.T) {
 		Quick: true,
 	})
 }
+
+func TestConstructProviderPropagationGo(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderPropagation(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
+}

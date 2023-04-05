@@ -30,7 +30,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -735,4 +737,48 @@ description: A Pulumi program testing passphrase config.
 	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
 	stdout, _ := e.RunCommand("pulumi", "config", "get", "foo")
 	assert.Contains(t, stdout, "bar")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12593.
+//
+// Verifies that a "provider" option passed to a remote component
+// is properly propagated to the component's children.
+//
+// Language-specific tests should call this function with the
+// appropriate parameters.
+func testConstructProviderPropagation(t *testing.T, lang string, deps []string) {
+	const (
+		testDir      = "construct_component_provider_propagation"
+		componentDir = "testcomponent-go"
+	)
+	runComponentSetup(t, testDir)
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(testDir, lang),
+		Dependencies: deps,
+		LocalProviders: []integration.LocalDependency{
+			{
+				Package: "testcomponent",
+				Path:    filepath.Join(testDir, componentDir),
+			},
+		},
+		Quick:      true,
+		NoParallel: true, // already called by tests
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			gotProviders := make(map[tokens.QName]tokens.QName) // resource name => provider name
+
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.URN.Type() == "testprovider:index:Random" {
+					gotProviders[res.URN.Name()] = resource.URN(res.Provider).Name()
+				}
+			}
+
+			assert.Equal(t, map[tokens.QName]tokens.QName{
+				"uses_default":       "default",
+				"uses_provider":      "explicit",
+				"uses_providers":     "explicit",
+				"uses_providers_map": "explicit",
+			}, gotProviders)
+		},
+	})
 }
