@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/package
+  description: Fix bug in `package get-schema` subcommand caused it to bail on certain providers.
