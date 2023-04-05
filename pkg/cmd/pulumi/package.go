@@ -120,7 +120,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	// No file separators, so we try to look up the schema
 	// On unix, these checks are identical. On windows, filepath.Separator is '\\'
 	if !strings.ContainsRune(pkg, filepath.Separator) && !strings.ContainsRune(pkg, '/') {
-		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil)
+		host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +150,7 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return nil, fmt.Errorf("plugin at path %q not executable", pkg)
 	}
 
-	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil)
+	host, err := plugin.NewDefaultHost(pCtx, nil, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
