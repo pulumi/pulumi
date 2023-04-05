@@ -192,6 +192,16 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}, diagnostics, nil
 }
 
+func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {
+	for property, propertyType := range objectType.Properties {
+		if !model.IsOptionalType(propertyType) {
+			objectType.Properties[property] = model.NewOptionalType(propertyType)
+		}
+	}
+
+	return objectType
+}
+
 // declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
 // locals.
 // Temporarily, we load all resources first, as convert sets the highest package version seen
@@ -248,6 +258,22 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 						return diagnostics, fmt.Errorf("cannot bind expression: %v", diagnostics.Error())
 					}
 					typ = typeExpr.Type()
+					switch configType := typ.(type) {
+					case *model.ObjectType:
+						typ = makeObjectPropertiesOptional(configType)
+					case *model.ListType:
+						switch elementType := configType.ElementType.(type) {
+						case *model.ObjectType:
+							modifiedElementType := makeObjectPropertiesOptional(elementType)
+							typ = model.NewListType(modifiedElementType)
+						}
+					case *model.MapType:
+						switch elementType := configType.ElementType.(type) {
+						case *model.ObjectType:
+							modifiedElementType := makeObjectPropertiesOptional(elementType)
+							typ = model.NewMapType(modifiedElementType)
+						}
+					}
 				default:
 					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}

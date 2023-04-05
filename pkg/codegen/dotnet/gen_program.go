@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -443,6 +442,16 @@ func componentInputElementType(pclType model.Type) string {
 		switch pclType := pclType.(type) {
 		case *model.ListType, *model.MapType:
 			return componentInputType(pclType)
+		// reduce option(T) to just T
+		// the generated args class assumes all properties are optional by default
+		case *model.UnionType:
+			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
+				return componentInputElementType(pclType.ElementTypes[1])
+			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
+				return componentInputElementType(pclType.ElementTypes[0])
+			} else {
+				return dynamicType
+			}
 		default:
 			return dynamicType
 		}
@@ -536,16 +545,6 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
-func sortedPropertyNames(properties map[string]model.Type) []string {
-	propertyNames := []string{}
-	for propertyName := range properties {
-		propertyNames = append(propertyNames, propertyName)
-	}
-
-	sort.Strings(propertyNames)
-	return propertyNames
-}
-
 func (g *generator) genComponentPreamble(w io.Writer, componentName string, component *pcl.Component) {
 	// Accumulate other using statements for the various providers and packages. Don't emit them yet, as we need
 	// to sort them later on.
@@ -569,13 +568,16 @@ func (g *generator) genComponentPreamble(w io.Writer, componentName string, comp
 			g.Fprintf(w, "%spublic class %sArgs : global::Pulumi.ResourceArgs\n", g.Indent, componentName)
 			g.Fprintf(w, "%s{\n", g.Indent)
 			g.Indented(func() {
+				objectTypedConfigVars := collectObjectTypedConfigVariables(component)
+				variableNames := pcl.SortedStringKeys(objectTypedConfigVars)
 				// generate resource args for this component
-				for variableName, objectType := range collectObjectTypedConfigVariables(component) {
+				for _, variableName := range variableNames {
+					objectType := objectTypedConfigVars[variableName]
 					objectTypeName := configObjectTypeName(variableName)
 					g.Fprintf(w, "%spublic class %s : global::Pulumi.ResourceArgs\n", g.Indent, objectTypeName)
 					g.Fprintf(w, "%s{\n", g.Indent)
 					g.Indented(func() {
-						propertyNames := sortedPropertyNames(objectType.Properties)
+						propertyNames := pcl.SortedStringKeys(objectType.Properties)
 						for _, propertyName := range propertyNames {
 							propertyType := objectType.Properties[propertyName]
 							inputType := componentInputType(propertyType)

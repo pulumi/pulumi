@@ -7,6 +7,12 @@ namespace Components
 {
     public class ExampleComponentArgs : global::Pulumi.ResourceArgs
     {
+        public class DeploymentZonesArgs : global::Pulumi.ResourceArgs
+        {
+            [Input("zone")]
+            public Input<string>? Zone { get; set; }
+        }
+
         public class GithubAppArgs : global::Pulumi.ResourceArgs
         {
             [Input("id")]
@@ -21,12 +27,6 @@ namespace Components
         {
             [Input("name")]
             public Input<string>? Name { get; set; }
-        }
-
-        public class DeploymentZonesArgs : global::Pulumi.ResourceArgs
-        {
-            [Input("zone")]
-            public Input<string>? Zone { get; set; }
         }
 
         /// <summary>

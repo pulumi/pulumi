@@ -52,7 +52,10 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if _, ok := pcl.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+		_, hasSchema := pcl.GetSchemaForType(model.GetTraversableType(receiver))
+		_, isComponent := receiver.(*pcl.Component)
+
+		if hasSchema || isComponent {
 			objectKey, keyVal = true, PyName(keyVal)
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:
