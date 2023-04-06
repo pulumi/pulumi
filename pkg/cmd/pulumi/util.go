@@ -500,9 +500,6 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 // parseConfigArray parses the config array
 // returns empty config if configArray argument is empty
 func parseConfigArray(configArray []string, path bool) (config.Map, error) {
-	if len(configArray) == 0 {
-		return config.Map{}, nil
-	}
 	commandLineConfig, err := parseConfig(configArray, path)
 	if err != nil {
 		return nil, err
