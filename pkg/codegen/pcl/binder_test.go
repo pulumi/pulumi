@@ -267,3 +267,18 @@ func TestConfigNodeTypedIntMap(t *testing.T) {
 	assert.True(t, ok, "the type of config is a map type")
 	assert.Equal(t, mapType.ElementType, model.IntType, "the element type is an int")
 }
+
+func TestConfigNodeTypedAnyMap(t *testing.T) {
+	t.Parallel()
+	source := "config names \"map(any)\" { }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "names")
+	mapType, ok := config.Type().(*model.MapType)
+	assert.True(t, ok, "the type of config is a map type")
+	assert.Equal(t, mapType.ElementType, model.DynamicType, "the element type is a dynamic")
+}

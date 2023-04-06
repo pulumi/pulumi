@@ -6,6 +6,7 @@ import (
 )
 
 var typeBuiltins = map[string]Type{
+	"any":    DynamicType,
 	"string": StringType,
 	"number": NumberType,
 	"int":    IntType,
