@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/nodejs
+  description: Bump TS-Node version from v7.0.0 to v10.5.0. This change should aid users who previously used module resolution to override Pulumi's TS-Node version.
