@@ -56,6 +56,9 @@
         "rome": "^12.0.0",
         "sinon": "^14.0.0"
     },
+    "resolutions": {
+        "ts-node/typescript": "~3.8.3"
+    },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },
