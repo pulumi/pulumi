@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.61.1 (2023-04-06)
+
+
+### Features
+
+- [programgen/python] Impleneted python program-gen for PCL components
+  [#12555](https://github.com/pulumi/pulumi/pull/12555)
+
+
+### Bug Fixes
+
+- [programgen/{nodejs,python}] Fixes the type signature of PCL function "entries" to return list of key-value pair objects
+  [#12607](https://github.com/pulumi/pulumi/pull/12607)
+
+- [cli/package] Fix bug in `package get-schema` subcommand caused it to bail on certain providers.
+  [#12459](https://github.com/pulumi/pulumi/pull/12459)
+
+- [cli/state] Fixes panic when renaming providers in `pulumi state rename`.
+  [#12599](https://github.com/pulumi/pulumi/pull/12599)
+
 ## 3.61.0 (2023-04-03)
 
 

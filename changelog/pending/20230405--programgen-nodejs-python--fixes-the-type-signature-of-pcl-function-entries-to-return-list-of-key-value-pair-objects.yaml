@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs,python
-  description: Fixes the type signature of PCL function "entries" to return list of key-value pair objects
