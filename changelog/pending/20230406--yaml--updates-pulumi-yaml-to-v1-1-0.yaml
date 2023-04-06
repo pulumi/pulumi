@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: yaml
+  description: Updates Pulumi YAML to v1.1.0.
