@@ -356,7 +356,7 @@ func (host *pluginHost) plugin(kind workspace.PluginKind, name string, version *
 		host.analyzers = append(host.analyzers, plug.(plugin.Analyzer))
 	case workspace.ResourcePlugin:
 		host.providers = append(host.providers, plug.(plugin.Provider))
-	case workspace.LanguagePlugin, workspace.ConverterPlugin:
+	case workspace.LanguagePlugin, workspace.ConverterPlugin, workspace.ToolPlugin:
 		// Nothing to do for these to plugins.
 	}
 

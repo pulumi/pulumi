@@ -485,8 +485,8 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 						errors.Wrapf(err, "failed to load resource plugin %s", plugin.Name))
 				}
 			}
-		case workspace.ConverterPlugin:
-			contract.Failf("unexpected plugin kind: workspace.ConverterPlugin")
+		case workspace.ConverterPlugin, workspace.ToolPlugin:
+			contract.Failf("unexpected plugin kind: %s", plugin.Kind)
 		}
 	}
 
