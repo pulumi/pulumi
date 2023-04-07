@@ -1657,7 +1657,7 @@ func (ctx *Context) getOpts(
 	if opts.DependsOn != nil {
 		depSet := urnSet{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addURNs(ctx.ctx, depSet); err != nil {
+			if err := ds.addURNs(ctx.ctx, depSet, res); err != nil {
 				return resourceOpts{}, err
 			}
 		}
