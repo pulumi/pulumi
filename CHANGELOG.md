@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.62.0 (2023-04-06)
+
+
+### Features
+
+- [yaml] Updates Pulumi YAML to v1.1.0.
+  [#12612](https://github.com/pulumi/pulumi/pull/12612)
+
 ## 3.61.1 (2023-04-06)
 
 
