@@ -1256,6 +1256,17 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        "component_dependencies": {
+            program: path.join(base, "073.component_dependencies"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               ...args: any) => {
+                if (name === "second") {
+                    assert.deepStrictEqual(dependencies, ["test:index:MyCustomResource::firstChild"]);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
