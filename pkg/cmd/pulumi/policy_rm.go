@@ -37,7 +37,7 @@ func newPolicyRmCmd() *cobra.Command {
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			policyPack, err := requirePolicyPack(ctx, args[0])
 			if err != nil {
 				return result.FromError(err)

@@ -176,7 +176,7 @@ func createSecretsManager(
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
-	// for the Pulumi service backend secrets provider.
+	// for the Pulumi Cloud backend secrets provider.
 	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 
@@ -993,8 +993,8 @@ func buildStackName(stackName string) (string, error) {
 	return stackName, nil
 }
 
-// we only want to log a secrets decryption for a service backend project
-// we will allow any secrets provider to be used (service or self managed)
+// we only want to log a secrets decryption for a Pulumi Cloud backend project
+// we will allow any secrets provider to be used (Pulumi Cloud or self managed)
 // we will log the message and not worry about the response. The types
 // of messages we will log here will range from single secret decryption events
 // to requesting a list of secrets in an individual event e.g. stack export
@@ -1003,7 +1003,7 @@ func log3rdPartySecretsProviderDecryptionEvent(ctx context.Context, backend back
 	secretName, commandName string,
 ) {
 	if stack, ok := backend.(httpstate.Stack); ok {
-		// we only want to do something if this is a service backend
+		// we only want to do something if this is a Pulumi Cloud backend
 		if be, ok := stack.Backend().(httpstate.Backend); ok {
 			client := be.Client()
 			if client != nil {

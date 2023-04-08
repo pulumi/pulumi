@@ -34,8 +34,8 @@ func newLogoutCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout <url>",
-		Short: "Log out of the Pulumi service",
-		Long: "Log out of the Pulumi service.\n" +
+		Short: "Log out of the Pulumi Cloud",
+		Long: "Log out of the Pulumi Cloud.\n" +
 			"\n" +
 			"This command deletes stored credentials on the local machine for a single login.\n" +
 			"\n" +

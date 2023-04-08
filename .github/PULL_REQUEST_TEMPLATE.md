@@ -17,10 +17,10 @@ User-facing changes require a CHANGELOG entry.
 -->
 - [ ] I have run `make changelog` and committed the `changelog/pending/<file>` documenting my change
 <!--
-If the change(s) in this PR is a modification of an existing call to the Pulumi Service,
+If the change(s) in this PR is a modification of an existing call to the Pulumi Cloud,
 then the service should honor older versions of the CLI where this change would not exist.
 You must then bump the API version in /pkg/backend/httpstate/client/api.go, as well as add
 it to the service.
 -->
-- [ ] Yes, there are changes in this PR that warrants bumping the Pulumi Service API version
+- [ ] Yes, there are changes in this PR that warrants bumping the Pulumi Cloud API version
   <!-- @Pulumi employees: If yes, you must submit corresponding changes in the service repo. -->
