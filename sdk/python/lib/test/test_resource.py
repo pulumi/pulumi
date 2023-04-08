@@ -203,3 +203,22 @@ class MergeResourceOptions(unittest.TestCase):
         assert opts2.protect is True
         opts3 = ResourceOptions.merge(opts2, ResourceOptions())
         assert opts3.protect is True
+
+# Regression test for https://github.com/pulumi/pulumi/issues/12032
+@pulumi.runtime.test
+def test_parent_and_depends_on_are_the_same_12032():
+    mocks.set_mocks(MinimalMocks())
+
+    parent = pulumi.ComponentResource("pkg:index:first", "first")
+    child = pulumi.ComponentResource(
+        "pkg:index:second",
+        "second",
+        opts=pulumi.ResourceOptions(parent=parent, depends_on=[parent]),
+    )
+
+    # This would freeze before the fix.
+    pulumi.CustomResource(
+        "foo:bar:baz",
+        "myresource",
+        opts=pulumi.ResourceOptions(parent=child),
+    )

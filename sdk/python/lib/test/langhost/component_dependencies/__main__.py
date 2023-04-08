@@ -39,3 +39,8 @@ resG = MyResource("resG", {"propA": comp1})
 resH = MyResource("resH", {"propA": comp2})
 resI = MyResource("resI", {"propA": resG})
 resJ = MyResource("resJ", {}, ResourceOptions(depends_on=[comp2]))
+
+first = MyComponent("first")
+firstChild = MyResource("firstChild", {}, ResourceOptions(parent=first))
+second = MyComponent("second", ResourceOptions(parent=first, depends_on=[first]))
+myresource = MyResource("myresource", {}, ResourceOptions(parent=second))
