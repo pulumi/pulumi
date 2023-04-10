@@ -129,7 +129,7 @@ func TestProgressEvents(t *testing.T) {
 func TestStatusDisplayFlags(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
+	tests := []struct {
 		name         string
 		stepOp       display.StepOp
 		shouldRetain bool
@@ -156,8 +156,8 @@ func TestStatusDisplayFlags(t *testing.T) {
 		// {"remove-pending-replace", deploy.OpRemovePendingReplace, false},
 	}
 
-	for _, test := range testCases {
-		tt := test
+	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
