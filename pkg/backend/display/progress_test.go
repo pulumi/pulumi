@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,6 +189,51 @@ func TestStatusDisplayFlags(t *testing.T) {
 				assert.NotContains(t, doneStatus, "[retain]", "%s should NOT contain [retain] (done)", step.Op)
 				assert.NotContains(t, inProgressStatus, "[retain]", "%s should NOT contain [retain] (in-progress)", step.Op)
 			}
+		})
+	}
+}
+
+func TestSimplifyTypeName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give tokens.Type
+		want string
+	}{
+		{
+			desc: "not enough parts",
+			give: "incomplete",
+			want: "incomplete",
+		},
+		{
+			desc: "no name",
+			give: "pkg:mod:",
+			want: "pkg:mod:",
+		},
+		{
+			desc: "no slash",
+			give: "pkg:mod:typ",
+			want: "pkg:mod:typ",
+		},
+		{
+			desc: "bad casing",
+			give: "pkg:Mod/foo:typ",
+			want: "pkg:Mod/foo:typ",
+		},
+		{
+			desc: "remove slash",
+			give: "pkg:mod/foo/bar:Bar",
+			want: "pkg:mod/foo:Bar",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, simplifyTypeName(tt.give))
 		})
 	}
 }
