@@ -53,8 +53,8 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 // out teams consisting exclusively of whitespace. NB: It's not intended
 // to fully validate the correctness of team names. For example, it doesn't
 // check for illegal punctuation, length, or other measures of correctness.
-// To keep the codebase DRY, we pass along team names as-is to the Service,
-// with the exception of trimming whitespace, and allow the Service to
+// To keep the codebase DRY, we pass along team names as-is to the Pulumi Cloud,
+// with the exception of trimming whitespace, and allow the Pulumi Cloud to
 // validate them.
 func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 	t.Parallel()

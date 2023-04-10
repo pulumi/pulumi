@@ -92,8 +92,8 @@ func newConsoleCmd() *cobra.Command {
 				return nil
 			}
 			fmt.Println("This command is not available for your backend. " +
-				"To migrate to the Pulumi Service backend, " +
-				"please see https://www.pulumi.com/docs/intro/concepts/state/#adopting-the-pulumi-service-backend")
+				"To migrate to the Pulumi Cloud backend, " +
+				"please see https://www.pulumi.com/docs/intro/concepts/state/#pulumi-cloud-backend")
 			return nil
 		}),
 	}

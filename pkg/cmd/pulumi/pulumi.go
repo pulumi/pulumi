@@ -306,7 +306,7 @@ func NewPulumiCmd() *cobra.Command {
 			},
 		},
 		{
-			Name: "Service Commands",
+			Name: "Pulumi Cloud Commands",
 			Commands: []*cobra.Command{
 				newLoginCmd(),
 				newLogoutCmd(),

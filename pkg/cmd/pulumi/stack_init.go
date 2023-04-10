@@ -44,7 +44,7 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
-			"To create a stack in an organization when logged in to the Pulumi service,\n" +
+			"To create a stack in an organization when logged in to the Pulumi Cloud,\n" +
 			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev')\n" +
 			"\n" +
 			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +

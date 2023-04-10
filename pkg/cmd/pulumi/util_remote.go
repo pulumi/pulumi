@@ -272,8 +272,8 @@ func runDeployment(ctx context.Context, opts display.Options, operation apitype.
 	// Ensure the cloud backend is being used.
 	cb, isCloud := b.(httpstate.Backend)
 	if !isCloud {
-		return result.FromError(errors.New("the Pulumi service backend must be used for remote operations; " +
-			"use `pulumi login` without arguments to log into the Pulumi service backend"))
+		return result.FromError(errors.New("the Pulumi Cloud backend must be used for remote operations; " +
+			"use `pulumi login` without arguments to log into the Pulumi Cloud backend"))
 	}
 
 	stackRef, err := b.ParseStackReference(stack)

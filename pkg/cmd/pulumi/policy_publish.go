@@ -34,8 +34,8 @@ func newPolicyPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Publish a Policy Pack to the Pulumi service",
-		Long: "Publish a Policy Pack to the Pulumi service\n" +
+		Short: "Publish a Policy Pack to the Pulumi Cloud",
+		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
@@ -59,7 +59,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			policyPackRef := fmt.Sprintf("%s/", orgName)
 
 			//
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			//
 
 			policyPack, err := requirePolicyPack(ctx, policyPackRef)
@@ -119,7 +119,7 @@ func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPa
 
 	cloudURL, err := workspace.GetCurrentCloudURL(project)
 	if err != nil {
-		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi service: %w", err)
+		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
 	displayOptions := display.Options{
