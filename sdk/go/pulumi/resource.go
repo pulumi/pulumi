@@ -288,8 +288,10 @@ type CustomTimeouts struct {
 
 // ResourceOptions is a snapshot of one or more [ResourceOption]s.
 //
-// It provides a preview of the collective effect of options
-// passed to a resource.
+// You cannot pass a ResourceOptions struct to a resource constructor.
+// Instead, use individual [ResourceOption] values to configure a resource.
+// The ResourceOptions struct only provides a read-only preview
+// of the collective effect of the options.
 //
 // See https://www.pulumi.com/docs/intro/concepts/resources/options/
 // for more details on individual options.
@@ -472,6 +474,11 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 }
 
 // InvokeOptions is a snapshot of one or more [InvokeOption]s.
+//
+// You cannot pass an InvokeOptions struct to a provider function.
+// Instead, use individual [InvokeOption] values to configure a call.
+// The InvokeOptions struct only provides a read-only preview
+// of the collective effect of the options.
 type InvokeOptions struct {
 	// Parent is the parent resource for this operation.
 	// It may be used to determine the provider to use.
