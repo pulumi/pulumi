@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -81,13 +82,12 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 
 			// Build decrypter based on the existing secrets provider
 			var decrypter config.Decrypter
-			currentConfig := currentProjectStack.Config
-
-			if currentConfig.HasSecureValue() {
-				dec, decerr := getStackDecrypter(currentStack)
+			if currentProjectStack.Config.HasSecureValue() {
+				dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
 				if decerr != nil {
 					return decerr
 				}
+				contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
 				decrypter = dec
 			} else {
 				decrypter = config.NewPanicCrypter()
@@ -107,7 +107,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 
 			// Fixup the checkpoint
 			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
-			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentConfig, decrypter)
+			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentProjectStack, decrypter)
 		}),
 	}
 
@@ -121,14 +121,22 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig config.Map, decrypter config.Decrypter,
+	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
 ) error {
-	// The order of operations here should be to load the secrets manager current stack
-	// Get the newly created secrets manager for the stack
-	newSecretsManager, err := getStackSecretsManager(currentStack)
+	// Reload the project stack after the new secrets provider is in place
+	reloadedProjectStack, err := loadProjectStack(project, currentStack)
 	if err != nil {
 		return err
 	}
+
+	// Get the newly created secrets manager for the stack
+	newSecretsManager, needsSave, err := getStackSecretsManager(currentStack, reloadedProjectStack)
+	if err != nil {
+		return err
+	}
+	contract.Assertf(
+		!needsSave,
+		"We've just saved and reloaded the stack, so the encryption information must be present already")
 
 	// get the encrypter for the new secrets manager
 	newEncrypter, err := newSecretsManager.Encrypter()
@@ -137,13 +145,7 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,
 	}
 
 	// Create a copy of the current config map and re-encrypt using the new secrets provider
-	newProjectConfig, err := currentConfig.Copy(decrypter, newEncrypter)
-	if err != nil {
-		return err
-	}
-
-	// Reload the project stack after the new secretsProvider is in place
-	reloadedProjectStack, err := loadProjectStack(project, currentStack)
+	newProjectConfig, err := currentConfig.Config.Copy(decrypter, newEncrypter)
 	if err != nil {
 		return err
 	}

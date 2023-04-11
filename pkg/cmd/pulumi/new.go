@@ -296,7 +296,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(ctx, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		err = handleConfig(ctx, proj, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -851,6 +851,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	project *workspace.Project,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
@@ -877,9 +878,20 @@ func promptForConfig(
 	}
 	sort.Sort(keys)
 
-	sm, err := getStackSecretsManager(stack)
+	// We need to load the stack config here for the secret manager
+	ps, err := loadProjectStack(project, stack)
+	if err != nil {
+		return nil, fmt.Errorf("loading stack config: %w", err)
+	}
+
+	sm, needsSave, err := getStackSecretsManager(stack, ps)
 	if err != nil {
 		return nil, err
+	}
+	if needsSave {
+		if err = saveProjectStack(stack, ps); err != nil {
+			return nil, fmt.Errorf("saving stack config: %w", err)
+		}
 	}
 	encrypter, err := sm.Encrypter()
 	if err != nil {

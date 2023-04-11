@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -178,14 +179,16 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 
 	if v.Secure() {
 		var err error
-		if decrypter, err = getStackDecrypter(currentStack); err != nil {
+		var needsSave bool
+		if decrypter, needsSave, err = getStackDecrypter(currentStack, currentProjectStack); err != nil {
 			return fmt.Errorf("could not create a decrypter: %w", err)
 		}
+		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
 	} else {
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, cerr := getStackEncrypter(destinationStack)
+	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
 	if cerr != nil {
 		return cerr
 	}
@@ -210,16 +213,17 @@ func copyEntireConfigMap(currentStack backend.Stack,
 	var decrypter config.Decrypter
 	currentConfig := currentProjectStack.Config
 	if currentConfig.HasSecureValue() {
-		dec, decerr := getStackDecrypter(currentStack)
+		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
 		if decerr != nil {
 			return decerr
 		}
+		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
 		decrypter = dec
 	} else {
 		decrypter = config.NewPanicCrypter()
 	}
 
-	encrypter, cerr := getStackEncrypter(destinationStack)
+	encrypter, _, cerr := getStackEncrypter(destinationStack, destinationProjectStack)
 	if cerr != nil {
 		return cerr
 	}
@@ -545,10 +549,17 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				}
 			}
 
+			ps, err := loadProjectStack(project, s)
+			if err != nil {
+				return err
+			}
+
 			// Encrypt the config value if needed.
 			var v config.Value
 			if secret {
-				c, cerr := getStackEncrypter(s)
+				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
+				// config data.
+				c, _, cerr := getStackEncrypter(s, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -566,11 +577,6 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 						"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
 						key)
 				}
-			}
-
-			ps, err := loadProjectStack(project, s)
-			if err != nil {
-				return err
 			}
 
 			err = ps.Config.Set(key, v, path)
@@ -655,7 +661,9 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				c, cerr := getStackEncrypter(stack)
+				// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
+				// config data.
+				c, _, cerr := getStackEncrypter(stack, ps)
 				if cerr != nil {
 					return cerr
 				}
@@ -801,9 +809,15 @@ func listConfig(ctx context.Context,
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
 	if cfg.HasSecureValue() && showSecrets {
-		stackDecrypter, err := getStackDecrypter(stack)
+		stackDecrypter, needsSave, err := getStackDecrypter(stack, ps)
 		if err != nil {
 			return err
+		}
+		// This may have setup the stack's secrets provider, so save the stack if needed.
+		if needsSave {
+			if err = saveProjectStack(stack, ps); err != nil {
+				return fmt.Errorf("save stack config: %w", err)
+			}
 		}
 		decrypter = stackDecrypter
 	}
@@ -901,8 +915,15 @@ func getConfig(ctx context.Context, stack backend.Stack, key config.Key, path, j
 		var d config.Decrypter
 		if v.Secure() {
 			var err error
-			if d, err = getStackDecrypter(stack); err != nil {
+			var needsSave bool
+			if d, needsSave, err = getStackDecrypter(stack, ps); err != nil {
 				return fmt.Errorf("could not create a decrypter: %w", err)
+			}
+			// This may have setup the stack's secrets provider, so save the stack if needed.
+			if needsSave {
+				if err = saveProjectStack(stack, ps); err != nil {
+					return fmt.Errorf("save stack config: %w", err)
+				}
 			}
 		} else {
 			d = config.NewPanicCrypter()
@@ -982,40 +1003,52 @@ func getStackConfiguration(
 	stack backend.Stack,
 	project *workspace.Project,
 	sm secrets.Manager,
-) (backend.StackConfiguration, error) {
-	var cfg config.Map
-
+) (backend.StackConfiguration, secrets.Manager, error) {
 	defaultStackConfig := backend.StackConfiguration{}
 
 	workspaceStack, err := loadProjectStack(project, stack)
 	if err != nil || workspaceStack == nil {
 		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
-		cfg, err = backend.GetLatestConfiguration(ctx, stack)
+		cfg, err := backend.GetLatestConfiguration(ctx, stack)
 		if err != nil {
-			return defaultStackConfig, fmt.Errorf(
+			return defaultStackConfig, nil, fmt.Errorf(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
 		}
-	} else {
-		cfg = workspaceStack.Config
+		workspaceStack = &workspace.ProjectStack{
+			Config: cfg,
+		}
+	}
+
+	if sm == nil {
+		var needsSave bool
+		sm, needsSave, err = getStackSecretsManager(stack, workspaceStack)
+		if err != nil {
+			return defaultStackConfig, nil, fmt.Errorf("get stack secrets manager: %w", err)
+		}
+		if needsSave {
+			if err = saveProjectStack(stack, workspaceStack); err != nil {
+				return defaultStackConfig, nil, fmt.Errorf("save stack config: %w", err)
+			}
+		}
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the local backend would involve prompting for a passphrase)
-	if !cfg.HasSecureValue() {
+	if !workspaceStack.Config.HasSecureValue() {
 		return backend.StackConfiguration{
-			Config:    cfg,
+			Config:    workspaceStack.Config,
 			Decrypter: config.NewPanicCrypter(),
-		}, nil
+		}, sm, nil
 	}
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return defaultStackConfig, fmt.Errorf("getting configuration decrypter: %w", err)
+		return defaultStackConfig, nil, fmt.Errorf("getting configuration decrypter: %w", err)
 	}
 
 	return backend.StackConfiguration{
-		Config:    cfg,
+		Config:    workspaceStack.Config,
 		Decrypter: crypter,
-	}, nil
+	}, sm, nil
 }

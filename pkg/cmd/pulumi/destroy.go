@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -185,13 +186,13 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			sm, err := getStackSecretsManager(s)
-			if err != nil {
-				// fallback on snapshot SecretsManager
+			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
+			var sm secrets.Manager
+			if snap != nil {
 				sm = snap.SecretsManager
 			}
 
-			cfg, err := getStackConfiguration(ctx, s, proj, sm)
+			cfg, sm, err := getStackConfiguration(ctx, s, proj, sm)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
