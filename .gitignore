@@ -20,7 +20,14 @@ venv/
 
 **/.idea/
 *.iml
-.yarn
+
+# Allow specific Yarn Berry files.
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 
