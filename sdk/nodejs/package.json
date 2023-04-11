@@ -70,5 +70,6 @@
     },
     "//": [
         "NOTE: @types/node is pinned due to grpc/grpc-node#2002"
-    ]
+    ],
+    "packageManager": "yarn@3.5.0"
 }

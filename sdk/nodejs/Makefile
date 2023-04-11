@@ -24,7 +24,8 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
-	yarn install --frozen-lockfile
+	yarn set version berry
+	yarn install --immutable
 	@touch .ensure.phony
 
 format:: ensure
