@@ -329,7 +329,7 @@ func newLocalBackend(
 	// or migrates it to project mode with `pulumi state upgrade`,
 	// but someone else interacts with the same state with an old CLI.
 
-	refs, err := newLegacyReferenceStore(wbucket).ListReferences()
+	refs, err := newLegacyReferenceStore(wbucket).ListReferences(ctx)
 	if err != nil {
 		// If there's an error listing don't fail, just don't print the warnings
 		return backend, nil
@@ -353,7 +353,7 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 	// We don't use the existing b.store because
 	// this may already be a projectReferenceStore
 	// with new legacy files introduced to it accidentally.
-	olds, err := newLegacyReferenceStore(b.bucket).ListReferences()
+	olds, err := newLegacyReferenceStore(b.bucket).ListReferences(ctx)
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
@@ -437,7 +437,7 @@ func (b *localBackend) upgradeStack(
 ) error {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
-	chk, err := b.getCheckpoint(old)
+	chk, err := b.getCheckpoint(ctx, old)
 	if err != nil {
 		return err
 	}
@@ -592,7 +592,7 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 
 	// TODO[pulumi/pulumi#12547]:
 	// This could be faster if we list "$project/" instead of all projects.
-	projects, err := projStore.ListProjects()
+	projects, err := projStore.ListProjects(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -670,7 +670,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
-	file, err := b.saveStack(localStackRef, nil, nil)
+	file, err := b.saveStack(ctx, localStackRef, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +703,7 @@ func (b *localBackend) ListStacks(
 	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
 	[]backend.StackSummary, backend.ContinuationToken, error,
 ) {
-	stacks, err := b.getLocalStacks()
+	stacks, err := b.getLocalStacks(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -712,7 +712,7 @@ func (b *localBackend) ListStacks(
 	// organizations and tags aren't persisted in the local backend.
 	results := make([]backend.StackSummary, 0, len(stacks))
 	for _, stackRef := range stacks {
-		chk, err := b.getCheckpoint(stackRef)
+		chk, err := b.getCheckpoint(ctx, stackRef)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -744,7 +744,7 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
-	return false, b.removeStack(localStackRef)
+	return false, b.removeStack(ctx, localStackRef)
 }
 
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
@@ -785,7 +785,7 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 
 	// Ensure the destination stack does not already exist.
-	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newRef))
+	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(ctx, newRef))
 	if err != nil {
 		return err
 	}
@@ -801,16 +801,16 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
-	if _, err = b.saveStack(newRef, snap, nil); err != nil {
+	if _, err = b.saveStack(ctx, newRef, snap, nil); err != nil {
 		return err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
-	file := b.stackPath(oldRef)
-	backupTarget(b.bucket, file, false)
+	file := b.stackPath(ctx, oldRef)
+	backupTarget(ctx, b.bucket, file, false)
 
 	// And rename the history folder as well.
-	if err = b.renameHistory(oldRef, newRef); err != nil {
+	if err = b.renameHistory(ctx, oldRef, newRef); err != nil {
 		return err
 	}
 	return err
@@ -966,7 +966,7 @@ func (b *localBackend) apply(
 	}()
 
 	// Create the management machinery.
-	persister := b.newSnapshotPersister(localStackRef, op.SecretsManager)
+	persister := b.newSnapshotPersister(ctx, localStackRef, op.SecretsManager)
 	manager := backend.NewSnapshotManager(persister, update.GetTarget().Snapshot)
 	engineCtx := &engine.Context{
 		Cancel:          scope.Context(),
@@ -1028,8 +1028,8 @@ func (b *localBackend) apply(
 	var saveErr error
 	var backupErr error
 	if !opts.DryRun {
-		saveErr = b.addToHistory(localStackRef, info)
-		backupErr = b.backupStack(localStackRef)
+		saveErr = b.addToHistory(ctx, localStackRef, info)
+		backupErr = b.backupStack(ctx, localStackRef)
 	}
 
 	if updateRes != nil {
@@ -1053,10 +1053,10 @@ func (b *localBackend) apply(
 		var link string
 		if strings.HasPrefix(b.url, FilePathPrefix) {
 			u, _ := url.Parse(b.url)
-			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(localStackRef)))
+			u.Path = filepath.ToSlash(path.Join(u.Path, b.stackPath(ctx, localStackRef)))
 			link = u.String()
 		} else {
-			link, err = b.bucket.SignedURL(ctx, b.stackPath(localStackRef), nil)
+			link, err = b.bucket.SignedURL(ctx, b.stackPath(ctx, localStackRef), nil)
 			if err != nil {
 				// set link to be empty to when there is an error to hide use of Permalinks
 				link = ""
@@ -1099,7 +1099,7 @@ func (b *localBackend) GetHistory(
 	if err != nil {
 		return nil, err
 	}
-	updates, err := b.getHistory(localStackRef, pageSize, page)
+	updates, err := b.getHistory(ctx, localStackRef, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -1154,7 +1154,7 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 		return nil, err
 	}
 
-	chk, err := b.getCheckpoint(localStackRef)
+	chk, err := b.getCheckpoint(ctx, localStackRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -1190,7 +1190,7 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 		return err
 	}
 
-	_, _, err = b.saveCheckpoint(localStackRef, chk)
+	_, _, err = b.saveCheckpoint(ctx, localStackRef, chk)
 	return err
 }
 
@@ -1210,8 +1210,8 @@ func (b *localBackend) CurrentUser() (string, []string, error) {
 	return user.Username, nil, nil
 }
 
-func (b *localBackend) getLocalStacks() ([]*localBackendReference, error) {
-	return b.store.ListReferences()
+func (b *localBackend) getLocalStacks(ctx context.Context) ([]*localBackendReference, error) {
+	return b.store.ListReferences(ctx)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
@@ -1224,7 +1224,7 @@ func (b *localBackend) UpdateStackTags(ctx context.Context,
 
 func (b *localBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
 	// Try to delete ALL the lock files
-	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.FullyQualifiedName()))
+	allFiles, err := listBucket(ctx, b.bucket, stackLockDir(stackRef.FullyQualifiedName()))
 	if err != nil {
 		// Don't error if it just wasn't found
 		if gcerrors.Code(err) == gcerrors.NotFound {

@@ -60,7 +60,7 @@ func newLockContent() (*lockContent, error) {
 // checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
 func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
 	stackName := stackRef.FullyQualifiedName()
-	allFiles, err := listBucket(b.bucket, stackLockDir(stackName))
+	allFiles, err := listBucket(ctx, b.bucket, stackLockDir(stackName))
 	if err != nil {
 		return err
 	}

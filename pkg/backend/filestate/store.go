@@ -74,7 +74,7 @@ type referenceStore interface {
 	BackupDir(*localBackendReference) string
 
 	// ListReferences lists all stack references in the store.
-	ListReferences() ([]*localBackendReference, error)
+	ListReferences(context.Context) ([]*localBackendReference, error)
 
 	// ParseReference parses a localBackendReference from a string.
 	ParseReference(ref string) (*localBackendReference, error)
@@ -204,10 +204,10 @@ func (p *projectReferenceStore) ValidateReference(ref *localBackendReference) er
 	return nil
 }
 
-func (p *projectReferenceStore) ListProjects() ([]tokens.Name, error) {
+func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name, error) {
 	path := StacksDir
 
-	files, err := listBucket(p.bucket, path)
+	files, err := listBucket(ctx, p.bucket, path)
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
@@ -232,10 +232,9 @@ func (p *projectReferenceStore) ListProjects() ([]tokens.Name, error) {
 	return projects, nil
 }
 
-func (p *projectReferenceStore) ListReferences() ([]*localBackendReference, error) {
+func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {
 	// The first level of the bucket is the project name.
 	// The second level of the bucket is the stack name.
-	ctx := context.TODO()
 	prefix := filepath.ToSlash(StacksDir) + "/"
 	iter := p.bucket.List(&blob.ListOptions{
 		Prefix: prefix,
@@ -353,8 +352,8 @@ func (p *legacyReferenceStore) ValidateReference(ref *localBackendReference) err
 	return nil
 }
 
-func (p *legacyReferenceStore) ListReferences() ([]*localBackendReference, error) {
-	files, err := listBucket(p.bucket, StacksDir)
+func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {
+	files, err := listBucket(ctx, p.bucket, StacksDir)
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}

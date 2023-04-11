@@ -15,6 +15,8 @@
 package filestate
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 )
@@ -22,6 +24,10 @@ import (
 // localSnapshotManager is a simple SnapshotManager implementation that persists snapshots
 // to disk on the local machine.
 type localSnapshotPersister struct {
+	// TODO[pulumi/pulumi#12593]:
+	// Remove this once SnapshotPersister is updated to take a context.
+	ctx context.Context
+
 	ref     *localBackendReference
 	backend *localBackend
 	sm      secrets.Manager
@@ -32,10 +38,14 @@ func (sp *localSnapshotPersister) SecretsManager() secrets.Manager {
 }
 
 func (sp *localSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	_, err := sp.backend.saveStack(sp.ref, snapshot, sp.sm)
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot, sp.sm)
 	return err
 }
 
-func (b *localBackend) newSnapshotPersister(ref *localBackendReference, sm secrets.Manager) *localSnapshotPersister {
-	return &localSnapshotPersister{ref: ref, backend: b, sm: sm}
+func (b *localBackend) newSnapshotPersister(
+	ctx context.Context,
+	ref *localBackendReference,
+	sm secrets.Manager,
+) *localSnapshotPersister {
+	return &localSnapshotPersister{ctx: ctx, ref: ref, backend: b, sm: sm}
 }
