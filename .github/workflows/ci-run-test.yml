@@ -289,7 +289,7 @@ jobs:
           cd sdk/nodejs
           make build_package
           cd bin
-          yarn link
+          yarn link @pulumi/pulumi
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python
