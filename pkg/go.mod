@@ -55,7 +55,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
 	google.golang.org/grpc v1.55.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.5.5
+	pgregory.net/rapid v0.6.1
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
 )
 
