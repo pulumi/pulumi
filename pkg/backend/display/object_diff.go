@@ -605,9 +605,10 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			p.writeWithIndentNoPrefix("}")
 		} else if path, has := a.GetPath(); has {
 			p.write("archive(file:%s) { %s }", shortHash(a.Hash), path)
+		} else if uri, has := a.GetURI(); has {
+			p.write("archive(uri:%s) { %v }", shortHash(a.Hash), uri)
 		} else {
-			contract.Assertf(a.IsURI(), "archive is not a file or URI")
-			p.write("archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
+			p.write("archive(%s) { }", shortHash(a.Hash))
 		}
 	case v.IsObject():
 		obj := v.ObjectValue()

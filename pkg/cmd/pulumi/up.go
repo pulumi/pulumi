@@ -104,12 +104,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
-		sm, err := getStackSecretsManager(s)
-		if err != nil {
-			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
-		}
-
-		cfg, err := getStackConfiguration(ctx, s, proj, sm)
+		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
@@ -308,7 +303,7 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(ctx, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(ctx, proj, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -331,12 +326,7 @@ func newUpCmd() *cobra.Command {
 			return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 		}
 
-		sm, err := getStackSecretsManager(s)
-		if err != nil {
-			return result.FromError(fmt.Errorf("getting secrets manager: %w", err))
-		}
-
-		cfg, err := getStackConfiguration(ctx, s, proj, sm)
+		cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 		if err != nil {
 			return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 		}
@@ -648,6 +638,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
+	project *workspace.Project,
 	s backend.Stack,
 	templateNameOrURL string,
 	template workspace.Template,
@@ -686,7 +677,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(ctx, s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}

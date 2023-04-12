@@ -213,7 +213,13 @@ func createSecretsManager(
 	}
 
 	// Handle if the configuration changed any of EncryptedKey, etc
-	return saveProjectStackAfterSecretManger(stack, oldConfig, ps)
+	if needsSaveProjectStackAfterSecretManger(stack, oldConfig, ps) {
+		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
+			return fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // createStack creates a stack with the given name, and optionally selects it as the current.
@@ -522,36 +528,12 @@ func readProjectForUpdate(clientAddress string) (*workspace.Project, string, err
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
 func readProject() (*workspace.Project, string, error) {
-	proj, path, err := readProjectWithPath()
+	proj, path, err := workspace.DetectProjectAndPath()
 	if err != nil {
 		return nil, "", err
 	}
 
 	return proj, filepath.Dir(path), nil
-}
-
-// readProjectWithPath attempts to detect and read a Pulumi project for the current workspace. If
-// the project is successfully detected and read, it is returned along with the path to the project
-// file, which will be used as the root of the project's Pulumi program.
-//
-// If a project is not found while searching and no other error occurs, workspace.ErrProjectNotFound
-// is returned.
-func readProjectWithPath() (*workspace.Project, string, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, "", err
-	}
-	// Now that we got here, we have a path, so we will try to load it.
-	path, err := workspace.DetectProjectPathFrom(pwd)
-	if err != nil {
-		return nil, "", err
-	}
-	proj, err := workspace.LoadProject(path)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to load Pulumi project located at %q: %w", path, err)
-	}
-
-	return proj, path, nil
 }
 
 // readPolicyProject attempts to detect and read a Pulumi PolicyPack project for the current

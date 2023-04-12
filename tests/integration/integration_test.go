@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -672,4 +673,66 @@ plugins:
 		assert.NotContains(t, stderr, "panic: ")
 		assert.Contains(t, stderr, "error: ")
 	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/12632.
+func TestPassphraseSetAllGet(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.Passphrase = "test-passphrase"
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: passphrase-test
+runtime: yaml
+description: A Pulumi program testing passphrase config.
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	// Init a new stack, then set a secret config value, then try to get it.
+	e.RunCommand("pulumi", "stack", "init", "passphrase-test")
+	// Clear the config file so that "config set-all" has to re-initialize the passphrase config.
+	err := os.Remove(filepath.Join(e.RootPath, "Pulumi.passphrase-test.yaml"))
+	require.NoError(t, err)
+	// Set a secret config value, then try to get it.
+	e.RunCommand("pulumi", "config", "set-all", "--secret", "foo=bar")
+	stdout, _ := e.RunCommand("pulumi", "config", "get", "foo")
+	assert.Contains(t, stdout, "bar")
+}
+
+// Similar to TestPassphraseSetAllGet but covering for "set" instead of "set-all".
+func TestPassphraseSetGet(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	e.Passphrase = "test-passphrase"
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: passphrase-test
+runtime: yaml
+description: A Pulumi program testing passphrase config.
+`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	// Init a new stack, then set a secret config value, then try to get it.
+	e.RunCommand("pulumi", "stack", "init", "passphrase-test")
+	// Clear the config file so that "config set" has to re-initialize the passphrase config.
+	err := os.Remove(filepath.Join(e.RootPath, "Pulumi.passphrase-test.yaml"))
+	require.NoError(t, err)
+	// Set a secret config value, then try to get it.
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+	stdout, _ := e.RunCommand("pulumi", "config", "get", "foo")
+	assert.Contains(t, stdout, "bar")
 }

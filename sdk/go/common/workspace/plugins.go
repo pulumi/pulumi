@@ -610,6 +610,7 @@ func (source *fallbackSource) Download(
 	if err == nil {
 		return resp, length, nil
 	}
+	logging.Infof("Failed to download from GitHub, falling back to get.pulumi.com: %v", err)
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
