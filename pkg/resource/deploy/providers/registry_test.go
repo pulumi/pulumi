@@ -326,12 +326,10 @@ func newProviderState(pkg, name, id string, delete bool, inputs resource.Propert
 func TestNewRegistryNoOldState(t *testing.T) {
 	t.Parallel()
 
-	r, err := NewRegistry(&testPluginHost{}, nil, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(&testPluginHost{}, false, nil)
 	assert.NotNil(t, r)
 
-	r, err = NewRegistry(&testPluginHost{}, nil, true, nil)
-	assert.NoError(t, err)
+	r = NewRegistry(&testPluginHost{}, true, nil)
 	assert.NotNil(t, r)
 }
 
@@ -361,17 +359,23 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
-
-	assert.Equal(t, len(olds), len(r.providers))
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
 		assert.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
+		assert.False(t, ok)
+		assert.Nil(t, p)
+
+		// "Same" the provider to add it to registry
+		err = r.Same(old)
+		assert.NoError(t, err)
+
+		// Now we should be able to get it
+		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
@@ -389,102 +393,6 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 }
 
-func TestNewRegistryOldStateNoProviders(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", "id1", false, nil),
-	}
-	host := newPluginHost(t, []*providerLoader{})
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
-func TestNewRegistryOldStateWrongPackage(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", "id1", false, nil),
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgB", "", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
-func TestNewRegistryOldStateWrongVersion(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", "id1", false, resource.PropertyMap{
-			"version": resource.NewStringProperty("1.0.0"),
-		}),
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgA", "0.5.0", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
-func TestNewRegistryOldStateNoID(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", "", false, nil),
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgA", "", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
-func TestNewRegistryOldStateUnknownID(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", UnknownID, false, nil),
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgA", "", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
-func TestNewRegistryOldStateDuplicates(t *testing.T) {
-	t.Parallel()
-
-	olds := []*resource.State{
-		newProviderState("pkgA", "a", "id1", false, nil),
-		newProviderState("pkgA", "a", "id1", false, nil),
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgA", "", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.Error(t, err)
-	assert.Nil(t, r)
-}
-
 func TestCRUD(t *testing.T) {
 	t.Parallel()
 
@@ -500,17 +408,23 @@ func TestCRUD(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
-
-	assert.Equal(t, len(olds), len(r.providers))
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
 		assert.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
+		assert.False(t, ok)
+		assert.Nil(t, p)
+
+		// "Same" the provider to add it to registry
+		err = r.Same(old)
+		assert.NoError(t, err)
+
+		// Now we should be able to get it
+		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
@@ -648,17 +562,23 @@ func TestCRUDPreview(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, olds, true, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, true, nil)
 	assert.NotNil(t, r)
-
-	assert.Equal(t, len(olds), len(r.providers))
 
 	for _, old := range olds {
 		ref, err := NewReference(old.URN, old.ID)
 		assert.NoError(t, err)
 
 		p, ok := r.GetProvider(ref)
+		assert.False(t, ok)
+		assert.Nil(t, p)
+
+		// "Same" the provider to add it to registry
+		err = r.Same(old)
+		assert.NoError(t, err)
+
+		// Now we should be able to get it
+		p, ok = r.GetProvider(ref)
 		assert.True(t, ok)
 		assert.NotNil(t, p)
 
@@ -755,8 +675,7 @@ func TestCRUDNoProviders(t *testing.T) {
 
 	host := newPluginHost(t, []*providerLoader{})
 
-	r, err := NewRegistry(host, []*resource.State{}, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
@@ -778,8 +697,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
@@ -801,8 +719,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
@@ -824,8 +741,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")
@@ -848,8 +764,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	}
 	host := newPluginHost(t, loaders)
 
-	r, err := NewRegistry(host, []*resource.State{}, false, nil)
-	assert.NoError(t, err)
+	r := NewRegistry(host, false, nil)
 	assert.NotNil(t, r)
 
 	typ := MakeProviderType("pkgA")

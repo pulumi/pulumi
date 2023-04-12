@@ -757,8 +757,13 @@ func TestDefaultProviderDiff(t *testing.T) {
 	t.Parallel()
 
 	const resName, resBName = "resA", "resB"
+	expect1710 := true
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.10"), func() (plugin.Provider, error) {
+			// If we don't expect to load this assert if called
+			if !expect1710 {
+				assert.Fail(t, "unexpected call to 0.17.10 provider")
+			}
 			return &deploytest.Provider{}, nil
 		}),
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("0.17.11"), func() (plugin.Provider, error) {
@@ -847,6 +852,7 @@ func TestDefaultProviderDiff(t *testing.T) {
 	// The third update changes the version that the language host reports to the engine. This simulates a scenario in
 	// which a user updates their SDK to a new version of a provider package. In order to simulate side-by-side
 	// packages with different versions, this update requests distinct package versions for resA and resB.
+	expect1710 = false
 	snap = runProgram(snap, "0.17.11", "0.17.12", deploy.OpSame)
 	for _, res := range snap.Resources {
 		switch {

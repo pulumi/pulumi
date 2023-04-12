@@ -51,10 +51,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(client, nil)
 
-	reg, err := providers.NewRegistry(plugctx.Host, nil, false, builtins)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
-	}
+	reg := providers.NewRegistry(plugctx.Host, false, builtins)
 
 	// Allows queryResmon to communicate errors loading providers.
 	providerRegErrChan := make(chan result.Result)

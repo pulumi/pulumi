@@ -71,7 +71,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	}
 
 	// Produce a map of all old resources for fast access.
-	oldResources, olds, err := buildResourceMap(prev, preview)
+	_, olds, err := buildResourceMap(prev, preview)
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +82,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	builtins := newBuiltinProvider(nil, nil)
 
 	// Create a new provider registry.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
-	if err != nil {
-		return nil, err
-	}
+	reg := providers.NewRegistry(ctx.Host, preview, builtins)
 
 	// Return the prepared deployment.
 	return &Deployment{

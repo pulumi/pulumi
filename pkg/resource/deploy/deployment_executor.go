@@ -493,6 +493,12 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	resourceToStep := map[*resource.State]Step{}
 	for _, res := range prev.Resources {
 		if opts.RefreshTargets.Contains(res.URN) {
+			// For each resource we're going to refresh we need to ensure we have a provider for it
+			err := ex.deployment.EnsureProvider(res.Provider)
+			if err != nil {
+				return result.Errorf("could not load provider for resource %v: %w", res.URN, err)
+			}
+
 			step := NewRefreshStep(ex.deployment, res, nil)
 			steps = append(steps, step)
 			resourceToStep[res] = step

@@ -457,10 +457,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, plan *Pl
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
-	if err != nil {
-		return nil, err
-	}
+	reg := providers.NewRegistry(ctx.Host, preview, builtins)
 
 	return &Deployment{
 		ctx:                  ctx,
@@ -486,8 +483,42 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-func (d *Deployment) SameProvider(ref providers.Reference) {
-	d.providers.Same(ref)
+func (d *Deployment) SameProvider(res *resource.State) error {
+	return d.providers.Same(res)
+}
+
+// EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
+// the provider is available in the previous snapshot.
+func (d *Deployment) EnsureProvider(provider string) error {
+	if provider == "" {
+		return nil
+	}
+
+	providerRef, err := providers.ParseReference(provider)
+	if err != nil {
+		return fmt.Errorf("invalid provider reference %v: %w", provider, err)
+	}
+	_, has := d.GetProvider(providerRef)
+	if !has {
+		// We need to create the provider in the registry, find its old state and just "Same" it.
+		var providerResource *resource.State
+		for _, r := range d.prev.Resources {
+			if r.URN == providerRef.URN() && r.ID == providerRef.ID() {
+				providerResource = r
+				break
+			}
+		}
+		if providerResource == nil {
+			return fmt.Errorf("could not find provider %v", providerRef)
+		}
+
+		err := d.SameProvider(providerResource)
+		if err != nil {
+			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
+		}
+	}
+
+	return nil
 }
 
 func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
