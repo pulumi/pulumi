@@ -1,0 +1,524 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/product.schema.json",
+    "title": "PclJsonProgram",
+    "description": "A PCL program definition",
+    "type": "object",
+    "required": ["nodes", "plugins"],
+    "properties": {
+        "nodes": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/Node"
+            }
+        },
+        "plugins": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/PluginReference"
+            }
+        }
+    },
+    "$defs": {
+        "Node": {
+            "oneOf": [
+                { "$ref": "#/$defs/Resource" },
+                { "$ref": "#/$defs/LocalVariable" },
+                { "$ref": "#/$defs/ConfigVariable" },
+                { "$ref": "#/$defs/OutputVariable" }
+            ]
+        },
+
+        "PluginReference": {
+            "description": "Describes a plugin reference",
+            "type": "object",
+            "required": ["name", "version"],
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+
+        "Resource": {
+            "description": "Describes a resource declaration",
+            "type": "object",
+            "required": ["type", "name", "logicalName", "token", "inputs"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "Resource"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "logicalName": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "inputs": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/Expression"
+                    }
+                },
+                "options": {
+                    "$ref": "#/$defs/ResourceOptions"
+                }
+            }
+        },
+
+        "ResourceOptions": {
+            "description": "Describes the custom resource options",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "dependsOn": {
+                    "$ref": "#/$defs/Expression"
+                },
+                "protect": {
+                    "type": "boolean"
+                },
+                "parent": {
+                    "$ref": "#/$defs/Expression"
+                },
+                "ignoreChanges": {
+                    "$ref": "#/$defs/Expression"
+                },
+                "provider": {
+                    "$ref": "#/$defs/Expression"
+                },
+                "version": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "LocalVariable": {
+            "description": "Describes a local variable declaration",
+            "type": "object",
+            "required": ["type", "name", "logicalName", "value"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "LocalVariable"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "logicalName": {
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "ConfigVariable": {
+            "description": "Describes a config variable declaration",
+            "type": "object",
+            "required": ["type", "name", "logicalName", "configType"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "ConfigVariable"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "logicalName": {
+                    "type": "string"
+                },
+                "configType": {
+                    "type": "string",
+                    "enum": ["string", "number", "int", "bool", "unknown"]
+                },
+                "defaultValue": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "OutputVariable": {
+            "description": "Describes an output declaration",
+            "type": "object",
+            "required": ["type", "name", "logicalName", "value"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "OutputVariable"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "logicalName": {
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "Expression": {
+            "oneOf": [
+                { "$ref": "#/$defs/LiteralValueExpression" },
+                { "$ref": "#/$defs/TemplateExpression" },
+                { "$ref": "#/$defs/IndexExpression" },
+                { "$ref": "#/$defs/ObjectConsExpression" },
+                { "$ref": "#/$defs/TupleConsExpression" },
+                { "$ref": "#/$defs/FunctionCallExpression" },
+                { "$ref": "#/$defs/RelativeTraversalExpression" },
+                { "$ref": "#/$defs/ScopeTraversalExpression" },
+                { "$ref": "#/$defs/AnonymousFunctionExpression" },
+                { "$ref": "#/$defs/ConditionalExpression" },
+                { "$ref": "#/$defs/BinaryOpExpression" },
+                { "$ref": "#/$defs/UnaryOpExpression" }
+            ]
+        },
+
+        "LiteralValueExpression": {
+            "type": "object",
+            "required": ["type", "value"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "LiteralValueExpression"
+                },
+
+                "value": {
+                    "oneOf": [
+                        { "type": "string" },
+                        { "type": "number" },
+                        { "type": "boolean" }
+                    ]
+                }
+            }
+        },
+
+        "TemplateExpression": {
+            "type": "object",
+            "required": ["type", "parts"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TemplateExpression"
+                },
+
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Expression"
+                    }
+                }
+            }
+        },
+
+        "IndexExpression": {
+            "type": "object",
+            "required": ["type", "collection", "key"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "IndexExpression"
+                },
+
+                "collection": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "key": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "ObjectConsExpression": {
+            "type": "object",
+            "required": ["type", "properties"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "ObjectConsExpression"
+                },
+
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/Expression"
+                    }
+                }
+            }
+        },
+
+        "TupleConsExpression": {
+            "type": "object",
+            "required": ["type", "items"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TupleConsExpression"
+                },
+
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Expression"
+                    }
+                }
+            }
+        },
+
+        "FunctionCallExpression": {
+            "type": "object",
+            "required": ["type", "name", "args"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "FunctionCallExpression"
+                },
+
+                "name": {
+                    "type": "string"
+                },
+
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Expression"
+                    }
+                }
+            }
+        },
+
+        "RelativeTraversalExpression": {
+            "type": "object",
+            "required": ["type", "source", "traversal"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "RelativeTraversalExpression"
+                },
+
+                "source": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "traversal": {
+                    "type": "array", 
+                    "items": {
+                        "$ref": "#/$defs/Traversal"
+                    }
+                }
+            }
+        },
+
+        "ScopeTraversalExpression": {
+            "type": "object",
+            "required": ["type", "rootName", "traversal"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "ScopeTraversalExpression"
+                },
+
+                "rootName": {
+                    "type": "string"
+                },
+
+                "traversal": {
+                    "type": "array", 
+                    "items": {
+                        "$ref": "#/$defs/Traversal"
+                    }
+                }
+            }
+        },
+
+        "AnonymousFunctionExpression": {
+            "type": "object",
+            "required": ["type", "body", "parameters"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "AnonymousFunctionExpression"
+                },
+
+                "body": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "parameters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+
+        "ConditionalExpression": {
+            "type": "object",
+            "required": ["type", "condition", "trueExpr", "falseExpr"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "ConditionalExpression"
+                },
+
+                "condition": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "trueExpr": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "falseExpr": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "BinaryOpExpression": {
+            "type": "object",
+            "required": ["type", "operation", "left", "right"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "BinaryOpExpression"
+                },
+
+                "operation": {
+                    "type": "string"
+                },
+
+                "left": {
+                    "$ref": "#/$defs/Expression"
+                },
+
+                "right": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "UnaryOpExpression": {
+            "type": "object",
+            "required": ["type", "operation", "operand"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "UnaryOpExpression"
+                },
+
+                "operation": {
+                    "type": "string"
+                },
+
+                "operand": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "Traversal": {
+            "oneOf": [
+                { "$ref": "#/$defs/TraverseAttr" },
+                { "$ref": "#/$defs/TraverseIndex" },
+                { "$ref": "#/$defs/TraverseRoot" },
+                { "$ref": "#/$defs/TraverseSplat" }
+            ]
+        },
+
+        "TraverseAttr": {
+            "type": "object",
+            "required": ["type", "name"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TraverseAttr"
+                },
+
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+
+        "TraverseIndex": {
+            "type": "object",
+            "required": ["type", "index"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TraverseIndex"
+                },
+
+                "index": {
+                    "$ref": "#/$defs/Expression"
+                }
+            }
+        },
+
+        "TraverseRoot": {
+            "type": "object",
+            "required": ["type", "name"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TraverseRoot"
+                },
+
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+
+        "TraverseSplat": {
+            "type": "object",
+            "required": ["type", "each"],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "TraverseSplat"
+                },
+
+                "each": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/Traversal"
+                    }
+                }
+            }
+        }
+    }
+}

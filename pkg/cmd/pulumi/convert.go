@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	jsongen "github.com/pulumi/pulumi/pkg/v3/codegen/json"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
@@ -176,6 +177,14 @@ func runConvert(
 		projectGenerator = javagen.GenerateProject
 	case "yaml":
 		projectGenerator = yamlgen.GenerateProject
+	case "json": // nolint: goconst
+		if e.GetBool(env.Experimental) || e.GetBool(env.Dev) {
+			generateOnly = true
+			projectGenerator = jsongen.GenerateProject
+			break
+		}
+
+		fallthrough
 	case "pulumi", "pcl":
 		if e.GetBool(env.Dev) {
 			// No plugin for PCL to install dependencies with

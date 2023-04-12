@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen
+  description: Adds JSON as an experimental program-gen convert target
