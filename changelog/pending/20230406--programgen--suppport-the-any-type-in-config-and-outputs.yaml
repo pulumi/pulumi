@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Suppport the `any` type in config and outputs.

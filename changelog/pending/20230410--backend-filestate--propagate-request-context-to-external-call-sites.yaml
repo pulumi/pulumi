@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: backend/filestate
-  description: Propagate request context to external call sites.
