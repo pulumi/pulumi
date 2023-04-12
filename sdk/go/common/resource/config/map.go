@@ -16,10 +16,9 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -150,7 +149,7 @@ func (m Map) Remove(k Key, path bool) error {
 	// Parse the path.
 	p, err := resource.ParsePropertyPath(k.Name())
 	if err != nil {
-		return errors.Wrap(err, "invalid config key path")
+		return fmt.Errorf("invalid config key path: %w", err)
 	}
 	if len(p) == 0 {
 		return nil
@@ -288,13 +287,13 @@ func (m Map) Set(k Key, v Value, path bool) error {
 			if pvalue == nil {
 				newValue = make([]interface{}, 0)
 			} else if _, ok := pvalue.([]interface{}); !ok {
-				return errors.Errorf("an array was expected for index %v", pkey)
+				return fmt.Errorf("an array was expected for index %v", pkey)
 			}
 		case string:
 			if pvalue == nil {
 				newValue = make(map[string]interface{})
 			} else if _, ok := pvalue.(map[string]interface{}); !ok {
-				return errors.Errorf("a map was expected for key %q", pkey)
+				return fmt.Errorf("a map was expected for key %q", pkey)
 			}
 		default:
 			contract.Failf("unexpected path type")
@@ -314,7 +313,17 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Adjust the value (e.g. convert "true"/"false" to booleans and integers to ints) and set it.
-	adjustedValue := adjustObjectValue(v, path)
+	var adjustedValue interface{} = v
+	if v.Object() {
+		m := make(map[string]interface{})
+		err := json.Unmarshal([]byte(v.value), &m)
+		if err != nil {
+			return err
+		}
+		adjustedValue = m
+	} else if path {
+		adjustedValue = adjustObjectValue(v)
+	}
 	if _, err = setValue(cursor, cursorKey, adjustedValue, parent, parentKey); err != nil {
 		return err
 	}
@@ -350,7 +359,7 @@ func (m Map) MarshalJSON() ([]byte, error) {
 func (m *Map) UnmarshalJSON(b []byte) error {
 	rawMap := make(map[string]Value)
 	if err := json.Unmarshal(b, &rawMap); err != nil {
-		return errors.Wrap(err, "could not unmarshal map")
+		return fmt.Errorf("could not unmarshal map: %w", err)
 	}
 
 	newMap := make(Map, len(rawMap))
@@ -358,7 +367,7 @@ func (m *Map) UnmarshalJSON(b []byte) error {
 	for k, v := range rawMap {
 		pk, err := ParseKey(k)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal map")
+			return fmt.Errorf("could not unmarshal map: %w", err)
 		}
 		newMap[pk] = v
 	}
@@ -379,7 +388,7 @@ func (m Map) MarshalYAML() (interface{}, error) {
 func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	rawMap := make(map[string]Value)
 	if err := unmarshal(&rawMap); err != nil {
-		return errors.Wrap(err, "could not unmarshal map")
+		return fmt.Errorf("could not unmarshal map: %w", err)
 	}
 
 	newMap := make(Map, len(rawMap))
@@ -387,7 +396,7 @@ func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	for k, v := range rawMap {
 		pk, err := ParseKey(k)
 		if err != nil {
-			return errors.Wrap(err, "could not unmarshal map")
+			return fmt.Errorf("could not unmarshal map: %w", err)
 		}
 		newMap[pk] = v
 	}
@@ -402,7 +411,7 @@ func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
 	// Parse the path, which will be in the name portion of the key.
 	p, err := resource.ParsePropertyPath(k.Name())
 	if err != nil {
-		return nil, Key{}, errors.Wrap(err, "invalid config key path")
+		return nil, Key{}, fmt.Errorf("invalid config key path: %w", err)
 	}
 	if len(p) == 0 {
 		return nil, Key{}, errors.New("empty config key path")
@@ -516,13 +525,8 @@ func setValue(container, key, value, containerParent, containerParentKey interfa
 }
 
 // adjustObjectValue returns a more suitable value for objects:
-func adjustObjectValue(v Value, path bool) interface{} {
-	contract.Assertf(!v.Object(), "v must not be an Object")
-
-	// If the path flag isn't set, just return the value as-is.
-	if !path {
-		return v
-	}
+func adjustObjectValue(v Value) interface{} {
+	contract.Assertf(!v.Object(), "v must not be an Object: %s", v.value)
 
 	// If it's a secure value, return as-is.
 	if v.Secure() {

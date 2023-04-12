@@ -74,7 +74,7 @@ namespace Pulumi.Foo
         }
     }
 
-    internal sealed class FooResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class FooResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public FooResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+>&2 echo "::group::Update versions"
+trap ">&2 echo '::endgroup::'" EXIT # bash equivalent of defer func()
+
+INPUT_VERSION="$1"
+BUILD="$(cut -d'+' -f2 <<< "$INPUT_VERSION")" # may not be present
+VERSION_PRERELEASE="$(cut -d'+' -f1 <<< "$INPUT_VERSION")"
+
+VERSION="$(cut -d'-' -f1 <<< "$VERSION_PRERELEASE")"
+PRERELEASE="$(cut -d'-' -f2 <<< "$VERSION_PRERELEASE")" # may not be present
+
+MAJOR="$(cut -d'.' -f1 <<< "$VERSION")"
+MINOR="$(cut -d'.' -f2 <<< "$VERSION")"
+PATCH="$(cut -d'.' -f3 <<< "$VERSION")"
+
+>&2 echo "::debug::INPUT_VERSION=$INPUT_VERSION"
+>&2 echo "::debug::VERSION=$VERSION"
+>&2 echo "::debug::PRERELEASE=$PRERELEASE"
+>&2 echo "::debug::MAJOR=$MAJOR"
+>&2 echo "::debug::MAJOR=$MINOR"
+>&2 echo "::debug::MINOR=$PATCH"
+>&2 echo "::debug::BUILD=$BUILD"
+
+PIPX_MISSING=false
+if ! command -v pipx &>/dev/null; then
+  >&2 echo "::error::pipx not installed, install pipx via pypi or homebrew"
+  PIPX_MISSING=true
+fi
+
+JQ_MISSING=false
+if ! command -v jq &>/dev/null; then
+  >&2 echo "::error::yq not installed, install jq via your OS package manager"
+  JQ_MISSING=true
+fi
+
+if $JQ_MISSING || $PIPX_MISSING; then
+  exit 1;
+fi
+
+yq() {
+  pipx run yq==3.0.2 "$@"
+}
+
+N=$(yq '.replacements | length' .github/scripts/versions.yaml)
+for n in $(seq 0 1 "$((N-1))"); do
+  replacement=$(yq ".replacements[$n]" .github/scripts/versions.yaml)
+  type=$(yq -r '.type' <<< "$replacement")
+
+  case "$type" in
+    "file")
+      file=$(yq -r '.file' <<< "$replacement")
+      fileFormat=$(yq -r '.fileFormat' <<< "$replacement")
+      updatePath=$(yq -r '.updatePath' <<< "$replacement")
+      versionFormat=$(yq -r '.versionFormat' <<< "$replacement")
+
+      TOOL="jq"
+      TOOL_ARGS=""
+      SPONGE=false
+      case "$fileFormat" in
+        "sed") TOOL="sed";;
+        "json") TOOL="jq" TOOL_ARGS="--in-place";;
+        "yaml") TOOL="yq" TOOL_ARGS="--in-place";;
+        *)
+          >&2 echo "::error::Unknown file format $fileFormat; unable to update file $file"
+          exit 1
+      esac
+
+      tool() {
+        if $SPONGE; then
+          TEMP="$("$TOOL" "$@")"
+          echo -n "$TEMP" > "$file"
+        else
+          "$TOOL" "$@"
+        fi
+      }
+
+      # Use a subshell to avoid mutating our caller's environment.
+      # envsubst requires exported variables
+      (
+        export SEMVER="$INPUT_VERSION"
+        export VERSION
+        export MAJOR
+        export MINOR
+        export PATCH
+        export PRERELEASE
+        export BUILD
+
+        # We do not want to expand vars to envsubst, we're listing the ones we want to allow.
+        # shellcheck disable=SC2016
+        versionString=$(envsubst '$SEMVER,$VERSION,$MAJOR,$MINOR,$PATCH,$PRERELEASE,$BUILD' <<< "$versionFormat")
+
+        if [ "$TOOL" == "sed" ]; then
+          sed --in-place -E "s/$updatePath/$versionString/" "$file"
+        else
+          tool $TOOL_ARGS "$updatePath = \"$versionString\"" "$file"
+        fi
+      )
+    ;;
+    "command")
+      command=$(yq -r '.command' <<< "$replacement")
+      eval "${command}"
+    ;;
+    *)
+      >&2 echo "::error::Unknown replacement type $type"
+      exit 1
+    ;;
+  esac
+done

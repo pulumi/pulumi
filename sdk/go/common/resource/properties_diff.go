@@ -55,15 +55,15 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 	return !diff.Changed(k)
 }
 
-// Returns true if there are no changes (adds, deletes, updates) in the diff. Also returns true if
-// diff is nil. Otherwise returns false.
+// AnyChanges returns true if there are any changes (adds, deletes, updates) in the diff. Otherwise returns false.
 func (diff *ObjectDiff) AnyChanges() bool {
 	return diff != nil && len(diff.Adds)+len(diff.Deletes)+len(diff.Updates) > 0
 }
 
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
-	var ks []PropertyKey
+	bufferSize := len(diff.Adds) + len(diff.Deletes) + len(diff.Sames) + len(diff.Updates)
+	ks := make([]PropertyKey, 0, bufferSize)
 	for k := range diff.Adds {
 		ks = append(ks, k)
 	}
@@ -111,28 +111,28 @@ type ArrayDiff struct {
 
 // Len computes the length of this array, taking into account adds, deletes, sames, and updates.
 func (diff *ArrayDiff) Len() int {
-	len := 0
+	length := 0
 	for i := range diff.Adds {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Deletes {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Sames {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
 	for i := range diff.Updates {
-		if i+1 > len {
-			len = i + 1
+		if i+1 > length {
+			length = i + 1
 		}
 	}
-	return len
+	return length
 }
 
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
@@ -393,7 +393,7 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 	return v.V == other.V
 }
 
-// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+// DiffIncludeUnknowns returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)

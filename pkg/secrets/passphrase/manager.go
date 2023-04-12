@@ -16,12 +16,13 @@
 package passphrase
 
 import (
+	"bufio"
+	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const Type = "passphrase"
@@ -58,7 +60,9 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 	}
 
 	decrypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-	decrypted, err := decrypter.DecryptValue(state[indexN(state, ":", 2)+1:])
+	// symmetricCrypter does not use ctx, safe to pass context.Background()
+	ignoredCtx := context.Background()
+	decrypted, err := decrypter.DecryptValue(ignoredCtx, state[indexN(state, ":", 2)+1:])
 	if err != nil || decrypted != "pulumi" {
 		return nil, ErrIncorrectPassphrase
 	}
@@ -67,7 +71,7 @@ func symmetricCrypterFromPhraseAndState(phrase string, state string) (config.Cry
 }
 
 func indexN(s string, substr string, n int) int {
-	contract.Require(n > 0, "n")
+	contract.Requiref(n > 0, "n", "must be greater than 0")
 	scratch := s
 
 	for i := n; i > 0; i-- {
@@ -102,17 +106,19 @@ func (sm *localSecretsManager) State() interface{} {
 }
 
 func (sm *localSecretsManager) Decrypter() (config.Decrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter, nil
 }
 
 func (sm *localSecretsManager) Encrypter() (config.Encrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
 }
 
-var lock sync.Mutex
-var cache map[string]secrets.Manager
+var (
+	lock  sync.Mutex
+	cache map[string]secrets.Manager
+)
 
 // clearCachedSecretsManagers is used to clear the cache, for tests.
 func clearCachedSecretsManagers() {
@@ -139,7 +145,7 @@ func setCachedSecretsManager(state string, sm secrets.Manager) {
 	cache[state] = sm
 }
 
-func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, error) {
+func NewPassphraseSecretsManager(phrase string, state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
 	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
@@ -160,10 +166,10 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 	return sm, nil
 }
 
-// NewPromptingPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
+// newPromptingPassphraseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
-func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error) {
+func newPromptingPassphraseSecretsManagerFromState(state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
 	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
@@ -178,7 +184,7 @@ func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error)
 			return nil, phraseErr
 		}
 
-		sm, smerr := NewPassphaseSecretsManager(phrase, state)
+		sm, smerr := NewPassphraseSecretsManager(phrase, state)
 		switch {
 		case interactive && smerr == ErrIncorrectPassphrase:
 			cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
@@ -191,16 +197,16 @@ func NewPromptingPassphraseSecretsManager(state string) (secrets.Manager, error)
 	}
 }
 
-// NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
+// NewPassphraseSecretsManager returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE, the file specified by
 // PULUMI_CONFIG_PASSPHRASE_FILE, or otherwise will prompt for the passphrase if interactive.
-func NewPromptingPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
+func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
 	var s localSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	sm, err := NewPromptingPassphraseSecretsManager(s.Salt)
+	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt)
 	switch {
 	case err == ErrIncorrectPassphrase:
 		return newLockedPasspharseSecretsManager(s), nil
@@ -211,8 +217,38 @@ func NewPromptingPassphaseSecretsManagerFromState(state json.RawMessage) (secret
 	}
 }
 
-// PromptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
-func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
+func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
+	rotateSecretsProvider bool,
+) (secrets.Manager, error) {
+	if rotateSecretsProvider {
+		info.EncryptionSalt = ""
+	}
+
+	// If there are any other secrets providers set in the config, remove them, as the passphrase
+	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
+	info.EncryptedKey = ""
+	info.SecretsProvider = ""
+
+	// If we have a salt, we can just use it.
+	if info.EncryptionSalt != "" {
+		return newPromptingPassphraseSecretsManagerFromState(info.EncryptionSalt)
+	}
+
+	// Otherwise, prompt the user for a new passphrase.
+	salt, sm, err := promptForNewPassphrase(rotateSecretsProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store the salt and save it.
+	info.EncryptionSalt = salt
+
+	// Return the passphrase secrets manager.
+	return sm, nil
+}
+
+// promptForNewPassphrase prompts for a new passphrase, and returns the state and the secrets manager.
+func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 	var phrase string
 
 	// Get a the passphrase from the user, ensuring that they match.
@@ -222,7 +258,10 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 			firstMessage = "Enter your new passphrase to protect config/secrets"
 
 			if !isInteractive() {
-				return "", nil, fmt.Errorf("passphrase rotation requires an interactive terminal")
+				scanner := bufio.NewScanner(os.Stdin)
+				scanner.Scan()
+				phrase = strings.TrimSpace(scanner.Text())
+				break
 			}
 		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
@@ -254,14 +293,17 @@ func PromptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 
 	// Encrypt a message and store it with the salt so we can test if the password is correct later.
 	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-	msg, err := crypter.EncryptValue("pulumi")
-	contract.AssertNoError(err)
+
+	// symmetricCrypter does not use ctx, safe to use context.Background()
+	ignoredCtx := context.Background()
+	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
+	contract.AssertNoErrorf(err, "could not encrypt message")
 
 	// Encode the salt as the passphrase secrets manager state.
 	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
 
 	// Create the secrets manager using the state.
-	sm, err := NewPassphaseSecretsManager(phrase, state)
+	sm, err := NewPassphraseSecretsManager(phrase, state)
 	if err != nil {
 		return "", nil, err
 	}
@@ -280,7 +322,7 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 			if err != nil {
 				return "", false, fmt.Errorf("unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
-			phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+			phraseDetails, err := os.ReadFile(phraseFilePath)
 			if err != nil {
 				return "", false, fmt.Errorf("unable to read PULUMI_CONFIG_PASSPHRASE_FILE: %w", err)
 			}
@@ -314,17 +356,17 @@ func newLockedPasspharseSecretsManager(state localSecretsManagerState) secrets.M
 
 type errorCrypter struct{}
 
-func (ec *errorCrypter) EncryptValue(_ string) (string, error) {
+func (ec *errorCrypter) EncryptValue(ctx context.Context, _ string) (string, error) {
 	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (ec *errorCrypter) DecryptValue(_ string) (string, error) {
+func (ec *errorCrypter) DecryptValue(ctx context.Context, _ string) (string, error) {
 	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
-func (ec *errorCrypter) BulkDecrypt(_ []string) (map[string]string, error) {
+func (ec *errorCrypter) BulkDecrypt(ctx context.Context, _ []string) (map[string]string, error) {
 	return nil, errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
 		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }

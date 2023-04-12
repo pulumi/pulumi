@@ -92,10 +92,10 @@ func </span>FuncWithAllOptionalInputsOutput<span class="p">(</span><span class="
 
 <div>
 <pulumi-choosable type="language" values="yaml">
-<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">Fn::Invoke:</span>
-<span class="k">&nbsp;&nbsp;Function:</span> example:funcWithAllOptionalInputs
-<span class="k">&nbsp;&nbsp;Arguments:</span>
-<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# Arguments dictionary</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-yaml" data-lang="yaml"><span class="k">fn::invoke:</span>
+<span class="k">&nbsp;&nbsp;function:</span> example:funcWithAllOptionalInputs
+<span class="k">&nbsp;&nbsp;arguments:</span>
+<span class="c">&nbsp;&nbsp;&nbsp;&nbsp;# arguments dictionary</span></code></pre></div>
 </pulumi-choosable>
 </div>
 
@@ -556,7 +556,7 @@ The following output properties are available:
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">example </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 </dl>

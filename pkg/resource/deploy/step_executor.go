@@ -37,12 +37,10 @@ const (
 	stepExecutorLogLevel = 4
 )
 
-var (
-	// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
-	// We (the step executor) are not responsible for reporting those errors so this sentinel ensures
-	// that we don't do so.
-	errStepApplyFailed = errors.New("step application failed")
-)
+// errStepApplyFailed is a sentinel error for errors that arise when step application fails.
+// We (the step executor) are not responsible for reporting those errors so this sentinel ensures
+// that we don't do so.
+var errStepApplyFailed = errors.New("step application failed")
 
 // The step executor operates in terms of "chains" and "antichains". A chain is set of steps that are totally ordered
 // when ordered by dependency; each step in a chain depends directly on the step that comes before it. An antichain
@@ -181,8 +179,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 		}
 	}
 
-	// If we're in experimental mode save these new outputs to the plan
-	if se.opts.ExperimentalPlans {
+	// If we're generating plans save these new outputs to the plan
+	if se.opts.GeneratePlan {
 		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
@@ -325,7 +323,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			} else {
 				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 					newState.Outputs[k] = resource.MakeSecret(v)
-				} else if !has {
+				} else if !has { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
 					// TODO (https://github.com/pulumi/pulumi/issues/9926): We want to re-enable this warning
 					// but it requires that providers always return back _every_ output even in preview. We
 					// might need to add a new "unset" PropertyValue to do this as there might be optional
@@ -341,8 +339,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 					// User asked us to make k a secret, but we don't have a property k. This is probably a
 					// mistake (mostly likely due to casing, eg my_prop vs myProp) but warn the user so they know
 					// the key didn't do anything.
-					//msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
-					//se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
+					// msg := fmt.Sprintf("Could not find property '%s' listed in additional secret outputs.", k)
+					// se.deployment.Diag().Warningf(diag.RawMessage(step.URN(), msg))
 				}
 			}
 		}
@@ -352,8 +350,8 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			se.deployment.news.set(newState.URN, newState)
 		}
 
-		// If we're in experimental mode update the resource's outputs in the generated plan.
-		if se.opts.ExperimentalPlans {
+		// If we're generating plans update the resource's outputs in the generated plan.
+		if se.opts.GeneratePlan {
 			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
 				resourcePlan.Outputs = newState.Outputs
 			}
@@ -449,7 +447,8 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 }
 
 func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment *Deployment, opts Options,
-	preview, continueOnError bool) *stepExecutor {
+	preview, continueOnError bool,
+) *stepExecutor {
 	exec := &stepExecutor{
 		deployment:      deployment,
 		opts:            opts,

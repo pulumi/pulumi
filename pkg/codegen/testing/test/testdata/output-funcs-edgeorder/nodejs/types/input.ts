@@ -2,21 +2,9 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs, enums } from "../types";
-
-/**
- * Configuration filters
- */
-export interface ConfigurationFiltersArgs {
-    /**
-     * Filters specific to product
-     */
-    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[]>;
-    /**
-     * Product hierarchy information
-     */
-    hierarchyInformation: pulumi.Input<inputs.HierarchyInformationArgs>;
-}
+import * as inputs from "../types/input";
+import * as outputs from "../types/output";
+import * as enums from "../types/enums";
 
 /**
  * Configuration filters
@@ -30,6 +18,20 @@ export interface ConfigurationFilters {
      * Product hierarchy information
      */
     hierarchyInformation: inputs.HierarchyInformation;
+}
+
+/**
+ * Configuration filters
+ */
+export interface ConfigurationFiltersArgs {
+    /**
+     * Filters specific to product
+     */
+    filterableProperty?: pulumi.Input<pulumi.Input<inputs.FilterablePropertyArgs>[]>;
+    /**
+     * Product hierarchy information
+     */
+    hierarchyInformation: pulumi.Input<inputs.HierarchyInformationArgs>;
 }
 
 /**

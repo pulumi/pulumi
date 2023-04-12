@@ -2,9 +2,7 @@
 
 import pulumi
 
-config = pulumi.Config()
-org = config.require('org')
-slug = f"{org}/{pulumi.get_project()}/{pulumi.get_stack()}"
+slug = f"{pulumi.get_organization()}/{pulumi.get_project()}/{pulumi.get_stack()}"
 a = pulumi.StackReference(slug)
 
 got_err = False

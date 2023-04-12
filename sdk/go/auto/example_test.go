@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint
+//nolint:errcheck,goconst
 package auto
 
 import (
@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -368,6 +367,13 @@ func ExampleLocalWorkspace_InstallPlugin() {
 	w.InstallPlugin(ctx, "aws", "v3.2.0")
 }
 
+func ExampleLocalWorkspace_InstallPluginFromServer() {
+	ctx := context.Background()
+	// create a workspace from a local project
+	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
+	w.InstallPluginFromServer(ctx, "scaleway", "v1.2.0", "github://api.github.com/lbrlabs")
+}
+
 func ExampleNewLocalWorkspace() {
 	ctx := context.Background()
 	// WorkDir sets the working directory for the LocalWorkspace. The workspace will look for a default
@@ -493,7 +499,7 @@ func ExampleLocalWorkspace_RemoveAllConfig() {
 	stackName := FullyQualifiedStackName("org", "proj", "stackA")
 	// get all config currently set in the workspace
 	cfg, _ := w.GetAllConfig(ctx, stackName)
-	var keys []string
+	keys := make([]string, 0, len(cfg))
 	for k := range cfg {
 		keys = append(keys, k)
 	}
@@ -950,7 +956,7 @@ func ExampleStack_Destroy_streamingProgress() {
 	// select an existing stack to destroy
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optdestroy.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}
@@ -974,7 +980,7 @@ func ExampleStack_Up_streamingProgress() {
 	// create a new stack to update
 	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optup.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}
@@ -1004,7 +1010,7 @@ func ExampleStack_Refresh_streamingProgress() {
 	// select an existing stack and refresh the resources under management
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	// create a temp file that we can tail during while our program runs
-	tmp, _ := ioutil.TempFile(os.TempDir(), "")
+	tmp, _ := os.CreateTemp(os.TempDir(), "")
 	// optrefresh.ProgressStreams allows us to stream incremental output to stdout, a file to tail, etc.
 	// this gives us incremental status over time
 	progressStreams := []io.Writer{os.Stdout, tmp}
@@ -1117,7 +1123,7 @@ func ExampleStack_Export() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	dep, _ := stack.Export(ctx)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1138,7 +1144,7 @@ func ExampleStack_Import() {
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	dep, _ := stack.Export(ctx)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1160,7 +1166,7 @@ func ExampleLocalWorkspace_ExportStack() {
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
 	dep, _ := w.ExportStack(ctx, stackName)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}
@@ -1182,7 +1188,7 @@ func ExampleLocalWorkspace_ImportStack() {
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	stackName := FullyQualifiedStackName("org", "proj", "existing_stack")
 	dep, _ := w.ExportStack(ctx, stackName)
-	// import/export is backwards compatible, and we must write code specific to the verison we're dealing with.
+	// import/export is backwards compatible, and we must write code specific to the version we're dealing with.
 	if dep.Version != 3 {
 		panic("expected deployment version 3")
 	}

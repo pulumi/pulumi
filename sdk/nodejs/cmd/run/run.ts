@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,17 +13,20 @@
 // limitations under the License.
 
 import * as fs from "fs";
-import * as url from "url";
+import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsnode from "ts-node";
-import * as ini from "ini";
 import * as semver from "semver";
-import { parseConfigFileTextToJson } from "typescript";
+import * as tsnode from "ts-node";
+import * as url from "url";
+import * as util from "util";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as runtime from "../../runtime";
 import { Inputs } from "../../output";
+import * as settings from "../../runtime/settings";
+import * as stack from "../../runtime/stack";
+import * as tsutils from "../../tsutils";
+import * as tracing from "./tracing";
 
 import * as mod from ".";
 
@@ -64,6 +67,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
 function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
+    const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");
     const emptyConfig = {};
     try {
         const npmRcPath = path.join(projectRoot, ".npmrc");
@@ -75,10 +79,13 @@ function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
         // Use ini to parse the contents of the .npmrc file
         // This is what node does as described in the npm docs
         // https://docs.npmjs.com/cli/v8/configuring-npm/npmrc#comments
-        return ini.parse(npmRc);
+        const parseResult = ini.parse(npmRc);
+        rcSpan.end();
+        return parseResult;
     } catch {
         // .npmrc file exists but we couldn't read or parse it
         // user out of luck here
+        rcSpan.end();
         return emptyConfig;
     }
 }
@@ -156,9 +163,19 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
         }
     }
 
-    console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
-    console.error(`    Here is the raw exception message we received: ${error.message}`);
+    console.error("  * Pulumi encountered an unexpected error.");
+    console.error(`    Raw exception message: ${error.message}`);
     return;
+}
+
+function tracingIsEnabled(tracingUrl: string | boolean): boolean {
+    if(typeof tracingUrl !== "string") {
+        return false;
+    }
+    const experimental = process.env["PULUMI_EXPERIMENTAL"] ?? "";
+    const nonzeroLength = tracingUrl.length > 0;
+    const experimentalEnabled = experimental.length > 0;
+    return nonzeroLength && experimentalEnabled;
 }
 
 /** @internal */
@@ -167,6 +184,16 @@ export function run(
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
     isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
+    const tracingUrl: string | boolean = argv["tracing"];
+    // Start tracing. Before exiting, gracefully shutdown tracing, exporting
+    // all remaining spans in the batch.
+    if(tracingIsEnabled(tracingUrl)) {
+        tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
+        process.on("exit", tracing.stop);
+    }
+    // Start a new span, which we shutdown at the bottom of this method.
+    const span = tracing.newSpan("language-runtime.run");
+
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -185,19 +212,12 @@ export function run(
     const tsConfigPath: string = process.env["PULUMI_NODEJS_TSCONFIG_PATH"] ?? defaultTsConfigPath;
     const skipProject = !fs.existsSync(tsConfigPath);
 
-    const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
-
-    let compilerOptions: object;
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
-
+    span.setAttribute("typescript-enabled", typeScript);
     if (typeScript) {
-        tsnode.register({
+        const transpileOnly = (process.env["PULUMI_NODEJS_TRANSPILE_ONLY"] ?? "false") === "true";
+        const compilerOptions = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const tsn: typeof tsnode = require("ts-node");
+        tsn.register({
             transpileOnly,
             // PULUMI_NODEJS_TSCONFIG_PATH might be set to a config file such as "tsconfig.pulumi.yaml" which
             // would not get picked up by tsnode by default, so we explicitly tell tsnode which config file to
@@ -234,29 +254,49 @@ export function run(
             return;
         }
 
+
+        // colorize stack trace if exists
+        const stackMessage = err.stack && util.inspect(err, {colors: true});
+
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = err.stack || err.message || ("" + err);
+        const defaultMessage = stackMessage || err.message || ("" + err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        }
-        else if (ResourceError.isInstance(err)) {
+        } else if (
+            err.name === tsnode.TSError.name
+            || err.name === SyntaxError.name) {
+
+            // Hide stack frames as TSError/SyntaxError have messages containing
+            // where the error is located
+            const errOut = err.stack?.toString() || "";
+            let errMsg = err.message;
+
+            const errParts = errOut.split(err.message);
+            if (errParts.length === 2) {
+                errMsg = errParts[0]+err.message;
+            }
+
+            log.error(
+                `Running program '${program}' failed with an unhandled exception:
+${errMsg}`);
+        } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
             log.error(message, err.resource);
-        }
-        else {
+        } else {
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
 
+        span.addEvent(`uncaughtError: ${err}`);
         reportLoggedError(err);
     };
 
@@ -264,18 +304,29 @@ ${defaultMessage}`);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", runtime.disconnectSync);
+    process.on("exit", settings.disconnectSync);
 
     programStarted();
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.
     if (skipProject && tsConfigPath !== defaultTsConfigPath) {
+        span.addEvent("Missing tsconfig file");
         return new Promise(() => {
             const e = new Error(`tsconfig path was set to ${tsConfigPath} but the file was not found`);
             e.stack = undefined;
             throw e;
         });
     }
+
+    const containsTSAndJSModules = async (programPath: string) => {
+        const programStats = await fs.promises.lstat(programPath);
+        if (programStats.isDirectory()) {
+            const programDirFiles = await fs.promises.readdir(programPath);
+            return programDirFiles.includes("index.js") && programDirFiles.includes("index.ts");
+        } else {
+            return false;
+        }
+    };
 
     const runProgram = async () => {
         // We run the program inside this context so that it adopts all resources.
@@ -285,6 +336,10 @@ ${defaultMessage}`);
         //
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
+
+        // Create a new span for the execution of the user program.
+        const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
+
         try {
             const projectRoot = projectRootFromProgramPath(program);
             const packageObject = packageObjectFromProjectRoot(projectRoot);
@@ -318,8 +373,18 @@ ${defaultMessage}`);
                 }
             } else {
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
+
+                // If this is a folder ensure it ends with a "/" so we require the folder, not any adjacent .json file
+                const programStats = await fs.promises.lstat(program);
+                if (programStats.isDirectory() && !program.endsWith("/")) {
+                    program = program + "/";
+                }
                 programExport = require(program);
             }
+
+            if (await containsTSAndJSModules(program)) {
+                log.warn("Found a TypeScript project containing an index.js file and no explicit entrypoint in Pulumi.yaml - Pulumi will use index.js");
+            };
 
             // Check compatible engines before running the program:
             const npmRc = npmRcFromProjectRoot(projectRoot);
@@ -339,6 +404,7 @@ ${defaultMessage}`);
                         `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
                     ];
 
+                    runProgramSpan.addEvent("Incompatible Node version");
                     throw new Error(errorMessage.join("\n"));
                 }
             }
@@ -350,7 +416,7 @@ ${defaultMessage}`);
             const invokeResult = programExport instanceof Function
                 ? programExport()
                 : programExport;
-
+            runProgramSpan.end();
             return await invokeResult;
         } catch (e) {
             // User JavaScript can throw anything, so if it's not an Error it's definitely
@@ -362,13 +428,19 @@ ${defaultMessage}`);
             // Give a better error message, if we can.
             const errorCode = (<any>e).code;
             if (errorCode === "MODULE_NOT_FOUND") {
+                runProgramSpan.addEvent("Module Load Failure.");
                 reportModuleLoadFailure(program, e);
             }
 
             throw e;
         }
+        finally {
+            runProgramSpan.end();
+        }
     };
 
     // Construct a `Stack` resource to represent the outputs of the program.
-    return runtime.runInPulumiStack(runProgram);
+    const stackOutputs = stack.runInPulumiStack(runProgram);
+    span.end();
+    return stackOutputs;
 }

@@ -15,6 +15,8 @@
 package resource
 
 import (
+	"time"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -22,7 +24,8 @@ import (
 // State is a structure containing state associated with a resource.  This resource may have been serialized and
 // deserialized, or snapshotted from a live graph of resource objects.  The value's state is not, however, associated
 // with any runtime objects in memory that may be actively involved in ongoing computations.
-// nolint: lll
+//
+//nolint:lll
 type State struct {
 	Type                    tokens.Type           // the resource's type.
 	URN                     URN                   // the resource's object urn, a human-friendly, unique name for the resource.
@@ -43,8 +46,22 @@ type State struct {
 	Aliases                 []URN                 // TODO
 	CustomTimeouts          CustomTimeouts        // A config block that will be used to configure timeouts for CRUD operations.
 	ImportID                ID                    // the resource's import id, if this was an imported resource.
-	SequenceNumber          int                   // an auto-incrementing sequence number for each time this resource gets created/replaced (0 means sequence numbers are unknown, -1 means the last replace didn't use a sequence number).
 	RetainOnDelete          bool                  // if set to True, the providers Delete method will not be called for this resource.
+	DeletedWith             URN                   // If set, the providers Delete method will not be called for this resource if specified resource is being deleted as well.
+	Created                 *time.Time            // If set, the time when the state was initially added to the state file. (i.e. Create, Import)
+	Modified                *time.Time            // If set, the time when the state was last modified in the state file.
+}
+
+func (s *State) GetAliasURNs() []URN {
+	return s.Aliases
+}
+
+func (s *State) GetAliases() []Alias {
+	aliases := make([]Alias, len(s.Aliases))
+	for i, alias := range s.Aliases {
+		aliases[i] = Alias{URN: alias}
+	}
+	return aliases
 }
 
 // NewState creates a new resource value from existing resource state information.
@@ -53,8 +70,8 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 	external bool, dependencies []URN, initErrors []string, provider string,
 	propertyDependencies map[PropertyKey][]URN, pendingReplacement bool,
 	additionalSecretOutputs []PropertyKey, aliases []URN, timeouts *CustomTimeouts,
-	importID ID, sequenceNumber int, retainOnDelete bool) *State {
-
+	importID ID, retainOnDelete bool, deletedWith URN, created *time.Time, modified *time.Time,
+) *State {
 	contract.Assertf(t != "", "type was empty")
 	contract.Assertf(custom || id == "", "is custom or had empty ID")
 	contract.Assertf(inputs != nil, "inputs was non-nil")
@@ -78,8 +95,10 @@ func NewState(t tokens.Type, urn URN, custom bool, del bool, id ID,
 		AdditionalSecretOutputs: additionalSecretOutputs,
 		Aliases:                 aliases,
 		ImportID:                importID,
-		SequenceNumber:          sequenceNumber,
 		RetainOnDelete:          retainOnDelete,
+		DeletedWith:             deletedWith,
+		Created:                 created,
+		Modified:                modified,
 	}
 
 	if timeouts != nil {

@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Xyz.Inputs
 {
 
-    public sealed class FooArgs : Pulumi.ResourceArgs
+    public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         [Input("a")]
         public Input<bool>? A { get; set; }
@@ -18,5 +18,6 @@ namespace Pulumi.Xyz.Inputs
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 }

@@ -5,4 +5,5 @@
 from .. import _utilities
 import typing
 # Export this package's modules as members:
+from .foo_encrypted_bar_class import *
 from .module_resource import *

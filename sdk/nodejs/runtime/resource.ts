@@ -19,13 +19,15 @@ import * as utils from "../utils";
 
 import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
-import { expandProviders } from "../resource";
 import {
+    Alias,
+    allAliases,
     ComponentResource,
     ComponentResourceOptions,
     createUrn,
     CustomResource,
     CustomResourceOptions,
+    expandProviders,
     ID,
     ProviderResource,
     Resource,
@@ -33,6 +35,7 @@ import {
     URN,
 } from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { monitorSupportsDeletedWith } from "./settings";
 import { invoke } from "./invoke";
 
 import {
@@ -49,10 +52,10 @@ import {
 import {
     excessiveDebugOutput,
     getMonitor,
-    getRootResource,
     getStack,
     isDryRun,
     isLegacyApplyEnabled,
+    monitorSupportsAliasSpecs,
     rpcKeepAlive,
     serialize,
     terminateRpcs,
@@ -60,6 +63,7 @@ import {
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
+const aliasproto = require("../proto/alias_pb.js");
 
 interface ResourceResolverOperation {
     // A resolver for a resource's URN.
@@ -84,15 +88,20 @@ interface ResourceResolverOperation {
     // all be URNs of custom resources, not component resources.
     propertyToDirectDependencyURNs: Map<string, Set<URN>>;
     // A list of aliases applied to this resource.
-    aliases: URN[];
+    aliases: (Alias | URN)[];
     // An ID to import, if any.
     import: ID | undefined;
+    // Any important feature support from the monitor.
+    monitorSupportsStructuredAliases: boolean;
+    // If set, the providers Delete method will not be called for this resource
+    // if specified is being deleted as well.
+    deletedWithURN: URN | undefined;
 }
 
 /**
  * Get an existing resource's state from the engine.
  */
-export function getResource(res: Resource, props: Inputs, custom: boolean, urn: string): void {
+export function getResource(res: Resource, parent: Resource | undefined, props: Inputs, custom: boolean, urn: string): void {
     // Extract the resource type from the URN.
     const urnParts = urn.split("::");
     const qualifiedType = urnParts[2];
@@ -103,7 +112,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
     log.debug(`Getting resource: urn=${urn}`);
 
     const monitor: any = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, false, props, {});
+    const resopAsync = prepareResource(label, res, parent, custom, false, props, {});
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -114,6 +123,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
         req.setArgs(gstruct.Struct.fromJavaScript(inputs));
         req.setProvider("");
         req.setVersion("");
+        req.setAcceptresources(!utils.disableResourceReferences);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.getResource(${label})`;
@@ -189,7 +199,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
-export function readResource(res: Resource, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
+export function readResource(res: Resource, parent: Resource | undefined, t: string, name: string, props: Inputs, opts: ResourceOptions): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
         throw new Error("Cannot read resource whose options are lacking an ID value");
@@ -199,7 +209,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, true, false, props, opts);
+    const resopAsync = prepareResource(label, res, parent, true, false, props, opts);
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -273,18 +283,54 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     }), label);
 }
 
+function getParentURN(parent?: Resource | Input<string>) {
+    if (Resource.isInstance(parent)) {
+        return parent.urn;
+    }
+    return output(parent);
+}
+
+function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: URN) {
+    if (aliases === undefined) {
+        return [];
+    }
+
+    return Promise.all(aliases.map(async a => {
+        const newAlias = new aliasproto.Alias();
+        if (typeof a === "string") {
+            newAlias.setUrn(a);
+        } else {
+            const newAliasSpec = new aliasproto.Alias.Spec();
+            const noParent = !a.hasOwnProperty("parent") && !parentURN;
+            newAliasSpec.setName(a.name);
+            newAliasSpec.setType(a.type);
+            newAliasSpec.setStack(a.stack);
+            newAliasSpec.setProject(a.project);
+            if (noParent) {
+                newAliasSpec.setNoparent(noParent);
+            } else {
+                const aliasParentUrn = a.hasOwnProperty("parent") ? getParentURN(a.parent) : output(parentURN);
+                const urn = await aliasParentUrn.promise();
+                newAliasSpec.setParenturn(urn);
+            }
+            newAlias.setSpec(newAliasSpec);
+        }
+        return newAlias;
+    }));
+}
+
 /**
  * registerResource registers a new resource object with a given type t and name.  It returns the auto-generated
  * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, custom: boolean, remote: boolean,
+export function registerResource(res: Resource, parent: Resource | undefined, t: string, name: string, custom: boolean, remote: boolean,
                                  newDependency: (urn: URN) => Resource, props: Inputs, opts: ResourceOptions): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, remote, props, opts);
+    const resopAsync = prepareResource(label, res, parent, custom, remote, props, opts, t, name);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
     // errors here. V8 captures a stack trace at the moment an Error is created and this stack
@@ -311,13 +357,23 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setAcceptsecrets(true);
         req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
-        req.setUrnaliasesList(resop.aliases);
+        if (resop.monitorSupportsStructuredAliases) {
+            const aliasesList = await mapAliasesForRequest(resop.aliases, resop.parentURN);
+            req.setAliasesList(aliasesList);
+        } else {
+            req.setAliasurnsList(resop.aliases);
+        }
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
         req.setRemote(remote);
         req.setReplaceonchangesList(opts.replaceOnChanges || []);
         req.setPlugindownloadurl(opts.pluginDownloadURL || "");
         req.setRetainondelete(opts.retainOnDelete || false);
+        req.setDeletedwith(resop.deletedWithURN || "");
+
+        if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
+            throw new Error("The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI.");
+        }
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -418,9 +474,8 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(label: string, res: Resource, custom: boolean, remote: boolean,
-                               props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
-
+async function prepareResource(label: string, res: Resource, parent: Resource | undefined, custom: boolean, remote: boolean,
+                               props: Inputs, opts: ResourceOptions, type?: string, name?: string): Promise<ResourceResolverOperation> {
     // add an entry to the rpc queue while we prepare the request.
     // automation api inline programs that don't have stack exports can exit quickly. If we don't do this,
     // sometimes they will exit right after `prepareResource` is called as a part of register resource, but before the
@@ -519,9 +574,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
 
         // Wait for the parent to complete.
         // If no parent was provided, parent to the root resource.
-        const parentURN = opts.parent
-            ? await opts.parent.urn.promise()
-            : await getRootResource();
+        const parentURN = parent ? await parent.urn.promise() : undefined;
 
         let providerRef: string | undefined;
         let importID: ID | undefined;
@@ -532,7 +585,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
         }
 
         const providerRefs: Map<string, string> = new Map<string, string>();
-        if (remote) {
+        if (remote || !custom) {
             const componentOpts = <ComponentResourceOptions>opts;
             expandProviders(componentOpts);
             // the <ProviderResource[]> casts are safe because expandProviders
@@ -544,7 +597,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
                 } else if ((<ProviderResource[]> componentOpts.providers)?.indexOf(componentOpts.provider) !== -1) {
                     const pkg = componentOpts.provider.getPackage();
                     const message = `There is a conflit between the 'provider' field (${pkg}) and a member of the 'providers' map'. `;
-                    const deprecationd = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details";
+                    const deprecationd = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details";
                     log.warn(message+deprecationd);
                 } else {
                     (<ProviderResource[]> componentOpts.providers).push(componentOpts.provider);
@@ -578,18 +631,26 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
             propertyToDirectDependencyURNs.set(propertyName, urns);
         }
 
-        // Wait for all aliases. Note that we use `res.__aliases` instead of `opts.aliases` as the former has been processed
-        // in the Resource constructor prior to calling `registerResource` - both adding new inherited aliases and
-        // simplifying aliases down to URNs.
+        const monitorSupportsStructuredAliases = await monitorSupportsAliasSpecs();
+        let computedAliases;
+        if (!monitorSupportsStructuredAliases && parent) {
+            computedAliases = allAliases(opts.aliases || [], name!, type!, parent, parent.__name!);
+        } else {
+            computedAliases = opts.aliases || [];
+        }
+
+        // Wait for all aliases.
         const aliases = [];
-        const uniqueAliases = new Set<string>();
-        for (const alias of (res.__aliases || [])) {
+        const uniqueAliases = new Set<Alias | URN>();
+        for (const alias of (computedAliases || [])) {
             const aliasVal = await output(alias).promise();
             if (!uniqueAliases.has(aliasVal)) {
                 uniqueAliases.add(aliasVal);
                 aliases.push(aliasVal);
             }
         }
+
+        const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
 
         return {
             resolveURN: resolveURN,
@@ -603,6 +664,8 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
             propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
             aliases: aliases,
             import: importID,
+            monitorSupportsStructuredAliases,
+            deletedWithURN,
         };
 
     } finally {
@@ -647,7 +710,8 @@ export async function getAllTransitivelyReferencedResourceURNs(resources: Set<Re
     // To do this, first we just get the transitively reachable set of resources (not diving
     // into custom resources).  In the above picture, if we start with 'Comp1', this will be
     // [Comp1, Cust1, Comp2, Cust2, Cust3]
-    const transitivelyReachableResources = await getTransitivelyReferencedChildResourcesOfComponentResources(resources);
+    const transitivelyReachableResources =
+        await getTransitivelyReferencedChildResourcesOfComponentResources(resources, exclude);
 
     // Then we filter to only include Custom and Remote resources.
     const transitivelyReachableCustomResources =
@@ -662,25 +726,36 @@ export async function getAllTransitivelyReferencedResourceURNs(resources: Set<Re
  * Recursively walk the resources passed in, returning them and all resources reachable from
  * [Resource.__childResources] through any **Component** resources we encounter.
  */
-async function getTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource>) {
+async function getTransitivelyReferencedChildResourcesOfComponentResources(
+    resources: Set<Resource>, exclude: Set<Resource>) {
+
     // Recursively walk the dependent resources through their children, adding them to the result set.
     const result = new Set<Resource>();
-    await addTransitivelyReferencedChildResourcesOfComponentResources(resources, result);
+    await addTransitivelyReferencedChildResourcesOfComponentResources(resources, exclude, result);
     return result;
 }
 
-async function addTransitivelyReferencedChildResourcesOfComponentResources(resources: Set<Resource> | undefined, result: Set<Resource>) {
+async function addTransitivelyReferencedChildResourcesOfComponentResources(
+    resources: Set<Resource> | undefined, exclude: Set<Resource>, result: Set<Resource>) {
+
     if (resources) {
         for (const resource of resources) {
             if (!result.has(resource)) {
                 result.add(resource);
 
                 if (ComponentResource.isInstance(resource)) {
+                    // Skip including children of a resource in the excluded set to avoid depending on
+                    // children that haven't been registered yet.
+                    if (exclude.has(resource)) {
+                        continue;
+                    }
+
                     // This await is safe even if __isConstructed is undefined. Ensure that the
                     // resource has completely finished construction.  That way all parent/child
                     // relationships will have been setup.
                     await resource.__data;
-                    addTransitivelyReferencedChildResourcesOfComponentResources(resource.__childResources, result);
+                    const children = resource.__childResources;
+                    addTransitivelyReferencedChildResourcesOfComponentResources(children, exclude, result);
                 }
             }
         }
@@ -780,7 +855,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
             req.setOutputs(outputsObj);
 
             const label = `monitor.registerResourceOutputs(${urn}, ...)`;
-            await debuggablePromise(new Promise((resolve, reject) =>
+            await debuggablePromise(new Promise<void>((resolve, reject) =>
                 (monitor as any).registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
                     log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
                         `err: ${err}, resp: ${innerResponse}`);

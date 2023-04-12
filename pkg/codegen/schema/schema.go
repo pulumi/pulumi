@@ -53,7 +53,6 @@ const (
 	jsonType    primitiveType = 8
 )
 
-//nolint: goconst
 func (t primitiveType) String() string {
 	switch t {
 	case boolType:
@@ -147,8 +146,8 @@ func (*ArrayType) isType() {}
 
 // EnumType represents an enum.
 type EnumType struct {
-	// Package is the type's package.
-	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -211,8 +210,8 @@ func (*UnionType) isType() {}
 
 // ObjectType represents schematized maps from strings to particular types.
 type ObjectType struct {
-	// Package is the package that defines the resource.
-	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -374,8 +373,8 @@ type Alias struct {
 
 // Resource describes a Pulumi resource.
 type Resource struct {
-	// Package is the package that defines the resource.
-	Package *Package
+	// PackageReference is the PackageReference that defines the resource.
+	PackageReference PackageReference
 	// Token is the resource's Pulumi type token.
 	Token string
 	// Comment is the description of the resource, if any.
@@ -408,18 +407,19 @@ type Resource struct {
 // For example, if you have the following resource struct:
 //
 // Resource A {
-// Properties: {
-// 	 Object B {
-// 	   Object D: {
-// 	     ReplaceOnChanges: true
-// 	     }
-// 	   Object F: {}
-//     }
-// 	 Object C {
-// 	   ReplaceOnChanges: true
-// 	   }
-//   }
-// }
+//
+//	Properties: {
+//		 Object B {
+//		   Object D: {
+//		     ReplaceOnChanges: true
+//		     }
+//		   Object F: {}
+//	    }
+//		 Object C {
+//		   ReplaceOnChanges: true
+//		   }
+//	  }
+//	}
 //
 // A.ReplaceOnChanges() == [[B, D], [C]]
 func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
@@ -520,16 +520,24 @@ type Method struct {
 
 // Function describes a Pulumi function.
 type Function struct {
-	// Package is the package that defines the function.
-	Package *Package
+	// PackageReference is the PackageReference that defines the function.
+	PackageReference PackageReference
 	// Token is the function's Pulumi type token.
 	Token string
 	// Comment is the description of the function, if any.
 	Comment string
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectType
+	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
+	MultiArgumentInputs bool
 	// Outputs is the bag of output values for the function, if any.
 	Outputs *ObjectType
+	// The return type of the function, if any.
+	ReturnType Type
+	// When InlineObjectAsReturnType is true, it means that the return type definition is defined inline
+	// as an object type that should be generated as a separate type and it is not
+	// a reference to a existing type in the schema.
+	InlineObjectAsReturnType bool
 	// DeprecationMessage indicates whether or not the function is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
@@ -541,14 +549,14 @@ type Function struct {
 	IsOverlay bool
 }
 
-// Determines if codegen should emit a ${fn}Output version that
-// automatically accepts Inputs and returns Outputs.
+// NeedsOutputVersion determines if codegen should emit a ${fn}Output version that
+// automatically accepts Inputs and returns ReturnType.
 func (fun *Function) NeedsOutputVersion() bool {
 	// Skip functions that return no value. Arguably we could
 	// support them and return `Task`, but there are no such
 	// functions in `pulumi-azure-native` or `pulumi-aws` so we
 	// omit to simplify.
-	if fun.Outputs == nil {
+	if fun.ReturnType == nil {
 		return false
 	}
 
@@ -600,6 +608,8 @@ type Package struct {
 	PluginDownloadURL string
 	// Publisher is the name of the person or organization that authored and published the package.
 	Publisher string
+	// A list of allowed package name in addition to the Name property.
+	AllowedPackageNames []string
 
 	// Types is the list of non-resource types defined by the package.
 	Types []Type
@@ -749,9 +759,11 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 			return fmt.Errorf("importing inputs: %w", err)
 		}
 	}
-	if function.Outputs != nil {
-		if err := importObjectTypeLanguages(function.Outputs, languages); err != nil {
-			return fmt.Errorf("importing outputs: %w", err)
+	if function.ReturnType != nil {
+		if objectType, ok := function.ReturnType.(*ObjectType); ok && objectType != nil {
+			if err := importObjectTypeLanguages(objectType, languages); err != nil {
+				return fmt.Errorf("importing outputs: %w", err)
+			}
 		}
 	}
 
@@ -775,14 +787,14 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 		pkg.importedLanguages = map[string]struct{}{}
 	}
 
-	any := false
+	found := false
 	for lang := range languages {
 		if _, ok := pkg.importedLanguages[lang]; !ok {
-			any = true
+			found = true
 			break
 		}
 	}
-	if !any {
+	if !found {
 		return nil
 	}
 
@@ -882,7 +894,7 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 }
 
-func (pkg *Package) TokenToRuntimeModule(tok string) string {
+func TokenToRuntimeModule(tok string) string {
 	// token := pkg ":" module ":" member
 
 	components := strings.Split(tok, ":")
@@ -890,6 +902,10 @@ func (pkg *Package) TokenToRuntimeModule(tok string) string {
 		return ""
 	}
 	return components[1]
+}
+
+func (pkg *Package) TokenToRuntimeModule(tok string) string {
+	return TokenToRuntimeModule(tok)
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
@@ -928,21 +944,30 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	spec = &PackageSpec{
-		Name:              pkg.Name,
-		Version:           version,
-		Description:       pkg.Description,
-		Keywords:          pkg.Keywords,
-		Homepage:          pkg.Homepage,
-		License:           pkg.License,
-		Attribution:       pkg.Attribution,
-		Repository:        pkg.Repository,
-		LogoURL:           pkg.LogoURL,
-		PluginDownloadURL: pkg.PluginDownloadURL,
-		Meta:              metadata,
-		Types:             map[string]ComplexTypeSpec{},
-		Resources:         map[string]ResourceSpec{},
-		Functions:         map[string]FunctionSpec{},
+		Name:                pkg.Name,
+		Version:             version,
+		DisplayName:         pkg.DisplayName,
+		Publisher:           pkg.Publisher,
+		Description:         pkg.Description,
+		Keywords:            pkg.Keywords,
+		Homepage:            pkg.Homepage,
+		License:             pkg.License,
+		Attribution:         pkg.Attribution,
+		Repository:          pkg.Repository,
+		LogoURL:             pkg.LogoURL,
+		PluginDownloadURL:   pkg.PluginDownloadURL,
+		Meta:                metadata,
+		Types:               map[string]ComplexTypeSpec{},
+		Resources:           map[string]ResourceSpec{},
+		Functions:           map[string]FunctionSpec{},
+		AllowedPackageNames: pkg.AllowedPackageNames,
 	}
+
+	lang, err := marshalLanguage(pkg.Language)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package language: %w", err)
+	}
+	spec.Language = lang
 
 	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
 	if err != nil {
@@ -1015,8 +1040,8 @@ func (pkg *Package) MarshalYAML() ([]byte, error) {
 }
 
 func (pkg *Package) marshalObjectData(comment string, properties []*Property, language map[string]interface{},
-	plain, isOverlay bool) (ObjectTypeSpec, error) {
-
+	plain, isOverlay bool,
+) (ObjectTypeSpec, error) {
 	required, props, err := pkg.marshalProperties(properties, plain)
 	if err != nil {
 		return ObjectTypeSpec{}, err
@@ -1082,7 +1107,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
-	var aliases []AliasSpec
+	aliases := make([]AliasSpec, 0, len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
 			Name:    a.Name,
@@ -1120,14 +1145,36 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		}
 		inputs = &ins.ObjectTypeSpec
 	}
+	var multiArgumentInputs []string
+	if f.MultiArgumentInputs {
+		multiArgumentInputs = make([]string, len(f.Inputs.Properties))
+		for i, prop := range f.Inputs.Properties {
+			multiArgumentInputs[i] = prop.Name
+		}
+	}
 
 	var outputs *ObjectTypeSpec
 	if f.Outputs != nil {
 		outs, err := pkg.marshalObject(f.Outputs, true)
 		if err != nil {
-			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+			return FunctionSpec{}, fmt.Errorf("marshaling outputs: %w", err)
 		}
 		outputs = &outs.ObjectTypeSpec
+	}
+
+	var returnType *ReturnTypeSpec
+	if f.ReturnType != nil {
+		returnType = &ReturnTypeSpec{}
+		if objectType, ok := f.ReturnType.(*ObjectType); ok {
+			ret, err := pkg.marshalObject(objectType, true)
+			if err != nil {
+				return FunctionSpec{}, fmt.Errorf("marshaling object spec: %w", err)
+			}
+			returnType.ObjectTypeSpec = &ret.ObjectTypeSpec
+		} else {
+			typeSpec := pkg.marshalType(f.ReturnType, true)
+			returnType.TypeSpec = &typeSpec
+		}
 	}
 
 	lang, err := marshalLanguage(f.Language)
@@ -1136,16 +1183,20 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}
 
 	return FunctionSpec{
-		Description: f.Comment,
-		Inputs:      inputs,
-		Outputs:     outputs,
-		Language:    lang,
+		Description:         f.Comment,
+		DeprecationMessage:  f.DeprecationMessage,
+		IsOverlay:           f.IsOverlay,
+		Inputs:              inputs,
+		MultiArgumentInputs: multiArgumentInputs,
+		Outputs:             outputs,
+		ReturnType:          returnType,
+		Language:            lang,
 	}, nil
 }
 
 func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec,
-	err error) {
-
+	err error,
+) {
 	if len(props) == 0 {
 		return
 	}
@@ -1244,11 +1295,11 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 			Plain:         !plain,
 		}
 	case *ObjectType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
 	case *EnumType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.PackageReference, "types", t.Token)}
 	case *ResourceType:
-		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.Package, "resources", t.Token)}
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.PackageReference, "resources", t.Token)}
 	case *TokenType:
 		var defaultType string
 		if t.UnderlyingType != nil {
@@ -1283,15 +1334,15 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 	}
 }
 
-func (pkg *Package) marshalTypeRef(container *Package, section, token string) string {
+func (pkg *Package) marshalTypeRef(container PackageReference, section, token string) string {
 	token = url.PathEscape(token)
 
-	if container == pkg {
+	if p, err := container.Definition(); err == nil && p == pkg {
 		return fmt.Sprintf("#/%s/%s", section, token)
 	}
 
 	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
-	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name, container.Version, section, token)
+	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name(), container.Version(), section, token)
 }
 
 func marshalLanguage(lang map[string]interface{}) (map[string]RawMessage, error) {
@@ -1352,7 +1403,7 @@ func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
 
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
-	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
+	// Type is the primitive or composite type, if any. May be "boolean", "string", "integer", "number", "array", or
 	// "object".
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
@@ -1494,21 +1545,221 @@ type ResourceSpec struct {
 	Methods map[string]string `json:"methods,omitempty" yaml:"methods,omitempty"`
 }
 
+// ReturnTypeSpec is either ObjectTypeSpec or TypeSpec
+type ReturnTypeSpec struct {
+	ObjectTypeSpec *ObjectTypeSpec
+	TypeSpec       *TypeSpec
+}
+
+// Decoder is an alias for a function that takes (in []byte, out interface{}) and potentially returns an error
+// it is used to abstract json.Unmarshal and yaml.Unmarshal which satisfy this function signature
+type Decoder func([]byte, interface{}) error
+
+func (returnTypeSpec *ReturnTypeSpec) UnmarshalReturnTypeSpec(data []byte, decode Decoder) error {
+	var objectMap map[string]interface{}
+	if err := decode(data, &objectMap); err != nil {
+		return err
+	}
+
+	if len(objectMap) == 0 {
+		return nil
+	}
+
+	var objectSpec *ObjectTypeSpec
+	var typeSpec *TypeSpec
+	if _, hasProperties := objectMap["properties"]; hasProperties {
+		if err := decode(data, &objectSpec); err != nil {
+			return err
+		}
+	} else {
+		if err := decode(data, &typeSpec); err != nil {
+			return err
+		}
+	}
+
+	returnTypeSpec.TypeSpec = typeSpec
+	returnTypeSpec.ObjectTypeSpec = objectSpec
+	return nil
+}
+
+func (returnTypeSpec *ReturnTypeSpec) UnmarshalJSON(inputJSON []byte) error {
+	return returnTypeSpec.UnmarshalReturnTypeSpec(inputJSON, json.Unmarshal)
+}
+
+func (returnTypeSpec *ReturnTypeSpec) UnmarshalYAML(inputYAML []byte) error {
+	return returnTypeSpec.UnmarshalReturnTypeSpec(inputYAML, yaml.Unmarshal)
+}
+
 // FunctionSpec is the serializable form of a function description.
 type FunctionSpec struct {
 	// Description is the description of the function, if any.
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
 	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	// Determines whether the input bag should be treated as a single argument or as multiple arguments.
+	// When MultiArgumentInputs is non-empty, it must match up 1:1 with the property names in of the Inputs object.
+	// The order in which the properties are listed in MultiArgumentInputs determines the order in which the
+	// arguments are passed to the function.
+	MultiArgumentInputs []string `json:"multiArgumentInputs,omitempty" yaml:"multiArgumentInputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
+	// This field is DEPRECATED. Use ReturnType instead where it allows for more flexible types
+	// to describe the outputs of the function definition. It is invalid to specify both Outputs and ReturnType.
 	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
-	// DeprecationMessage indicates whether or not the function is deprecated.
+	// Specified the return type of the function definition
+	ReturnType *ReturnTypeSpec
+	// DeprecationMessage indicates whether the function is deprecated.
 	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 	// IsOverlay indicates whether the function is an overlay provided by the package. Overlay code is generated by the
 	// package rather than using the core Pulumi codegen libraries.
 	IsOverlay bool `json:"isOverlay,omitempty" yaml:"isOverlay,omitempty"`
+}
+
+func emptyObject(data RawMessage) (bool, error) {
+	var objectData *map[string]RawMessage
+	if err := json.Unmarshal(data, &objectData); err != nil {
+		return false, err
+	}
+
+	if objectData == nil {
+		return true, nil
+	}
+
+	return len(*objectData) == 0, nil
+}
+
+func unmarshalFunctionSpec(funcSpec *FunctionSpec, data map[string]RawMessage) error {
+	if description, ok := data["description"]; ok {
+		if err := json.Unmarshal(description, &funcSpec.Description); err != nil {
+			return err
+		}
+	}
+
+	if inputs, ok := data["inputs"]; ok {
+		if err := json.Unmarshal(inputs, &funcSpec.Inputs); err != nil {
+			return err
+		}
+	}
+
+	if multiArgumentInputs, ok := data["multiArgumentInputs"]; ok {
+		if err := json.Unmarshal(multiArgumentInputs, &funcSpec.MultiArgumentInputs); err != nil {
+			return err
+		}
+	}
+
+	if returnType, ok := data["outputs"]; ok {
+		isEmpty, err := emptyObject(returnType)
+		if err != nil {
+			return err
+		}
+
+		if !isEmpty {
+			if err := json.Unmarshal(returnType, &funcSpec.ReturnType); err != nil {
+				return err
+			}
+		} else {
+			funcSpec.ReturnType = nil
+		}
+	}
+
+	if deprecationMessage, ok := data["deprecationMessage"]; ok {
+		if err := json.Unmarshal(deprecationMessage, &funcSpec.DeprecationMessage); err != nil {
+			return err
+		}
+	}
+
+	if language, ok := data["language"]; ok {
+		if err := json.Unmarshal(language, &funcSpec.Language); err != nil {
+			return err
+		}
+	}
+
+	if isOverlay, ok := data["isOverlay"]; ok {
+		if err := json.Unmarshal(isOverlay, &funcSpec.IsOverlay); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// UnmarshalJSON is custom unmarshalling logic for FunctionSpec so that we can derive Outputs from ReturnType
+// which otherwise isn't possible when both are retrieved from the same JSON field
+func (funcSpec *FunctionSpec) UnmarshalJSON(inputJSON []byte) error {
+	var data map[string]RawMessage
+	if err := json.Unmarshal(inputJSON, &data); err != nil {
+		return err
+	}
+	return unmarshalFunctionSpec(funcSpec, data)
+}
+
+// UnmarshalYAML is custom unmarshalling logic for FunctionSpec so that we can derive Outputs from ReturnType
+// which otherwise isn't possible when both are retrieved from the same JSON field
+func (funcSpec *FunctionSpec) UnmarshalYAML(node *yaml.Node) error {
+	var data map[string]RawMessage
+	if err := node.Decode(&data); err != nil {
+		return err
+	}
+	return unmarshalFunctionSpec(funcSpec, data)
+}
+
+func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]interface{}, error) {
+	data := make(map[string]interface{})
+	if funcSpec.Description != "" {
+		data["description"] = funcSpec.Description
+	}
+
+	if funcSpec.Inputs != nil {
+		data["inputs"] = funcSpec.Inputs
+	}
+
+	if len(funcSpec.MultiArgumentInputs) > 0 {
+		data["multiArgumentInputs"] = funcSpec.MultiArgumentInputs
+	}
+
+	if funcSpec.ReturnType != nil {
+		if funcSpec.ReturnType.ObjectTypeSpec != nil {
+			data["outputs"] = funcSpec.ReturnType.ObjectTypeSpec
+		}
+
+		if funcSpec.ReturnType.TypeSpec != nil {
+			data["outputs"] = funcSpec.ReturnType.TypeSpec
+		}
+	}
+
+	// for backward-compat when we only specify the outputs object of the function
+	if funcSpec.ReturnType == nil && funcSpec.Outputs != nil {
+		data["outputs"] = funcSpec.Outputs
+	}
+
+	if funcSpec.DeprecationMessage != "" {
+		data["deprecationMessage"] = funcSpec.DeprecationMessage
+	}
+
+	if funcSpec.IsOverlay {
+		// the default is false, so only write the property when it is true
+		data["isOverlay"] = true
+	}
+
+	if funcSpec.Language != nil && len(funcSpec.Language) > 0 {
+		data["language"] = funcSpec.Language
+	}
+
+	return data, nil
+}
+
+func (funcSpec FunctionSpec) MarshalJSON() ([]byte, error) {
+	data, err := funcSpec.marshalFunctionSpec()
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(data)
+}
+
+func (funcSpec FunctionSpec) MarshalYAML() (interface{}, error) {
+	return funcSpec.marshalFunctionSpec()
 }
 
 // ConfigSpec is the serializable description of a package's configuration variables.
@@ -1614,12 +1865,12 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
-	Config ConfigSpec `json:"config" yaml:"config"`
+	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider" yaml:"provider"`
+	Provider ResourceSpec `json:"provider,omitempty" yaml:"provider"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
 	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.

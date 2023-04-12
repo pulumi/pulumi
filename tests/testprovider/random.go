@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//go:build !all
+// +build !all
 
 package main
 
@@ -27,8 +29,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 )
 
-type randomResourceProvider struct {
-}
+type randomResourceProvider struct{}
 
 func (p *randomResourceProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil

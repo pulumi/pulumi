@@ -986,7 +986,7 @@ def unwrap_type(val: type) -> type:
             return (
                 is_input_type(args[0])
                 and args[1] is dict
-                or get_origin(args[1]) in {dict, Dict, Mapping, collections.abc.Mapping}
+                or get_origin(args[1]) in [dict, Dict, Mapping, collections.abc.Mapping]
             )
 
         def isInput(args, i=1):

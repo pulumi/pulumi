@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,10 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
+import { RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
+import { TagMap } from "./tag";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
@@ -53,7 +55,7 @@ export class LocalWorkspace implements Workspace {
     readonly pulumiHome?: string;
     /**
      * The secrets provider to use for encryption and decryption of stack secrets.
-     * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+     * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
     /**
@@ -78,6 +80,32 @@ export class LocalWorkspace implements Workspace {
         return this._pulumiVersion.toString();
     }
     private ready: Promise<any[]>;
+
+    /**
+     * Whether the workspace is a remote workspace.
+     */
+    private remote?: boolean;
+
+    /**
+     * Remote Git source info.
+     */
+    private remoteGitProgramArgs?: RemoteGitProgramArgs;
+
+    /**
+     * An optional list of arbitrary commands to run before the remote Pulumi operation is invoked.
+     */
+    private remotePreRunCommands?: string[];
+
+    /**
+     * The environment variables to pass along when running remote Pulumi operations.
+     */
+    private remoteEnvVars?: { [key: string]: string | { secret: string } };
+
+    /**
+     * Whether to skip the default dependency installation step.
+     */
+    private remoteSkipInstallDependencies?: boolean;
+
     /**
      * Creates a workspace using the specified options. Used for maximal control and customization
      * of the underlying environment before any stacks are created or selected.
@@ -220,13 +248,20 @@ export class LocalWorkspace implements Workspace {
         let envs = {};
 
         if (opts) {
-            const { workDir, pulumiHome, program, envVars, secretsProvider } = opts;
+            const { workDir, pulumiHome, program, envVars, secretsProvider,
+                remote, remoteGitProgramArgs, remotePreRunCommands, remoteEnvVars,
+                remoteSkipInstallDependencies } = opts;
             if (workDir) {
                 dir = workDir;
             }
             this.pulumiHome = pulumiHome;
             this.program = program;
             this.secretsProvider = secretsProvider;
+            this.remote = remote;
+            this.remoteGitProgramArgs = remoteGitProgramArgs;
+            this.remotePreRunCommands = remotePreRunCommands;
+            this.remoteEnvVars = { ...remoteEnvVars };
+            this.remoteSkipInstallDependencies = remoteSkipInstallDependencies;
             envs = { ...envVars };
         }
 
@@ -360,6 +395,9 @@ export class LocalWorkspace implements Workspace {
         if (this.secretsProvider) {
             args.push("--secrets-provider", this.secretsProvider);
         }
+        if (this.isRemote) {
+            args.push("--no-select");
+        }
         await this.runPulumiCmd(args);
     }
     /**
@@ -368,7 +406,15 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to select.
      */
     async selectStack(stackName: string): Promise<void> {
-        await this.runPulumiCmd(["stack", "select", stackName]);
+        // If this is a remote workspace, we don't want to actually select the stack (which would modify global state);
+        // but we will ensure the stack exists by calling `pulumi stack`.
+        const args = ["stack"];
+        if (!this.isRemote) {
+            args.push("select");
+        }
+        args.push("--stack", stackName);
+
+        await this.runPulumiCmd(args);
     }
     /**
      * Deletes the stack and all associated configuration and history.
@@ -459,11 +505,64 @@ export class LocalWorkspace implements Workspace {
         return this.getAllConfig(stackName);
     }
     /**
+     * Returns the value associated with the specified stack name and key,
+     * scoped to the LocalWorkspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     * @param key The key to use for the tag lookup.
+     */
+    async getTag(stackName: string, key: string): Promise<string> {
+        const result = await this.runPulumiCmd(["stack", "tag", "get", key, "--stack", stackName]);
+        return result.stdout.trim();
+    }
+    /**
+     * Sets the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to set.
+     * @param value The tag value to set.
+     */
+    async setTag(stackName: string, key: string, value: string): Promise<void> {
+        await this.runPulumiCmd(["stack", "tag", "set", key, value, "--stack", stackName]);
+    }
+    /**
+     * Removes the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to remove.
+     */
+    async removeTag(stackName: string, key: string): Promise<void> {
+        await this.runPulumiCmd(["stack", "tag", "rm", key, "--stack", stackName]);
+    }
+    /**
+     * Returns the tag map for the specified tag name, scoped to the current LocalWorkspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     */
+    async listTags(stackName: string): Promise<TagMap> {
+        const result = await this.runPulumiCmd(["stack", "tag", "ls", "--json", "--stack", stackName]);
+        return JSON.parse(result.stdout);
+    }
+    /**
      * Returns the currently authenticated user.
      */
     async whoAmI(): Promise<WhoAmIResult> {
-        const result = await this.runPulumiCmd(["whoami"]);
-        return { user: result.stdout.trim() };
+        let ver = this._pulumiVersion;
+        if (ver === undefined) {
+            // Assume an old version. Doesn't really matter what this is as long as it's pre-3.58.
+            ver = semver.parse("3.0.0")!;
+        }
+
+        // 3.58 added the --json flag (https://github.com/pulumi/pulumi/releases/tag/v3.58.0)
+        if (ver.compare("3.58.0") >= 0) {
+            const result = await this.runPulumiCmd(["whoami", "--json"]);
+            return JSON.parse(result.stdout);
+        }
+        else
+        {
+            const result = await this.runPulumiCmd(["whoami"]);
+            return {user: result.stdout.trim()};
+        }
     }
     /**
      * Returns a summary of the currently selected stack, if any.
@@ -494,6 +593,17 @@ export class LocalWorkspace implements Workspace {
      */
     async installPlugin(name: string, version: string, kind = "resource"): Promise<void> {
         await this.runPulumiCmd(["plugin", "install", kind, name, version]);
+    }
+    /**
+     * Installs a plugin in the Workspace, from a third party server.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     * @param kind the kind of plugin, defaults to "resource"
+     * @param server the server to install the plugin from
+     */
+    async installPluginFromServer(name: string, version: string, server: string): Promise<void> {
+        await this.runPulumiCmd(["plugin", "install", "resource", name, version, "--server", server]);
     }
     /**
      * Removes a plugin from the Workspace matching the specified name and version.
@@ -597,6 +707,16 @@ export class LocalWorkspace implements Workspace {
         if (version != null) {
             this._pulumiVersion = version;
         }
+
+        // If remote was specified, ensure the CLI supports it.
+        if (!optOut && this.isRemote) {
+            // See if `--remote` is present in `pulumi preview --help`'s output.
+            const previewResult = await this.runPulumiCmd(["preview", "--help"]);
+            const previewOutput = previewResult.stdout.trim();
+            if (!previewOutput.includes("--remote")) {
+                throw new Error("The Pulumi CLI does not support remote operations. Please upgrade.");
+            }
+        }
     }
     private async runPulumiCmd(
         args: string[],
@@ -605,8 +725,78 @@ export class LocalWorkspace implements Workspace {
         if (this.pulumiHome) {
             envs["PULUMI_HOME"] = this.pulumiHome;
         }
+        if (this.isRemote) {
+            envs["PULUMI_EXPERIMENTAL"] = "true";
+        }
         envs = { ...envs, ...this.envVars };
         return runPulumiCmd(args, this.workDir, envs);
+    }
+    /** @internal */
+    get isRemote(): boolean {
+        return !!this.remote;
+    }
+    /** @internal */
+    remoteArgs(): string[] {
+        const args: string[] = [];
+        if (!this.isRemote) {
+            return args;
+        }
+
+        args.push("--remote");
+        if (this.remoteGitProgramArgs) {
+            const { url, projectPath, branch, commitHash, auth  } = this.remoteGitProgramArgs;
+            if (url) {
+                args.push(url);
+            }
+            if (projectPath) {
+                args.push("--remote-git-repo-dir", projectPath);
+            }
+            if (branch) {
+                args.push("--remote-git-branch", branch);
+            }
+            if (commitHash) {
+                args.push("--remote-git-commit", commitHash);
+            }
+            if (auth) {
+                const { personalAccessToken, sshPrivateKey, sshPrivateKeyPath, password, username } = auth;
+                if (personalAccessToken) {
+                    args.push("--remote-git-auth-access-token", personalAccessToken);
+                }
+                if (sshPrivateKey) {
+                    args.push("--remote-git-auth-ssh-private-key", sshPrivateKey);
+                }
+                if (sshPrivateKeyPath) {
+                    args.push("--remote-git-auth-ssh-private-key-path", sshPrivateKeyPath);
+                }
+                if (password) {
+                    args.push("--remote-git-auth-password", password);
+                }
+                if (username) {
+                    args.push("--remote-git-auth-username", username);
+                }
+            }
+        }
+
+        for (const key of Object.keys(this.remoteEnvVars ?? {})) {
+            const val = this.remoteEnvVars![key];
+            if (typeof val === "string") {
+                args.push("--remote-env", `${key}=${val}`);
+            } else if ("secret" in val) {
+                args.push("--remote-env-secret", `${key}=${val.secret}`);
+            } else {
+                throw new Error(`unexpected env value '${val}' for key '${key}'`);
+            }
+        }
+
+        for (const command of this.remotePreRunCommands ?? []) {
+            args.push("--remote-pre-run-command", command);
+        }
+
+        if (this.remoteSkipInstallDependencies) {
+            args.push("--remote-skip-install-dependencies");
+        }
+
+        return args;
     }
 }
 
@@ -660,7 +850,7 @@ export interface LocalWorkspaceOptions {
     envVars?: { [key: string]: string };
     /**
      * The secrets provider to use for encryption and decryption of stack secrets.
-     * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+     * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     secretsProvider?: string;
     /**
@@ -671,6 +861,36 @@ export interface LocalWorkspaceOptions {
      * A map of Stack names and corresponding settings objects.
      */
     stackSettings?: { [key: string]: StackSettings };
+    /**
+     * Indicates that the workspace is a remote workspace.
+     *
+     * @internal
+     */
+    remote?: boolean;
+    /**
+     * The remote Git source info.
+     *
+     * @internal
+     */
+    remoteGitProgramArgs?: RemoteGitProgramArgs;
+    /**
+     * An optional list of arbitrary commands to run before a remote Pulumi operation is invoked.
+     *
+     * @internal
+     */
+    remotePreRunCommands?: string[];
+    /**
+     * The environment variables to pass along when running remote Pulumi operations.
+     *
+     * @internal
+     */
+    remoteEnvVars?: { [key: string]: string | { secret: string } };
+    /**
+     * Whether to skip the default dependency installation step.
+     *
+     * @internal
+     */
+    remoteSkipInstallDependencies?: boolean;
 }
 
 /**

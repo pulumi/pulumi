@@ -34,6 +34,21 @@ func TestParseGitRepoURL(t *testing.T) {
 		assert.Equal(t, expectedURLPath, actualURLPath)
 	}
 
+	// Azure DevOps.
+	{
+		// Azure DevOps uses a different scheme for URLs.
+		// specifying a subdir and git ref is not currently supported.
+		{
+			url := "https://dev.azure.com/account-name/project-name/_git/repo-name"
+			test(url, "", url)
+		}
+
+		{
+			url := "https://dev.azure.com/tree/tree/_git/repo-name"
+			test(url, "", url)
+		}
+	}
+
 	// GitHub.
 	pre := "https://github.com/pulumi/templates"
 	exp := pre + ".git"
@@ -77,6 +92,18 @@ func TestParseGitRepoURL(t *testing.T) {
 	test(exp, "1/2/3/4/5", pre+"/")
 	pre = "https://gitlab.com/dotgit/.git.git"
 	exp = "https://gitlab.com/dotgit/.git.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
+	pre = "https://user1:12345@gitlab.com/proj/finally.git"
+	exp = "https://user1:12345@gitlab.com/proj/finally.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
+	pre = "https://user1@gitlab.com/proj/finally.git"
+	exp = "https://user1@gitlab.com/proj/finally.git"
+	test(exp, "", pre)
+	test(exp, "foobar", pre+"/foobar")
+	pre = "https://user1:12345@gitlab.com/proj/finally"
+	exp = pre + ".git"
 	test(exp, "", pre)
 	test(exp, "foobar", pre+"/foobar")
 
@@ -272,8 +299,12 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			"git@github.foo-acme.org:owner-name/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.org"},
 		},
+		{
+			"git@git.foo-acme.net:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "git.foo-acme.net"},
+		},
 
-		//HTTPS remotes
+		// HTTPS remotes
 		{
 			"https://gitlab-ci-token:dummytoken@gitlab.com/owner-name/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitLabHostName},
@@ -295,10 +326,11 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			&VCSInfo{Owner: "owner-name", Repo: "project/_git/repo-name", Kind: AzureDevOpsHostName},
 		},
 
-		//Unknown or bad remotes
+		// Unknown or bad remotes
 		{"", nil},
 		{"asdf", nil},
 		{"svn:something.com/owner/repo", nil},
+		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
 	}
 
 	for _, test := range gitTests {

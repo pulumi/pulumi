@@ -20,11 +20,6 @@
     }
   },
   "language": {
-    "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-    },
     "nodejs": {
       "dependencies": {
         "@pulumi/pulumi": "^3.12"

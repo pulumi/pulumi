@@ -16,6 +16,7 @@ package python
 
 const (
 // intrinsicDataSource is the name of the data source intrinsic.
+//
 //	intrinsicDataSource = "__dataSource"
 )
 

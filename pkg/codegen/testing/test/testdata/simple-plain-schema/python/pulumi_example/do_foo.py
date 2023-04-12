@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Awaitable
 from . import _utilities
 from ._inputs import *
 
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 def do_foo(foo: Optional[pulumi.InputType['Foo']] = None,
-           opts: Optional[pulumi.InvokeOptions] = None):
+           opts: Optional[pulumi.InvokeOptions] = None) -> Awaitable[None]:
     """
     Use this data source to access information about an existing resource.
     """

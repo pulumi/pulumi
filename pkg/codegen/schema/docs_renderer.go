@@ -114,6 +114,6 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 func RenderDocsToString(source []byte, node ast.Node, options ...RendererOption) string {
 	var buf bytes.Buffer
 	err := RenderDocs(&buf, source, node, options...)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error rendering docs")
 	return buf.String()
 }

@@ -17,7 +17,7 @@ type Object struct {
 // ObjectInput is an input type that accepts ObjectArgs and ObjectOutput values.
 // You can construct a concrete instance of `ObjectInput` via:
 //
-//          ObjectArgs{...}
+//	ObjectArgs{...}
 type ObjectInput interface {
 	pulumi.Input
 
@@ -66,7 +66,7 @@ type ObjectInputType struct {
 // ObjectInputTypeInput is an input type that accepts ObjectInputTypeArgs and ObjectInputTypeOutput values.
 // You can construct a concrete instance of `ObjectInputTypeInput` via:
 //
-//          ObjectInputTypeArgs{...}
+//	ObjectInputTypeArgs{...}
 type ObjectInputTypeInput interface {
 	pulumi.Input
 
@@ -115,7 +115,7 @@ type ResourceType struct {
 // ResourceTypeInput is an input type that accepts ResourceTypeArgs and ResourceTypeOutput values.
 // You can construct a concrete instance of `ResourceTypeInput` via:
 //
-//          ResourceTypeArgs{...}
+//	ResourceTypeArgs{...}
 type ResourceTypeInput interface {
 	pulumi.Input
 

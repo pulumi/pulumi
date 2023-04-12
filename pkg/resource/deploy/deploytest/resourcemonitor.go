@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ResourceMonitor struct {
@@ -39,7 +40,7 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 	// Connect to the resource monitor and create an appropriate client.
 	conn, err := grpc.Dial(
 		endpoint,
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
@@ -96,23 +97,24 @@ type ResourceOptions struct {
 	PluginDownloadURL       string
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	UrnAliases              []resource.URN
+	AliasURNs               []resource.URN
+	Aliases                 []resource.Alias
 	ImportID                resource.ID
 	CustomTimeouts          *resource.CustomTimeouts
 	RetainOnDelete          bool
+	DeletedWith             resource.URN
 	SupportsPartialValues   *bool
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
-	Aliases                 []resource.Alias
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
-	options ...ResourceOptions) (resource.URN, resource.ID, resource.PropertyMap, error) {
-
+	options ...ResourceOptions,
+) (resource.URN, resource.ID, resource.PropertyMap, error) {
 	var opts ResourceOptions
 	if len(options) > 0 {
 		opts = options[0]
@@ -139,25 +141,29 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 
 	// marshal aliases
 	aliasStrings := []string{}
-	for _, a := range opts.UrnAliases {
+	for _, a := range opts.AliasURNs {
 		aliasStrings = append(aliasStrings, string(a))
 	}
 
 	aliasObjects := []*pulumirpc.Alias{}
 	for _, a := range opts.Aliases {
-		alias := &pulumirpc.Alias_Spec{
-			Name:    a.Name,
-			Type:    a.Type,
-			Project: a.Project,
-			Stack:   a.Stack,
+		var obj *pulumirpc.Alias
+		if a.URN == "" {
+			alias := &pulumirpc.Alias_Spec{
+				Name:    a.Name,
+				Type:    a.Type,
+				Project: a.Project,
+				Stack:   a.Stack,
+			}
+			if a.NoParent() {
+				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent()}
+			} else if a.Parent != "" {
+				alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
+			}
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
+		} else {
+			obj = &pulumirpc.Alias{Alias: &pulumirpc.Alias_Urn{Urn: string(a.URN)}}
 		}
-		if a.NoParent {
-			alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
-		} else if a.Parent != "" {
-			alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
-		}
-
-		obj := &pulumirpc.Alias{Alias: &pulumirpc.Alias_Spec_{Spec: alias}}
 		aliasObjects = append(aliasObjects, obj)
 	}
 
@@ -207,7 +213,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
-		UrnAliases:                 aliasStrings,
+		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
@@ -218,6 +224,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		RetainOnDelete:             opts.RetainOnDelete,
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,
+		DeletedWith:                string(opts.DeletedWith),
 	}
 
 	// submit request
@@ -260,8 +267,8 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 }
 
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider string, version string) (resource.URN, resource.PropertyMap, error) {
-
+	inputs resource.PropertyMap, provider string, version string,
+) (resource.URN, resource.PropertyMap, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -298,8 +305,8 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 }
 
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
-	provider string, version string) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
-
+	provider string, version string,
+) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -339,8 +346,8 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 
 func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.PropertyMap,
 	provider string, version string) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN,
-	[]*pulumirpc.CheckFailure, error) {
-
+	[]*pulumirpc.CheckFailure, error,
+) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -377,11 +384,12 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 
 	// unmarshal return deps
 	deps := make(map[resource.PropertyKey][]resource.URN)
-	for _, p := range resp.ReturnDependencies {
+	for k, p := range resp.ReturnDependencies {
 		var urns []resource.URN
 		for _, urn := range p.Urns {
 			urns = append(urns, resource.URN(urn))
 		}
+		deps[resource.PropertyKey(k)] = urns
 	}
 
 	return outs, deps, nil, nil

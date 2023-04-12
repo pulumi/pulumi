@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package stack
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -78,9 +79,32 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(m encoding.Marshaler, bytes 
 	}
 }
 
+func MarshalUntypedDeploymentToVersionedCheckpoint(
+	stack tokens.QName, deployment *apitype.UntypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	chk := struct {
+		Stack  tokens.QName
+		Latest json.RawMessage
+	}{
+		Stack:  stack,
+		Latest: deployment.Deployment,
+	}
+
+	bytes, err := encoding.JSON.Marshal(chk)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
+	return &apitype.VersionedCheckpoint{
+		Version:    deployment.Version,
+		Checkpoint: bytes,
+	}, nil
+}
+
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
-func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
-	sm secrets.Manager, showSecrets bool) (*apitype.VersionedCheckpoint, error) {
+func SerializeCheckpoint(stack tokens.QName, snap *deploy.Snapshot,
+	sm secrets.Manager, showSecrets bool,
+) (*apitype.VersionedCheckpoint, error) {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *apitype.DeploymentV3
 	if snap != nil {
@@ -91,8 +115,8 @@ func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 		latest = dep
 	}
 
-	b, err := json.Marshal(apitype.CheckpointV3{
-		Stack:  stack.Q(),
+	b, err := encoding.JSON.Marshal(apitype.CheckpointV3{
+		Stack:  stack,
 		Latest: latest,
 	})
 	if err != nil {
@@ -107,10 +131,14 @@ func SerializeCheckpoint(stack tokens.Name, snap *deploy.Snapshot,
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot. Returns nil
 // if there have been no deployments performed on this checkpoint.
-func DeserializeCheckpoint(chkpoint *apitype.CheckpointV3) (*deploy.Snapshot, error) {
-	contract.Require(chkpoint != nil, "chkpoint")
+func DeserializeCheckpoint(
+	ctx context.Context,
+	secretsProvider secrets.Provider,
+	chkpoint *apitype.CheckpointV3,
+) (*deploy.Snapshot, error) {
+	contract.Requiref(chkpoint != nil, "chkpoint", "must not be nil")
 	if chkpoint.Latest != nil {
-		return DeserializeDeploymentV3(*chkpoint.Latest, DefaultSecretsProvider)
+		return DeserializeDeploymentV3(ctx, *chkpoint.Latest, secretsProvider)
 	}
 
 	return nil, nil

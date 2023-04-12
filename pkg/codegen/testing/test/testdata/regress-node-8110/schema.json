@@ -45,14 +45,9 @@
     }
   },
   "language": {
-    "csharp": {
-       "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-   },
     "nodejs": {
       "devDependencies": {
-        "@types/node": "latest",
+        "@types/node": "ts4.3",
         "ts-node": "latest"
       },
       "extraTypeScriptFiles": [

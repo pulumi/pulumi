@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,80 +15,126 @@
 package rpcutil
 
 import (
-	"context"
-	"strings"
+	"os"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
-// metadataReaderWriter satisfies both the opentracing.TextMapReader and
-// opentracing.TextMapWriter interfaces.
-type metadataReaderWriter struct {
-	metadata.MD
-}
-
-func (w metadataReaderWriter) Set(key, val string) {
-	// The GRPC HPACK implementation rejects any uppercase keys here.
-	//
-	// As such, since the HTTP_HEADERS format is case-insensitive anyway, we
-	// blindly lowercase the key (which is guaranteed to work in the
-	// Inject/Extract sense per the OpenTracing spec).
-	key = strings.ToLower(key)
-	w.MD[key] = append(w.MD[key], val)
-}
-
-func (w metadataReaderWriter) ForeachKey(handler func(key, val string) error) error {
-	for k, vals := range w.MD {
-		for _, v := range vals {
-			if err := handler(k, v); err != nil {
-				return err
-			}
-		}
+// Configures interceptors to propagate OpenTracing metadata through headers. If parentSpan is non-nil, it becomes the
+// default parent for orphan spans.
+func OpenTracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(OpenTracingServerInterceptor(parentSpan, options...)),
+		grpc.ChainStreamInterceptor(OpenTracingStreamServerInterceptor(parentSpan, options...)),
 	}
-
-	return nil
 }
 
-// OpenTracingServerInterceptor provides a default gRPC server interceptor for emitting tracing to the global
-// OpenTracing tracer.
+// OpenTracingServerInterceptor provides a default gRPC server
+// interceptor for emitting tracing to the global OpenTracing tracer.
 func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc.Option) grpc.UnaryServerInterceptor {
-	// Log full payloads along with trace spans
-	options = append(options, otgrpc.LogPayloads())
+	options = append(options, logPayloads()...)
+	tracer := opentracing.GlobalTracer()
 
-	tracingInterceptor := otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer(), options...)
-	if parentSpan == nil {
-		return tracingInterceptor
+	if parentSpan != nil {
+		tracer = &reparentingTracer{parentSpan.Context(), tracer}
 	}
-	spanContext := parentSpan.Context()
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
 
-		md, ok := metadata.FromIncomingContext(ctx)
-		if !ok {
-			md = metadata.New(nil)
-		}
-		carrier := metadataReaderWriter{md}
-		_, err := opentracing.GlobalTracer().Extract(opentracing.HTTPHeaders, carrier)
-		if err == opentracing.ErrSpanContextNotFound {
-			contract.IgnoreError(opentracing.GlobalTracer().Inject(spanContext, opentracing.HTTPHeaders, carrier))
-		}
-		return tracingInterceptor(ctx, req, info, handler)
+	return otgrpc.OpenTracingServerInterceptor(tracer, options...)
+}
+
+// OpenTracingStreamServerInterceptor is OpenTracingServerInterceptor for instrumenting streaming gRPC calls.
+func OpenTracingStreamServerInterceptor(parentSpan opentracing.Span,
+	options ...otgrpc.Option,
+) grpc.StreamServerInterceptor {
+	options = append(options, logPayloads()...)
+	tracer := opentracing.GlobalTracer()
+
+	if parentSpan != nil {
+		tracer = &reparentingTracer{parentSpan.Context(), tracer}
 	}
+
+	return otgrpc.OpenTracingStreamServerInterceptor(tracer, options...)
 }
 
 // OpenTracingClientInterceptor provides a default gRPC client interceptor for emitting tracing to the global
 // OpenTracing tracer.
 func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInterceptor {
-	options = append(options,
-		// Log full payloads along with trace spans
-		otgrpc.LogPayloads(),
+	options = append(append(options,
 		// Do not trace calls to the empty method
 		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
 			return method != ""
-		}))
+		})), logPayloads()...)
 	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
+}
+
+// OpenTracingStreamClientInterceptor is OpenTracingClientInterceptor for streaming gRPC calls.
+func OpenTracingStreamClientInterceptor(options ...otgrpc.Option) grpc.StreamClientInterceptor {
+	options = append(append(options,
+		// Do not trace calls to the empty method
+		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
+			return method != ""
+		})), logPayloads()...)
+	return otgrpc.OpenTracingStreamClientInterceptor(opentracing.GlobalTracer(), options...)
+}
+
+// Configures gRPC clients with OpenTracing interceptors.
+func OpenTracingInterceptorDialOptions(opts ...otgrpc.Option) []grpc.DialOption {
+	return []grpc.DialOption{
+		grpc.WithChainUnaryInterceptor(OpenTracingClientInterceptor(opts...)),
+		grpc.WithChainStreamInterceptor(OpenTracingStreamClientInterceptor(opts...)),
+	}
+}
+
+// Wraps an opentracing.Tracer to reparent orphan traces with a given
+// default parent span.
+type reparentingTracer struct {
+	parentSpanContext opentracing.SpanContext
+	underlying        opentracing.Tracer
+}
+
+func (t *reparentingTracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
+	if !t.hasChildOf(opts...) {
+		opts = append(opts, opentracing.ChildOf(t.parentSpanContext))
+	}
+	return t.underlying.StartSpan(operationName, opts...)
+}
+
+func (t *reparentingTracer) Inject(sm opentracing.SpanContext, format interface{}, carrier interface{}) error {
+	return t.underlying.Inject(sm, format, carrier)
+}
+
+func (t *reparentingTracer) Extract(format interface{}, carrier interface{}) (opentracing.SpanContext, error) {
+	return t.underlying.Extract(format, carrier)
+}
+
+func (t *reparentingTracer) packOptions(opts ...opentracing.StartSpanOption) opentracing.StartSpanOptions {
+	sso := opentracing.StartSpanOptions{}
+	for _, o := range opts {
+		o.Apply(&sso)
+	}
+	return sso
+}
+
+func (t *reparentingTracer) hasChildOf(opts ...opentracing.StartSpanOption) bool {
+	for _, ref := range t.packOptions(opts...).References {
+		if ref.Type == opentracing.ChildOfRef {
+			return true
+		}
+	}
+	return false
+}
+
+var _ opentracing.Tracer = &reparentingTracer{}
+
+// Option to log payloads in trace spans. Default is on. Can be
+// disabled by setting an env var to reduce tracing overhead.
+func logPayloads() []otgrpc.Option {
+	res := []otgrpc.Option{}
+	if !cmdutil.IsTruthy(os.Getenv("PULUMI_TRACING_NO_PAYLOADS")) {
+		res = append(res, otgrpc.LogPayloads())
+	}
+	return res
 }

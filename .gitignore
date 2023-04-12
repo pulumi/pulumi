@@ -12,10 +12,15 @@ coverage.cov
 **/obj/
 coverage/
 venv/
+.envrc
+
+# Ignore user-provided go.work files.
+/go.work
+/go.work.sum
 
 **/.idea/
 *.iml
-
+.yarn
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 
@@ -74,3 +79,8 @@ __pycache__
 
 # File targets for make
 *.phony
+
+# Temporary files
+*.tmp
+test-results/
+yarn-error.log

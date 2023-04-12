@@ -21,10 +21,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -47,11 +49,14 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
+	// When stringifying backend references, we take the current project (if present) into account.
+	currentProject := c.b.currentProject
+
 	// If the project names match, we can elide them.
-	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
+	if currentProject != nil && c.project == string(currentProject.Name) {
 
 		// Elide owner too, if it is the default owner.
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
 		if err == nil && defaultOrg != "" {
 			// The default owner is the org
 			if c.owner == defaultOrg {
@@ -71,6 +76,10 @@ func (c cloudBackendReference) String() string {
 
 func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
+}
+
+func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
+	return tokens.IntoQName(fmt.Sprintf("%v/%v/%v", c.owner, c.project, c.name.String()))
 }
 
 // cloudStack is a cloud stack descriptor.
@@ -112,18 +121,18 @@ func (s *cloudStack) CurrentOperation() *apitype.OperationStatus { return s.curr
 func (s *cloudStack) Tags() map[apitype.StackTagName]string      { return s.tags }
 
 func (s *cloudStack) StackIdentifier() client.StackIdentifier {
-
 	si, err := s.b.getCloudStackIdentifier(s.ref)
-	contract.AssertNoError(err) // the above only fails when ref is of the wrong type.
+	// the above only fails when ref is of the wrong type.
+	contract.AssertNoErrorf(err, "unexpected stack reference type: %T", s.ref)
 	return si
 }
 
-func (s *cloudStack) Snapshot(ctx context.Context) (*deploy.Snapshot, error) {
+func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 	if s.snapshot != nil {
 		return *s.snapshot, nil
 	}
 
-	snap, err := s.b.getSnapshot(ctx, s.ref)
+	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref)
 	if err != nil {
 		return nil, err
 	}
@@ -142,25 +151,32 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 
 func (s *cloudStack) Preview(
 	ctx context.Context,
-	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 
-func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *cloudStack) Update(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result,
+) {
 	return backend.UpdateStack(ctx, s, op)
 }
 
 func (s *cloudStack) Import(ctx context.Context, op backend.UpdateOperation,
-	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	return backend.ImportStack(ctx, s, op, imports)
 }
 
-func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *cloudStack) Refresh(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result,
+) {
 	return backend.RefreshStack(ctx, s, op)
 }
 
-func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *cloudStack) Destroy(ctx context.Context, op backend.UpdateOperation) (sdkDisplay.ResourceChanges,
+	result.Result,
+) {
 	return backend.DestroyStack(ctx, s, op)
 }
 
@@ -168,9 +184,10 @@ func (s *cloudStack) Watch(ctx context.Context, op backend.UpdateOperation, path
 	return backend.WatchStack(ctx, s, op, paths)
 }
 
-func (s *cloudStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return backend.GetStackLogs(ctx, s, cfg, query)
+func (s *cloudStack) GetLogs(ctx context.Context, secretsProvider secrets.Provider, cfg backend.StackConfiguration,
+	query operations.LogQuery,
+) ([]operations.LogEntry, error) {
+	return backend.GetStackLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 func (s *cloudStack) ExportDeployment(ctx context.Context) (*apitype.UntypedDeployment, error) {
@@ -181,6 +198,10 @@ func (s *cloudStack) ImportDeployment(ctx context.Context, deployment *apitype.U
 	return backend.ImportStackDeployment(ctx, s, deployment)
 }
 
+func (s *cloudStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets.Manager, error) {
+	return service.NewServiceSecretsManager(s.b.Client(), s.StackIdentifier(), info)
+}
+
 // cloudStackSummary implements the backend.StackSummary interface, by wrapping
 // an apitype.StackSummary struct.
 type cloudStackSummary struct {
@@ -189,7 +210,7 @@ type cloudStackSummary struct {
 }
 
 func (css cloudStackSummary) Name() backend.StackReference {
-	contract.Assert(css.summary.ProjectName != "")
+	contract.Assertf(css.summary.ProjectName != "", "project name must not be empty")
 
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,

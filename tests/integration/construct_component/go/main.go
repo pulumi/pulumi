@@ -1,4 +1,6 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -29,8 +31,8 @@ type Component struct {
 }
 
 func NewComponent(
-	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
-
+	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("testcomponent:index:Component", name, args, &resource, opts...)
 	if err != nil {

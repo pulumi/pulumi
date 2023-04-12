@@ -34,8 +34,8 @@ func newLogoutCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout <url>",
-		Short: "Log out of the Pulumi service",
-		Long: "Log out of the Pulumi service.\n" +
+		Short: "Log out of the Pulumi Cloud",
+		Long: "Log out of the Pulumi Cloud.\n" +
 			"\n" +
 			"This command deletes stored credentials on the local machine for a single login.\n" +
 			"\n" +
@@ -64,8 +64,13 @@ func newLogoutCmd() *cobra.Command {
 			}
 
 			if cloudURL == "" {
-				var err error
-				cloudURL, err = workspace.GetCurrentCloudURL()
+				// Try to read the current project
+				project, _, err := readProject()
+				if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+					return err
+				}
+
+				cloudURL, err = workspace.GetCurrentCloudURL(project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -78,7 +83,7 @@ func newLogoutCmd() *cobra.Command {
 				return workspace.DeleteAccount(cloudURL)
 			}
 
-			be, err = httpstate.New(cmdutil.Diag(), cloudURL)
+			be, err = httpstate.New(cmdutil.Diag(), cloudURL, nil, workspace.GetCloudInsecure(cloudURL))
 			if err != nil {
 				return err
 			}

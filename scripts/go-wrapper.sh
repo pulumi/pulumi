@@ -16,14 +16,16 @@ PKG=github.com/pulumi/pulumi/pkg/v3/...
 SDK=github.com/pulumi/pulumi/sdk/v3/...
 COVERPKG="$PKG,$SDK"
 
-case $(go env GOOS) in
-    darwin)
-        export CGO_ENABLED=1
-        ;;
-    *)
-        export CGO_ENABLED=0
-        ;;
-esac
+# If it's a production or local build - building for macOS on macOS - use CGO for DNS resolver functionality.
+#
+# See: https://github.com/golang/go/issues/12524
+if [ "$(go env GOOS)" = "darwin" ] && [ "$(uname)" = "Darwin" ]; then
+    # `go env GOOS` returns "darwin" when cross-compiling to macOS
+    # `uname` returns "Darwin" on macOS
+    export CGO_ENABLED=1
+else
+    export CGO_ENABLED=0
+fi
 
 case "$1" in
     build)

@@ -18,7 +18,6 @@ import * as assert from "assert";
 import { runtime } from "../../index";
 import * as pulumi from "../../index";
 import { output } from "../../output";
-import { assertAsyncThrows, asyncTest } from "../util";
 import { platformIndependentEOL } from "../constants";
 import * as typescript from "typescript";
 import * as semver from "semver";
@@ -860,10 +859,11 @@ return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); r
             title: "Capture built in module by ref",
             func: () => os,
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f0() {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return () => os;
 
@@ -887,10 +887,11 @@ return () => os;
                        return { v };
                    },
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f0(__0, __1, __2) {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return (a, b, c) => {
                 const v = os;
@@ -916,10 +917,11 @@ return (a, b, c) => {
             title: "Capture module through indirect function references",
             func: func,
             expectText: `exports.handler = __f0;
+const os = require("os");
 
 function __f1() {
   return (function() {
-    with({ os: require("os") }) {
+    with({  }) {
 
 return () => os;
 
@@ -950,6 +952,7 @@ return () => handler;
 var __util = {};
 Object.defineProperty(__util, "__esModule", { value: true });
 __util.asyncTest = __asyncTest;
+var __assert_1 = {default: require("assert")};
 __util.assertAsyncThrows = __assertAsyncThrows;
 
 function __f1(__0, __1, __2, __3) {
@@ -998,7 +1001,7 @@ return function /*asyncTest*/(test) {
 
 function __assertAsyncThrows(__0) {
   return (function() {
-    with({ __awaiter: __f1, assert: require("assert"), assertAsyncThrows: __assertAsyncThrows }) {
+    with({ __awaiter: __f1, assert_1: __assert_1, assertAsyncThrows: __assertAsyncThrows }) {
 
 return function /*assertAsyncThrows*/(test) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1008,7 +1011,7 @@ return function /*assertAsyncThrows*/(test) {
         catch (err) {
             return err.message;
         }
-        assert(false, "Function was expected to throw, but didn't");
+        assert_1.default(false, "Function was expected to throw, but didn't");
         return "";
     });
 };
@@ -6060,26 +6063,7 @@ return function () { console.log(getAll()); };
 `,
         });
     }
-
-    {
-        cases.push({
-            title: "Capture non-built-in module",
-            func: function () { typescript.parseCommandLine([""]); },
-            expectText: `exports.handler = __f0;
-
-function __f0() {
-  return (function() {
-    with({ typescript: require("typescript/lib/typescript.js") }) {
-
-return function () { typescript.parseCommandLine([""]); };
-
-    }
-  }).apply(undefined, undefined).apply(this, arguments);
-}
-`,
-        });
-    }
-
+ 
 //     {
 //         cases.push({
 //             title: "Fail to capture non-deployment module due to native code",
@@ -6664,10 +6648,11 @@ return function (thisArg, _arguments, P, generator) {
     }
   }).apply(undefined, undefined).apply(this, arguments);
 }
+const mockpackage_1 = require("mockpackage");
 
 function __f1() {
   return (function() {
-    with({ mockpackage_1: require("mockpackage") }) {
+    with({  }) {
 
 return () => mockpackage_1.z.object({
             message: mockpackage_1.z.string(),
@@ -6723,7 +6708,7 @@ return function /*reproHandler*/(input) {
         //     continue;
         // }
 
-        it(test.title, asyncTest(async () => {
+        it(test.title, async () => {
             // Run pre-actions.
             if (test.pre) {
                 test.pre();
@@ -6735,19 +6720,20 @@ return function /*reproHandler*/(input) {
                 compareTextWithWildcards(test.expectText, sf.text);
             }
             else {
-                const message = await assertAsyncThrows(async () => {
+                await assert.rejects(async () => {
                     await serializeFunction(test);
+                }, err => {
+                    if (test.error) {
+                        // replace real locations with (0,0) so that our test baselines do not need to
+                        // updated any time this file changes.
+                        const regex = /\([0-9]+,[0-9]+\)/g;
+                        const withoutLocations = err.message.replace(regex, "(0,0)");
+                        compareTextWithWildcards(test.error, withoutLocations);
+                    }
+                    return true;
                 });
-
-                // replace real locations with (0,0) so that our test baselines do not need to
-                // updated any time this file changes.
-                const regex = /\([0-9]+,[0-9]+\)/g;
-                const withoutLocations = message.replace(regex, "(0,0)");
-                if (test.error) {
-                    compareTextWithWildcards(test.error, withoutLocations);
-                }
             }
-        }));
+        });
 
         // Schedule any additional tests.
         if (test.afters) {

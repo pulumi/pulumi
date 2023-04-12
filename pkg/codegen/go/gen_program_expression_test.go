@@ -128,7 +128,7 @@ func TestUnaryOpExrepssion(t *testing.T) {
 	}
 }
 
-// nolint: lll
+//nolint:lll
 func TestConditionalExpression(t *testing.T) {
 	t.Parallel()
 

@@ -216,11 +216,6 @@
   },
 
   "language": {
-    "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-    },
     "go": {
       "importBasePath": "plain-object-defaults/example",
       "generateExtraInputTypes": true

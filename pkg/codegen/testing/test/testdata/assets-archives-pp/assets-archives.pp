@@ -15,19 +15,19 @@ resource testRemoteAsset "aws:s3:BucketObject" {
 	source = remoteAsset("https://pulumi.test")
 }
 
-resource testFileArchive "aws:s3:BucketObject" {
-	bucket = siteBucket.id // Reference the s3.Bucket object
-	source = fileArchive("file.tar.gz")
+resource testFileArchive "aws:lambda:Function" {
+	role = siteBucket.arn // Reference the s3.Bucket object
+	code = fileArchive("file.tar.gz")
 }
 
-resource testRemoteArchive "aws:s3:BucketObject" {
-	bucket = siteBucket.id // Reference the s3.Bucket object
-	source = remoteArchive("https://pulumi.test/foo.tar.gz")
+resource testRemoteArchive "aws:lambda:Function" {
+	role = siteBucket.arn // Reference the s3.Bucket object
+	code = remoteArchive("https://pulumi.test/foo.tar.gz")
 }
 
-resource testAssetArchive "aws:s3:BucketObject" {
-	bucket = siteBucket.id // Reference the s3.Bucket object
-	source = assetArchive({
+resource testAssetArchive "aws:lambda:Function" {
+	role = siteBucket.arn // Reference the s3.Bucket object
+	code = assetArchive({
 		"file.txt": fileAsset("file.txt")
 		"string.txt": stringAsset("<h1>File contents</h1>")
 		"remote.txt": remoteAsset("https://pulumi.test")

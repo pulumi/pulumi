@@ -17,9 +17,9 @@
 // every versioned API that needs to be migrated between versions. Today, there
 // are three versionable entities that can be migrated
 // with this package:
-//   * Checkpoint, the on-disk format for Fire-and-Forget stack state,
-//   * Deployment, the wire format for service-managed stacks,
-//   * Resource, the wire format for resources saved in deployments,
+//   - Checkpoint, the on-disk format for Fire-and-Forget stack state,
+//   - Deployment, the wire format for service-managed stacks,
+//   - Resource, the wire format for resources saved in deployments,
 //
 // The migrations in this package are designed to preserve semantics between
 // versions. It is always safe to migrate an entity up from one version to another.

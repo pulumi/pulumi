@@ -1,6 +1,10 @@
 {
   "emittedFiles": [
     "Enums.cs",
+    "MainComponent.cs",
+    "Mod/Component.cs",
+    "Mod/Component2.cs",
+    "Mod/README.md",
     "Provider.cs",
     "Pulumi.Example.csproj",
     "README.md",

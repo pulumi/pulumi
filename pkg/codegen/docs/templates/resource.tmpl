@@ -13,7 +13,7 @@
 {{- end }}
 
 <!-- Create resource -->
-## Create a {{ .Header.Title }} Resource {#create}
+## Create {{ .Header.Title }} Resource {#create}
 
 {{- if eq .LangChooserLanguages "" }}
 <div>
@@ -187,7 +187,7 @@ The following arguments are supported:
 
 <!-- Read resource -->
 {{ if ne (len .StateInputs) 0 }}
-## Look up an Existing {{.Header.Title}} Resource {#look-up}
+## Look up Existing {{.Header.Title}} Resource {#look-up}
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
@@ -296,14 +296,19 @@ The following state arguments are supported:
 
 ## Supporting Types
 
-{{ range .NestedTypes }}
+{{- if ge (len .NestedTypes) 200 }}
+> **Note:** There are over 200 nested types for this resource.
+Only the first 200 types are included in this documentation.
+{{ end }}
 
-<h4 id="{{ .AnchorID }}">{{ htmlSafe .Name }}</h4>
+{{ range $index, $elem := .NestedTypes }}
+{{ if lt $index 200 }}
+<h4 id="{{ $elem.AnchorID }}">{{ htmlSafe $elem.Name }}</h4>
 
-{{- if .Properties }}{{template "properties" .Properties -}}{{ end -}}
-{{- if .EnumValues }}{{- template "enums" .EnumValues -}}{{ end -}}
+{{- if $elem.Properties }}{{template "properties" $elem.Properties -}}{{ end -}}
+{{- if $elem.EnumValues }}{{- template "enums" $elem.EnumValues -}}{{ end -}}
 {{- end -}}
-
+{{- end -}}
 {{- end -}}
 
 {{ if .ImportDocs  }}

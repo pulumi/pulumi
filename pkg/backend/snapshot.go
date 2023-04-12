@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -126,7 +127,7 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 // by performing the given Step. This function gives the SnapshotManager a chance to record the
 // intent to mutate before the mutation occurs.
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
-	contract.Require(step != nil, "step != nil")
+	contract.Requiref(step != nil, "step", "cannot be nil")
 	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
 
 	switch step.Op() {
@@ -174,9 +175,13 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	old := step.Old()
 	new := step.New()
 
-	contract.Assert(old.Delete == new.Delete)
-	contract.Assert(old.External == new.External)
-	contract.Assert(!step.IsSkippedCreate())
+	contract.Assertf(old.Delete == new.Delete,
+		"either both or neither resource must be pending deletion, got %v (old) != %v (new)",
+		old.Delete, new.Delete)
+	contract.Assertf(old.External == new.External,
+		"either both or neither resource must be external, got %v (old) != %v (new)",
+		old.External, new.External)
+	contract.Assertf(!step.IsSkippedCreate(), "create cannot be skipped for step")
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
@@ -210,7 +215,8 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
-	contract.Assert(old.ID == new.ID)
+	contract.Assertf(old.ID == new.ID,
+		"old and new resource IDs must be equal, got %v (old) != %v (new)", old.ID, new.ID)
 
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
 	// aliased providers or upgrades to default providers.
@@ -222,6 +228,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Parent")
+		return true
+	}
+
+	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
+	if old.DeletedWith != new.DeletedWith {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
 		return true
 	}
 
@@ -266,9 +278,9 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpSame, "step.Op() == deploy.OpSame")
-	contract.Assert(successful)
+	contract.Requiref(step != nil, "step", "must not be nil")
+	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
+	contract.Assertf(successful, "expected mutation to be successful")
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
 		sameStep := step.(*deploy.SameStep)
@@ -318,7 +330,7 @@ type createSnapshotMutation struct {
 }
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
+	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
 	return csm.manager.mutate(func() bool {
 		csm.manager.markOperationComplete(step.New())
@@ -362,7 +374,7 @@ type updateSnapshotMutation struct {
 }
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
+	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
 	return usm.manager.mutate(func() bool {
 		usm.manager.markOperationComplete(step.New())
@@ -392,16 +404,17 @@ type deleteSnapshotMutation struct {
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
+	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
 	return dsm.manager.mutate(func() bool {
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
-			// Either old should not be protected or this is a replace
-			contract.Assert(
+			contract.Assertf(
 				!step.Old().Protect ||
 					step.Op() == deploy.OpDiscardReplaced ||
-					step.Op() == deploy.OpDeleteReplaced)
+					step.Op() == deploy.OpDeleteReplaced,
+				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
+				step.Old().Protect, step.Op())
 
 			if !step.Old().PendingReplacement {
 				dsm.manager.markDone(step.Old())
@@ -438,7 +451,7 @@ type readSnapshotMutation struct {
 }
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
+	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
 	return rsm.manager.mutate(func() bool {
 		rsm.manager.markOperationComplete(step.New())
@@ -458,8 +471,8 @@ type refreshSnapshotMutation struct {
 }
 
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpRefresh, "step.Op() == deploy.OpRefresh")
+	contract.Requiref(step != nil, "step", "must not be nil")
+	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
 	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
 	return rsm.manager.mutate(func() bool {
 		// We always elide refreshes. The expectation is that all of these run before any actual mutations and that
@@ -475,11 +488,12 @@ type removePendingReplaceSnapshotMutation struct {
 }
 
 func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpRemovePendingReplace, "step.Op() == deploy.OpRemovePendingReplace")
+	contract.Requiref(step != nil, "step", "must not be nil")
+	contract.Requiref(step.Op() == deploy.OpRemovePendingReplace, "step.Op",
+		"must be %q, got %q", deploy.OpRemovePendingReplace, step.Op())
 	return rsm.manager.mutate(func() bool {
 		res := step.Old()
-		contract.Assert(res.PendingReplacement)
+		contract.Assertf(res.PendingReplacement, "resource %q must be pending replacement", res.URN)
 		rsm.manager.markDone(res)
 		return true
 	})
@@ -503,9 +517,9 @@ type importSnapshotMutation struct {
 }
 
 func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error {
-	contract.Require(step != nil, "step != nil")
-	contract.Require(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement,
-		"step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement")
+	contract.Requiref(step != nil, "step", "must not be nil")
+	contract.Requiref(step.Op() == deploy.OpImport || step.Op() == deploy.OpImportReplacement, "step.Op",
+		"must be %q or %q, got %q", deploy.OpImport, deploy.OpImportReplacement, step.Op())
 
 	return ism.manager.mutate(func() bool {
 		ism.manager.markOperationComplete(step.New())
@@ -519,7 +533,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 // markDone marks a resource as having been processed. Resources that have been marked
 // in this manner won't be persisted in the snapshot.
 func (sm *SnapshotManager) markDone(state *resource.State) {
-	contract.Assert(state != nil)
+	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.dones[state] = true
 	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
 }
@@ -528,21 +542,21 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 // successful non-deletion operations where the given state is the new state
 // of a resource that will be persisted to the snapshot.
 func (sm *SnapshotManager) markNew(state *resource.State) {
-	contract.Assert(state != nil)
+	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.resources = append(sm.resources, state)
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
 func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
-	contract.Assert(state != nil)
+	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.operations = append(sm.operations, resource.NewOperation(state, op))
 	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
 }
 
 // markOperationComplete marks a resource as having completed the operation that it previously was performing.
 func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
-	contract.Assert(state != nil)
+	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.completeOps[state] = true
 	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
 }
@@ -623,8 +637,8 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 
 // saveSnapshot persists the current snapshot and optionally verifies it afterwards.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap := sm.snap()
-	if err := snap.NormalizeURNReferences(); err != nil {
+	snap, err := sm.snap().NormalizeURNReferences()
+	if err != nil {
 		return fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 	if err := sm.persister.Save(snap); err != nil {
@@ -636,6 +650,54 @@ func (sm *SnapshotManager) saveSnapshot() error {
 		}
 	}
 	return nil
+}
+
+// defaultServiceLoop saves a Snapshot whenever a mutation occurs
+func (sm *SnapshotManager) defaultServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	// True if we have elided writes since the last actual write.
+	hasElidedWrites := false
+
+	// Service each mutation request in turn.
+serviceLoop:
+	for {
+		select {
+		case request := <-mutationRequests:
+			var err error
+			if request.mutator() {
+				err = sm.saveSnapshot()
+				hasElidedWrites = false
+			} else {
+				hasElidedWrites = true
+			}
+			request.result <- err
+		case <-sm.cancel:
+			break serviceLoop
+		}
+	}
+
+	// If we still have elided writes once the channel has closed, flush the snapshot.
+	var err error
+	if hasElidedWrites {
+		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+		err = sm.saveSnapshot()
+	}
+	done <- err
+}
+
+// unsafeServiceLoop doesn't save Snapshots when mutations occur and instead saves Snapshots when
+// SnapshotManager.Close() is invoked. It trades reliability for speed as every mutation does not
+// cause a Snapshot to be serialized to the user's state backend.
+func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationRequest, done chan error) {
+	for {
+		select {
+		case request := <-mutationRequests:
+			request.mutator()
+			request.result <- nil
+		case <-sm.cancel:
+			done <- sm.saveSnapshot()
+			return
+		}
+	}
 }
 
 // NewSnapshotManager creates a new SnapshotManager for the given stack name, using the given persister
@@ -658,36 +720,13 @@ func NewSnapshotManager(persister SnapshotPersister, baseSnap *deploy.Snapshot) 
 		done:             done,
 	}
 
-	go func() {
-		// True if we have elided writes since the last actual write.
-		hasElidedWrites := false
+	serviceLoop := manager.defaultServiceLoop
 
-		// Service each mutation request in turn.
-	serviceLoop:
-		for {
-			select {
-			case request := <-mutationRequests:
-				var err error
-				if request.mutator() {
-					err = manager.saveSnapshot()
-					hasElidedWrites = false
-				} else {
-					hasElidedWrites = true
-				}
-				request.result <- err
-			case <-cancel:
-				break serviceLoop
-			}
-		}
+	if env.SkipCheckpoints.Value() {
+		serviceLoop = manager.unsafeServiceLoop
+	}
 
-		// If we still have elided writes once the channel has closed, flush the snapshot.
-		var err error
-		if hasElidedWrites {
-			logging.V(9).Infof("SnapshotManager: flushing elided writes...")
-			err = manager.saveSnapshot()
-		}
-		done <- err
-	}()
+	go serviceLoop(mutationRequests, done)
 
 	return manager
 }

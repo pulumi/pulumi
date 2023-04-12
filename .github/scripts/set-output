@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Sets an output value in GitHub Actions, escaping quotes, newlines, and special characters by JSON
+# stringifying it.
+#
+# To use this, invoke the script with an output variable name and quoted value, and then declare the
+# output like so:
+#
+# ```github-action.yaml
+#  job:
+#    steps:
+#    - run: |
+#        .github/scripts/set-output my-output "$(some-shell-command ...)"
+#    outputs:
+#       my-output: "${{ fromJSON(steps.job.outputs.my-output) }}"
+# ```
+
+
+set -euo pipefail
+
+OUTPUT_NAME="$1"
+VALUE="$2"
+
+ESCAPED="$(echo -n "${VALUE}" | jq -Rsc ".")" # JSON encode
+echo "${OUTPUT_NAME}=${ESCAPED}" >> "${GITHUB_OUTPUT}"

@@ -519,8 +519,8 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	})
 
 	typeList, diags, err := p.types.finishTypes(nil)
-	contract.Assert(err == nil)
-	contract.Assert(len(diags) == 0)
+	contract.AssertNoErrorf(err, "error snapshotting types")
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
 	typeDefs := make(map[string]Type, len(p.types.typeDefs))
 	for token, typ := range p.types.typeDefs {

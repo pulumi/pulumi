@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package gen
 
 import (
@@ -26,6 +26,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const pulumiSDKVersion = "v3"
@@ -98,7 +99,9 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
 func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
-	d.packages = generatePackageContextMap(tool, pkg, goInfo)
+	var err error
+	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
+	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name)
 }
 
 // GetPropertyName returns the property name specific to Go.
@@ -140,11 +143,18 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 }
 
 func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
-	m *schema.Method) string {
-
+	m *schema.Method,
+) string {
 	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-		if info.LiftSingleValueMethodReturns && m.Function.Outputs != nil && len(m.Function.Outputs.Properties) == 1 {
-			t := m.Function.Outputs.Properties[0].Type
+		var objectReturnType *schema.ObjectType
+		if m.Function.ReturnType != nil {
+			if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				objectReturnType = objectType
+			}
+		}
+
+		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+			t := objectReturnType.Properties[0].Type
 			modPkg, ok := d.packages[modName]
 			if !ok {
 				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",

@@ -16,9 +16,8 @@
 package tokens
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -31,15 +30,15 @@ import (
 //
 // Token's grammar is as follows:
 //
-//		Token				= <Identifier> |
-//							  <QualifiedToken> |
-//							  <DecoratedType>
-//		Identifier			= <Name>
-//		QualifiedToken		= <PackageName> [ ":" <ModuleName> [ ":" <ModuleMemberName> [ ":" <ClassMemberName> ] ] ]
-//		PackageName			= ... similar to <QName>, except dashes permitted ...
-//		ModuleName			= <QName>
-//		ModuleMemberName	= <Name>
-//		ClassMemberName		= <Name>
+//	Token				= <Identifier> |
+//						  <QualifiedToken> |
+//						  <DecoratedType>
+//	Identifier			= <Name>
+//	QualifiedToken		= <PackageName> [ ":" <ModuleName> [ ":" <ModuleMemberName> [ ":" <ClassMemberName> ] ] ]
+//	PackageName			= ... similar to <QName>, except dashes permitted ...
+//	ModuleName			= <QName>
+//	ModuleMemberName	= <Name>
+//	ClassMemberName		= <Name>
 //
 // A token may be a simple identifier in the case that it refers to a built-in symbol, like a primitive type, or a
 // variable in scope, rather than a qualified token that is to be bound to a symbol through package/module resolution.
@@ -50,10 +49,10 @@ import (
 //
 // Finally, a token may also be a decorated type.  This is for built-in array, map, pointer, and function types:
 //
-//		DecoratedType		= "*" <Token> |
-//							  "[]" <Token> |
-//							  "map[" <Token> "]" <Token> |
-//							  "(" [ <Token> [ "," <Token> ]* ] ")" <Token>?
+//	DecoratedType		= "*" <Token> |
+//						  "[]" <Token> |
+//						  "map[" <Token> "]" <Token> |
+//						  "(" [ <Token> [ "," <Token> ]* ] ")" <Token>?
 //
 // Notice that a recursive parsing process is required to extract elements from a <DecoratedType> token.
 type Token string
@@ -126,7 +125,9 @@ func (tok Token) ModuleMember() ModuleMember {
 }
 
 // Package is a token representing just a package.  It uses a much simpler grammar:
-//		Package = <PackageName>
+//
+//	Package = <PackageName>
+//
 // Note that a package name of "." means "current package", to simplify emission and lookups.
 type Package Token
 
@@ -142,7 +143,9 @@ func (tok Package) Name() PackageName {
 func (tok Package) String() string { return string(tok) }
 
 // Module is a token representing a module.  It uses the following subset of the token grammar:
-//		Module = <Package> ":" <ModuleName>
+//
+//	Module = <Package> ":" <ModuleName>
+//
 // Note that a module name of "." means "current module", to simplify emission and lookups.
 type Module Token
 
@@ -167,7 +170,8 @@ func (tok Module) String() string { return string(tok) }
 
 // ModuleMember is a token representing a module's member.  It uses the following grammar.  Note that this is not
 // ambiguous because member names cannot contain slashes, and so the "last" slash in a name delimits the member:
-//		ModuleMember = <Module> "/" <ModuleMemberName>
+//
+//	ModuleMember = <Module> "/" <ModuleMemberName>
 type ModuleMember Token
 
 func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
@@ -178,7 +182,7 @@ func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 // ParseModuleMember attempts to turn the string s into a module member, returning an error if it isn't a valid one.
 func ParseModuleMember(s string) (ModuleMember, error) {
 	if !Token(s).HasModuleMember() {
-		return "", errors.Errorf("String '%v' is not a valid module member", s)
+		return "", fmt.Errorf("String '%v' is not a valid module member", s)
 	}
 	return ModuleMember(s), nil
 }
@@ -202,7 +206,8 @@ func (tok ModuleMember) Name() ModuleMemberName {
 func (tok ModuleMember) String() string { return string(tok) }
 
 // Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:
-//		Type = <Name> | <ModuleMember> | <DecoratedType>
+//
+//	Type = <Name> | <ModuleMember> | <DecoratedType>
 type Type Token
 
 func NewTypeToken(mod Module, nm TypeName) Type {
@@ -214,7 +219,7 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 func ParseTypeToken(s string) (Type, error) {
 	tok := Token(s)
 	if !tok.HasModuleMember() {
-		return "", errors.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
+		return "", fmt.Errorf("Type '%s' is not a valid type token (must have format '*:*:*')", tok)
 	}
 
 	return Type(tok), nil

@@ -129,7 +129,7 @@ func Wrap(code codes.Code, err error, message string) error {
 	status := status.New(code, message)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)
-	contract.AssertNoError(newErr)
+	contract.AssertNoErrorf(newErr, "error adding details to status")
 	return status.Err()
 }
 
@@ -142,7 +142,7 @@ func Wrapf(code codes.Code, err error, messageFormat string, args ...interface{}
 	status := status.Newf(code, messageFormat, args...)
 	cause := serializeErrorCause(err)
 	status, newErr := status.WithDetails(cause)
-	contract.AssertNoError(newErr)
+	contract.AssertNoErrorf(newErr, "error adding details to status")
 	return status.Err()
 }
 
@@ -153,7 +153,7 @@ func WithDetails(err error, details ...proto.Message) error {
 	status, ok := status.FromError(err)
 	contract.Assertf(ok, "WithDetails called on error not created by rpcerror")
 	status, conversionError := status.WithDetails(details...)
-	contract.AssertNoError(conversionError)
+	contract.AssertNoErrorf(conversionError, "error adding details to status")
 	return status.Err()
 }
 

@@ -17,7 +17,6 @@ package integration
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -56,12 +55,12 @@ func DecodeMapString(val string) (map[string]string, error) {
 
 // ReplaceInFile does a find and replace for a given string within a file.
 func ReplaceInFile(old, new, path string) error {
-	rawContents, err := ioutil.ReadFile(path)
+	rawContents, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	newContents := strings.Replace(string(rawContents), old, new, -1)
-	return ioutil.WriteFile(path, []byte(newContents), os.ModePerm)
+	newContents := strings.ReplaceAll(string(rawContents), old, new)
+	return os.WriteFile(path, []byte(newContents), os.ModePerm)
 }
 
 // getCmdBin returns the binary named bin in location loc or, if it hasn't yet been initialized, will lazily
@@ -84,7 +83,7 @@ func uniqueSuffix() string {
 	// .<timestamp>.<five random hex characters>
 	timestamp := time.Now().Format("20060102-150405")
 	suffix, err := resource.NewUniqueHex("."+timestamp+".", 5, -1)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "could not generate random suffix")
 	return suffix
 }
 
@@ -94,13 +93,13 @@ const (
 
 func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
 	logFileDir := filepath.Join(runDir, commandOutputFolderName)
-	if err := os.MkdirAll(logFileDir, 0700); err != nil {
+	if err := os.MkdirAll(logFileDir, 0o700); err != nil {
 		return "", fmt.Errorf("Failed to create '%s': %w", logFileDir, err)
 	}
 
 	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
 
-	if err := ioutil.WriteFile(logFile, output, 0600); err != nil {
+	if err := os.WriteFile(logFile, output, 0o600); err != nil {
 		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
 	}
 
@@ -142,7 +141,7 @@ func CopyFile(src, dst string) error {
 // From https://blog.depado.eu/post/copy-files-and-directories-in-go
 func CopyDir(src, dst string) error {
 	var err error
-	var fds []os.FileInfo
+	var fds []os.DirEntry
 	var srcinfo os.FileInfo
 
 	if srcinfo, err = os.Stat(src); err != nil {
@@ -153,7 +152,7 @@ func CopyDir(src, dst string) error {
 		return err
 	}
 
-	if fds, err = ioutil.ReadDir(src); err != nil {
+	if fds, err = os.ReadDir(src); err != nil {
 		return err
 	}
 	for _, fd := range fds {
@@ -193,7 +192,7 @@ func AssertHTTPResultWithRetry(
 	var resp *http.Response
 	startTime := time.Now()
 	count, sleep := 0, 0
-	for true {
+	for {
 		now := time.Now()
 		req, err := http.NewRequest("GET", hostname, nil)
 		if !assert.NoError(t, err, "error reading request: %v", err) {
@@ -236,7 +235,7 @@ func AssertHTTPResultWithRetry(
 	}
 	// Read the body
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if !assert.NoError(t, err) {
 		return false
 	}

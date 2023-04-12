@@ -1,0 +1,12 @@
+{
+  "emittedFiles": [
+    "Provider.cs",
+    "Pulumi.ProviderType.csproj",
+    "README.md",
+    "Submod/Provider.cs",
+    "Submod/README.md",
+    "Utilities.cs",
+    "logo.png",
+    "pulumi-plugin.json"
+  ]
+}

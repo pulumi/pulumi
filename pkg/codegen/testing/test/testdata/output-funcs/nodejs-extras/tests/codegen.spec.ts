@@ -14,15 +14,8 @@
 
 import "mocha";
 import * as assert from "assert";
-
 import * as pulumi from "@pulumi/pulumi";
-
-import { listStorageAccountKeysOutput, ListStorageAccountKeysResult } from "../listStorageAccountKeys";
-import { funcWithAllOptionalInputsOutput } from "../funcWithAllOptionalInputs";
-import { funcWithDefaultValueOutput } from "../funcWithDefaultValue";
-import { funcWithListParamOutput } from "../funcWithListParam";
-import { funcWithDictParamOutput } from "../funcWithDictParam";
-import * as giro from "../getIntegrationRuntimeObjectMetadatum";
+import * as sut from "..";
 
 pulumi.runtime.setMocks({
     newResource: function(_: pulumi.runtime.MockResourceArgs): {id: string, state: any} {
@@ -64,12 +57,12 @@ function checkTable(done: any, transform: (res: any) => any, table: {given: pulu
 describe("output-funcs", () => {
     it("funcWithAllOptionalInputsOutput", (done) => {
         checkTable(done, res => JSON.parse(res.r), [
-            {given: funcWithAllOptionalInputsOutput({}),
+            {given: sut.funcWithAllOptionalInputsOutput({}),
              expect: {}},
-            {given: funcWithAllOptionalInputsOutput({a: pulumi.output("my-a")}),
+            {given: sut.funcWithAllOptionalInputsOutput({a: pulumi.output("my-a")}),
              expect: {"a": "my-a"}},
-            {given: funcWithAllOptionalInputsOutput({a: pulumi.output("my-a"),
-                                                     b: pulumi.output("my-b")}),
+            {given: sut.funcWithAllOptionalInputsOutput({a: pulumi.output("my-a"),
+                                                         b: pulumi.output("my-b")}),
              expect: {"a": "my-a", "b": "my-b"}}
         ]);
     });
@@ -79,10 +72,10 @@ describe("output-funcs", () => {
     // default value from the schema.
     it("funcWithDefaultValueOutput", (done) => {
         checkTable(done, res => JSON.parse(res.r), [
-            {given: funcWithDefaultValueOutput({"a": pulumi.output("my-a")}),
+            {given: sut.funcWithDefaultValueOutput({"a": pulumi.output("my-a")}),
              expect: {"a": "my-a"}},
-            {given: funcWithDefaultValueOutput({"a": pulumi.output("my-a"),
-                                                "b": pulumi.output("my-b")}),
+            {given: sut.funcWithDefaultValueOutput({"a": pulumi.output("my-a"),
+                                                    "b": pulumi.output("my-b")}),
              expect: {"a": "my-a", "b": "my-b"}}
         ]);
     });
@@ -90,12 +83,12 @@ describe("output-funcs", () => {
     it("funcWithListParamOutput", (done) => {
         const l = ["a", "b", "c"];
         checkTable(done, res => JSON.parse(res.r), [
-            {given: funcWithListParamOutput({}),
+            {given: sut.funcWithListParamOutput({}),
              expect: {}},
-            {given: funcWithListParamOutput({"a": pulumi.output(l)}),
+            {given: sut.funcWithListParamOutput({"a": pulumi.output(l)}),
              expect: {"a": l}},
-            {given: funcWithListParamOutput({"a": pulumi.output(l),
-                                             "b": pulumi.output("my-b")}),
+            {given: sut.funcWithListParamOutput({"a": pulumi.output(l),
+                                                 "b": pulumi.output("my-b")}),
              expect: {"a": l, "b": "my-b"}},
         ]);
     });
@@ -103,22 +96,22 @@ describe("output-funcs", () => {
     it("funcWithDictParamOutput", (done) => {
         const d = {"key-a": "value-a", "key-b": "value-b"};
         checkTable(done, res => JSON.parse(res.r), [
-            {given: funcWithDictParamOutput({}),
+            {given: sut.funcWithDictParamOutput({}),
              expect: {}},
-            {given: funcWithDictParamOutput({"a": pulumi.output(d)}),
+            {given: sut.funcWithDictParamOutput({"a": pulumi.output(d)}),
              expect: {"a": d}},
-            {given: funcWithDictParamOutput({"a": pulumi.output(d),
-                                             "b": pulumi.output("my-b")}),
+            {given: sut.funcWithDictParamOutput({"a": pulumi.output(d),
+                                                 "b": pulumi.output("my-b")}),
              expect: {"a": d, "b": "my-b"}},
         ]);
     });
 
     it("listStorageAccountKeysOutput", (done) => {
-        const output = listStorageAccountKeysOutput({
+        const output = sut.listStorageAccountKeysOutput({
             accountName: pulumi.output("my-account-name"),
             resourceGroupName: pulumi.output("my-resource-group-name"),
         });
-        checkOutput(done, output, (res: ListStorageAccountKeysResult) => {
+        checkOutput(done, output, (res: sut.ListStorageAccountKeysResult) => {
             assert.equal(res.keys.length, 1);
             const k = res.keys[0];
             assert.equal(k.creationTime, "my-creation-time");
@@ -132,12 +125,12 @@ describe("output-funcs", () => {
     });
 
     it("listStorageAccountKeysOutput with optional arg set", (done) => {
-        const output = listStorageAccountKeysOutput({
+        const output = sut.listStorageAccountKeysOutput({
             accountName: pulumi.output("my-account-name"),
             resourceGroupName: pulumi.output("my-resource-group-name"),
             expand: pulumi.output("my-expand"),
         });
-        checkOutput(done, output, (res: ListStorageAccountKeysResult) => {
+        checkOutput(done, output, (res: sut.ListStorageAccountKeysResult) => {
             assert.equal(res.keys.length, 1);
             const k = res.keys[0];
             assert.equal(k.creationTime, "my-creation-time");
@@ -154,9 +147,9 @@ describe("output-funcs", () => {
     it("getIntegrationRuntimeObjectMetadatumOutput", (done) => {
         checkTable(
             done,
-            (res: giro.GetIntegrationRuntimeObjectMetadatumResult) =>
+            (res: sut.GetIntegrationRuntimeObjectMetadatumResult) =>
                 JSON.parse(res.nextLink || "{}"),
-            [{given: giro.getIntegrationRuntimeObjectMetadatumOutput({
+            [{given: sut.getIntegrationRuntimeObjectMetadatumOutput({
                 factoryName: pulumi.output("my-factory-name"),
                 integrationRuntimeName: pulumi.output("my-integration-runtime-name"),
                 metadataPath: pulumi.output("my-metadata-path"),

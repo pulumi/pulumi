@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -15,7 +17,8 @@ type Provider struct {
 }
 
 func NewProvider(ctx *pulumi.Context,
-	name string, args *ProviderArgs, opts ...pulumi.ResourceOption) (*Provider, error) {
+	name string, args *ProviderArgs, opts ...pulumi.ResourceOption,
+) (*Provider, error) {
 	if args == nil {
 		args = &ProviderArgs{}
 	}

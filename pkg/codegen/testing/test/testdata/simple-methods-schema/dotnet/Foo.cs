@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Foo")]
-    public partial class Foo : Pulumi.ComponentResource
+    public partial class Foo : global::Pulumi.ComponentResource
     {
         /// <summary>
         /// Create a Foo resource with the given unique name, arguments, and options.
@@ -39,30 +39,31 @@ namespace Pulumi.Example
         /// <summary>
         /// A description of bar.
         /// </summary>
-        public Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
-            => Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
+        public global::Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
+            => global::Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
 
         public void Baz()
-            => Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
+            => global::Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
 
         /// <summary>
         /// Do something with something else
         /// </summary>
-        public Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
-            => Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
+        public global::Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
+            => global::Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
     }
 
-    public sealed class FooArgs : Pulumi.ResourceArgs
+    public sealed class FooArgs : global::Pulumi.ResourceArgs
     {
         public FooArgs()
         {
         }
+        public static new FooArgs Empty => new FooArgs();
     }
 
     /// <summary>
     /// The set of arguments for the <see cref="Foo.Bar"/> method.
     /// </summary>
-    public sealed class FooBarArgs : Pulumi.CallArgs
+    public sealed class FooBarArgs : global::Pulumi.CallArgs
     {
         [Input("baz")]
         public Input<Pulumi.Example.Nested.Inputs.BazArgs>? Baz { get; set; }
@@ -103,6 +104,7 @@ namespace Pulumi.Example
         public FooBarArgs()
         {
         }
+        public static new FooBarArgs Empty => new FooBarArgs();
     }
 
     /// <summary>
@@ -123,7 +125,7 @@ namespace Pulumi.Example
     /// <summary>
     /// The set of arguments for the <see cref="Foo.GenerateKubeconfig"/> method.
     /// </summary>
-    public sealed class FooGenerateKubeconfigArgs : Pulumi.CallArgs
+    public sealed class FooGenerateKubeconfigArgs : global::Pulumi.CallArgs
     {
         [Input("boolValue", required: true)]
         public bool BoolValue { get; set; }
@@ -131,6 +133,7 @@ namespace Pulumi.Example
         public FooGenerateKubeconfigArgs()
         {
         }
+        public static new FooGenerateKubeconfigArgs Empty => new FooGenerateKubeconfigArgs();
     }
 
     /// <summary>

@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStackReference(t *testing.T) {
@@ -65,19 +66,39 @@ func TestStackReference(t *testing.T) {
 		assert.Equal(t, outputs["numf"], numf)
 		_, _, _, _, err = await(ref1.GetFloat64Output(String("foo")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("failed to convert %T to float64", outputs["foo"]), err)
+		assert.Equal(t, fmt.Errorf(
+			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to float64",
+			outputs["foo"]),
+			err)
 		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
 		assert.NoError(t, err)
 		assert.Equal(t, int(outputs["numi"].(float64)), numi)
 		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("failed to convert %T to int", outputs["foo"]), err)
+		assert.Equal(t, fmt.Errorf(
+			"getting stack reference output \"foo\" on stack \"stack2\", failed to convert %T to int",
+			outputs["foo"]),
+			err)
+		_, _, _, _, err = await(ref1.GetStringOutput(String("doesnotexist")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
+		_, _, _, _, err = await(ref1.GetIntOutput(String("doesnotexist")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
+		_, _, _, _, err = await(ref1.GetFloat64Output(String("doesnotexist")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf(
+			"stack reference output \"doesnotexist\" does not exist on stack \"stack2\""),
+			err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
 	err = RunErr(func(ctx *Context) error {
-		ctx.info.DryRun = true
 		ref0, err := NewStackReference(ctx, resName, nil)
 		assert.NoError(t, err)
 		_, known, _, _, err := await(ref0.GetIntOutput(String("does-not-exist")))
@@ -85,7 +106,7 @@ func TestStackReference(t *testing.T) {
 		assert.False(t, known)
 
 		return nil
-	}, WithMocks("project", "stack", &testMonitor{
+	}, WithDryRun(true), WithMocks("project", "stack", &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name":    "stack",
@@ -182,4 +203,66 @@ func TestStackReferenceSecrets(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestStackReference_GetOutputDetails(t *testing.T) {
+	t.Parallel()
+
+	outputs := resource.PropertyMap{
+		"bucket": resource.NewStringProperty("mybucket-1234"),
+		"password": resource.NewSecretProperty(&resource.Secret{
+			Element: resource.NewStringProperty("supersecretpassword"),
+		}),
+	}
+	mocks := testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
+			assert.Equal(t, "ref", args.Name)
+			return args.Name, resource.PropertyMap{
+				"name":    resource.NewStringProperty(args.Name),
+				"outputs": resource.NewObjectProperty(outputs),
+			}, nil
+		},
+	}
+
+	tests := []struct {
+		desc string
+		name string
+		want StackReferenceOutputDetails
+	}{
+		{
+			desc: "non secret",
+			name: "bucket",
+			want: StackReferenceOutputDetails{Value: "mybucket-1234"},
+		},
+		{
+			desc: "secret",
+			name: "password",
+			want: StackReferenceOutputDetails{SecretValue: "supersecretpassword"},
+		},
+		{
+			desc: "unknown",
+			name: "does-not-exist",
+			// want empty struct
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			err := RunErr(func(ctx *Context) error {
+				ref, err := NewStackReference(ctx, "ref", nil /* args */)
+				require.NoError(t, err)
+
+				got, err := ref.GetOutputDetails(tt.name)
+				require.NoError(t, err)
+				assert.Equal(t, &tt.want, got)
+
+				return nil
+			}, WithMocks("proj", "stack", &mocks))
+			require.NoError(t, err)
+		})
+	}
 }

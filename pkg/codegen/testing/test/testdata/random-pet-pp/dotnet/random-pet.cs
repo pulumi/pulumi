@@ -1,14 +1,14 @@
+using System.Collections.Generic;
+using System.Linq;
 using Pulumi;
 using Random = Pulumi.Random;
 
-class MyStack : Stack
+return await Deployment.RunAsync(() => 
 {
-    public MyStack()
+    var random_pet = new Random.RandomPet("random-pet", new()
     {
-        var random_pet = new Random.RandomPet("random-pet", new Random.RandomPetArgs
-        {
-            Prefix = "doggo",
-        });
-    }
+        Prefix = "doggo",
+    });
 
-}
+});
+

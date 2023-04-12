@@ -19,13 +19,13 @@
 // relevant to dependency calculations; `dependency_graph` only
 // accesses these fields:
 //
-//     type State struct {
-//         Dependencies []resource.URN
-//         URN          resource.URN
-//         Parent       resource.URN
-//         Provider     string
-//         Custom       bool
-//     }
+//	type State struct {
+//	    Dependencies []resource.URN
+//	    URN          resource.URN
+//	    Parent       resource.URN
+//	    Provider     string
+//	    Custom       bool
+//	}
 //
 // At the moment only `Custom=true` (Custom, not Component) resources
 // are tested.
@@ -127,10 +127,8 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 		return inverse(transitively(universe)(restrictedDependenciesOf))
 	}
 
-	// TODO this extends base `expectedDependingOn` with
-	// immediate children. Should it be a transitive closure?
 	dependingOn := expectedDependingOn(universe, false)
-	return func(a, b *resource.State) bool {
+	return transitively(universe)(func(a, b *resource.State) bool {
 		if dependingOn(a, b) || isParent(b, a) {
 			return true
 		}
@@ -140,7 +138,7 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 			}
 		}
 		return false
-	}
+	})
 }
 
 // Verify `DependingOn` against `expectedDependingOn`. Note that
@@ -256,11 +254,11 @@ func TestRapidTransitiveDependenciesOf(t *testing.T) {
 //
 // - Support Component resources
 // - Support non-nil r.Provider references
-func resourceStateSliceGenerator() *rapid.Generator {
+func resourceStateSliceGenerator() *rapid.Generator[[]*resource.State] {
 	urnGen := rapid.StringMatching(`urn:pulumi:a::b::c:d:e::[abcd][123]`)
 
 	stateGen := rapid.Custom(func(t *rapid.T) *resource.State {
-		urn := urnGen.Draw(t, "URN").(string)
+		urn := urnGen.Draw(t, "URN")
 		return &resource.State{
 			Custom: true,
 			URN:    resource.URN(urn),
@@ -272,14 +270,14 @@ func resourceStateSliceGenerator() *rapid.Generator {
 	statesGen := rapid.SliceOfDistinct(stateGen, getUrn)
 
 	return rapid.Custom(func(t *rapid.T) []*resource.State {
-		states := statesGen.Draw(t, "states").([]*resource.State)
+		states := statesGen.Draw(t, "states")
 
 		randInt := rapid.IntRange(-len(states), len(states))
 
 		for i, r := range states {
 			// Any resource at index `i` may want to declare `j < i` as parent.
 			// Sample negative `j` to means "no parent".
-			j := randInt.Draw(t, fmt.Sprintf("j%d", i)).(int)
+			j := randInt.Draw(t, fmt.Sprintf("j%d", i))
 			if j >= 0 && j < i {
 				r.Parent = states[j].URN
 			}
@@ -287,7 +285,7 @@ func resourceStateSliceGenerator() *rapid.Generator {
 			deps := rapid.SliceOfDistinct(
 				randInt,
 				func(i int) int { return i },
-			).Draw(t, fmt.Sprintf("deps%d", i)).([]int)
+			).Draw(t, fmt.Sprintf("deps%d", i))
 			for _, dep := range deps {
 				if dep >= 0 && dep < i {
 					r.Dependencies = append(r.Dependencies, states[dep].URN)
@@ -393,7 +391,7 @@ func showStates(sts []*resource.State) string {
 func graphCheck(t *testing.T, check func(*rapid.T, []*resource.State)) {
 	rss := resourceStateSliceGenerator()
 	rapid.Check(t, func(t *rapid.T) {
-		universe := rss.Draw(t, "universe").([]*resource.State)
+		universe := rss.Draw(t, "universe")
 		t.Logf("Checking universe: %s", showStates(universe))
 		check(t, universe)
 	})

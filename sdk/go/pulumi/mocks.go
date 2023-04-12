@@ -1,11 +1,11 @@
 package pulumi
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -26,7 +26,13 @@ func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	}
 }
 
-// MockResourceArgs is used to construct call Mock
+func WithMocksWithOrganization(organization, project, stack string, mocks MockResourceMonitor) RunOption {
+	return func(info *RunInfo) {
+		info.Project, info.Stack, info.Mocks, info.Organization = project, stack, mocks, organization
+	}
+}
+
+// MockCallArgs is used to construct a call Mock
 type MockCallArgs struct {
 	// Token indicates which function is being called. This token is of the form "package:module:function".
 	Token string
@@ -75,13 +81,13 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 }
 
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,
-	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.SupportsFeatureResponse, error) {
 	id := in.GetId()
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id == "secrets" || id == "resourceReferences" || id == "aliasSpecs"
+	hasSupport := id == "secrets" || id == "resourceReferences"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
@@ -89,8 +95,8 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 }
 
 func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.InvokeResponse, error) {
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -103,7 +109,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		urn := args["urn"].StringValue()
 		registeredResourceV, ok := m.resources.Load(urn)
 		if !ok {
-			return nil, errors.Errorf("unknown resource %s", urn)
+			return nil, fmt.Errorf("unknown resource %s", urn)
 		}
 		registeredResource := registeredResourceV.(resource.PropertyMap)
 		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
@@ -140,20 +146,20 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 }
 
 func (m *mockMonitor) StreamInvoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
-
+	opts ...grpc.CallOption,
+) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
 	panic("not implemented")
 }
 
 func (m *mockMonitor) Call(ctx context.Context, in *pulumirpc.CallRequest,
-	opts ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.CallResponse, error) {
 	panic("not implemented")
 }
 
 func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.ReadResourceResponse, error) {
 	stateIn, err := plugin.UnmarshalProperties(in.GetProperties(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -198,8 +204,8 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 }
 
 func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.RegisterResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.RegisterResourceResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterResourceResponse, error) {
 	if in.GetType() == string(resource.RootStackType) {
 		return &pulumirpc.RegisterResourceResponse{
 			Urn: m.newURN(in.GetParent(), in.GetType(), in.GetName()),
@@ -251,8 +257,8 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 }
 
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
-
+	opts ...grpc.CallOption,
+) (*empty.Empty, error) {
 	return &empty.Empty{}, nil
 }
 
@@ -263,8 +269,8 @@ type mockEngine struct {
 
 // Log logs a global message in the engine, including errors and warnings.
 func (m *mockEngine) Log(ctx context.Context, in *pulumirpc.LogRequest,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
-
+	opts ...grpc.CallOption,
+) (*empty.Empty, error) {
 	if m.logger != nil {
 		m.logger.Printf("%s: %s", in.GetSeverity(), in.GetMessage())
 	}
@@ -274,8 +280,8 @@ func (m *mockEngine) Log(ctx context.Context, in *pulumirpc.LogRequest,
 // GetRootResource gets the URN of the root resource, the resource that should be the root of all
 // otherwise-unparented resources.
 func (m *mockEngine) GetRootResource(ctx context.Context, in *pulumirpc.GetRootResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.GetRootResourceResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.GetRootResourceResponse, error) {
 	return &pulumirpc.GetRootResourceResponse{
 		Urn: m.rootResource,
 	}, nil
@@ -283,8 +289,8 @@ func (m *mockEngine) GetRootResource(ctx context.Context, in *pulumirpc.GetRootR
 
 // SetRootResource sets the URN of the root resource.
 func (m *mockEngine) SetRootResource(ctx context.Context, in *pulumirpc.SetRootResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.SetRootResourceResponse, error) {
-
+	opts ...grpc.CallOption,
+) (*pulumirpc.SetRootResourceResponse, error) {
 	m.rootResource = in.GetUrn()
 	return &pulumirpc.SetRootResourceResponse{}, nil
 }

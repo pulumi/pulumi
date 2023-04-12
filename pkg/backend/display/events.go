@@ -3,20 +3,23 @@ package display
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
 
 // ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
@@ -49,10 +52,14 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		if !ok {
 			return apiEvent, eventTypePayloadMismatch
 		}
+
+		// Clean up ANSI control codes.
+		cleanedMsg := matchAnsiControlCodes.ReplaceAllString(p.Message, "")
+
 		apiEvent.DiagnosticEvent = &apitype.DiagnosticEvent{
 			URN:       string(p.URN),
 			Prefix:    p.Prefix,
-			Message:   p.Message,
+			Message:   cleanedMsg,
 			Color:     string(p.Color),
 			Severity:  string(p.Severity),
 			Ephemeral: p.Ephemeral,
@@ -148,7 +155,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 	for i, v := range md.Keys {
 		keys[i] = string(v)
 	}
-	var diffs []string
+	diffs := make([]string, 0, len(md.Diffs))
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
 	}
@@ -202,8 +209,8 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 // IMPORTANT: Any secret values are encrypted using the blinding encrypter. So any secret data
 // in the resource state will be lost and unrecoverable.
 func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
-	showSecrets bool) *apitype.StepEventStateMetadata {
-
+	showSecrets bool,
+) *apitype.StepEventStateMetadata {
 	if md == nil {
 		return nil
 	}
@@ -284,9 +291,9 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.SummaryEvent != nil:
 		p := apiEvent.SummaryEvent
 		// Convert the resource changes.
-		changes := engine.ResourceChanges{}
+		changes := display.ResourceChanges{}
 		for op, count := range p.ResourceChanges {
-			changes[deploy.StepOp(op)] = count
+			changes[display.StepOp(op)] = count
 		}
 		event = engine.NewEvent(engine.SummaryEvent, engine.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
@@ -329,7 +336,11 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	for i, v := range md.Keys {
 		keys[i] = resource.PropertyKey(v)
 	}
+	//nolint:prealloc
 	var diffs []resource.PropertyKey
+	if len(md.Diffs) > 0 {
+		diffs = make([]resource.PropertyKey, 0, len(md.Diffs))
+	}
 	for _, v := range md.Diffs {
 		diffs = append(diffs, resource.PropertyKey(v))
 	}
@@ -369,7 +380,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	}
 
 	return engine.StepEventMetadata{
-		Op:   deploy.StepOp(md.Op),
+		Op:   display.StepOp(md.Op),
 		URN:  resource.URN(md.URN),
 		Type: tokens.Type(md.Type),
 

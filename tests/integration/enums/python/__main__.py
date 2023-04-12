@@ -40,4 +40,4 @@ tree = Tree("myTree", type=RubberTreeVariety.BURGUNDY, farm=Farm.PULUMI_PLANTERS
 
 export("myTreeType", tree.type)
 export("myTreeFarmChanged", tree.farm.apply(lambda x: x + "foo"))
-export("mySentence", Output.all(tree.type, tree.farm).apply(lambda args: f"My {args[0]} Rubber tree is from {args[1]}"))
+export("mySentence", Output.all(tree.type, tree.farm).apply(lambda args: f"My {args[0].value} Rubber tree is from {args[1]}"))

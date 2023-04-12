@@ -16,17 +16,17 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Task<FuncWithAllOptionalInputsResult> InvokeAsync(FuncWithAllOptionalInputsArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with all optional inputs.
         /// </summary>
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithAllOptionalInputsResult>("mypkg::funcWithAllOptionalInputs", args ?? new FuncWithAllOptionalInputsInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithAllOptionalInputsArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A
@@ -44,9 +44,10 @@ namespace Pulumi.Mypkg
         {
             B = "defValue";
         }
+        public static new FuncWithAllOptionalInputsArgs Empty => new FuncWithAllOptionalInputsArgs();
     }
 
-    public sealed class FuncWithAllOptionalInputsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithAllOptionalInputsInvokeArgs : global::Pulumi.InvokeArgs
     {
         /// <summary>
         /// Property A
@@ -64,6 +65,7 @@ namespace Pulumi.Mypkg
         {
             B = "defValue";
         }
+        public static new FuncWithAllOptionalInputsInvokeArgs Empty => new FuncWithAllOptionalInputsInvokeArgs();
     }
 
 

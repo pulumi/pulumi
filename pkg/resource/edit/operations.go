@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,43 +29,99 @@ import (
 // given snapshot and pertain to the specific passed-in resource.
 type OperationFunc func(*deploy.Snapshot, *resource.State) error
 
-// DeleteResource deletes a given resource from the snapshot, if it is possible to do so. A resource can only be deleted
-// from a stack if there do not exist any resources that depend on it or descend from it. If such a resource does exist,
-// DeleteResource will return an error instance of `ResourceHasDependenciesError`.
-func DeleteResource(snapshot *deploy.Snapshot, condemnedRes *resource.State) error {
-	contract.Require(snapshot != nil, "snapshot")
-	contract.Require(condemnedRes != nil, "state")
+// DeleteResource deletes a given resource from the snapshot, if it is possible to do so.
+//
+// If targetDependents is true, dependents will also be deleted. Otherwise an error
+// instance of `ResourceHasDependenciesError` will be returned.
+//
+// If non-nil, onProtected will be called on all protected resources planed for deletion.
+//
+// If a resource is marked protected after onProtected is called, an error instance of
+// `ResourceHasDependenciesError` will be returned.
+func DeleteResource(
+	snapshot *deploy.Snapshot, condemnedRes *resource.State,
+	onProtected func(*resource.State) error, targetDependents bool,
+) error {
+	contract.Requiref(snapshot != nil, "snapshot", "must not be nil")
+	contract.Requiref(condemnedRes != nil, "condemnedRes", "must not be nil")
 
-	if condemnedRes.Protect {
-		return ResourceProtectedError{condemnedRes}
+	handleProtected := func(res *resource.State) error {
+		if !res.Protect {
+			return nil
+		}
+		var err error
+		if onProtected != nil {
+			err = onProtected(res)
+		}
+		if err == nil && res.Protect {
+			err = ResourceProtectedError{res}
+		}
+		return err
 	}
 
-	dg := graph.NewDependencyGraph(snapshot.Resources)
-	dependencies := dg.DependingOn(condemnedRes, nil, false)
-	if len(dependencies) != 0 {
-		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: dependencies}
+	if err := handleProtected(condemnedRes); err != nil {
+		return err
+	}
+
+	var numSameURN int
+	for _, res := range snapshot.Resources {
+		if res.URN != condemnedRes.URN {
+			continue
+		}
+		numSameURN++
+	}
+
+	deleteSet := map[resource.URN]struct{}{}
+
+	isUniqueURN := numSameURN <= 1
+	// If there's only one resource (or fewer), determine dependencies to be deleted from state.
+	if isUniqueURN {
+		// condemnedRes.URN is unique. We can safely delete it by URN.
+		deleteSet[condemnedRes.URN] = struct{}{}
+		dg := graph.NewDependencyGraph(snapshot.Resources)
+
+		if deps := dg.DependingOn(condemnedRes, nil, true); len(deps) != 0 {
+			if !targetDependents {
+				return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: deps}
+			}
+			for _, dep := range deps {
+				if err := handleProtected(dep); err != nil {
+					return err
+				}
+				deleteSet[dep.URN] = struct{}{}
+			}
+		}
 	}
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
 	// not condemnedRes.
-	var newSnapshot []*resource.State
+	newSnapshot := make([]*resource.State, 0, len(snapshot.Resources))
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
-		// While iterating, keep track of the set of resources that are parented to our condemned resource. We'll only
-		// actually perform the deletion if this set is empty, otherwise it is not legal to delete the resource.
+		if res == condemnedRes {
+			// Skip condemned resource.
+			continue
+		}
+
+		if _, inDeleteSet := deleteSet[res.URN]; inDeleteSet {
+			//  Skip resources to be deleted.
+			continue
+		}
+
+		// While iterating, keep track of the set of resources that are parented to our
+		// condemned resource. This acts as a check on DependingOn, preventing a bug from
+		// introducing state corruption.
 		if res.Parent == condemnedRes.URN {
 			children = append(children, res)
 		}
 
-		if res != condemnedRes {
-			newSnapshot = append(newSnapshot, res)
-		}
+		newSnapshot = append(newSnapshot, res)
+
 	}
 
-	// If there exists a resource that is the child of condemnedRes, we can't delete it.
-	if len(children) != 0 {
-		return ResourceHasDependenciesError{Condemned: condemnedRes, Dependencies: children}
-	}
+	// If condemnedRes is unique and there exists a resource that is the child of condemnedRes,
+	// we can't delete it.
+	contract.Assertf(!isUniqueURN || len(children) == 0, "unexpected children in resource dependency list")
 
 	// Otherwise, we're good to go. Writing the new resource list into the snapshot persists the mutations that we have
 	// made above.
@@ -99,7 +155,7 @@ func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 // RenameStack changes the `stackName` component of every URN in a snapshot. In addition, it rewrites the name of
 // the root Stack resource itself. May optionally change the project/package name as well.
 func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.PackageName) error {
-	contract.Require(snap != nil, "snap")
+	contract.Requiref(snap != nil, "snap", "must not be nil")
 
 	rewriteUrn := func(u resource.URN) resource.URN {
 		project := u.Project()
@@ -117,7 +173,7 @@ func RenameStack(snap *deploy.Snapshot, newName tokens.Name, newProject tokens.P
 	}
 
 	rewriteState := func(res *resource.State) {
-		contract.Assert(res != nil)
+		contract.Assertf(res != nil, "resource state must not be nil")
 
 		res.URN = rewriteUrn(res.URN)
 

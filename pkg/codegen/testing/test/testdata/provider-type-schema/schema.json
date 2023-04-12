@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "name": "providerType",
+  "resources": {
+    "providerType:submod:provider": {
+      "properties": {
+        "a": {
+          "type": "boolean"
+        }
+      },
+      "inputProperties": {
+        "a": {
+          "type": "boolean",
+          "plain": true
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "provider-type-schema/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^3.7.0"
+      }
+    },
+    "python": {}
+  }
+}

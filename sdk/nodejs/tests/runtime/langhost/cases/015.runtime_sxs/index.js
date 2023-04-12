@@ -5,22 +5,25 @@
 // Subsequent copies of the runtime are able to configure themselves by using environment variables.
 
 let assert = require("assert");
+let path = require('path');
 
 const sdkPath = "../../../../../";
 
 // Load the first copy:
 let pulumi1 = require(sdkPath);
 
-// Now delete the entry in the require cache, and load up the second copy:
-delete require.cache[require.resolve(sdkPath)];
-delete require.cache[require.resolve(sdkPath + "/runtime")];
-delete require.cache[require.resolve(sdkPath + "/runtime/config")];
-delete require.cache[require.resolve(sdkPath + "/runtime/settings")];
+// Now delete the entries in the require cache, and load up the second copy:
+const resolvedSdkPath = path.dirname(require.resolve(sdkPath));
+Object.keys(require.cache).forEach(path => {
+    if (path.startsWith(resolvedSdkPath)) {
+        delete require.cache[path];
+    }
+})
 let pulumi2 = require(sdkPath);
 
 // Make sure they are different:
-assert(pulumi1 !== pulumi2);
-assert(pulumi1.runtime !== pulumi2.runtime);
+assert(pulumi1 !== pulumi2, "pulumi1 !== pulumi2");
+assert(pulumi1.runtime !== pulumi2.runtime, "pulumi1.runtime !== pulumi2.runtime");
 
 // Check that various settings are equal:
 assert.strictEqual(pulumi1.runtime.isDryRun(), pulumi2.runtime.isDryRun(), "pulumi1.runtime.isDryRun() !== pulumi2.runtime.isDryRun()");
@@ -28,17 +31,28 @@ assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject(), "
 assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack(), "pulumi1.runtime.getStack() !== pulumi2.runtime.getStack()");
 assert.deepStrictEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig(), "pulumi1.runtime.allConfig() !== pulumi2.runtime.getStack()");
 
-// Check that the two runtimes agree on the root resource
-pulumi1.runtime.getRootResource().then(r => {
-    pulumi2.runtime.getRootResource().then(other => {
-        assert.strictEqual(r, other, "pulumi1.runtime.getRootResouce() !== pulumi2.runtime.getRootResource()");
-    });
-});
+// Check that the two runtimes agree on the stack resource
+let stack1 = pulumi1.runtime.getStackResource();
+let stack2 = pulumi2.runtime.getStackResource();
+assert.strictEqual(stack1, stack2, "pulumi1.runtime.getStackResource() !== pulumi2.runtime.getStackResource()");
 
 // allConfig should have caught this, but let's check individual config values too.
 let cfg1 = new pulumi1.Config("sxs");
 let cfg2 = new pulumi2.Config("sxs");
 assert.strictEqual(cfg1.get("message"), cfg2.get("message"));
+
+// Try and set a stack transformation
+function transform1(args) {
+    args.props["runtime1"] = 1
+    return { props: args.props, opts: args.opts }
+}
+function transform2(args) {
+    args.props["runtime2"] = 2
+    return { props: args.props, opts: args.opts }
+}
+
+pulumi1.runtime.registerStackTransformation(transform1)
+pulumi2.runtime.registerStackTransformation(transform2)
 
 // Now do some useful things that require RPC connections:
 pulumi1.log.info("logging via Pulumi1 works!");
@@ -47,3 +61,9 @@ let res1 = new pulumi1.CustomResource("test:x:resource", "p1p1p1");
 res1.urn.apply(urn => assert.strictEqual(urn, "test:x:resource::p1p1p1"));
 let res2 = new pulumi2.CustomResource("test:y:resource", "p2p2p2");
 res2.urn.apply(urn => assert.strictEqual(urn, "test:y:resource::p2p2p2"));
+
+// Both resources should have the stack transforms applied
+res1.runtime1.apply(value => assert.strictEqual(value, 1));
+res1.runtime2.apply(value => assert.strictEqual(value, 2));
+res2.runtime1.apply(value => assert.strictEqual(value, 1));
+res2.runtime2.apply(value => assert.strictEqual(value, 2));

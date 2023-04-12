@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // newStackSelectCmd handles both the "local" and "cloud" scenarios in its implementation.
@@ -43,11 +44,18 @@ func newStackSelectCmd() *cobra.Command {
 			"If provided stack name is not found you may pass the --create flag to create and select it",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			b, err := currentBackend(opts)
+			// Try to read the current project
+			project, root, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			b, err := currentBackend(ctx, project, opts)
 			if err != nil {
 				return err
 			}
@@ -67,7 +75,7 @@ func newStackSelectCmd() *cobra.Command {
 					return stackErr
 				}
 
-				s, stackErr := b.GetStack(commandContext(), stackRef)
+				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
 					return stackErr
 				} else if s != nil {
@@ -75,7 +83,7 @@ func newStackSelectCmd() *cobra.Command {
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := stackInit(b, stack, false, secretsProvider)
+					s, err := stackInit(ctx, b, stack, root, false, secretsProvider)
 					if err != nil {
 						return err
 					}
@@ -86,14 +94,13 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
-			stack, err := chooseStack(b, true, opts, true /*setCurrent*/)
+			stack, err := chooseStack(ctx, b, stackOfferNew|stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
 
-			contract.Assert(stack != nil)
+			contract.Assertf(stack != nil, "must select a stack")
 			return state.SetCurrentStack(stack.Ref().String())
-
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(

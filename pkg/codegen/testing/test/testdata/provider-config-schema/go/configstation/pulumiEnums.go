@@ -139,7 +139,7 @@ func (o ColorPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi
 // ColorInput is an input type that accepts ColorArgs and ColorOutput values.
 // You can construct a concrete instance of `ColorInput` via:
 //
-//          ColorArgs{...}
+//	ColorArgs{...}
 type ColorInput interface {
 	pulumi.Input
 

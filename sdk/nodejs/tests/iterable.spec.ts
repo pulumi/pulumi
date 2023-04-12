@@ -15,10 +15,9 @@
 import * as assert from "assert";
 import * as iterable from "../iterable";
 import { Output } from "../output";
-import { asyncTest } from "./util";
 
 describe("iterable", () => {
-    it("toMap does its job", asyncTest(async () => {
+    it("toMap does its job", async () => {
         interface Instance {
             id: Output<string>;
             privateIp: Output<string>;
@@ -34,8 +33,8 @@ describe("iterable", () => {
         assert.strictEqual(isKnown, true);
         const value = await result.promise();
         assert.deepStrictEqual(value, { "i-1234": "192.168.1.2", "i-5678": "192.168.1.5" });
-    }));
-    it("groupBy does its job", asyncTest(async () => {
+    });
+    it("groupBy does its job", async () => {
         interface Instance {
             id: Output<string>;
             availabilityZone: Output<string>;
@@ -52,5 +51,5 @@ describe("iterable", () => {
         assert.strictEqual(isKnown, true);
         const value = await result.promise();
         assert.deepStrictEqual(value, { "us-east-1a": ["i-1234", "i-5678"], "us-west-2c": ["i-1538"] });
-    }));
+    });
 });

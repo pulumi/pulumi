@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -43,29 +43,29 @@ func newServiceCrypter(client *client.Client, stack client.StackIdentifier) conf
 	return &serviceCrypter{client: client, stack: stack}
 }
 
-func (c *serviceCrypter) EncryptValue(plaintext string) (string, error) {
-	ciphertext, err := c.client.EncryptValue(context.Background(), c.stack, []byte(plaintext))
+func (c *serviceCrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertext, err := c.client.EncryptValue(ctx, c.stack, []byte(plaintext))
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func (c *serviceCrypter) DecryptValue(cipherstring string) (string, error) {
+func (c *serviceCrypter) DecryptValue(ctx context.Context, cipherstring string) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(cipherstring)
 	if err != nil {
 		return "", err
 	}
 
-	plaintext, err := c.client.DecryptValue(context.Background(), c.stack, ciphertext)
+	plaintext, err := c.client.DecryptValue(ctx, c.stack, ciphertext)
 	if err != nil {
 		return "", err
 	}
 	return string(plaintext), nil
 }
 
-func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error) {
-	var secretsToDecrypt [][]byte
+func (c *serviceCrypter) BulkDecrypt(ctx context.Context, secrets []string) (map[string]string, error) {
+	secretsToDecrypt := make([][]byte, 0, len(secrets))
 	for _, val := range secrets {
 		ciphertext, err := base64.StdEncoding.DecodeString(val)
 		if err != nil {
@@ -74,7 +74,7 @@ func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error
 		secretsToDecrypt = append(secretsToDecrypt, ciphertext)
 	}
 
-	decryptedList, err := c.client.BulkDecryptValue(context.Background(), c.stack, secretsToDecrypt)
+	decryptedList, err := c.client.BulkDecryptValue(ctx, c.stack, secretsToDecrypt)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +88,11 @@ func (c *serviceCrypter) BulkDecrypt(secrets []string) (map[string]string, error
 }
 
 type serviceSecretsManagerState struct {
-	URL     string `json:"url,omitempty"`
-	Owner   string `json:"owner"`
-	Project string `json:"project"`
-	Stack   string `json:"stack"`
+	URL      string `json:"url,omitempty"`
+	Owner    string `json:"owner"`
+	Project  string `json:"project"`
+	Stack    string `json:"stack"`
+	Insecure bool   `json:"insecure,omitempty"`
 }
 
 var _ secrets.Manager = &serviceSecretsManager{}
@@ -110,24 +111,43 @@ func (sm *serviceSecretsManager) State() interface{} {
 }
 
 func (sm *serviceSecretsManager) Decrypter() (config.Decrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter, nil
 }
 
 func (sm *serviceSecretsManager) Encrypter() (config.Encrypter, error) {
-	contract.Assert(sm.crypter != nil)
+	contract.Assertf(sm.crypter != nil, "encrypter not initialized")
 	return sm.crypter, nil
 }
 
-func NewServiceSecretsManager(c *client.Client, id client.StackIdentifier) (secrets.Manager, error) {
+func NewServiceSecretsManager(
+	client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
+) (secrets.Manager, error) {
+	// To change the secrets provider to a serviceSecretsManager we would need to ensure that there are no
+	// remnants of the old secret manager To remove those remnants, we would set those values to be empty in
+	// the project stack.
+	// A passphrase secrets provider has an encryption salt, therefore, changing
+	// from passphrase to serviceSecretsManager requires the encryption salt
+	// to be removed.
+	// A cloud secrets manager has an encryption key and a secrets provider,
+	// therefore, changing from cloud to serviceSecretsManager requires the
+	// encryption key and secrets provider to be removed.
+	// Regardless of what the current secrets provider is, all of these values
+	// need to be empty otherwise `getStackSecretsManager` in crypto.go can
+	// potentially return the incorrect secret type for the stack.
+	info.EncryptionSalt = ""
+	info.SecretsProvider = ""
+	info.EncryptedKey = ""
+
 	return &serviceSecretsManager{
 		state: serviceSecretsManagerState{
-			URL:     c.URL(),
-			Owner:   id.Owner,
-			Project: id.Project,
-			Stack:   id.Stack,
+			URL:      client.URL(),
+			Owner:    id.Owner,
+			Project:  id.Project,
+			Stack:    id.Stack,
+			Insecure: client.Insecure(),
 		},
-		crypter: newServiceCrypter(c, id),
+		crypter: newServiceCrypter(client, id),
 	}, nil
 }
 
@@ -154,8 +174,9 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
-		Color: colors.Never}))
+	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
 
 	return &serviceSecretsManager{
 		state:   s,

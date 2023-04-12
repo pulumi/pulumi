@@ -18,13 +18,16 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ObjectType represents schematized maps from strings to particular types.
@@ -35,7 +38,7 @@ type ObjectType struct {
 	Annotations []interface{}
 
 	propertyUnion Type
-	s             string
+	s             atomic.Value // Value<string>
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -46,6 +49,14 @@ func NewObjectType(properties map[string]Type, annotations ...interface{}) *Obje
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
 func (*ObjectType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
+}
+
+func (t *ObjectType) Pretty() pretty.Formatter {
+	m := make(map[string]pretty.Formatter, len(t.Properties))
+	for k, v := range t.Properties {
+		m[k] = v.Pretty()
+	}
+	return &pretty.Object{Properties: m}
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of
@@ -70,12 +81,34 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	}
 
 	keyString, err := convert.Convert(key, cty.String)
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "error converting key (%#v) to string", key)
+
+	propertiesLower := make(map[string]string)
+	for p := range t.Properties {
+		propertiesLower[strings.ToLower(p)] = p
+	}
 
 	propertyName := keyString.AsString()
 	propertyType, hasProperty := t.Properties[propertyName]
 	if !hasProperty {
-		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
+		propertyNameLower := strings.ToLower(propertyName)
+		if propertyNameOrig, ok := propertiesLower[propertyNameLower]; ok {
+			propertyType = t.Properties[propertyNameOrig]
+			rng := traverser.SourceRange()
+			return propertyType, hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Subject:  &rng,
+					Summary:  "Found matching case-insensitive property",
+					Detail:   fmt.Sprintf("Matched %s with %s", propertyName, propertyNameOrig),
+				},
+			}
+		}
+		props := make([]string, 0, len(t.Properties))
+		for k := range t.Properties {
+			props = append(props, k)
+		}
+		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange(), props)}
 	}
 	return propertyType, nil
 }
@@ -241,8 +274,8 @@ func (t *ObjectType) String() string {
 }
 
 func (t *ObjectType) string(seen map[Type]struct{}) string {
-	if t.s != "" {
-		return t.s
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
 
 	if seen != nil {
@@ -254,7 +287,7 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	}
 	seen[t] = struct{}{}
 
-	var properties []string
+	properties := make([]string, 0, len(t.Properties))
 	for k, v := range t.Properties {
 		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
 	}
@@ -265,8 +298,9 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 		annotations = fmt.Sprintf(", annotated(%p)", t)
 	}
 
-	t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
-	return t.s
+	s := fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
+	t.s.Store(s)
+	return s
 }
 
 func (t *ObjectType) unify(other Type) (Type, ConversionKind) {

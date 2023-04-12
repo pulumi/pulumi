@@ -1,0 +1,2 @@
+# This is required for integration tests
+export PULUMI_TEST_ORG=

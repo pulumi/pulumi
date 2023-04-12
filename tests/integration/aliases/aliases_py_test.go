@@ -1,5 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
-// +build python all
+//go:build (python || all) && !xplatform_acceptance
 
 package ints
 
@@ -13,12 +13,13 @@ import (
 func TestPythonAliases(t *testing.T) {
 	t.Parallel()
 
-	var dirs = []string{
+	dirs := []string{
 		"rename",
 		"adopt_into_component",
 		"rename_component_and_child",
 		"retype_component",
 		"rename_component",
+		"retype_parents",
 	}
 
 	for _, dir := range dirs {

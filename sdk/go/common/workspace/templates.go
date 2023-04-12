@@ -15,21 +15,22 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -103,7 +104,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 	// See if there's a Pulumi.yaml in the directory.
 	template, err := LoadTemplate(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
 		return []Template{template}, nil
@@ -111,7 +112,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a Pulumi.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +128,12 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 			}
 
 			template, err := LoadTemplate(filepath.Join(path, name))
-			if err != nil && !os.IsNotExist(err) {
-				return nil, err
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err.Error(),
+				)
+				result = append(result, Template{Name: name, Error: err})
 			} else if err == nil {
 				result = append(result, template)
 			}
@@ -153,7 +158,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 	// See if there's a PulumiPolicy.yaml in the directory.
 	template, err := LoadPolicyPackTemplate(path)
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	} else if err == nil {
 		return []PolicyPackTemplate{template}, nil
@@ -161,7 +166,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a PulumiPolicy.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +182,12 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 			}
 
 			template, err := LoadPolicyPackTemplate(filepath.Join(path, name))
-			if err != nil && !os.IsNotExist(err) {
-				return nil, err
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err.Error(),
+				)
+				result = append(result, PolicyPackTemplate{Name: name, Error: err})
 			} else if err == nil {
 				result = append(result, template)
 			}
@@ -195,9 +204,15 @@ type Template struct {
 	Quickstart  string                                // Optional text to be displayed after template creation.
 	Config      map[string]ProjectTemplateConfigValue // Optional template config.
 	Important   bool                                  // Indicates whether the template should be listed by default.
+	Error       error                                 // Non-nil if the template is broken.
 
 	ProjectName        string // Name of the project.
 	ProjectDescription string // Optional description of the project.
+}
+
+// Errored returns if the template has an error
+func (t Template) Errored() bool {
+	return t.Error != nil
 }
 
 // PolicyPackTemplate represents a Policy Pack template.
@@ -205,6 +220,12 @@ type PolicyPackTemplate struct {
 	Dir         string // The directory containing PulumiPolicy.yaml.
 	Name        string // The name of the template.
 	Description string // Description of the template.
+	Error       error  // Non-nil if the template is broken.
+}
+
+// Errored returns if the template has an error
+func (t PolicyPackTemplate) Errored() bool {
+	return t.Error != nil
 }
 
 // cleanupLegacyTemplateDir deletes an existing ~/.pulumi/templates directory if it isn't a git repository.
@@ -260,7 +281,8 @@ func isTemplateFileOrDirectory(templateNamePathOrURL string) bool {
 
 // RetrieveTemplates retrieves a "template repository" based on the specified name, path, or URL.
 func RetrieveTemplates(templateNamePathOrURL string, offline bool,
-	templateKind TemplateKind) (TemplateRepository, error) {
+	templateKind TemplateKind,
+) (TemplateRepository, error) {
 	if IsTemplateURL(templateNamePathOrURL) {
 		return retrieveURLTemplates(templateNamePathOrURL, offline, templateKind)
 	}
@@ -273,20 +295,20 @@ func RetrieveTemplates(templateNamePathOrURL string, offline bool,
 // retrieveURLTemplates retrieves the "template repository" at the specified URL.
 func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind) (TemplateRepository, error) {
 	if offline {
-		return TemplateRepository{}, errors.Errorf("cannot use %s offline", rawurl)
+		return TemplateRepository{}, fmt.Errorf("cannot use %s offline", rawurl)
 	}
 
 	var err error
 
 	// Create a temp dir.
 	var temp string
-	if temp, err = ioutil.TempDir("", "pulumi-template-"); err != nil {
+	if temp, err = os.MkdirTemp("", "pulumi-template-"); err != nil {
 		return TemplateRepository{}, err
 	}
 
 	var fullPath string
 	if fullPath, err = RetrieveGitFolder(rawurl, temp); err != nil {
-		return TemplateRepository{}, fmt.Errorf("Failed to retrieve git folder: %w", err)
+		return TemplateRepository{}, fmt.Errorf("failed to retrieve git folder: %w", err)
 	}
 
 	return TemplateRepository{
@@ -323,7 +345,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	}
 
 	// Ensure the template directory exists.
-	if err := os.MkdirAll(templateDir, 0700); err != nil {
+	if err := os.MkdirAll(templateDir, 0o700); err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -348,7 +370,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 		// Provide a nicer error message when the template can't be found (dir doesn't exist).
 		_, err := os.Stat(subDir)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return TemplateRepository{}, newTemplateNotFoundError(templateDir, templateName)
 			}
 			contract.IgnoreError(err)
@@ -373,8 +395,11 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-	if ref != "" {
+	logging.V(10).Infof(
+		"Attempting to fetch from %s at commit %s@%s for subdirectory '%s'",
+		url, ref, commit, subDirectory)
 
+	if ref != "" {
 		// Different reference attempts to cycle through
 		// We default to master then main in that order. We need to order them to avoid breaking
 		// already existing processes for repos that already have a master and main branch.
@@ -388,7 +413,7 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 		var cloneErr error
 		for _, ref := range refAttempts {
 			// Attempt the clone. If it succeeds, break
-			cloneErr := gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
+			cloneErr = gitutil.GitCloneOrPull(url, ref, path, true /*shallow*/)
 			if cloneErr == nil {
 				break
 			}
@@ -405,12 +430,13 @@ func RetrieveGitFolder(rawurl string, path string) (string, error) {
 
 	// Verify the sub directory exists.
 	fullPath := filepath.Join(path, filepath.FromSlash(subDirectory))
+	logging.V(10).Infof("Cloned %s at commit %s@%s to %s", url, ref, commit, fullPath)
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		return "", err
 	}
 	if !info.IsDir() {
-		return "", errors.Errorf("%s is not a directory", fullPath)
+		return "", fmt.Errorf("%s is not a directory", fullPath)
 	}
 
 	return fullPath, nil
@@ -423,7 +449,7 @@ func LoadTemplate(path string) (Template, error) {
 		return Template{}, err
 	}
 	if !info.IsDir() {
-		return Template{}, errors.Errorf("%s is not a directory", path)
+		return Template{}, fmt.Errorf("%s is not a directory", path)
 	}
 
 	// TODO handle other extensions like Pulumi.yml and Pulumi.json?
@@ -456,7 +482,7 @@ func LoadTemplate(path string) (Template, error) {
 func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	var existing []string
 	if err := walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
+		func(entry os.DirEntry, source string, dest string) error {
 			if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
 				existing = append(existing, filepath.Base(dest))
 			}
@@ -473,17 +499,17 @@ func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 
 // CopyTemplateFiles does the actual copy operation to a destination directory.
 func CopyTemplateFiles(
-	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
-
+	sourceDir, destDir string, force bool, projectName string, projectDescription string,
+) error {
 	return walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
-			if info.IsDir() {
+		func(entry os.DirEntry, source string, dest string) error {
+			if entry.IsDir() {
 				// Create the destination directory.
-				return os.Mkdir(dest, 0700)
+				return os.Mkdir(dest, 0o700)
 			}
 
 			// Read the source file.
-			b, err := ioutil.ReadFile(source)
+			b, err := os.ReadFile(source)
 			if err != nil {
 				return err
 			}
@@ -505,7 +531,7 @@ func CopyTemplateFiles(
 			if err != nil {
 				return err
 			}
-			mode = sourceStat.Mode().Perm() | 0600
+			mode = sourceStat.Mode().Perm() | 0o600
 
 			// Write to the destination file.
 			err = writeAllBytes(dest, result, force, mode)
@@ -526,7 +552,7 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 		return PolicyPackTemplate{}, err
 	}
 	if !info.IsDir() {
-		return PolicyPackTemplate{}, errors.Errorf("%s is not a directory", path)
+		return PolicyPackTemplate{}, fmt.Errorf("%s is not a directory", path)
 	}
 
 	pack, err := LoadPolicyPack(filepath.Join(path, "PulumiPolicy.yaml"))
@@ -627,8 +653,8 @@ func ValueOrSanitizedDefaultProjectName(name string, projectName string, default
 
 // ValueOrDefaultProjectDescription returns the value or defaultDescription.
 func ValueOrDefaultProjectDescription(
-	description string, projectDescription string, defaultDescription string) string {
-
+	description string, projectDescription string, defaultDescription string,
+) string {
 	// If we have a description, use it.
 	if description != "" {
 		return description
@@ -670,28 +696,28 @@ func getValidProjectName(name string) string {
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
 func walkFiles(sourceDir string, destDir string, projectName string,
-	actionFn func(info os.FileInfo, source string, dest string) error) error {
+	actionFn func(entry os.DirEntry, source string, dest string) error,
+) error {
+	contract.Requiref(sourceDir != "", "sourceDir", "must not be empty")
+	contract.Requiref(destDir != "", "destDir", "must not be empty")
+	contract.Requiref(actionFn != nil, "actionFn", "must not be nil")
 
-	contract.Require(sourceDir != "", "sourceDir")
-	contract.Require(destDir != "", "destDir")
-	contract.Require(actionFn != nil, "actionFn")
-
-	infos, err := ioutil.ReadDir(sourceDir)
+	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return err
 	}
-	for _, info := range infos {
-		name := info.Name()
+	for _, entry := range entries {
+		name := entry.Name()
 		source := filepath.Join(sourceDir, name)
 		dest := filepath.Join(destDir, name)
 
-		if info.IsDir() {
+		if entry.IsDir() {
 			// Ignore the .git directory.
 			if name == GitDir {
 				continue
 			}
 
-			if err := actionFn(info, source, dest); err != nil {
+			if err := actionFn(entry, source, dest); err != nil {
 				return err
 			}
 
@@ -707,7 +733,7 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 			// The file name may contain a placeholder for project name: replace it with the actual value.
 			newDest := transform(dest, projectName, "")
 
-			if err := actionFn(info, source, newDest); err != nil {
+			if err := actionFn(entry, source, newDest); err != nil {
 				return err
 			}
 		}
@@ -719,7 +745,7 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 // newExistingFilesError returns a new error from a list of existing file names
 // that would be overwritten.
 func newExistingFilesError(existing []string) error {
-	contract.Assert(len(existing) > 0)
+	contract.Assertf(len(existing) > 0, "called with no existing files")
 	message := "creating this template will make changes to existing files:\n"
 	for _, file := range existing {
 		message = message + fmt.Sprintf("  overwrite   %s\n", file)
@@ -734,7 +760,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 	message := fmt.Sprintf("template '%s' not found", templateName)
 
 	// Attempt to read the directory to offer suggestions.
-	infos, err := ioutil.ReadDir(templateDir)
+	entries, err := os.ReadDir(templateDir)
 	if err != nil {
 		contract.IgnoreError(err)
 		return errors.New(message)
@@ -744,10 +770,10 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 	suggestions := []string{}
 	const minDistance = 2
 	op := levenshtein.DefaultOptions
-	for _, info := range infos {
-		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(info.Name()), op)
+	for _, entry := range entries {
+		distance := levenshtein.DistanceForStrings([]rune(templateName), []rune(entry.Name()), op)
 		if distance <= minDistance {
-			suggestions = append(suggestions, info.Name())
+			suggestions = append(suggestions, entry.Name())
 		}
 	}
 
@@ -767,10 +793,10 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 func transform(content string, projectName string, projectDescription string) string {
 	// On Windows, we need to replace \n with \r\n because go-git does not currently handle it.
 	if runtime.GOOS == "windows" {
-		content = strings.Replace(content, "\n", "\r\n", -1)
+		content = strings.ReplaceAll(content, "\n", "\r\n")
 	}
-	content = strings.Replace(content, "${PROJECT}", projectName, -1)
-	content = strings.Replace(content, "${DESCRIPTION}", projectDescription, -1)
+	content = strings.ReplaceAll(content, "${PROJECT}", projectName)
+	content = strings.ReplaceAll(content, "${DESCRIPTION}", projectDescription)
 	return content
 }
 

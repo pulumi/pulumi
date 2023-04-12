@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//go:build !all
+// +build !all
 
 // A provider with resources for use in tests.
 package main
@@ -43,8 +45,9 @@ type resourceProvider interface {
 }
 
 var resourceProviders = map[string]resourceProvider{
-	"testprovider:index:Random": &randomResourceProvider{},
-	"testprovider:index:Echo":   &echoResourceProvider{},
+	"testprovider:index:Random":        &randomResourceProvider{},
+	"testprovider:index:Echo":          &echoResourceProvider{},
+	"testprovider:index:FailsOnDelete": &failsOnDeleteResourceProvider{},
 }
 
 func providerForURN(urn string) (resourceProvider, string, bool) {
@@ -53,7 +56,7 @@ func providerForURN(urn string) (resourceProvider, string, bool) {
 	return provider, ty, ok
 }
 
-//nolint: unused,deadcode
+//nolint:unused,deadcode
 func main() {
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
@@ -63,6 +66,8 @@ func main() {
 }
 
 type testproviderProvider struct {
+	rpc.UnimplementedResourceProviderServer
+
 	host    *provider.HostClient
 	name    string
 	version string
@@ -101,7 +106,8 @@ func (k *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest)
 // StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
 // back as a series of messages.
 func (k *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
-	server rpc.ResourceProvider_StreamInvokeServer) error {
+	server rpc.ResourceProvider_StreamInvokeServer,
+) error {
 	tok := req.GetTok()
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
 }
@@ -183,7 +189,8 @@ func (k *testproviderProvider) Attach(ctx context.Context, req *rpc.PluginAttach
 
 // GetSchema returns the JSON-serialized schema for the provider.
 func (k *testproviderProvider) GetSchema(ctx context.Context,
-	req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
+	req *rpc.GetSchemaRequest,
+) (*rpc.GetSchemaResponse, error) {
 	return &rpc.GetSchemaResponse{}, nil
 }
 
@@ -194,4 +201,8 @@ func (k *testproviderProvider) GetSchema(ctx context.Context,
 // hard-closing any gRPC connection.
 func (k *testproviderProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
+}
+
+func (k *testproviderProvider) GetMapping(context.Context, *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+	return &rpc.GetMappingResponse{}, nil
 }

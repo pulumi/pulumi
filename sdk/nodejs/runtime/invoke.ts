@@ -74,6 +74,19 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
     return invokeAsync(tok, props, opts);
 }
 
+/*
+ * `invokeSingle` dynamically invokes the function, `tok`, which is offered by a provider plugin.
+ * Similar to `invoke`, but returns a single value instead of an object with a single key.
+ */
+export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
+    return invokeAsync(tok, props, opts).then(outputs => {
+        // assume outputs have a single key
+        const keys = Object.keys(outputs);
+        // return the first key's value from the outputs
+        return outputs[keys[0]];
+    });
+}
+
 export async function streamInvoke(
     tok: string,
     props: Inputs,

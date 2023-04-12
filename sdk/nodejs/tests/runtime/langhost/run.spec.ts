@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
+import assert from "assert";
 import * as childProcess from "child_process";
 import * as path from "path";
 import { ID, runtime, URN } from "../../../index";
-import { asyncTest } from "../../util";
 import { platformIndependentEOL } from "../../constants";
 
 import * as grpc from "@grpc/grpc-js";
@@ -470,7 +469,7 @@ describe("rpc", () => {
                 ignoreDebug: true,
             },
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
-                return { urn: makeUrn(t, name), id: name, props: undefined };
+                return { urn: makeUrn(t, name), id: name, props: res };
             },
             log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
                 assert.strictEqual(severity, engineproto.LogSeverity.INFO);
@@ -1215,7 +1214,55 @@ describe("rpc", () => {
                                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
                                replaceOnChanges?: string[], providers?: any) => {
                 if (name === "singular" || name === "map" || name === "array") {
+                    assert.strictEqual(provider, "");
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
+                }
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "ambiguous_entrypoints": {
+            program: path.join(base, "069.ambiguous_entrypoints"),
+            expectResourceCount: 1,
+            expectedLogs: {
+                count: 1,
+                ignoreDebug: true,
+            },
+            log: (ctx: any, severity: number, message: string, urn: URN, streamId: number) => {
+                assert.strictEqual(
+                    message,
+                    "Found a TypeScript project containing an index.js file and no explicit entrypoint" +
+                    " in Pulumi.yaml - Pulumi will use index.js"
+                );
+            },
+        },
+        "unusual_alias_names": {
+            program: path.join(base, "070.unusual_alias_names"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "large_alias_counts": {
+            program: path.join(base, "071.large_alias_counts"),
+            expectResourceCount: 1,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "large_alias_lineage_chains": {
+            program: path.join(base, "072.large_alias_lineage_chains"),
+            expectResourceCount: 3,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, ...args: any) => {
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
+        "component_dependencies": {
+            program: path.join(base, "073.component_dependencies"),
+            expectResourceCount: 4,
+            registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                               ...args: any) => {
+                if (name === "second") {
+                    assert.deepStrictEqual(dependencies, ["test:index:MyCustomResource::firstChild"]);
                 }
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
@@ -1235,7 +1282,7 @@ describe("rpc", () => {
 
         const testFn = opts.only ? it.only : it;
 
-        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
+        testFn(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, async () => {
             // For each test case, run it twice: first to preview and then to update.
             for (const dryrun of [true, false]) {
                 // console.log(dryrun ? "PREVIEW:" : "UPDATE:");
@@ -1381,7 +1428,7 @@ describe("rpc", () => {
                     // SupportsFeature callback
                     (call: any, callback: any) => {
                         const resp = new resproto.SupportsFeatureResponse();
-                        resp.setHassupport(false);
+                        resp.setHassupport(true);
                         callback(undefined, resp);
                     },
                 );
@@ -1428,7 +1475,7 @@ describe("rpc", () => {
                     }
                 }
             }
-        }));
+        });
     }
 });
 
@@ -1555,7 +1602,7 @@ async function createMockEngineAsync(
     server.addService(enginerpc.EngineService, engineImpl);
 
     const port = await new Promise<number>((resolve, reject) => {
-        server.bindAsync("0.0.0.0:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync("127.0.0.1:0", grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {
@@ -1568,7 +1615,7 @@ async function createMockEngineAsync(
 
     cleanup(async () => server.forceShutdown());
 
-    return { server: server, addr: `0.0.0.0:${port}` };
+    return { server: server, addr: `127.0.0.1:${port}` };
 }
 
 function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
@@ -1593,7 +1640,7 @@ function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.Chil
         const dataString: string = stripEOL(data);
         if (addrResolve) {
             // The first line is the address; strip off the newline and resolve the promise.
-            addrResolve(`0.0.0.0:${dataString}`);
+            addrResolve(`127.0.0.1:${dataString}`);
             addrResolve = undefined;
         } else {
             console.log(`langhost.stdout: ${dataString}`);

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -71,7 +72,7 @@ func (c Value) Value(decrypter Decrypter) (string, error) {
 		return string(json), nil
 	}
 
-	return decrypter.DecryptValue(c.value)
+	return decrypter.DecryptValue(context.TODO(), c.value)
 }
 
 func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
@@ -97,7 +98,7 @@ func (c Value) Copy(decrypter Decrypter, encrypter Encrypter) (Value, error) {
 
 			val = NewSecureObjectValue(string(json))
 		} else {
-			enc, eerr := encrypter.EncryptValue(raw)
+			enc, eerr := encrypter.EncryptValue(context.TODO(), raw)
 			if eerr != nil {
 				return Value{}, eerr
 			}
@@ -178,7 +179,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 	// Otherwise, try to unmarshal as an object.
 	var obj interface{}
 	if err = unmarshal(&obj); err != nil {
-		return errors.Wrapf(err, "malformed config value")
+		return fmt.Errorf("malformed config value: %w", err)
 	}
 
 	// Fix-up the object (e.g. convert `map[interface{}]interface{}` to `map[string]interface{}`).
@@ -193,7 +194,7 @@ func (c *Value) unmarshalValue(unmarshal func(interface{}) error, fix func(inter
 
 	json, err := json.Marshal(obj)
 	if err != nil {
-		return errors.Wrapf(err, "marshalling obj")
+		return fmt.Errorf("marshalling obj: %w", err)
 	}
 	c.value = string(json)
 	c.secure = hasSecureValue(obj)
@@ -282,7 +283,7 @@ func reencryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (i
 				return nil, err
 			}
 
-			encVal, err := encrypter.EncryptValue(raw)
+			encVal, err := encrypter.EncryptValue(context.TODO(), raw)
 			if err != nil {
 				return nil, err
 			}
@@ -324,7 +325,7 @@ func reencryptObject(v interface{}, decrypter Decrypter, encrypter Encrypter) (i
 func decryptObject(v interface{}, decrypter Decrypter) (interface{}, error) {
 	decryptIt := func(val interface{}) (interface{}, error) {
 		if isSecure, secureVal := isSecureValue(val); isSecure {
-			return decrypter.DecryptValue(secureVal)
+			return decrypter.DecryptValue(context.TODO(), secureVal)
 		}
 		return decryptObject(val, decrypter)
 	}

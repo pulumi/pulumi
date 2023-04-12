@@ -31,7 +31,7 @@ func (val *FuncWithDefaultValueArgs) Defaults() *FuncWithDefaultValueArgs {
 		return nil
 	}
 	tmp := *val
-	if isZero(tmp.B) {
+	if tmp.B == nil {
 		b_ := "b-default"
 		tmp.B = &b_
 	}

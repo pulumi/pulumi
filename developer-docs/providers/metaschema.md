@@ -618,6 +618,14 @@ Specifies whether a change to the property causes its containing resource to be 
 
 ---
 
+#### `willReplaceOnChanges`
+
+Indicates that the provider will replace the resource when this property is changed.
+
+`boolean`
+
+---
+
 #### `secret`
 
 Specifies whether the property is secret (default false).

@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/iam"
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/iam"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -21,7 +21,7 @@ func main() {
 			return err
 		}
 		siteDir := "www"
-		files0, err := ioutil.ReadDir(siteDir)
+		files0, err := os.ReadDir(siteDir)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func main() {
 					return _zero, err
 				}
 				json0 := string(tmpJSON0)
-				return json0, nil
+				return pulumi.String(json0), nil
 			}).(pulumi.StringOutput),
 		})
 		if err != nil {

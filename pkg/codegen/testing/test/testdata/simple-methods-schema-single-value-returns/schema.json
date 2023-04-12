@@ -37,9 +37,6 @@
   },
   "language": {
     "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ],
       "liftSingleValueMethodReturns": true
     },
     "go": {
@@ -49,7 +46,7 @@
     },
     "nodejs": {
       "devDependencies": {
-        "@types/node": "latest"
+        "@types/node": "ts4.3"
       },
       "liftSingleValueMethodReturns": true
     },

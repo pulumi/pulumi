@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per
@@ -111,7 +112,7 @@ var pypiPost = regexp.MustCompile("^post[0-9]+$")
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
 func pypiVersion(v semver.Version) string {
-	var localList []string
+	localList := make([]string, 0, len(pypiReleaseTranslations))
 
 	getRelease := func(maybeRelease string) string {
 		for _, tup := range pypiReleaseTranslations {
@@ -184,4 +185,18 @@ func pypiVersion(v semver.Version) string {
 		local = "+" + strings.Join(localList, ".")
 	}
 	return fmt.Sprintf("%d.%d.%d%s%s%s%s", v.Major, v.Minor, v.Patch, release, dev, post, local)
+}
+
+// pythonCase converts s to PascalCase, ignoring underscores, e.g. __myWords -> __MyWords.
+func pythonCase(s string) string {
+	var underscores string
+	noUnderscores := strings.TrimLeftFunc(s, func(r rune) bool {
+		if r != '_' {
+			return false
+		}
+		underscores += "_"
+		return true
+	})
+	c := cgstrings.Unhyphenate(noUnderscores)
+	return underscores + cgstrings.UppercaseFirst(c)
 }

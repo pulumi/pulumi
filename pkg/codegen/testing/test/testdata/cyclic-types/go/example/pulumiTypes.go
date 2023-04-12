@@ -19,7 +19,7 @@ type AcyclicReferent struct {
 // AcyclicReferentInput is an input type that accepts AcyclicReferentArgs and AcyclicReferentOutput values.
 // You can construct a concrete instance of `AcyclicReferentInput` via:
 //
-//          AcyclicReferentArgs{...}
+//	AcyclicReferentArgs{...}
 type AcyclicReferentInput interface {
 	pulumi.Input
 
@@ -78,7 +78,7 @@ type AcyclicS struct {
 // AcyclicSInput is an input type that accepts AcyclicSArgs and AcyclicSOutput values.
 // You can construct a concrete instance of `AcyclicSInput` via:
 //
-//          AcyclicSArgs{...}
+//	AcyclicSArgs{...}
 type AcyclicSInput interface {
 	pulumi.Input
 
@@ -127,7 +127,7 @@ type AcyclicT struct {
 // AcyclicTInput is an input type that accepts AcyclicTArgs and AcyclicTOutput values.
 // You can construct a concrete instance of `AcyclicTInput` via:
 //
-//          AcyclicTArgs{...}
+//	AcyclicTArgs{...}
 type AcyclicTInput interface {
 	pulumi.Input
 
@@ -176,7 +176,7 @@ type DirectCycle struct {
 // DirectCycleInput is an input type that accepts DirectCycleArgs and DirectCycleOutput values.
 // You can construct a concrete instance of `DirectCycleInput` via:
 //
-//          DirectCycleArgs{...}
+//	DirectCycleArgs{...}
 type DirectCycleInput interface {
 	pulumi.Input
 
@@ -211,11 +211,11 @@ func (i DirectCycleArgs) ToDirectCyclePtrOutputWithContext(ctx context.Context) 
 // DirectCyclePtrInput is an input type that accepts DirectCycleArgs, DirectCyclePtr and DirectCyclePtrOutput values.
 // You can construct a concrete instance of `DirectCyclePtrInput` via:
 //
-//          DirectCycleArgs{...}
+//	        DirectCycleArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type DirectCyclePtrInput interface {
 	pulumi.Input
 
@@ -309,7 +309,7 @@ type IndirectCycleS struct {
 // IndirectCycleSInput is an input type that accepts IndirectCycleSArgs and IndirectCycleSOutput values.
 // You can construct a concrete instance of `IndirectCycleSInput` via:
 //
-//          IndirectCycleSArgs{...}
+//	IndirectCycleSArgs{...}
 type IndirectCycleSInput interface {
 	pulumi.Input
 
@@ -344,11 +344,11 @@ func (i IndirectCycleSArgs) ToIndirectCycleSPtrOutputWithContext(ctx context.Con
 // IndirectCycleSPtrInput is an input type that accepts IndirectCycleSArgs, IndirectCycleSPtr and IndirectCycleSPtrOutput values.
 // You can construct a concrete instance of `IndirectCycleSPtrInput` via:
 //
-//          IndirectCycleSArgs{...}
+//	        IndirectCycleSArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type IndirectCycleSPtrInput interface {
 	pulumi.Input
 
@@ -442,7 +442,7 @@ type IndirectCycleT struct {
 // IndirectCycleTInput is an input type that accepts IndirectCycleTArgs and IndirectCycleTOutput values.
 // You can construct a concrete instance of `IndirectCycleTInput` via:
 //
-//          IndirectCycleTArgs{...}
+//	IndirectCycleTArgs{...}
 type IndirectCycleTInput interface {
 	pulumi.Input
 
@@ -477,11 +477,11 @@ func (i IndirectCycleTArgs) ToIndirectCycleTPtrOutputWithContext(ctx context.Con
 // IndirectCycleTPtrInput is an input type that accepts IndirectCycleTArgs, IndirectCycleTPtr and IndirectCycleTPtrOutput values.
 // You can construct a concrete instance of `IndirectCycleTPtrInput` via:
 //
-//          IndirectCycleTArgs{...}
+//	        IndirectCycleTArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type IndirectCycleTPtrInput interface {
 	pulumi.Input
 

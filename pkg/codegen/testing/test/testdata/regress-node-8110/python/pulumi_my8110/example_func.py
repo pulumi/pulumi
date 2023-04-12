@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Awaitable
 from . import _utilities
 from ._enums import *
 
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 def example_func(enums: Optional[Sequence[Union[str, 'MyEnum']]] = None,
-                 opts: Optional[pulumi.InvokeOptions] = None):
+                 opts: Optional[pulumi.InvokeOptions] = None) -> Awaitable[None]:
     """
     Use this data source to access information about an existing resource.
     """

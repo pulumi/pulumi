@@ -24,6 +24,8 @@ import pytest
 from pulumi.runtime import settings, mocks
 import pulumi
 
+from copy import deepcopy
+
 class MyMocks(pulumi.runtime.Mocks):
 
     def new_resource(self, args: pulumi.runtime.MockResourceArgs):
@@ -33,7 +35,7 @@ class MyMocks(pulumi.runtime.Mocks):
         raise Exception('call')
 
 
-class MyMonitor:
+class MyMonitor(mocks.MockMonitor):
     def __init__(self):
         self.outputs = None
 
@@ -43,12 +45,11 @@ class MyMonitor:
 
 @pytest.fixture
 def my_mocks():
-    old_settings = settings.SETTINGS
     settings.reset_options()
-    mm = MyMocks()
-    mocks.set_mocks(mm, preview=False)
+    old_settings = deepcopy(settings.SETTINGS)
     monitor = MyMonitor()
-    settings.SETTINGS.monitor = monitor
+    mm = MyMocks()
+    mocks.set_mocks(mm, preview=False, monitor=monitor)
 
     try:
         yield mm

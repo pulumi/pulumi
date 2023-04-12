@@ -66,21 +66,28 @@ class Config:
         #         f"use `{use.__name__}` instead of `{instead_of.__name__}`")
         return get_config(full_key)
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
         """
-        Returns an optional configuration value by its key, or None if it doesn't exist.
+        Returns an optional configuration value by its key,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
 
         :param str key: The requested configuration key.
+        :param Optional[str] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        return self._get(key, self.get_secret, self.get)
+        config_candidate = self._get(key, self.get_secret, self.get)
+        return config_candidate if config_candidate is not None else default
 
     def get_secret(self, key: str) -> Optional[Output[str]]:
         """
-        Returns an optional configuration value by its key, marked as a secret, or None if it doesn't exist.
+        Returns an optional configuration value by its key, marked as a secret,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
 
         :param str key: The requested configuration key.
+        :param Optional[str] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
@@ -105,32 +112,41 @@ class Config:
             return False
         raise ConfigTypeError(self.full_key(key), v, "bool")
 
-    def get_bool(self, key: str) -> Optional[bool]:
+    def get_bool(self, key: str, default: Optional[bool] = None) -> Optional[bool]:
         """
-        Returns an optional configuration value, as a bool, by its key, or None if it doesn't exist.
+        Returns an optional configuration value, as a bool, by its key,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal boolean, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[bool] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[bool]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        return self._get_bool(key, self.get_secret_bool, self.get_bool)
+        config_candidate = self._get_bool(key, self.get_secret_bool, self.get_bool)
+        return config_candidate if config_candidate is not None else default
 
-    def get_secret_bool(self, key: str) -> Optional[Output[bool]]:
+    def get_secret_bool(
+        self, key: str, default: Optional[bool] = None
+    ) -> Optional[Output[bool]]:
         """
-        Returns an optional configuration value, as a bool, by its key, marked as a secret or None if it doesn't exist.
+        Returns an optional configuration value, as a bool, by its key, marked as a secret,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal boolean, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[bool] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[bool]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        v = self._get_bool(key)
+        config_candidate = self._get_bool(key)
+        v = config_candidate if config_candidate is not None else default
         if v is None:
             return None
-
         return Output.secret(v)
 
     def _get_int(
@@ -147,32 +163,41 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "int") from e
 
-    def get_int(self, key: str) -> Optional[int]:
+    def get_int(self, key: str, default: Optional[int] = None) -> Optional[int]:
         """
-        Returns an optional configuration value, as an int, by its key, or None if it doesn't exist.
+        Returns an optional configuration value, as an int, by its key,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal int, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[int] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[int]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        return self._get_int(key, self.get_secret_int, self.get_int)
+        config_candidate = self._get_int(key, self.get_secret_int, self.get_int)
+        return config_candidate if config_candidate is not None else default
 
-    def get_secret_int(self, key: str) -> Optional[Output[int]]:
+    def get_secret_int(
+        self, key: str, default: Optional[int] = None
+    ) -> Optional[Output[int]]:
         """
-        Returns an optional configuration value, as an int, by its key, marked as a secret, or None if it doesn't exist.
+        Returns an optional configuration value, as an int, by its key, marked as a secret,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal int, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[int] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[int]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        v = self._get_int(key)
+        config_candidate = self._get_int(key)
+        v = config_candidate if config_candidate is not None else default
         if v is None:
             return None
-
         return Output.secret(v)
 
     def _get_float(
@@ -189,32 +214,41 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "float") from e
 
-    def get_float(self, key: str) -> Optional[float]:
+    def get_float(self, key: str, default: Optional[float] = None) -> Optional[float]:
         """
-        Returns an optional configuration value, as a float, by its key, or None if it doesn't exist.
+        Returns an optional configuration value, as a float, by its key, marked as a secret,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal float, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[float] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[float]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        return self._get_float(key, self.get_secret_float, self.get_float)
+        config_candidate = self._get_float(key, self.get_secret_float, self.get_float)
+        return config_candidate if config_candidate is not None else default
 
-    def get_secret_float(self, key: str) -> Optional[Output[float]]:
+    def get_secret_float(
+        self, key: str, default: Optional[float] = None
+    ) -> Optional[Output[float]]:
         """
-        Returns an optional configuration value, as a float, by its key, marked as a secret or None if it doesn't exist.
+        Returns an optional configuration value, as a float, by its key, marked as a secret,
+        a default value if that key is unset and a default is provided,
+        or None if it doesn't exist.
         If the configuration value isn't a legal float, this function will throw an error.
 
         :param str key: The requested configuration key.
+        :param Optional[float] default: An optional fallback value to use if the given configuration key is not set.
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[float]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self._get_float(key)
+        config_candidate = self._get_float(key)
+        v = config_candidate if config_candidate is not None else default
         if v is None:
             return None
-
         return Output.secret(v)
 
     def _get_object(
@@ -231,21 +265,41 @@ class Config:
         except Exception as e:
             raise ConfigTypeError(self.full_key(key), v, "JSON object") from e
 
-    def get_object(self, key: str) -> Optional[Any]:
+    def get_object(self, key: str, default: Optional[Any] = None) -> Optional[Any]:
         """
-        Returns an optional configuration value, as an object, by its key, or undefined if it
+        Returns an optional configuration value, as an object, by its key,
+        a default value if that key is unset and a default is provided, or undefined if it
         doesn't exist. This routine simply JSON parses and doesn't validate the shape of the
         contents.
-        """
-        return self._get_object(key, self.get_secret_object, self.get_object)
 
-    def get_secret_object(self, key: str) -> Optional[Output[Any]]:
+        :param str key: The requested configuration key.
+        :param Optional[Any] default: An optional fallback value to use if the given configuration key is not set.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[Any]
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        Returns an optional configuration value, as an object, by its key, marking it as a secret or
-        undefined if it doesn't exist. This routine simply JSON parses and doesn't validate the
+        config_candidate = self._get_object(
+            key, self.get_secret_object, self.get_object
+        )
+        return config_candidate if config_candidate is not None else default
+
+    def get_secret_object(
+        self, key: str, default: Optional[Any] = None
+    ) -> Optional[Output[Any]]:
+        """
+        Returns an optional configuration value, as an object, by its key, marking it as a secret,
+        a default value if that key is unset and a default is provided,
+        or undefined if it doesn't exist. This routine simply JSON parses and doesn't validate the
         shape of the contents.
+
+        :param str key: The requested configuration key.
+        :param Optional[Any] default: An optional fallback value to use if the given configuration key is not set.
+        :return: The configuration key's value, or None if one does not exist.
+        :rtype: Optional[Any]
+        :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self._get_object(key)
+        config_candidate = self._get_object(key)
+        v = config_candidate if config_candidate is not None else default
         if v is None:
             return None
         return Output.secret(v)

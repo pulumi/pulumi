@@ -1,4 +1,5 @@
 // Copyright 2016-2018, Pulumi Corporation.  All rights reserved.
+//go:build !xplatform_acceptance
 
 package ints
 
@@ -36,15 +37,14 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("untargeted_create")
-	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 	urn, _ := e.RunCommand("pulumi", "stack", "output", "urn")
 
 	if err := fsutil.CopyFile(
 		path.Join(e.RootPath, "untargeted_create", "index.ts"),
 		path.Join("untargeted_create", "step1", "index.ts"), nil); err != nil {
-
 		t.Fatalf("error copying index.ts file: %v", err)
 	}
 
@@ -75,8 +75,8 @@ func TestDeleteManyTargets(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.ImportDirectory(projName)
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.

@@ -1,7 +1,6 @@
 package passphrase
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -37,7 +36,7 @@ func TestPassphraseManagerIncorrectPassphraseReturnsErrorCrypter(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password123")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	manager, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	manager, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err) // even if we pass the wrong provider, we should get a lockedPassphraseProvider
 
 	assert.Equal(t, manager, &localSecretsManager{
@@ -54,7 +53,7 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(brokenState))
+	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(brokenState))
 	assert.Error(t, err)
 }
 
@@ -66,7 +65,7 @@ func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "password")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 }
@@ -79,7 +78,7 @@ func TestPassphraseManagerNoEnvironmentVariablesReturnsError(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }
@@ -92,7 +91,7 @@ func TestPassphraseManagerEmptyPassphraseIsValid(t *testing.T) {
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE_FILE")
 
-	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 }
@@ -102,7 +101,7 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	resetEnv := resetPassphraseTestEnvVars()
 	defer resetEnv()
 
-	tmpFile, err := ioutil.TempFile("", "pulumi-secret-test")
+	tmpFile, err := os.CreateTemp("", "pulumi-secret-test")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.WriteString("password")
@@ -111,7 +110,7 @@ func TestPassphraseManagerCorrectPassfileReturnsSecretsManager(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", tmpFile.Name())
 
-	sm, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	sm, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NoError(t, err)
 	assert.NotNil(t, sm)
 }
@@ -124,7 +123,7 @@ func TestPassphraseManagerEmptyPassfileReturnsError(t *testing.T) {
 	os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
 	os.Setenv("PULUMI_CONFIG_PASSPHRASE_FILE", "")
 
-	_, err := NewPromptingPassphaseSecretsManagerFromState([]byte(state))
+	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(state))
 	assert.NotNil(t, err, strings.Contains(err.Error(), "unable to find either `PULUMI_CONFIG_PASSPHRASE` nor "+
 		"`PULUMI_CONFIG_PASSPHRASE_FILE`"))
 }

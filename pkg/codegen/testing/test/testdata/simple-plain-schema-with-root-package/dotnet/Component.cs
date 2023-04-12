@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("example::Component")]
-    public partial class Component : Pulumi.ComponentResource
+    public partial class Component : global::Pulumi.ComponentResource
     {
         [Output("a")]
         public Output<bool> A { get; private set; } = null!;
@@ -65,7 +65,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class ComponentArgs : Pulumi.ResourceArgs
+    public sealed class ComponentArgs : global::Pulumi.ResourceArgs
     {
         [Input("a", required: true)]
         public bool A { get; set; }
@@ -102,5 +102,6 @@ namespace Pulumi.Example
         public ComponentArgs()
         {
         }
+        public static new ComponentArgs Empty => new ComponentArgs();
     }
 }

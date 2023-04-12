@@ -128,3 +128,6 @@ func TestNewDetailedDiff(t *testing.T) {
 		})
 	}
 }
+
+// Assert that UnimplementedProvider implements Provider
+var _ = Provider((*UnimplementedProvider)(nil))

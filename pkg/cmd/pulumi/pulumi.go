@@ -17,9 +17,11 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -45,12 +47,100 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+type commandGroup struct {
+	Name     string
+	Commands []*cobra.Command
+}
+
+func (c *commandGroup) commandWidth() int {
+	width := 0
+	for _, com := range c.Commands {
+		if com.Hidden {
+			continue
+		}
+		newWidth := len(com.Name())
+		if newWidth > width {
+			width = newWidth
+		}
+	}
+	return width
+}
+
+func displayCommands(cgs []commandGroup) {
+	width := 0
+	for _, cg := range cgs {
+		newWidth := cg.commandWidth()
+		if newWidth > width {
+			width = newWidth
+		}
+	}
+
+	for _, cg := range cgs {
+		if cg.commandWidth() == 0 {
+			continue
+		}
+		fmt.Printf("%s:\n", cg.Name)
+		for _, com := range cg.Commands {
+			if com.Hidden {
+				continue
+			}
+			spacing := strings.Repeat(" ", width-len(com.Name()))
+			fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+		}
+		fmt.Println()
+	}
+}
+
+func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
+	for _, cg := range rootCgs {
+		for _, com := range cg.Commands {
+			cmd.AddCommand(com)
+		}
+	}
+
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		header := c.Long
+		if header == "" {
+			header = c.Short
+		}
+
+		if header != "" {
+			fmt.Println(strings.TrimSpace(header))
+			fmt.Println()
+		}
+
+		if c != cmd.Root() {
+			fmt.Print(c.UsageString())
+			return
+		}
+
+		fmt.Println("Usage:")
+		fmt.Println("  pulumi [command]")
+		fmt.Println()
+
+		displayCommands(rootCgs)
+
+		fmt.Println("Flags:")
+		fmt.Println(cmd.Flags().FlagUsages())
+
+		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
+	})
+}
+
+type loggingWriter struct{}
+
+func (loggingWriter) Write(bytes []byte) (int, error) {
+	logging.Infof(string(bytes))
+	return len(bytes), nil
+}
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() *cobra.Command {
@@ -120,6 +210,14 @@ func NewPulumiCmd() *cobra.Command {
 			if tracingHeaderFlag != "" {
 				tracingHeader = tracingHeaderFlag
 			}
+			if logging.Verbose >= 11 {
+				logging.Warningf("log level 11 will print sensitive information such as api tokens and request headers")
+			}
+
+			// The gocloud drivers use the log package to write logs, which by default just writes to stdout. This overrides
+			// that so that log messages go to the logging package that we use everywhere else instead.
+			loggingWriter := &loggingWriter{}
+			log.SetOutput(loggingWriter)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling); err != nil {
@@ -127,14 +225,15 @@ func NewPulumiCmd() *cobra.Command {
 				}
 			}
 
-			if cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_UPDATE_CHECK")) {
+			if env.SkipUpdateCheck.Value() {
 				logging.V(5).Infof("skipping update check")
 			} else {
 				// Run the version check in parallel so that it doesn't block executing the command.
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					updateCheckResult <- checkForUpdate()
+					ctx := commandContext()
+					updateCheckResult <- checkForUpdate(ctx)
 					close(updateCheckResult)
 				}()
 			}
@@ -183,55 +282,95 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
-	// Common commands:
-	//     - Getting Started Commands:
-	cmd.AddCommand(newNewCmd())
-	//     - Deploy Commands:
-	cmd.AddCommand(newUpCmd())
-	cmd.AddCommand(newPreviewCmd())
-	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newWatchCmd())
-	//     - Stack Management Commands:
-	cmd.AddCommand(newStackCmd())
-	cmd.AddCommand(newConfigCmd())
-	//     - Service Commands:
-	cmd.AddCommand(newLoginCmd())
-	cmd.AddCommand(newLogoutCmd())
-	cmd.AddCommand(newWhoAmICmd())
-	//     - Policy Management Commands:
-	cmd.AddCommand(newPolicyCmd())
-	//     - Advanced Commands:
-	cmd.AddCommand(newCancelCmd())
-	cmd.AddCommand(newImportCmd())
-	cmd.AddCommand(newRefreshCmd())
-	cmd.AddCommand(newStateCmd())
-	//     - Other Commands:
-	cmd.AddCommand(newLogsCmd())
-	cmd.AddCommand(newPluginCmd())
-	cmd.AddCommand(newVersionCmd())
-	cmd.AddCommand(newConsoleCmd())
-	cmd.AddCommand(newAboutCmd())
-	cmd.AddCommand(newSchemaCmd())
-	cmd.AddCommand(newOrgCmd())
+	setCommandGroups(cmd, []commandGroup{
+		// Common commands:
+		{
+			Name: "Stack Management Commands",
+			Commands: []*cobra.Command{
+				newNewCmd(),
+				newConfigCmd(),
+				newStackCmd(),
+				newConsoleCmd(),
+				newImportCmd(),
+				newRefreshCmd(),
+				newStateCmd(),
+			},
+		},
+		{
+			Name: "Deployment Commands",
+			Commands: []*cobra.Command{
+				newUpCmd(),
+				newDestroyCmd(),
+				newPreviewCmd(),
+				newCancelCmd(),
+			},
+		},
+		{
+			Name: "Pulumi Cloud Commands",
+			Commands: []*cobra.Command{
+				newLoginCmd(),
+				newLogoutCmd(),
+				newWhoAmICmd(),
+				newOrgCmd(),
+			},
+		},
+		{
+			Name: "Policy Management Commands",
+			Commands: []*cobra.Command{
+				newPolicyCmd(),
+			},
+		},
+		{
+			Name: "Plugin Commands",
+			Commands: []*cobra.Command{
+				newPluginCmd(),
+				newSchemaCmd(),
+				newPackageCmd(),
+			},
+		},
+		{
+			Name: "Other Commands",
+			Commands: []*cobra.Command{
+				newVersionCmd(),
+				newAboutCmd(),
+				newGenCompletionCmd(cmd),
+			},
+		},
 
-	// Less common, and thus hidden, commands:
-	cmd.AddCommand(newGenCompletionCmd(cmd))
-	cmd.AddCommand(newGenMarkdownCmd(cmd))
+		// Less common, and thus hidden, commands:
+		{
+			Name: "Hidden Commands",
+			Commands: []*cobra.Command{
+				newGenMarkdownCmd(cmd),
+			},
+		},
 
-	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
-	// to true.
-	cmd.AddCommand(newQueryCmd())
-	cmd.AddCommand(newConvertCmd())
+		// We have a set of commands that are still experimental
+		//     hidden unless PULUMI_EXPERIMENTAL is set to true.
+		{
+			Name: "Experimental Commands",
+			Commands: []*cobra.Command{
+				newQueryCmd(),
+				newConvertCmd(),
+				newWatchCmd(),
+				newLogsCmd(),
+				newEnvCmd(),
+			},
+		},
+		// We have a set of options that are useful for developers of pulumi
+		//    hidden unless PULUMI_DEBUG_COMMANDS is set to true.
+		{
+			Name: "Developer Commands",
+			Commands: []*cobra.Command{
+				newViewTraceCmd(),
+				newConvertTraceCmd(),
+				newReplayEventsCmd(),
+			},
+		},
+	})
 
-	// We have a set of options that are useful for developers of pulumi that are hidden unless PULUMI_DEBUG_COMMANDS is
-	// set to true.
 	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
 		"Include the tracing header with the given contents.")
-
-	cmd.AddCommand(newViewTraceCmd())
-	cmd.AddCommand(newConvertTraceCmd())
-
-	cmd.AddCommand(newReplayEventsCmd())
 
 	if !hasDebugCommands() {
 		err := cmd.PersistentFlags().MarkHidden("tracing-header")
@@ -243,7 +382,7 @@ func NewPulumiCmd() *cobra.Command {
 
 // checkForUpdate checks to see if the CLI needs to be updated, and if so emits a warning, as well as information
 // as to how it can be upgraded.
-func checkForUpdate() *diag.Diag {
+func checkForUpdate(ctx context.Context) *diag.Diag {
 	curVer, err := semver.ParseTolerant(version.Version)
 	if err != nil {
 		logging.V(3).Infof("error parsing current version: %s", err)
@@ -254,9 +393,10 @@ func checkForUpdate() *diag.Diag {
 		return nil
 	}
 
-	latestVer, oldestAllowedVer, err := getCLIVersionInfo()
+	latestVer, oldestAllowedVer, err := getCLIVersionInfo(ctx)
 	if err != nil {
-		logging.V(3).Infof("error fetching latest version information: %s", err)
+		logging.V(3).Infof("error fetching latest version information "+
+			"(set `%s=true` to skip update checks): %s", env.SkipUpdateCheck.Var().Name(), err)
 	}
 
 	if oldestAllowedVer.GT(curVer) {
@@ -268,14 +408,14 @@ func checkForUpdate() *diag.Diag {
 
 // getCLIVersionInfo returns information about the latest version of the CLI and the oldest version that should be
 // allowed without warning. It caches data from the server for a day.
-func getCLIVersionInfo() (semver.Version, semver.Version, error) {
+func getCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
 	latest, oldest, err := getCachedVersionInfo()
 	if err == nil {
 		return latest, oldest, err
 	}
 
-	client := client.NewClient(httpstate.DefaultURL(), "", cmdutil.Diag())
-	latest, oldest, err = client.GetCLIVersionInfo(commandContext())
+	client := client.NewClient(httpstate.DefaultURL(), "", false, cmdutil.Diag())
+	latest, oldest, err = client.GetCLIVersionInfo(ctx)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
@@ -304,7 +444,7 @@ func cacheVersionInfo(latest semver.Version, oldest semver.Version) error {
 		return err
 	}
 
-	file, err := os.OpenFile(updateCheckFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0600)
+	file, err := os.OpenFile(updateCheckFile, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600)
 	if err != nil {
 		return err
 	}
@@ -333,7 +473,7 @@ func getCachedVersionInfo() (semver.Version, semver.Version, error) {
 		return semver.Version{}, semver.Version{}, errors.New("cached expired")
 	}
 
-	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0600)
+	file, err := os.OpenFile(updateCheckFile, os.O_RDONLY, 0o600)
 	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
@@ -395,7 +535,7 @@ func getUpgradeCommand() string {
 		logging.V(3).Infof("error determining if the running executable was installed with brew: %s", err)
 	}
 	if isBrew {
-		return "$ brew upgrade pulumi"
+		return "$ brew update && brew upgrade pulumi"
 	}
 
 	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, workspace.BookkeepingDir, "bin") {
@@ -472,8 +612,9 @@ func getLatestBrewFormulaVersion() (semver.Version, bool, error) {
 		return semver.Version{}, false, nil
 	}
 
-	url, err := url.Parse("https://formulae.brew.sh/api/formula/pulumi.json")
-	contract.AssertNoError(err)
+	const formulaJSON = "https://formulae.brew.sh/api/formula/pulumi.json"
+	url, err := url.Parse(formulaJSON)
+	contract.AssertNoErrorf(err, "Could not parse URL %q", formulaJSON)
 
 	resp, err := httputil.DoWithRetry(&http.Request{
 		Method: http.MethodGet,
@@ -511,18 +652,27 @@ func isDevVersion(s semver.Version) bool {
 }
 
 func confirmPrompt(prompt string, name string, opts display.Options) bool {
+	out := opts.Stdout
+	if out == nil {
+		out = os.Stdout
+	}
+	in := opts.Stdin
+	if in == nil {
+		in = os.Stdin
+	}
+
 	if prompt != "" {
-		fmt.Print(
+		fmt.Fprint(out,
 			opts.Color.Colorize(
 				fmt.Sprintf("%s%s%s\n", colors.SpecAttention, prompt, colors.Reset)))
 	}
 
-	fmt.Print(
+	fmt.Fprint(out,
 		opts.Color.Colorize(
-			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing (%s\"%s\"%s):%s ",
+			fmt.Sprintf("%sPlease confirm that this is what you'd like to do by typing `%s%s%s`:%s ",
 				colors.SpecAttention, colors.SpecPrompt, name, colors.SpecAttention, colors.Reset)))
 
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(in)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,15 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
-import { parseConfigFileTextToJson } from "typescript";
+import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import * as runtime from "../../runtime";
+import * as settings from "../../runtime/settings";
+import * as stack from "../../runtime/stack";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -133,8 +135,8 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
         }
     }
 
-    console.error("  * Yowzas, our sincere apologies, we haven't seen this before!");
-    console.error(`    Here is the raw exception message we received: ${error.message}`);
+    console.error("  * Pulumi encountered an unexpected error.");
+    console.error(`    Raw exception message: ${error.message}`);
     return;
 }
 
@@ -164,19 +166,12 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // just tell ts-node to not load project options at all. This helps with cases like
     // pulumi/pulumi#1772.
     const tsConfigPath = "tsconfig.json";
-    const skipProject = !fs.existsSync(tsConfigPath);
-
-    let compilerOptions: object;
-    try {
-        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
-        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
-        compilerOptions = tsConfig["compilerOptions"] ?? {};
-    } catch (e) {
-        compilerOptions = {};
-    }
 
     if (opts.typeScript) {
-        tsnode.register({
+        const skipProject = !fs.existsSync(tsConfigPath);
+        const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
+        const tsn: typeof tsnode = require("ts-node");
+        tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compilerOptions: {
@@ -213,17 +208,37 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         errorSet.add(err);
 
+        // colorize stack trace if exists
+        const stackMessage = err.stack && util.inspect(err, {colors: true});
+
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = err.stack || err.message || ("" + err);
+        const defaultMessage = stackMessage || err.message || ("" + err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
+        } else if (
+            err.name === tsnode.TSError.name
+            || err.name === SyntaxError.name) {
+
+            // Hide stack frames as TSError/SyntaxError have messages containing
+            // where the error is located
+            const errOut = err.stack?.toString() || "";
+            let errMsg = err.message;
+
+            const errParts = errOut.split(err.message);
+            if (errParts.length === 2) {
+                errMsg = errParts[0]+err.message;
+            }
+
+            log.error(
+                `Running program '${program}' failed with an unhandled exception:
+${errMsg}`);
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
@@ -242,7 +257,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
     process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", runtime.disconnectSync);
+    process.on("exit", settings.disconnectSync);
 
     opts.programStarted();
 
@@ -286,5 +301,5 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         }
     };
 
-    return opts.runInStack ? runtime.runInPulumiStack(runProgram) : runProgram();
+    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
 }

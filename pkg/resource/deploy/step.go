@@ -18,10 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -43,7 +45,7 @@ type Step interface {
 	// the state of the deployment.
 	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
-	Op() StepOp              // the operation performed by this step.
+	Op() display.StepOp      // the operation performed by this step.
 	URN() resource.URN       // the resource URN (for before and after).
 	Type() tokens.Type       // the type affected by this step.
 	Provider() string        // the provider reference for this step.
@@ -69,16 +71,20 @@ type SameStep struct {
 var _ Step = (*SameStep)(nil)
 
 func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
-	contract.Assert(!old.Delete)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
-	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
-	contract.Assert(!new.Delete)
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is custom")
+	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
+		"old", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
+
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+
 	return &SameStep{
 		deployment: deployment,
 		reg:        reg,
@@ -92,11 +98,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *re
 // actually creating the resource, but ensure that we complete resource-registration and convey the
 // right information downstream. For example, we will not write these into the checkpoint file.
 func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State) Step {
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
-	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
-	contract.Assert(!new.Delete)
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 
 	// Make the old state here a direct copy of the new state
 	old := *new
@@ -109,7 +116,7 @@ func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new
 	}
 }
 
-func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Op() display.StepOp      { return OpSame }
 func (s *SameStep) Deployment() *Deployment { return s.deployment }
 func (s *SameStep) Type() tokens.Type       { return s.new.Type }
 func (s *SameStep) Provider() string        { return s.new.Provider }
@@ -160,13 +167,16 @@ type CreateStep struct {
 var _ Step = (*CreateStep)(nil)
 
 func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State) Step {
-	contract.Assert(reg != nil)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
-	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
+	contract.Requiref(reg != nil, "reg", "must not be nil")
+
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be external")
+
 	return &CreateStep{
 		deployment: deployment,
 		reg:        reg,
@@ -175,19 +185,23 @@ func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 }
 
 func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
-	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
+	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
+) Step {
+	contract.Requiref(reg != nil, "reg", "must not be nil")
 
-	contract.Assert(reg != nil)
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Delete)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
-	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
+	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
+
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be external")
+
 	return &CreateStep{
 		deployment:    deployment,
 		reg:           reg,
@@ -201,7 +215,7 @@ func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 	}
 }
 
-func (s *CreateStep) Op() StepOp {
+func (s *CreateStep) Op() display.StepOp {
 	if s.replacing {
 		return OpCreateReplacement
 	}
@@ -257,7 +271,14 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.old.Delete = true
 	}
 
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// Create should set the Create and Modified timestamps as the resource state has been created.
+		now := time.Now().UTC()
+		s.new.Created = &now
+		s.new.Modified = &now
+
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -267,29 +288,41 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	deployment *Deployment     // the current deployment.
-	old        *resource.State // the state of the existing resource.
-	replacing  bool            // true if part of a replacement.
+	deployment     *Deployment           // the current deployment.
+	old            *resource.State       // the state of the existing resource.
+	replacing      bool                  // true if part of a replacement.
+	otherDeletions map[resource.URN]bool // other resources that are planned to delete
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(deployment *Deployment, old *resource.State) Step {
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
+func NewDeleteStep(deployment *Deployment, otherDeletions map[resource.URN]bool, old *resource.State) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
+	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
+		"old", "must have or be a provider if it is a custom resource")
+	contract.Requiref(otherDeletions != nil, "otherDeletions", "must not be nil")
 	return &DeleteStep{
-		deployment: deployment,
-		old:        old,
+		deployment:     deployment,
+		old:            old,
+		otherDeletions: otherDeletions,
 	}
 }
 
-func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendingReplace bool) Step {
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
+func NewDeleteReplacementStep(
+	deployment *Deployment,
+	otherDeletions map[resource.URN]bool,
+	old *resource.State,
+	pendingReplace bool,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
+	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
+		"old", "must have or be a provider if it is a custom resource")
+
+	contract.Requiref(otherDeletions != nil, "otherDeletions", "must not be nil")
 
 	// There are two cases in which we create a delete-replacment step:
 	//
@@ -303,16 +336,18 @@ func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendi
 	// In the latter case, the resource must be deleted, but the deletion may not occur if an earlier step fails.
 	// The engine requires that the fact that the old resource must be deleted is persisted in the checkpoint so
 	// that it can issue a deletion of this resource on the next update to this stack.
-	contract.Assert(pendingReplace != old.Delete)
+	contract.Assertf(pendingReplace != old.Delete,
+		"resource %v cannot be pending replacement and deletion at the same time", old.URN)
 	old.PendingReplacement = pendingReplace
 	return &DeleteStep{
-		deployment: deployment,
-		old:        old,
-		replacing:  true,
+		deployment:     deployment,
+		otherDeletions: otherDeletions,
+		old:            old,
+		replacing:      true,
 	}
 }
 
-func (s *DeleteStep) Op() StepOp {
+func (s *DeleteStep) Op() display.StepOp {
 	if s.old.External {
 		if s.replacing {
 			return OpDiscardReplaced
@@ -334,15 +369,34 @@ func (s *DeleteStep) New() *resource.State    { return nil }
 func (s *DeleteStep) Res() *resource.State    { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
+func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
+	if with == "" {
+		return false
+	}
+	r, ok := otherDeletions[with]
+	if !ok {
+		return false
+	}
+	return r
+}
+
+type deleteProtectedError struct {
+	urn resource.URN
+}
+
+func (d deleteProtectedError) Error() string {
+	return fmt.Sprintf("resource %[1]q cannot be deleted\n"+
+		"because it is protected. To unprotect the resource, "+
+		"either remove the `protect` flag from the resource in your Pulumi "+
+		"program and run `pulumi up`, or use the command:\n"+
+		"`pulumi state unprotect '%[1]s'`", d.urn)
+}
+
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources (unless we're replacing them in
 	// which case we will of checked protect elsewhere)
 	if !s.replacing && s.old.Protect {
-		return resource.StatusOK, nil, fmt.Errorf("unable to delete resource %q\n"+
-			"as it is currently marked for protection. To unprotect the resource, "+
-			"either remove the `protect` flag from the resource in your Pulumi "+
-			"program and run `pulumi up` or use the command:\n"+
-			"`pulumi state unprotect '%s'`", s.old.URN, s.old.URN)
+		return resource.StatusOK, nil, deleteProtectedError{urn: s.old.URN}
 	}
 
 	if preview {
@@ -351,6 +405,8 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
 	} else if s.old.RetainOnDelete {
 		// Deleting a "drop on delete" is a no-op as the user has explicitly asked us to not delete the resource.
+	} else if isDeletedWith(s.old.DeletedWith, s.otherDeletions) {
+		// No need to delete this resource since this resource will be deleted by the another deletion
 	} else if s.old.Custom {
 		// Not preview and not external and not Drop and is custom, do the actual delete
 
@@ -374,15 +430,15 @@ type RemovePendingReplaceStep struct {
 }
 
 func NewRemovePendingReplaceStep(deployment *Deployment, old *resource.State) Step {
-	contract.Assert(old != nil)
-	contract.Assert(old.PendingReplacement)
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.PendingReplacement, "old", "must be pending replacement")
 	return &RemovePendingReplaceStep{
 		deployment: deployment,
 		old:        old,
 	}
 }
 
-func (s *RemovePendingReplaceStep) Op() StepOp {
+func (s *RemovePendingReplaceStep) Op() display.StepOp {
 	return OpRemovePendingReplace
 }
 func (s *RemovePendingReplaceStep) Deployment() *Deployment { return s.deployment }
@@ -414,20 +470,24 @@ var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+	ignoreChanges []string,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
+	contract.Requiref(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type),
+		"old", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
+	contract.Requiref(!old.External, "old", "must not be an external resource")
 
-	ignoreChanges []string) Step {
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
-	contract.Assert(!old.Delete)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID == "")
-	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
-	contract.Assert(!old.External)
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID == "", "new", "must not have an ID")
+	contract.Requiref(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type),
+		"new", "must have or be a provider if it is a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be an external resource")
+
 	return &UpdateStep{
 		deployment:    deployment,
 		reg:           reg,
@@ -440,7 +500,7 @@ func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
+func (s *UpdateStep) Op() display.StepOp                           { return OpUpdate }
 func (s *UpdateStep) Deployment() *Deployment                      { return s.deployment }
 func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
@@ -453,8 +513,10 @@ func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Always propagate the ID, even in previews and refreshes.
+	// Always propagate the ID and timestamps even in previews and refreshes.
 	s.new.ID = s.old.ID
+	s.new.Created = s.old.Created
+	s.new.Modified = s.old.Modified
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
@@ -486,7 +548,13 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	}
 
 	// Finally, mark this operation as complete.
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// UpdateStep doesn't create, but does modify state.
+		// Change the Modified timestamp.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -509,16 +577,17 @@ type ReplaceStep struct {
 var _ Step = (*ReplaceStep)(nil)
 
 func NewReplaceStep(deployment *Deployment, old, new *resource.State, keys, diffs []resource.PropertyKey,
-	detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
+	detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.URN != "", "old", "must have a URN")
+	contract.Requiref(old.ID != "" || !old.Custom, "old", "must have an ID if it is a custom resource")
+	contract.Requiref(!old.Delete, "old", "must not be marked for deletion")
 
-	contract.Assert(old != nil)
-	contract.Assert(old.URN != "")
-	contract.Assert(old.ID != "" || !old.Custom)
-	contract.Assert(!old.Delete)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
 	// contract.Assert(new.ID == "")
-	contract.Assert(!new.Delete)
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	return &ReplaceStep{
 		deployment:    deployment,
 		old:           old,
@@ -530,7 +599,7 @@ func NewReplaceStep(deployment *Deployment, old, new *resource.State, keys, diff
 	}
 }
 
-func (s *ReplaceStep) Op() StepOp                                   { return OpReplace }
+func (s *ReplaceStep) Op() display.StepOp                           { return OpReplace }
 func (s *ReplaceStep) Deployment() *Deployment                      { return s.deployment }
 func (s *ReplaceStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ReplaceStep) Provider() string                             { return s.new.Provider }
@@ -545,7 +614,8 @@ func (s *ReplaceStep) Logical() bool                                { return tru
 
 func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
-	contract.Assert(!s.pendingDelete || s.old.Delete)
+	contract.Assertf(!s.pendingDelete || s.old.Delete,
+		"old resource %v should be marked for deletion if pending delete", s.old.URN)
 	return resource.StatusOK, func() {}, nil
 }
 
@@ -569,16 +639,17 @@ type ReadStep struct {
 
 // NewReadStep creates a new Read step.
 func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
-	contract.Assert(new != nil)
-	contract.Assertf(new.URN != "", "Read URN was empty")
-	contract.Assertf(new.ID != "", "Read ID was empty")
-	contract.Assertf(new.External, "target of Read step must be marked External")
-	contract.Assertf(new.Custom, "target of Read step must be Custom")
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.External, "new", "must be marked as external")
+	contract.Requiref(new.Custom, "new", "must be a custom resource")
 
 	// If Old was given, it's either an external resource or its ID is equal to the
 	// ID that we are preparing to read.
 	if old != nil {
-		contract.Assert(old.ID == new.ID || old.External)
+		contract.Requiref(old.ID == new.ID || old.External,
+			"old", "must have the same ID as new or be external")
 	}
 
 	return &ReadStep{
@@ -593,13 +664,15 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *reso
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
 func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
-	contract.Assert(new != nil)
-	contract.Assertf(new.URN != "", "Read URN was empty")
-	contract.Assertf(new.ID != "", "Read ID was empty")
-	contract.Assertf(new.External, "target of ReadReplacement step must be marked External")
-	contract.Assertf(new.Custom, "target of ReadReplacement step must be Custom")
-	contract.Assert(old != nil)
-	contract.Assertf(!old.External, "old target of ReadReplacement step must not be External")
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.External, "new", "must be marked as external")
+	contract.Requiref(new.Custom, "new", "must be a custom resource")
+
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(!old.External, "old", "must not be marked as external")
+
 	return &ReadStep{
 		deployment: deployment,
 		event:      event,
@@ -609,7 +682,7 @@ func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old
 	}
 }
 
-func (s *ReadStep) Op() StepOp {
+func (s *ReadStep) Op() display.StepOp {
 	if s.replacing {
 		return OpReadReplacement
 	}
@@ -672,8 +745,26 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	if s.replacing {
 		s.old.Delete = true
 	}
+	// Propagate timestamps on Read.
+	if s.old != nil {
+		s.new.Created = s.old.Created
+		s.new.Modified = s.old.Modified
+	}
+	complete := func() {
+		var inputsChange, outputsChange bool
+		if s.old != nil {
+			inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
+			outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
+		}
 
-	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
+		// Only update the Modified timestamp if read provides new values that differ
+		// from the old state.
+		if inputsChange || outputsChange {
+			now := time.Now().UTC()
+			s.new.Modified = &now
+		}
+		s.event.Done(&ReadResult{State: s.new})
+	}
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -692,7 +783,7 @@ type RefreshStep struct {
 
 // NewRefreshStep creates a new Refresh step.
 func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- bool) Step {
-	contract.Assert(old != nil)
+	contract.Requiref(old != nil, "old", "must not be nil")
 
 	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
 	return &RefreshStep{
@@ -703,7 +794,7 @@ func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- boo
 	}
 }
 
-func (s *RefreshStep) Op() StepOp              { return OpRefresh }
+func (s *RefreshStep) Op() display.StepOp      { return OpRefresh }
 func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
 func (s *RefreshStep) Type() tokens.Type       { return s.old.Type }
 func (s *RefreshStep) Provider() string        { return s.old.Provider }
@@ -715,7 +806,7 @@ func (s *RefreshStep) Logical() bool           { return false }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
-func (s *RefreshStep) ResultOp() StepOp {
+func (s *RefreshStep) ResultOp() display.StepOp {
 	if s.new == nil {
 		return OpDelete
 	}
@@ -783,7 +874,23 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 		s.new = resource.NewState(s.old.Type, s.old.URN, s.old.Custom, s.old.Delete, resourceID, inputs, outputs,
 			s.old.Parent, s.old.Protect, s.old.External, s.old.Dependencies, initErrors, s.old.Provider,
 			s.old.PropertyDependencies, s.old.PendingReplacement, s.old.AdditionalSecretOutputs, s.old.Aliases,
-			&s.old.CustomTimeouts, s.old.ImportID, s.old.SequenceNumber, s.old.RetainOnDelete)
+			&s.old.CustomTimeouts, s.old.ImportID, s.old.RetainOnDelete, s.old.DeletedWith, s.old.Created, s.old.Modified)
+		complete = func() {
+			var inputsChange, outputsChange bool
+			if s.old != nil {
+				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
+				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+			}
+
+			// Only update the Modified timestamp if refresh provides new values that differ
+			// from the old state.
+			if inputsChange || outputsChange {
+				// The refresh has identified an incongruence between the provider and state
+				// updated the Modified timestamp to track this.
+				now := time.Now().UTC()
+				s.new.Modified = &now
+			}
+		}
 	} else {
 		s.new = nil
 	}
@@ -802,36 +909,42 @@ type ImportStep struct {
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	randomSeed    []byte                         // the random seed to use for Check.
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string) Step {
-
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID != "")
-	contract.Assert(new.Custom)
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
+	ignoreChanges []string, randomSeed []byte,
+) Step {
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.Custom, "new", "must be a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be external")
+	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
 
 	return &ImportStep{
 		deployment:    deployment,
 		reg:           reg,
 		new:           new,
 		ignoreChanges: ignoreChanges,
+		randomSeed:    randomSeed,
 	}
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string) Step {
+	ignoreChanges []string, randomSeed []byte,
+) Step {
+	contract.Requiref(original != nil, "original", "must not be nil")
 
-	contract.Assert(original != nil)
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID != "")
-	contract.Assert(new.Custom)
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.Custom, "new", "must be a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be external")
+
+	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
 
 	return &ImportStep{
 		deployment:    deployment,
@@ -840,26 +953,30 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 		new:           new,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
+		randomSeed:    randomSeed,
 	}
 }
 
-func newImportDeploymentStep(deployment *Deployment, new *resource.State) Step {
-	contract.Assert(new != nil)
-	contract.Assert(new.URN != "")
-	contract.Assert(new.ID != "")
-	contract.Assert(new.Custom)
-	contract.Assert(!new.Delete)
-	contract.Assert(!new.External)
+func newImportDeploymentStep(deployment *Deployment, new *resource.State, randomSeed []byte) Step {
+	contract.Requiref(new != nil, "new", "must not be nil")
+	contract.Requiref(new.URN != "", "new", "must have a URN")
+	contract.Requiref(new.ID != "", "new", "must have an ID")
+	contract.Requiref(new.Custom, "new", "must be a custom resource")
+	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
+	contract.Requiref(!new.External, "new", "must not be external")
+
+	contract.Requiref(randomSeed != nil, "randomSeed", "must not be nil")
 
 	return &ImportStep{
 		deployment: deployment,
 		reg:        noopEvent(0),
 		new:        new,
 		planned:    true,
+		randomSeed: randomSeed,
 	}
 }
 
-func (s *ImportStep) Op() StepOp {
+func (s *ImportStep) Op() display.StepOp {
 	if s.replacing {
 		return OpImportReplacement
 	}
@@ -878,7 +995,15 @@ func (s *ImportStep) Diffs() []resource.PropertyKey                { return s.di
 func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
+	complete := func() {
+		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		// Set Created to now as the resource has been created in the state.
+		s.new.Created = &now
+
+		s.reg.Done(&RegisterResult{State: s.new})
+	}
 
 	// If this is a planned import, ensure that the resource does not exist in the old state file.
 	if s.planned {
@@ -925,12 +1050,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// differences between the old and new states are between the inputs and outputs.
 	s.old = resource.NewState(s.new.Type, s.new.URN, s.new.Custom, false, s.new.ID, read.Inputs, read.Outputs,
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
-		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID,
-		s.new.SequenceNumber, s.new.RetainOnDelete)
+		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID, s.new.RetainOnDelete,
+		s.new.DeletedWith, nil, nil)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
-		contract.Assert(len(s.new.Inputs) == 0)
+		contract.Assertf(len(s.new.Inputs) == 0, "import resource cannot have existing inputs")
 
 		// Get the import object and see if it had properties set
 		var inputProperties []string
@@ -957,7 +1082,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
 		// we will display the validation failures and a message informing the user that the failures are almost
 		// definitely a provider bug.
-		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+		_, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 		if err != nil {
 			return rst, nil, err
 		}
@@ -969,7 +1094,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			var errorMessage string
 			if len(inputProperties) == 0 {
 				ref, err := providers.ParseReference(s.Provider())
-				contract.Assert(err == nil)
+				contract.AssertNoErrorf(err, "failed to parse provider reference %q", s.Provider())
 
 				pkgName := ref.URN().Type().Name()
 				errorMessage = fmt.Sprintf("This is almost certainly a bug in the `%s` provider.", pkgName)
@@ -997,7 +1122,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	s.new.Inputs = processedInputs
 
 	// Check the inputs using the provider inputs for defaults.
-	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.new.SequenceNumber)
+	inputs, failures, err := prov.Check(s.new.URN, s.old.Inputs, s.new.Inputs, preview, s.randomSeed)
 	if err != nil {
 		return rst, nil, err
 	}
@@ -1035,29 +1160,27 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	return rst, complete, err
 }
 
-// StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
-type StepOp string
-
 const (
-	OpSame                 StepOp = "same"                   // nothing to do.
-	OpCreate               StepOp = "create"                 // creating a new resource.
-	OpUpdate               StepOp = "update"                 // updating an existing resource.
-	OpDelete               StepOp = "delete"                 // deleting an existing resource.
-	OpReplace              StepOp = "replace"                // replacing a resource with a new one.
-	OpCreateReplacement    StepOp = "create-replacement"     // creating a new resource for a replacement.
-	OpDeleteReplaced       StepOp = "delete-replaced"        // deleting an existing resource after replacement.
-	OpRead                 StepOp = "read"                   // reading an existing resource.
-	OpReadReplacement      StepOp = "read-replacement"       // reading an existing resource for a replacement.
-	OpRefresh              StepOp = "refresh"                // refreshing an existing resource.
-	OpReadDiscard          StepOp = "discard"                // removing a resource that was read.
-	OpDiscardReplaced      StepOp = "discard-replaced"       // discarding a read resource that was replaced.
-	OpRemovePendingReplace StepOp = "remove-pending-replace" // removing a pending replace resource.
-	OpImport               StepOp = "import"                 // import an existing resource.
-	OpImportReplacement    StepOp = "import-replacement"     // replace an existing resource with an imported resource.
+	OpSame                 display.StepOp = "same"                   // nothing to do.
+	OpCreate               display.StepOp = "create"                 // creating a new resource.
+	OpUpdate               display.StepOp = "update"                 // updating an existing resource.
+	OpDelete               display.StepOp = "delete"                 // deleting an existing resource.
+	OpReplace              display.StepOp = "replace"                // replacing a resource with a new one.
+	OpCreateReplacement    display.StepOp = "create-replacement"     // creating a new resource for a replacement.
+	OpDeleteReplaced       display.StepOp = "delete-replaced"        // deleting an existing resource after replacement.
+	OpRead                 display.StepOp = "read"                   // reading an existing resource.
+	OpReadReplacement      display.StepOp = "read-replacement"       // reading an existing resource for a replacement.
+	OpRefresh              display.StepOp = "refresh"                // refreshing an existing resource.
+	OpReadDiscard          display.StepOp = "discard"                // removing a resource that was read.
+	OpDiscardReplaced      display.StepOp = "discard-replaced"       // discarding a read resource that was replaced.
+	OpRemovePendingReplace display.StepOp = "remove-pending-replace" // removing a pending replace resource.
+	OpImport               display.StepOp = "import"                 // import an existing resource.
+	OpImportReplacement    display.StepOp = "import-replacement"     // replace an existing resource
+	// with an imported resource.
 )
 
 // StepOps contains the full set of step operation types.
-var StepOps = []StepOp{
+var StepOps = []display.StepOp{
 	OpSame,
 	OpCreate,
 	OpUpdate,
@@ -1076,7 +1199,7 @@ var StepOps = []StepOp{
 }
 
 // Color returns a suggested color for lines of this op type.
-func (op StepOp) Color() string {
+func Color(op display.StepOp) string {
 	switch op {
 	case OpSame:
 		return colors.SpecUnimportant
@@ -1108,23 +1231,23 @@ func (op StepOp) Color() string {
 
 // ColorProgress returns a suggested coloring for lines of this of type which
 // are progressing.
-func (op StepOp) ColorProgress() string {
-	return colors.Bold + op.Color()
+func ColorProgress(op display.StepOp) string {
+	return colors.Bold + Color(op)
 }
 
 // Prefix returns a suggested prefix for lines of this op type.
-func (op StepOp) Prefix(done bool) string {
+func Prefix(op display.StepOp, done bool) string {
 	var color string
 	if done {
-		color = op.Color()
+		color = Color(op)
 	} else {
-		color = op.ColorProgress()
+		color = ColorProgress(op)
 	}
-	return color + op.RawPrefix()
+	return color + RawPrefix(op)
 }
 
 // RawPrefix returns the uncolorized prefix text.
-func (op StepOp) RawPrefix() string {
+func RawPrefix(op display.StepOp) string {
 	switch op {
 	case OpSame:
 		return "  "
@@ -1160,7 +1283,7 @@ func (op StepOp) RawPrefix() string {
 	}
 }
 
-func (op StepOp) PastTense() string {
+func PastTense(op display.StepOp) string {
 	switch op {
 	case OpSame, OpCreate, OpReplace, OpCreateReplacement, OpUpdate, OpReadReplacement:
 		return string(op) + "d"
@@ -1181,7 +1304,7 @@ func (op StepOp) PastTense() string {
 }
 
 // Suffix returns a suggested suffix for lines of this op type.
-func (op StepOp) Suffix() string {
+func Suffix(op display.StepOp) string {
 	switch op {
 	case OpCreateReplacement, OpUpdate, OpReplace, OpReadReplacement, OpRefresh, OpImportReplacement:
 		return colors.Reset // updates and replacements colorize individual lines; get has none
@@ -1190,18 +1313,18 @@ func (op StepOp) Suffix() string {
 }
 
 // ConstrainedTo returns true if this operation is no more impactful than the constraint.
-func (op StepOp) ConstrainedTo(constraint StepOp) bool {
-	var allowed []StepOp
+func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
+	var allowed []display.StepOp
 	switch constraint {
 	case OpSame, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
 		OpRemovePendingReplace, OpImport, OpImportReplacement:
-		allowed = []StepOp{constraint}
+		allowed = []display.StepOp{constraint}
 	case OpCreate:
-		allowed = []StepOp{OpSame, OpCreate}
+		allowed = []display.StepOp{OpSame, OpCreate}
 	case OpUpdate:
-		allowed = []StepOp{OpSame, OpUpdate}
+		allowed = []display.StepOp{OpSame, OpUpdate}
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
-		allowed = []StepOp{OpSame, OpUpdate, constraint}
+		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
 	for _, candidate := range allowed {
 		if candidate == op {

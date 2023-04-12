@@ -17,7 +17,7 @@ type ConfigMap struct {
 // ConfigMapInput is an input type that accepts ConfigMap and ConfigMapOutput values.
 // You can construct a concrete instance of `ConfigMapInput` via:
 //
-//          ConfigMap{ "key": ConfigArgs{...} }
+//	ConfigMap{ "key": ConfigArgs{...} }
 type ConfigMapInput interface {
 	pulumi.Input
 
@@ -44,7 +44,7 @@ func (i ConfigMapArgs) ToConfigMapOutputWithContext(ctx context.Context) ConfigM
 // ConfigMapArrayInput is an input type that accepts ConfigMapArray and ConfigMapArrayOutput values.
 // You can construct a concrete instance of `ConfigMapArrayInput` via:
 //
-//          ConfigMapArray{ ConfigMapArgs{...} }
+//	ConfigMapArray{ ConfigMapArgs{...} }
 type ConfigMapArrayInput interface {
 	pulumi.Input
 
@@ -117,7 +117,7 @@ type Object struct {
 // ObjectInput is an input type that accepts ObjectArgs and ObjectOutput values.
 // You can construct a concrete instance of `ObjectInput` via:
 //
-//          ObjectArgs{...}
+//	ObjectArgs{...}
 type ObjectInput interface {
 	pulumi.Input
 
@@ -158,11 +158,11 @@ func (i ObjectArgs) ToObjectPtrOutputWithContext(ctx context.Context) ObjectPtrO
 // ObjectPtrInput is an input type that accepts ObjectArgs, ObjectPtr and ObjectPtrOutput values.
 // You can construct a concrete instance of `ObjectPtrInput` via:
 //
-//          ObjectArgs{...}
+//	        ObjectArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ObjectPtrInput interface {
 	pulumi.Input
 
@@ -313,7 +313,7 @@ type ObjectWithNodeOptionalInputs struct {
 // ObjectWithNodeOptionalInputsInput is an input type that accepts ObjectWithNodeOptionalInputsArgs and ObjectWithNodeOptionalInputsOutput values.
 // You can construct a concrete instance of `ObjectWithNodeOptionalInputsInput` via:
 //
-//          ObjectWithNodeOptionalInputsArgs{...}
+//	ObjectWithNodeOptionalInputsArgs{...}
 type ObjectWithNodeOptionalInputsInput interface {
 	pulumi.Input
 
@@ -349,11 +349,11 @@ func (i ObjectWithNodeOptionalInputsArgs) ToObjectWithNodeOptionalInputsPtrOutpu
 // ObjectWithNodeOptionalInputsPtrInput is an input type that accepts ObjectWithNodeOptionalInputsArgs, ObjectWithNodeOptionalInputsPtr and ObjectWithNodeOptionalInputsPtrOutput values.
 // You can construct a concrete instance of `ObjectWithNodeOptionalInputsPtrInput` via:
 //
-//          ObjectWithNodeOptionalInputsArgs{...}
+//	        ObjectWithNodeOptionalInputsArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ObjectWithNodeOptionalInputsPtrInput interface {
 	pulumi.Input
 
@@ -539,7 +539,7 @@ type SomeOtherObject struct {
 // SomeOtherObjectInput is an input type that accepts SomeOtherObjectArgs and SomeOtherObjectOutput values.
 // You can construct a concrete instance of `SomeOtherObjectInput` via:
 //
-//          SomeOtherObjectArgs{...}
+//	SomeOtherObjectArgs{...}
 type SomeOtherObjectInput interface {
 	pulumi.Input
 
@@ -574,11 +574,11 @@ func (i SomeOtherObjectArgs) ToSomeOtherObjectPtrOutputWithContext(ctx context.C
 // SomeOtherObjectPtrInput is an input type that accepts SomeOtherObjectArgs, SomeOtherObjectPtr and SomeOtherObjectPtrOutput values.
 // You can construct a concrete instance of `SomeOtherObjectPtrInput` via:
 //
-//          SomeOtherObjectArgs{...}
+//	        SomeOtherObjectArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type SomeOtherObjectPtrInput interface {
 	pulumi.Input
 
@@ -607,7 +607,7 @@ func (i *someOtherObjectPtrType) ToSomeOtherObjectPtrOutputWithContext(ctx conte
 // SomeOtherObjectArrayInput is an input type that accepts SomeOtherObjectArray and SomeOtherObjectArrayOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayInput` via:
 //
-//          SomeOtherObjectArray{ SomeOtherObjectArgs{...} }
+//	SomeOtherObjectArray{ SomeOtherObjectArgs{...} }
 type SomeOtherObjectArrayInput interface {
 	pulumi.Input
 
@@ -727,7 +727,7 @@ func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(
 // SomeOtherObjectArrayArrayInput is an input type that accepts SomeOtherObjectArrayArray and SomeOtherObjectArrayArrayOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayArrayInput` via:
 //
-//          SomeOtherObjectArrayArray{ SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
+//	SomeOtherObjectArrayArray{ SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
 type SomeOtherObjectArrayArrayInput interface {
 	pulumi.Input
 
@@ -772,7 +772,7 @@ func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx 
 // SomeOtherObjectArrayMapInput is an input type that accepts SomeOtherObjectArrayMap and SomeOtherObjectArrayMapOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayMapInput` via:
 //
-//          SomeOtherObjectArrayMap{ "key": SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
+//	SomeOtherObjectArrayMap{ "key": SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
 type SomeOtherObjectArrayMapInput interface {
 	pulumi.Input
 

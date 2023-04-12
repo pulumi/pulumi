@@ -15,6 +15,7 @@
 package python
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -24,10 +25,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
@@ -68,7 +71,7 @@ func TestGeneratePackage(t *testing.T) {
 	var virtualEnvLock sync.Mutex
 	// If we are running without checks, we mark the env as already built so we don't
 	// build it again.
-	var virtualEnvBuilt = test.NoSDKCodegenChecks()
+	virtualEnvBuilt := test.NoSDKCodegenChecks()
 
 	// To speed up these tests, we will generate one common virtual environment for all of
 	// them to run in, rather than having one per test. We want to make sure that we only
@@ -160,16 +163,17 @@ func buildVirtualEnv(ctx context.Context) error {
 		return err
 	}
 
+	if !gotSdk {
+		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+	}
+
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
 	pyCmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
 	pyCmd.Dir = hereDir
-	err = pyCmd.Run()
+	output, err := pyCmd.CombinedOutput()
 	if err != nil {
-		contract.Failf("failed to link venv against in-source pulumi: %v", err)
-	}
-
-	if !gotSdk {
-		return fmt.Errorf("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
+		contract.Failf("failed to link venv against in-source pulumi: %v\nstdout/stderr:\n%s",
+			err, output)
 	}
 
 	return nil
@@ -191,8 +195,10 @@ func pyTestCheck(t *testing.T, codeDir string) {
 		t.Logf("cd %s && %s %s", codeDir, name, strings.Join(args, " "))
 		cmd := python.VirtualEnvCommand(venvDir, name, args...)
 		cmd.Dir = codeDir
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
+
+		outw := iotest.LogWriter(t)
+		cmd.Stderr = outw
+		cmd.Stdout = outw
 		return cmd.Run()
 	}
 
@@ -238,4 +244,27 @@ func TestGenerateTypeNames(t *testing.T) {
 			return root.typeString(t, false, false)
 		}
 	})
+}
+
+func TestEscapeDocString(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		`Active directory email address. Example: xyz@contoso.com or Contoso\xyz`,
+		`Triple quotes """ are all escaped`,
+		`But just quotes " are not`,
+		`This \N should be escaped`,
+		`Here \\N slashes should be escaped but not N`,
+	}
+	source := strings.Join(lines, "\n")
+	expected := `"""
+Active directory email address. Example: xyz@contoso.com or Contoso\\xyz
+Triple quotes \"\"\" are all escaped
+But just quotes " are not
+This \\N should be escaped
+Here \\\\N slashes should be escaped but not N
+"""
+`
+	w := &bytes.Buffer{}
+	printComment(w, source, "")
+	assert.Equal(t, expected, w.String())
 }

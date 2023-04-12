@@ -40,8 +40,8 @@ import (
 // underlying resources of the `@pulumi/gcp` implementation.
 func GCPOperationsProvider(
 	config map[config.Key]string,
-	component *Resource) (Provider, error) {
-
+	component *Resource,
+) (Provider, error) {
 	ctx := context.TODO()
 	client, err := gcplogging.NewClient(ctx, option.WithScopes("https://www.googleapis.com/auth/logging.read"))
 	if err != nil {

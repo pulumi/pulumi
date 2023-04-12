@@ -18,7 +18,7 @@ type Baz struct {
 // BazInput is an input type that accepts BazArgs and BazOutput values.
 // You can construct a concrete instance of `BazInput` via:
 //
-//          BazArgs{...}
+//	BazArgs{...}
 type BazInput interface {
 	pulumi.Input
 
@@ -54,11 +54,11 @@ func (i BazArgs) ToBazPtrOutputWithContext(ctx context.Context) BazPtrOutput {
 // BazPtrInput is an input type that accepts BazArgs, BazPtr and BazPtrOutput values.
 // You can construct a concrete instance of `BazPtrInput` via:
 //
-//          BazArgs{...}
+//	        BazArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type BazPtrInput interface {
 	pulumi.Input
 

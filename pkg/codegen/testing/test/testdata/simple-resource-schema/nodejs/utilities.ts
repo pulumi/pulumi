@@ -52,3 +52,15 @@ export function getVersion(): string {
 export function resourceOptsDefaults(): any {
     return { version: getVersion(), pluginDownloadURL: "example.com/download" };
 }
+
+/** @internal */
+export function lazyLoad(exports: any, props: string[], loadModule: any) {
+    for (let property of props) {
+        Object.defineProperty(exports, property, {
+            enumerable: true,
+            get: function() {
+                return loadModule()[property];
+            },
+        });
+    }
+}

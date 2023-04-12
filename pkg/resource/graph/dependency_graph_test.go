@@ -43,6 +43,7 @@ func NewResource(name string, provider *resource.State, deps ...resource.URN) *r
 		Provider:     prov,
 	}
 }
+
 func TestBasicGraph(t *testing.T) {
 	t.Parallel()
 

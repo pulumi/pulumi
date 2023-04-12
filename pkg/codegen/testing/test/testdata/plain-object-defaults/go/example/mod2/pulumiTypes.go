@@ -25,7 +25,7 @@ func (val *Typ) Defaults() *Typ {
 	tmp := *val
 	tmp.Mod1 = tmp.Mod1.Defaults()
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		val_ := "mod2"
 		tmp.Val = &val_
 	}
@@ -35,7 +35,7 @@ func (val *Typ) Defaults() *Typ {
 // TypInput is an input type that accepts TypArgs and TypOutput values.
 // You can construct a concrete instance of `TypInput` via:
 //
-//          TypArgs{...}
+//	TypArgs{...}
 type TypInput interface {
 	pulumi.Input
 
@@ -56,7 +56,7 @@ func (val *TypArgs) Defaults() *TypArgs {
 	}
 	tmp := *val
 
-	if isZero(tmp.Val) {
+	if tmp.Val == nil {
 		tmp.Val = pulumi.StringPtr("mod2")
 	}
 	return &tmp
@@ -84,11 +84,11 @@ func (i TypArgs) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 // TypPtrInput is an input type that accepts TypArgs, TypPtr and TypPtrOutput values.
 // You can construct a concrete instance of `TypPtrInput` via:
 //
-//          TypArgs{...}
+//	        TypArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type TypPtrInput interface {
 	pulumi.Input
 

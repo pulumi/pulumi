@@ -74,7 +74,7 @@ namespace Pulumi.Mypkg
         }
     }
 
-    internal sealed class MypkgResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class MypkgResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public MypkgResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

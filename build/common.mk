@@ -97,11 +97,25 @@ PIP ?= pip3
 
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
-PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
-GO_TEST_OPTIONS     :=
 
-GO_TEST_FAST = $(PYTHON) ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
-GO_TEST = $(PYTHON) $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM} ${GO_TEST_OPTIONS}
+# Extra options to pass to `go test` command, for example:
+#
+#     make GO_TEST_OPTIONS="-short -test.v" test_fast
+GO_TEST_OPTIONS :=
+
+GO_TEST_PARALLELISM     ?= 10   # -parallel, number of parallel tests to run within a package
+GO_TEST_PKG_PARALLELISM ?= 2    # -p flag, number of parallel packages to test
+GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests within a package
+GO_TEST_TAGS            ?= all
+GO_TEST_RACE            ?= true
+
+GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
+	-parallel=${GO_TEST_PARALLELISM} \
+	-shuffle=${GO_TEST_SHUFFLE} \
+	-p=${GO_TEST_PKG_PARALLELISM} \
+	-race=${GO_TEST_RACE} \
+	${GO_TEST_OPTIONS}
+GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all only_build only_test lint install test_all core build
@@ -157,7 +171,6 @@ install::
 	@# Implicitly creates PULUMI_ROOT.
 	@mkdir -p $(PULUMI_BIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
-	@mkdir -p $(PULUMI_NUGET)
 
 dist::
 	$(call STEP_MESSAGE)

@@ -1,0 +1,10 @@
+{
+  "emittedFiles": [
+    "mypkg/doc.go",
+    "mypkg/funcWithSecrets.go",
+    "mypkg/init.go",
+    "mypkg/provider.go",
+    "mypkg/pulumi-plugin.json",
+    "mypkg/pulumiUtilities.go"
+  ]
+}

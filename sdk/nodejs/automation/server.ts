@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,11 @@
 import * as grpc from "@grpc/grpc-js";
 import { isGrpcError, ResourceError, RunError } from "../errors";
 import * as log from "../log";
-import * as runtime from "../runtime";
+import * as runtimeConfig from "../runtime/config";
+import * as debuggable from "../runtime/debuggable";
+import * as settings from "../runtime/settings";
+import * as stack from "../runtime/stack";
+import * as localState from "../runtime/state";
 
 const langproto = require("../proto/language_pb.js");
 const plugproto = require("../proto/plugin_pb.js");
@@ -28,31 +32,25 @@ export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
     readonly program: () => Promise<T>;
 
-    running: boolean;
-
     // Satisfy the grpc.UntypedServiceImplementation interface.
     [name: string]: any;
 
     constructor(program: () => Promise<T>) {
         this.program = program;
 
-        this.running = false;
-
         // set a bit in runtime settings to indicate that we're running in inline mode.
         // this allows us to detect and fail fast for side by side pulumi scenarios.
-        runtime.setInline();
+        settings.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
         // check for leaks once the CLI exits but skip if the program otherwise errored to keep error output clean
         if (!hasError) {
-            const [leaks, leakMessage] = runtime.leakedPromises();
+            const [leaks, leakMessage] = debuggable.leakedPromises();
             if (leaks.size !== 0) {
                 throw new Error(leakMessage);
             }
         }
-        // these are globals and we need to clean up after ourselves
-        runtime.resetOptions("", "", -1, "", "", false);
     }
 
     getRequiredPlugins(call: any, callback: any): void {
@@ -61,58 +59,62 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         callback(undefined, resp);
     }
 
-    async run(call: any, callback: any): Promise<void> {
+    run(call: any, callback: any): Promise<void> {
         const req: any = call.request;
         const resp: any = new langproto.RunResponse();
 
-        this.running = true;
-
-        const errorSet = new Set<Error>();
-        const uncaughtHandler = newUncaughtHandler(errorSet);
-        try {
-            const args = req.getArgsList();
-            const engineAddr = args && args.length > 0 ? args[0] : "";
-
-            runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                req.getMonitorAddress(), req.getDryrun());
-
-            const config: {[key: string]: string} = {};
-            for (const [k, v] of req.getConfigMap()?.entries() || []) {
-                config[<string>k] = <string>v;
-            }
-            runtime.setAllConfig(config, req.getConfigsecretkeysList() || []);
-
-            process.on("uncaughtException", uncaughtHandler);
-            // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
-            // just suppress the TS strictness here.
-            process.on("unhandledRejection", uncaughtHandler);
-
+        // Setup a new async state store for this run
+        const store = new localState.LocalStore();
+        return localState.asyncLocalStorage.run(store, async () => {
+            const errorSet = new Set<Error>();
+            const uncaughtHandler = newUncaughtHandler(errorSet);
             try {
-                await runtime.runInPulumiStack(this.program);
-                await runtime.disconnect();
-                process.off("uncaughtException", uncaughtHandler);
-                process.off("unhandledRejection", uncaughtHandler);
-            } catch (e) {
-                await runtime.disconnect();
-                process.off("uncaughtException", uncaughtHandler);
-                process.off("unhandledRejection", uncaughtHandler);
+                const args = req.getArgsList();
+                const engineAddr = args && args.length > 0 ? args[0] : "";
 
-                if (!isGrpcError(e)) {
-                    throw e;
+                settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
+                    req.getMonitorAddress(), req.getDryrun(), req.getOrganization());
+
+                const config: {[key: string]: string} = {};
+                for (const [k, v] of req.getConfigMap()?.entries() || []) {
+                    config[<string>k] = <string>v;
                 }
+                runtimeConfig.setAllConfig(config, req.getConfigsecretkeysList() || []);
+
+                process.setMaxListeners(settings.getMaximumListeners());
+
+                process.on("uncaughtException", uncaughtHandler);
+                // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+                // just suppress the TS strictness here.
+                process.on("unhandledRejection", uncaughtHandler);
+
+                try {
+                    await stack.runInPulumiStack(this.program);
+                    await settings.disconnect();
+                    process.off("uncaughtException", uncaughtHandler);
+                    process.off("unhandledRejection", uncaughtHandler);
+                } catch (e) {
+                    await settings.disconnect();
+                    process.off("uncaughtException", uncaughtHandler);
+                    process.off("unhandledRejection", uncaughtHandler);
+
+                    if (!isGrpcError(e)) {
+                        throw e;
+                    }
+                }
+
+                if (errorSet.size !== 0 || log.hasErrors()) {
+                    throw new Error("One or more errors occurred");
+                }
+
+            } catch (e) {
+                const err = e instanceof Error ? e : new Error(`unknown error ${e}`);
+                resp.setError(err.message);
+                callback(err, undefined);
             }
 
-            if (errorSet.size !== 0 || log.hasErrors()) {
-                throw new Error("One or more errors occurred");
-            }
-
-        } catch (e) {
-            const err = e instanceof Error ? e : new Error(`unknown error ${e}`);
-            resp.setError(err.message);
-            callback(err, undefined);
-        }
-
-        callback(undefined, resp);
+            callback(undefined, resp);
+        });
     }
 
     getPluginInfo(call: any, callback: any): void {

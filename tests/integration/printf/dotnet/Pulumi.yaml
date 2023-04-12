@@ -1,3 +1,0 @@
-name: printfdotnet
-description: A Pulumi program that printfs some stuff.
-runtime: dotnet

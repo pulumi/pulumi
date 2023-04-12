@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Xyz
 {
     [XyzResourceType("xyz:index:StaticPage")]
-    public partial class StaticPage : Pulumi.ComponentResource
+    public partial class StaticPage : global::Pulumi.ComponentResource
     {
         /// <summary>
         /// The bucket resource.
@@ -50,7 +50,7 @@ namespace Pulumi.Xyz
         }
     }
 
-    public sealed class StaticPageArgs : Pulumi.ResourceArgs
+    public sealed class StaticPageArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
         public Inputs.FooArgs? Foo { get; set; }
@@ -64,5 +64,6 @@ namespace Pulumi.Xyz
         public StaticPageArgs()
         {
         }
+        public static new StaticPageArgs Empty => new StaticPageArgs();
     }
 }

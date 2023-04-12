@@ -13,19 +13,25 @@ class MyProvider(ResourceProvider):
 
 class MyResource(Resource):
     foo: Output
+    bar: Output
 
     def __init__(self, name, props, opts = None):
         super().__init__(MyProvider(), name, props, opts)
 
 class GetResource(pulumi.Resource):
     foo: Output
+    bar: Output
 
     def __init__(self, urn):
-        props = {"foo": None}
+        props = {
+            "foo": None,
+            "bar": None,
+        }
         super().__init__("unused", "unused:unused:unused", True, props, ResourceOptions(urn=urn), False, False)
 
 a = MyResource("a", {
     "foo": "foo",
+    "bar": pulumi.Output.secret("my-$ecret"),
 })
 
 async def check_get():
@@ -33,5 +39,8 @@ async def check_get():
     a_get = GetResource(a_urn)
     a_foo = await a_get.foo.future()
     assert a_foo == "foo"
+
+    bar = a_get.bar
+    assert await bar.is_secret()
 
 export("o", check_get())

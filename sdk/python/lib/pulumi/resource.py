@@ -38,6 +38,8 @@ from .runtime.resource import (
     register_resource,
     register_resource_outputs,
     read_resource,
+    collapse_alias_to_urn,
+    create_urn as create_urn_internal,
     convert_providers,
 )
 from .runtime.settings import get_root_resource
@@ -72,99 +74,9 @@ class CustomTimeouts:
         update: Optional[str] = None,
         delete: Optional[str] = None,
     ) -> None:
-
         self.create = create
         self.update = update
         self.delete = delete
-
-
-def inherited_child_alias(
-    child_name: str, parent_name: str, parent_alias: "Input[str]", child_type: str
-) -> "Output[str]":
-    """
-    inherited_child_alias computes the alias that should be applied to a child based on an alias
-    applied to it's parent. This may involve changing the name of the resource in cases where the
-    resource has a named derived from the name of the parent, and the parent name changed.
-    """
-
-    #   If the child name has the parent name as a prefix, then we make the assumption that it was
-    #   constructed from the convention of using `{name}-details` as the name of the child resource.  To
-    #   ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
-    #   the child resource name.
-    #
-    #   For example:
-    #   * name: "newapp-function"
-    #   * opts.parent.__name: "newapp"
-    #   * parentAlias: "urn:pulumi:stackname::projectname::awsx:ec2:Vpc::app"
-    #   * parentAliasName: "app"
-    #   * aliasName: "app-function"
-    #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    alias_name = Output.from_input(child_name)
-    if child_name.startswith(parent_name):
-        alias_name = Output.from_input(parent_alias).apply(
-            lambda u: u[u.rfind("::") + 2 :] + child_name[len(parent_name) :]
-        )
-
-    return create_urn(alias_name, child_type, parent_alias)
-
-
-# Extract the type and name parts of a URN
-def urn_type_and_name(urn: str) -> Tuple[str, str]:
-    parts = urn.split("::")
-    type_parts = parts[2].split("$")
-    return (parts[3], type_parts[-1])
-
-
-def all_aliases(
-    child_aliases: Optional[Sequence["Input[Union[str, Alias]]"]],
-    child_name: str,
-    child_type: str,
-    parent: Optional["Resource"],
-) -> "List[Input[str]]":
-    """
-    Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
-    If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
-    or, as calculated in the logic below, N+(M*(1+N)).
-    """
-    aliases: "List[Input[str]]" = []
-
-    for child_alias in child_aliases or []:
-        aliases.append(
-            collapse_alias_to_urn(child_alias, child_name, child_type, parent)
-        )
-
-    if parent is not None:
-        parent_name = parent._name
-        for parent_alias in parent._aliases:
-            aliases.append(
-                inherited_child_alias(
-                    child_name, parent._name, parent_alias, child_type
-                )
-            )
-            for child_alias in child_aliases or []:
-                child_alias_urn = collapse_alias_to_urn(
-                    child_alias, child_name, child_type, parent
-                )
-
-                def inherited_alias_for_child_urn(
-                    child_alias_urn: str, parent_alias=parent_alias
-                ) -> "Output[str]":
-                    aliased_child_name, aliased_child_type = urn_type_and_name(
-                        child_alias_urn
-                    )
-                    return inherited_child_alias(
-                        aliased_child_name,
-                        parent_name,
-                        parent_alias,
-                        aliased_child_type,
-                    )
-
-                inherited_alias: Output[str] = child_alias_urn.apply(
-                    inherited_alias_for_child_urn
-                )
-                aliases.append(inherited_alias)
-
-    return aliases
 
 
 ROOT_STACK_RESOURCE = None
@@ -251,44 +163,11 @@ class Alias:
         stack: Optional["Input[str]"] = ...,  # type: ignore
         project: Optional["Input[str]"] = ...,  # type: ignore
     ) -> None:
-
         self.name = name
         self.type_ = type_
         self.parent = parent
         self.stack = stack
         self.project = project
-
-
-def collapse_alias_to_urn(
-    alias: "Input[Union[Alias, str]]",
-    defaultName: str,
-    defaultType: str,
-    defaultParent: Optional["Resource"],
-) -> "Output[str]":
-    """
-    collapse_alias_to_urn turns an Alias into a URN given a set of default data
-    """
-
-    def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
-        if isinstance(inner, str):
-            return Output.from_input(inner)
-
-        name = inner.name if inner.name is not ... else defaultName  # type: ignore
-        type_ = inner.type_ if inner.type_ is not ... else defaultType  # type: ignore
-        parent = inner.parent if inner.parent is not ... else defaultParent  # type: ignore
-        project: str = inner.project if inner.project is not ... else get_project()  # type: ignore
-        stack: str = inner.stack if inner.stack is not ... else get_stack()  # type: ignore
-
-        if name is None:
-            raise Exception("No valid 'name' passed in for alias.")
-
-        if type_ is None:
-            raise Exception("No valid 'type_' passed in for alias.")
-
-        return create_urn(name, type_, parent, project, stack)
-
-    inputAlias: Output[Union[Alias, str]] = Output.from_input(alias)
-    return inputAlias.apply(collapse_alias_to_urn_worker)
 
 
 class ResourceTransformationArgs:
@@ -487,6 +366,12 @@ class ResourceOptions:
     If set to True, the providers Delete method will not be called for this resource.
     """
 
+    deleted_with: Optional["Resource"]
+    """
+    If set, the providers Delete method will not be called for this resource
+    if specified resource is being deleted as well.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(
         self,
@@ -512,6 +397,7 @@ class ResourceOptions:
         replace_on_changes: Optional[List[str]] = None,
         plugin_download_url: Optional[str] = None,
         retain_on_delete: Optional[bool] = None,
+        deleted_with: Optional["Resource"] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -552,6 +438,8 @@ class ResourceOptions:
                from the provided url. This url overrides the plugin download url inferred from the current package and should
                rarely be used.
         :param Optional[bool] retain_on_delete: If set to True, the providers Delete method will not be called for this resource.
+        :param Optional[Resource] deleted_with: If set, the providers Delete method will not be called for this resource
+               if specified resource is being deleted as well.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -577,6 +465,7 @@ class ResourceOptions:
         self.replace_on_changes = replace_on_changes
         self.depends_on = depends_on
         self.retain_on_delete = retain_on_delete
+        self.deleted_with = deleted_with
 
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
@@ -593,7 +482,6 @@ class ResourceOptions:
         return ResourceOptions.merge(self, opts)
 
     def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
-
         if self.depends_on is None:
             return []
 
@@ -601,6 +489,45 @@ class ResourceOptions:
             self.depends_on,
             lambda x: list(x) if isinstance(x, Sequence) else [cast(Any, x)],
         )
+
+    def _copy(self) -> "ResourceOptions":
+        """
+        Copy a ResourceOptions.
+        """
+
+        # ResourceOptions.merge is a static method that is reassigned to a field, not a
+        # true method. This assignment captures the original class. When we copy a
+        # ResourceOptions, we need update merge to point to the new class.
+        #
+        # We can illustrate this with an example.
+        #
+        # instance_1 of type ResourceOptions :
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields:
+        #   ...
+        #
+        # instance_2 = copy.copy(instance_1):
+        #   merge = instance_1._instance_merge
+        #   id: id_1
+        #   # other fields
+        #   ...
+        #
+        # instance_2.parent = parent_2
+        #
+        # instance_3 = instance_2.merge(None)
+        #
+        # We get `instance_3.parent == None`, when we should get `instance_3.parent ==
+        # parent_2`. This is because merge had a handle to instance_1, instead of
+        # instance_2.
+        #
+        # The fix is to re-assign merge after the copy.
+
+        out = copy.copy(self)
+        # Expose 'merge' again this this object, but this time as an instance method.
+        # TODO[python/mypy#2427]: mypy disallows method assignment
+        out.merge = out._merge_instance  # type: ignore
+        return out
 
     # pylint: disable=method-hidden
     @staticmethod
@@ -642,8 +569,8 @@ class ResourceOptions:
         if not isinstance(opts2, ResourceOptions):
             raise TypeError("Expected opts2 to be a ResourceOptions instance")
 
-        dest = copy.copy(opts1)
-        source = copy.copy(opts2)
+        dest = opts1._copy()
+        source = opts2._copy()
 
         # This makes merging simple.
         def expand_providers(providers) -> Optional[Sequence["ProviderResource"]]:
@@ -703,6 +630,9 @@ class ResourceOptions:
             dest.retain_on_delete
             if source.retain_on_delete is None
             else source.retain_on_delete
+        )
+        dest.deleted_with = (
+            dest.deleted_with if source.deleted_with is None else source.deleted_with
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
@@ -784,6 +714,11 @@ class Resource:
     _name: str
     """
     The name assigned to the resource at construction.
+    """
+
+    _type: str
+    """
+    The type of the resource.
     """
 
     _plugin_download_url: Optional[str]
@@ -880,9 +815,15 @@ class Resource:
                 opts = tres.opts
 
         self._name = name
+        self._type = t
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
-        opts = copy.copy(opts)
+        opts = opts._copy()
+
+        self._aliases = []
+        if opts is not None and opts.aliases is not None:
+            for alias in opts.aliases:
+                self._aliases.append(collapse_alias_to_urn(alias, name, t, opts.parent))
 
         self._providers = {}
         self._childResources = set()
@@ -925,8 +866,6 @@ class Resource:
         self._providers = providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
-        self._aliases = all_aliases(opts.aliases, name, t, opts.parent)
-
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
             get_resource(self, props, custom, opts.urn, typ)
@@ -986,7 +925,7 @@ class Resource:
         if pkg and opts.provider:
             if pkg in opts_providers:
                 message = f"There is a conflict between the `provider` field ({pkg}) and a member of the `providers` map"
-                depreciation = "This will become an error by the end of July 2022. See https://github.com/pulumi/pulumi/issues/8799 for more details"
+                depreciation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
                 warnings.warn(f"{message} for resource {t}. " + depreciation)
                 log.warn(f"{message}. {depreciation}", resource=self)
             else:
@@ -1238,34 +1177,14 @@ def create_urn(
     name: "Input[str]",
     type_: "Input[str]",
     parent: Optional[Union["Resource", "Input[str]"]] = None,
-    project: str = None,
-    stack: str = None,
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
 ) -> "Output[str]":
     """
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-    parent_prefix: Optional[Output[str]] = None
-    if parent is not None:
-        parent_urn = None
-        if isinstance(parent, Resource):
-            parent_urn = parent.urn
-        else:
-            parent_urn = Output.from_input(parent)
-
-        parent_prefix = parent_urn.apply(lambda u: u[0 : u.rfind("::")] + "$")
-    else:
-        if stack is None:
-            stack = get_stack()
-
-        if project is None:
-            project = get_project()
-
-        parent_prefix = Output.from_input("urn:pulumi:" + stack + "::" + project + "::")
-
-    all_args = [parent_prefix, type_, name]
-    # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
-    return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2])  # type: ignore
+    return create_urn_internal(name, type_, parent, project, stack)
 
 
 def _parse_resource_reference(ref: str) -> Tuple[str, str]:

@@ -194,7 +194,9 @@ class LanghostTest(unittest.TestCase):
                  config=None,
                  expected_resource_count=None,
                  expected_error=None,
-                 expected_stderr_contains=None):
+                 expected_stderr_contains=None,
+                 expected_bail=None,
+                 organization=None):
         """
         Runs a language host test. The basic flow of a language host test is that
         a test is launched using the real language host while mocking out the resource
@@ -228,7 +230,7 @@ class LanghostTest(unittest.TestCase):
                 grpc.channel_ready_future(channel).result()
                 stub = language_pb2_grpc.LanguageRuntimeStub(channel)
                 result = self._run_program(stub, monitor, project, stack,
-                                           program, pwd, args, config, dryrun)
+                                           program, pwd, args, config, dryrun, organization)
 
             # Tear down the language host process we just spun up.
             langhost.process.kill()
@@ -241,7 +243,10 @@ class LanghostTest(unittest.TestCase):
             # If we expected an error, assert that we saw it. Otherwise assert
             # that there wasn't an error.
             expected = expected_error or ""
-            self.assertEqual(result, expected)
+            self.assertEqual(result.error, expected)
+
+            expected_bail = expected_bail or False
+            self.assertEqual(result.bail, expected_bail)
 
             if expected_stderr_contains:
                 if expected_stderr_contains not in str(stderr):
@@ -314,7 +319,7 @@ class LanghostTest(unittest.TestCase):
         resource_pb2_grpc.add_ResourceMonitorServicer_to_server(monitor, server)
         engine_pb2_grpc.add_EngineServicer_to_server(engine, server)
 
-        port = server.add_insecure_port(address="0.0.0.0:0")
+        port = server.add_insecure_port(address="127.0.0.1:0")
         server.start()
         return ResourceMonitorEndpoint(monitor, server, port)
 
@@ -339,12 +344,13 @@ class LanghostTest(unittest.TestCase):
             raise
 
     def _run_program(self, stub, monitor, project, stack, program, pwd, args,
-                     config, dryrun):
+                     config, dryrun, organization):
         args = {}
         args["monitor_address"] = "localhost:%d" % monitor.port
         args["project"] = project or "project"
         args["stack"] = stack or "stack"
         args["program"] = program
+        args["organization"] = organization
         if pwd:
             args["pwd"] = pwd
 
@@ -358,4 +364,4 @@ class LanghostTest(unittest.TestCase):
         request = proto.RunRequest(**args)
         self.assertTrue(request.IsInitialized())
         resp = stub.Run(request)
-        return resp.error
+        return resp

@@ -20,7 +20,9 @@ import unittest
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
+from pulumi import ResourceOptions
 import pulumi
+
 
 
 T = TypeVar('T')
@@ -190,4 +192,33 @@ class DependencyTrackingMonitorWrapper:
 
 class MockResource(pulumi.CustomResource):
     def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
-        super().__init__('python:test:MockResource', name, {}, opts)
+        super().__init__("python:test:MockResource", name, {}, opts)
+
+
+class MergeResourceOptions(unittest.TestCase):
+    def test_parent(self):
+        opts1 = ResourceOptions()
+        assert opts1.protect is None
+        opts2 = ResourceOptions.merge(opts1, ResourceOptions(protect=True))
+        assert opts2.protect is True
+        opts3 = ResourceOptions.merge(opts2, ResourceOptions())
+        assert opts3.protect is True
+
+# Regression test for https://github.com/pulumi/pulumi/issues/12032
+@pulumi.runtime.test
+def test_parent_and_depends_on_are_the_same_12032():
+    mocks.set_mocks(MinimalMocks())
+
+    parent = pulumi.ComponentResource("pkg:index:first", "first")
+    child = pulumi.ComponentResource(
+        "pkg:index:second",
+        "second",
+        opts=pulumi.ResourceOptions(parent=parent, depends_on=[parent]),
+    )
+
+    # This would freeze before the fix.
+    pulumi.CustomResource(
+        "foo:bar:baz",
+        "myresource",
+        opts=pulumi.ResourceOptions(parent=child),
+    )

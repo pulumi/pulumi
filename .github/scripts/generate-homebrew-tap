@@ -1,0 +1,42 @@
+#!/bin/env bash
+
+set -euo pipefail
+
+export PULUMI_VERSION="${1}"
+TAP_FILE="${2:-"./.github/scripts/homebrew-tap.rb}"}"
+TAP_FILE="$(realpath "${TAP_FILE}")"
+
+cd "$(mktemp -d)"
+
+>&2 echo "::info Generating Homebrew Tap..."
+>&2 echo "::group::Download release assets"
+>&2 gh release download --repo pulumi/pulumi "v${PULUMI_VERSION}" -p 'pulumi*darwin*.tar.gz' -p 'pulumi*linux*.tar.gz' --skip-existing
+>&2 echo "::endgroup::"
+
+for i in \
+  "darwin x64   PULUMI_DARWIN_X64" \
+  "darwin arm64 PULUMI_DARWIN_ARM64" \
+  "linux x64    PULUMI_LINUX_X64" \
+  "linux arm64  PULUMI_LINUX_ARM64" \
+  ; do
+  # shellcheck disable=SC2086 # intentional, we want to split the strings
+  set -- $i # read loop strings as args
+  OS="$1"
+  ARCH="$2"
+  ENV_VAR="$3"
+  SHA256="$(sha256sum "pulumi-v${PULUMI_VERSION}-${OS}-${ARCH}.tar.gz" | cut -f1 -d' ')"
+
+  SHA256_VAR="${ENV_VAR}_SHA256"
+  URL_VAR="${ENV_VAR}_URL"
+  printf -v "${SHA256_VAR}" "%s" "${SHA256}"
+  printf -v "${URL_VAR}" "%s" "https://github.com/pulumi/pulumi/releases/download/v${PULUMI_VERSION}/pulumi-v${PULUMI_VERSION}-${OS}-${ARCH}.tar.gz"
+
+  export "${SHA256_VAR?}"
+  export "${URL_VAR?}"
+  >&2 echo "${OS}-${ARCH} SHA256: " "${!SHA256_VAR}"
+  >&2 echo "${OS}-${ARCH} URL:    " "${!URL_VAR}"
+
+done
+
+# shellcheck disable=SC2016 # intentional, envsubst requires us to pass variable names with $ prefixes.
+envsubst '$PULUMI_VERSION,$PULUMI_DARWIN_X64_URL,$PULUMI_DARWIN_X64_SHA256,$PULUMI_DARWIN_ARM64_URL,$PULUMI_DARWIN_ARM64_SHA256,$PULUMI_LINUX_X64_URL,$PULUMI_LINUX_X64_SHA256,$PULUMI_LINUX_ARM64_URL,$PULUMI_LINUX_ARM64_SHA256' < "${TAP_FILE}"

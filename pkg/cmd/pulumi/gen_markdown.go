@@ -17,7 +17,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -50,10 +50,10 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 
 				// Add some front matter to each file.
 				fileNameWithoutExtension := strings.TrimSuffix(filepath.Base(s), ".md")
-				title := strings.Replace(fileNameWithoutExtension, "_", " ", -1)
+				title := strings.ReplaceAll(fileNameWithoutExtension, "_", " ")
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
-				buf.WriteString(fmt.Sprintf("title: %q\n", title))
+				fmt.Fprintf(buf, "title: %q\n", title)
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
@@ -72,7 +72,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 			// Now loop through each generated file and replace the `## <command>` line, since
 			// we're already adding the name of the command as a title in the front matter.
 			for _, file := range files {
-				b, err := ioutil.ReadFile(file)
+				b, err := os.ReadFile(file)
 				if err != nil {
 					return err
 				}
@@ -81,7 +81,7 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// We do this because we're already including the command as the front matter title.
 				result := replaceH2Pattern.ReplaceAllString(string(b), "")
 
-				if err := ioutil.WriteFile(file, []byte(result), 0600); err != nil {
+				if err := os.WriteFile(file, []byte(result), 0o600); err != nil {
 					return err
 				}
 			}

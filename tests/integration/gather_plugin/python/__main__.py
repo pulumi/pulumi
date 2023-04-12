@@ -18,8 +18,8 @@ class RandomProvider(Provider):
     def __init__(self, opts: Optional[ResourceOptions]=None):
         Provider.__init__(self, "testprovider", "provider", None, opts)
 
-example_url = ResourceOptions(plugin_download_url="get.com")
-provider_url = ResourceOptions(plugin_download_url="get.pulumi/test/providers")
+example_url = ResourceOptions(plugin_download_url="get.example.test")
+provider_url = ResourceOptions(plugin_download_url="get.pulumi.test/providers")
 
 # Create resource with specified PluginDownloadURL
 r = Random("default", length=10, opts=example_url)

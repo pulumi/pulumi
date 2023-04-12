@@ -1,16 +1,21 @@
 PROJECT_NAME     := Pulumi Go SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go
-VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell cd ../../ && pulumictl get version))
+VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh go))
 TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
-TESTPARALLELISM  ?= 10
-PROJECT_ROOT     := $(realpath ../..)
+
+ifeq ($(DEBUG),"true")
+$(info    VERSION         = $(VERSION))
+endif
 
 include ../../build/common.mk
 
 # Motivation: running `make TEST_ALL_DEPS= test_all` permits running
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= install
+
+GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 gen::
 	go generate ./pulumi/...
@@ -42,3 +47,7 @@ brew::
 
 lint:: golangci-lint.ensure
 	cd .. && golangci-lint run -c ../.golangci.yml --timeout 5m
+
+publish:
+	git tag sdk/v${VERSION}
+	git push origin sdk/v${VERSION}

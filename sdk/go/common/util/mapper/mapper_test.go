@@ -573,3 +573,44 @@ func TestBasicUnmap(t *testing.T) {
 		assert.False(t, hash1h)
 	}
 }
+
+func TestReproduceMapStringPointerTurnaroundIssue(t *testing.T) {
+	t.Parallel()
+
+	type X struct {
+		Args map[string]*string `pulumi:"args,optional"`
+	}
+
+	xToMap := func(build X) (map[string]interface{}, error) {
+		m, err := New(nil).Encode(build)
+		if err != nil {
+			return nil, err
+		}
+		return m, nil
+	}
+
+	xFromMap := func(pm map[string]interface{}) (X, error) {
+		var build X
+		err := New(nil).Decode(pm, &build)
+		if err != nil {
+			return X{}, err
+		}
+		return build, nil
+	}
+
+	value := "value"
+	expected := X{
+		Args: map[string]*string{
+			"key": &value,
+		},
+	}
+
+	encodedMap, err := xToMap(expected)
+	require.NoError(t, err)
+	t.Logf("encodedMap: %v", encodedMap)
+
+	back, err2 := xFromMap(encodedMap)
+	require.NoError(t, err2)
+
+	require.Equal(t, expected, back)
+}

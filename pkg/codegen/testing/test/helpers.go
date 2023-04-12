@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -30,6 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
@@ -40,7 +40,7 @@ type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[strin
 // GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
 func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(schemaPath)
+	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return nil, err
 	}
@@ -57,9 +57,12 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	pkg, err := schema.ImportSpec(pkgSpec, nil)
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
 	if err != nil {
 		return nil, err
+	} else if diags.HasErrors() {
+		return nil, diags
 	}
 
 	return genPackageFunc("test", pkg, nil)
@@ -69,7 +72,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	result := map[string][]byte{}
 	for _, file := range files {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(dir, lang, file))
+		fileBytes, err := os.ReadFile(filepath.Join(dir, lang, file))
 		if err != nil {
 			return nil, err
 		}
@@ -106,7 +109,7 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
 	for _, f := range cm.EmittedFiles {
-		bytes, err := ioutil.ReadFile(filepath.Join(dir, lang, f))
+		bytes, err := os.ReadFile(filepath.Join(dir, lang, f))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
 		}
@@ -121,7 +124,7 @@ type codegenManifest struct {
 }
 
 func (cm *codegenManifest) load(dir string) error {
-	bytes, err := ioutil.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
+	bytes, err := os.ReadFile(filepath.Join(dir, "codegen-manifest.json"))
 	if err != nil {
 		return err
 	}
@@ -132,13 +135,14 @@ func (cm *codegenManifest) save(dir string) error {
 	sort.Strings(cm.EmittedFiles)
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(cm)
 	if err != nil {
 		return err
 	}
 	data := buf.Bytes()
-	return ioutil.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0600)
+	return os.WriteFile(filepath.Join(dir, "codegen-manifest.json"), data, 0o600)
 }
 
 // ValidateFileEquality compares maps of files for equality.
@@ -234,7 +238,7 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 		}
 		destPath := filepath.Join(codeDir, relPath)
 
-		bytes, err := ioutil.ReadFile(path)
+		bytes, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -250,11 +254,11 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 }
 
 func writeFileEnsuringDir(path string, bytes []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	return ioutil.WriteFile(path, bytes, 0600)
+	return os.WriteFile(path, bytes, 0o600)
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
@@ -281,8 +285,8 @@ func ValidateFileTransformer(
 	t *testing.T,
 	inputFile string,
 	expectedOutputFile string,
-	transformer func(reader io.Reader, writer io.Writer) error) {
-
+	transformer func(reader io.Reader, writer io.Writer) error,
+) {
 	reader, err := os.Open(inputFile)
 	if err != nil {
 		t.Error(err)
@@ -300,7 +304,7 @@ func ValidateFileTransformer(
 	actualBytes := buf.Bytes()
 
 	if os.Getenv("PULUMI_ACCEPT") != "" {
-		err := ioutil.WriteFile(expectedOutputFile, actualBytes, 0600)
+		err := os.WriteFile(expectedOutputFile, actualBytes, 0o600)
 		if err != nil {
 			t.Error(err)
 			return
@@ -309,7 +313,7 @@ func ValidateFileTransformer(
 
 	actual := map[string][]byte{expectedOutputFile: actualBytes}
 
-	expectedBytes, err := ioutil.ReadFile(expectedOutputFile)
+	expectedBytes, err := os.ReadFile(expectedOutputFile)
 	if err != nil {
 		t.Error(err)
 		return
@@ -327,8 +331,8 @@ func RunCommand(t *testing.T, name string, cwd string, exec string, args ...stri
 func RunCommandWithOptions(
 	t *testing.T,
 	opts *integration.ProgramTestOptions,
-	name string, cwd string, exec string, args ...string) {
-
+	name string, cwd string, exec string, args ...string,
+) {
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
 		t.Error(err)
@@ -367,6 +371,6 @@ const (
 	AzureNativeSchema SchemaVersion = "1.29.0"
 	AzureSchema       SchemaVersion = "4.18.0"
 	KubernetesSchema  SchemaVersion = "3.7.2"
-	RandomSchema      SchemaVersion = "4.2.0"
+	RandomSchema      SchemaVersion = "4.11.2"
 	EksSchema         SchemaVersion = "0.37.1"
 )

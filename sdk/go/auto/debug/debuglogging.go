@@ -14,6 +14,10 @@ type LoggingOptions struct {
 	LogToStdErr bool
 	// FlowToPlugins reflects the logging settings to plugins as well.
 	FlowToPlugins bool
+	// Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+	Tracing string
+	// Print detailed debugging output during resource operations
+	Debug bool
 }
 
 func AddArgs(debugLogOpts *LoggingOptions, sharedArgs []string) []string {
@@ -28,6 +32,12 @@ func AddArgs(debugLogOpts *LoggingOptions, sharedArgs []string) []string {
 	}
 	if debugLogOpts.FlowToPlugins {
 		sharedArgs = append(sharedArgs, "--logflow")
+	}
+	if debugLogOpts.Tracing != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--tracing=%v", debugLogOpts.Tracing))
+	}
+	if debugLogOpts.Debug {
+		sharedArgs = append(sharedArgs, "--debug")
 	}
 	return sharedArgs
 }

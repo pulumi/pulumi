@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -46,8 +47,8 @@ func (t *SetType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 // Equals returns true if this type has the same identity as the given type.
 func (t *SetType) Equals(other Type) bool {
 	return t.equals(other, nil)
-
 }
+
 func (t *SetType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
@@ -96,6 +97,14 @@ func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 		}
 		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
+}
+
+func (t *SetType) Pretty() pretty.Formatter {
+	return &pretty.Wrap{
+		Prefix:  "set(",
+		Value:   t.ElementType.Pretty(),
+		Postfix: ")",
+	}
 }
 
 func (t *SetType) String() string {

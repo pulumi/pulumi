@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,10 +38,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var (
-	// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
-	ErrNoPreviousDeployment = errors.New("no previous deployment")
-)
+// ErrNoPreviousDeployment is returned when there isn't a previous deployment.
+var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
 // StackAlreadyExistsError is returned from CreateStack when the stack already exists in the backend.
 type StackAlreadyExistsError struct {
@@ -59,7 +58,7 @@ type OverStackLimitError struct {
 
 func (e OverStackLimitError) Error() string {
 	m := e.Message
-	m = strings.Replace(m, "Conflict: ", "over stack limit: ", -1)
+	m = strings.ReplaceAll(m, "Conflict: ", "over stack limit: ")
 	return m
 }
 
@@ -74,6 +73,9 @@ type StackReference interface {
 	// name may not uniquely identify the stack (e.g. the cloud backend embeds owner information in the StackReference
 	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.Name
+
+	// Fully qualified name of the stack, including any organization, project, or other information.
+	FullyQualifiedName() tokens.QName
 }
 
 // PolicyPackReference is an opaque type that refers to a PolicyPack managed by a backend. The CLI
@@ -121,6 +123,9 @@ type Backend interface {
 	// URL returns a URL at which information about this backend may be seen.
 	URL() string
 
+	// SetCurrentProject sets the current ambient project for this backend.
+	SetCurrentProject(proj *workspace.Project)
+
 	// GetPolicyPack returns a PolicyPack object tied to this backend, or nil if it cannot be found.
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
@@ -134,6 +139,7 @@ type Backend interface {
 
 	// SupportsTags tells whether a stack can have associated tags stored with it in this backend.
 	SupportsTags() bool
+
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
 
@@ -150,7 +156,8 @@ type Backend interface {
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
 	// CreateStack creates a new stack with the given name and options that are specific to the backend provider.
-	CreateStack(ctx context.Context, stackRef StackReference, opts interface{}) (Stack, error)
+	CreateStack(ctx context.Context, stackRef StackReference, root string, opts *CreateStackOptions) (Stack, error)
+
 	// RemoveStack removes a stack with the given name.  If force is true, the stack will be removed even if it
 	// still contains resources.  Otherwise, if the stack contains resources, a non-nil error is returned, and the
 	// first boolean return value will be set to true.
@@ -164,16 +171,16 @@ type Backend interface {
 	RenameStack(ctx context.Context, stack Stack, newName tokens.QName) (StackReference, error)
 
 	// Preview shows what would be updated given the current workspace's contents.
-	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, stack Stack, op UpdateOperation) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result)
 	// Update updates the target stack with the current workspace's contents (config and code).
-	Update(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Update(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Import imports resources into a stack.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (engine.ResourceChanges, result.Result)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, result.Result)
 	// Refresh refreshes the stack's state from the cloud provider.
-	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Destroy destroys all of this stack's resources.
-	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	Destroy(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, result.Result)
 	// Watch watches the project's working directory for changes and automatically updates the active stack.
 	Watch(ctx context.Context, stack Stack, op UpdateOperation, paths []string) result.Result
 
@@ -184,7 +191,7 @@ type Backend interface {
 	// descending order (newest first).
 	GetHistory(ctx context.Context, stackRef StackReference, pageSize int, page int) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
-	GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
+	GetLogs(ctx context.Context, secretsProvider secrets.Provider, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	// Get the configuration from the most recent deployment of the stack.
 	GetLatestConfiguration(ctx context.Context, stack Stack) (config.Map, error)
@@ -226,6 +233,7 @@ type UpdateOperation struct {
 	M                  *UpdateMetadata
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
+	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
 }
@@ -236,6 +244,7 @@ type QueryOperation struct {
 	Root               string
 	Opts               UpdateOptions
 	SecretsManager     secrets.Manager
+	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
 }
@@ -257,8 +266,6 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
-	// Experimental plan support, when true cause plans to be generated.
-	ExperimentalPlans bool
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.
@@ -284,12 +291,13 @@ type CancellationScopeSource interface {
 }
 
 // NewBackendClient returns a deploy.BackendClient that wraps the given Backend.
-func NewBackendClient(backend Backend) deploy.BackendClient {
-	return &backendClient{backend: backend}
+func NewBackendClient(backend Backend, secretsProvider secrets.Provider) deploy.BackendClient {
+	return &backendClient{backend: backend, secretsProvider: secretsProvider}
 }
 
 type backendClient struct {
-	backend Backend
+	backend         Backend
+	secretsProvider secrets.Provider
 }
 
 // GetStackOutputs returns the outputs of the stack with the given name.
@@ -305,7 +313,7 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +328,8 @@ func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resou
 }
 
 func (c *backendClient) GetStackResourceOutputs(
-	ctx context.Context, name string) (resource.PropertyMap, error) {
+	ctx context.Context, name string,
+) (resource.PropertyMap, error) {
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return nil, err
@@ -332,7 +341,7 @@ func (c *backendClient) GetStackResourceOutputs(
 	if s == nil {
 		return nil, fmt.Errorf("unknown stack %q", name)
 	}
-	snap, err := s.Snapshot(ctx)
+	snap, err := s.Snapshot(ctx, c.secretsProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -344,8 +353,26 @@ func (c *backendClient) GetStackResourceOutputs(
 
 		resc := resource.PropertyMap{
 			resource.PropertyKey("type"):    resource.NewStringProperty(string(r.Type)),
-			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs)}
+			resource.PropertyKey("outputs"): resource.NewObjectProperty(r.Outputs),
+		}
 		pm[resource.PropertyKey(r.URN)] = resource.NewObjectProperty(resc)
 	}
 	return pm, nil
+}
+
+// ErrTeamsNotSupported is returned by backends
+// which do not support the teams feature.
+var ErrTeamsNotSupported = errors.New("teams are not supported")
+
+// CreateStackOptions provides options for stack creation.
+// At present, options only apply to the Service.
+type CreateStackOptions struct {
+	// Teams is a list of teams who should have access to
+	// the newly created stack.
+	// This option is only appropriate for backends
+	// which support teams (i.e. the Pulumi Service).
+	//
+	// The backend may return ErrTeamsNotSupported
+	// if Teams is specified but not supported.
+	Teams []string
 }

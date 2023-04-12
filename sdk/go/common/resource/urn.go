@@ -32,14 +32,14 @@ import (
 //
 // Each resource URN is of the form:
 //
-//     urn:pulumi:<Stack>::<Project>::<Qualified$Type$Name>::<Name>
+//	urn:pulumi:<Stack>::<Project>::<Qualified$Type$Name>::<Name>
 //
 // wherein each element is the following:
 //
-//     <Stack>                 The stack being deployed into
-//     <Project>               The project being evaluated
-//     <Qualified$Type$Name>   The object type's qualified type token (including the parent type)
-//     <Name>                  The human-friendly name identifier assigned by the developer or provider
+//	<Stack>                 The stack being deployed into
+//	<Project>               The project being evaluated
+//	<Qualified$Type$Name>   The object type's qualified type token (including the parent type)
+//	<Name>                  The human-friendly name identifier assigned by the developer or provider
 //
 // In the future, we may add elements to the URN; it is more important that it is unique than it is
 // human-typable.

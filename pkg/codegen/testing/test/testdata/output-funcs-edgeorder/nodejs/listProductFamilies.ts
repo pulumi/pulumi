@@ -2,7 +2,9 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs, enums } from "./types";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
+import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
 /**
@@ -10,11 +12,8 @@ import * as utilities from "./utilities";
  * API Version: 2020-12-01-preview.
  */
 export function listProductFamilies(args: ListProductFamiliesArgs, opts?: pulumi.InvokeOptions): Promise<ListProductFamiliesResult> {
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("myedgeorder::listProductFamilies", {
         "customerSubscriptionDetails": args.customerSubscriptionDetails,
         "expand": args.expand,
@@ -55,9 +54,12 @@ export interface ListProductFamiliesResult {
      */
     readonly value: outputs.ProductFamilyResponse[];
 }
-
+/**
+ * The list of product families.
+ * API Version: 2020-12-01-preview.
+ */
 export function listProductFamiliesOutput(args: ListProductFamiliesOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListProductFamiliesResult> {
-    return pulumi.output(args).apply(a => listProductFamilies(a, opts))
+    return pulumi.output(args).apply((a: any) => listProductFamilies(a, opts))
 }
 
 export interface ListProductFamiliesOutputArgs {

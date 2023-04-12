@@ -17,7 +17,7 @@ type ConditionalAccessPolicyConditions struct {
 // ConditionalAccessPolicyConditionsInput is an input type that accepts ConditionalAccessPolicyConditionsArgs and ConditionalAccessPolicyConditionsOutput values.
 // You can construct a concrete instance of `ConditionalAccessPolicyConditionsInput` via:
 //
-//          ConditionalAccessPolicyConditionsArgs{...}
+//	ConditionalAccessPolicyConditionsArgs{...}
 type ConditionalAccessPolicyConditionsInput interface {
 	pulumi.Input
 
@@ -52,11 +52,11 @@ func (i ConditionalAccessPolicyConditionsArgs) ToConditionalAccessPolicyConditio
 // ConditionalAccessPolicyConditionsPtrInput is an input type that accepts ConditionalAccessPolicyConditionsArgs, ConditionalAccessPolicyConditionsPtr and ConditionalAccessPolicyConditionsPtrOutput values.
 // You can construct a concrete instance of `ConditionalAccessPolicyConditionsPtrInput` via:
 //
-//          ConditionalAccessPolicyConditionsArgs{...}
+//	        ConditionalAccessPolicyConditionsArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type ConditionalAccessPolicyConditionsPtrInput interface {
 	pulumi.Input
 

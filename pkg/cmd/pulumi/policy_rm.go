@@ -28,16 +28,17 @@ const allKeyword = "all"
 
 func newPolicyRmCmd() *cobra.Command {
 	var yes bool
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "rm <org-name>/<policy-pack-name> <all|version>",
 		Args:  cmdutil.ExactArgs(2),
 		Short: "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
 			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			yes = yes || skipConfirmations()
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
-			policyPack, err := requirePolicyPack(args[0])
+			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
+			policyPack, err := requirePolicyPack(ctx, args[0])
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -58,8 +59,9 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			// Attempt to remove the Policy Pack.
-			err = policyPack.Remove(commandContext(), backend.PolicyPackOperation{
-				VersionTag: version, Scopes: cancellationScopes})
+			err = policyPack.Remove(ctx, backend.PolicyPackOperation{
+				VersionTag: version, Scopes: cancellationScopes,
+			})
 			if err != nil {
 				return result.FromError(err)
 			}

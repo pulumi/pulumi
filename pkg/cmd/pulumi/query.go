@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,19 +22,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // intentionally disabling here for cleaner err declaration/assignment.
-// nolint: vetshadow
+//
+//nolint:vetshadow
 func newQueryCmd() *cobra.Command {
-	var stack string
+	var stackName string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "query",
 		Short: "Run query program against cloud resources",
-		Long: "Run query program against cloud resources.\n" +
+		Long: "[EXPERIMENTAL] Run query program against cloud resources.\n" +
 			"\n" +
 			"This command loads a Pulumi query program and executes it. In \"query mode\", Pulumi provides various\n" +
 			"useful data sources for querying, such as the resource outputs for a stack. Query mode also disallows\n" +
@@ -46,6 +48,7 @@ func newQueryCmd() *cobra.Command {
 		Args:   cmdutil.NoArgs,
 		Hidden: !hasExperimentalCommands() && !hasDebugCommands(),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+			ctx := commandContext()
 			interactive := cmdutil.Interactive()
 
 			opts := backend.UpdateOptions{}
@@ -55,23 +58,27 @@ func newQueryCmd() *cobra.Command {
 				Type:          display.DisplayQuery,
 			}
 
-			b, err := currentBackend(opts.Display)
+			// Try to read the current project
+			project, root, err := readProject()
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			proj, root, err := readProject()
+			b, err := currentBackend(ctx, project, opts.Display)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			opts.Engine = engine.UpdateOptions{}
+			opts.Engine = engine.UpdateOptions{
+				Experimental: hasExperimentalCommands(),
+			}
 
-			res := b.Query(commandContext(), backend.QueryOperation{
-				Proj:   proj,
-				Root:   root,
-				Opts:   opts,
-				Scopes: cancellationScopes,
+			res := b.Query(ctx, backend.QueryOperation{
+				Proj:            project,
+				Root:            root,
+				Opts:            opts,
+				Scopes:          cancellationScopes,
+				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {
 			case res != nil && res.Error() == context.Canceled:
@@ -85,7 +92,7 @@ func newQueryCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd

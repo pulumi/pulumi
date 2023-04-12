@@ -10,7 +10,7 @@ using Pulumi.Serialization;
 namespace Pulumi.Example
 {
     [ExampleResourceType("foo::FooResource")]
-    public partial class FooResource : Pulumi.ComponentResource
+    public partial class FooResource : global::Pulumi.ComponentResource
     {
         [Output("foo")]
         public Output<Pulumi.Example.Resource?> Foo { get; private set; } = null!;
@@ -42,7 +42,7 @@ namespace Pulumi.Example
         }
     }
 
-    public sealed class FooResourceArgs : Pulumi.ResourceArgs
+    public sealed class FooResourceArgs : global::Pulumi.ResourceArgs
     {
         [Input("foo")]
         public Input<Pulumi.Example.Resource>? Foo { get; set; }
@@ -50,5 +50,6 @@ namespace Pulumi.Example
         public FooResourceArgs()
         {
         }
+        public static new FooResourceArgs Empty => new FooResourceArgs();
     }
 }

@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -12,8 +14,10 @@ import (
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 )
 
-const providerName = "testcomponent"
-const version = "0.0.1"
+const (
+	providerName = "testcomponent"
+	version      = "0.0.1"
+)
 
 func main() {
 	var schema string
@@ -25,7 +29,8 @@ func main() {
 		Version: version,
 		Schema:  []byte(schema),
 		Construct: func(ctx *pulumi.Context, typ, name string,
-			inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
+			inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+		) (*pulumiprovider.ConstructResult, error) {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		},
 	})

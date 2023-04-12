@@ -21,6 +21,7 @@ var pyNameTests = []struct {
 	{"podCIDRSet", "pod_cidr_set", "pod_cidr_set"},
 	{"Sha256Hash", "sha256_hash", "sha256_hash"},
 	{"SHA256Hash", "sha256_hash", "sha256_hash"},
+	{"proj:config", "proj_config", "proj_config"},
 
 	// PyName should return the legacy name for these:
 	{"openXJsonSerDe", "open_x_json_ser_de", "open_x_json_ser_de"},

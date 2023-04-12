@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -250,6 +251,68 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
 }
 
+// This test checks that we only write the Checkpoint once whether or
+// not there are important changes when asked to via
+// env.SkipCheckpoints.
+//
+//nolint:paralleltest // mutates environment variables
+func TestWriteCheckpointOnceUnsafe(t *testing.T) {
+	t.Setenv(env.Experimental.Var().Name(), "1")
+	t.Setenv(env.SkipCheckpoints.Var().Name(), "1")
+
+	provider := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgUnsafe::provider")
+	provider.Custom, provider.Type, provider.ID = true, "pulumi:providers:pkgUnsafe", "id"
+
+	resourceP := NewResource("a-unique-urn-resource-p")
+	resourceA := NewResource("a-unique-urn-resource-a")
+
+	snap := NewSnapshot([]*resource.State{
+		provider,
+		resourceP,
+		resourceA,
+	})
+
+	manager, sp := MockSetup(t, snap)
+
+	// Generate a same for the provider.
+	provUpdated := NewResource(string(provider.URN))
+	provUpdated.Custom, provUpdated.Type = true, provider.Type
+	provSame := deploy.NewSameStep(nil, nil, provider, provUpdated)
+	mutation, err := manager.BeginMutation(provSame)
+	assert.NoError(t, err)
+	_, _, err = provSame.Apply(false)
+	assert.NoError(t, err)
+	err = mutation.End(provSame, true)
+	assert.NoError(t, err)
+
+	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
+	pUpdated := NewResource(string(resourceP.URN))
+	pUpdated.Protect = !resourceP.Protect
+	pSame := deploy.NewSameStep(nil, nil, resourceP, pUpdated)
+	mutation, err = manager.BeginMutation(pSame)
+	assert.NoError(t, err)
+	err = mutation.End(pSame, true)
+	assert.NoError(t, err)
+
+	// The engine generates a meaningful change, the DEFAULT behavior is that a snapshot is written:
+	aUpdated := NewResource(string(resourceA.URN))
+	aUpdated.Protect = !resourceA.Protect
+	aSame := deploy.NewSameStep(nil, nil, resourceA, aUpdated)
+	mutation, err = manager.BeginMutation(aSame)
+	assert.NoError(t, err)
+	err = mutation.End(aSame, true)
+	assert.NoError(t, err)
+
+	// a `Close()` call is required to write back the snapshots.
+	// It is called in all of the references to SnapshotManager.
+	err = manager.Close()
+	assert.NoError(t, err)
+
+	// DEFAULT behavior would cause more than 1 snapshot to be written,
+	// but the provided flag should only create 1 Snapshot
+	assert.Len(t, sp.SavedSnapshots, 1)
+}
+
 // This test exercises same steps with meaningful changes to properties _other_ than `Dependencies` in order to ensure
 // that the snapshot is written.
 func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
@@ -330,8 +393,9 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	provider2 := NewResource("urn:pulumi:foo::bar::pulumi:providers:pkgA::provider2")
 	provider2.Custom, provider2.Type, provider2.ID = true, "pulumi:providers:pkgA", "id2"
 
-	resourceA.Custom, resourceA.ID, resourceA.Provider =
-		true, "id", "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
+	resourceA.Custom = true
+	resourceA.ID = "id"
+	resourceA.Provider = "urn:pulumi:foo::bar::pulumi:providers:pkgA::provider::id"
 
 	snap = NewSnapshot([]*resource.State{
 		provider,
@@ -541,7 +605,7 @@ func TestDeletion(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -567,7 +631,7 @@ func TestFailedDelete(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -740,7 +804,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -772,7 +836,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, resourceA)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA)
 	mutation, err := manager.BeginMutation(step)
 	if !assert.NoError(t, err) {
 		t.FailNow()

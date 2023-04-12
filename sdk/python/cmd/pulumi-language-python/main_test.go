@@ -48,7 +48,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "",
-			err:   fmt.Errorf("Cannot parse empty string"),
+			err:   fmt.Errorf("cannot parse empty string"),
 		},
 		{
 			input:    "4.3.2.1",
@@ -96,7 +96,7 @@ func TestDeterminePluginVersion(t *testing.T) {
 		},
 		{
 			input: "10!3.2.1",
-			err:   fmt.Errorf("Epochs are not supported"),
+			err:   fmt.Errorf("epochs are not supported"),
 		},
 		{
 			input:    "3.2.post1.dev0",
@@ -181,7 +181,7 @@ func TestDeterminePulumiPackages(t *testing.T) {
 		}
 		path := filepath.Join(sitePackages, "pip_install_test", "pulumi-plugin.json")
 		bytes := []byte(`{ "name": "thing1", "version": "thing2", "server": "thing3", "resource": true }` + "\n")
-		err = os.WriteFile(path, bytes, 0600)
+		err = os.WriteFile(path, bytes, 0o600)
 		require.NoError(t, err)
 		t.Logf("Wrote pulumipluing.json file: %s", path)
 		packages, err := determinePulumiPackages(context.Background(), "venv", cwd)

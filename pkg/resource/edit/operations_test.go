@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func NewResource(name string, provider *resource.State, deps ...resource.URN) *resource.State {
@@ -84,10 +85,94 @@ func TestDeletion(t *testing.T) {
 		c,
 	})
 
-	err := DeleteResource(snap, b)
+	err := DeleteResource(snap, b, nil, false)
 	assert.NoError(t, err)
 	assert.Len(t, snap.Resources, 3)
 	assert.Equal(t, []*resource.State{pA, a, c}, snap.Resources)
+}
+
+func TestDeletingDuplicateURNs(t *testing.T) {
+	t.Parallel()
+
+	pA := NewProviderResource("a", "p1", "0")
+	a := NewResource("a", pA)
+
+	// Create duplicate resources.
+	b1 := NewResource("b", pA)
+	b2 := NewResource("b", pA)
+	b3 := NewResource("b", pA)
+
+	// ensure b1, b2, and b3 must have the same URN.
+	bURN := b1.URN
+	assert.Equal(t, bURN, b1.URN)
+	assert.Equal(t, bURN, b2.URN)
+	assert.Equal(t, bURN, b3.URN)
+
+	// c exists to check behavior on b's dependents.
+	c := NewResource("c", pA, bURN)
+
+	// This test ensures that when targeting dependent resources, deleting a
+	// resource with a redundant URN will not delete dependent resources in
+	// state as it's ambiguous since another URN can satisfy the dependency.
+	t.Run("do-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA, a, b1, b2, b3, c,
+		})
+
+		err := DeleteResource(snap, b1, nil, true /* targetDependents */)
+		require.NoError(t, err)
+
+		// assert.Equals does a deep equals with the expected list.
+		assert.Equal(t, []*resource.State{
+			pA, a, b2, b3, c,
+		}, snap.Resources)
+
+		// Ensure that a pointer to b1 is not in the list.
+		for _, s := range snap.Resources {
+			assert.False(t, s == b1)
+		}
+	})
+
+	// This test ensures that when targeting a resource with a redundant URN,
+	// dependency checks should not block the resource from being deleted from state.
+	t.Run("do-not-target-dependents", func(t *testing.T) {
+		t.Parallel()
+		snap := NewSnapshot([]*resource.State{
+			pA, a, b1, b2, b3, c,
+		})
+
+		err := DeleteResource(snap, b1, nil, false /* targetDependents */)
+		require.NoError(t, err)
+
+		// assert.Equals does a deep equals with the expected list.
+		assert.Equal(t, []*resource.State{
+			pA, a, b2, b3, c,
+		}, snap.Resources)
+
+		// Ensure that a pointer to b1 is not in the list.
+		for _, s := range snap.Resources {
+			assert.False(t, s == b1)
+		}
+	})
+}
+
+func TestDeletingDependencies(t *testing.T) {
+	t.Parallel()
+
+	pA := NewProviderResource("a", "p1", "0")
+	a := NewResource("a", pA)
+	b := NewResource("b", pA)
+	c := NewResource("c", pA, a.URN)
+	d := NewResource("d", pA, c.URN)
+	snap := NewSnapshot([]*resource.State{
+		pA, a, b, c, d,
+	})
+
+	err := DeleteResource(snap, a, nil, true)
+	require.NoError(t, err)
+
+	assert.Equal(t, snap.Resources, []*resource.State{pA, b})
 }
 
 func TestFailedDeletionProviderDependency(t *testing.T) {
@@ -104,7 +189,7 @@ func TestFailedDeletionProviderDependency(t *testing.T) {
 		c,
 	})
 
-	err := DeleteResource(snap, pA)
+	err := DeleteResource(snap, pA, nil, false)
 	assert.Error(t, err)
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {
@@ -132,7 +217,7 @@ func TestFailedDeletionRegularDependency(t *testing.T) {
 		c,
 	})
 
-	err := DeleteResource(snap, a)
+	err := DeleteResource(snap, a, nil, false)
 	assert.Error(t, err)
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {
@@ -158,10 +243,108 @@ func TestFailedDeletionProtected(t *testing.T) {
 		a,
 	})
 
-	err := DeleteResource(snap, a)
+	err := DeleteResource(snap, a, nil, false)
 	assert.Error(t, err)
 	_, ok := err.(ResourceProtectedError)
 	assert.True(t, ok)
+}
+
+func TestDeleteProtected(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		test func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot)
+	}{
+		{
+			"root-protected",
+			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				a.Protect = true
+				protectedCount := 0
+				err := DeleteResource(snap, a, func(s *resource.State) error {
+					s.Protect = false
+					protectedCount++
+					return nil
+				}, false)
+				assert.NoError(t, err)
+				assert.Equal(t, protectedCount, 1)
+				assert.Equal(t, snap.Resources, []*resource.State{pA, b, c})
+			},
+		},
+		{
+			"root-and-branch",
+			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				a.Protect = true
+				b.Protect = true
+				c.Protect = true
+				protectedCount := 0
+				err := DeleteResource(snap, b, func(s *resource.State) error {
+					s.Protect = false
+					protectedCount++
+					return nil
+				}, true)
+				assert.NoError(t, err)
+				// 2 because we only plan to delete b and c. a is protected but not
+				// scheduled for deletion, so we don't call the onProtect handler.
+				assert.Equal(t, protectedCount, 2)
+				assert.Equal(t, snap.Resources, []*resource.State{pA, a})
+			},
+		},
+		{
+			"branch",
+			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				b.Protect = true
+				c.Protect = true
+				protectedCount := 0
+				err := DeleteResource(snap, c, func(s *resource.State) error {
+					s.Protect = false
+					protectedCount++
+					return nil
+				}, false)
+				assert.NoError(t, err)
+				assert.Equal(t, protectedCount, 1)
+				assert.Equal(t, snap.Resources, []*resource.State{pA, a, b})
+			},
+		},
+		{
+			"no-permission-root",
+			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				c.Protect = true
+				err := DeleteResource(snap, c, nil, false).(ResourceProtectedError)
+				assert.Equal(t, ResourceProtectedError{
+					Condemned: c,
+				}, err)
+			},
+		},
+		{
+			"no-permission-branch",
+			func(t *testing.T, pA, a, b, c *resource.State, snap *deploy.Snapshot) {
+				c.Protect = true
+				err := DeleteResource(snap, b, nil, true).(ResourceProtectedError)
+				assert.Equal(t, ResourceProtectedError{
+					Condemned: c,
+				}, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pA := NewProviderResource("a", "p1", "0")
+			a := NewResource("a", pA)
+			b := NewResource("b", pA)
+			c := NewResource("c", pA, b.URN)
+			snap := NewSnapshot([]*resource.State{
+				pA,
+				a,
+				b,
+				c,
+			})
+
+			tt.test(t, pA, a, b, c, snap)
+		})
+	}
 }
 
 func TestFailedDeletionParentDependency(t *testing.T) {
@@ -180,7 +363,7 @@ func TestFailedDeletionParentDependency(t *testing.T) {
 		c,
 	})
 
-	err := DeleteResource(snap, a)
+	err := DeleteResource(snap, a, nil, false)
 	assert.Error(t, err)
 	depErr, ok := err.(ResourceHasDependenciesError)
 	if !assert.True(t, ok) {

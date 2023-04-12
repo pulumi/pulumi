@@ -23,7 +23,7 @@ type AvailabilityInformationResponse struct {
 // AvailabilityInformationResponseInput is an input type that accepts AvailabilityInformationResponseArgs and AvailabilityInformationResponseOutput values.
 // You can construct a concrete instance of `AvailabilityInformationResponseInput` via:
 //
-//          AvailabilityInformationResponseArgs{...}
+//	AvailabilityInformationResponseArgs{...}
 type AvailabilityInformationResponseInput interface {
 	pulumi.Input
 
@@ -98,7 +98,7 @@ type BillingMeterDetailsResponse struct {
 // BillingMeterDetailsResponseInput is an input type that accepts BillingMeterDetailsResponseArgs and BillingMeterDetailsResponseOutput values.
 // You can construct a concrete instance of `BillingMeterDetailsResponseInput` via:
 //
-//          BillingMeterDetailsResponseArgs{...}
+//	BillingMeterDetailsResponseArgs{...}
 type BillingMeterDetailsResponseInput interface {
 	pulumi.Input
 
@@ -133,7 +133,7 @@ func (i BillingMeterDetailsResponseArgs) ToBillingMeterDetailsResponseOutputWith
 // BillingMeterDetailsResponseArrayInput is an input type that accepts BillingMeterDetailsResponseArray and BillingMeterDetailsResponseArrayOutput values.
 // You can construct a concrete instance of `BillingMeterDetailsResponseArrayInput` via:
 //
-//          BillingMeterDetailsResponseArray{ BillingMeterDetailsResponseArgs{...} }
+//	BillingMeterDetailsResponseArray{ BillingMeterDetailsResponseArgs{...} }
 type BillingMeterDetailsResponseArrayInput interface {
 	pulumi.Input
 
@@ -221,7 +221,7 @@ type ConfigurationFilters struct {
 // ConfigurationFiltersInput is an input type that accepts ConfigurationFiltersArgs and ConfigurationFiltersOutput values.
 // You can construct a concrete instance of `ConfigurationFiltersInput` via:
 //
-//          ConfigurationFiltersArgs{...}
+//	ConfigurationFiltersArgs{...}
 type ConfigurationFiltersInput interface {
 	pulumi.Input
 
@@ -252,7 +252,7 @@ func (i ConfigurationFiltersArgs) ToConfigurationFiltersOutputWithContext(ctx co
 // ConfigurationFiltersArrayInput is an input type that accepts ConfigurationFiltersArray and ConfigurationFiltersArrayOutput values.
 // You can construct a concrete instance of `ConfigurationFiltersArrayInput` via:
 //
-//          ConfigurationFiltersArray{ ConfigurationFiltersArgs{...} }
+//	ConfigurationFiltersArray{ ConfigurationFiltersArgs{...} }
 type ConfigurationFiltersArrayInput interface {
 	pulumi.Input
 
@@ -344,7 +344,7 @@ type ConfigurationResponse struct {
 // ConfigurationResponseInput is an input type that accepts ConfigurationResponseArgs and ConfigurationResponseOutput values.
 // You can construct a concrete instance of `ConfigurationResponseInput` via:
 //
-//          ConfigurationResponseArgs{...}
+//	ConfigurationResponseArgs{...}
 type ConfigurationResponseInput interface {
 	pulumi.Input
 
@@ -389,7 +389,7 @@ func (i ConfigurationResponseArgs) ToConfigurationResponseOutputWithContext(ctx 
 // ConfigurationResponseArrayInput is an input type that accepts ConfigurationResponseArray and ConfigurationResponseArrayOutput values.
 // You can construct a concrete instance of `ConfigurationResponseArrayInput` via:
 //
-//          ConfigurationResponseArray{ ConfigurationResponseArgs{...} }
+//	ConfigurationResponseArray{ ConfigurationResponseArgs{...} }
 type ConfigurationResponseArrayInput interface {
 	pulumi.Input
 
@@ -502,7 +502,7 @@ type CostInformationResponse struct {
 // CostInformationResponseInput is an input type that accepts CostInformationResponseArgs and CostInformationResponseOutput values.
 // You can construct a concrete instance of `CostInformationResponseInput` via:
 //
-//          CostInformationResponseArgs{...}
+//	CostInformationResponseArgs{...}
 type CostInformationResponseInput interface {
 	pulumi.Input
 
@@ -568,7 +568,7 @@ type CustomerSubscriptionDetails struct {
 // CustomerSubscriptionDetailsInput is an input type that accepts CustomerSubscriptionDetailsArgs and CustomerSubscriptionDetailsOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionDetailsInput` via:
 //
-//          CustomerSubscriptionDetailsArgs{...}
+//	CustomerSubscriptionDetailsArgs{...}
 type CustomerSubscriptionDetailsInput interface {
 	pulumi.Input
 
@@ -609,11 +609,11 @@ func (i CustomerSubscriptionDetailsArgs) ToCustomerSubscriptionDetailsPtrOutputW
 // CustomerSubscriptionDetailsPtrInput is an input type that accepts CustomerSubscriptionDetailsArgs, CustomerSubscriptionDetailsPtr and CustomerSubscriptionDetailsPtrOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionDetailsPtrInput` via:
 //
-//          CustomerSubscriptionDetailsArgs{...}
+//	        CustomerSubscriptionDetailsArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type CustomerSubscriptionDetailsPtrInput interface {
 	pulumi.Input
 
@@ -746,7 +746,7 @@ type CustomerSubscriptionRegisteredFeatures struct {
 // CustomerSubscriptionRegisteredFeaturesInput is an input type that accepts CustomerSubscriptionRegisteredFeaturesArgs and CustomerSubscriptionRegisteredFeaturesOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionRegisteredFeaturesInput` via:
 //
-//          CustomerSubscriptionRegisteredFeaturesArgs{...}
+//	CustomerSubscriptionRegisteredFeaturesArgs{...}
 type CustomerSubscriptionRegisteredFeaturesInput interface {
 	pulumi.Input
 
@@ -777,7 +777,7 @@ func (i CustomerSubscriptionRegisteredFeaturesArgs) ToCustomerSubscriptionRegist
 // CustomerSubscriptionRegisteredFeaturesArrayInput is an input type that accepts CustomerSubscriptionRegisteredFeaturesArray and CustomerSubscriptionRegisteredFeaturesArrayOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionRegisteredFeaturesArrayInput` via:
 //
-//          CustomerSubscriptionRegisteredFeaturesArray{ CustomerSubscriptionRegisteredFeaturesArgs{...} }
+//	CustomerSubscriptionRegisteredFeaturesArray{ CustomerSubscriptionRegisteredFeaturesArgs{...} }
 type CustomerSubscriptionRegisteredFeaturesArrayInput interface {
 	pulumi.Input
 
@@ -863,7 +863,7 @@ type DescriptionResponse struct {
 // DescriptionResponseInput is an input type that accepts DescriptionResponseArgs and DescriptionResponseOutput values.
 // You can construct a concrete instance of `DescriptionResponseInput` via:
 //
-//          DescriptionResponseArgs{...}
+//	DescriptionResponseArgs{...}
 type DescriptionResponseInput interface {
 	pulumi.Input
 
@@ -965,7 +965,7 @@ type DimensionsResponse struct {
 // DimensionsResponseInput is an input type that accepts DimensionsResponseArgs and DimensionsResponseOutput values.
 // You can construct a concrete instance of `DimensionsResponseInput` via:
 //
-//          DimensionsResponseArgs{...}
+//	DimensionsResponseArgs{...}
 type DimensionsResponseInput interface {
 	pulumi.Input
 
@@ -1064,7 +1064,7 @@ type FilterableProperty struct {
 // FilterablePropertyInput is an input type that accepts FilterablePropertyArgs and FilterablePropertyOutput values.
 // You can construct a concrete instance of `FilterablePropertyInput` via:
 //
-//          FilterablePropertyArgs{...}
+//	FilterablePropertyArgs{...}
 type FilterablePropertyInput interface {
 	pulumi.Input
 
@@ -1095,7 +1095,7 @@ func (i FilterablePropertyArgs) ToFilterablePropertyOutputWithContext(ctx contex
 // FilterablePropertyArrayInput is an input type that accepts FilterablePropertyArray and FilterablePropertyArrayOutput values.
 // You can construct a concrete instance of `FilterablePropertyArrayInput` via:
 //
-//          FilterablePropertyArray{ FilterablePropertyArgs{...} }
+//	FilterablePropertyArray{ FilterablePropertyArgs{...} }
 type FilterablePropertyArrayInput interface {
 	pulumi.Input
 
@@ -1173,7 +1173,7 @@ type FilterablePropertyResponse struct {
 // FilterablePropertyResponseInput is an input type that accepts FilterablePropertyResponseArgs and FilterablePropertyResponseOutput values.
 // You can construct a concrete instance of `FilterablePropertyResponseInput` via:
 //
-//          FilterablePropertyResponseArgs{...}
+//	FilterablePropertyResponseArgs{...}
 type FilterablePropertyResponseInput interface {
 	pulumi.Input
 
@@ -1204,7 +1204,7 @@ func (i FilterablePropertyResponseArgs) ToFilterablePropertyResponseOutputWithCo
 // FilterablePropertyResponseArrayInput is an input type that accepts FilterablePropertyResponseArray and FilterablePropertyResponseArrayOutput values.
 // You can construct a concrete instance of `FilterablePropertyResponseArrayInput` via:
 //
-//          FilterablePropertyResponseArray{ FilterablePropertyResponseArgs{...} }
+//	FilterablePropertyResponseArray{ FilterablePropertyResponseArgs{...} }
 type FilterablePropertyResponseArrayInput interface {
 	pulumi.Input
 
@@ -1286,7 +1286,7 @@ type HierarchyInformation struct {
 // HierarchyInformationInput is an input type that accepts HierarchyInformationArgs and HierarchyInformationOutput values.
 // You can construct a concrete instance of `HierarchyInformationInput` via:
 //
-//          HierarchyInformationArgs{...}
+//	HierarchyInformationArgs{...}
 type HierarchyInformationInput interface {
 	pulumi.Input
 
@@ -1368,7 +1368,7 @@ type HierarchyInformationResponse struct {
 // HierarchyInformationResponseInput is an input type that accepts HierarchyInformationResponseArgs and HierarchyInformationResponseOutput values.
 // You can construct a concrete instance of `HierarchyInformationResponseInput` via:
 //
-//          HierarchyInformationResponseArgs{...}
+//	HierarchyInformationResponseArgs{...}
 type HierarchyInformationResponseInput interface {
 	pulumi.Input
 
@@ -1446,7 +1446,7 @@ type ImageInformationResponse struct {
 // ImageInformationResponseInput is an input type that accepts ImageInformationResponseArgs and ImageInformationResponseOutput values.
 // You can construct a concrete instance of `ImageInformationResponseInput` via:
 //
-//          ImageInformationResponseArgs{...}
+//	ImageInformationResponseArgs{...}
 type ImageInformationResponseInput interface {
 	pulumi.Input
 
@@ -1477,7 +1477,7 @@ func (i ImageInformationResponseArgs) ToImageInformationResponseOutputWithContex
 // ImageInformationResponseArrayInput is an input type that accepts ImageInformationResponseArray and ImageInformationResponseArrayOutput values.
 // You can construct a concrete instance of `ImageInformationResponseArrayInput` via:
 //
-//          ImageInformationResponseArray{ ImageInformationResponseArgs{...} }
+//	ImageInformationResponseArray{ ImageInformationResponseArgs{...} }
 type ImageInformationResponseArrayInput interface {
 	pulumi.Input
 
@@ -1555,7 +1555,7 @@ type LinkResponse struct {
 // LinkResponseInput is an input type that accepts LinkResponseArgs and LinkResponseOutput values.
 // You can construct a concrete instance of `LinkResponseInput` via:
 //
-//          LinkResponseArgs{...}
+//	LinkResponseArgs{...}
 type LinkResponseInput interface {
 	pulumi.Input
 
@@ -1586,7 +1586,7 @@ func (i LinkResponseArgs) ToLinkResponseOutputWithContext(ctx context.Context) L
 // LinkResponseArrayInput is an input type that accepts LinkResponseArray and LinkResponseArrayOutput values.
 // You can construct a concrete instance of `LinkResponseArrayInput` via:
 //
-//          LinkResponseArray{ LinkResponseArgs{...} }
+//	LinkResponseArray{ LinkResponseArgs{...} }
 type LinkResponseArrayInput interface {
 	pulumi.Input
 
@@ -1669,7 +1669,7 @@ type Pav2MeterDetailsResponse struct {
 // Pav2MeterDetailsResponseInput is an input type that accepts Pav2MeterDetailsResponseArgs and Pav2MeterDetailsResponseOutput values.
 // You can construct a concrete instance of `Pav2MeterDetailsResponseInput` via:
 //
-//          Pav2MeterDetailsResponseArgs{...}
+//	Pav2MeterDetailsResponseArgs{...}
 type Pav2MeterDetailsResponseInput interface {
 	pulumi.Input
 
@@ -1761,7 +1761,7 @@ type ProductFamilyResponse struct {
 // ProductFamilyResponseInput is an input type that accepts ProductFamilyResponseArgs and ProductFamilyResponseOutput values.
 // You can construct a concrete instance of `ProductFamilyResponseInput` via:
 //
-//          ProductFamilyResponseArgs{...}
+//	ProductFamilyResponseArgs{...}
 type ProductFamilyResponseInput interface {
 	pulumi.Input
 
@@ -1804,7 +1804,7 @@ func (i ProductFamilyResponseArgs) ToProductFamilyResponseOutputWithContext(ctx 
 // ProductFamilyResponseArrayInput is an input type that accepts ProductFamilyResponseArray and ProductFamilyResponseArrayOutput values.
 // You can construct a concrete instance of `ProductFamilyResponseArrayInput` via:
 //
-//          ProductFamilyResponseArray{ ProductFamilyResponseArgs{...} }
+//	ProductFamilyResponseArray{ ProductFamilyResponseArgs{...} }
 type ProductFamilyResponseArrayInput interface {
 	pulumi.Input
 
@@ -1924,7 +1924,7 @@ type ProductLineResponse struct {
 // ProductLineResponseInput is an input type that accepts ProductLineResponseArgs and ProductLineResponseOutput values.
 // You can construct a concrete instance of `ProductLineResponseInput` via:
 //
-//          ProductLineResponseArgs{...}
+//	ProductLineResponseArgs{...}
 type ProductLineResponseInput interface {
 	pulumi.Input
 
@@ -1967,7 +1967,7 @@ func (i ProductLineResponseArgs) ToProductLineResponseOutputWithContext(ctx cont
 // ProductLineResponseArrayInput is an input type that accepts ProductLineResponseArray and ProductLineResponseArrayOutput values.
 // You can construct a concrete instance of `ProductLineResponseArrayInput` via:
 //
-//          ProductLineResponseArray{ ProductLineResponseArgs{...} }
+//	ProductLineResponseArray{ ProductLineResponseArgs{...} }
 type ProductLineResponseArrayInput interface {
 	pulumi.Input
 
@@ -2087,7 +2087,7 @@ type ProductResponse struct {
 // ProductResponseInput is an input type that accepts ProductResponseArgs and ProductResponseOutput values.
 // You can construct a concrete instance of `ProductResponseInput` via:
 //
-//          ProductResponseArgs{...}
+//	ProductResponseArgs{...}
 type ProductResponseInput interface {
 	pulumi.Input
 
@@ -2130,7 +2130,7 @@ func (i ProductResponseArgs) ToProductResponseOutputWithContext(ctx context.Cont
 // ProductResponseArrayInput is an input type that accepts ProductResponseArray and ProductResponseArrayOutput values.
 // You can construct a concrete instance of `ProductResponseArrayInput` via:
 //
-//          ProductResponseArray{ ProductResponseArgs{...} }
+//	ProductResponseArray{ ProductResponseArgs{...} }
 type ProductResponseArrayInput interface {
 	pulumi.Input
 
@@ -2247,7 +2247,7 @@ type PurchaseMeterDetailsResponse struct {
 // PurchaseMeterDetailsResponseInput is an input type that accepts PurchaseMeterDetailsResponseArgs and PurchaseMeterDetailsResponseOutput values.
 // You can construct a concrete instance of `PurchaseMeterDetailsResponseInput` via:
 //
-//          PurchaseMeterDetailsResponseArgs{...}
+//	PurchaseMeterDetailsResponseArgs{...}
 type PurchaseMeterDetailsResponseInput interface {
 	pulumi.Input
 
@@ -2341,7 +2341,7 @@ type SpecificationResponse struct {
 // SpecificationResponseInput is an input type that accepts SpecificationResponseArgs and SpecificationResponseOutput values.
 // You can construct a concrete instance of `SpecificationResponseInput` via:
 //
-//          SpecificationResponseArgs{...}
+//	SpecificationResponseArgs{...}
 type SpecificationResponseInput interface {
 	pulumi.Input
 
@@ -2372,7 +2372,7 @@ func (i SpecificationResponseArgs) ToSpecificationResponseOutputWithContext(ctx 
 // SpecificationResponseArrayInput is an input type that accepts SpecificationResponseArray and SpecificationResponseArrayOutput values.
 // You can construct a concrete instance of `SpecificationResponseArrayInput` via:
 //
-//          SpecificationResponseArray{ SpecificationResponseArgs{...} }
+//	SpecificationResponseArray{ SpecificationResponseArgs{...} }
 type SpecificationResponseArrayInput interface {
 	pulumi.Input
 
@@ -2456,7 +2456,7 @@ func (i FilterablePropertyArrayMap) ToFilterablePropertyArrayMapOutputWithContex
 // FilterablePropertyArrayMapInput is an input type that accepts FilterablePropertyArrayMap and FilterablePropertyArrayMapOutput values.
 // You can construct a concrete instance of `FilterablePropertyArrayMapInput` via:
 //
-//          FilterablePropertyArrayMap{ "key": FilterablePropertyArray{ FilterablePropertyArgs{...} } }
+//	FilterablePropertyArrayMap{ "key": FilterablePropertyArray{ FilterablePropertyArgs{...} } }
 type FilterablePropertyArrayMapInput interface {
 	pulumi.Input
 

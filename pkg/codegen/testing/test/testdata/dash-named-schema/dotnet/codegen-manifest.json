@@ -5,6 +5,7 @@
     "Provider.cs",
     "Pulumi.FooBar.csproj",
     "README.md",
+    "Submodule1/FOOEncryptedBarClass.cs",
     "Submodule1/ModuleResource.cs",
     "Submodule1/README.md",
     "Utilities.cs",

@@ -45,6 +45,7 @@ from .invoke import (
 )
 
 from .metadata import (
+    get_organization,
     get_project,
     get_stack,
 )
@@ -83,6 +84,7 @@ from .log import (
 
 from .stack_reference import (
     StackReference,
+    StackReferenceOutputDetails,
 )
 
 # pylint: disable=redefined-builtin
@@ -117,6 +119,7 @@ __all__ = [
     # invoke
     "InvokeOptions",
     # metadata
+    "get_organization",
     "get_project",
     "get_stack",
     # resource
@@ -147,6 +150,7 @@ __all__ = [
     "error",
     # stack_reference
     "StackReference",
+    "StackReferenceOutputDetails",
     # _types
     "MISSING",
     "input_type",

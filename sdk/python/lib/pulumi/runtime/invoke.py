@@ -14,12 +14,11 @@
 import asyncio
 import os
 import traceback
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from typing import Any, Dict, List, NamedTuple, Optional, Set, TYPE_CHECKING
 import grpc
 
-from .. import log
-from .. import _types
+from .. import _types, log
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
@@ -28,29 +27,7 @@ from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
-    from .. import Resource, Inputs, Output
-
-# This setting overrides a hardcoded maximum protobuf size in the python protobuf bindings. This avoids deserialization
-# exceptions on large gRPC payloads, but makes it possible to use enough memory to cause an OOM error instead [1].
-# Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs [2]. If this setting ends
-# up causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s
-# provider.
-#
-# [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
-# [2] https://github.com/pulumi/pulumi-kubernetes/issues/984
-#
-# This setting requires a platform-specific and python version-specific .so file called
-# `_message.cpython-[py-version]-[platform].so`, which is not present in situations when a new python version is
-# released but the corresponding dist wheel has not been. So, we wrap the import in a try/except to avoid breaking all
-# python programs using a new version.
-try:
-    from google.protobuf.pyext._message import (
-        SetAllowOversizeProtos,
-    )  # pylint: disable-msg=E0611
-
-    SetAllowOversizeProtos(True)
-except ImportError:
-    pass
+    from .. import Inputs, Output, Resource
 
 
 class InvokeResult:
@@ -192,7 +169,7 @@ def call(
 
     out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
-    async def do_call():
+    async def do_call() -> None:
         try:
             # Construct a provider reference from the given provider, if one is available on the resource.
             provider_ref, version, plugin_download_url = None, "", ""
@@ -220,7 +197,8 @@ def call(
                 urns = set()
                 for dep in property_deps:
                     urn = await dep.urn.future()
-                    urns.add(urn)
+                    if urn is not None:
+                        urns.add(urn)
                 property_dependencies[
                     key
                 ] = provider_pb2.CallRequest.ArgumentDependencies(urns=list(urns))
@@ -229,7 +207,7 @@ def call(
                 tok=tok,
                 args=inputs,
                 argDependencies=property_dependencies,
-                provider=provider_ref,
+                provider="" if provider_ref is None else provider_ref,
                 version=version,
                 pluginDownloadURL=plugin_download_url,
             )

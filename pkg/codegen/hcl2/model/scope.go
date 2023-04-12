@@ -140,13 +140,13 @@ func (s *Scope) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics)
 	name, nameType := GetTraverserKey(traverser)
 	if nameType != StringType {
 		// TODO(pdg): return a better error here
-		return DynamicType, hcl.Diagnostics{undefinedVariable("", traverser.SourceRange())}
+		return DynamicType, hcl.Diagnostics{undefinedVariable("", traverser.SourceRange(), false)}
 	}
 
 	memberName := name.AsString()
 	member, hasMember := s.BindReference(memberName)
 	if !hasMember {
-		return DynamicType, hcl.Diagnostics{undefinedVariable(memberName, traverser.SourceRange())}
+		return DynamicType, hcl.Diagnostics{undefinedVariable(memberName, traverser.SourceRange(), false)}
 	}
 	return member, nil
 }

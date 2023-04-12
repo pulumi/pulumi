@@ -17,15 +17,20 @@ class MyResource extends pulumi.dynamic.Resource {
 
 class GetResource extends pulumi.Resource {
     foo: pulumi.Output<string>;
+    bar: pulumi.Output<string>;
 
     constructor(urn: pulumi.URN) {
-        const props = { foo: undefined };
+        const props = {
+            foo: undefined,
+            bar: undefined,
+        };
         super("unused:unused:unused", "unused", true, props, { urn });
     }
 }
 
 const a = new MyResource("a", {
     foo: "foo",
+    bar: pulumi.secret("my-$ecret"),
 });
 
 const getFoo = a.urn.apply(urn => {
@@ -33,4 +38,11 @@ const getFoo = a.urn.apply(urn => {
     return r.foo
 });
 
+const getBar = a.urn.apply(urn => {
+    const r = new GetResource(urn);
+    return r.bar
+});
+
+
 export const foo = getFoo;
+export const secret = getBar;

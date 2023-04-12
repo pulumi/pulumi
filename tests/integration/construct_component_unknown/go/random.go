@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 // Exposes the Random resource from the testprovider.
 // Requires running `make test_build` and having the built provider on PATH.
@@ -20,7 +22,8 @@ type Random struct {
 }
 
 func NewRandom(ctx *pulumi.Context,
-	name string, args *RandomArgs, opts ...pulumi.ResourceOption) (*Random, error) {
+	name string, args *RandomArgs, opts ...pulumi.ResourceOption,
+) (*Random, error) {
 	if args == nil || args.Length == nil {
 		return nil, errors.New("missing required argument 'Length'")
 	}

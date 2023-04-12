@@ -1,4 +1,3 @@
-//nolint: goconst
 package python
 
 import (
@@ -29,10 +28,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	// TODO(pdg): diagnostics
 
 	expr = pcl.RewritePropertyReferences(expr)
-	expr, _ = pcl.RewriteApplies(expr, nameInfo(0), false)
-	expr, _ = g.lowerProxyApplies(expr)
-	expr = pcl.RewriteConversions(expr, typ)
-	expr, quotes, _ := g.rewriteQuotes(expr)
+	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false)
+	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
+	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	diags = diags.Extend(lowerProxyDiags)
+	diags = diags.Extend(convertDiags)
+	diags = diags.Extend(quoteDiags)
+
+	g.diagnostics = g.diagnostics.Extend(diags)
 
 	return expr, quotes
 }
@@ -128,13 +133,13 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
-	close := "]"
+	closedelim := "]"
 	if expr.Key != nil {
 		// Dictionary comprehension
 		//
 		// TODO(pdg): grouping
 		g.Fgenf(w, "{%.v: %.v", expr.Key, expr.Value)
-		close = "}"
+		closedelim = "}"
 	} else {
 		// List comprehension
 		g.Fgenf(w, "[%.v", expr.Value)
@@ -150,7 +155,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		g.Fgenf(w, " if %.v", expr.Condition)
 	}
 
-	g.Fprint(w, close)
+	g.Fprint(w, closedelim)
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -180,7 +185,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
 }
 
 var functionImports = map[string][]string{
@@ -194,6 +199,7 @@ var functionImports = map[string][]string{
 	"filebase64sha256": {"base64", "hashlib"},
 	"readDir":          {"os"},
 	"toBase64":         {"base64"},
+	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
 	"sha1":             {"hashlib"},
 	"stack":            {"pulumi"},
@@ -207,7 +213,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	}
 
 	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return []string{"pulumi_" + pkg}
 }
 
@@ -230,9 +236,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%.v", expr.Args[0])
 				return
 			}
-			moduleNameOverrides := enum.(*schema.EnumType).Package.Language["python"].(PackageInfo).ModuleNameOverrides
+			var moduleNameOverrides map[string]string
+			if pkg, err := enum.(*schema.EnumType).PackageReference.Definition(); err == nil {
+				moduleNameOverrides = pkg.Language["python"].(PackageInfo).ModuleNameOverrides
+			}
 			pkg := strings.ReplaceAll(components[0], "-", "_")
-			if m := tokenToModule(to.Token, &schema.Package{}, moduleNameOverrides); m != "" {
+			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
 				pkg += "." + m
 			}
 			enumName := tokenToName(to.Token)
@@ -240,17 +249,20 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			if isOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
-				pcl.GenEnum(to, from, func(member *schema.Enum) {
+				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
 					tag := member.Name
 					if tag == "" {
 						tag = fmt.Sprintf("%v", member.Value)
 					}
 					tag, err := makeSafeEnumName(tag, enumName)
-					contract.AssertNoError(err)
+					contract.AssertNoErrorf(err, "error sanitizing enum name")
 					g.Fgenf(w, "%s.%s.%s", pkg, enumName, tag)
 				}, func(from model.Expression) {
 					g.Fgenf(w, "%s.%s(%.v)", pkg, enumName, from)
 				})
+				if diag != nil {
+					g.diagnostics = append(g.diagnostics, diag)
+				}
 			}
 		default:
 			switch arg := from.(type) {
@@ -284,9 +296,17 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "filebase64sha256":
 		// Assuming the existence of the following helper method
 		g.Fgenf(w, "computeFilebase64sha256(%v)", expr.Args[0])
+	case "notImplemented":
+		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case pcl.Invoke:
+		if expr.Signature.MultiArgumentInputs {
+			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
+				expr.Args[0])
+			panic(err)
+		}
+
 		pkg, module, fn, diags := functionName(expr.Args[0])
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
 			module = "." + module
 		}
@@ -311,29 +331,36 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
-			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				indenter := func(f func()) { f() }
-				if len(obj.Items) > 1 {
-					indenter = g.Indented
-				}
-				indenter(func() {
-					for i, item := range obj.Items {
-						// Ignore non-literal keys
-						key, ok := item.Key.(*model.LiteralValueExpression)
-						if !ok || !key.Value.Type().Equals(cty.String) {
-							continue
-						}
-
-						keyVal := PyName(key.Value.AsString())
-						if i == 0 {
-							g.Fgenf(w, "%s=%.v", keyVal, item.Value)
-						} else {
-							g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
-						}
-					}
-				})
+		genFuncArgs := func(objectExpr *model.ObjectConsExpression) {
+			indenter := func(f func()) { f() }
+			if len(objectExpr.Items) > 1 {
+				indenter = g.Indented
 			}
+			indenter(func() {
+				for i, item := range objectExpr.Items {
+					// Ignore non-literal keys
+					key, ok := item.Key.(*model.LiteralValueExpression)
+					if !ok || !key.Value.Type().Equals(cty.String) {
+						continue
+					}
+					keyVal := PyName(key.Value.AsString())
+					if i == 0 {
+						g.Fgenf(w, "%s=%.v", keyVal, item.Value)
+					} else {
+						g.Fgenf(w, ",\n%s%s=%.v", g.Indent, keyVal, item.Value)
+					}
+				}
+			})
+		}
+
+		switch arg := expr.Args[1].(type) {
+		case *model.FunctionCallExpression:
+			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+				genFuncArgs(argsObject)
+			}
+
+		case *model.ObjectConsExpression:
+			genFuncArgs(arg)
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
@@ -362,11 +389,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "readDir":
 		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
 	case "secret":
-		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
+		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
+	case "unsecret":
+		g.Fgenf(w, "pulumi.Output.unsecret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
 		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
+	case "fromBase64":
+		g.Fgenf(w, "base64.b64decode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	case "sha1":
@@ -394,7 +425,7 @@ type runeWriter interface {
 	WriteRune(c rune) (int, error)
 }
 
-// nolint: errcheck
+//nolint:errcheck
 func (g *generator) genEscapedString(w runeWriter, v string, escapeNewlines, escapeBraces bool) {
 	for _, c := range v {
 		switch c {
@@ -512,7 +543,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		switch key.Type() {
 		case cty.String:
 			keyVal := key.AsString()
-			contract.Assert(isLegalIdentifier(keyVal))
+			contract.Assertf(isLegalIdentifier(keyVal), "illegal identifier: %q", keyVal)
 			g.Fgenf(w, ".%s", keyVal)
 		case cty.Number:
 			idx, _ := key.AsBigFloat().Int64()
@@ -534,6 +565,19 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
 	rootName := PyName(expr.RootName)
+	if g.isComponent {
+		configVars := map[string]*pcl.ConfigVariable{}
+		for _, configVar := range g.program.ConfigVariables() {
+			configVars[configVar.Name()] = configVar
+		}
+
+		if _, isConfig := configVars[expr.RootName]; isConfig {
+			if _, configReference := expr.Parts[0].(*pcl.ConfigVariable); configReference {
+				rootName = fmt.Sprintf("args[\"%s\"]", expr.RootName)
+			}
+		}
+	}
+
 	if _, ok := expr.Parts[0].(*model.SplatVariable); ok {
 		rootName = "__item"
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,11 +30,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-
-	"github.com/skratchdot/open-golang/open"
+	"github.com/pkg/browser"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -42,10 +43,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -109,12 +112,18 @@ type Backend interface {
 
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
+
+	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
+		opts display.Options) error
 }
 
 type cloudBackend struct {
-	d              diag.Sink
-	url            string
-	client         *client.Client
+	d            diag.Sink
+	url          string
+	client       *client.Client
+	capabilities func(context.Context) capabilities
+
+	// The current project, if any.
 	currentProject *workspace.Project
 }
 
@@ -122,7 +131,7 @@ type cloudBackend struct {
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
-func New(d diag.Sink, cloudURL string) (Backend, error) {
+func New(d diag.Sink, cloudURL string, project *workspace.Project, insecure bool) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -130,22 +139,22 @@ func New(d diag.Sink, cloudURL string) (Backend, error) {
 	}
 	apiToken := account.AccessToken
 
-	// When stringifying backend references, we take the current project (if present) into account.
-	currentProject, err := workspace.DetectProject()
-	if err != nil {
-		currentProject = nil
-	}
+	client := client.NewClient(cloudURL, apiToken, insecure, d)
+	capabilities := detectCapabilities(d, client)
 
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
-		client:         client.NewClient(cloudURL, apiToken, d),
-		currentProject: currentProject,
+		client:         client,
+		capabilities:   capabilities,
+		currentProject: project,
 	}, nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
-func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project *workspace.Project,
+	insecure bool, opts display.Options,
+) (Backend, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -179,7 +188,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	nonce := hex.EncodeToString(nonceBytes)
 
 	u, err := url.Parse(loginURL)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error parsing login url: %s", loginURL)
 
 	// Generate a description to associate with the access token we'll generate, for display on the Account Settings
 	// page.
@@ -201,7 +210,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	go serveBrowserLoginServer(l, nonce, finalWelcomeURL, c)
 
 	// Launch the web browser and navigate to the login URL.
-	if openErr := open.Run(u.String()); openErr != nil {
+	if openErr := browser.OpenURL(u.String()); openErr != nil {
 		fmt.Printf("We couldn't launch your web browser for some reason. Please visit:\n\n%s\n\n"+
 			"to finish the login process.", u)
 	} else {
@@ -212,7 +221,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 
 	accessToken := <-c
 
-	username, organizations, err := client.NewClient(cloudURL, accessToken, d).GetPulumiAccountDetails(ctx)
+	username, organizations, err := client.NewClient(cloudURL, accessToken, insecure, d).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +232,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 		Username:        username,
 		Organizations:   organizations,
 		LastValidatedAt: time.Now(),
+		Insecure:        insecure,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
@@ -231,11 +241,37 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, opts di
 	// Welcome the user since this was an interactive login.
 	WelcomeUser(opts)
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, project, insecure)
 }
 
-// Login logs into the target cloud URL and returns the cloud backend for it.
-func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Options) (Backend, error) {
+// LoginManager provides a slim wrapper around functions related to backend logins.
+type LoginManager interface {
+	// Current returns the current cloud backend if one is already logged in.
+	Current(ctx context.Context, d diag.Sink, cloudURL string,
+		project *workspace.Project, insecure bool) (Backend, error)
+
+	// Login logs into the target cloud URL and returns the cloud backend for it.
+	Login(ctx context.Context, d diag.Sink, cloudURL string,
+		project *workspace.Project, insecure bool, opts display.Options) (Backend, error)
+}
+
+// NewLoginManager returns a LoginManager for handling backend logins.
+func NewLoginManager() LoginManager {
+	return newLoginManager()
+}
+
+// newLoginManager creates a new LoginManager for handling logins. It is a variable instead of a regular
+// function so it can be set to a different implementation at runtime, if necessary.
+var newLoginManager = func() LoginManager {
+	return defaultLoginManager{}
+}
+
+type defaultLoginManager struct{}
+
+// Current returns the current cloud backend if one is already logged in.
+func (m defaultLoginManager) Current(ctx context.Context, d diag.Sink, cloudURL string,
+	project *workspace.Project, insecure bool,
+) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(cloudURL)
 
 	// If we have a saved access token, and it is valid, use it.
@@ -244,7 +280,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		// If the account was last verified less than an hour ago, assume the token is valid.
 		valid, username, organizations := true, existingAccount.Username, existingAccount.Organizations
 		if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(time.Now()) {
-			valid, username, organizations, err = IsValidAccessToken(ctx, cloudURL, existingAccount.AccessToken)
+			valid, username, organizations, err = IsValidAccessToken(ctx, cloudURL, insecure, existingAccount.AccessToken)
 			if err != nil {
 				return nil, err
 			}
@@ -255,86 +291,30 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
 			existingAccount.Username = username
 			existingAccount.Organizations = organizations
+			existingAccount.Insecure = insecure
 			if err = workspace.StoreAccount(cloudURL, existingAccount, true); err != nil {
 				return nil, err
 			}
 
-			return New(d, cloudURL)
+			return New(d, cloudURL, project, insecure)
 		}
 	}
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := os.Getenv(AccessTokenEnvVar)
-	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
 
-	if accessToken != "" {
-		// If there's already a token from the environment, use it.
-		_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
-		contract.IgnoreError(err)
-	} else if !cmdutil.Interactive() {
-		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
-		// Fail the attempt to login.
-		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
-	} else {
-		// If no access token is available from the environment, and we are interactive, prompt and offer to
-		// open a browser to make it easy to generate and use a fresh token.
-		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
-		line1len := len(line1)
-		line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line1) + "\n")
-		maxlen := line1len
-
-		line2 := "Run `pulumi login --help` for alternative login options."
-		line2len := len(line2)
-		fmt.Printf(opts.Color.Colorize(line2) + "\n")
-		if line2len > maxlen {
-			maxlen = line2len
-		}
-
-		// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
-		// don't offer magic log-in or text about where to find your access token.
-		if accountLink == "" {
-			for {
-				if accessToken, err = cmdutil.ReadConsoleNoEcho("Enter your access token"); err != nil {
-					return nil, err
-				}
-				if accessToken != "" {
-					break
-				}
-			}
-		} else {
-			line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
-			line3len := len(line3)
-			line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-			line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-			fmt.Printf(opts.Color.Colorize(line3) + "\n")
-			if line3len > maxlen {
-				maxlen = line3len
-			}
-
-			line4 := "    or hit <ENTER> to log in using your browser"
-			var padding string
-			if pad := maxlen - len(line4); pad > 0 {
-				padding = strings.Repeat(" ", pad)
-			}
-			line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
-
-			if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
-				return nil, err
-			}
-
-			if accessToken == "" {
-				return loginWithBrowser(ctx, d, cloudURL, opts)
-			}
-
-			// Welcome the user since this was an interactive login.
-			WelcomeUser(opts)
-		}
+	if accessToken == "" {
+		// No access token available, this isn't an error per-se but we don't have a backend
+		return nil, nil
 	}
 
+	// If there's already a token from the environment, use it.
+	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", AccessTokenEnvVar)
+	contract.IgnoreError(err)
+
 	// Try and use the credentials to see if they are valid.
-	valid, username, organizations, err := IsValidAccessToken(ctx, cloudURL, accessToken)
+	valid, username, organizations, err := IsValidAccessToken(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
 		return nil, err
 	} else if !valid {
@@ -347,12 +327,114 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 		Username:        username,
 		Organizations:   organizations,
 		LastValidatedAt: time.Now(),
+		Insecure:        insecure,
 	}
 	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
 		return nil, err
 	}
 
-	return New(d, cloudURL)
+	return New(d, cloudURL, project, insecure)
+}
+
+// Login logs into the target cloud URL and returns the cloud backend for it.
+func (m defaultLoginManager) Login(
+	ctx context.Context, d diag.Sink, cloudURL string,
+	project *workspace.Project, insecure bool, opts display.Options,
+) (Backend, error) {
+	current, err := m.Current(ctx, d, cloudURL, project, insecure)
+	if err != nil {
+		return nil, err
+	}
+	if current != nil {
+		return current, nil
+	}
+
+	cloudURL = ValueOrDefaultURL(cloudURL)
+	var accessToken string
+	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
+
+	if !cmdutil.Interactive() {
+		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
+		// Fail the attempt to login.
+		return nil, fmt.Errorf("%s must be set for login during non-interactive CLI sessions", AccessTokenEnvVar)
+	}
+
+	// If no access token is available from the environment, and we are interactive, prompt and offer to
+	// open a browser to make it easy to generate and use a fresh token.
+	line1 := "Manage your Pulumi stacks by logging in."
+	line1len := len(line1)
+	line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
+	fmt.Printf(opts.Color.Colorize(line1) + "\n")
+	maxlen := line1len
+
+	line2 := "Run `pulumi login --help` for alternative login options."
+	line2len := len(line2)
+	fmt.Printf(opts.Color.Colorize(line2) + "\n")
+	if line2len > maxlen {
+		maxlen = line2len
+	}
+
+	// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
+	// don't offer magic log-in or text about where to find your access token.
+	if accountLink == "" {
+		for {
+			if accessToken, err = cmdutil.ReadConsoleNoEcho("Enter your access token"); err != nil {
+				return nil, err
+			}
+			if accessToken != "" {
+				break
+			}
+		}
+	} else {
+		line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
+		line3len := len(line3)
+		line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
+		line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+		fmt.Printf(opts.Color.Colorize(line3) + "\n")
+		if line3len > maxlen {
+			maxlen = line3len
+		}
+
+		line4 := "    or hit <ENTER> to log in using your browser"
+		var padding string
+		if pad := maxlen - len(line4); pad > 0 {
+			padding = strings.Repeat(" ", pad)
+		}
+		line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
+
+		if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+			return nil, err
+		}
+
+		if accessToken == "" {
+			return loginWithBrowser(ctx, d, cloudURL, project, insecure, opts)
+		}
+
+		// Welcome the user since this was an interactive login.
+		WelcomeUser(opts)
+	}
+
+	// Try and use the credentials to see if they are valid.
+	valid, username, organizations, err := IsValidAccessToken(ctx, cloudURL, insecure, accessToken)
+	if err != nil {
+		return nil, err
+	} else if !valid {
+		return nil, fmt.Errorf("invalid access token")
+	}
+
+	// Save them.
+	account := workspace.Account{
+		AccessToken:     accessToken,
+		Username:        username,
+		Organizations:   organizations,
+		LastValidatedAt: time.Now(),
+		Insecure:        insecure,
+	}
+	if err = workspace.StoreAccount(cloudURL, account, true); err != nil {
+		return nil, err
+	}
+
+	return New(d, cloudURL, project, insecure)
 }
 
 // WelcomeUser prints a Welcome to Pulumi message.
@@ -373,7 +455,7 @@ func WelcomeUser(opts display.Options) {
 
 `,
 		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip:"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -405,6 +487,10 @@ func (b *cloudBackend) URL() string {
 		return cloudConsoleURL(b.url)
 	}
 	return cloudConsoleURL(b.url, user)
+}
+
+func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
+	b.currentProject = project
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, error) {
@@ -453,33 +539,30 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 }
 
 func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
-	d diag.Sink) (backend.PolicyPack, error) {
-
+	d diag.Sink,
+) (backend.PolicyPack, error) {
 	policyPackRef, err := b.parsePolicyPackReference(policyPack)
 	if err != nil {
 		return nil, err
 	}
 
-	account, err := workspace.GetAccount(b.CloudURL())
-	if err != nil {
-		return nil, err
-	}
-	apiToken := account.AccessToken
-
 	return &cloudPolicyPack{
 		ref: newCloudBackendPolicyPackReference(b.CloudConsoleURL(),
 			policyPackRef.OrgName(), policyPackRef.Name()),
 		b:  b,
-		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
+		cl: b.client,
+	}, nil
 }
 
 func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
+) {
 	return b.client.ListPolicyGroups(ctx, orgName, inContToken)
 }
 
 func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
-	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
+) {
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
@@ -539,7 +622,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	if qualifiedName.Owner == "" {
 		// if the qualifiedName doesn't include an owner then let's check to see if there is a default org which *will*
 		// be the stack owner. If there is no defaultOrg, then we revert to checking the CurrentUser
-		defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(b.currentProject)
 		if err != nil {
 			return nil, err
 		}
@@ -556,13 +639,12 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 	}
 
 	if qualifiedName.Project == "" {
-		currentProject, projectErr := workspace.DetectProject()
-		if projectErr != nil {
-			return nil, fmt.Errorf("If you're using the --stack flag, "+
-				"pass the fully qualified name (org/project/stack): %w", projectErr)
+		if b.currentProject == nil {
+			return nil, fmt.Errorf("If you're using the --stack flag, " +
+				"pass the fully qualified name (org/project/stack)")
 		}
 
-		qualifiedName.Project = currentProject.Name.String()
+		qualifiedName.Project = b.currentProject.Name.String()
 	}
 
 	if !tokens.IsName(qualifiedName.Name) {
@@ -665,7 +747,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 
 	mux := &http.ServeMux{}
 	mux.HandleFunc("/", handler)
-	contract.IgnoreError(http.Serve(l, mux))
+	contract.IgnoreError(http.Serve(l, mux)) //nolint:gosec
 }
 
 // CloudConsoleStackPath returns the stack path components for getting to a stack in the cloud console.  This path
@@ -700,6 +782,10 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
+	// GetStack is typically the initial call to a series of calls to the backend. Although logically unrelated,
+	// this is a good time to start detecting capabilities so that capability request is not on the critical path.
+	go b.capabilities(ctx)
+
 	stack, err := b.client.GetStack(ctx, stackID)
 	if err != nil {
 		// If this was a 404, return nil, nil as per this method's contract.
@@ -712,27 +798,44 @@ func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 	return newStack(stack, b), nil
 }
 
+// Confirm the specified stack's project doesn't contradict the Pulumi.yaml of the current project.
+// if the CWD is not in a Pulumi project,
+//
+//	does not contradict
+//
+// if the project name in Pulumi.yaml is "foo".
+//
+//	a stack with a name of foo/bar/foo should not work.
+func currentProjectContradictsWorkspace(project *workspace.Project, stack client.StackIdentifier) bool {
+	if project == nil {
+		return false
+	}
+
+	return project.Name.String() != stack.Project
+}
+
 func (b *cloudBackend) CreateStack(
-	ctx context.Context, stackRef backend.StackReference, _ interface{} /* No custom options for httpstate backend. */) (
-	backend.Stack, error) {
+	ctx context.Context, stackRef backend.StackReference, root string,
+	opts *backend.CreateStackOptions,
+) (
+	backend.Stack, error,
+) {
+	if opts == nil {
+		opts = &backend.CreateStackOptions{}
+	}
+
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	tags, err := backend.GetEnvironmentTagsForCurrentStack()
-	if err != nil {
-		return nil, fmt.Errorf("error determining initial tags: %w", err)
-	}
-
-	// Confirm the stack identity matches the environment. e.g. stack init foo/bar/baz shouldn't work
-	// if the project name in Pulumi.yaml is anything other than "bar".
-	projNameTag, ok := tags[apitype.ProjectNameTag]
-	if ok && stackID.Project != projNameTag {
+	if currentProjectContradictsWorkspace(b.currentProject, stackID) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags)
+	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
+
+	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -756,7 +859,8 @@ func (b *cloudBackend) CreateStack(
 
 func (b *cloudBackend) ListStacks(
 	ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
-	[]backend.StackSummary, backend.ContinuationToken, error) {
+	[]backend.StackSummary, backend.ContinuationToken, error,
+) {
 	// Sanitize the project name as needed, so when communicating with the Pulumi Service we
 	// always use the name the service expects. (So that a similar, but not technically valid
 	// name may be put in Pulumi.yaml without causing problems.)
@@ -779,7 +883,7 @@ func (b *cloudBackend) ListStacks(
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
-	var backendSummaries []backend.StackSummary
+	backendSummaries := make([]backend.StackSummary, 0, len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
 			summary: apiSummary,
@@ -801,7 +905,8 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 }
 
 func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.QName) (backend.StackReference, error) {
+	newName tokens.QName,
+) (backend.StackReference, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err
@@ -854,7 +959,8 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (*deploy.Plan, engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -865,29 +971,34 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation, imports []deploy.Import,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
-func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, paths []string) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply, paths)
+func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
+	op backend.UpdateOperation, paths []string,
+) result.Result {
+	return backend.Watch(ctx, stack.DefaultSecretsProvider, b, stk, op, b.apply, paths)
 }
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
@@ -896,13 +1007,17 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
-	op *backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
-
+	op *backend.UpdateOperation, dryRun bool,
+) (client.UpdateIdentifier, int, string, error) {
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
+	}
+	if currentProjectContradictsWorkspace(op.Proj, stackID) {
+		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
+			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
@@ -933,10 +1048,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags, err := backend.GetMergedStackTags(ctx, stack)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", fmt.Errorf("getting stack tags: %w", err)
-	}
+	tags := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj)
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
@@ -957,8 +1069,8 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (*deploy.Plan, engine.ResourceChanges, result.Result) {
-
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
@@ -968,51 +1080,37 @@ func (b *cloudBackend) apply(
 	}
 
 	// Create an update object to persist results.
-	update, version, token, err :=
-		b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
+	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
 
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
-		// Print a URL at the beginning of the update pointing to the Pulumi Service.
-		b.printLink(op, opts, update, version)
-	}
-
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+	permalink := b.getPermalink(update, version, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, permalink, events, opts.DryRun)
 }
 
-// printLink prints a link to the update in the Pulumi Service.
-func (b *cloudBackend) printLink(
-	op backend.UpdateOperation, opts backend.ApplierOptions,
-	update client.UpdateIdentifier, version int) {
-	var link string
+// getPermalink returns a link to the update in the Pulumi Console.
+func (b *cloudBackend) getPermalink(update client.UpdateIdentifier, version int, preview bool) string {
 	base := b.cloudConsoleStackPath(update.StackIdentifier)
-	if !opts.DryRun {
-		link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
-	} else {
-		link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+	if !preview {
+		return b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
 	}
-	if link != "" {
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"View Live: "+
-				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n\n"), link)
-	}
+	return b.CloudConsoleURL(base, "previews", update.UpdateID)
 }
 
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi
 // Cloud.
 func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
-	callerEventsOpt chan<- engine.Event) result.Result {
-
+	callerEventsOpt chan<- engine.Event,
+) result.Result {
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (*deploy.Plan, engine.ResourceChanges, result.Result) {
-
+	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
+	callerEventsOpt chan<- engine.Event, dryRun bool,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
@@ -1024,7 +1122,7 @@ func (b *cloudBackend) runEngineAction(
 	displayEvents := make(chan engine.Event)
 	displayDone := make(chan bool)
 	go u.RecordAndDisplayEvents(
-		backend.ActionLabel(kind, dryRun), kind, stackRef, op,
+		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
@@ -1059,20 +1157,20 @@ func (b *cloudBackend) runEngineAction(
 		Cancel:          cancellationScope.Context(),
 		Events:          engineEvents,
 		SnapshotManager: snapshotManager,
-		BackendClient:   httpstateBackendClient{backend: b},
+		BackendClient:   httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
 	var plan *deploy.Plan
-	var changes engine.ResourceChanges
+	var changes sdkDisplay.ResourceChanges
 	var res result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
 		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.ResourceImportUpdate:
 		_, changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
@@ -1136,7 +1234,8 @@ func (b *cloudBackend) GetHistory(
 	ctx context.Context,
 	stackRef backend.StackReference,
 	pageSize int,
-	page int) ([]backend.UpdateInfo, error) {
+	page int,
+) ([]backend.UpdateInfo, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -1148,7 +1247,7 @@ func (b *cloudBackend) GetHistory(
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
-	var beUpdates []backend.UpdateInfo
+	beUpdates := make([]backend.UpdateInfo, 0, len(updates))
 	for _, update := range updates {
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)
@@ -1173,8 +1272,8 @@ func (b *cloudBackend) GetHistory(
 }
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
-	stack backend.Stack) (config.Map, error) {
-
+	stack backend.Stack,
+) (config.Map, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return nil, err
@@ -1191,11 +1290,11 @@ func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	}
 }
 
-// convertResourceChanges converts the apitype version of engine.ResourceChanges into the internal version.
-func convertResourceChanges(changes map[apitype.OpType]int) engine.ResourceChanges {
-	b := make(engine.ResourceChanges)
+// convertResourceChanges converts the apitype version of sdkDisplay.ResourceChanges into the internal version.
+func convertResourceChanges(changes map[apitype.OpType]int) sdkDisplay.ResourceChanges {
+	b := make(sdkDisplay.ResourceChanges)
 	for k, v := range changes {
-		b[deploy.StepOp(k)] = v
+		b[sdkDisplay.StepOp(k)] = v
 	}
 	return b
 }
@@ -1225,10 +1324,11 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg backend.StackConfiguration,
-	logQuery operations.LogQuery) ([]operations.LogEntry, error) {
-
-	target, targetErr := b.getTarget(ctx, stack.Ref(), cfg.Config, cfg.Decrypter)
+func (b *cloudBackend) GetLogs(ctx context.Context,
+	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
+	logQuery operations.LogQuery,
+) ([]operations.LogEntry, error) {
+	target, targetErr := b.getTarget(ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter)
 	if targetErr != nil {
 		return nil, targetErr
 	}
@@ -1238,12 +1338,14 @@ func (b *cloudBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 // ExportDeployment exports a deployment _from_ the backend service.
 // This will return the stack state that was being stored on the backend service.
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
-	stack backend.Stack) (*apitype.UntypedDeployment, error) {
+	stack backend.Stack,
+) (*apitype.UntypedDeployment, error) {
 	return b.exportDeployment(ctx, stack.Ref(), nil /* latest */)
 }
 
 func (b *cloudBackend) ExportDeploymentForVersion(
-	ctx context.Context, stack backend.Stack, version string) (*apitype.UntypedDeployment, error) {
+	ctx context.Context, stack backend.Stack, version string,
+) (*apitype.UntypedDeployment, error) {
 	// The Pulumi Console defines versions as a positive integer. Parse the provided version string and
 	// ensure it is valid.
 	//
@@ -1260,7 +1362,8 @@ func (b *cloudBackend) ExportDeploymentForVersion(
 
 // exportDeployment exports the checkpoint file for a stack, optionally getting a previous version.
 func (b *cloudBackend) exportDeployment(
-	ctx context.Context, stackRef backend.StackReference, version *int) (*apitype.UntypedDeployment, error) {
+	ctx context.Context, stackRef backend.StackReference, version *int,
+) (*apitype.UntypedDeployment, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
@@ -1277,8 +1380,8 @@ func (b *cloudBackend) exportDeployment(
 // ImportDeployment imports a deployment _into_ the backend. At the end of this operation,
 // the deployment provided will be the current state stored on the backend service.
 func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
-	deployment *apitype.UntypedDeployment) error {
-
+	deployment *apitype.UntypedDeployment,
+) error {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return err
@@ -1301,9 +1404,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 	return nil
 }
 
-var (
-	projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
-)
+var projectNameCleanRegexp = regexp.MustCompile("[^a-zA-Z0-9-_.]")
 
 // cleanProjectName replaces undesirable characters in project names with hyphens. At some point, these restrictions
 // will be further enforced by the service, but for now we need to ensure that if we are making a rest call, we
@@ -1346,8 +1447,8 @@ type displayEvent struct {
 // waitForUpdate waits for the current update of a Pulumi program to reach a terminal state. Returns the
 // final state. "path" is the URL endpoint to poll for updates.
 func (b *cloudBackend) waitForUpdate(ctx context.Context, actionLabel string, update client.UpdateIdentifier,
-	displayOpts display.Options) (apitype.UpdateStatus, error) {
-
+	displayOpts display.Options,
+) (apitype.UpdateStatus, error) {
 	events, done := make(chan displayEvent), make(chan bool)
 	defer func() {
 		events <- displayEvent{Kind: ShutdownEvent, Payload: nil}
@@ -1430,8 +1531,8 @@ func displayEvents(action string, events <-chan displayEvent, done chan<- bool, 
 // tryNextUpdate tries to get the next update for a Pulumi program.  This may time or error out, which results in a
 // false returned in the first return value.  If a non-nil error is returned, this operation should fail.
 func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateIdentifier, continuationToken *string,
-	try int, nextRetryTime time.Duration) (bool, interface{}, error) {
-
+	try int, nextRetryTime time.Duration,
+) (bool, interface{}, error) {
 	// If there is no error, we're done.
 	results, err := b.client.GetUpdateEvents(ctx, update, continuationToken)
 	if err == nil {
@@ -1476,11 +1577,14 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 
 // IsValidAccessToken tries to use the provided Pulumi access token and returns if it is accepted
 // or not. Returns error on any unexpected error.
-func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool, string, []string, error) {
+func IsValidAccessToken(ctx context.Context, cloudURL string,
+	insecure bool, accessToken string,
+) (bool, string, []string, error) {
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	username, organizations, err := client.NewClient(cloudURL, accessToken, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
+	username, organizations, err := client.NewClient(cloudURL, accessToken,
+		insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
 			return false, "", nil, nil
@@ -1493,8 +1597,8 @@ func IsValidAccessToken(ctx context.Context, cloudURL, accessToken string) (bool
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func (b *cloudBackend) UpdateStackTags(ctx context.Context,
-	stack backend.Stack, tags map[apitype.StackTagName]string) error {
-
+	stack backend.Stack, tags map[apitype.StackTagName]string,
+) error {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
 		return err
@@ -1503,8 +1607,146 @@ func (b *cloudBackend) UpdateStackTags(ctx context.Context,
 	return b.client.UpdateStackTags(ctx, stackID, tags)
 }
 
+const pulumiOperationHeader = "Pulumi operation"
+
+func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.StackReference,
+	req apitype.CreateDeploymentRequest, opts display.Options,
+) error {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return err
+	}
+
+	resp, err := b.client.CreateDeployment(ctx, stackID, req)
+	if err != nil {
+		return err
+	}
+	id := resp.ID
+
+	fmt.Print(opts.Color.Colorize(colors.SpecHeadline + "Preparing deployment..." + colors.Reset + "\n\n"))
+
+	if !opts.SuppressPermalink && !opts.JSONDisplay && resp.ConsoleURL != "" {
+		fmt.Printf(opts.Color.Colorize(
+			colors.SpecHeadline+"View Live: "+
+				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), resp.ConsoleURL)
+	}
+
+	token := ""
+	for {
+		logs, err := b.client.GetDeploymentLogs(ctx, stackID, id, token)
+		if err != nil {
+			return err
+		}
+
+		for _, l := range logs.Lines {
+			if l.Header != "" {
+				fmt.Print(opts.Color.Colorize(
+					"\n" + colors.SpecHeadline + l.Header + ":" + colors.Reset + "\n"))
+
+				// If we see it's a Pulumi operation, rather than outputting the deployment logs,
+				// find the associated update and show the normal rendering of the operation's events.
+				if l.Header == pulumiOperationHeader {
+					fmt.Println()
+					return b.showDeploymentEvents(ctx, stackID, apitype.UpdateKind(req.Operation.Operation), id, opts)
+				}
+			} else {
+				fmt.Print(l.Line)
+			}
+		}
+
+		// If there are no more logs for the deployment and the deployment has finished or we're not following,
+		// then we're done.
+		if logs.NextToken == "" {
+			break
+		}
+
+		// Otherwise, update the token, sleep, and loop around.
+		if logs.NextToken == token {
+			time.Sleep(500 * time.Millisecond)
+		}
+		token = logs.NextToken
+	}
+
+	return nil
+}
+
+func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.StackIdentifier,
+	kind apitype.UpdateKind, deploymentID string, opts display.Options,
+) error {
+	getUpdateID := func() (string, int, error) {
+		for tries := 0; tries < 10; tries++ {
+			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
+			if err != nil {
+				return "", 0, err
+			}
+			if len(updates) > 0 {
+				return updates[0].UpdateID, updates[0].Version, nil
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		}
+		return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
+	}
+
+	updateID, version, err := getUpdateID()
+	if err != nil {
+		return err
+	}
+
+	dryRun := kind == apitype.PreviewUpdate
+	update := client.UpdateIdentifier{
+		StackIdentifier: stackID,
+		UpdateKind:      kind,
+		UpdateID:        updateID,
+	}
+
+	events := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
+	done := make(chan bool)
+
+	// Timings do not display correctly when rendering remote events, so suppress showing them.
+	opts.SuppressTimings = true
+
+	permalink := b.getPermalink(update, version, dryRun)
+	go display.ShowEvents(
+		backend.ActionLabel(kind, dryRun), kind, tokens.Name(stackID.Stack), tokens.PackageName(stackID.Project),
+		permalink, events, done, opts, dryRun)
+
+	// The UpdateEvents API returns a continuation token to only get events after the previous call.
+	var continuationToken *string
+	var lastEvent engine.Event
+	for {
+		resp, err := b.client.GetUpdateEngineEvents(ctx, update, continuationToken)
+		if err != nil {
+			return err
+		}
+		for _, jsonEvent := range resp.Events {
+			event, err := display.ConvertJSONEvent(jsonEvent)
+			if err != nil {
+				return err
+			}
+			lastEvent = event
+			events <- event
+		}
+
+		continuationToken = resp.ContinuationToken
+		// A nil continuation token means there are no more events to read and the update has finished.
+		if continuationToken == nil {
+			// If the event stream does not terminate with a cancel event, synthesize one here.
+			if lastEvent.Type != engine.CancelEvent {
+				events <- engine.NewEvent(engine.CancelEvent, nil)
+			}
+
+			close(events)
+			<-done
+			return nil
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 type httpstateBackendClient struct {
-	backend Backend
+	backend deploy.BackendClient
 }
 
 func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
@@ -1515,10 +1757,85 @@ func (c httpstateBackendClient) GetStackOutputs(ctx context.Context, name string
 			"'<organization>/<project>/<stack>'. See https://pulumi.io/help/stack-reference for more information.")
 	}
 
-	return backend.NewBackendClient(c.backend).GetStackOutputs(ctx, name)
+	return c.backend.GetStackOutputs(ctx, name)
 }
 
 func (c httpstateBackendClient) GetStackResourceOutputs(
-	ctx context.Context, name string) (resource.PropertyMap, error) {
-	return backend.NewBackendClient(c.backend).GetStackResourceOutputs(ctx, name)
+	ctx context.Context, name string,
+) (resource.PropertyMap, error) {
+	return c.backend.GetStackResourceOutputs(ctx, name)
+}
+
+// Represents feature-detected capabilities of the service the backend is connected to.
+type capabilities struct {
+	// If non-nil, indicates that delta checkpoint updates are supported.
+	deltaCheckpointUpdates *apitype.DeltaCheckpointUploadsConfigV2
+}
+
+// Builds a lazy wrapper around doDetectCapabilities.
+func detectCapabilities(d diag.Sink, client *client.Client) func(ctx context.Context) capabilities {
+	var once sync.Once
+	var caps capabilities
+	done := make(chan struct{})
+	get := func(ctx context.Context) capabilities {
+		once.Do(func() {
+			caps = doDetectCapabilities(ctx, d, client)
+			close(done)
+		})
+		<-done
+		return caps
+	}
+	return get
+}
+
+func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) capabilities {
+	resp, err := client.GetCapabilities(ctx)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
+		return capabilities{}
+	}
+	caps, err := decodeCapabilities(resp.Capabilities)
+	if err != nil {
+		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
+		return capabilities{}
+	}
+
+	// Allow users to opt out of deltaCheckpointUpdates even if the backend indicates it should be used. This
+	// remains necessary while PULUMI_OPTIMIZED_CHECKPOINT_PATCH has higher memory requirements on the client and
+	// may cause out-of-memory issues in constrained environments.
+	switch strings.ToLower(os.Getenv("PULUMI_OPTIMIZED_CHECKPOINT_PATCH")) {
+	case "0", "false":
+		caps.deltaCheckpointUpdates = nil
+	}
+
+	return caps
+}
+
+func decodeCapabilities(wireLevel []apitype.APICapabilityConfig) (capabilities, error) {
+	var parsed capabilities
+	for _, entry := range wireLevel {
+		switch entry.Capability {
+		case apitype.DeltaCheckpointUploads:
+			var upcfg apitype.DeltaCheckpointUploadsConfigV1
+			if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+				msg := "decoding DeltaCheckpointUploadsConfig returned %w"
+				return capabilities{}, fmt.Errorf(msg, err)
+			}
+			parsed.deltaCheckpointUpdates = &apitype.DeltaCheckpointUploadsConfigV2{
+				CheckpointCutoffSizeBytes: upcfg.CheckpointCutoffSizeBytes,
+			}
+		case apitype.DeltaCheckpointUploadsV2:
+			if entry.Version == 2 {
+				var upcfg apitype.DeltaCheckpointUploadsConfigV2
+				if err := json.Unmarshal(entry.Configuration, &upcfg); err != nil {
+					msg := "decoding DeltaCheckpointUploadsConfigV2 returned %w"
+					return capabilities{}, fmt.Errorf(msg, err)
+				}
+				parsed.deltaCheckpointUpdates = &upcfg
+			}
+		default:
+			continue
+		}
+	}
+	return parsed, nil
 }

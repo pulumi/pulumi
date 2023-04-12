@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -29,7 +29,7 @@ import (
 
 // LoadPolicyPackConfigFromFile loads the JSON config from a file.
 func LoadPolicyPackConfigFromFile(file string) (map[string]plugin.AnalyzerPolicyConfig, error) {
-	b, err := ioutil.ReadFile(file)
+	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,8 @@ func extractEnforcementLevel(props map[string]interface{}) (apitype.EnforcementL
 
 // ValidatePolicyPackConfig validates the policy pack's configuration.
 func validatePolicyPackConfig(
-	policies []plugin.AnalyzerPolicyInfo, config map[string]plugin.AnalyzerPolicyConfig) ([]string, error) {
+	policies []plugin.AnalyzerPolicyInfo, config map[string]plugin.AnalyzerPolicyConfig,
+) ([]string, error) {
 	contract.Assertf(config != nil, "contract != nil")
 	var errors []string
 	for _, policy := range policies {
@@ -193,7 +194,8 @@ func validatePolicyConfig(schema plugin.AnalyzerPolicyConfigSchema, config map[s
 
 // ValidatePolicyPackConfig validates a policy pack configuration against the specified config schema.
 func ValidatePolicyPackConfig(schemaMap map[string]apitype.PolicyConfigSchema,
-	config map[string]*json.RawMessage) (err error) {
+	config map[string]*json.RawMessage,
+) (err error) {
 	for property, schema := range schemaMap {
 		schemaLoader := gojsonschema.NewGoLoader(schema)
 
@@ -298,7 +300,8 @@ func ReconcilePolicyPackConfig(
 }
 
 func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
-	configToApply map[string]plugin.AnalyzerPolicyConfig) map[string]plugin.AnalyzerPolicyConfig {
+	configToApply map[string]plugin.AnalyzerPolicyConfig,
+) map[string]plugin.AnalyzerPolicyConfig {
 	// Apply anything that applies to "all" policies.
 	if all, hasAll := configToApply["all"]; hasAll && all.EnforcementLevel.IsValid() {
 		for k, v := range result {

@@ -14,16 +14,21 @@
 
 """The Pulumi Python SDK."""
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
+
+VERSION = "3.0.0"
 
 
 def readme():
-    with open('README.md', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('README.md', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Pulumi's Python SDK - Development Version"
 
 
 setup(name='pulumi',
-      version='${VERSION}',
+      version=VERSION,
       description='Pulumi\'s Python SDK',
       long_description=readme(),
       long_description_content_type='text/markdown',
@@ -35,13 +40,14 @@ setup(name='pulumi',
               'py.typed'
           ]
       },
+      python_requires='>=3.7',
       # Keep this list in sync with Pipfile
       install_requires=[
-          'protobuf~=3.6',
-          'grpcio~=1.33',
+          'protobuf~=4.21',
+          'grpcio==1.51.3',
           'dill~=0.3',
           'six~=1.12',
-          'semver~=2.8',
-          'pyyaml~=5.3'
+          'semver~=2.13',
+          'pyyaml~=6.0'
       ],
       zip_safe=False)

@@ -214,8 +214,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == "a string value" {
 				result <- val.(string)
 			} else {
-				errChan <- fmt.Errorf("Invalid result: %v", val)
-
+				errChan <- fmt.Errorf("invalid result: %v", val)
 			}
 		}
 		return v, nil
@@ -251,7 +250,7 @@ func TestSecretConfig(t *testing.T) {
 			if reflect.DeepEqual(expectedTestStruct, *ts) {
 				objResult <- *ts
 			} else {
-				errChan <- fmt.Errorf("Invalid result: %v", val)
+				errChan <- fmt.Errorf("invalid result: %v", val)
 			}
 		}
 		return v, nil
@@ -281,8 +280,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == true {
 				resultBool <- val.(bool)
 			} else {
-				errChan <- fmt.Errorf("Invalid result: %v", val)
-
+				errChan <- fmt.Errorf("invalid result: %v", val)
 			}
 		}
 		return v, nil
@@ -312,8 +310,7 @@ func TestSecretConfig(t *testing.T) {
 			if val == 42 {
 				resultInt <- val.(int)
 			} else {
-				errChan <- fmt.Errorf("Invalid result: %v", val)
-
+				errChan <- fmt.Errorf("invalid result: %v", val)
 			}
 		}
 		return v, nil

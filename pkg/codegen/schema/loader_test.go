@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/stretchr/testify/require"
 )
 
 func initLoader(b *testing.B, options pluginLoaderCacheOptions) ReferenceLoader {
 	cwd, err := os.Getwd()
-	contract.AssertNoError(err)
-	sink := cmdutil.Diag()
+	require.NoError(b, err)
+	sink := diagtest.LogSink(b)
 	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-	contract.AssertNoError(err)
+	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx.Host, options)
 
 	return loader
@@ -24,14 +24,14 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 	cacheWarmingLoader := initLoader(b, pluginLoaderCacheOptions{})
 	// ensure the file cache exists for later tests:
 	_, err := cacheWarmingLoader.LoadPackageReference("azure-native", nil)
-	contract.AssertNoError(err)
+	require.NoError(b, err)
 
 	b.Run("full-load", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			loader := initLoader(b, pluginLoaderCacheOptions{})
 
 			_, err := loader.LoadPackageReference("azure-native", nil)
-			contract.AssertNoError(err)
+			require.NoError(b, err)
 		}
 	})
 
@@ -40,12 +40,12 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 
 		b.StopTimer()
 		_, err := loader.LoadPackageReference("azure-native", nil)
-		contract.AssertNoError(err)
+		require.NoError(b, err)
 		b.StartTimer()
 
 		for n := 0; n < b.N; n++ {
 			_, err := loader.LoadPackageReference("azure-native", nil)
-			contract.AssertNoError(err)
+			require.NoError(b, err)
 		}
 	})
 
@@ -57,12 +57,12 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 
 		b.StopTimer()
 		_, err := loader.LoadPackageReference("azure-native", nil)
-		contract.AssertNoError(err)
+		require.NoError(b, err)
 		b.StartTimer()
 
 		for n := 0; n < b.N; n++ {
 			_, err := loader.LoadPackageReference("azure-native", nil)
-			contract.AssertNoError(err)
+			require.NoError(b, err)
 		}
 	})
 
@@ -75,12 +75,12 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 
 		b.StopTimer()
 		_, err := loader.LoadPackageReference("azure-native", nil)
-		contract.AssertNoError(err)
+		require.NoError(b, err)
 		b.StartTimer()
 
 		for n := 0; n < b.N; n++ {
 			_, err := loader.LoadPackageReference("azure-native", nil)
-			contract.AssertNoError(err)
+			require.NoError(b, err)
 		}
 	})
 
@@ -94,12 +94,12 @@ func BenchmarkLoadPackageReference(b *testing.B) {
 
 		b.StopTimer()
 		_, err := loader.LoadPackageReference("azure-native", nil)
-		contract.AssertNoError(err)
+		require.NoError(b, err)
 		b.StartTimer()
 
 		for n := 0; n < b.N; n++ {
 			_, err := loader.LoadPackageReference("azure-native", nil)
-			contract.AssertNoError(err)
+			require.NoError(b, err)
 		}
 	})
 }

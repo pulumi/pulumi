@@ -70,7 +70,7 @@ func memberPath(section, token string, rest ...string) string {
 }
 
 func errorf(path, message string, args ...interface{}) *hcl.Diagnostic {
-	contract.Require(path != "", "path")
+	contract.Requiref(path != "", "path", "must not be empty")
 
 	summary := path + ": " + fmt.Sprintf(message, args...)
 	return &hcl.Diagnostic{
@@ -118,19 +118,20 @@ func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 //
 // A few notes on diagnostics and errors in spec binding:
 //
-// - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a package
-//   failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as error values.
-// - Semantic errors during type binding should not be fatal. Instead, they should return an `InvalidType`. The invalid
-//   type is accepted in any position, and carries diagnostics that explain the semantic error during binding. This
-//   allows binding to continue and produce as much information as possible for the end user.
-// - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
-// - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
-//   diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
-//   are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
-//   diagnostic error that is appropriately tagged with a JSON pointer.
-//
+//   - Unless an error is *fatal*--i.e. binding is fundamentally unable to proceed (e.g. because a provider for a
+//     package failed to load)--errors should be communicated as diagnostics. Fatal errors should be communicated as
+//     error values.
+//   - Semantic errors during type binding should not be fatal. Instead, they should return an `InvalidType`. The
+//     invalid type is accepted in any position, and carries diagnostics that explain the semantic error during binding.
+//     This allows binding to continue and produce as much information as possible for the end user.
+//   - Diagnostics may be rendered to users by downstream tools, and should be written with schema authors in mind.
+//   - Diagnostics _must_ contain enough contextual information for a user to be able to understand the source of the
+//     diagnostic. Until we have line/column information, we use JSON pointers to the offending entities. These pointers
+//     are passed around using `path` parameters. The `errorf` function is provided as a utility to easily create a
+//     diagnostic error that is appropriately tagged with a JSON pointer.
 func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
-	validate bool) (*Package, hcl.Diagnostics, error) {
+	validate bool,
+) (*Package, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate the package against the metaschema.
@@ -142,7 +143,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		diags = diags.Extend(validationDiags)
 	}
 
-	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader)
+	types, pkgDiags, err := newBinder(spec.Info(), packageSpecSource{&spec}, loader, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,7 +192,12 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	return pkg, diags, nil
 }
 
-func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hcl.Diagnostics, error) {
+// Create a new binder.
+//
+// bindTo overrides the PackageReference field contained in generated types.
+func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
+	bindTo PackageReference,
+) (*types, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Validate that there is a name
@@ -226,19 +232,21 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 	}
 
 	pkg := &Package{
-		moduleFormat:      moduleFormatRegexp,
-		Name:              info.Name,
-		DisplayName:       info.DisplayName,
-		Version:           version,
-		Description:       info.Description,
-		Keywords:          info.Keywords,
-		Homepage:          info.Homepage,
-		License:           info.License,
-		Attribution:       info.Attribution,
-		Repository:        info.Repository,
-		PluginDownloadURL: info.PluginDownloadURL,
-		Publisher:         info.Publisher,
-		Language:          language,
+		moduleFormat:        moduleFormatRegexp,
+		Name:                info.Name,
+		DisplayName:         info.DisplayName,
+		Version:             version,
+		Description:         info.Description,
+		Keywords:            info.Keywords,
+		Homepage:            info.Homepage,
+		License:             info.License,
+		Attribution:         info.Attribution,
+		Repository:          info.Repository,
+		PluginDownloadURL:   info.PluginDownloadURL,
+		Publisher:           info.Publisher,
+		AllowedPackageNames: info.AllowedPackageNames,
+		LogoURL:             info.LogoURL,
+		Language:            language,
 	}
 
 	// We want to use the same loader instance for all referenced packages, so only instantiate the loader if the
@@ -273,6 +281,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
+
+		bindToReference: bindTo,
 	}
 
 	return types, diags, nil
@@ -280,8 +290,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader) (*types, hc
 
 // BindSpec converts a serializable PackageSpec into a Package. Any semantic errors encountered during binding are
 // contained in the returned diagnostics. The returned error is only non-nil if a fatal error was encountered.
-func BindSpec(spec PackageSpec, languages map[string]Language) (*Package, hcl.Diagnostics, error) {
-	return bindSpec(spec, languages, nil, true)
+func BindSpec(spec PackageSpec, loader Loader) (*Package, hcl.Diagnostics, error) {
+	return bindSpec(spec, nil, loader, true)
 }
 
 // ImportSpec converts a serializable PackageSpec into a Package. Unlike BindSpec, ImportSpec does not validate its
@@ -301,19 +311,19 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 }
 
 func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
-	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader)
+	pkg := &PartialPackage{
+		spec:      &spec,
+		languages: languages,
+	}
+	types, diags, err := newBinder(spec.PackageInfoSpec, partialPackageSpecSource{&spec}, loader, pkg)
 	if err != nil {
 		return nil, err
 	}
 	if diags.HasErrors() {
 		return nil, diags
 	}
-
-	return &PartialPackage{
-		spec:      &spec,
-		languages: languages,
-		types:     types,
-	}, nil
+	pkg.types = types
+	return pkg, nil
 }
 
 // ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
@@ -419,6 +429,9 @@ type types struct {
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
+
+	// A pointer to the package reference that `types` is a part of if it exists.
+	bindToReference PackageReference
 }
 
 func (t *types) Close() error {
@@ -428,7 +441,14 @@ func (t *types) Close() error {
 	return nil
 }
 
-//nolint: goconst
+// The package which bound types will link back to.
+func (t *types) externalPackage() PackageReference {
+	if t.bindToReference != nil {
+		return t.bindToReference
+	}
+	return t.pkg.Reference()
+}
+
 func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 	switch name {
 	case "boolean":
@@ -466,15 +486,21 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 	diags := hcl.Diagnostics{}
 
 	path := memberPath(section, token)
-	var packageName string
-	if i := strings.Index(token, ":"); i != -1 {
-		packageName = token[:i]
+	parts := strings.Split(token, ":")
+	if len(parts) != 3 {
+		err := errorf(path, "invalid token '%s' (should have three parts)", token)
+		diags = diags.Append(err)
+		// Early return because the other two error checks panic if len(parts) < 3
+		return diags
 	}
-	if !allowedPackageNames[packageName] {
-		error := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
-		diags = diags.Append(error)
+	if !allowedPackageNames[parts[0]] {
+		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
+		diags = diags.Append(err)
 	}
-
+	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
+		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
 	return diags
 }
 
@@ -624,7 +650,8 @@ func (t *types) newArrayType(elementType Type) Type {
 }
 
 func (t *types) newUnionType(
-	elements []Type, defaultType Type, discriminator string, mapping map[string]string) *UnionType {
+	elements []Type, defaultType Type, discriminator string, mapping map[string]string,
+) *UnionType {
 	union := &UnionType{
 		ElementTypes:  elements,
 		DefaultType:   defaultType,
@@ -767,7 +794,7 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		case *EnumType:
 			return typ, diags, nil
 		default:
-			contract.Assert(typ == nil)
+			contract.Assertf(typ == nil, "unexpected type %T", typ)
 		}
 
 		// If the type is not a known type, bind it as an opaque token type.
@@ -839,8 +866,8 @@ func (t *types) bindTypeSpecOneOf(path string, spec TypeSpec, inputShape bool) (
 }
 
 func (t *types) bindTypeSpec(path string, spec TypeSpec,
-	inputShape bool) (result Type, diags hcl.Diagnostics, err error) {
-
+	inputShape bool,
+) (result Type, diags hcl.Diagnostics, err error) {
 	// NOTE: `spec.Plain` is the spec of the type, not to be confused with the
 	// `Plain` property of the underlying `Property`, which is passed as
 	// `plainProperty`.
@@ -858,7 +885,6 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 		return t.bindTypeSpecOneOf(path, spec, inputShape)
 	}
 
-	// nolint: goconst
 	switch spec.Type {
 	case "boolean", "integer", "number", "string":
 		typ, typDiags := t.bindPrimitiveType(path+"/type", spec.Type)
@@ -881,8 +907,8 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 		return t.newArrayType(elementType), diags, nil
 	case "object":
 		elementType, elementDiags, err := t.bindTypeSpec(path, TypeSpec{Type: "string"}, inputShape)
-		contract.Assert(len(elementDiags) == 0)
-		contract.Assert(err == nil)
+		contract.Assertf(len(elementDiags) == 0, "unexpected diagnostics: %v", elementDiags)
+		contract.Assertf(err == nil, "error binding type spec")
 
 		if spec.AdditionalProperties != nil {
 			et, elementDiags, err := t.bindTypeSpec(path+"/additionalProperties", *spec.AdditionalProperties, inputShape)
@@ -1008,13 +1034,13 @@ func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Typ
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
 func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
-	inputShape bool) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
-
+	inputShape bool,
+) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	var result []*Property
+	result := make([]*Property, 0, len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 		// NOTE: The correct determination for if we should bind an input is:
@@ -1079,8 +1105,8 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 }
 
 func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string,
-	spec ObjectTypeSpec) (hcl.Diagnostics, error) {
-
+	spec ObjectTypeSpec,
+) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	if len(spec.Plain) > 0 {
@@ -1107,7 +1133,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 		language[name] = json.RawMessage(raw)
 	}
 
-	obj.Package = t.pkg
+	obj.PackageReference = t.externalPackage()
 	obj.Token = token
 	obj.Comment = spec.Description
 	obj.Language = language
@@ -1115,7 +1141,7 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	obj.properties = propertyMap
 	obj.IsOverlay = spec.IsOverlay
 
-	obj.InputShape.Package = t.pkg
+	obj.InputShape.PackageReference = t.externalPackage()
 	obj.InputShape.Token = token
 	obj.InputShape.Comment = spec.Description
 	obj.InputShape.Language = language
@@ -1172,12 +1198,12 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}
 
 	return &EnumType{
-		Package:     t.pkg,
-		Token:       token,
-		Elements:    values,
-		ElementType: typ,
-		Comment:     spec.Description,
-		IsOverlay:   spec.IsOverlay,
+		PackageReference: t.externalPackage(),
+		Token:            token,
+		Elements:         values,
+		ElementType:      typ,
+		Comment:          spec.Description,
+		IsOverlay:        spec.IsOverlay,
 	}, diags
 }
 
@@ -1194,7 +1220,7 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	}
 
 	// Build the type list.
-	var typeList []Type
+	typeList := make([]Type, 0, len(t.resources))
 	for _, t := range t.resources {
 		typeList = append(typeList, t)
 	}
@@ -1226,8 +1252,8 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 }
 
 func bindMethods(path, resourceToken string, methods map[string]string,
-	types *types) ([]*Method, hcl.Diagnostics, error) {
-
+	types *types,
+) ([]*Method, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
 	names := make([]string, 0, len(methods))
@@ -1353,7 +1379,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	var aliases []*Alias
+	aliases := make([]*Alias, 0, len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
@@ -1364,7 +1390,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 	}
 
 	*decl = Resource{
-		Package:            t.pkg,
+		PackageReference:   t.externalPackage(),
 		Token:              token,
 		Comment:            spec.Description,
 		InputProperties:    inputProperties,
@@ -1385,7 +1411,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(ok)
+	contract.Assertf(ok, "provider resource %q not found", t.pkg.Name)
 
 	diags, err := t.bindResourceDetails("#/provider", "pulumi:providers:"+t.pkg.Name, spec, decl)
 	if err != nil {
@@ -1397,7 +1423,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
-	var stringProperties []*Property
+	stringProperties := make([]*Property, 0, len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
@@ -1426,7 +1452,7 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	}
 	diags = diags.Extend(provDiags)
 
-	var resources []*Resource
+	resources := make([]*Resource, 0, len(tokens))
 	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
@@ -1457,6 +1483,13 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 
 	path := memberPath("functions", token)
 
+	// Check that spec.MultiArgumentInputs => spec.Inputs
+	if len(spec.MultiArgumentInputs) > 0 && spec.Inputs == nil {
+		diags = diags.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "cannot specify multi-argument inputs without specifying inputs",
+		})
+	}
 	var inputs *ObjectType
 	if spec.Inputs != nil {
 		ins, inDiags, err := t.bindAnonymousObjectType(path+"/inputs", token+"Args", *spec.Inputs)
@@ -1464,33 +1497,111 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		if err != nil {
 			return nil, diags, fmt.Errorf("error binding inputs for function %v: %w", token, err)
 		}
+
+		if len(spec.MultiArgumentInputs) > 0 {
+			idx := make(map[string]int, len(spec.MultiArgumentInputs))
+			for i, k := range spec.MultiArgumentInputs {
+				idx[k] = i
+			}
+			// Check that MultiArgumentInputs matches up 1:1 with the input properties
+			for k, i := range idx {
+				if _, ok := spec.Inputs.Properties[k]; !ok {
+					diags = diags.Append(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("multiArgumentInputs[%d] refers to non-existent property %#v", i, k),
+					})
+				}
+			}
+			var detailGiven bool
+			for k := range spec.Inputs.Properties {
+				if _, ok := idx[k]; !ok {
+					diag := hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  fmt.Sprintf("Property %#v not specified by multiArgumentInputs", k),
+					}
+					if !detailGiven {
+						detailGiven = true
+						diag.Detail = "If multiArgumentInputs is given, all properties must be specified"
+					}
+					diags = diags.Append(&diag)
+				}
+			}
+
+			// Order output properties as specified by MultiArgumentInputs
+			sortProps := func(props []*Property) {
+				sort.Slice(props, func(i, j int) bool {
+					return idx[props[i].Name] < idx[props[j].Name]
+				})
+			}
+			sortProps(ins.Properties)
+			if ins.InputShape != nil {
+				sortProps(ins.InputShape.Properties)
+			}
+			if ins.PlainShape != nil {
+				sortProps(ins.PlainShape.Properties)
+			}
+		}
+
 		inputs = ins
 	}
 
 	var outputs *ObjectType
-	if spec.Outputs != nil {
-		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
-		diags = diags.Extend(outDiags)
-		if err != nil {
-			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
-		}
-		outputs = outs
-	}
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
 		language[name] = json.RawMessage(raw)
 	}
 
+	var inlineObjectAsReturnType bool
+	var returnType Type
+	if spec.ReturnType != nil && spec.Outputs == nil {
+		// compute the return type from the spec
+		if spec.ReturnType.ObjectTypeSpec != nil {
+			// bind as an object type
+			outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.ReturnType.ObjectTypeSpec)
+			diags = diags.Extend(outDiags)
+			if err != nil {
+				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+			}
+			returnType = outs
+			outputs = outs
+			inlineObjectAsReturnType = true
+		} else if spec.ReturnType.TypeSpec != nil {
+			out, outDiags, err := t.bindTypeSpec(path+"/outputs", *spec.ReturnType.TypeSpec, false)
+			diags = diags.Extend(outDiags)
+			if err != nil {
+				return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+			}
+			returnType = out
+		} else {
+			// Setting `spec.ReturnType` to a value without setting either `TypeSpec` or `ObjectTypeSpec`
+			// indicates a logical bug in our marshaling code.
+			return nil, diags, fmt.Errorf("error binding outputs for function %v: invalid return type", token)
+		}
+	} else if spec.Outputs != nil {
+		// bind the outputs when the specs don't rely on the new ReturnType field
+		outs, outDiags, err := t.bindAnonymousObjectType(path+"/outputs", token+"Result", *spec.Outputs)
+		diags = diags.Extend(outDiags)
+		if err != nil {
+			return nil, diags, fmt.Errorf("error binding outputs for function %v: %w", token, err)
+		}
+		outputs = outs
+		returnType = outs
+		inlineObjectAsReturnType = true
+	}
+
 	fn := &Function{
-		Package:            t.pkg,
-		Token:              token,
-		Comment:            spec.Description,
-		Inputs:             inputs,
-		Outputs:            outputs,
-		DeprecationMessage: spec.DeprecationMessage,
-		Language:           language,
-		IsOverlay:          spec.IsOverlay,
+		PackageReference:         t.externalPackage(),
+		Token:                    token,
+		Comment:                  spec.Description,
+		Inputs:                   inputs,
+		MultiArgumentInputs:      len(spec.MultiArgumentInputs) > 0,
+		InlineObjectAsReturnType: inlineObjectAsReturnType,
+		Outputs:                  outputs,
+		ReturnType:               returnType,
+		DeprecationMessage:       spec.DeprecationMessage,
+		Language:                 language,
+		IsOverlay:                spec.IsOverlay,
 	}
 	t.functionDefs[token] = fn
 
@@ -1500,7 +1611,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	var functions []*Function
+	functions := make([]*Function, 0, len(tokens))
 	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)

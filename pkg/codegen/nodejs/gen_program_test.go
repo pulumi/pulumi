@@ -7,8 +7,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 )
 
-func TestGenerateProgram(t *testing.T) {
+func TestGenerateProgramVersionSelection(t *testing.T) {
 	t.Parallel()
+
+	expectedVersion := map[string]test.PkgVersionInfo{
+		"aws-resource-options-4.26": {
+			Pkg:          "\"@pulumi/aws\"",
+			OpAndVersion: "\"4.26.0\"",
+		},
+		"aws-resource-options-5.16.2": {
+			Pkg:          "\"@pulumi/aws\"",
+			OpAndVersion: "\"5.16.2\"",
+		},
+	}
 
 	test.TestProgramCodegen(t,
 		test.ProgramCodegenOptions{
@@ -19,6 +30,20 @@ func TestGenerateProgram(t *testing.T) {
 				Check(t, path, dependencies, true)
 			},
 			GenProgram: GenerateProgram,
-			TestCases:  test.PulumiPulumiProgramTests,
+			TestCases: []test.ProgramTest{
+				{
+					Directory:   "aws-resource-options-4.26",
+					Description: "Resource Options",
+				},
+				{
+					Directory:   "aws-resource-options-5.16.2",
+					Description: "Resource Options",
+				},
+			},
+
+			IsGenProject:    true,
+			GenProject:      GenerateProject,
+			ExpectedVersion: expectedVersion,
+			DependencyFile:  "package.json",
 		})
 }

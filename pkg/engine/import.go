@@ -16,15 +16,16 @@ package engine
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
-	dryRun bool) (*deploy.Plan, ResourceChanges, result.Result) {
-
-	contract.Require(u != nil, "u")
-	contract.Require(ctx != nil, "ctx")
+	dryRun bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
+	contract.Requiref(u != nil, "u", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 

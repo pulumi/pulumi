@@ -17,6 +17,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"time"
 
@@ -26,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -48,11 +51,12 @@ func newStackCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stackName, stackOfferNew, opts)
 			if err != nil {
 				return err
 			}
@@ -62,7 +66,7 @@ func newStackCmd() *cobra.Command {
 				return nil
 			}
 
-			snap, err := s.Snapshot(commandContext())
+			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return err
 			}
@@ -89,38 +93,38 @@ func newStackCmd() *cobra.Command {
 			}
 
 			if snap != nil {
-				if t := snap.Manifest.Time; t.IsZero() && startTime == "" {
-					fmt.Printf("    Last update time unknown\n")
-				} else if startTime == "" {
-					fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
-				}
-				var cliver string
-				if snap.Manifest.Version == "" {
-					cliver = "?"
-				} else {
-					cliver = snap.Manifest.Version
-				}
-				fmt.Printf("    Pulumi version: %s\n", cliver)
-				for _, plugin := range snap.Manifest.Plugins {
-					var plugver string
-					if plugin.Version == nil {
-						plugver = "?"
-					} else {
-						plugver = plugin.Version.String()
+				t := snap.Manifest.Time.Local()
+				if startTime == "" {
+					// If a stack update is not in progress
+					if !t.IsZero() && t.Before(time.Now()) {
+						// If the update time is in the future, best to not display something incorrect based on
+						// inaccurate clocks.
+						fmt.Printf("    Last updated: %s (%v)\n", humanize.Time(t), t)
 					}
-					fmt.Printf("    Plugin %s [%s] version: %s\n", plugin.Name, plugin.Kind, plugver)
+				}
+				if snap.Manifest.Version != "" {
+					fmt.Printf("    Pulumi version used: %s\n", snap.Manifest.Version)
+				}
+				for _, p := range snap.Manifest.Plugins {
+					var pluginVersion string
+					if p.Version == nil {
+						pluginVersion = "?"
+					} else {
+						pluginVersion = p.Version.String()
+					}
+					fmt.Printf("    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
 				}
 			} else {
-				fmt.Printf("    No updates yet; run 'pulumi up'\n")
+				fmt.Printf("    No updates yet; run `pulumi up`\n")
 			}
 
 			// Now show the resources.
-			var rescnt int
+			var resourceCount int
 			if snap != nil {
-				rescnt = len(snap.Resources)
+				resourceCount = len(snap.Resources)
 			}
-			fmt.Printf("Current stack resources (%d):\n", rescnt)
-			if rescnt == 0 {
+			fmt.Printf("Current stack resources (%d):\n", resourceCount)
+			if resourceCount == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
 			} else {
 				rows, ok := renderTree(snap, showURNs, showIDs)
@@ -139,11 +143,12 @@ func newStackCmd() *cobra.Command {
 				outputs, err := getStackOutputs(snap, showSecrets)
 				if err == nil {
 					fmt.Printf("\n")
-					printStackOutputs(outputs)
+					_ = fprintStackOutputs(os.Stdout, outputs)
+					// stdout error ignored
 				}
 
 				if showSecrets {
-					log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack")
+					log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack")
 				}
 			}
 
@@ -191,29 +196,33 @@ func newStackCmd() *cobra.Command {
 	return cmd
 }
 
-func printStackOutputs(outputs map[string]interface{}) {
-	fmt.Printf("Current stack outputs (%d):\n", len(outputs))
-	if len(outputs) == 0 {
-		fmt.Printf("    No output values currently in this stack\n")
-	} else {
-		var outkeys []string
-		for outkey := range outputs {
-			outkeys = append(outkeys, outkey)
-		}
-		sort.Strings(outkeys)
-
-		rows := []cmdutil.TableRow{}
-
-		for _, key := range outkeys {
-			rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
-		}
-
-		cmdutil.PrintTable(cmdutil.Table{
-			Headers: []string{"OUTPUT", "VALUE"},
-			Rows:    rows,
-			Prefix:  "    ",
-		})
+func fprintStackOutputs(w io.Writer, outputs map[string]interface{}) error {
+	_, err := fmt.Fprintf(w, "Current stack outputs (%d):\n", len(outputs))
+	if err != nil {
+		return err
 	}
+
+	if len(outputs) == 0 {
+		_, err = fmt.Fprintf(w, "    No output values currently in this stack\n")
+		return err
+	}
+
+	outKeys := make([]string, 0, len(outputs))
+	for v := range outputs {
+		outKeys = append(outKeys, v)
+	}
+	sort.Strings(outKeys)
+
+	rows := []cmdutil.TableRow{}
+	for _, key := range outKeys {
+		rows = append(rows, cmdutil.TableRow{Columns: []string{key, stringifyOutput(outputs[key])}})
+	}
+
+	return cmdutil.FprintTable(w, cmdutil.Table{
+		Headers: []string{"OUTPUT", "VALUE"},
+		Rows:    rows,
+		Prefix:  "    ",
+	})
 }
 
 // stringifyOutput formats an output value for presentation to a user. We use JSON formatting, except in the case

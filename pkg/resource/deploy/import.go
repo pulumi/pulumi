@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
 	"sort"
 
@@ -58,10 +59,10 @@ type ImportOptions struct {
 // Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
 // reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
 func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
-	preview bool) (*Deployment, error) {
-
-	contract.Assert(ctx != nil)
-	contract.Assert(target != nil)
+	preview bool,
+) (*Deployment, error) {
+	contract.Requiref(ctx != nil, "ctx", "must not be nil")
+	contract.Requiref(target != nil, "target", "must not be nil")
 
 	prev := target.Snapshot
 	source := NewErrorSource(projectName)
@@ -168,7 +169,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
-		nil, false, nil, nil, nil, "", 0, false)
+		nil, false, nil, nil, nil, "", false, "", nil, nil)
 	// TODO(seqnum) should stacks be created with 1? When do they ever get recreated/replaced?
 	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
@@ -184,7 +185,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	//
 	// NOTE: what if the configuration for an existing default provider has changed? If it has, we should diff it and
 	// replace it appropriately or we should not use the ambient config at all.
-	var defaultProviderRequests []providers.ProviderRequest
+	defaultProviderRequests := make([]providers.ProviderRequest, 0, len(i.deployment.imports))
 	defaultProviders := map[resource.URN]struct{}{}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider != "" {
@@ -193,7 +194,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ref := string(imp.Provider)
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
 				r, err := providers.NewReference(imp.Provider, state.ID)
-				contract.AssertNoError(err)
+				contract.AssertNoErrorf(err,
+					"could not create provider reference with URN %q and ID %q", imp.Provider, state.ID)
 				ref = r.String()
 			}
 			urnToReference[imp.Provider] = ref
@@ -208,7 +210,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
-			contract.AssertNoError(err)
+			contract.AssertNoErrorf(err,
+				"could not create provider reference with URN %q and ID %q", urn, state.ID)
 			urnToReference[urn] = ref.String()
 			continue
 		}
@@ -248,13 +251,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if url := req.PluginDownloadURL(); url != "" {
 			providers.SetProviderURL(inputs, url)
 		}
-		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, 0)
+		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false, nil)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
-			nil, nil, nil, "", 0, false)
+			nil, nil, nil, "", false, "", nil, nil)
 		// TODO(seqnum) should default providers be created with 1? When do they ever get recreated/replaced?
 		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, nil, false
@@ -276,7 +279,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			id = providers.UnknownID
 		}
 		ref, err := providers.NewReference(res.URN, id)
-		contract.AssertNoError(err)
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %q and ID %q", res.URN, id)
 		urnToReference[res.URN] = ref.String()
 	}
 
@@ -284,7 +287,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 }
 
 func (i *importer) importResources(ctx context.Context) result.Result {
-	contract.Assert(len(i.deployment.imports) != 0)
+	contract.Assertf(len(i.deployment.imports) != 0, "no resources to import")
 
 	if !i.registerExistingResources(ctx) {
 		return nil
@@ -337,12 +340,25 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// Fetch the provider reference for this import. All provider URNs should be mapped.
 		provider, ok := urnToReference[providerURN]
-		contract.Assert(ok)
+		contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
+
+		// If we have a plan for this resource we need to feed the saved seed to Check to remove non-determinism
+		var randomSeed []byte
+		if i.deployment.plan != nil {
+			if resourcePlan, ok := i.deployment.plan.ResourcePlans[urn]; ok {
+				randomSeed = resourcePlan.Seed
+			}
+		} else {
+			randomSeed = make([]byte, 32)
+			n, err := cryptorand.Read(randomSeed)
+			contract.AssertNoErrorf(err, "could not read random bytes")
+			contract.Assertf(n == len(randomSeed), "read %d random bytes, expected %d", n, len(randomSeed))
+		}
 
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
-			false, nil, nil, provider, nil, false, nil, nil, nil, "", 1, false)
-		steps = append(steps, newImportDeploymentStep(i.deployment, new))
+			false, nil, nil, provider, nil, false, nil, nil, nil, "", false, "", nil, nil)
+		steps = append(steps, newImportDeploymentStep(i.deployment, new, randomSeed))
 	}
 
 	if !i.executeParallel(ctx, steps...) {

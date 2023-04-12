@@ -36,7 +36,11 @@ func getEntriesSignature(args []model.Expression) (model.StaticFunctionSignature
 		keyType, valueType, diagnostics = keyT, valueT, append(diagnostics, diags...)
 	}
 
-	signature.ReturnType = model.NewListType(model.NewTupleType(keyType, valueType))
+	elementType := model.NewObjectType(map[string]model.Type{
+		"key":   keyType,
+		"value": valueType,
+	})
+	signature.ReturnType = model.NewListType(elementType)
 	return signature, diagnostics
 }
 
@@ -266,6 +270,21 @@ var pulumiBuiltins = map[string]*model.Function{
 				ReturnType: model.NewOutputType(valueType),
 			}, nil
 		})),
+	"unsecret": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			valueType := model.Type(model.DynamicType)
+			if len(args) == 1 {
+				valueType = args[0].Type()
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{{
+					Name: "value",
+					Type: valueType,
+				}},
+				ReturnType: model.NewOutputType(valueType),
+			}, nil
+		})),
 	"sha1": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "input",
@@ -293,6 +312,13 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.StringType,
 	}),
+	"fromBase64": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "value",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
+	}),
 	"toJSON": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
 			Name: "value",
@@ -311,5 +337,12 @@ var pulumiBuiltins = map[string]*model.Function{
 	// Returns the directory from which pulumi was run
 	"cwd": model.NewFunction(model.StaticFunctionSignature{
 		ReturnType: model.StringType,
+	}),
+	"notImplemented": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "errorMessage",
+			Type: model.StringType,
+		}},
+		ReturnType: model.DynamicType,
 	}),
 }

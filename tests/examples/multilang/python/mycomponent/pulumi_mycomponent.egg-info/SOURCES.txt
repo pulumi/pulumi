@@ -1,8 +1,0 @@
-README.md
-setup.py
-pulumi_mycomponent/__init__.py
-pulumi_mycomponent.egg-info/PKG-INFO
-pulumi_mycomponent.egg-info/SOURCES.txt
-pulumi_mycomponent.egg-info/dependency_links.txt
-pulumi_mycomponent.egg-info/not-zip-safe
-pulumi_mycomponent.egg-info/top_level.txt

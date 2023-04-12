@@ -1,10 +1,11 @@
 package goversion
 
 import (
-	goVersion "github.com/hashicorp/go-version"
-	"github.com/pkg/errors"
+	"fmt"
 	"os/exec"
 	"strings"
+
+	goVersion "github.com/hashicorp/go-version"
 )
 
 var minGoVersion = goVersion.Must(goVersion.NewVersion("1.14.0"))
@@ -14,7 +15,7 @@ func CheckMinimumGoVersion(gobin string) error {
 	cmd := exec.Command(gobin, "version")
 	stdout, err := cmd.Output()
 	if err != nil {
-		return errors.Wrap(err, "determining go version")
+		return fmt.Errorf("determining go version: %w", err)
 	}
 
 	return checkMinimumGoVersion(string(stdout))
@@ -25,21 +26,18 @@ func CheckMinimumGoVersion(gobin string) error {
 func checkMinimumGoVersion(goVersionOutput string) error {
 	split := strings.Split(goVersionOutput, " ")
 	if len(split) <= 2 {
-		return errors.Errorf("unexpected format for go version output: \"%s\"", goVersionOutput)
-
+		return fmt.Errorf("unexpected format for go version output: \"%s\"", goVersionOutput)
 	}
 	version := strings.TrimSpace(split[2])
-	if strings.HasPrefix(version, "go") {
-		version = version[2:]
-	}
+	version = strings.TrimPrefix(version, "go")
 
 	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {
-		return errors.Wrap(err, "parsing go version")
+		return fmt.Errorf("parsing go version: %w", err)
 	}
 
 	if currVersion.LessThan(minGoVersion) {
-		return errors.Errorf("go version must be %s or higher (%s detected)", minGoVersion.String(), version)
+		return fmt.Errorf("go version must be %s or higher (%s detected)", minGoVersion.String(), version)
 	}
 	return nil
 }

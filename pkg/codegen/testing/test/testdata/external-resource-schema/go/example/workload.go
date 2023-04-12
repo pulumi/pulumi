@@ -14,7 +14,7 @@ import (
 type Workload struct {
 	pulumi.CustomResourceState
 
-	Pod corev1.PodPtrOutput `pulumi:"pod"`
+	Pod *corev1.PodTypeOutput `pulumi:"pod"`
 }
 
 // NewWorkload registers a new resource with the given unique name, arguments, and options.
@@ -88,7 +88,7 @@ func (i *Workload) ToWorkloadOutputWithContext(ctx context.Context) WorkloadOutp
 // WorkloadArrayInput is an input type that accepts WorkloadArray and WorkloadArrayOutput values.
 // You can construct a concrete instance of `WorkloadArrayInput` via:
 //
-//          WorkloadArray{ WorkloadArgs{...} }
+//	WorkloadArray{ WorkloadArgs{...} }
 type WorkloadArrayInput interface {
 	pulumi.Input
 
@@ -113,7 +113,7 @@ func (i WorkloadArray) ToWorkloadArrayOutputWithContext(ctx context.Context) Wor
 // WorkloadMapInput is an input type that accepts WorkloadMap and WorkloadMapOutput values.
 // You can construct a concrete instance of `WorkloadMapInput` via:
 //
-//          WorkloadMap{ "key": WorkloadArgs{...} }
+//	WorkloadMap{ "key": WorkloadArgs{...} }
 type WorkloadMapInput interface {
 	pulumi.Input
 
@@ -149,8 +149,8 @@ func (o WorkloadOutput) ToWorkloadOutputWithContext(ctx context.Context) Workloa
 	return o
 }
 
-func (o WorkloadOutput) Pod() corev1.PodPtrOutput {
-	return o.ApplyT(func(v *Workload) corev1.PodPtrOutput { return v.Pod }).(corev1.PodPtrOutput)
+func (o WorkloadOutput) Pod() *corev1.PodTypeOutput {
+	return o.ApplyT(func(v *Workload) *corev1.PodTypeOutput { return v.Pod }).(*corev1.PodTypeOutput)
 }
 
 type WorkloadArrayOutput struct{ *pulumi.OutputState }

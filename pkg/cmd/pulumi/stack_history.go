@@ -37,29 +37,43 @@ func newStackHistoryCmd() *cobra.Command {
 
 This command displays data about previous updates for a stack.`,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(stack, false /*offerNew */, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
+			updates, err := b.GetHistory(ctx, s.Ref(), pageSize, page)
 			if err != nil {
 				return fmt.Errorf("getting history: %w", err)
 			}
 			var decrypter config.Decrypter
 			if showSecrets {
-				crypter, err := getStackDecrypter(s)
+				project, _, err := readProject()
+				if err != nil {
+					return fmt.Errorf("loading project: %w", err)
+				}
+				ps, err := loadProjectStack(project, s)
+				if err != nil {
+					return fmt.Errorf("getting stack config: %w", err)
+				}
+				crypter, needsSave, err := getStackDecrypter(s, ps)
 				if err != nil {
 					return fmt.Errorf("decrypting secrets: %w", err)
+				}
+				if needsSave {
+					if err = saveProjectStack(s, ps); err != nil {
+						return fmt.Errorf("saving stack config: %w", err)
+					}
 				}
 				decrypter = crypter
 			}
 
 			if showSecrets {
-				log3rdPartySecretsProviderDecryptionEvent(commandContext(), s, "", "pulumi stack history")
+				log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack history")
 			}
 
 			if jsonOut {

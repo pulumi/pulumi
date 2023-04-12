@@ -44,7 +44,7 @@ func validateStackTagName(s string) error {
 		return fmt.Errorf("stack tag %q is too long (max length %d characters)", s, maxTagName)
 	}
 
-	var tagNameRE = regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
+	tagNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.:]{1,40}$")
 	if tagNameRE.MatchString(s) {
 		return nil
 	}

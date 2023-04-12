@@ -70,7 +70,18 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
             log.debug(
                 f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding"
             )
-            await RPC_MANAGER.rpcs.pop()
+            try:
+                await RPC_MANAGER.rpcs.pop()
+            except Exception as exn:
+                # If the RPC failed, re-raise the original traceback
+                # instead of the await above.
+                if RPC_MANAGER.unhandled_exception is not None:
+                    cause = RPC_MANAGER.unhandled_exception.with_traceback(
+                        RPC_MANAGER.exception_traceback,
+                    )
+                    raise exn from cause
+
+                raise
 
         if RPC_MANAGER.unhandled_exception is not None:
             raise RPC_MANAGER.unhandled_exception.with_traceback(
@@ -81,7 +92,6 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-
             outstanding_tasks = _get_running_tasks()
             if len(outstanding_tasks) == 0:
                 log.debug("No outstanding tasks to complete")
@@ -174,54 +184,67 @@ def massage(attr: Any, seen: List[Any]):
     if is_primitive(attr):
         return attr
 
-    # from this point on, we have complex objects.  If we see them again, we don't want to emit them
-    # again fully or else we'd loop infinitely.
-    if reference_contains(attr, seen):
-        # Note: for Resources we hit again, emit their urn so cycles can be easily understood in
-        # the popo objects.
-        if isinstance(attr, Resource):
-            return attr.urn
-
-        # otherwise just emit as nothing to stop the looping.
-        return None
-
-    seen.append(attr)
-
-    # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
-    # make sure this is a popo.
-    if isinstance(attr, dict):
-        result = {}
-        # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
-        for key in attr:
-            # ignore private keys
-            if not key.startswith("_"):
-                result[key] = massage(attr[key], seen)
-
-        return result
-
     if isinstance(attr, Output):
         return attr.apply(lambda v: massage(v, seen))
 
     if isawaitable(attr):
         return Output.from_input(attr).apply(lambda v: massage(v, seen))
 
+    # from this point on, we have complex objects.  If we see them again, we don't want to emit them
+    # again fully or else we'd loop infinitely.
+    if reference_contains(attr, seen):
+        # Note: for Resources we hit again, emit their urn so cycles can be easily understood in
+        # the popo objects.
+        if isinstance(attr, Resource):
+            return massage(attr.urn, seen)
+        # otherwise just emit as nothing to stop the looping.
+        return None
+
+    try:
+        seen.append(attr)
+        return massage_complex(attr, seen)
+    finally:
+        popped = seen.pop()
+        if popped is not attr:
+            raise Exception("Invariant broken when processing stack outputs")
+
+
+def massage_complex(attr: Any, seen: List[Any]) -> Any:
+    def is_public_key(key: str) -> bool:
+        return not key.startswith("_")
+
+    def serialize_all_keys(include: Callable[[str], bool]):
+        plain_object: Dict[str, Any] = {}
+        for key in attr.__dict__.keys():
+            if include(key):
+                plain_object[key] = massage(attr.__dict__[key], seen)
+        return plain_object
+
     if isinstance(attr, Resource):
-        result = massage(attr.__dict__, seen)
+        serialized_attr = serialize_all_keys(is_public_key)
 
         # In preview only, we mark the result with "@isPulumiResource" to indicate that it is derived
         # from a resource. This allows the engine to perform resource-specific filtering of unknowns
         # from output diffs during a preview. This filtering is not necessary during an update because
         # all property values are known.
-        if is_dry_run():
-            result["@isPulumiResource"] = True
-        return result
+        return (
+            serialized_attr
+            if not is_dry_run()
+            else {**serialized_attr, "@isPulumiResource": True}
+        )
 
-    if hasattr(attr, "__dict__"):
-        # recurse on the dictionary itself.  It will be handled above.
-        return massage(attr.__dict__, seen)
+    # first check if the value is an actual dictionary.  If so, massage the values of it to deeply
+    # make sure this is a popo.
+    if isinstance(attr, dict):
+        # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
+        return {
+            key: massage(attr[key], seen) for key in attr if not key.startswith("_")
+        }
 
-    # finally, recurse through iterables, converting into a list of massaged values.
-    return [massage(a, seen) for a in attr]
+    if hasattr(attr, "__iter__"):
+        return [massage(item, seen) for item in attr]
+
+    return serialize_all_keys(is_public_key)
 
 
 def reference_contains(val1: Any, seen: List[Any]) -> bool:

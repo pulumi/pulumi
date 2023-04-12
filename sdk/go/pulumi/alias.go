@@ -46,7 +46,7 @@ type Alias struct {
 	Project StringInput
 }
 
-// More then one bool is set to true.
+// More than one bool is set to true.
 func multipleTrue(booleans ...bool) bool {
 	var found bool
 	for _, b := range booleans {
@@ -60,8 +60,8 @@ func multipleTrue(booleans ...bool) bool {
 }
 
 func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Resource,
-	defaultProject, defaultStack string) (URNOutput, error) {
-
+	defaultProject, defaultStack string,
+) (URNOutput, error) {
 	if a.URN != nil {
 		return a.URN.ToURNOutput(), nil
 	}

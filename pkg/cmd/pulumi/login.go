@@ -35,31 +35,32 @@ func newLoginCmd() *cobra.Command {
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
+	var insecure bool
 
 	cmd := &cobra.Command{
 		Use:   "login [<url>]",
-		Short: "Log in to the Pulumi service",
-		Long: "Log in to the Pulumi service.\n" +
+		Short: "Log in to the Pulumi Cloud",
+		Long: "Log in to the Pulumi Cloud.\n" +
 			"\n" +
-			"The service manages your stack's state reliably. Simply run\n" +
+			"The Pulumi Cloud manages your stack's state reliably. Simply run\n" +
 			"\n" +
 			"    $ pulumi login\n" +
 			"\n" +
 			"and this command will prompt you for an access token, including a way to launch your web browser to\n" +
 			"easily obtain one. You can script by using `PULUMI_ACCESS_TOKEN` environment variable.\n" +
 			"\n" +
-			"By default, this will log in to the managed Pulumi service backend.\n" +
-			"If you prefer to log in to a self-hosted Pulumi service backend, specify a URL. For example, run\n" +
+			"By default, this will log in to the managed Pulumi Cloud backend.\n" +
+			"If you prefer to log in to a self-hosted Pulumi Cloud backend, specify a URL. For example, run\n" +
 			"\n" +
 			"    $ pulumi login https://api.pulumi.acmecorp.com\n" +
 			"\n" +
-			"to log in to a self-hosted Pulumi service running at the api.pulumi.acmecorp.com domain.\n" +
+			"to log in to a self-hosted Pulumi Cloud running at the api.pulumi.acmecorp.com domain.\n" +
 			"\n" +
-			"For `https://` URLs, the CLI will speak REST to a service that manages state and concurrency control.\n" +
-			"You can specify a default org to use when logging into the Pulumi service backend or a " +
-			"self-hosted Pulumi service.\n" +
+			"For `https://` URLs, the CLI will speak REST to a Pulumi Cloud that manages state and concurrency control.\n" +
+			"You can specify a default org to use when logging into the Pulumi Cloud backend or a " +
+			"self-hosted Pulumi Cloud.\n" +
 			"\n" +
-			"[PREVIEW] If you prefer to operate Pulumi independently of a service, and entirely local to your computer,\n" +
+			"[PREVIEW] If you prefer to operate Pulumi independently of a Pulumi Cloud, and entirely local to your computer,\n" +
 			"pass `file://<path>`, where `<path>` will be where state checkpoints will be stored. For instance,\n" +
 			"\n" +
 			"    $ pulumi login file://~\n" +
@@ -72,7 +73,7 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login --local\n" +
 			"\n" +
 			"[PREVIEW] Additionally, you may leverage supported object storage backends from one of the cloud providers " +
-			"to manage the state independent of the service. For instance,\n" +
+			"to manage the state independent of the Pulumi Cloud. For instance,\n" +
 			"\n" +
 			"AWS S3:\n" +
 			"\n" +
@@ -87,6 +88,7 @@ func newLoginCmd() *cobra.Command {
 			"    $ pulumi login azblob://my-pulumi-state-bucket\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -114,9 +116,15 @@ func newLoginCmd() *cobra.Command {
 				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
 			if cloudURL == "" {
 				var err error
-				cloudURL, err = workspace.GetCurrentCloudURL()
+				cloudURL, err = workspace.GetCurrentCloudURL(project)
 				if err != nil {
 					return fmt.Errorf("could not determine current cloud: %w", err)
 				}
@@ -124,7 +132,7 @@ func newLoginCmd() *cobra.Command {
 				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
-					"use `pulumi login` without arguments to log into the Pulumi service backend", cloudURL)
+					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
 				if err := validateCloudBackendType(cloudURL); err != nil {
@@ -133,17 +141,16 @@ func newLoginCmd() *cobra.Command {
 			}
 
 			var be backend.Backend
-			var err error
 			if filestate.IsFileStateBackendURL(cloudURL) {
-				be, err = filestate.Login(cmdutil.Diag(), cloudURL)
+				be, err = filestate.Login(ctx, cmdutil.Diag(), cloudURL, project)
 				if defaultOrg != "" {
 					return fmt.Errorf("unable to set default org for this type of backend")
 				}
 			} else {
-				be, err = httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+				be, err = httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, project, insecure, displayOptions)
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					cloudURL, err := workspace.GetCurrentCloudURL()
+					cloudURL, err := workspace.GetCurrentCloudURL(project)
 					if err != nil {
 						return err
 					}
@@ -170,6 +177,7 @@ func newLoginCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
+	cmd.PersistentFlags().BoolVar(&insecure, "insecure", false, "Allow insecure server connections when using SSL")
 
 	return cmd
 }
@@ -185,5 +193,4 @@ func validateCloudBackendType(typ string) error {
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind)
-
 }

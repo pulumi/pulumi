@@ -38,9 +38,9 @@ func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyVal
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
 func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
-	oldParent, newParent resource.PropertyValue) {
-
-	contract.Require(len(path) > 0, "len(path) > 0")
+	oldParent, newParent resource.PropertyValue,
+) {
+	contract.Requiref(len(path) > 0, "path", "must not be empty")
 
 	element := path[0]
 
@@ -132,7 +132,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 // TranslateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
 func TranslateDetailedDiff(step *StepEventMetadata) *resource.ObjectDiff {
-	contract.Assert(step.DetailedDiff != nil)
+	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
 	// an ObjectDiff by iterating the list and inserting ValueDiffs that reflect the changes in the detailed diff. Old

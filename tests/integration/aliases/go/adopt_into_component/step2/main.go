@@ -1,4 +1,6 @@
 // Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -73,14 +75,15 @@ func NewFooComponent2(ctx *pulumi.Context, name string, opts ...pulumi.ResourceO
 func NewFooComponent3(ctx *pulumi.Context,
 	name string,
 	childAliasParent pulumi.Resource,
-	opts ...pulumi.ResourceOption) (*FooComponent3, error) {
+	opts ...pulumi.ResourceOption,
+) (*FooComponent3, error) {
 	fooComp := &FooComponent3{}
 	err := ctx.RegisterComponentResource("my:module:FooComponent3", name, fooComp, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	var alias = &pulumi.Alias{}
+	alias := &pulumi.Alias{}
 	if childAliasParent != nil {
 		alias.Parent = childAliasParent
 	} else {

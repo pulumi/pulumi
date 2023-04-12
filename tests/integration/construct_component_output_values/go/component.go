@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -15,7 +17,8 @@ type Component struct {
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
 func NewComponent(ctx *pulumi.Context,
-	name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
+	name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	if args == nil {
 		args = &ComponentArgs{}
 	}
@@ -94,7 +97,7 @@ func (i *componentPtrType) ToComponentPtrOutputWithContext(ctx context.Context) 
 // ComponentArrayInput is an input type that accepts ComponentArray and ComponentArrayOutput values.
 // You can construct a concrete instance of `ComponentArrayInput` via:
 //
-//          ComponentArray{ ComponentArgs{...} }
+//	ComponentArray{ ComponentArgs{...} }
 type ComponentArrayInput interface {
 	pulumi.Input
 
@@ -119,7 +122,7 @@ func (i ComponentArray) ToComponentArrayOutputWithContext(ctx context.Context) C
 // ComponentMapInput is an input type that accepts ComponentMap and ComponentMapOutput values.
 // You can construct a concrete instance of `ComponentMapInput` via:
 //
-//          ComponentMap{ "key": ComponentArgs{...} }
+//	ComponentMap{ "key": ComponentArgs{...} }
 type ComponentMapInput interface {
 	pulumi.Input
 

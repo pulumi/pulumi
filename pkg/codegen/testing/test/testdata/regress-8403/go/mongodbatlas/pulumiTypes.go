@@ -16,7 +16,7 @@ type GetCustomDbRolesResult struct {
 // GetCustomDbRolesResultInput is an input type that accepts GetCustomDbRolesResultArgs and GetCustomDbRolesResultOutput values.
 // You can construct a concrete instance of `GetCustomDbRolesResultInput` via:
 //
-//          GetCustomDbRolesResultArgs{...}
+//	GetCustomDbRolesResultArgs{...}
 type GetCustomDbRolesResultInput interface {
 	pulumi.Input
 
@@ -50,11 +50,11 @@ func (i GetCustomDbRolesResultArgs) ToGetCustomDbRolesResultPtrOutputWithContext
 // GetCustomDbRolesResultPtrInput is an input type that accepts GetCustomDbRolesResultArgs, GetCustomDbRolesResultPtr and GetCustomDbRolesResultPtrOutput values.
 // You can construct a concrete instance of `GetCustomDbRolesResultPtrInput` via:
 //
-//          GetCustomDbRolesResultArgs{...}
+//	        GetCustomDbRolesResultArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type GetCustomDbRolesResultPtrInput interface {
 	pulumi.Input
 

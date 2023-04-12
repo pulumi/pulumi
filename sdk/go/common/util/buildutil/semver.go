@@ -21,7 +21,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/mod/semver"
 )
@@ -37,14 +36,15 @@ var (
 		`^v(?P<version>\d+\.\d+\.\d+)-alpha\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
 	devVersionRegex = regexp.MustCompile(
 		`^v(?P<version>\d+\.\d+\.\d+)-dev\.(?P<time>\d+)\+(?P<gitInfo>g[a-z0-9]+)(?P<dirty>.dirty)?$`)
-	// nolint: lll
+	//nolint:lll
 	// https://github.com/golang/go/blob/9f40f9f4d3e9e5a08cfd1df5af23a6f61d67d408/src/cmd/go/internal/modfetch/pseudo.go#L49
 	pseudoVersionRegex = regexp.MustCompile(`^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
 )
 
 // IsPseudoVersion reports whether v is a go modules pseudo-version.
-// nolint: lll
 // https://github.com/golang/go/blob/9f40f9f4d3e9e5a08cfd1df5af23a6f61d67d408/src/cmd/go/internal/modfetch/pseudo.go#L118
+//
+//nolint:lll
 func IsPseudoVersion(v string) bool {
 	return strings.Count(v, "-") >= 2 && semver.IsValid(v) && pseudoVersionRegex.MatchString(v)
 }
@@ -96,7 +96,7 @@ func PyPiVersionFromNpmVersion(s string) (string, error) {
 		return b.String(), nil
 	}
 
-	return "", errors.Errorf("can not parse version string '%s'", s)
+	return "", fmt.Errorf("can not parse version string '%s'", s)
 }
 
 func captureToMap(r *regexp.Regexp, s string) map[string]string {
@@ -113,5 +113,5 @@ func captureToMap(r *regexp.Regexp, s string) map[string]string {
 
 func mustFprintf(w io.Writer, format string, a ...interface{}) {
 	_, err := fmt.Fprintf(w, format, a...)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to write")
 }

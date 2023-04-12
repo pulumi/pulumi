@@ -29,8 +29,8 @@ import (
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
-	contract.Assert(from.Kind() == reflect.Struct)
-	contract.Assert(to.Kind() == reflect.Struct)
+	contract.Assertf(from.Kind() == reflect.Struct, "from must be a struct type, got %v (%v)", from, from.Kind())
+	contract.Assertf(to.Kind() == reflect.Struct, "to must be a struct type, got %v (%v)", to, to.Kind())
 
 	if from == to {
 		return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
@@ -65,38 +65,48 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 // addDependency adds a dependency on the given resource to the set of deps.
 //
 // The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
-// or a remote component resource:
+// a remote component resource, a dependency resource, or a rehydrated component resource:
 //
-// - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
-// - Local component resources act as aggregations of their descendents. Rather than adding the component resource
-//   itself, each child resource is added as a dependency.
-// - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
-//   with respect to dependencies: the construction of a remote component always waits on the construction of its
-//   children.
+//   - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
+//   - Local component resources act as aggregations of their descendents. Rather than adding the component resource
+//     itself, each child resource is added as a dependency.
+//   - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
+//     with respect to dependencies: the construction of a remote component always waits on the construction of its
+//     children.
+//   - Dependency resources are added directly to the set.
+//   - Rehydrated component resources are added directly to the set.
 //
 // In other words, if we had:
 //
-//				  Comp1
-//			  /     |     \
-//		  Cust1   Comp2  Remote1
-//				  /   \       \
-//			  Cust2   Cust3  Comp3
-//			  /                 \
-//		  Cust4                Cust5
+//			  Comp1
+//		  /     |     \
+//	  Cust1   Comp2  Remote1
+//			  /   \       \
+//		  Cust2   Cust3  Comp3
+//		  /                 \
+//	  Cust4                Cust5
 //
 // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
 // It will *not* include:
 // * Cust4 because it is a child of a custom resource
 // * Comp2 because it is a non-remote component resoruce
 // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
-func addDependency(ctx context.Context, deps urnSet, res Resource) error {
+func addDependency(ctx context.Context, deps urnSet, res, from Resource) error {
 	if _, custom := res.(CustomResource); !custom {
+		// If `res` is the same as `from`, exit early to avoid depending on
+		// children that haven't been registered yet.
+		if res == from {
+			return nil
+		}
+
 		for _, child := range res.getChildren() {
-			if err := addDependency(ctx, deps, child); err != nil {
+			if err := addDependency(ctx, deps, child, from); err != nil {
 				return err
 			}
 		}
-		if !res.isRemoteComponent() {
+		// keepDependency() returns true for remote component resources, dependency resources,
+		// and rehydrated component resources.
+		if !res.keepDependency() {
 			return nil
 		}
 	}
@@ -113,7 +123,7 @@ func addDependency(ctx context.Context, deps urnSet, res Resource) error {
 func expandDependencies(ctx context.Context, deps []Resource) (urnSet, error) {
 	urns := urnSet{}
 	for _, r := range deps {
-		if err := addDependency(ctx, urns, r); err != nil {
+		if err := addDependency(ctx, urns, r, nil /* from */); err != nil {
 			return nil, err
 		}
 	}
@@ -133,7 +143,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		// Get the underlying value, possibly waiting for an output to arrive.
 		v, resourceDeps, err := marshalInput(pv, pt, true)
 		if err != nil {
-			return fmt.Errorf("awaiting input property %s: %w", pname, err)
+			return fmt.Errorf("awaiting input property %q: %w", pname, err)
 		}
 
 		// Record all dependencies accumulated from reading this property.
@@ -143,12 +153,9 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		}
 		deps.union(allDeps)
 
-		if len(allDeps) > 0 {
-			pdeps[pname] = allDeps.values()
-		}
-
 		if !v.IsNull() || len(allDeps) > 0 {
 			pmap[resource.PropertyKey(pname)] = v
+			pdeps[pname] = allDeps.values()
 		}
 		return nil
 	}
@@ -169,7 +176,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 
 	switch pt.Kind() {
 	case reflect.Struct:
-		contract.Assert(rt.Kind() == reflect.Struct)
+		contract.Assertf(rt.Kind() == reflect.Struct, "expected struct, got %v (%v)", rt, rt.Kind())
 		// We use the resolved type to decide how to convert inputs to outputs.
 		rt := props.ElementType()
 		if rt.Kind() == reflect.Ptr {
@@ -190,7 +197,9 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			}
 		}
 	case reflect.Map:
-		contract.Assert(rt.Key().Kind() == reflect.String)
+		ktype := rt.Key()
+		contract.Assertf(ktype.Kind() == reflect.String,
+			"expected map with string keys, got %v (%v)", ktype, ktype.Kind())
 		for _, key := range pv.MapKeys() {
 			keyname := key.Interface().(string)
 			val := pv.MapIndex(key).Interface()
@@ -207,7 +216,8 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 }
 
 // `gosec` thinks these are credentials, but they are not.
-// nolint: gosec
+//
+//nolint:gosec
 const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"
@@ -221,7 +231,8 @@ func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.Pr
 func marshalInputImpl(v interface{},
 	destType reflect.Type,
 	await,
-	skipInputCheck bool) (resource.PropertyValue, []Resource, error) {
+	skipInputCheck bool,
+) (resource.PropertyValue, []Resource, error) {
 	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
@@ -309,6 +320,15 @@ func marshalInputImpl(v interface{},
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
+		} else if val := reflect.ValueOf(v); val.Kind() == reflect.Ptr && val.IsNil() {
+			// Here we round trip through a reflect.Value to catch fat pointers of the
+			// form
+			//
+			// 	<SomeType><nil value>
+			//
+			// This prevents calling methods on nil pointers when we cast to an interface
+			// (like `Resource`)
+			return resource.PropertyValue{}, nil, nil
 		}
 
 		// Look for some well known types.
@@ -350,15 +370,15 @@ func marshalInputImpl(v interface{},
 			if err != nil {
 				return resource.PropertyValue{}, nil, err
 			}
-			contract.Assert(known)
-			contract.Assert(!secretURN)
+			contract.Assertf(known, "URN must be known")
+			contract.Assertf(!secretURN, "URN must not be secret")
 
 			if custom, ok := v.(CustomResource); ok {
 				id, _, secretID, err := custom.ID().awaitID(context.Background())
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
-				contract.Assert(!secretID)
+				contract.Assertf(!secretID, "CustomResource must not have a secret ID")
 
 				return resource.MakeCustomResourceReference(resource.URN(urn), resource.ID(id), ""), deps, nil
 			}
@@ -606,7 +626,7 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
 func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {
-	contract.Assert(dest.CanSet())
+	contract.Requiref(dest.CanSet(), "dest", "value must be settable")
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
 	if v.IsNull() || v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
@@ -897,8 +917,10 @@ type ResourceModule interface {
 	Construct(ctx *Context, name, typ, urn string) (Resource, error)
 }
 
-var resourcePackages versionedMap
-var resourceModules versionedMap
+var (
+	resourcePackages versionedMap
+	resourceModules  versionedMap
+)
 
 // RegisterResourcePackage register a resource package with the Pulumi runtime.
 func RegisterResourcePackage(pkg string, resourcePackage ResourcePackage) {

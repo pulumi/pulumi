@@ -11,7 +11,7 @@ using Pulumi;
 namespace Other.Example.Inputs
 {
 
-    public sealed class ConfigMapArgs : Pulumi.ResourceArgs
+    public sealed class ConfigMapArgs : global::Pulumi.ResourceArgs
     {
         [Input("config")]
         public Input<string>? Config { get; set; }
@@ -19,5 +19,6 @@ namespace Other.Example.Inputs
         public ConfigMapArgs()
         {
         }
+        public static new ConfigMapArgs Empty => new ConfigMapArgs();
     }
 }

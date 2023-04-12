@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws"
-	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -25,9 +23,9 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ami, err := aws.GetAmi(ctx, &GetAmiArgs{
-			Filters: []GetAmiFilter{
-				GetAmiFilter{
+		ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
+			Filters: []aws.GetAmiFilter{
+				{
 					Name: "name",
 					Values: []string{
 						"amzn-ami-hvm-*-x86_64-ebs",
@@ -51,7 +49,7 @@ func main() {
 				securityGroup.Name,
 			},
 			Ami:      pulumi.String(ami.Id),
-			UserData: pulumi.String(fmt.Sprintf("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n")),
+			UserData: pulumi.String("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
 		})
 		if err != nil {
 			return err

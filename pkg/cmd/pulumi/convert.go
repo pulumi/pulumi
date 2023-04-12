@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,123 +17,301 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/afero"
 )
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
 
 func newConvertCmd() *cobra.Command {
 	var outDir string
+	var from string
 	var language string
-	var projectName string
-	var projectDescription string
+	var generateOnly bool
+	var mappings []string
 
 	cmd := &cobra.Command{
-		Use:    "convert",
-		Args:   cmdutil.MaximumNArgs(0),
-		Hidden: !hasExperimentalCommands(),
-		Short:  "Convert resource declarations into a pulumi program",
-		Long: "Convert resource declarations into a pulumi program.\n" +
+		Use:   "convert",
+		Args:  cmdutil.MaximumNArgs(0),
+		Short: "Convert Pulumi programs from a supported source program into other supported languages",
+		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
-			"The PCL program to convert should be supplied on stdin.\n",
+			"The source program to convert will default to the current working directory.\n",
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
-
-			var projectGenerator projectGeneratorFunc
-			switch language {
-			case "csharp", "c#":
-				projectGenerator = dotnet.GenerateProject
-			case langGo:
-				projectGenerator = gogen.GenerateProject
-			case "typescript":
-				projectGenerator = nodejs.GenerateProject
-			case langPython:
-				projectGenerator = python.GenerateProject
-			case "java":
-				projectGenerator = javagen.GenerateProject
-			case "yaml": // nolint: goconst
-				projectGenerator = yamlgen.GenerateProject
-			default:
-				return result.Errorf("cannot generate programs for %v", language)
-			}
-
 			cwd, err := os.Getwd()
 			if err != nil {
-				return result.FromError(fmt.Errorf("could not resolve current working directory"))
+				return result.FromError(fmt.Errorf("get current working directory: %w", err))
 			}
 
-			if outDir != "." {
-				err := os.MkdirAll(outDir, 0755)
-				if err != nil {
-					return result.FromError(fmt.Errorf("could not create output directory: %w", err))
-				}
-			}
-
-			proj, pclProgram, err := yamlgen.Eject(cwd, nil)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
-			}
-
-			err = projectGenerator(outDir, *proj, pclProgram)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not generate output program: %w", err))
-			}
-
-			// Project should now exist at outDir. Run installDependencies in that directory
-			// Change the working directory to the specified directory.
-			if err := os.Chdir(outDir); err != nil {
-				return result.FromError(fmt.Errorf("changing the working directory: %w", err))
-			}
-
-			// Load the project, to
-			proj, root, err := readProject()
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			projinfo := &engine.Projinfo{Proj: proj, Root: root}
-			pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
-			if err != nil {
-				return result.FromError(err)
-			}
-
-			defer ctx.Close()
-
-			if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
-				return result.FromError(err)
-			}
-
-			return nil
+			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
 		&language, "language", "", "Which language plugin to use to generate the pulumi project")
-
-	cmd.PersistentFlags().StringVarP(
-		&projectName, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
-
-	cmd.PersistentFlags().StringVarP(
-		&projectDescription, "description", "d", "",
-		"The project description; if not specified, a prompt will request it")
+	if err := cmd.MarkPersistentFlagRequired("language"); err != nil {
+		panic("failed to mark 'language' as a required flag")
+	}
 
 	cmd.PersistentFlags().StringVar(
 		//nolint:lll
-		&outDir, "out", ".", "The output directory to write the convert project to")
+		&from, "from", "yaml", "Which converter plugin to use to read the source program")
+
+	cmd.PersistentFlags().StringVar(
+		//nolint:lll
+		&outDir, "out", ".", "The output directory to write the converted project to")
+
+	cmd.PersistentFlags().BoolVar(
+		//nolint:lll
+		&generateOnly, "generate-only", false, "Generate the converted program(s) only; do not install dependencies")
+
+	cmd.PersistentFlags().StringSliceVar(
+		//nolint:lll
+		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
 
 	return cmd
+}
+
+// pclGenerateProject writes out a pcl.Program directly as .pp files
+func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
+	if directory == "." {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		directory = cwd
+	}
+
+	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
+	fs := afero.NewOsFs()
+	return p.WriteSource(afero.NewBasePathFs(fs, directory))
+}
+
+// pclEject
+func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.Program, error) {
+	parser := hclsyntax.NewParser()
+	// Load all .pp files in the directory
+	files, err := os.ReadDir(directory)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+		path := filepath.Join(directory, fileName)
+
+		if filepath.Ext(path) == ".pp" {
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			err = parser.ParseFile(file, filepath.Base(path))
+			if err != nil {
+				return nil, nil, err
+			}
+			diags := parser.Diagnostics
+			if diags.HasErrors() {
+				return nil, nil, diags
+			}
+		}
+	}
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	program, pdiags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.DirPath(directory),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+	if err != nil {
+		return nil, nil, err
+	}
+	if pdiags.HasErrors() || program == nil {
+		return nil, nil, fmt.Errorf("internal error: %w", pdiags)
+	}
+
+	return &workspace.Project{Name: "pcl"}, program, nil
+}
+
+func runConvert(
+	e env.Env,
+	cwd string, mappings []string, from string, language string,
+	outDir string, generateOnly bool,
+) result.Result {
+	var projectGenerator projectGeneratorFunc
+	switch language {
+	case "csharp", "c#":
+		projectGenerator = dotnet.GenerateProject
+	case "go":
+		projectGenerator = gogen.GenerateProject
+	case "typescript":
+		projectGenerator = nodejs.GenerateProject
+	case "python":
+		projectGenerator = python.GenerateProject
+	case "java":
+		projectGenerator = javagen.GenerateProject
+	case "yaml":
+		projectGenerator = yamlgen.GenerateProject
+	case "pulumi", "pcl":
+		if e.GetBool(env.Dev) {
+			// No plugin for PCL to install dependencies with
+			generateOnly = true
+			projectGenerator = pclGenerateProject
+			break
+		}
+		fallthrough
+
+	default:
+		return result.Errorf("cannot generate programs for %q language", language)
+	}
+
+	if outDir != "." {
+		err := os.MkdirAll(outDir, 0o755)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+		}
+	}
+
+	pCtx, err := newPluginContext(cwd)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
+	}
+	defer contract.IgnoreClose(pCtx.Host)
+	loader := schema.NewPluginLoader(pCtx.Host)
+	mapper, err := convert.NewPluginMapper(pCtx.Host, from, mappings)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
+	}
+
+	var proj *workspace.Project
+	var program *pcl.Program
+	if from == "" || from == "yaml" {
+		proj, program, err = yamlgen.Eject(cwd, loader)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+		}
+	} else if from == "pcl" {
+		if e.GetBool(env.Dev) {
+			proj, program, err = pclEject(cwd, loader)
+			if err != nil {
+				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))
+			}
+		} else {
+			return result.FromError(fmt.Errorf("unrecognized source %q", from))
+		}
+	} else if from == "tf" {
+		proj, program, err = tfgen.Eject(cwd, loader, mapper)
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
+		}
+	} else {
+		// Try and load the converter plugin for this
+		converter, err := plugin.NewConverter(pCtx, from, nil)
+		if err != nil {
+			return result.FromError(fmt.Errorf("plugin source %q: %w", from, err))
+		}
+		defer contract.IgnoreClose(converter)
+
+		targetDirectory, err := os.MkdirTemp("", "pulumi-convert")
+		if err != nil {
+			return result.FromError(fmt.Errorf("create temporary directory: %w", err))
+		}
+
+		pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
+
+		mapperServer := convert.NewMapperServer(mapper)
+		grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
+			SourceDirectory: cwd,
+			TargetDirectory: targetDirectory,
+			MapperAddress:   grpcServer.Addr(),
+		})
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		proj, program, err = pclEject(targetDirectory, loader)
+		if err != nil {
+			return result.FromError(fmt.Errorf("load pcl program: %w", err))
+		}
+
+		// Load the project from the target directory if there is one
+		path, _ := workspace.DetectProjectPathFrom(targetDirectory)
+		if path != "" {
+			proj, err = workspace.LoadProject(path)
+			if err != nil {
+				return result.FromError(fmt.Errorf("load project: %w", err))
+			}
+		}
+	}
+
+	err = projectGenerator(outDir, *proj, program)
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+	}
+
+	// Project should now exist at outDir. Run installDependencies in that directory (if requested)
+	if !generateOnly {
+		// Change the working directory to the specified directory.
+		if err := os.Chdir(outDir); err != nil {
+			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
+		}
+
+		proj, root, err := readProject()
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		projinfo := &engine.Projinfo{Proj: proj, Root: root}
+		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		if err != nil {
+			return result.FromError(err)
+		}
+		defer ctx.Close()
+
+		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
+			return result.FromError(err)
+		}
+	}
+
+	return nil
+}
+
+func newPluginContext(cwd string) (*plugin.Context, error) {
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+		Color: cmdutil.GetGlobalColorization(),
+	})
+	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	if err != nil {
+		return nil, err
+	}
+	return pluginCtx, nil
 }

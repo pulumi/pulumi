@@ -22,7 +22,7 @@ type Foo struct {
 // FooInput is an input type that accepts FooArgs and FooOutput values.
 // You can construct a concrete instance of `FooInput` via:
 //
-//          FooArgs{...}
+//	FooArgs{...}
 type FooInput interface {
 	pulumi.Input
 
@@ -62,11 +62,11 @@ func (i FooArgs) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
 // FooPtrInput is an input type that accepts FooArgs, FooPtr and FooPtrOutput values.
 // You can construct a concrete instance of `FooPtrInput` via:
 //
-//          FooArgs{...}
+//	        FooArgs{...}
 //
-//  or:
+//	or:
 //
-//          nil
+//	        nil
 type FooPtrInput interface {
 	pulumi.Input
 
@@ -95,7 +95,7 @@ func (i *fooPtrType) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput
 // FooArrayInput is an input type that accepts FooArray and FooArrayOutput values.
 // You can construct a concrete instance of `FooArrayInput` via:
 //
-//          FooArray{ FooArgs{...} }
+//	FooArray{ FooArgs{...} }
 type FooArrayInput interface {
 	pulumi.Input
 

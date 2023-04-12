@@ -17,7 +17,7 @@ type MyObj struct {
 // MyObjInput is an input type that accepts MyObjArgs and MyObjOutput values.
 // You can construct a concrete instance of `MyObjInput` via:
 //
-//          MyObjArgs{...}
+//	MyObjArgs{...}
 type MyObjInput interface {
 	pulumi.Input
 

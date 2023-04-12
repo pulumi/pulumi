@@ -56,7 +56,7 @@ class ProjectTemplate:
         self,
         description: Optional[str] = None,
         quickstart: Optional[str] = None,
-        config: Mapping[str, ProjectTemplateConfigValue] = None,
+        config: Optional[Mapping[str, ProjectTemplateConfigValue]] = None,
         important: Optional[bool] = None,
     ):
         self.description = description

@@ -31,11 +31,13 @@ import (
 
 // hostServer is the server side of the host RPC machinery.
 type hostServer struct {
-	host   Host       // the host for this RPC server.
-	ctx    *Context   // the associated plugin context.
-	addr   string     // the address the host is listening on.
-	cancel chan bool  // a channel that can cancel the server.
-	done   chan error // a channel that resolves when the server completes.
+	lumirpc.UnsafeEngineServer // opt out of forward compat
+
+	host   Host         // the host for this RPC server.
+	ctx    *Context     // the associated plugin context.
+	addr   string       // the address the host is listening on.
+	cancel chan bool    // a channel that can cancel the server.
+	done   <-chan error // a channel that resolves when the server completes.
 
 	// hostServer contains little bits of state that can't be saved in the language host.
 	rootUrn atomic.Value // a root resource URN that has been saved via SetRootResource
@@ -51,15 +53,20 @@ func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
-	port, done, err := rpcutil.Serve(0, engine.cancel, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: engine.cancel,
+		Init: func(srv *grpc.Server) error {
 			lumirpc.RegisterEngineServer(srv, engine)
 			return nil
 		},
-	}, ctx.tracingSpan)
+		Options: rpcutil.OpenTracingServerInterceptorOptions(ctx.tracingSpan),
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	port := handle.Port
+	done := handle.Done
 
 	engine.addr = fmt.Sprintf("127.0.0.1:%d", port)
 	engine.done = done
@@ -106,16 +113,18 @@ func (eng *hostServer) Log(ctx context.Context, req *lumirpc.LogRequest) (*pbemp
 // GetRootResource returns the current root resource's URN, which will serve as the parent of resources that are
 // otherwise left unparented.
 func (eng *hostServer) GetRootResource(ctx context.Context,
-	req *lumirpc.GetRootResourceRequest) (*lumirpc.GetRootResourceResponse, error) {
+	req *lumirpc.GetRootResourceRequest,
+) (*lumirpc.GetRootResourceResponse, error) {
 	var response lumirpc.GetRootResourceResponse
 	response.Urn = eng.rootUrn.Load().(string)
 	return &response, nil
 }
 
-// SetRootResources sets the current root resource's URN. Generally only called on startup when the Stack resource is
+// SetRootResource sets the current root resource's URN. Generally only called on startup when the Stack resource is
 // registered.
 func (eng *hostServer) SetRootResource(ctx context.Context,
-	req *lumirpc.SetRootResourceRequest) (*lumirpc.SetRootResourceResponse, error) {
+	req *lumirpc.SetRootResourceRequest,
+) (*lumirpc.SetRootResourceResponse, error) {
 	var response lumirpc.SetRootResourceResponse
 	eng.rootUrn.Store(req.GetUrn())
 	return &response, nil

@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Immutable;
 
-namespace Pulumi.Configstation
+namespace Configstation.Pulumi.Configstation
 {
     public static class Config
     {
@@ -30,7 +30,7 @@ namespace Pulumi.Configstation
             }
         }
 
-        private static readonly Pulumi.Config __config = new Pulumi.Config("configstation");
+        private static readonly global::Pulumi.Config __config = new global::Pulumi.Config("configstation");
 
         private static readonly __Value<ImmutableArray<string>> _favoritePlants = new __Value<ImmutableArray<string>>(() => __config.GetObject<ImmutableArray<string>>("favoritePlants"));
         public static ImmutableArray<string> FavoritePlants
@@ -39,11 +39,11 @@ namespace Pulumi.Configstation
             set => _favoritePlants.Set(value);
         }
 
-        private static readonly __Value<Pulumi.Configstation.Config.Types.Sandwich?> _favoriteSandwich = new __Value<Pulumi.Configstation.Config.Types.Sandwich?>(() => __config.GetObject<Pulumi.Configstation.Config.Types.Sandwich>("favoriteSandwich"));
+        private static readonly __Value<Configstation.Pulumi.Configstation.Config.Types.Sandwich?> _favoriteSandwich = new __Value<Configstation.Pulumi.Configstation.Config.Types.Sandwich?>(() => __config.GetObject<Configstation.Pulumi.Configstation.Config.Types.Sandwich>("favoriteSandwich"));
         /// <summary>
         /// omg my favorite sandwich
         /// </summary>
-        public static Pulumi.Configstation.Config.Types.Sandwich? FavoriteSandwich
+        public static Configstation.Pulumi.Configstation.Config.Types.Sandwich? FavoriteSandwich
         {
             get => _favoriteSandwich.Get();
             set => _favoriteSandwich.Set(value);

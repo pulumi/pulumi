@@ -74,7 +74,7 @@ namespace Pulumi.Registrygeoreplication
         }
     }
 
-    internal sealed class RegistrygeoreplicationResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class RegistrygeoreplicationResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public RegistrygeoreplicationResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

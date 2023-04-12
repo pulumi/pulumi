@@ -58,12 +58,13 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 		Short: "Get a single stack tag value",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			name := args[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackLoadOnly, opts)
 			if err != nil {
 				return err
 			}
@@ -91,11 +92,12 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 		Short: "List all stack tags",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -123,13 +125,13 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 }
 
 func printStackTags(tags map[apitype.StackTagName]string) {
-	var names []string
+	names := make([]string, 0, len(tags))
 	for n := range tags {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 
-	rows := []cmdutil.TableRow{}
+	rows := make([]cmdutil.TableRow, 0, len(names))
 	for _, name := range names {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}
@@ -146,12 +148,13 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 		Short: "Remove a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			name := args[0]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -164,7 +167,7 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			tags := s.Tags()
 			delete(tags, name)
 
-			return backend.UpdateStackTags(commandContext(), s, tags)
+			return backend.UpdateStackTags(ctx, s, tags)
 		}),
 	}
 }
@@ -175,13 +178,14 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 		Short: "Set a stack tag",
 		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			name := args[0]
 			value := args[1]
 
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(ctx, *stack, stackSetCurrent, opts)
 			if err != nil {
 				return err
 			}
@@ -197,7 +201,7 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			}
 			tags[name] = value
 
-			return backend.UpdateStackTags(commandContext(), s, tags)
+			return backend.UpdateStackTags(ctx, s, tags)
 		}),
 	}
 }

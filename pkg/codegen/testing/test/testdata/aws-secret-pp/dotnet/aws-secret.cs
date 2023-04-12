@@ -1,14 +1,14 @@
+using System.Collections.Generic;
+using System.Linq;
 using Pulumi;
 using Aws = Pulumi.Aws;
 
-class MyStack : Stack
+return await Deployment.RunAsync(() => 
 {
-    public MyStack()
+    var dbCluster = new Aws.Rds.Cluster("dbCluster", new()
     {
-        var dbCluster = new Aws.Rds.Cluster("dbCluster", new Aws.Rds.ClusterArgs
-        {
-            MasterPassword = Output.CreateSecret("foobar"),
-        });
-    }
+        MasterPassword = Output.CreateSecret("foobar"),
+    });
 
-}
+});
+

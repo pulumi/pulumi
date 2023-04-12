@@ -44,6 +44,62 @@ func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) 
 	return literal.Val.AsString(), call.Args[0].Range(), true
 }
 
+// annotateObjectProperties annotates the properties of an object expression with the
+// types of the corresponding properties in the schema. This is used to provide type
+// information for invoke calls that didn't have type annotations.
+//
+// This function will recursively annotate the properties of objects that are nested
+// within the object expression type.
+func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
+	if optionalType, ok := schemaType.(*schema.OptionalType); ok && optionalType != nil {
+		schemaType = optionalType.ElementType
+	}
+
+	switch arg := modelType.(type) {
+	case *model.ObjectType:
+		if schemaObjectType, ok := schemaType.(*schema.ObjectType); ok && schemaObjectType != nil {
+			schemaProperties := make(map[string]schema.Type)
+			for _, schemaProperty := range schemaObjectType.Properties {
+				schemaProperties[schemaProperty.Name] = schemaProperty.Type
+			}
+
+			// top-level annotation for the type itself
+			arg.Annotations = append(arg.Annotations, schemaType)
+			// now for each property, annotate it with the associated type from the schema
+			for propertyName, propertyType := range arg.Properties {
+				if associatedType, ok := schemaProperties[propertyName]; ok {
+					annotateObjectProperties(propertyType, associatedType)
+				}
+			}
+		}
+	case *model.ListType:
+		underlyingArrayType := arg.ElementType
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok && schemaArrayType != nil {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			annotateObjectProperties(underlyingArrayType, underlyingSchemaArrayType)
+		}
+
+	case *model.TupleType:
+		if schemaArrayType, ok := schemaType.(*schema.ArrayType); ok && schemaArrayType != nil {
+			underlyingSchemaArrayType := schemaArrayType.ElementType
+			elementTypes := arg.ElementTypes
+			for _, elemType := range elementTypes {
+				annotateObjectProperties(elemType, underlyingSchemaArrayType)
+			}
+		}
+	case *model.UnionType:
+		// sometimes optional schema types are represented as unions: None | T
+		// in this case, we want to collapse the union and annotate the underlying type T
+		if len(arg.ElementTypes) == 2 && arg.ElementTypes[0] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[1], schemaType)
+		} else if len(arg.ElementTypes) == 2 && arg.ElementTypes[1] == model.NoneType {
+			annotateObjectProperties(arg.ElementTypes[0], schemaType)
+		} else { //nolint:staticcheck // TODO https://github.com/pulumi/pulumi/issues/10993
+			// We need to handle the case where the schema type is a union type.
+		}
+	}
+}
+
 func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
@@ -64,7 +120,10 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
-	pkgSchema, ok := b.options.packageCache.entries[pkg]
+	pkgInfo := PackageInfo{
+		name: pkg,
+	}
+	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
 	if !ok {
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
@@ -88,6 +147,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diag
 	}
 
+	// annotate the input args on the expression with the input type of the function
+	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {
+		if fn.Inputs != nil {
+			annotateObjectProperties(argsObject.Type(), fn.Inputs)
+		}
+	}
+
+	sig.MultiArgumentInputs = fn.MultiArgumentInputs
 	return sig, nil
 }
 
@@ -154,10 +221,10 @@ func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSigna
 	}
 
 	var returnType model.Type
-	if fn.Outputs == nil {
+	if fn.ReturnType == nil {
 		returnType = model.NewObjectType(map[string]model.Type{})
 	} else {
-		returnType = b.schemaTypeToType(fn.Outputs)
+		returnType = b.schemaTypeToType(fn.ReturnType)
 	}
 
 	return b.makeSignature(argsType, model.NewPromiseType(returnType))
@@ -168,9 +235,9 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.Outputs != nil`.
+	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
 	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
-	returnType := b.schemaTypeToType(fn.Outputs)
+	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }
 

@@ -15,7 +15,7 @@
 // Pulling out some of the repeated strings tokens into constants would harm readability, so we just ignore the
 // goconst linter's warning.
 //
-// nolint: lll, goconst
+//nolint:lll, goconst
 package docs
 
 import (
@@ -27,6 +27,7 @@ import (
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // functionDocArgs represents the args that a Function doc template needs.
@@ -98,8 +99,8 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function, outputVersion
 				resultTypeName = fmt.Sprintf("%sOutput", resultTypeName)
 			}
 		case "csharp":
-			namespace := title(mod.pkg.Name, lang)
-			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
+			namespace := title(mod.pkg.Name(), lang)
+			if ns, ok := dctx.csharpPkgInfo.Namespaces[mod.pkg.Name()]; ok {
 				namespace = ns
 			}
 			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
@@ -152,12 +153,14 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string, output
 			},
 		})
 	}
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForPulumiType(def, "InvokeOptions"),
 		},
 	})
 
@@ -210,7 +213,6 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := funcName + argsTypeSuffix
@@ -227,13 +229,15 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string, output
 		})
 	}
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 	params = append(params, formalParam{
 		Name:         "opts",
 		OptionalFlag: "?",
 		DefaultValue: " = null",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "Pulumi.InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForPulumiType(def, "Pulumi.InvokeOptions"),
 		},
 	})
 	return params
@@ -245,7 +249,6 @@ func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outp
 	argsTypeSuffix := "Args"
 	if outputVersion {
 		argsTypeSuffix = "InvokeArgs"
-
 	}
 
 	argsType := title(funcName+argsTypeSuffix, "java")
@@ -261,13 +264,15 @@ func (mod *modContext) genFunctionJava(f *schema.Function, funcName string, outp
 			},
 		})
 	}
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
 
 	params = append(params, formalParam{
 		Name:         "options",
 		OptionalFlag: "@Nullable",
 		Type: propertyType{
 			Name: "InvokeOptions",
-			Link: docLangHelper.GetDocLinkForPulumiType(mod.pkg, "InvokeOptions"),
+			Link: docLangHelper.GetDocLinkForPulumiType(def, "InvokeOptions"),
 		},
 	})
 	return params
@@ -297,7 +302,10 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 				schemaType = codegen.PlainType(codegen.OptionalType(prop))
 			}
 
-			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod,
+			def, err := mod.pkg.Definition()
+			contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
+
+			typ := docLanguageHelper.GetLanguageTypeString(def, mod.mod,
 				schemaType, true /*input*/)
 			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
@@ -391,13 +399,13 @@ func (mod *modContext) genFunctionHeader(f *schema.Function) header {
 	if mod.mod == "" {
 		baseDescription = fmt.Sprintf("Documentation for the %s.%s function "+
 			"with examples, input properties, output properties, "+
-			"and supporting types.", mod.pkg.Name, funcName)
-		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, funcName)
+			"and supporting types.", mod.pkg.Name(), funcName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), funcName)
 	} else {
 		baseDescription = fmt.Sprintf("Documentation for the %s.%s.%s function "+
 			"with examples, input properties, output properties, "+
-			"and supporting types.", mod.pkg.Name, mod.mod, funcName)
-		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, funcName)
+			"and supporting types.", mod.pkg.Name(), mod.mod, funcName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name(), mod.mod, funcName)
 	}
 
 	return header{
@@ -433,8 +441,11 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		if f.Inputs != nil {
 			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false)
 		}
-		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false)
+		if f.ReturnType != nil {
+			if objectObject, ok := f.ReturnType.(*schema.ObjectType); ok {
+				outputProps[lang] = mod.getProperties(objectObject.Properties,
+					lang, false, false, false)
+			}
 		}
 	}
 
@@ -447,10 +458,15 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 		funcNameMap[lang] = docHelper.GetFunctionName(mod.mod, f)
 	}
 
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
+
 	packageDetails := packageDetails{
-		Repository: mod.pkg.Repository,
-		License:    mod.pkg.License,
-		Notes:      mod.pkg.Attribution,
+		DisplayName:    getPackageDisplayName(def.Name),
+		Repository:     def.Repository,
+		RepositoryName: getRepositoryName(def.Repository),
+		License:        def.License,
+		Notes:          def.Attribution,
 	}
 
 	docInfo := dctx.decomposeDocstring(f.Comment)

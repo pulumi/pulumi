@@ -17,7 +17,7 @@
 //
 'use strict';
 var grpc = require('@grpc/grpc-js');
-var engine_pb = require('./engine_pb.js');
+var pulumi_engine_pb = require('./engine_pb.js');
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 
 function serialize_google_protobuf_Empty(arg) {
@@ -32,58 +32,58 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
 }
 
 function serialize_pulumirpc_GetRootResourceRequest(arg) {
-  if (!(arg instanceof engine_pb.GetRootResourceRequest)) {
+  if (!(arg instanceof pulumi_engine_pb.GetRootResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetRootResourceRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRootResourceRequest(buffer_arg) {
-  return engine_pb.GetRootResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_engine_pb.GetRootResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetRootResourceResponse(arg) {
-  if (!(arg instanceof engine_pb.GetRootResourceResponse)) {
+  if (!(arg instanceof pulumi_engine_pb.GetRootResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetRootResourceResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_GetRootResourceResponse(buffer_arg) {
-  return engine_pb.GetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_engine_pb.GetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_LogRequest(arg) {
-  if (!(arg instanceof engine_pb.LogRequest)) {
+  if (!(arg instanceof pulumi_engine_pb.LogRequest)) {
     throw new Error('Expected argument of type pulumirpc.LogRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_LogRequest(buffer_arg) {
-  return engine_pb.LogRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_engine_pb.LogRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_SetRootResourceRequest(arg) {
-  if (!(arg instanceof engine_pb.SetRootResourceRequest)) {
+  if (!(arg instanceof pulumi_engine_pb.SetRootResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.SetRootResourceRequest');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_SetRootResourceRequest(buffer_arg) {
-  return engine_pb.SetRootResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_engine_pb.SetRootResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_SetRootResourceResponse(arg) {
-  if (!(arg instanceof engine_pb.SetRootResourceResponse)) {
+  if (!(arg instanceof pulumi_engine_pb.SetRootResourceResponse)) {
     throw new Error('Expected argument of type pulumirpc.SetRootResourceResponse');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_pulumirpc_SetRootResourceResponse(buffer_arg) {
-  return engine_pb.SetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+  return pulumi_engine_pb.SetRootResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -96,7 +96,7 @@ log: {
     path: '/pulumirpc.Engine/Log',
     requestStream: false,
     responseStream: false,
-    requestType: engine_pb.LogRequest,
+    requestType: pulumi_engine_pb.LogRequest,
     responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_pulumirpc_LogRequest,
     requestDeserialize: deserialize_pulumirpc_LogRequest,
@@ -109,8 +109,8 @@ getRootResource: {
     path: '/pulumirpc.Engine/GetRootResource',
     requestStream: false,
     responseStream: false,
-    requestType: engine_pb.GetRootResourceRequest,
-    responseType: engine_pb.GetRootResourceResponse,
+    requestType: pulumi_engine_pb.GetRootResourceRequest,
+    responseType: pulumi_engine_pb.GetRootResourceResponse,
     requestSerialize: serialize_pulumirpc_GetRootResourceRequest,
     requestDeserialize: deserialize_pulumirpc_GetRootResourceRequest,
     responseSerialize: serialize_pulumirpc_GetRootResourceResponse,
@@ -121,8 +121,8 @@ setRootResource: {
     path: '/pulumirpc.Engine/SetRootResource',
     requestStream: false,
     responseStream: false,
-    requestType: engine_pb.SetRootResourceRequest,
-    responseType: engine_pb.SetRootResourceResponse,
+    requestType: pulumi_engine_pb.SetRootResourceRequest,
+    responseType: pulumi_engine_pb.SetRootResourceResponse,
     requestSerialize: serialize_pulumirpc_SetRootResourceRequest,
     requestDeserialize: deserialize_pulumirpc_SetRootResourceRequest,
     responseSerialize: serialize_pulumirpc_SetRootResourceResponse,

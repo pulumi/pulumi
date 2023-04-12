@@ -26,7 +26,7 @@ func TestGeneratePackageTree(t *testing.T) {
 	t.Parallel()
 
 	dctx := newDocGenContext()
-	initTestPackageSpec(t)
+	testPackageSpec := newTestPackageSpec()
 
 	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
 	assert.NoError(t, err, "importing spec")

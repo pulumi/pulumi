@@ -15,17 +15,17 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with a List parameter.
         /// </summary>
         public static Task<FuncWithListParamResult> InvokeAsync(FuncWithListParamArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with a List parameter.
         /// </summary>
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithListParamResult>("mypkg::funcWithListParam", args ?? new FuncWithListParamInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithListParamArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithListParamArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private List<string>? _a;
@@ -41,9 +41,10 @@ namespace Pulumi.Mypkg
         public FuncWithListParamArgs()
         {
         }
+        public static new FuncWithListParamArgs Empty => new FuncWithListParamArgs();
     }
 
-    public sealed class FuncWithListParamInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithListParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private InputList<string>? _a;
@@ -59,6 +60,7 @@ namespace Pulumi.Mypkg
         public FuncWithListParamInvokeArgs()
         {
         }
+        public static new FuncWithListParamInvokeArgs Empty => new FuncWithListParamInvokeArgs();
     }
 
 

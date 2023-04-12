@@ -29,7 +29,19 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const LogicalNamePropertyKey = "__logicalName"
+const (
+	pulumiPackage          = "pulumi"
+	LogicalNamePropertyKey = "__logicalName"
+)
+
+type ComponentProgramBinderArgs struct {
+	BinderDirPath      string
+	BinderLoader       schema.Loader
+	ComponentSource    string
+	ComponentNodeRange hcl.Range
+}
+
+type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
 
 type bindOptions struct {
 	allowMissingVariables  bool
@@ -37,6 +49,11 @@ type bindOptions struct {
 	skipResourceTypecheck  bool
 	loader                 schema.Loader
 	packageCache           *PackageCache
+	// the directory path of the PCL program being bound
+	// we use this to locate the source of the component blocks
+	// which refer to a component resource in a relative directory
+	dirPath                string
+	componentProgramBinder ComponentProgramBinder
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -87,6 +104,18 @@ func Cache(cache *PackageCache) BindOption {
 	}
 }
 
+func DirPath(path string) BindOption {
+	return func(options *bindOptions) {
+		options.dirPath = path
+	}
+}
+
+func ComponentBinder(binder ComponentProgramBinder) BindOption {
+	return func(options *bindOptions) {
+		options.componentProgramBinder = binder
+	}
+}
+
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
 func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
@@ -94,9 +123,6 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	for _, o := range opts {
 		o(&options)
 	}
-
-	// TODO: remove this once the latest pulumi-terraform-bridge has been rolled out
-	options.skipResourceTypecheck = true
 
 	if options.loader == nil {
 		cwd, err := os.Getwd()
@@ -155,6 +181,10 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		diagnostics = append(diagnostics, b.bindNode(n)...)
 	}
 
+	if diagnostics.HasErrors() {
+		return nil, diagnostics, diagnostics
+	}
+
 	return &Program{
 		Nodes:  b.nodes,
 		files:  files,
@@ -162,10 +192,45 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}, diagnostics, nil
 }
 
+func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {
+	for property, propertyType := range objectType.Properties {
+		if !model.IsOptionalType(propertyType) {
+			objectType.Properties[property] = model.NewOptionalType(propertyType)
+		}
+	}
+
+	return objectType
+}
+
 // declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
 // locals.
+// Temporarily, we load all resources first, as convert sets the highest package version seen
+// under all resources' options. Once this is supported for invokes, the order of declaration will not
+// impact which package is actually loaded.
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics
+
+	for _, item := range model.SourceOrderBody(file.Body) {
+		switch item := item.(type) {
+		case *hclsyntax.Block:
+			switch item.Type {
+			case "resource":
+				if len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
+				}
+
+				resource := &Resource{
+					syntax: item,
+				}
+				declareDiags := b.declareNode(item.Labels[0], resource)
+				diagnostics = append(diagnostics, declareDiags...)
+
+				if err := b.loadReferencedPackageSchemas(resource); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
 
 	for _, item := range model.SourceOrderBody(file.Body) {
 		switch item := item.(type) {
@@ -193,6 +258,22 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 						return diagnostics, fmt.Errorf("cannot bind expression: %v", diagnostics.Error())
 					}
 					typ = typeExpr.Type()
+					switch configType := typ.(type) {
+					case *model.ObjectType:
+						typ = makeObjectPropertiesOptional(configType)
+					case *model.ListType:
+						switch elementType := configType.ElementType.(type) {
+						case *model.ObjectType:
+							modifiedElementType := makeObjectPropertiesOptional(elementType)
+							typ = model.NewListType(modifiedElementType)
+						}
+					case *model.MapType:
+						switch elementType := configType.ElementType.(type) {
+						case *model.ObjectType:
+							modifiedElementType := makeObjectPropertiesOptional(elementType)
+							typ = model.NewMapType(modifiedElementType)
+						}
+					}
 				default:
 					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
 				}
@@ -207,20 +288,6 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				diagnostics = append(diagnostics, diags...)
 
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
-					return nil, err
-				}
-			case "resource":
-				if len(item.Labels) != 2 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
-				}
-
-				resource := &Resource{
-					syntax: item,
-				}
-				declareDiags := b.declareNode(item.Labels[0], resource)
-				diagnostics = append(diagnostics, declareDiags...)
-
-				if err := b.loadReferencedPackageSchemas(resource); err != nil {
 					return nil, err
 				}
 			case "output":
@@ -248,6 +315,21 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				if err := b.loadReferencedPackageSchemas(v); err != nil {
 					return nil, err
 				}
+			case "component":
+				if len(item.Labels) != 2 {
+					diagnostics = append(diagnostics, labelsErrorf(item, "components must have exactly two labels"))
+					continue
+				}
+				name := item.Labels[0]
+				source := item.Labels[1]
+
+				v := &Component{
+					name:   name,
+					syntax: item,
+					source: source,
+				}
+				diags := b.declareNode(name, v)
+				diagnostics = append(diagnostics, diags...)
 			}
 		}
 	}
@@ -277,6 +359,19 @@ func getStringAttrValue(attr *model.Attribute) (string, *hcl.Diagnostic) {
 	}
 }
 
+// Returns the value of constant boolean attribute
+func getBooleanAttributeValue(attr *model.Attribute) (bool, *hcl.Diagnostic) {
+	switch lit := attr.Syntax.Expr.(type) {
+	case *hclsyntax.LiteralValueExpr:
+		if lit.Val.Type() != cty.Bool {
+			return false, boolAttributeError(attr)
+		}
+		return lit.Val.True(), nil
+	default:
+		return false, boolAttributeError(attr)
+	}
+}
+
 // declareNode declares a single top-level node. If a node with the same name has already been declared, it returns an
 // appropriate diagnostic.
 func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
@@ -290,4 +385,12 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 
 func (b *binder) bindExpression(node hclsyntax.Node) (model.Expression, hcl.Diagnostics) {
 	return model.BindExpression(node, b.root, b.tokens, b.options.modelOptions()...)
+}
+
+func modelExprToString(expr *model.Expression) string {
+	if expr == nil {
+		return ""
+	}
+	return (*expr).(*model.TemplateExpression).
+		Parts[0].(*model.LiteralValueExpression).Value.AsString()
 }

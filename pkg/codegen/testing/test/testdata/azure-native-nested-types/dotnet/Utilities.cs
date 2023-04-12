@@ -74,7 +74,7 @@ namespace Pulumi.AzureNative
         }
     }
 
-    internal sealed class AzureNativeResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class AzureNativeResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public AzureNativeResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

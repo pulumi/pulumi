@@ -43,8 +43,8 @@ type expressionBinder struct {
 
 // BindExpression binds an HCL2 expression using the given scope and token map.
 func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap,
-	opts ...BindOption) (Expression, hcl.Diagnostics) {
-
+	opts ...BindOption,
+) (Expression, hcl.Diagnostics) {
 	var options bindOptions
 	for _, opt := range opts {
 		opt(&options)
@@ -62,8 +62,8 @@ func BindExpression(syntax hclsyntax.Node, scope *Scope, tokens _syntax.TokenMap
 
 // BindExpressionText parses and binds an HCL2 expression using the given scope.
 func BindExpressionText(source string, scope *Scope, initialPos hcl.Pos,
-	opts ...BindOption) (Expression, hcl.Diagnostics) {
-
+	opts ...BindOption,
+) (Expression, hcl.Diagnostics) {
 	syntax, tokens, diagnostics := _syntax.ParseExpression(source, "<anonymous>", initialPos)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
@@ -345,7 +345,7 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	if syntax.KeyVar != "" {
 		keyVariable = &Variable{Name: syntax.KeyVar, VariableType: keyType}
 		ok := b.scope.Define(syntax.KeyVar, keyVariable)
-		contract.Assert(ok)
+		contract.Assertf(ok, "key variable %q already defined", syntax.KeyVar)
 	}
 	valueVariable := &Variable{Name: syntax.ValVar, VariableType: valueType}
 	if ok := b.scope.Define(syntax.ValVar, valueVariable); !ok {
@@ -394,8 +394,8 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 // error to omit arguments for trailing positional parameters if those parameters are optional. If any of the
 // parameters to the function are eventual, the result type of the function is also eventual.
 func (b *expressionBinder) bindFunctionCallExpression(
-	syntax *hclsyntax.FunctionCallExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.FunctionCallExpr,
+) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.FunctionCallTokens)
@@ -446,11 +446,11 @@ func (b *expressionBinder) bindFunctionCallExpression(
 
 // bindIndexExpression binds an index expression. The value being indexed must be an list, map, or object.
 //
-// - If the value is an list, the result type is the type of the list's elements, and the index must be assignable to
-//   number (TODO(pdg): require integer indices?)
-// - If the value is a map, the result type is the type of the map's values, and the index must be assignable to
-//   string
-// - If the value is an object, the result type is any, and the index must be assignable to a string
+//   - If the value is an list, the result type is the type of the list's elements, and the index must be assignable to
+//     number (TODO(pdg): require integer indices?)
+//   - If the value is a map, the result type is the type of the map's values, and the index must be assignable to
+//     string
+//   - If the value is an object, the result type is any, and the index must be assignable to a string
 //
 // If either the value being indexed or the index is eventual, result is eventual.
 func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Expression, hcl.Diagnostics) {
@@ -481,8 +481,8 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 // bindLiteralValueExpression binds a literal value expression. The value must be a boolean, integer, number, or
 // string.
 func (b *expressionBinder) bindLiteralValueExpression(
-	syntax *hclsyntax.LiteralValueExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.LiteralValueExpr,
+) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.LiteralValueTokens)
@@ -555,8 +555,8 @@ func (b *expressionBinder) bindObjectConsKeyExpr(syntax *hclsyntax.ObjectConsKey
 // bindRelativeTraversalExpression binds a relative traversal expression. Each step of the traversal must be a legal
 // step with respect to its receiver. The root receiver is the type of the source expression.
 func (b *expressionBinder) bindRelativeTraversalExpression(
-	syntax *hclsyntax.RelativeTraversalExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.RelativeTraversalExpr,
+) (Expression, hcl.Diagnostics) {
 	source, diagnostics := b.bindExpression(syntax.Source)
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.RelativeTraversalTokens)
@@ -590,8 +590,8 @@ func (b *expressionBinder) bindRelativeTraversalExpression(
 // step with respect to its receiver. The root receiver is the definition in the current scope referred to by the root
 // name.
 func (b *expressionBinder) bindScopeTraversalExpression(
-	syntax *hclsyntax.ScopeTraversalExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.ScopeTraversalExpr,
+) (Expression, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	tokens, _ := b.tokens.ForNode(syntax).(*_syntax.ScopeTraversalTokens)
@@ -607,10 +607,9 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 			parts[i] = DynamicType
 		}
 
-		if !b.options.allowMissingVariables {
-			diagnostics = hcl.Diagnostics{
-				undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange()),
-			}
+		diagnostics = hcl.Diagnostics{
+			undefinedVariable(rootName, syntax.Traversal.SimpleSplit().Abs.SourceRange(),
+				b.options.allowMissingVariables),
 		}
 		return &ScopeTraversalExpression{
 			Syntax:    syntax,
@@ -698,8 +697,8 @@ func (b *expressionBinder) bindTemplateExpression(syntax *hclsyntax.TemplateExpr
 // bindTemplateJoinExpression binds a template join expression. If any of the parts of the expression are eventual,
 // the result is eventual.
 func (b *expressionBinder) bindTemplateJoinExpression(
-	syntax *hclsyntax.TemplateJoinExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.TemplateJoinExpr,
+) (Expression, hcl.Diagnostics) {
 	tuple, diagnostics := b.bindExpression(syntax.Tuple)
 
 	expr := &TemplateJoinExpression{
@@ -714,8 +713,8 @@ func (b *expressionBinder) bindTemplateJoinExpression(
 
 // bindTemplateWrapExpression binds a template wrap expression.
 func (b *expressionBinder) bindTemplateWrapExpression(
-	syntax *hclsyntax.TemplateWrapExpr) (Expression, hcl.Diagnostics) {
-
+	syntax *hclsyntax.TemplateWrapExpr,
+) (Expression, hcl.Diagnostics) {
 	wrapped, diagnostics := b.bindExpression(syntax.Wrapped)
 	if tokens, hasTokens := b.tokens.ForNode(syntax).(*_syntax.TemplateTokens); hasTokens {
 		wrapped.SetLeadingTrivia(append(wrapped.GetLeadingTrivia(), tokens.Open.LeadingTrivia...))

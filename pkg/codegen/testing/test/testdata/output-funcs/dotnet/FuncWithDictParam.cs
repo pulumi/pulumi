@@ -15,17 +15,17 @@ namespace Pulumi.Mypkg
         /// Check codegen of functions with a Dict&lt;str,str&gt; parameter.
         /// </summary>
         public static Task<FuncWithDictParamResult> InvokeAsync(FuncWithDictParamArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamArgs(), options.WithDefaults());
 
         /// <summary>
         /// Check codegen of functions with a Dict&lt;str,str&gt; parameter.
         /// </summary>
         public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamInvokeArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<FuncWithDictParamResult>("mypkg::funcWithDictParam", args ?? new FuncWithDictParamInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class FuncWithDictParamArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDictParamArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private Dictionary<string, string>? _a;
@@ -41,9 +41,10 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamArgs()
         {
         }
+        public static new FuncWithDictParamArgs Empty => new FuncWithDictParamArgs();
     }
 
-    public sealed class FuncWithDictParamInvokeArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDictParamInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("a")]
         private InputMap<string>? _a;
@@ -59,6 +60,7 @@ namespace Pulumi.Mypkg
         public FuncWithDictParamInvokeArgs()
         {
         }
+        public static new FuncWithDictParamInvokeArgs Empty => new FuncWithDictParamInvokeArgs();
     }
 
 

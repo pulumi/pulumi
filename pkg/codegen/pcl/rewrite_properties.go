@@ -59,11 +59,11 @@ func RewritePropertyReferences(expr model.Expression) model.Expression {
 		value.SetLeadingTrivia(expr.GetLeadingTrivia())
 		value.SetTrailingTrivia(expr.GetTrailingTrivia())
 		diags := value.Typecheck(false)
-		contract.Assert(len(diags) == 0)
+		contract.Assertf(len(diags) == 0, "error typechecking template expression: %v", diags)
 		return value, nil
 	}
 
 	expr, diags := model.VisitExpression(expr, model.IdentityVisitor, rewriter)
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "error rewriting property references: %v", diags)
 	return expr
 }

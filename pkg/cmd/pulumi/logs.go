@@ -25,8 +25,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
@@ -36,7 +38,7 @@ import (
 const timeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 func newLogsCmd() *cobra.Command {
-	var stack string
+	var stackName string
 	var follow bool
 	var since string
 	var resource string
@@ -44,31 +46,44 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "[PREVIEW] Show aggregated resource logs for a stack",
-		Long: "[PREVIEW] Show aggregated resource logs for a stack\n" +
+		Short: "Show aggregated resource logs for a stack",
+		Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
 			"\n" +
 			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
+			// Fetch the project.
+			proj, _, err := readProject()
 			if err != nil {
 				return err
 			}
 
-			sm, err := getStackSecretsManager(s)
+			s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
 			if err != nil {
-				return fmt.Errorf("getting secrets manager: %w", err)
+				return err
 			}
 
-			cfg, err := getStackConfiguration(s, sm)
+			cfg, sm, err := getStackConfiguration(ctx, s, proj, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
+			}
+
+			decrypter, err := sm.Decrypter()
+			if err != nil {
+				return fmt.Errorf("getting stack decrypter: %w", err)
+			}
+
+			stackName := s.Ref().Name().String()
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			if configErr != nil {
+				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
 			startTime, err := parseSince(since, time.Now())
@@ -77,7 +92,7 @@ func newLogsCmd() *cobra.Command {
 			}
 			var resourceFilter *operations.ResourceFilter
 			if resource != "" {
-				var rf = operations.ResourceFilter(resource)
+				rf := operations.ResourceFilter(resource)
 				resourceFilter = &rf
 			}
 
@@ -97,7 +112,7 @@ func newLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(commandContext(), cfg, operations.LogQuery{
+				logs, err := s.GetLogs(ctx, stack.DefaultSecretsProvider, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})
@@ -162,7 +177,7 @@ func newLogsCmd() *cobra.Command {
 	}
 
 	logsCmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
 		&stackConfigFile, "config-file", "",

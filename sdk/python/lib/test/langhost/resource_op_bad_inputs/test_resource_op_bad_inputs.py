@@ -19,7 +19,7 @@ class UnhandledExceptionTest(LanghostTest):
     def test_unhandled_exception(self):
         self.run_test(
             program=path.join(self.base_path(), "resource_op_bad_inputs"),
-            expected_error="Program exited with non-zero exit code: 1")
+            expected_bail=True)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,

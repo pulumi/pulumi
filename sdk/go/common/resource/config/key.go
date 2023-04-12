@@ -16,9 +16,8 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -49,7 +48,7 @@ func ParseKey(s string) (Key, error) {
 		return Key{namespace: s[:idx], name: s[idx+1:]}, nil
 	case 2:
 		if mm, err := tokens.ParseModuleMember(s); err == nil {
-			if mm.Module().Name() == tokens.ModuleName("config") {
+			if mm.Module().Name() == "config" {
 				return Key{
 					namespace: mm.Module().Package().String(),
 					name:      mm.Name().String(),
@@ -58,15 +57,15 @@ func ParseKey(s string) (Key, error) {
 		}
 	}
 
-	return Key{}, errors.Errorf("could not parse %s as a configuration key "+
+	return Key{}, fmt.Errorf("could not parse %s as a configuration key "+
 		"(configuration keys should be of the form `<namespace>:<name>`)", s)
 }
 
-func (k Key) Namespace() string {
+func (k *Key) Namespace() string {
 	return k.namespace
 }
 
-func (k Key) Name() string {
+func (k *Key) Name() string {
 	return k.name
 }
 
@@ -77,7 +76,7 @@ func (k Key) MarshalJSON() ([]byte, error) {
 func (k *Key) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
-		return errors.Wrap(err, "could not unmarshal key")
+		return fmt.Errorf("could not unmarshal key: %w", err)
 	}
 
 	pk, err := ParseKey(s)
@@ -97,7 +96,7 @@ func (k Key) MarshalYAML() (interface{}, error) {
 func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
 	if err := unmarshal(&s); err != nil {
-		return errors.Wrap(err, "could not unmarshal key")
+		return fmt.Errorf("could not unmarshal key: %w", err)
 	}
 
 	pk, err := ParseKey(s)

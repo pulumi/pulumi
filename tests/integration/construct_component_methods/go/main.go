@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -6,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/internals"
 )
 
 type componentArgs struct {
@@ -27,8 +30,8 @@ type Component struct {
 }
 
 func NewComponent(
-	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
-
+	ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("testcomponent:index:Component", name, args, &resource, opts...)
 	if err != nil {
@@ -95,7 +98,22 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("message", result.Message())
+		message := result.Message()
+		ctx.Export("message", message)
+		ctx.Export("messagedeps", awaitDependencies(ctx, message))
+
 		return nil
 	})
+}
+
+func awaitDependencies(ctx *pulumi.Context, o pulumi.Output) pulumi.URNArray {
+	r, err := internals.UnsafeAwaitOutput(ctx.Context(), o)
+	if err != nil {
+		panic(err)
+	}
+	var deps pulumi.URNArray
+	for _, dep := range r.Dependencies {
+		deps = append(deps, dep.URN())
+	}
+	return deps
 }

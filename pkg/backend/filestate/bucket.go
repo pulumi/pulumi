@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
@@ -62,7 +63,7 @@ func (b *wrappedBucket) Exists(ctx context.Context, key string) (bool, error) {
 }
 
 // listBucket returns a list of all files in the bucket within a given directory. go-cloud sorts the results by key
-func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
+func listBucket(ctx context.Context, bucket Bucket, dir string) ([]*blob.ListObject, error) {
 	bucketIter := bucket.List(&blob.ListOptions{
 		Delimiter: "/",
 		Prefix:    dir + "/",
@@ -70,7 +71,6 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 
 	files := []*blob.ListObject{}
 
-	ctx := context.TODO()
 	for {
 		file, err := bucketIter.Next(ctx)
 		if err == io.EOF {
@@ -87,19 +87,21 @@ func listBucket(bucket Bucket, dir string) ([]*blob.ListObject, error) {
 
 // objectName returns the filename of a ListObject (an object from a bucket).
 func objectName(obj *blob.ListObject) string {
-	_, filename := path.Split(obj.Key)
+	// If obj.Key ends in "/" we want to trim that to get the name just before
+	key := strings.TrimSuffix(obj.Key, "/")
+	_, filename := path.Split(key)
 	return filename
 }
 
 // removeAllByPrefix deletes all objects with a given prefix (i.e. filepath)
-func removeAllByPrefix(bucket Bucket, dir string) error {
-	files, err := listBucket(bucket, dir)
+func removeAllByPrefix(ctx context.Context, bucket Bucket, dir string) error {
+	files, err := listBucket(ctx, bucket, dir)
 	if err != nil {
 		return fmt.Errorf("unable to list bucket objects for removal: %w", err)
 	}
 
 	for _, file := range files {
-		err = bucket.Delete(context.TODO(), file.Key)
+		err = bucket.Delete(ctx, file.Key)
 		if err != nil {
 			logging.V(5).Infof("error deleting object: %v (%v) skipping", file.Key, err)
 		}

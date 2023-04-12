@@ -87,7 +87,7 @@ func (i *God) ToGodOutputWithContext(ctx context.Context) GodOutput {
 // GodArrayInput is an input type that accepts GodArray and GodArrayOutput values.
 // You can construct a concrete instance of `GodArrayInput` via:
 //
-//          GodArray{ GodArgs{...} }
+//	GodArray{ GodArgs{...} }
 type GodArrayInput interface {
 	pulumi.Input
 
@@ -112,7 +112,7 @@ func (i GodArray) ToGodArrayOutputWithContext(ctx context.Context) GodArrayOutpu
 // GodMapInput is an input type that accepts GodMap and GodMapOutput values.
 // You can construct a concrete instance of `GodMapInput` via:
 //
-//          GodMap{ "key": GodArgs{...} }
+//	GodMap{ "key": GodArgs{...} }
 type GodMapInput interface {
 	pulumi.Input
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as assert from "assert";
+import assert from "assert";
 
-/** @internal */
-export type MochaFunc = (err: Error) => void;
+// NOTE: These helpers should no longer be used by tests.
+// This module remains as part of a closure serialization test that serializes this module.
+
+type MochaFunc = (err: Error) => void;
 
 // A helper function for wrapping some of the boilerplate goo necessary to interface between Mocha's asynchronous
 // testing and our TypeScript async tests.
-/** @internal */
+/**
+ * @internal
+ * @deprecated
+ */
 export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void {
     return (done: (err: any) => void) => {
         const go = async () => {
@@ -39,7 +44,10 @@ export function asyncTest(test: () => Promise<void>): (func: MochaFunc) => void 
 }
 
 // A helper function for asynchronous tests that throw.
-/** @internal */
+/**
+ * @internal
+ * @deprecated
+ */
 export async function assertAsyncThrows(test: () => Promise<void>): Promise<string> {
     try {
         await test();

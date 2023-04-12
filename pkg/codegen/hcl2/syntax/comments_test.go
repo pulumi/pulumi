@@ -2,7 +2,7 @@ package syntax
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -18,7 +18,7 @@ func commentString(trivia []Trivia) string {
 	for _, t := range trivia {
 		if comment, ok := t.(Comment); ok {
 			for _, l := range comment.Lines {
-				s += strings.Replace(l, "✱", "*", -1)
+				s += strings.ReplaceAll(l, "✱", "*")
 			}
 		}
 	}
@@ -81,8 +81,8 @@ func validateTrivia(t *testing.T, tokens ...interface{}) {
 }
 
 func validateTemplateStringTrivia(t *testing.T, template *hclsyntax.TemplateExpr, n *hclsyntax.LiteralValueExpr,
-	tokens *LiteralValueTokens) {
-
+	tokens *LiteralValueTokens,
+) {
 	index := -1
 	for i := range template.Parts {
 		if template.Parts[i] == n {
@@ -214,7 +214,7 @@ func (v *validator) Exit(n hclsyntax.Node) hcl.Diagnostics {
 func TestComments(t *testing.T) {
 	t.Parallel()
 
-	contents, err := ioutil.ReadFile("./testdata/comments_all.hcl")
+	contents, err := os.ReadFile("./testdata/comments_all.hcl")
 	if err != nil {
 		t.Fatalf("failed to read test data: %v", err)
 	}

@@ -122,15 +122,15 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 // Provides code for a method which will be placed in the program preamble if deemed
 // necessary. Because many Terraform functions are complex, it is much prettier to
 // encapsulate them as their own function in the preamble.
-func getHelperMethodIfNeeded(functionName string) (string, bool) {
+func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "filebase64":
 		return `private static string ReadFileBase64(string path) {
-		return Convert.ToBase64String(Encoding.UTF8.GetBytes(File.ReadAllText(path)))
+		return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path)));
 	}`, true
 	case "filebase64sha256":
 		return `private static string ComputeFileBase64Sha256(string path) {
-		var fileData = Encoding.UTF8.GetBytes(File.ReadAllText(path));
+		var fileData = System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(path));
 		var hashData = SHA256.Create().ComputeHash(fileData);
 		return Convert.ToBase64String(hashData);
 	}`, true
@@ -140,7 +140,23 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
 		).Replace("-","").ToLowerInvariant());
 	}`, true
+	case "notImplemented":
+		return fmt.Sprintf(`
+%sstatic object NotImplemented(string errorMessage) 
+%s{
+%s    throw new System.NotImplementedException(errorMessage);
+%s}`, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}
+}
+
+// LowerCamelCase sets the first character to lowercase
+// LowerCamelCase("LowerCamelCase") -> "lowerCamelCase"
+func LowerCamelCase(s string) string {
+	if s == "" {
+		return ""
+	}
+	runes := []rune(s)
+	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
 }

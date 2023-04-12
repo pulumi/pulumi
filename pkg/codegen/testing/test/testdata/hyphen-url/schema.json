@@ -32,10 +32,7 @@
     "csharp": {
       "packageReferences": {
         "Pulumi.AzureNative": "1.28.*"
-      },
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "generateResourceContainerTypes": true,

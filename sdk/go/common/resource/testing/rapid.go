@@ -47,19 +47,19 @@ func (ctx *StackContext) Append(r ...*resource.State) *StackContext {
 
 // URNGenerator generates URNs that are valid within the context (i.e. the project name and stack name portions of the
 // generated URNs will always be taken from the context).
-func (ctx *StackContext) URNGenerator() *rapid.Generator {
+func (ctx *StackContext) URNGenerator() *rapid.Generator[resource.URN] {
 	return urnGenerator(ctx)
 }
 
 // URNSampler samples URNs from the stack's resources.
-func (ctx *StackContext) URNSampler() *rapid.Generator {
+func (ctx *StackContext) URNSampler() *rapid.Generator[resource.URN] {
 	return rapid.Custom(func(t *rapid.T) resource.URN {
-		return rapid.SampledFrom(ctx.Resources()).Draw(t, "referenced resource").(*resource.State).URN
+		return rapid.SampledFrom(ctx.Resources()).Draw(t, "referenced resource").URN
 	})
 }
 
 // ResourceReferenceGenerator generates resource.ResourceReference values. The referenced resource is
-func (ctx *StackContext) ResourceReferenceGenerator() *rapid.Generator {
+func (ctx *StackContext) ResourceReferenceGenerator() *rapid.Generator[resource.ResourceReference] {
 	if len(ctx.Resources()) == 0 {
 		panic("cannot generate resource references: stack context has no resources")
 	}
@@ -67,61 +67,61 @@ func (ctx *StackContext) ResourceReferenceGenerator() *rapid.Generator {
 }
 
 // ResourceReferencePropertyGenerator generates resource reference resource.PropertyValues.
-func (ctx *StackContext) ResourceReferencePropertyGenerator() *rapid.Generator {
+func (ctx *StackContext) ResourceReferencePropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return resourceReferencePropertyGenerator(ctx)
 }
 
 // ArrayPropertyGenerator generates array resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the elements of the array.
-func (ctx *StackContext) ArrayPropertyGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) ArrayPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return arrayPropertyGenerator(ctx, maxDepth)
 }
 
 // PropertyMapGenerator generates resource.PropertyMap values. The maxDepth parameter controls the maximum
 // depth of the elements of the map.
-func (ctx *StackContext) PropertyMapGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) PropertyMapGenerator(maxDepth int) *rapid.Generator[resource.PropertyMap] {
 	return propertyMapGenerator(ctx, maxDepth)
 }
 
 // ObjectPropertyGenerator generates object resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the elements of the object.
-func (ctx *StackContext) ObjectPropertyGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) ObjectPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return objectPropertyGenerator(ctx, maxDepth)
 }
 
 // OutputPropertyGenerator generates output resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the resolved value of the output, if any. The output's dependencies will only refer to resources in
 // the context.
-func (ctx *StackContext) OutputPropertyGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) OutputPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return outputPropertyGenerator(ctx, maxDepth)
 }
 
 // SecretPropertyGenerator generates secret resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the plaintext value of the secret, if any.
-func (ctx *StackContext) SecretPropertyGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) SecretPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return secretPropertyGenerator(ctx, maxDepth)
 }
 
 // PropertyValueGenerator generates arbitrary resource.PropertyValues. The maxDepth parameter controls the maximum
 // number of times the generator may recur.
-func (ctx *StackContext) PropertyValueGenerator(maxDepth int) *rapid.Generator {
+func (ctx *StackContext) PropertyValueGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return propertyValueGenerator(ctx, maxDepth)
 }
 
 // TypeGenerator generates legal tokens.Type values.
-func TypeGenerator() *rapid.Generator {
+func TypeGenerator() *rapid.Generator[tokens.Type] {
 	return rapid.Custom(func(t *rapid.T) tokens.Type {
-		return tokens.Type(rapid.StringMatching(`^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`).Draw(t, "type token").(string))
+		return tokens.Type(rapid.StringMatching(`^[a-zA-Z][-a-zA-Z0-9_]*:([^0-9][a-zA-Z0-9._/]*)?:[^0-9][a-zA-Z0-9._/]*$`).Draw(t, "type token"))
 	})
 }
 
 // URNGenerator generates legal resource.URN values.
-func URNGenerator() *rapid.Generator {
+func URNGenerator() *rapid.Generator[resource.URN] {
 	return urnGenerator(nil)
 }
 
-func urnGenerator(ctx *StackContext) *rapid.Generator {
-	var stackNameGenerator, projectNameGenerator *rapid.Generator
+func urnGenerator(ctx *StackContext) *rapid.Generator[resource.URN] {
+	var stackNameGenerator, projectNameGenerator *rapid.Generator[string]
 	if ctx == nil {
 		stackNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
 		projectNameGenerator = rapid.StringMatching(`^((:[^:])[^:]*)*:?$`)
@@ -131,127 +131,132 @@ func urnGenerator(ctx *StackContext) *rapid.Generator {
 	}
 
 	return rapid.Custom(func(t *rapid.T) resource.URN {
-		stackName := tokens.QName(stackNameGenerator.Draw(t, "stack name").(string))
-		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name").(string))
-		parentType := TypeGenerator().Draw(t, "parent type").(tokens.Type)
-		resourceType := TypeGenerator().Draw(t, "resource type").(tokens.Type)
-		resourceName := tokens.QName(rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name").(string))
+		stackName := tokens.QName(stackNameGenerator.Draw(t, "stack name"))
+		projectName := tokens.PackageName(projectNameGenerator.Draw(t, "project name"))
+		parentType := TypeGenerator().Draw(t, "parent type")
+		resourceType := TypeGenerator().Draw(t, "resource type")
+		resourceName := tokens.QName(rapid.StringMatching(`^((:[^:])[^:]*)*:?$`).Draw(t, "resource name"))
 		return resource.NewURN(stackName, projectName, parentType, resourceType, resourceName)
 	})
 }
 
 // IDGenerator generates legal resource.ID values.
-func IDGenerator() *rapid.Generator {
+func IDGenerator() *rapid.Generator[resource.ID] {
 	return rapid.Custom(func(t *rapid.T) resource.ID {
-		return resource.ID(rapid.StringMatching(`..*`).Draw(t, "ids").(string))
+		return resource.ID(rapid.StringMatching(`..*`).Draw(t, "ids"))
 	})
 }
 
 // SemverStringGenerator generates legal semver strings.
-func SemverStringGenerator() *rapid.Generator {
+func SemverStringGenerator() *rapid.Generator[string] {
 	return rapid.StringMatching(`^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 }
 
 // UnknownPropertyGenerator generates the unknown resource.PropertyValue.
-func UnknownPropertyGenerator() *rapid.Generator {
+func UnknownPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return rapid.Just(resource.MakeComputed(resource.NewStringProperty(""))).Draw(t, "unknowns").(resource.PropertyValue)
+		return rapid.Just(resource.MakeComputed(resource.NewStringProperty(""))).Draw(t, "unknowns")
 	})
 }
 
 // NullPropertyGenerator generates the null resource.PropertyValue.
-func NullPropertyGenerator() *rapid.Generator {
+func NullPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return rapid.Just(resource.NewNullProperty()).Draw(t, "nulls").(resource.PropertyValue)
+		return rapid.Just(resource.NewNullProperty()).Draw(t, "nulls")
 	})
 }
 
 // BoolPropertyGenerator generates boolean resource.PropertyValues.
-func BoolPropertyGenerator() *rapid.Generator {
+func BoolPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewBoolProperty(rapid.Bool().Draw(t, "booleans").(bool))
+		return resource.NewBoolProperty(rapid.Bool().Draw(t, "booleans"))
 	})
 }
 
 // NumberPropertyGenerator generates numeric resource.PropertyValues.
-func NumberPropertyGenerator() *rapid.Generator {
+func NumberPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewNumberProperty(rapid.Float64().Draw(t, "numbers").(float64))
+		return resource.NewNumberProperty(rapid.Float64().Draw(t, "numbers"))
 	})
 }
 
 // StringPropertyGenerator generates string resource.PropertyValues.
-func StringPropertyGenerator() *rapid.Generator {
+func StringPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewStringProperty(rapid.String().Draw(t, "strings").(string))
+		return resource.NewStringProperty(rapid.String().Draw(t, "strings"))
 	})
 }
 
 // TextAssetGenerator generates textual *resource.Asset values.
-func TextAssetGenerator() *rapid.Generator {
+func TextAssetGenerator() *rapid.Generator[*resource.Asset] {
 	return rapid.Custom(func(t *rapid.T) *resource.Asset {
-		asset, err := resource.NewTextAsset(rapid.String().Draw(t, "text asset contents").(string))
+		asset, err := resource.NewTextAsset(rapid.String().Draw(t, "text asset contents"))
 		assert.NoError(t, err)
 		return asset
 	})
 }
 
 // AssetGenerator generates *resource.Asset values.
-func AssetGenerator() *rapid.Generator {
+func AssetGenerator() *rapid.Generator[*resource.Asset] {
 	return TextAssetGenerator()
 }
 
 // AssetPropertyGenerator generates asset resource.PropertyValues.
-func AssetPropertyGenerator() *rapid.Generator {
+func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewAssetProperty(AssetGenerator().Draw(t, "assets").(*resource.Asset))
+		return resource.NewAssetProperty(AssetGenerator().Draw(t, "assets"))
 	})
 }
 
 // LiteralArchiveGenerator generates *resource.Archive values with literal archive contents.
-func LiteralArchiveGenerator(maxDepth int) *rapid.Generator {
+func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
 	return rapid.Custom(func(t *rapid.T) *resource.Archive {
-		var contentsGenerator *rapid.Generator
+		var contentsGenerator *rapid.Generator[map[string]interface{}]
 		if maxDepth > 0 {
-			contentsGenerator = rapid.MapOfN(rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`), rapid.OneOf(AssetGenerator(), ArchiveGenerator(maxDepth-1)), 0, 16)
+			contentsGenerator = rapid.MapOfN(
+				rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`),
+				rapid.OneOf(AssetGenerator().AsAny(), ArchiveGenerator(maxDepth-1).AsAny()),
+				0,  // min length
+				16, // max length
+			)
 		} else {
 			contentsGenerator = rapid.Just(map[string]interface{}{})
 		}
-		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents").(map[string]interface{}))
+		archive, err := resource.NewAssetArchive(contentsGenerator.Draw(t, "literal archive contents"))
 		assert.NoError(t, err)
 		return archive
 	})
 }
 
 // ArchiveGenerator generates *resource.Archive values.
-func ArchiveGenerator(maxDepth int) *rapid.Generator {
+func ArchiveGenerator(maxDepth int) *rapid.Generator[*resource.Archive] {
 	return LiteralArchiveGenerator(maxDepth)
 }
 
 // ArchivePropertyGenerator generates archive resource.PropertyValues.
-func ArchivePropertyGenerator(maxDepth int) *rapid.Generator {
+func ArchivePropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArchiveProperty(ArchiveGenerator(maxDepth).Draw(t, "archives").(*resource.Archive))
+		return resource.NewArchiveProperty(ArchiveGenerator(maxDepth).Draw(t, "archives"))
 	})
 }
 
 // ResourceReferenceGenerator generates resource.ResourceReference values.
-func ResourceReferenceGenerator() *rapid.Generator {
+func ResourceReferenceGenerator() *rapid.Generator[resource.ResourceReference] {
 	return resourceReferenceGenerator(nil)
 }
 
-func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator {
-	var resourceGenerator *rapid.Generator
+func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator[resource.ResourceReference] {
+	var resourceGenerator *rapid.Generator[*resource.State]
 	if ctx == nil {
 		resourceGenerator = rapid.Custom(func(t *rapid.T) *resource.State {
 			id := resource.ID("")
-			custom := !rapid.Bool().Draw(t, "component").(bool)
+			custom := !rapid.Bool().Draw(t, "component")
 			if custom {
-				id = IDGenerator().Draw(t, "resource ID").(resource.ID)
+				id = IDGenerator().Draw(t, "resource ID")
 			}
 
 			return &resource.State{
-				URN:    URNGenerator().Draw(t, "resource URN").(resource.URN),
+				URN:    URNGenerator().Draw(t, "resource URN"),
 				Custom: custom,
 				ID:     id,
 			}
@@ -261,85 +266,96 @@ func resourceReferenceGenerator(ctx *StackContext) *rapid.Generator {
 	}
 
 	return rapid.Custom(func(t *rapid.T) resource.ResourceReference {
-		r := resourceGenerator.Draw(t, "referenced resource").(*resource.State)
+		r := resourceGenerator.Draw(t, "referenced resource")
 
 		// Only pull the resource's ID if it is a custom resource. Component resources do not have IDs.
 		var id resource.PropertyValue
 		if r.Custom {
-			id = rapid.OneOf(UnknownPropertyGenerator(), rapid.Just(resource.NewStringProperty(string(r.ID)))).Draw(t, "referenced ID").(resource.PropertyValue)
+			id = rapid.OneOf(
+				UnknownPropertyGenerator(),
+				rapid.Just(resource.NewStringProperty(string(r.ID))),
+			).Draw(t, "referenced ID")
 		}
 
 		return resource.ResourceReference{
 			URN:            r.URN,
 			ID:             id,
-			PackageVersion: SemverStringGenerator().Draw(t, "package version").(string),
+			PackageVersion: SemverStringGenerator().Draw(t, "package version"),
 		}
 	})
 }
 
 // ResourceReferencePropertyGenerator generates resource reference resource.PropertyValues.
-func ResourceReferencePropertyGenerator() *rapid.Generator {
+func ResourceReferencePropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 	return resourceReferencePropertyGenerator(nil)
 }
 
-func resourceReferencePropertyGenerator(ctx *StackContext) *rapid.Generator {
+func resourceReferencePropertyGenerator(ctx *StackContext) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewResourceReferenceProperty(resourceReferenceGenerator(ctx).Draw(t, "resource reference").(resource.ResourceReference))
+		return resource.NewResourceReferenceProperty(resourceReferenceGenerator(ctx).Draw(t, "resource reference"))
 	})
 }
 
 // ArrayPropertyGenerator generates array resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the elements of the array.
-func ArrayPropertyGenerator(maxDepth int) *rapid.Generator {
+func ArrayPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return arrayPropertyGenerator(nil, maxDepth)
 }
 
-func arrayPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func arrayPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewArrayProperty(rapid.SliceOfN(propertyValueGenerator(ctx, maxDepth-1), 0, 32).Draw(t, "array elements").([]resource.PropertyValue))
+		return resource.NewArrayProperty(
+			rapid.SliceOfN(propertyValueGenerator(ctx, maxDepth-1), 0, 32).
+				Draw(t, "array elements"))
 	})
 }
 
 // PropertyKeyGenerator generates legal resource.PropertyKey values.
-func PropertyKeyGenerator() *rapid.Generator {
+func PropertyKeyGenerator() *rapid.Generator[resource.PropertyKey] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyKey {
-		return resource.PropertyKey(rapid.String().Draw(t, "property key").(string))
+		return resource.PropertyKey(rapid.String().Draw(t, "property key"))
 	})
 }
 
 // PropertyMapGenerator generates resource.PropertyMap values. The maxDepth parameter controls the maximum
 // depth of the elements of the map.
-func PropertyMapGenerator(maxDepth int) *rapid.Generator {
+func PropertyMapGenerator(maxDepth int) *rapid.Generator[resource.PropertyMap] {
 	return propertyMapGenerator(nil, maxDepth)
 }
 
-func propertyMapGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func propertyMapGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyMap] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyMap {
-		return resource.PropertyMap(rapid.MapOfN(PropertyKeyGenerator(), propertyValueGenerator(ctx, maxDepth-1), 0, 32).Draw(t, "property map").(map[resource.PropertyKey]resource.PropertyValue))
+		return resource.PropertyMap(
+			rapid.MapOfN(
+				PropertyKeyGenerator(),
+				propertyValueGenerator(ctx, maxDepth-1),
+				0,  // min length
+				32, // max length
+			).Draw(t, "property map"))
 	})
 }
 
 // ObjectPropertyGenerator generates object resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the elements of the object.
-func ObjectPropertyGenerator(maxDepth int) *rapid.Generator {
+func ObjectPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return objectPropertyGenerator(nil, maxDepth)
 }
 
-func objectPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func objectPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
-		return resource.NewObjectProperty(propertyMapGenerator(ctx, maxDepth).Draw(t, "object contents").(resource.PropertyMap))
+		return resource.NewObjectProperty(propertyMapGenerator(ctx, maxDepth).Draw(t, "object contents"))
 	})
 }
 
 // OutputPropertyGenerator generates output resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the resolved value of the output, if any. If a StackContext, the output's dependencies will only refer to
 // resources in the context.
-func OutputPropertyGenerator(maxDepth int) *rapid.Generator {
+func OutputPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return outputPropertyGenerator(nil, maxDepth)
 }
 
-func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
-	var urnGenerator *rapid.Generator
+func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
+	var urnGenerator *rapid.Generator[resource.URN]
 	var dependenciesUpperBound int
 	if ctx == nil {
 		urnGenerator, dependenciesUpperBound = URNGenerator(), 32
@@ -354,42 +370,42 @@ func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
 		var element resource.PropertyValue
 
-		known := rapid.Bool().Draw(t, "known").(bool)
+		known := rapid.Bool().Draw(t, "known")
 		if known {
-			element = propertyValueGenerator(ctx, maxDepth-1).Draw(t, "output element").(resource.PropertyValue)
+			element = propertyValueGenerator(ctx, maxDepth-1).Draw(t, "output element")
 		}
 
 		return resource.NewOutputProperty(resource.Output{
 			Element:      element,
 			Known:        known,
-			Secret:       rapid.Bool().Draw(t, "secret").(bool),
-			Dependencies: rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound).Draw(t, "dependencies").([]resource.URN),
+			Secret:       rapid.Bool().Draw(t, "secret"),
+			Dependencies: rapid.SliceOfN(urnGenerator, 0, dependenciesUpperBound).Draw(t, "dependencies"),
 		})
 	})
 }
 
 // SecretPropertyGenerator generates secret resource.PropertyValues. The maxDepth parameter controls the maximum
 // depth of the plaintext value of the secret, if any.
-func SecretPropertyGenerator(maxDepth int) *rapid.Generator {
+func SecretPropertyGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return secretPropertyGenerator(nil, maxDepth)
 }
 
-func secretPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
+func secretPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {
 		return resource.NewSecretProperty(&resource.Secret{
-			Element: propertyValueGenerator(ctx, maxDepth-1).Draw(t, "secret element").(resource.PropertyValue),
+			Element: propertyValueGenerator(ctx, maxDepth-1).Draw(t, "secret element"),
 		})
 	})
 }
 
 // PropertyValueGenerator generates arbitrary resource.PropertyValues. The maxDepth parameter controls the maximum
 // number of times the generator may recur.
-func PropertyValueGenerator(maxDepth int) *rapid.Generator {
+func PropertyValueGenerator(maxDepth int) *rapid.Generator[resource.PropertyValue] {
 	return propertyValueGenerator(nil, maxDepth)
 }
 
-func propertyValueGenerator(ctx *StackContext, maxDepth int) *rapid.Generator {
-	choices := []*rapid.Generator{
+func propertyValueGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[resource.PropertyValue] {
+	choices := []*rapid.Generator[resource.PropertyValue]{
 		UnknownPropertyGenerator(),
 		NullPropertyGenerator(),
 		BoolPropertyGenerator(),

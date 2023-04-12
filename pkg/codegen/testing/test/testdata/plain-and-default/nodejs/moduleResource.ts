@@ -2,7 +2,9 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import { input as inputs, output as outputs, enums } from "./types";
+import * as inputs from "./types/input";
+import * as outputs from "./types/output";
+import * as enums from "./types/enums";
 import * as utilities from "./utilities";
 
 export class ModuleResource extends pulumi.CustomResource {
@@ -32,6 +34,7 @@ export class ModuleResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === ModuleResource.__pulumiType;
     }
 
+    public readonly optional_bool!: pulumi.Output<boolean | undefined>;
 
     /**
      * Create a ModuleResource resource with the given unique name, arguments, and options.
@@ -86,6 +89,7 @@ export class ModuleResource extends pulumi.CustomResource {
             resourceInputs["required_number"] = (args ? args.required_number : undefined) ?? 42;
             resourceInputs["required_string"] = (args ? args.required_string : undefined) ?? "buzzer";
         } else {
+            resourceInputs["optional_bool"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(ModuleResource.__pulumiType, name, resourceInputs, opts);

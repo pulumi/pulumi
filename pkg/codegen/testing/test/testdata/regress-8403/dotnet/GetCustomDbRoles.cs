@@ -12,15 +12,16 @@ namespace Pulumi.Mongodbatlas
     public static class GetCustomDbRoles
     {
         public static Task<GetCustomDbRolesResult> InvokeAsync(GetCustomDbRolesArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<GetCustomDbRolesResult>("mongodbatlas::getCustomDbRoles", args ?? new GetCustomDbRolesArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<GetCustomDbRolesResult>("mongodbatlas::getCustomDbRoles", args ?? new GetCustomDbRolesArgs(), options.WithDefaults());
     }
 
 
-    public sealed class GetCustomDbRolesArgs : Pulumi.InvokeArgs
+    public sealed class GetCustomDbRolesArgs : global::Pulumi.InvokeArgs
     {
         public GetCustomDbRolesArgs()
         {
         }
+        public static new GetCustomDbRolesArgs Empty => new GetCustomDbRolesArgs();
     }
 
 

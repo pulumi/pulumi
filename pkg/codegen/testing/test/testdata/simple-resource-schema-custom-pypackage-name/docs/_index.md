@@ -13,20 +13,20 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="otherresource" title="OtherResource"><span class="api-symbol api-symbol--resource"></span>OtherResource</a></li>
-    <li><a href="provider" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
-    <li><a href="resource" title="Resource"><span class="api-symbol api-symbol--resource"></span>Resource</a></li>
+    <li><a href="otherresource/" title="OtherResource"><span class="api-symbol api-symbol--resource"></span>OtherResource</a></li>
+    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
+    <li><a href="resource/" title="Resource"><span class="api-symbol api-symbol--resource"></span>Resource</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>
 <ul class="api">
-    <li><a href="argfunction" title="ArgFunction"><span class="api-symbol api-symbol--function"></span>ArgFunction</a></li>
+    <li><a href="argfunction/" title="ArgFunction"><span class="api-symbol api-symbol--function"></span>ArgFunction</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">example </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 	<dt>Version</dt>

@@ -92,7 +92,7 @@ func (i *Person) ToPersonOutputWithContext(ctx context.Context) PersonOutput {
 // PersonArrayInput is an input type that accepts PersonArray and PersonArrayOutput values.
 // You can construct a concrete instance of `PersonArrayInput` via:
 //
-//          PersonArray{ PersonArgs{...} }
+//	PersonArray{ PersonArgs{...} }
 type PersonArrayInput interface {
 	pulumi.Input
 
@@ -117,7 +117,7 @@ func (i PersonArray) ToPersonArrayOutputWithContext(ctx context.Context) PersonA
 // PersonMapInput is an input type that accepts PersonMap and PersonMapOutput values.
 // You can construct a concrete instance of `PersonMapInput` via:
 //
-//          PersonMap{ "key": PersonArgs{...} }
+//	PersonMap{ "key": PersonArgs{...} }
 type PersonMapInput interface {
 	pulumi.Input
 

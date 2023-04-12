@@ -25,7 +25,7 @@ import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap
-from .errors import StackAlreadyExistsError
+from .errors import StackAlreadyExistsError, StackNotFoundError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._output import OutputMap
 from ._server import LanguageServer
@@ -33,6 +33,7 @@ from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.proto import language_pb2_grpc
 from ._representable import _Representable
+from ._tag import TagMap
 
 _DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -61,7 +62,7 @@ class UpdateSummary:
         config: Mapping[str, dict],
         # post-update info
         result: str,
-        end_time: datetime,
+        end_time: Optional[datetime] = None,
         version: Optional[int] = None,
         deployment: Optional[str] = None,
         resource_changes: Optional[OpMap] = None,
@@ -78,9 +79,15 @@ class UpdateSummary:
         self.config: ConfigMap = {}
         for key in config:
             config_value = config[key]
-            self.config[key] = ConfigValue(
-                value=config_value["value"], secret=config_value["secret"]
+            secret = config_value["secret"]
+            # If it is a secret, and we're not showing secrets, the value is excluded from the JSON results.
+            # In that case, we'll just use the sentinal `[secret]` value. Otherwise, we expect to get a value.
+            value = (
+                config_value.get("value", "[secret]")
+                if secret
+                else config_value["value"]
             )
+            self.config[key] = ConfigValue(value=value, secret=secret)
 
     def __repr__(self):
         return (
@@ -186,9 +193,9 @@ class Stack:
             workspace.select_stack(name)
         elif mode is StackInitMode.CREATE_OR_SELECT:
             try:
-                workspace.create_stack(name)
-            except StackAlreadyExistsError:
                 workspace.select_stack(name)
+            except StackNotFoundError:
+                workspace.create_stack(name)
 
     def __repr__(self):
         return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r}, mode={self._mode!r})"
@@ -211,9 +218,13 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
-        verbose: Optional[int] = None,
-        log_to_stderr: Optional[bool] = None,
         plan: Optional[str] = None,
+        show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -233,9 +244,13 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param log_to_stderr: Log to stderr instead of to files
         :param plan: Plan specifies the path to an update plan to use for the update.
+        :param show_secrets: Include config secrets in the UpResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: UpResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -248,6 +263,8 @@ class Stack:
         if plan is not None:
             args.append("--plan")
             args.append(plan)
+
+        args.extend(self._remote_args())
 
         kind = ExecKind.LOCAL.value
         on_exit = None
@@ -265,7 +282,7 @@ class Stack:
                 language_server, server
             )
 
-            port = server.add_insecure_port(address="0.0.0.0:0")
+            port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
 
             def on_exit_fn():
@@ -291,7 +308,9 @@ class Stack:
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
-            summary = self.info()
+            # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
+            # load the project file.
+            summary = self.info(show_secrets and not self._remote)
             assert summary is not None
         finally:
             _cleanup(temp_dir, log_watcher_thread, on_exit)
@@ -318,9 +337,12 @@ class Stack:
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
         program: Optional[PulumiFn] = None,
-        verbose: Optional[int] = None,
-        log_to_stderr: Optional[bool] = None,
         plan: Optional[str] = None,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -340,9 +362,12 @@ class Stack:
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param log_to_stderr: Log to stderr instead of to files
         :param plan: Plan specifies the path where the update plan should be saved.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: PreviewResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -355,6 +380,8 @@ class Stack:
         if plan is not None:
             args.append("--save-plan")
             args.append(plan)
+
+        args.extend(self._remote_args())
 
         kind = ExecKind.LOCAL.value
         on_exit = None
@@ -372,7 +399,7 @@ class Stack:
                 language_server, server
             )
 
-            port = server.add_insecure_port(address="0.0.0.0:0")
+            port = server.add_insecure_port(address="127.0.0.1:0")
             server.start()
 
             def on_exit_fn():
@@ -423,8 +450,12 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
-        verbose: Optional[int] = None,
-        log_to_stderr: Optional[bool] = None,
+        show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
@@ -438,8 +469,12 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param log_to_stderr: Log to stderr instead of to files
+        :param show_secrets: Include config secrets in the RefreshResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: RefreshResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -447,6 +482,8 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
+
+        args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
@@ -466,7 +503,9 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
+        # load the project file.
+        summary = self.info(show_secrets and not self._remote)
         assert summary is not None
         return RefreshResult(
             stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary
@@ -481,8 +520,12 @@ class Stack:
         color: Optional[str] = None,
         on_output: Optional[OnOutput] = None,
         on_event: Optional[OnEvent] = None,
-        verbose: Optional[int] = None,
-        log_to_stderr: Optional[bool] = None,
+        show_secrets: bool = True,
+        log_flow: Optional[bool] = None,
+        log_verbosity: Optional[int] = None,
+        log_to_std_err: Optional[bool] = None,
+        tracing: Optional[str] = None,
+        debug: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -495,8 +538,12 @@ class Stack:
         :param on_output: A function to process the stdout stream.
         :param on_event: A function to process structured events from the Pulumi event stream.
         :param color: Colorize output. Choices are: always, never, raw, auto (default "auto")
-        :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param log_to_stderr: Log to stderr instead of to files
+        :param show_secrets: Include config secrets in the DestroyResult summary.
+        :param log_flow: Flow log settings to child processes (like plugins)
+        :param log_verbosity: Enable verbose logging (e.g., v=3); anything >3 is very verbose
+        :param log_to_std_err: Log to stderr instead of to files
+        :param tracing: Emit tracing to the specified endpoint. Use the file: scheme to write tracing data to a local file
+        :param debug: Print detailed debugging output during resource operations
         :returns: DestroyResult
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
@@ -504,6 +551,8 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
+
+        args.extend(self._remote_args())
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
@@ -523,7 +572,9 @@ class Stack:
         finally:
             _cleanup(temp_dir, log_watcher_thread)
 
-        summary = self.info()
+        # If it's a remote workspace, explicitly set show_secrets to False to prevent attempting to
+        # load the project file.
+        summary = self.info(show_secrets and not self._remote)
         assert summary is not None
         return DestroyResult(
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
@@ -583,6 +634,42 @@ class Stack:
         """Gets and sets the config map used with the last update."""
         self.workspace.refresh_config(self.name)
 
+    def get_tag(self, key: str) -> str:
+        """
+        Returns the tag value associated with specified key.
+
+        :param key: The key to use for the tag lookup.
+        :returns: str
+        """
+        return self.workspace.get_tag(self.name, key)
+
+    def set_tag(self, key: str, value: str) -> None:
+        """
+        Sets a tag key-value pair on the Stack in the associated Workspace.
+
+        :param key: The tag key to set.
+        :param value: The tag value to set.
+        """
+        self.workspace.set_tag(self.name, key, value)
+
+    def remove_tag(self, key: str) -> None:
+        """
+        Removes the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to remove.
+        """
+        self.workspace.remove_tag(self.name, key)
+
+    def list_tags(self) -> TagMap:
+        """
+        Returns the tag map for the specified tag name, scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :returns: TagMap
+        """
+        return self.workspace.list_tags(self.name)
+
     def outputs(self) -> OutputMap:
         """
         Gets the current set of Stack outputs from the last Stack.up().
@@ -592,7 +679,10 @@ class Stack:
         return self.workspace.stack_outputs(self.name)
 
     def history(
-        self, page_size: Optional[int] = None, page: Optional[int] = None
+        self,
+        page_size: Optional[int] = None,
+        page: Optional[int] = None,
+        show_secrets: bool = True,
     ) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
@@ -600,10 +690,13 @@ class Stack:
 
         :param page_size: Paginate history entries (used in combination with page), defaults to all.
         :param page: Paginate history entries (used in combination with page_size), defaults to all.
+        :param show_secrets: Show config secrets when they appear in history.
 
         :returns: List[UpdateSummary]
         """
-        args = ["stack", "history", "--json", "--show-secrets"]
+        args = ["stack", "history", "--json"]
+        if show_secrets:
+            args.append("--show-secrets")
         if page_size is not None:
             # default page=1 when page_size is set
             if page is None:
@@ -623,7 +716,9 @@ class Stack:
                 environment=summary_json["environment"],
                 config=summary_json["config"],
                 result=summary_json["result"],
-                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT),
+                end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT)
+                if "endTime" in summary_json
+                else None,
                 version=summary_json["version"] if "version" in summary_json else None,
                 deployment=summary_json["Deployment"]
                 if "Deployment" in summary_json
@@ -635,13 +730,13 @@ class Stack:
             summaries.append(summary)
         return summaries
 
-    def info(self) -> Optional[UpdateSummary]:
+    def info(self, show_secrets=True) -> Optional[UpdateSummary]:
         """
         Returns the current results from Stack lifecycle operations.
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history(page_size=1)
+        history = self.history(page_size=1, show_secrets=show_secrets)
         if not history:
             return None
         return history[0]
@@ -677,6 +772,8 @@ class Stack:
         self, args: List[str], on_output: Optional[OnOutput] = None
     ) -> CommandResult:
         envs = {"PULUMI_DEBUG_COMMANDS": "true"}
+        if self._remote:
+            envs = {**envs, "PULUMI_EXPERIMENTAL": "true"}
         if self.workspace.pulumi_home is not None:
             envs = {**envs, "PULUMI_HOME": self.workspace.pulumi_home}
         envs = {**envs, **self.workspace.env_vars}
@@ -688,22 +785,46 @@ class Stack:
         self.workspace.post_command_callback(self.name)
         return result
 
+    @property
+    def _remote(self) -> bool:
+        # pylint: disable=import-outside-toplevel
+        from pulumi.automation._local_workspace import LocalWorkspace
+
+        return (
+            self.workspace._remote
+            if isinstance(self.workspace, LocalWorkspace)
+            else False
+        )
+
+    def _remote_args(self) -> List[str]:
+        # pylint: disable=import-outside-toplevel
+        from pulumi.automation._local_workspace import LocalWorkspace
+
+        return (
+            self.workspace._remote_args()
+            if isinstance(self.workspace, LocalWorkspace)
+            else []
+        )
+
 
 def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
-    message = kwargs.get("message")
-    expect_no_changes = kwargs.get("expect_no_changes")
-    diff = kwargs.get("diff")
-    replace = kwargs.get("replace")
-    target = kwargs.get("target")
-    policy_packs = kwargs.get("policy_packs")
-    policy_pack_configs = kwargs.get("policy_pack_configs")
-    target_dependents = kwargs.get("target_dependents")
-    parallel = kwargs.get("parallel")
-    color = kwargs.get("color")
-    verbose = kwargs.get("verbose")
-    log_to_stderr = kwargs.get("log_to_stderr")
+    message: Optional[str] = kwargs.get("message")
+    expect_no_changes: Optional[bool] = kwargs.get("expect_no_changes")
+    diff: Optional[bool] = kwargs.get("diff")
+    replace: Optional[List[str]] = kwargs.get("replace")
+    target: Optional[List[str]] = kwargs.get("target")
+    policy_packs: Optional[List[str]] = kwargs.get("policy_packs")
+    policy_pack_configs: Optional[List[str]] = kwargs.get("policy_pack_configs")
+    target_dependents: Optional[bool] = kwargs.get("target_dependents")
+    parallel: Optional[int] = kwargs.get("parallel")
+    color: Optional[str] = kwargs.get("color")
+    log_flow: Optional[bool] = kwargs.get("log_flow")
+    log_verbosity: Optional[int] = kwargs.get("log_verbosity")
+    log_to_std_err: Optional[bool] = kwargs.get("log_to_std_err")
+    tracing: Optional[str] = kwargs.get("tracing")
+    debug: Optional[bool] = kwargs.get("debug")
 
     if message:
         extra_args.extend(["--message", message])
@@ -729,10 +850,16 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--parallel", str(parallel)])
     if color:
         extra_args.extend(["--color", color])
-    if log_to_stderr:
+    if log_flow:
+        extra_args.extend(["--logflow"])
+    if log_verbosity:
+        extra_args.extend(["--verbose", str(log_verbosity)])
+    if log_to_std_err:
         extra_args.extend(["--logtostderr"])
-    if verbose:
-        extra_args.extend(["--verbose", str(verbose)])
+    if tracing:
+        extra_args.extend(["--tracing", tracing])
+    if debug:
+        extra_args.extend(["--debug"])
     return extra_args
 
 

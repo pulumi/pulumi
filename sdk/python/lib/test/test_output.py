@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2022, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import json
 import unittest
 from typing import Mapping, Optional, Sequence, cast
 
 from pulumi.runtime import rpc, rpc_manager, settings
-from pulumi import Output
+
 import pulumi
+from pulumi import Output
 
 
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
     def wrapper(*args, **kwargs):
-        settings.configure(settings.Settings())
+        settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
         rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
@@ -63,6 +66,12 @@ class OutputFromInputTests(unittest.TestCase):
     @pulumi_test
     async def test_unwrap_dict(self):
         x = Output.from_input({"hello": Output.from_input("world")})
+        x_val = await x.future()
+        self.assertEqual(x_val, {"hello": "world"})
+
+    @pulumi_test
+    async def test_unwrap_dict_output_key(self):
+        x = Output.from_input({Output.from_input("hello"): Output.from_input("world")})
         x_val = await x.future()
         self.assertEqual(x_val, {"hello": "world"})
 
@@ -194,6 +203,15 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertIsInstance(x_val.nested, OutputFromInputTests.NestedArgs)
         self.assertEqual(x_val.nested.hello, "world")
 
+    @pulumi.input_type
+    class EmptyArgs: pass
+
+    @pulumi_test
+    async def test_unwrap_empty_input_type(self):
+        x = Output.from_input(OutputFromInputTests.EmptyArgs())
+        x_val = cast(OutputFromInputTests.EmptyArgs, await x.future())
+        self.assertIsInstance(x_val, OutputFromInputTests.EmptyArgs)
+
 class Obj:
     def __init__(self, x: str):
         self.x = x
@@ -224,10 +242,163 @@ class OutputStrTests(unittest.TestCase):
     @pulumi_test
     async def test_str(self):
         o = Output.from_input(1)
-        self.assertEqual(str(o), """Calling [str] on an [Output<T>] is not supported.
+        self.assertEqual(str(o), """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
-1. o.apply(lambda v => f"prefix{v}suffix")
+1. o.apply(lambda v: f"prefix{v}suffix")
 
 See https://pulumi.io/help/outputs for more details.
 This function may throw in a future version of Pulumi.""")
+
+
+class OutputApplyTests(unittest.TestCase):
+
+    @pulumi_test
+    async def test_apply_always_sets_is_secret_and_is_known(self):
+        """Regressing a convoluted situation where apply created an Output
+        with incomplete is_secret, is_known future, manifesting in
+        program hangs when those futures were awaited.
+
+        To reproduce this, a synthetic output is needed with is_known
+        set to a Future completing exceptionally. Perhaps it would one
+        day be possible to make it invalid for is_known to enter this
+        state.
+
+        """
+        bad = asyncio.Future()
+        bad.set_exception(Exception('!'))
+        ok = asyncio.Future()
+        ok.set_result('ok')
+        bad_output = Output(resources=set(), future=ok, is_known=bad)
+        test_output = Output.from_input('anything').apply(lambda _: bad_output)
+        self.assertEqual(await test_output.is_secret(), False)
+        self.assertEqual(await test_output.is_known(), False)
+
+class OutputAllTests(unittest.TestCase):
+    @pulumi_test
+    async def test_args(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(o1, o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, [1, "hi"])
+
+    @pulumi_test
+    async def test_kwargs(self):
+        o1 = Output.from_input(1)
+        o2 = Output.from_input("hi")
+        x = Output.all(x=o1, y=o2)
+        x_val = await x.future()
+        self.assertEqual(x_val, {"x": 1, "y": "hi"})
+
+class OutputFormatTests(unittest.TestCase):
+    @pulumi_test
+    async def test_nothing(self):
+        x = Output.format("blank format")
+        x_val = await x.future()
+        self.assertEqual(x_val, "blank format")
+
+    @pulumi_test
+    async def test_simple(self):
+        i = Output.from_input(1)
+        x = Output.format("{0}", i)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1")
+
+    @pulumi_test
+    async def test_args_and_kwags(self):
+        i = Output.from_input(1)
+        s = Output.from_input("hi")
+        x = Output.format("{0}, {s}", i, s=s)
+        x_val = await x.future()
+        self.assertEqual(x_val, "1, hi")
+
+class OutputJsonDumpsTests(unittest.TestCase):
+    @pulumi_test
+    async def test_basic(self):
+        i = Output.from_input([0, 1])
+        x = Output.json_dumps(i)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+
+    # from_input handles _most_ nested outputs, so we need to use user defined types to "work around"
+    # that, which means we also need to use a custom encoder
+    class CustomClass(object):
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+    class CustomEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, OutputJsonDumpsTests.CustomClass):
+                return (o.a, o.b)
+            return json.JSONEncoder.default(self, o)
+
+    @pulumi_test
+    async def test_nested(self):
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(Output.from_input(0), Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+
+    @pulumi_test
+    async def test_nested_unknown(self):
+        future = asyncio.Future()
+        future.set_result(None)
+        is_known = asyncio.Future()
+        is_known.set_result(False)
+        unknown = Output(resources=set(), future=future, is_known=is_known)
+
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(unknown, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), False)
+
+    @pulumi_test
+    async def test_nested_secret(self):
+        future = asyncio.Future()
+        future.set_result(0)
+        future_true = asyncio.Future()
+        future_true.set_result(True)
+        inner = Output(resources=set(), future=future, is_known=future_true, is_secret=future_true)
+
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), True)
+        self.assertEqual(await x.is_known(), True)
+
+    @pulumi_test
+    async def test_nested_dependencies(self):
+        future = asyncio.Future()
+        future.set_result(0)
+        future_true = asyncio.Future()
+        future_true.set_result(True)
+        resource = object()
+        inner = Output(resources=set([resource]), future=future, is_known=future_true)
+
+        i = Output.from_input(OutputJsonDumpsTests.CustomClass(inner, Output.from_input(1)))
+        x = Output.json_dumps(i, cls=OutputJsonDumpsTests.CustomEncoder)
+        self.assertEqual(await x.future(), "[0, 1]")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+        self.assertIn(resource, await x.resources())
+
+    @pulumi_test
+    async def test_output_keys(self):
+        i = {Output.from_input("hello"): Output.from_input(1)}
+        x = Output.json_dumps(i)
+        self.assertEqual(await x.future(), "{\"hello\": 1}")
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)
+
+class OutputJsonLoadsTests(unittest.TestCase):
+    @pulumi_test
+    async def test_basic(self):
+        i = Output.from_input("[0, 1]")
+        x = Output.json_loads(i)
+        self.assertEqual(await x.future(), [0, 1])
+        self.assertEqual(await x.is_secret(), False)
+        self.assertEqual(await x.is_known(), True)

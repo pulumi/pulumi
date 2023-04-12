@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -34,12 +35,18 @@ func newOrgCmd() *cobra.Command {
 			"e.g. setting the default organization for a backend",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			cloudURL, err := workspace.GetCurrentCloudURL()
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			cloudURL, err := workspace.GetCurrentCloudURL(project)
 			if err != nil {
 				return err
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}
@@ -64,7 +71,7 @@ func newOrgCmd() *cobra.Command {
 func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "set-default [NAME]",
 		Args:  cmdutil.ExactArgs(1),
 		Short: "Set the default organization for the current backend",
@@ -77,13 +84,20 @@ func newOrgSetDefaultCmd() *cobra.Command {
 			"If you try and set a default organization for a backend that does not \n" +
 			"support create organizations, then an error will be returned by the CLI",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			orgName = args[0]
 
-			currentBe, err := currentBackend(displayOpts)
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -92,15 +106,12 @@ func newOrgSetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL()
+			cloudURL, err := workspace.GetCurrentCloudURL(project)
 			if err != nil {
 				return err
 			}
-			if err := workspace.SetBackendConfigDefaultOrg(cloudURL, orgName); err != nil {
-				return err
-			}
 
-			return nil
+			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
 		}),
 	}
 
@@ -108,7 +119,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 }
 
 func newOrgGetDefaultCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get-default",
 		Short: "Get the default org for the current backend",
 		Long: "Get the default org for the current backend.\n" +
@@ -118,11 +129,18 @@ func newOrgGetDefaultCmd() *cobra.Command {
 			"\n" +
 			"Currently, only the managed and self-hosted backends support organizations.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			displayOpts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			currentBe, err := currentBackend(displayOpts)
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			currentBe, err := currentBackend(ctx, project, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -131,7 +149,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := workspace.GetBackendConfigDefaultOrg()
+			defaultOrg, err := workspace.GetBackendConfigDefaultOrg(project)
 			if err != nil {
 				return err
 			}

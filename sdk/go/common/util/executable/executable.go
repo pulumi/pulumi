@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -23,7 +22,7 @@ func FindExecutable(program string) (string, error) {
 	// look in the same directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get current working directory")
+		return "", fmt.Errorf("unable to get current working directory: %w", err)
 	}
 
 	cwdProgram := filepath.Join(cwd, program)
@@ -59,7 +58,7 @@ func FindExecutable(program string) (string, error) {
 		return fullPath, nil
 	}
 
-	return "", errors.Errorf(unableToFindProgramTemplate, program)
+	return "", fmt.Errorf(unableToFindProgramTemplate, program)
 }
 
 func splitGoPath(goPath string, os string) []string {

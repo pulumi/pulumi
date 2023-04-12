@@ -122,3 +122,31 @@ func TestColorTablePrinting(t *testing.T) {
 
 	assert.Equal(t, expected, cleanTable)
 }
+
+func TestIsTruthy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		give string
+		want bool
+	}{
+		{"1", true},
+		{"true", true},
+		{"True", true},
+		{"TRUE", true},
+		{"0", false},
+		{"false", false},
+		{"False", false},
+		{"FALSE", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.give, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, IsTruthy(tt.give))
+		})
+	}
+}

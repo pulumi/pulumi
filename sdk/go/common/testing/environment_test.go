@@ -31,11 +31,10 @@ func TestEnvOverrideGetCommandResults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, stderr)
 		assert.Equal(t, expect, stdout)
-
 	}
 	// We default PULUMI_DEBUG_COMMANDS to true
 	checkDebug("true")
 	// We can override the default
-	e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=false")
+	e.SetEnvVars("PULUMI_DEBUG_COMMANDS=false")
 	checkDebug("false")
 }

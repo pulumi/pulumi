@@ -1,3 +1,0 @@
-name: dotnet_service_provider
-description: A stack component resolved using service provider.
-runtime: dotnet

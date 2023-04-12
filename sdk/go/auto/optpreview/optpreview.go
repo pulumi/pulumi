@@ -80,10 +80,17 @@ func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview stdout
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
+	})
+}
+
+// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental preview stderr
+func ErrorProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ErrorProgressStreams = writers
 	})
 }
 
@@ -134,8 +141,10 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview stdout
 	ProgressStreams []io.Writer
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental preview stderr
+	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"

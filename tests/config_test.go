@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -70,10 +71,14 @@ func TestConfigCommands(t *testing.T) {
 
 		// check that the nested config does not exist because we didn't use path
 		_, stderr := e.RunCommandExpectError("pulumi", "config", "get", "outer")
-		assert.Equal(t, "error: configuration key 'outer' not found for stack 'test'", strings.Trim(stderr, "\r\n"))
+		assert.Equal(t,
+			"error: configuration key 'outer' not found for stack 'test'",
+			strings.Trim(stderr, "\r\n"))
 
 		_, stderr = e.RunCommandExpectError("pulumi", "config", "get", "myList")
-		assert.Equal(t, "error: configuration key 'myList' not found for stack 'test'", strings.Trim(stderr, "\r\n"))
+		assert.Equal(t,
+			"error: configuration key 'myList' not found for stack 'test'",
+			strings.Trim(stderr, "\r\n"))
 
 		// set the nested config using --path
 		e.RunCommand("pulumi", "config", "set-all", "--path",
@@ -242,7 +247,7 @@ config:
   pulumi-test:d:
     a: D
   pulumi-test:e:
-  - E
+    - E
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
 		assert.NoError(t, err)
@@ -262,10 +267,10 @@ config:
   pulumi-test:d:
     a: D
   pulumi-test:e:
-  - E
+    - E
   pulumi-test:f:
     g:
-    - F
+      - F
 $`
 		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
 		assert.NoError(t, err)
@@ -273,4 +278,71 @@ $`
 
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
+}
+
+func TestBasicConfigGetRetrievedValueFromProject(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: pulumi-test
+runtime: go
+config:
+  first-value:
+    type: string
+    default: first`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	stdout, _ := e.RunCommand("pulumi", "config", "get", "first-value")
+	assert.Equal(t, "first", strings.Trim(stdout, "\r\n"))
+}
+
+func TestConfigGetRetrievedValueFromBothStackAndProjectUsingJson(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	pulumiProject := `
+name: pulumi-test
+runtime: go
+config:
+  first-value:
+    type: string
+    default: first
+  second-value:
+    type: string
+  third-value:
+    type: array
+    items:
+      type: string
+    default: [third]`
+
+	integration.CreatePulumiRepo(e, pulumiProject)
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "config", "set", "second-value", "second")
+	stdout, _ := e.RunCommand("pulumi", "config", "--json")
+	// check that stdout is an array containing 2 objects
+	var config map[string]interface{}
+	jsonError := json.Unmarshal([]byte(stdout), &config)
+	assert.Nil(t, jsonError)
+	assert.Equal(t, 3, len(config))
+	assert.Equal(t, "first", config["pulumi-test:first-value"].(map[string]interface{})["value"])
+	assert.Equal(t, "second", config["pulumi-test:second-value"].(map[string]interface{})["value"])
+	thirdValue := config["pulumi-test:third-value"].(map[string]interface{})
+	assert.Equal(t, "[\"third\"]", thirdValue["value"])
+	assert.Equal(t, []interface{}{"third"}, thirdValue["objectValue"])
 }

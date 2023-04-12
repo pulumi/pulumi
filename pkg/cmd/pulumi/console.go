@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/skratchdot/open-golang/open"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newConsoleCmd() *cobra.Command {
@@ -34,15 +36,21 @@ func newConsoleCmd() *cobra.Command {
 		Short: "Opens the current stack in the Pulumi Console",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			currentBackend, err := currentBackend(opts)
-			if err != nil {
+
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
 
-			ctx := commandContext()
+			currentBackend, err := currentBackend(ctx, project, opts)
+			if err != nil {
+				return err
+			}
 
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
@@ -74,18 +82,18 @@ func newConsoleCmd() *cobra.Command {
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if consoleURL, err := cloudBackend.StackConsoleURL(stack.Ref()); err != nil {
-					launchConsole(consoleURL)
-				} else {
+				url, err := cloudBackend.StackConsoleURL(stack.Ref())
+				if err != nil {
 					// Open the cloud backend home page if retrieving the stack
 					// console URL fails.
-					launchConsole(cloudBackend.URL())
+					url = cloudBackend.URL()
 				}
+				launchConsole(url)
 				return nil
 			}
 			fmt.Println("This command is not available for your backend. " +
-				"To migrate to the Pulumi Service backend, " +
-				"please see https://www.pulumi.com/docs/intro/concepts/state/#adopting-the-pulumi-service-backend")
+				"To migrate to the Pulumi Cloud backend, " +
+				"please see https://www.pulumi.com/docs/intro/concepts/state/#pulumi-cloud-backend")
 			return nil
 		}),
 	}
@@ -96,7 +104,7 @@ func newConsoleCmd() *cobra.Command {
 
 // launchConsole attempts to open the console in the browser using the specified URL.
 func launchConsole(url string) {
-	if openErr := open.Run(url); openErr != nil {
+	if openErr := browser.OpenURL(url); openErr != nil {
 		fmt.Printf("We couldn't launch your web browser for some reason. \n"+
 			"Please visit: %s", url)
 	}

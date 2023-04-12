@@ -19,18 +19,21 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -38,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	resourceConfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -47,10 +51,11 @@ import (
 
 var pulumiOrg = getTestOrg()
 
-const pName = "testproj"
-const agent = "pulumi/pulumi/test"
-const pulumiTestOrg = "pulumi-test"
-const windows = "windows"
+const (
+	pName         = "testproj"
+	agent         = "pulumi/pulumi/test"
+	pulumiTestOrg = "pulumi-test"
+)
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	t.Parallel()
@@ -191,7 +196,7 @@ func TestRemoveWithForce(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	const permalinkSearchStr = "https://app.pulumi.com"
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
 	assert.Nil(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
@@ -278,7 +283,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	const permalinkSearchStr = "https://app.pulumi.com"
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	startRegex := regexp.MustCompile(permalinkSearchStr)
 	permalink, err := GetPermalink(res.StdOut)
 	assert.Nil(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
@@ -287,12 +292,13 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -300,7 +306,6 @@ func TestNewStackLocalSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -394,12 +399,13 @@ func TestUpsertStackLocalSource(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
@@ -429,16 +435,12 @@ func TestUpsertStackLocalSource(t *testing.T) {
 func randomStackName() string {
 	b := make([]byte, 4)
 	_, err := cryptorand.Read(b)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "failed to generate random stack name")
 	return "test" + hex.EncodeToString(b)
 }
 
 func TestNewStackRemoteSource(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
@@ -498,12 +500,13 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -511,7 +514,6 @@ func TestNewStackRemoteSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -533,10 +535,6 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 func TestUpsertStackRemoteSource(t *testing.T) {
 	t.Parallel()
-
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
 
 	ctx := context.Background()
 	pName := "go_remote_proj"
@@ -596,12 +594,13 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -609,7 +608,6 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -632,10 +630,6 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
-
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := randomStackName()
@@ -650,6 +644,9 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
@@ -706,12 +703,13 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -719,7 +717,6 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -742,10 +739,6 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	t.Parallel()
 
-	if runtime.GOOS == windows {
-		t.Skip("TODO[pulumi/pulumi#8646] update github.com/pulumi/test-repo to fix Go compilation on Windows")
-	}
-
 	ctx := context.Background()
 	pName := "go_remote_proj"
 	sName := randomStackName()
@@ -760,6 +753,9 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		},
 	}
 	binName := "examplesBinary"
+	if runtime.GOOS == "windows" {
+		binName = binName + ".exe"
+	}
 	repo := GitRepo{
 		URL:         "https://github.com/pulumi/test-repo.git",
 		ProjectPath: "goproj",
@@ -816,12 +812,13 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -829,7 +826,6 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -912,12 +908,13 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg := collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
@@ -925,7 +922,6 @@ func TestNewStackInlineSource(t *testing.T) {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -945,99 +941,105 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
-func TestUpsertStackInlineSource(t *testing.T) {
+// If not run with "-race", this test has little value over the prior test.
+func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	sName := randomStackName()
-	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	cfg := ConfigMap{
-		"bar": ConfigValue{
-			Value: "abc",
-		},
-		"buzz": ConfigValue{
-			Value:  "secret",
-			Secret: true,
-		},
+	for i := 0; i < 4; i++ {
+		// Verify that shared context doesn't affect result
+		ctx := context.Background()
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			t.Parallel()
+			sName := randomStackName()
+			stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+			cfg := ConfigMap{
+				"bar": ConfigValue{
+					Value: "abc",
+				},
+				"buzz": ConfigValue{
+					Value:  "secret",
+					Secret: true,
+				},
+			}
+			// initialize or select
+			s, err := UpsertStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+				c := config.New(ctx, "")
+				ctx.Export("exp_static", pulumi.String("foo"))
+				ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
+				ctx.Export("exp_secret", c.GetSecret("buzz"))
+				return nil
+			})
+			if err != nil {
+				t.Errorf("failed to initialize stack, err: %v", err)
+				t.FailNow()
+			}
+
+			t.Cleanup(func() {
+				// -- pulumi stack rm --
+				err = s.Workspace().RemoveStack(ctx, s.Name())
+				assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+			})
+
+			err = s.SetAllConfig(ctx, cfg)
+			if err != nil {
+				t.Errorf("failed to set config, err: %v", err)
+				t.FailNow()
+			}
+
+			// -- pulumi up --
+			res, err := s.Up(ctx)
+			if err != nil {
+				t.Errorf("up failed, err: %v", err)
+				t.FailNow()
+			}
+
+			assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+			assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+			assert.False(t, res.Outputs["exp_static"].Secret)
+			assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+			assert.False(t, res.Outputs["exp_cfg"].Secret)
+			assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+			assert.True(t, res.Outputs["exp_secret"].Secret)
+			assert.Equal(t, "update", res.Summary.Kind)
+			assert.Equal(t, "succeeded", res.Summary.Result)
+
+			// -- pulumi preview --
+
+			var previewEvents []events.EngineEvent
+			prevCh := make(chan events.EngineEvent)
+			wg := collectEvents(prevCh, &previewEvents)
+			prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
+			if err != nil {
+				t.Errorf("preview failed, err: %v", err)
+				t.FailNow()
+			}
+			wg.Wait()
+			assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
+			steps := countSteps(previewEvents)
+			assert.Equal(t, 1, steps)
+
+			// -- pulumi refresh --
+
+			ref, err := s.Refresh(ctx)
+			if err != nil {
+				t.Errorf("refresh failed, err: %v", err)
+				t.FailNow()
+			}
+			assert.Equal(t, "refresh", ref.Summary.Kind)
+			assert.Equal(t, "succeeded", ref.Summary.Result)
+
+			// -- pulumi destroy --
+
+			dRes, err := s.Destroy(ctx)
+			if err != nil {
+				t.Errorf("destroy failed, err: %v", err)
+				t.FailNow()
+			}
+
+			assert.Equal(t, "destroy", dRes.Summary.Kind)
+			assert.Equal(t, "succeeded", dRes.Summary.Result)
+		})
 	}
-
-	// initialize or select
-	s, err := UpsertStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		c := config.New(ctx, "")
-		ctx.Export("exp_static", pulumi.String("foo"))
-		ctx.Export("exp_cfg", pulumi.String(c.Get("bar")))
-		ctx.Export("exp_secret", c.GetSecret("buzz"))
-		return nil
-	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
-
-	defer func() {
-		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
-	}()
-
-	err = s.SetAllConfig(ctx, cfg)
-	if err != nil {
-		t.Errorf("failed to set config, err: %v", err)
-		t.FailNow()
-	}
-
-	// -- pulumi up --
-	res, err := s.Up(ctx)
-	if err != nil {
-		t.Errorf("up failed, err: %v", err)
-		t.FailNow()
-	}
-
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
-	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
-	assert.False(t, res.Outputs["exp_static"].Secret)
-	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
-	assert.False(t, res.Outputs["exp_cfg"].Secret)
-	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
-	assert.True(t, res.Outputs["exp_secret"].Secret)
-	assert.Equal(t, "update", res.Summary.Kind)
-	assert.Equal(t, "succeeded", res.Summary.Result)
-
-	// -- pulumi preview --
-
-	var previewEvents []events.EngineEvent
-	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
-	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
-	if err != nil {
-		t.Errorf("preview failed, err: %v", err)
-		t.FailNow()
-	}
-	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
-	steps := countSteps(previewEvents)
-	assert.Equal(t, 1, steps)
-
-	// -- pulumi refresh --
-
-	ref, err := s.Refresh(ctx)
-
-	if err != nil {
-		t.Errorf("refresh failed, err: %v", err)
-		t.FailNow()
-	}
-	assert.Equal(t, "refresh", ref.Summary.Kind)
-	assert.Equal(t, "succeeded", ref.Summary.Result)
-
-	// -- pulumi destroy --
-
-	dRes, err := s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	assert.Equal(t, "destroy", dRes.Summary.Kind)
-	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
 func TestNestedStackFails(t *testing.T) {
@@ -1104,6 +1106,66 @@ func TestNestedStackFails(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestErrorProgressStreams(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	pName := "inline_error_progress_streams"
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+
+	logLevel := uint(4)
+	debugOptions := debug.LoggingOptions{
+		LogToStdErr: true,
+		LogLevel:    &logLevel,
+	}
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err := s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	// -- pulumi up --
+	var upErr bytes.Buffer
+	upRes, err := s.Up(ctx, optup.ErrorProgressStreams(&upErr), optup.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, upErr.String(), upRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, upRes.StdErr)
+
+	// -- pulumi refresh --
+	var refErr bytes.Buffer
+	refRes, err := s.Refresh(ctx, optrefresh.ErrorProgressStreams(&refErr), optrefresh.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, refErr.String(), refRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, refRes.StdErr)
+
+	// -- pulumi destroy --
+	var desErr bytes.Buffer
+	desRes, err := s.Destroy(ctx, optdestroy.ErrorProgressStreams(&desErr), optdestroy.DebugLogging(debugOptions))
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, desErr.String(), desRes.StdErr, "expected stderr writers to contain same contents")
+	assert.NotEmpty(t, desRes.StdErr)
+}
+
 func TestProgressStreams(t *testing.T) {
 	t.Parallel()
 
@@ -1159,7 +1221,6 @@ func TestProgressStreams(t *testing.T) {
 	// -- pulumi refresh --
 	var refOut bytes.Buffer
 	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(&refOut))
-
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1286,6 +1347,284 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
 }
 
+func TestConfigWithOptions(t *testing.T) {
+	t.Parallel()
+
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+	// test backward compatibility
+	err = s.SetConfigWithOptions(ctx, "key1", ConfigValue{"value1", false}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test new flag without subPath
+	err = s.SetConfigWithOptions(ctx, "key2", ConfigValue{"value2", false}, &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test new flag with subPath
+	err = s.SetConfigWithOptions(ctx, "key3.subKey1", ConfigValue{"value3", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test old method and key as secret
+	err = s.SetConfigWithOptions(ctx, "key4", ConfigValue{"value4", true}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath and key as secret
+	err = s.SetConfigWithOptions(ctx, "key5.subKey1", ConfigValue{"value5", true}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	err = s.SetConfigWithOptions(ctx, "key6.subKey1", ConfigValue{"value6", true}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	err = s.SetConfigWithOptions(ctx, "key7.subKey1", ConfigValue{"value7", true}, &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath
+	err = s.SetConfigWithOptions(ctx, "key7.subKey2", ConfigValue{"value8", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test subPath
+	err = s.SetConfigWithOptions(ctx, "key7.subKey3", ConfigValue{"value9", false}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test backward compatibility
+	cv1, err := s.GetConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test new flag without subPath
+	cv2, err := s.GetConfigWithOptions(ctx, "key2", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test new flag with subPath
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test old method and key as secret
+	cv4, err := s.GetConfigWithOptions(ctx, "key4", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test subPath and key as secret
+	cv5, err := s.GetConfigWithOptions(ctx, "key5.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test string with dots
+	cv6, err := s.GetConfigWithOptions(ctx, "key6.subKey1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test string with dots
+	cv7, err := s.GetConfigWithOptions(ctx, "key7.subKey1", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	cv8, err := s.GetConfigWithOptions(ctx, "key7.subKey2", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+	// test string with dots
+	cv9, err := s.GetConfigWithOptions(ctx, "key7.subKey3", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equalf(t, "value1", cv1.Value, "wrong key")
+	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
+	assert.Equalf(t, "value2", cv2.Value, "wrong key")
+	assert.Equalf(t, false, cv2.Secret, "key should not be secret")
+	assert.Equalf(t, "value3", cv3.Value, "wrong key")
+	assert.Equalf(t, false, cv3.Secret, "sub-key should not be secret")
+	assert.Equalf(t, "value4", cv4.Value, "wrong key")
+	assert.Equalf(t, true, cv4.Secret, "key should be secret")
+	assert.Equalf(t, "value5", cv5.Value, "wrong key")
+	assert.Equalf(t, true, cv5.Secret, "key should be secret")
+	assert.Equalf(t, "value6", cv6.Value, "wrong key")
+	assert.Equalf(t, true, cv6.Secret, "key should be secret")
+	assert.Equalf(t, "value7", cv7.Value, "wrong key")
+	assert.Equalf(t, true, cv7.Secret, "key should be secret")
+	assert.Equalf(t, "value8", cv8.Value, "wrong key")
+	assert.Equalf(t, false, cv8.Secret, "key should be secret")
+	assert.Equalf(t, "value9", cv9.Value, "wrong key")
+	assert.Equalf(t, false, cv9.Secret, "key should be secret")
+
+	err = s.RemoveConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key2", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key3", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key4", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key5", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key6.subKey1", &ConfigOptions{Path: false})
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = s.RemoveConfigWithOptions(ctx, "key7.subKey1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t, "{\"subKey2\":\"value8\",\"subKey3\":\"value9\"}",
+		cfg["testproj:key7"].Value, "subKey2 and subKey3 have been removed")
+}
+
+func TestConfigAllWithOptions(t *testing.T) {
+	t.Parallel()
+
+	if getTestOrg() != pulumiTestOrg {
+		return
+	}
+	ctx := context.Background()
+	sName := randomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetAllConfigWithOptions(ctx, ConfigMap{
+		"key1": ConfigValue{
+			Value:  "value1",
+			Secret: false,
+		},
+		"key2": ConfigValue{
+			Value:  "value2",
+			Secret: true,
+		},
+		"key3.subKey1": ConfigValue{
+			Value:  "value3",
+			Secret: false,
+		},
+		"key3.subKey2": ConfigValue{
+			Value:  "value4",
+			Secret: false,
+		},
+		"key3.subKey3": ConfigValue{
+			Value:  "value5",
+			Secret: false,
+		},
+		"key4.subKey1": ConfigValue{
+			Value:  "value6",
+			Secret: true,
+		},
+	}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the first item
+	cv1, err := s.GetConfigWithOptions(ctx, "key1", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the second item
+	cv2, err := s.GetConfigWithOptions(ctx, "key2", nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv3, err := s.GetConfigWithOptions(ctx, "key3.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the third item
+	cv4, err := s.GetConfigWithOptions(ctx, "key3.subKey2", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// test the SetAllConfigWithOptions configured the fourth item
+	cv5, err := s.GetConfigWithOptions(ctx, "key4.subKey1", &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equalf(t, "value1", cv1.Value, "wrong key")
+	assert.Equalf(t, false, cv1.Secret, "key should not be secret")
+	assert.Equalf(t, "value2", cv2.Value, "wrong key")
+	assert.Equalf(t, true, cv2.Secret, "key should be secret")
+	assert.Equalf(t, "value3", cv3.Value, "wrong key")
+	assert.Equalf(t, false, cv3.Secret, "key should not be secret")
+	assert.Equalf(t, "value4", cv4.Value, "wrong key")
+	assert.Equalf(t, false, cv4.Secret, "key should not be secret")
+	assert.Equalf(t, "value6", cv5.Value, "wrong key")
+	assert.Equalf(t, true, cv5.Secret, "key should be secret")
+
+	err = s.RemoveAllConfigWithOptions(ctx,
+		[]string{"key1", "key2", "key3.subKey1", "key3.subKey2", "key4"}, &ConfigOptions{Path: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	cfg, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equalf(t,
+		"{\"subKey3\":\"value5\"}", cfg["testproj:key3"].Value, "key subKey3 has been removed")
+}
+
 func TestNestedConfig(t *testing.T) {
 	t.Parallel()
 
@@ -1351,6 +1690,56 @@ func TestNestedConfig(t *testing.T) {
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
 }
 
+func TestTagFunctions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+	ws := s.Workspace()
+
+	// -- lists tag values --
+	tags, err := ws.ListTags(ctx, stackName)
+	if err != nil {
+		t.Errorf("failed to list tags, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, pName, tags["pulumi:project"])
+
+	// -- sets tag values --
+	err = ws.SetTag(ctx, stackName, "foo", "bar")
+	if err != nil {
+		t.Errorf("set tag failed, err: %v", err)
+		t.FailNow()
+	}
+
+	// -- gets a single tag value --
+	tag, err := ws.GetTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("get tag failed, err: %v", err)
+		t.FailNow()
+	}
+	assert.Equal(t, "bar", tag)
+
+	// -- removes tag value --
+	err = ws.RemoveTag(ctx, stackName, "foo")
+	if err != nil {
+		t.Errorf("remove tag failed, err: %v", err)
+		t.FailNow()
+	}
+	tags, _ = ws.ListTags(ctx, stackName)
+	assert.NotContains(t, tags, "foo", "failed to remove tag")
+
+	err = s.Workspace().RemoveStack(ctx, stackName)
+	assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+}
+
 //nolint:paralleltest // mutates environment variables
 func TestStructuredOutput(t *testing.T) {
 	ctx := context.Background()
@@ -1407,12 +1796,13 @@ func TestStructuredOutput(t *testing.T) {
 	// -- pulumi up --
 	var upEvents []events.EngineEvent
 	upCh := make(chan events.EngineEvent)
-	go collectEvents(upCh, &upEvents)
+	wg := collectEvents(upCh, &upEvents)
 	res, err := s.Up(ctx, optup.EventStreams(upCh))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 
 	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
@@ -1428,12 +1818,13 @@ func TestStructuredOutput(t *testing.T) {
 	// -- pulumi preview --
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg = collectEvents(prevCh, &previewEvents)
 	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 
 	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
@@ -1443,8 +1834,9 @@ func TestStructuredOutput(t *testing.T) {
 	// -- pulumi refresh --
 	var refreshEvents []events.EngineEvent
 	refCh := make(chan events.EngineEvent)
-	go collectEvents(refCh, &refreshEvents)
+	wg = collectEvents(refCh, &refreshEvents)
 	ref, err := s.Refresh(ctx, optrefresh.EventStreams(refCh))
+	wg.Wait()
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1457,12 +1849,13 @@ func TestStructuredOutput(t *testing.T) {
 	// -- pulumi destroy --
 	var destroyEvents []events.EngineEvent
 	desCh := make(chan events.EngineEvent)
-	go collectEvents(desCh, &destroyEvents)
+	wg = collectEvents(desCh, &destroyEvents)
 	dRes, err := s.Destroy(ctx, optdestroy.EventStreams(desCh))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
@@ -1592,9 +1985,11 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
-const PARSE = `Unable to parse`
-const MAJOR = `Major version mismatch.`
-const MINIMUM = `Minimum version requirement failed.`
+const (
+	PARSE   = `Unable to parse`
+	MAJOR   = `Major version mismatch.`
+	MINIMUM = `Minimum version requirement failed.`
+)
 
 var minVersionTests = []struct {
 	name           string
@@ -1757,7 +2152,8 @@ func TestSaveStackSettings(t *testing.T) {
 	// first load settings for created stack
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
-	stackConfig.SecretsProvider = "passphrase"
+	// Set the config value and save it
+	stackConfig.Config[resourceConfig.MustMakeKey(pName, "bar")] = resourceConfig.NewValue("baz")
 	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi up --
@@ -1769,10 +2165,15 @@ func TestSaveStackSettings(t *testing.T) {
 	}
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+	assert.Equal(t, "baz", res.Outputs["exp_cfg"].Value)
 
 	reloaded, err := s.workspace.StackSettings(ctx, stackName)
 	assert.NoError(t, err)
-	assert.Equal(t, stackConfig, reloaded)
+	// Check each field because if we check the whole struct it picks up the 'raw' field which does differ.
+	assert.Equal(t, stackConfig.SecretsProvider, reloaded.SecretsProvider)
+	assert.Equal(t, stackConfig.EncryptedKey, reloaded.EncryptedKey)
+	assert.Equal(t, stackConfig.EncryptionSalt, reloaded.EncryptionSalt)
+	assert.Equal(t, stackConfig.Config, reloaded.Config)
 
 	// -- pulumi destroy --
 
@@ -2195,24 +2596,61 @@ func TestConfigSecretWarnings(t *testing.T) {
 	// -- pulumi up --
 	var upEvents []events.EngineEvent
 	upCh := make(chan events.EngineEvent)
-	go collectEvents(upCh, &upEvents)
+	wg := collectEvents(upCh, &upEvents)
 	_, err = s.Up(ctx, optup.EventStreams(upCh))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	validate(upEvents)
 
 	// -- pulumi preview --
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
-	go collectEvents(prevCh, &previewEvents)
+	wg = collectEvents(prevCh, &previewEvents)
 	_, err = s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+	wg.Wait()
 	validate(previewEvents)
+}
+
+func TestWhoAmIDetailed(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, randomStackName())
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetails(ctx)
+	if err != nil {
+		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
+		t.FailNow()
+	}
+	assert.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
+	assert.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
+
+	// cleanup
+	_, err = s.Destroy(ctx)
+	if err != nil {
+		t.Errorf("destroy failed during cleanup, err: %v", err)
+		t.FailNow()
+	}
+	err = s.Workspace().RemoveStack(ctx, s.Name())
+	if err != nil {
+		t.Errorf("failed to remove stack during cleanup. Resources have leaked, err: %v", err)
+		t.FailNow()
+	}
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
@@ -2444,12 +2882,14 @@ func containsSummary(log []events.EngineEvent) bool {
 	return hasSummary
 }
 
-func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) {
-	for {
-		event, ok := <-eventChannel
-		if !ok {
-			return
+func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go (func() {
+		for event := range eventChannel {
+			*events = append(*events, event)
 		}
-		*events = append(*events, event)
-	}
+		wg.Done()
+	})()
+	return &wg
 }

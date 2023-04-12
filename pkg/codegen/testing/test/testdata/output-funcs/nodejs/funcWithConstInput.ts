@@ -9,11 +9,8 @@ import * as utilities from "./utilities";
  */
 export function funcWithConstInput(args?: FuncWithConstInputArgs, opts?: pulumi.InvokeOptions): Promise<void> {
     args = args || {};
-    if (!opts) {
-        opts = {}
-    }
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithConstInput", {
         "plainInput": args.plainInput,
     }, opts);

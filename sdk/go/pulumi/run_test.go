@@ -1,4 +1,3 @@
-//nolint: goconst
 package pulumi
 
 import (
@@ -9,10 +8,28 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
+
+// WithDryRun is an internal, test-only option
+// that controls whether a Context is in dryRun mode.
+func WithDryRun(dryRun bool) RunOption {
+	return func(r *RunInfo) {
+		r.DryRun = dryRun
+	}
+}
+
+// WrapResourceMonitorClient is an internal, test-only option
+// that wraps the ResourceMonitorClient used by Context.
+func WrapResourceMonitorClient(
+	wrap func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient,
+) RunOption {
+	return func(ri *RunInfo) {
+		ri.wrapResourceMonitorClient = wrap
+	}
+}
 
 type testMonitor struct {
 	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
@@ -207,7 +224,6 @@ func TestReadResource(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			assert.Equal(t, "test:resource:type", args.TypeToken)
 			assert.Equal(t, "resA", args.Name)
 			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -315,11 +331,9 @@ type testInstanceResource struct {
 	CustomResourceState
 }
 
-type testInstanceResourceArgs struct {
-}
+type testInstanceResourceArgs struct{}
 
-type testInstanceResourceInputs struct {
-}
+type testInstanceResourceInputs struct{}
 
 func (*testInstanceResourceInputs) ElementType() reflect.Type {
 	return reflect.TypeOf((*testInstanceResourceArgs)(nil)).Elem()
@@ -357,7 +371,8 @@ func (o testInstanceResourceOutput) ToTestInstanceResourceOutput() testInstanceR
 }
 
 func (o testInstanceResourceOutput) ToTestInstanceResourceOutputWithContext(
-	ctx context.Context) testInstanceResourceOutput {
+	ctx context.Context,
+) testInstanceResourceOutput {
 	return o
 }
 
@@ -387,7 +402,7 @@ func (module) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
 		var instance testInstanceResource
 		return &instance, nil
 	default:
-		return nil, errors.Errorf("unknown resource type %s", typ)
+		return nil, fmt.Errorf("unknown resource type %s", typ)
 	}
 }
 
@@ -404,14 +419,13 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			switch args.TypeToken {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
 			case "pkg:index:MyCustom":
 				return args.Name + "_id", args.Inputs, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
 		},
 	}
@@ -459,7 +473,6 @@ func TestRemoteComponent(t *testing.T) {
 
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-
 			switch args.TypeToken {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
@@ -470,7 +483,7 @@ func TestRemoteComponent(t *testing.T) {
 					"outprop": outprop,
 				}, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
 		},
 	}
@@ -909,7 +922,7 @@ func TestExportResource(t *testing.T) {
 		},
 	}
 
-	var any Output
+	var anyout Output
 	err := RunErr(func(ctx *Context) error {
 		var res testResource2
 		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
@@ -917,14 +930,14 @@ func TestExportResource(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		any = Any(&res)
+		anyout = Any(&res)
 
-		ctx.Export("any", any)
+		ctx.Export("any", anyout)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	state := any.getState()
+	state := anyout.getState()
 	assert.NotNil(t, state.value)
 }
 
@@ -994,9 +1007,8 @@ func TestResourceInput(t *testing.T) {
 					"outprop": resource.NewStringProperty("bar"),
 				}, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
+				return "", nil, fmt.Errorf("unknown resource %s", args.TypeToken)
 			}
-
 		},
 	}
 

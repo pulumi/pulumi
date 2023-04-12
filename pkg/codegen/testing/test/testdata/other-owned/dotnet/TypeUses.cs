@@ -11,7 +11,7 @@ using Pulumi;
 namespace Other.Example
 {
     [ExampleResourceType("example::TypeUses")]
-    public partial class TypeUses : Pulumi.CustomResource
+    public partial class TypeUses : global::Pulumi.CustomResource
     {
         [Output("bar")]
         public Output<Outputs.SomeOtherObject?> Bar { get; private set; } = null!;
@@ -66,7 +66,7 @@ namespace Other.Example
         }
     }
 
-    public sealed class TypeUsesArgs : Pulumi.ResourceArgs
+    public sealed class TypeUsesArgs : global::Pulumi.ResourceArgs
     {
         [Input("bar")]
         public Input<Inputs.SomeOtherObjectArgs>? Bar { get; set; }
@@ -80,5 +80,6 @@ namespace Other.Example
         public TypeUsesArgs()
         {
         }
+        public static new TypeUsesArgs Empty => new TypeUsesArgs();
     }
 }

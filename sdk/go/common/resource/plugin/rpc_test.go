@@ -28,7 +28,7 @@ import (
 
 func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v interface{}) {
 	marshaled, err := MarshalPropertyValue(key, resource.NewPropertyValue(v), MarshalOptions{})
-	contract.Assert(err == nil)
+	contract.Assertf(err == nil, "error marshaling property value")
 	s.GetStructValue().Fields[k] = marshaled
 }
 
@@ -44,7 +44,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
 	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 	assert.Nil(t, err)
-	fmt.Printf("%v\n", assetProps)
+	t.Logf("%v", assetProps)
 	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Nil(t, err)
 	assert.True(t, assetValue.IsAsset())
@@ -235,7 +235,6 @@ func TestAssetReject(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, archValue)
 	}
-
 }
 
 func TestUnsupportedSecret(t *testing.T) {
@@ -285,7 +284,6 @@ func TestUnknownSig(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
 	assert.Error(t, err)
-
 }
 
 func TestSkipInternalKeys(t *testing.T) {
@@ -1653,10 +1651,10 @@ func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
 func walkValueSelfWithDescendants(
 	v *structpb.Value,
 	path string,
-	visit func(path string, v *structpb.Value) error) error {
-
+	visit func(path string, v *structpb.Value) error,
+) error {
 	if v == nil {
-		return fmt.Errorf("Bad *structpb.Value nil at %s", path)
+		return fmt.Errorf("bad *structpb.Value nil at %s", path)
 	}
 	err := visit(path, v)
 	if err != nil {
@@ -1688,7 +1686,7 @@ func walkValueSelfWithDescendants(
 	case *structpb.Value_NullValue:
 		return nil
 	default:
-		return fmt.Errorf("Bad *structpb.Value of unknown type at %s: %v", path, v)
+		return fmt.Errorf("bad *structpb.Value of unknown type at %s: %v", path, v)
 	}
 	return nil
 }

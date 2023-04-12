@@ -64,7 +64,8 @@ func (s *spiller) postVisit(x model.Expression) (model.Expression, hcl.Diagnosti
 }
 
 func (g *generator) rewriteSpills(
-	x model.Expression, spill spillFunc) (model.Expression, []*spillTemp, hcl.Diagnostics) {
+	x model.Expression, spill spillFunc,
+) (model.Expression, []*spillTemp, hcl.Diagnostics) {
 	spiller := &spiller{
 		spills: g.spills,
 		spill:  spill,

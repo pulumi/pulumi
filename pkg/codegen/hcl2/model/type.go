@@ -15,7 +15,10 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -36,12 +39,13 @@ func (k ConversionKind) Exists() bool {
 // Type represents a datatype in the Pulumi Schema. Types created by this package are identical if they are
 // equal values.
 type Type interface {
+	fmt.Stringer
 	Definition
 
 	Equals(other Type) bool
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
-	String() string
+	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
@@ -76,8 +80,8 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	conversionFromImpl func() (ConversionKind, lazyDiagnostics)) (ConversionKind, lazyDiagnostics) {
-
+	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
+) (ConversionKind, lazyDiagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
@@ -99,7 +103,7 @@ func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
-	contract.Assert(t0 != nil)
+	contract.Requiref(t0 != nil, "t0", "must not be nil")
 
 	// Normalize s.t. dynamic is always on the right.
 	if t0 == DynamicType {
@@ -129,8 +133,10 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		}
 
 		unified, conversionKind := unify()
-		contract.Assert(conversionKind >= conversionFrom)
-		contract.Assert(conversionKind >= conversionTo)
+		contract.Assertf(conversionKind >= conversionFrom,
+			"conversionKind (%v) < conversionFrom (%v)", conversionKind, conversionFrom)
+		contract.Assertf(conversionKind >= conversionTo,
+			"conversionKind (%v) < conversionTo (%v)", conversionKind, conversionTo)
 		return unified, conversionKind
 	}
 }

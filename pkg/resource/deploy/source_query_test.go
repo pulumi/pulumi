@@ -154,8 +154,8 @@ func TestQueryResourceMonitor_UnsupportedOperations(t *testing.T) {
 //
 
 func newTestQuerySource(mon SourceResourceMonitor,
-	runLangPlugin func(*querySource) result.Result) (*querySource, context.CancelFunc) {
-
+	runLangPlugin func(*querySource) result.Result,
+) (*querySource, context.CancelFunc) {
 	cancel, cancelFunc := context.WithCancel(context.Background())
 
 	return &querySource{
@@ -179,32 +179,38 @@ var _ SourceResourceMonitor = (*mockQueryResmon)(nil)
 func (rm *mockQueryResmon) Address() string {
 	panic("not implemented")
 }
+
 func (rm *mockQueryResmon) Cancel() error {
 	rm.cancelled = true
 	return nil
 }
+
 func (rm *mockQueryResmon) Invoke(ctx context.Context,
-	req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
-
+	req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	panic("not implemented")
 }
+
 func (rm *mockQueryResmon) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-
+	req *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
 	panic("not implemented")
 }
+
 func (rm *mockQueryResmon) ReadResource(ctx context.Context,
-	req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
-
+	req *pulumirpc.ReadResourceRequest,
+) (*pulumirpc.ReadResourceResponse, error) {
 	panic("not implemented")
 }
+
 func (rm *mockQueryResmon) RegisterResource(ctx context.Context,
-	req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error) {
-
+	req *pulumirpc.RegisterResourceRequest,
+) (*pulumirpc.RegisterResourceResponse, error) {
 	panic("not implemented")
 }
-func (rm *mockQueryResmon) RegisterResourceOutputs(ctx context.Context,
-	req *pulumirpc.RegisterResourceOutputsRequest) (*pbempty.Empty, error) {
 
+func (rm *mockQueryResmon) RegisterResourceOutputs(ctx context.Context,
+	req *pulumirpc.RegisterResourceOutputsRequest,
+) (*pbempty.Empty, error) {
 	panic("not implemented")
 }

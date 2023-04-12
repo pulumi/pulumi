@@ -15,10 +15,10 @@
 package result
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // Result represents the result of a computation that can fail. The Result type revolves around two
@@ -33,12 +33,12 @@ import (
 // Result is an interface so that it can be nullable. A function returning a pointer Result has the
 // following semantics:
 //
-//  * If the result is `nil`, the caller should proceed. The callee believes
-//  that the overarching plan can still continue, even if it logged
-//  diagnostics.
+//   - If the result is `nil`, the caller should proceed. The callee believes
+//     that the overarching plan can still continue, even if it logged
+//     diagnostics.
 //
-//  * If the result is non-nil, the caller should not proceed.  Most often, the
-//  caller should return this Result to its caller.
+//   - If the result is non-nil, the caller should not proceed.  Most often, the
+//     caller should return this Result to its caller.
 //
 // At the highest level, when a function wishes to return only an `error`, the `Error` member
 // function can be used to turn a nullable `Result` into an `error`.
@@ -59,6 +59,7 @@ func (r *simpleResult) String() string {
 	}
 	return fmt.Sprintf("Error: %s", r.err)
 }
+
 func (r *simpleResult) GoString() string {
 	if r.err == nil {
 		return "&simpleResult{}"
@@ -75,7 +76,7 @@ func Bail() Result {
 // Errorf produces a Result that represents an internal Pulumi error,
 // constructed from the given format string and arguments.
 func Errorf(msg string, args ...interface{}) Result {
-	err := errors.Errorf(msg, args...)
+	err := fmt.Errorf(msg, args...)
 	return FromError(err)
 }
 

@@ -7,12 +7,9 @@ import * as utilities from "./utilities";
 /**
  * n/a
  */
-export function funcWithEmptyOutputs(args: FuncWithEmptyOutputsArgs, opts?: pulumi.InvokeOptions): Promise<FuncWithEmptyOutputsResult> {
-    if (!opts) {
-        opts = {}
-    }
+export function funcWithEmptyOutputs(args: FuncWithEmptyOutputsArgs, opts?: pulumi.InvokeOptions): Promise<void> {
 
-    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+    opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invoke("mypkg::funcWithEmptyOutputs", {
         "name": args.name,
     }, opts);
@@ -23,18 +20,4 @@ export interface FuncWithEmptyOutputsArgs {
      * The Name of the FeatureGroup.
      */
     name: string;
-}
-
-export interface FuncWithEmptyOutputsResult {
-}
-
-export function funcWithEmptyOutputsOutput(args: FuncWithEmptyOutputsOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<FuncWithEmptyOutputsResult> {
-    return pulumi.output(args).apply(a => funcWithEmptyOutputs(a, opts))
-}
-
-export interface FuncWithEmptyOutputsOutputArgs {
-    /**
-     * The Name of the FeatureGroup.
-     */
-    name: pulumi.Input<string>;
 }

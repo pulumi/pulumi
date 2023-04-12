@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -24,13 +25,16 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -46,23 +50,24 @@ type langhost struct {
 
 // NewLanguageRuntime binds to a language's runtime plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewLanguageRuntime(host Host, ctx *Context, runtime string,
-	options map[string]interface{}) (LanguageRuntime, error) {
-
-	_, path, err := workspace.GetPluginPath(
-		workspace.LanguagePlugin, strings.Replace(runtime, tokens.QNameDelimiter, "_", -1), nil)
+func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
+	options map[string]interface{},
+) (LanguageRuntime, error) {
+	path, err := workspace.GetPluginPath(
+		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
 	}
 
-	contract.Assert(path != "")
+	contract.Assertf(path != "", "unexpected empty path for language plugin %s", runtime)
 
-	args, err := buildArgsForNewPlugin(host, ctx, options)
+	args, err := buildArgsForNewPlugin(host, root, options)
 	if err != nil {
 		return nil, err
 	}
 
-	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
+	plug, err := newPlugin(ctx, pwd, path, runtime,
+		workspace.LanguagePlugin, args, nil /*env*/, langRuntimePluginDialOptions(ctx, runtime))
 	if err != nil {
 		return nil, err
 	}
@@ -76,22 +81,39 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	}, nil
 }
 
-func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
-	root, err := filepath.Abs(ctx.Root)
+func langRuntimePluginDialOptions(ctx *Context, runtime string) []grpc.DialOption {
+	dialOpts := append(
+		rpcutil.OpenTracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+
+	if ctx.DialOptions != nil {
+		metadata := map[string]interface{}{
+			"mode": "client",
+			"kind": "language",
+		}
+		if runtime != "" {
+			metadata["runtime"] = runtime
+		}
+		dialOpts = append(dialOpts, ctx.DialOptions(metadata)...)
+	}
+
+	return dialOpts
+}
+
+func buildArgsForNewPlugin(host Host, root string, options map[string]interface{}) ([]string, error) {
+	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
-	var args []string
+	args := make([]string, 0, len(options))
 
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
 
 	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
-
-	if cmdutil.IsTracingEnabled() {
-		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
-	}
 
 	// NOTE: positional argument for the server addresss must come last
 	args = append(args, host.ServerAddr())
@@ -110,7 +132,7 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 func (h *langhost) Runtime() string { return h.runtime }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, error) {
+func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error) {
 	proj := string(info.Proj.Name)
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) executing",
 		h.runtime, proj, info.Pwd, info.Program)
@@ -133,7 +155,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		return nil, rpcError
 	}
 
-	var results []workspace.PluginInfo
+	results := make([]workspace.PluginSpec, 0, len(resp.GetPlugins()))
 	for _, info := range resp.GetPlugins() {
 		var version *semver.Version
 		if v := info.GetVersion(); v != "" {
@@ -146,7 +168,7 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 		if !workspace.IsPluginKind(info.GetKind()) {
 			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
 		}
-		results = append(results, workspace.PluginInfo{
+		results = append(results, workspace.PluginSpec{
 			Name:              info.GetName(),
 			Kind:              workspace.PluginKind(info.GetKind()),
 			Version:           version,
@@ -157,7 +179,6 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(proj=%s,pwd=%s,program=%s) success: #versions=%d",
 		h.runtime, proj, info.Pwd, info.Program, len(results))
 	return results, nil
-
 }
 
 // Run executes a program in the language runtime for planning or deployment purposes.  If
@@ -187,6 +208,7 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 		DryRun:           info.DryRun,
 		QueryMode:        info.QueryMode,
 		Parallel:         int32(info.Parallel),
+		Organization:     info.Organization,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -247,7 +269,6 @@ func (h *langhost) InstallDependencies(directory string) error {
 		Directory:  directory,
 		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
 	})
-
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
@@ -286,5 +307,116 @@ func (h *langhost) InstallDependencies(directory string) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
 		h.runtime, directory)
 	return nil
+}
 
+func (h *langhost) About() (AboutInfo, error) {
+	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
+	resp, err := h.client.About(h.ctx.Request(), &pbempty.Empty{})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)
+
+		return AboutInfo{}, rpcError
+	}
+
+	result := AboutInfo{
+		Executable: resp.Executable,
+		Version:    resp.Version,
+		Metadata:   resp.Metadata,
+	}
+
+	logging.V(7).Infof("langhost[%v].About() success", h.runtime)
+	return result, nil
+}
+
+func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error) {
+	proj := string(info.Proj.Name)
+	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(proj=%s,pwd=%s,program=%s,transitiveDependencies=%t)",
+		h.runtime, proj, info.Pwd, info.Program, transitiveDependencies)
+
+	logging.V(7).Infof("%s executing", prefix)
+	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
+		Project:                proj,
+		Pwd:                    info.Pwd,
+		Program:                info.Program,
+		TransitiveDependencies: transitiveDependencies,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", prefix, rpcError)
+
+		return nil, rpcError
+	}
+
+	results := make([]DependencyInfo, 0, len(resp.GetDependencies()))
+	for _, dep := range resp.GetDependencies() {
+		var version semver.Version
+		if v := dep.Version; v != "" {
+			version, err = semver.ParseTolerant(v)
+			if err != nil {
+				return nil, errors.Wrapf(err, "illegal semver returned by language host: %s@%s", dep.Name, v)
+			}
+		}
+		results = append(results, DependencyInfo{
+			Name:    dep.Name,
+			Version: version,
+		})
+	}
+
+	logging.V(7).Infof("%s success: #versions=%d", prefix, len(results))
+	return results, nil
+}
+
+func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+	logging.V(7).Infof("langhost[%v].RunPlugin(pwd=%s,program=%s) executing",
+		h.runtime, info.Pwd, info.Program)
+
+	ctx, kill := context.WithCancel(h.ctx.Request())
+
+	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
+		Pwd:     info.Pwd,
+		Program: info.Program,
+		Args:    info.Args,
+		Env:     info.Env,
+	})
+	if err != nil {
+		// If there was an error starting the plugin kill the context for this request to ensure any lingering
+		// connection terminates.
+		kill()
+		return nil, nil, nil, err
+	}
+
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+
+	go func() {
+		for {
+			logging.V(10).Infoln("Waiting for plugin message")
+			msg, err := resp.Recv()
+			if err != nil {
+				contract.IgnoreError(outw.CloseWithError(err))
+				contract.IgnoreError(errw.CloseWithError(err))
+				break
+			}
+
+			logging.V(10).Infoln("Got plugin response: ", msg)
+
+			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
+				n, err := outw.Write(value.Stdout)
+				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
+				contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
+			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
+				n, err := errw.Write(value.Stderr)
+				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
+				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
+			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+				// If stdout and stderr are empty we've flushed and are returning the exit code
+				outw.Close()
+				errw.Close()
+				break
+			}
+		}
+	}()
+
+	return outr, errr, kill, nil
 }

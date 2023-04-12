@@ -16,13 +16,14 @@ package cmdutil
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime"
 	"strings"
 
 	"github.com/rivo/uniseg"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
@@ -59,8 +60,8 @@ func InteractiveTerminal() bool {
 	// if we're piping in stdin, we're clearly not interactive, as there's no way for a user to
 	// provide input.  If we're piping stdout, we also can't be interactive as there's no way for
 	// users to see prompts to interact with them.
-	return terminal.IsTerminal(int(os.Stdin.Fd())) &&
-		terminal.IsTerminal(int(os.Stdout.Fd()))
+	return term.IsTerminal(int(os.Stdin.Fd())) &&
+		term.IsTerminal(int(os.Stdout.Fd()))
 }
 
 // ReadConsole reads the console with the given prompt text.
@@ -123,11 +124,19 @@ type TableRow struct {
 	AdditionalInfo string   // an optional line of information to print after the row
 }
 
-// PrintTable prints a grid of rows and columns.  Width of columns is automatically determined by
+// FprintTable prints a grid of rows and columns.  Width of columns is automatically determined by
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
+func FprintTable(w io.Writer, table Table) error {
+	_, err := fmt.Fprint(w, table)
+	return err
+}
+
+// PrintTable prints the table to stdout.
+// See [FprintTable] for details.
 func PrintTable(table Table) {
-	fmt.Print(table)
+	_ = FprintTable(os.Stdout, table)
+	// Ignore error for stdout.
 }
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
@@ -152,6 +161,37 @@ func MeasureText(text string) int {
 	return uniseg.GraphemeClusterCount(clean)
 }
 
+// normalizedRows returns the rows of a table in normalized form.
+//
+// A row is considered normalized if and only if it has no new lines in any of its fields.
+func (table *Table) normalizedRows() []TableRow {
+	rows := make([]TableRow, 0, len(table.Rows))
+	for _, row := range table.Rows {
+		info := row.AdditionalInfo
+		buckets := make([][]string, len(row.Columns))
+		maxLines := 0
+		for i, column := range row.Columns {
+			buckets[i] = strings.Split(column, "\n")
+			maxLines = max(maxLines, len(buckets[i]))
+		}
+		row := []TableRow{}
+		for i := 0; i < maxLines; i++ {
+			part := TableRow{}
+			for _, b := range buckets {
+				if i < len(b) {
+					part.Columns = append(part.Columns, b[i])
+				} else {
+					part.Columns = append(part.Columns, "")
+				}
+			}
+			row = append(row, part)
+		}
+		row[len(row)-1].AdditionalInfo = info
+		rows = append(rows, row...)
+	}
+	return rows
+}
+
 func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
@@ -163,7 +203,7 @@ func (table *Table) ToStringWithGap(columnGap string) string {
 		Columns: table.Headers,
 	}}
 
-	allRows = append(allRows, table.Rows...)
+	allRows = append(allRows, table.normalizedRows()...)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns

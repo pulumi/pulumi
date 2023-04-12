@@ -6,7 +6,7 @@ import copy
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Mapping, Optional, Sequence, Union, overload, Awaitable
 from . import _utilities
 
 __all__ = [
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 def func_with_const_input(plain_input: Optional[str] = None,
-                          opts: Optional[pulumi.InvokeOptions] = None):
+                          opts: Optional[pulumi.InvokeOptions] = None) -> Awaitable[None]:
     """
     Codegen demo with const inputs
     """

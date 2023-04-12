@@ -16,18 +16,18 @@ namespace Pulumi.Myedgeorder
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Task<ListConfigurationsResult> InvokeAsync(ListConfigurationsArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsArgs(), options.WithDefaults());
 
         /// <summary>
         /// The list of configurations.
         /// API Version: 2020-12-01-preview.
         /// </summary>
         public static Output<ListConfigurationsResult> Invoke(ListConfigurationsInvokeArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.Invoke<ListConfigurationsResult>("myedgeorder::listConfigurations", args ?? new ListConfigurationsInvokeArgs(), options.WithDefaults());
     }
 
 
-    public sealed class ListConfigurationsArgs : Pulumi.InvokeArgs
+    public sealed class ListConfigurationsArgs : global::Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
         private List<Inputs.ConfigurationFilters>? _configurationFilters;
@@ -56,9 +56,10 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsArgs()
         {
         }
+        public static new ListConfigurationsArgs Empty => new ListConfigurationsArgs();
     }
 
-    public sealed class ListConfigurationsInvokeArgs : Pulumi.InvokeArgs
+    public sealed class ListConfigurationsInvokeArgs : global::Pulumi.InvokeArgs
     {
         [Input("configurationFilters", required: true)]
         private InputList<Inputs.ConfigurationFiltersArgs>? _configurationFilters;
@@ -87,6 +88,7 @@ namespace Pulumi.Myedgeorder
         public ListConfigurationsInvokeArgs()
         {
         }
+        public static new ListConfigurationsInvokeArgs Empty => new ListConfigurationsInvokeArgs();
     }
 
 

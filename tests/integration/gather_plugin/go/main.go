@@ -1,3 +1,6 @@
+//go:build !all
+// +build !all
+
 package main
 
 import (
@@ -11,13 +14,13 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		r, err := NewRandom(ctx, "default", &RandomArgs{
 			Length: pulumi.Int(10),
-		}, pulumi.PluginDownloadURL("get.com"))
+		}, pulumi.PluginDownloadURL("get.example.test"))
 		if err != nil {
 			return err
 		}
 
 		provider, err := NewProvider(ctx, "explicit",
-			pulumi.PluginDownloadURL("get.pulumi/test/providers"))
+			pulumi.PluginDownloadURL("get.pulumi.test/providers"))
 		e, err := NewRandom(ctx, "explicit", &RandomArgs{
 			Length: pulumi.Int(8),
 		}, pulumi.Provider(provider))
@@ -35,7 +38,8 @@ type Random struct {
 }
 
 func NewProvider(ctx *pulumi.Context, name string,
-	opts ...pulumi.ResourceOption) (pulumi.ProviderResource, error) {
+	opts ...pulumi.ResourceOption,
+) (pulumi.ProviderResource, error) {
 	provider := Provider{}
 	err := ctx.RegisterResource("pulumi:providers:testprovider",
 		"provider", nil, &provider, opts...)
@@ -50,7 +54,8 @@ type Provider struct {
 }
 
 func NewRandom(ctx *pulumi.Context,
-	name string, args *RandomArgs, opts ...pulumi.ResourceOption) (*Random, error) {
+	name string, args *RandomArgs, opts ...pulumi.ResourceOption,
+) (*Random, error) {
 	if args == nil || args.Length == nil {
 		return nil, errors.New("missing required argument 'Length'")
 	}

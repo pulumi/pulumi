@@ -71,7 +71,7 @@ function getAllLeafStrings(objectOrPath: SubExports, opts?: RequireOpts): string
             continue;
         }
         const leaves = getAllLeafStrings(value);
-        if (leaves === []) {
+        if (leaves.length === 0) {
             // if there's an environment where this export does not work,
             // don't suggest requires from this match as a more preferable path may
             // match this file.

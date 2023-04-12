@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,8 +38,8 @@ type QueryOptions struct {
 }
 
 func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
-	contract.Require(q != nil, "update")
-	contract.Require(ctx != nil, "ctx")
+	contract.Requiref(q != nil, "update", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
@@ -68,10 +68,10 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	statusDiag := newEventSink(emitter, true)
 
 	proj := q.GetProject()
-	contract.Assert(proj != nil)
+	contract.Assertf(proj != nil, "query project cannot be nil")
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
-		opts.Host, nil, diag, statusDiag, false, tracingSpan)
+		opts.Host, diag, statusDiag, false, tracingSpan, nil)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -90,8 +90,8 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 }
 
 func newQuerySource(cancel context.Context, client deploy.BackendClient, q QueryInfo,
-	opts QueryOptions) (deploy.QuerySource, error) {
-
+	opts QueryOptions,
+) (deploy.QuerySource, error) {
 	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
 		nil, opts.plugctx, false /*returnInstallErrors*/)
 	if err != nil {

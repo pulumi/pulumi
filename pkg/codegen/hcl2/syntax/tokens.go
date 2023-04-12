@@ -262,12 +262,8 @@ func (t Token) Format(f fmt.State, c rune) {
 
 func (t Token) AllTrivia() TriviaList {
 	result := make(TriviaList, len(t.LeadingTrivia)+len(t.TrailingTrivia))
-	for i, trivia := range t.LeadingTrivia {
-		result[i] = trivia
-	}
-	for i, trivia := range t.TrailingTrivia {
-		result[len(t.LeadingTrivia)+i] = trivia
-	}
+	copy(result, t.LeadingTrivia)
+	copy(result[len(t.LeadingTrivia):], t.TrailingTrivia)
 	return result
 }
 
@@ -911,7 +907,6 @@ func NewObjectConsItemTokens(last bool) ObjectConsItemTokens {
 			Raw:            newRawToken(hclsyntax.TokenComma),
 			TrailingTrivia: TriviaList{NewWhitespace('\n')},
 		}
-
 	}
 	return ObjectConsItemTokens{
 		Equals: Token{

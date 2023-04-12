@@ -92,7 +92,8 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
 func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
-	opts MarshalOptions) (*structpb.Value, error) {
+	opts MarshalOptions,
+) (*structpb.Value, error) {
 	if v.IsNull() {
 		return MarshalNull(opts), nil
 	} else if v.IsBool() {
@@ -287,8 +288,9 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
 func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
-	opts MarshalOptions) (*resource.PropertyValue, error) {
-	contract.Assert(v != nil)
+	opts MarshalOptions,
+) (*resource.PropertyValue, error) {
+	contract.Assertf(v != nil, "a value is required")
 
 	switch v.Kind.(type) {
 	case *structpb.Value_NullValue:
@@ -357,7 +359,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 			// This can only be false with a non-nil error if there is a signature match. We've already verified the
 			// signature.
-			contract.Assert(isasset)
+			contract.Assertf(isasset, "value must be an asset")
 			if opts.ComputeAssetHashes {
 				if err = asset.EnsureHash(); err != nil {
 					return nil, errors.Wrapf(err, "failed to compute asset hash for %q", key)
@@ -375,7 +377,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 			// This can only be false with a non-nil error if there is a signature match. We've already verified the
 			// signature.
-			contract.Assert(isarchive)
+			contract.Assertf(isarchive, "value must be an archive")
 			if opts.ComputeAssetHashes {
 				if err = archive.EnsureHash(); err != nil {
 					return nil, errors.Wrapf(err, "failed to compute archive hash for %q", key)

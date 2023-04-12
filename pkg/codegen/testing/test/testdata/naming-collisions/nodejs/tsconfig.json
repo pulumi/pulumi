@@ -14,6 +14,10 @@
     },
     "files": [
         "index.ts",
+        "mainComponent.ts",
+        "mod/component.ts",
+        "mod/component2.ts",
+        "mod/index.ts",
         "provider.ts",
         "resource.ts",
         "resourceInput.ts",

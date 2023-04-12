@@ -8,6 +8,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+from . import config as _config
 from ._enums import *
 
 __all__ = ['ProviderArgs', 'Provider']
@@ -15,15 +16,19 @@ __all__ = ['ProviderArgs', 'Provider']
 @pulumi.input_type
 class ProviderArgs:
     def __init__(__self__, *,
-                 favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None):
+                 favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]] = None):
         """
         The set of arguments for constructing a Provider resource.
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
+        :param pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]] secret_sandwiches: Super duper secret sandwiches.
         """
         if favorite_color is None:
             favorite_color = _utilities.get_env('FAVE_COLOR')
         if favorite_color is not None:
             pulumi.set(__self__, "favorite_color", favorite_color)
+        if secret_sandwiches is not None:
+            pulumi.set(__self__, "secret_sandwiches", secret_sandwiches)
 
     @property
     @pulumi.getter(name="favoriteColor")
@@ -37,6 +42,18 @@ class ProviderArgs:
     def favorite_color(self, value: Optional[pulumi.Input[Union[str, 'Color']]]):
         pulumi.set(self, "favorite_color", value)
 
+    @property
+    @pulumi.getter(name="secretSandwiches")
+    def secret_sandwiches(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]]:
+        """
+        Super duper secret sandwiches.
+        """
+        return pulumi.get(self, "secret_sandwiches")
+
+    @secret_sandwiches.setter
+    def secret_sandwiches(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['_config.SandwichArgs']]]]):
+        pulumi.set(self, "secret_sandwiches", value)
+
 
 class Provider(pulumi.ProviderResource):
     @overload
@@ -44,12 +61,14 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
                  __props__=None):
         """
         Create a Configstation resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Union[str, 'Color']] favorite_color: this is a relaxed string enum which can also be set via env var
+        :param pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]] secret_sandwiches: Super duper secret sandwiches.
         """
         ...
     @overload
@@ -75,6 +94,7 @@ class Provider(pulumi.ProviderResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  favorite_color: Optional[pulumi.Input[Union[str, 'Color']]] = None,
+                 secret_sandwiches: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['_config.SandwichArgs']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -87,6 +107,7 @@ class Provider(pulumi.ProviderResource):
             if favorite_color is None:
                 favorite_color = _utilities.get_env('FAVE_COLOR')
             __props__.__dict__["favorite_color"] = pulumi.Output.from_input(favorite_color).apply(pulumi.runtime.to_json) if favorite_color is not None else None
+            __props__.__dict__["secret_sandwiches"] = pulumi.Output.secret(secret_sandwiches).apply(pulumi.runtime.to_json) if secret_sandwiches is not None else None
         super(Provider, __self__).__init__(
             'configstation',
             resource_name,

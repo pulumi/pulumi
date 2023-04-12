@@ -347,7 +347,7 @@ Coming soon!
 
 
 
-## Create a SqlResourceSqlContainer Resource {#create}
+## Create SqlResourceSqlContainer Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -1086,7 +1086,7 @@ $ pulumi import azure-native:documentdb:SqlResourceSqlContainer containerName /s
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href="https://github.com/pulumi/pulumi-azure-native">https://github.com/pulumi/pulumi-azure-native</a></dd>
+	<dd><a href="https://github.com/pulumi/pulumi-azure-native">Azure Native pulumi/pulumi-azure-native</a></dd>
 	<dt>License</dt>
 	<dd>Apache-2.0</dd>
 </dl>

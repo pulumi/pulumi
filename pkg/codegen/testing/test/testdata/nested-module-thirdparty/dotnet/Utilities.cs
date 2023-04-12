@@ -74,7 +74,7 @@ namespace Pulumi.FooBar
         }
     }
 
-    internal sealed class FooBarResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class FooBarResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public FooBarResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {

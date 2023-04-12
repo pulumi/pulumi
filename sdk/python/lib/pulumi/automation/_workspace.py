@@ -14,12 +14,13 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, Mapping, Any, List, Optional
+from typing import Any, Callable, List, Mapping, Optional
 
-from ._stack_settings import StackSettings
-from ._project_settings import ProjectSettings
 from ._config import ConfigMap, ConfigValue
 from ._output import OutputMap
+from ._project_settings import ProjectSettings
+from ._stack_settings import StackSettings
+from ._tag import TagMap
 
 PulumiFn = Callable[[], None]
 
@@ -55,9 +56,18 @@ class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
 
     user: str
+    url: Optional[str]
+    organizations: Optional[List[str]]
 
-    def __init__(self, user: str):
+    def __init__(
+        self,
+        user: str,
+        url: Optional[str] = None,
+        organizations: Optional[List[str]] = None,
+    ) -> None:
         self.user = user
+        self.url = url
+        self.organizations = organizations
 
 
 class PluginInfo:
@@ -122,7 +132,7 @@ class Workspace(ABC):
     secrets_provider: Optional[str]
     """
     The secrets provider to use for encryption and decryption of stack secrets.
-    See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+    See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
     """
 
     program: Optional[PulumiFn]
@@ -262,6 +272,45 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def get_tag(self, stack_name: str, key: str) -> str:
+        """
+        Returns the value associated with the specified stack name and key,
+        scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :param key: The key to use for the tag lookup.
+        :returns: str
+        """
+
+    @abstractmethod
+    def set_tag(self, stack_name: str, key: str, value: str) -> None:
+        """
+        Sets the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to set.
+        :param value: The tag value to set.
+        """
+
+    @abstractmethod
+    def remove_tag(self, stack_name: str, key: str) -> None:
+        """
+        Removes the specified key-value pair on the provided stack name.
+
+        :param stack_name: The name of the stack.
+        :param key: The tag key to remove.
+        """
+
+    @abstractmethod
+    def list_tags(self, stack_name: str) -> TagMap:
+        """
+        Returns the tag map for the specified tag name, scoped to the Workspace.
+
+        :param stack_name: The name of the stack.
+        :returns: TagMap
+        """
+
+    @abstractmethod
     def who_am_i(self) -> WhoAmIResult:
         """
         Returns the currently authenticated user.
@@ -323,6 +372,16 @@ class Workspace(ABC):
         :param name: The name of the plugin to install.
         :param version: The version to install.
         :param kind: The kind of plugin.
+        """
+
+    @abstractmethod
+    def install_plugin_from_server(self, name: str, version: str, server: str) -> None:
+        """
+        Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+
+        :param name: The name of the plugin to install.
+        :param version: The version to install.
+        :param server: The server to install from.
         """
 
     @abstractmethod

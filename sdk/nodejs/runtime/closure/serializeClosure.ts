@@ -151,6 +151,7 @@ function serializeJavaScriptText(
 
     let environmentText = "";
     let functionText = "";
+    const emittedRequires = new Set<string>();
 
     const outerFunctionName = emitFunctionAndGetName(outerClosure.func);
 
@@ -201,6 +202,16 @@ function serializeJavaScriptText(
         delete capturedValues.arguments;
 
         const parameters = [...Array(functionInfo.paramCount)].map((_, index) => `__${index}`).join(", ");
+
+        for (const [keyEntry, { entry: valEntry }] of functionInfo.capturedValues) {
+            if (valEntry.module !== undefined) {
+                if(!emittedRequires.has(keyEntry.json)) {
+                    emittedRequires.add(keyEntry.json);
+                    functionText += `const ${keyEntry.json} = require("${valEntry.module}");\n`;
+                }
+                delete capturedValues[keyEntry.json];
+            }
+        }
 
         functionText += "\n" +
             "function " + varName + "(" + parameters + ") {\n" +

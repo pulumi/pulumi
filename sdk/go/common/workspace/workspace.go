@@ -15,18 +15,15 @@
 package workspace
 
 import (
-	// nolint: gosec
+	//nolint:gosec
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -44,8 +41,10 @@ type projectWorkspace struct {
 	settings *Settings          // settings for this workspace.
 }
 
-var cache = make(map[string]W)
-var cacheMutex sync.RWMutex
+var (
+	cache      = make(map[string]W)
+	cacheMutex sync.RWMutex
+)
 
 func loadFromCache(key string) (W, bool) {
 	cacheMutex.RLock()
@@ -56,7 +55,7 @@ func loadFromCache(key string) (W, bool) {
 }
 
 func upsertIntoCache(key string, w W) {
-	contract.Require(w != nil, "w")
+	contract.Requiref(w != nil, "w", "cannot be nil")
 
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
@@ -90,7 +89,7 @@ func NewFrom(dir string) (W, error) {
 	if err != nil {
 		return nil, err
 	} else if path == "" {
-		return nil, errors.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
+		return nil, fmt.Errorf("no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
 			"created a project yet, use `pulumi new` to do so", dir)
 	}
 
@@ -131,7 +130,7 @@ func (pw *projectWorkspace) Save() error {
 		return nil
 	}
 
-	err := os.MkdirAll(filepath.Dir(settingsFile), 0700)
+	err := os.MkdirAll(filepath.Dir(settingsFile), 0o700)
 	if err != nil {
 		return err
 	}
@@ -145,17 +144,17 @@ func (pw *projectWorkspace) Save() error {
 
 // atomicWriteFile provides a rename based atomic write through a temporary file.
 func atomicWriteFile(path string, b []byte) error {
-	tmp, err := ioutil.TempFile(filepath.Dir(path), filepath.Base(path))
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create temporary file %s", path)
+		return fmt.Errorf("failed to create temporary file %s: %w", path, err)
 	}
 	defer func() { contract.Ignore(os.Remove(tmp.Name())) }()
 
-	if err = tmp.Chmod(0600); err != nil {
-		return errors.Wrap(err, "failed to set temporary file permission")
+	if err = tmp.Chmod(0o600); err != nil {
+		return fmt.Errorf("failed to set temporary file permission: %w", err)
 	}
 	if _, err = tmp.Write(b); err != nil {
-		return errors.Wrap(err, "failed to write to temporary file")
+		return fmt.Errorf("failed to write to temporary file: %w", err)
 	}
 	if err = tmp.Sync(); err != nil {
 		return err
@@ -169,7 +168,7 @@ func atomicWriteFile(path string, b []byte) error {
 func (pw *projectWorkspace) readSettings() error {
 	settingsPath := pw.settingsPath()
 
-	b, err := ioutil.ReadFile(settingsPath)
+	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}
@@ -182,7 +181,7 @@ func (pw *projectWorkspace) readSettings() error {
 
 	err = json.Unmarshal(b, &settings)
 	if err != nil {
-		return errors.Wrapf(err, "could not parse file %s", settingsPath)
+		return fmt.Errorf("could not parse file %s: %w", settingsPath, err)
 	}
 
 	pw.settings = &settings
@@ -198,14 +197,14 @@ func (pw *projectWorkspace) settingsPath() string {
 
 // sha1HexString returns a hex string of the sha1 hash of value.
 func sha1HexString(value string) string {
-	// nolint: gosec
+	//nolint:gosec
 	h := sha1.New()
 	_, err := h.Write([]byte(value))
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "error hashing string")
 	return hex.EncodeToString(h.Sum(nil))
 }
 
 // qnameFileName takes a qname and cleans it for use as a filename (by replacing tokens.QNameDelimter with a dash)
 func qnameFileName(nm tokens.QName) string {
-	return strings.Replace(string(nm), tokens.QNameDelimiter, "-", -1)
+	return strings.ReplaceAll(string(nm), tokens.QNameDelimiter, "-")
 }

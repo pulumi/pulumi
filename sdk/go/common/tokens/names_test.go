@@ -23,7 +23,7 @@ import (
 func TestIsAsName(t *testing.T) {
 	t.Parallel()
 
-	var goodNames = []string{
+	goodNames := []string{
 		"simple",       // all alpha.
 		"SiMplE",       // mixed-case alpha.
 		"simple0",      // alphanumeric.
@@ -39,10 +39,9 @@ func TestIsAsName(t *testing.T) {
 	}
 	for _, nm := range goodNames {
 		assert.True(t, IsName(nm), "IsName expected to be true: %v", nm)
-		assert.Equal(t, nm, string(AsName(nm)), "AsName expected to echo back: %v", nm)
 	}
 
-	var goodQNames = []string{
+	goodQNames := []string{
 		"namespace/complex",                   // multi-part name.
 		"_naMeSpace0/coMpl3x32",               // multi-part, alphanumeric, etc. name.
 		"n_ameSpace3/moRenam3sp4ce/_Complex5", // even more complex parts.
@@ -50,10 +49,9 @@ func TestIsAsName(t *testing.T) {
 	for _, nm := range goodQNames {
 		assert.True(t, IsQName(nm), "IsQName expected to be true: %v", nm)
 		assert.False(t, IsName(nm), "IsName expected to be false: %v", nm)
-		assert.Equal(t, nm, string(AsQName(nm)), "AsQName expected to echo back: %v", nm)
 	}
 
-	var badNames = []string{
+	badNames := []string{
 		"s!mple",                          // bad characters.
 		"namesp@ce/complex",               // ditto.
 		"namespace/morenamespace/compl#x", // ditto.
@@ -66,17 +64,17 @@ func TestIsAsName(t *testing.T) {
 
 func TestNameSimple(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "simple", string(AsName("simple")))
-	assert.Equal(t, "complex", string(AsQName("namespace/complex").Name()))
-	assert.Equal(t, "complex", string(AsQName("ns1/ns2/ns3/ns4/complex").Name()))
-	assert.Equal(t, "c0Mpl3x_", string(AsQName("_/_/_/_/a0/c0Mpl3x_").Name()))
+	assert.Equal(t, "simple", string(Name("simple")))
+	assert.Equal(t, "complex", string(QName("namespace/complex").Name()))
+	assert.Equal(t, "complex", string(QName("ns1/ns2/ns3/ns4/complex").Name()))
+	assert.Equal(t, "c0Mpl3x_", string(QName("_/_/_/_/a0/c0Mpl3x_").Name()))
 }
 
 func TestNameNamespace(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "namespace", string(AsQName("namespace/complex").Namespace()))
-	assert.Equal(t, "ns1/ns2/ns3/ns4", string(AsQName("ns1/ns2/ns3/ns4/complex").Namespace()))
-	assert.Equal(t, "_/_/_/_/a0", string(AsQName("_/_/_/_/a0/c0Mpl3x_").Namespace()))
+	assert.Equal(t, "namespace", string(QName("namespace/complex").Namespace()))
+	assert.Equal(t, "ns1/ns2/ns3/ns4", string(QName("ns1/ns2/ns3/ns4/complex").Namespace()))
+	assert.Equal(t, "_/_/_/_/a0", string(QName("_/_/_/_/a0/c0Mpl3x_").Namespace()))
 }
 
 func TestIntoQName(t *testing.T) {
@@ -88,8 +86,10 @@ func TestIntoQName(t *testing.T) {
 	}{
 		{"foo/bar", "foo/bar"},
 		{input: "https:", expected: "https_"},
-		{"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
-			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61-L86"},
+		{
+			"https://github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go#L61-L86",
+			"https_/github.com/pulumi/pulumi/blob/master/pkg/resource/deploy/providers/provider.go_L61-L86",
+		},
 		{"", "_"},
 		{"///", "_"},
 	}
@@ -98,7 +98,7 @@ func TestIntoQName(t *testing.T) {
 		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, AsQName(c.expected), IntoQName(c.input))
+			assert.Equal(t, QName(c.expected), IntoQName(c.input))
 		})
 	}
 }

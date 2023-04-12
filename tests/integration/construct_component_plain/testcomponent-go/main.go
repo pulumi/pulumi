@@ -1,4 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+//go:build !all
+// +build !all
 
 package main
 
@@ -38,7 +40,8 @@ type ComponentArgs struct {
 }
 
 func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
-	opts ...pulumi.ResourceOption) (*Component, error) {
+	opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	if args == nil {
 		return nil, errors.New("args is required")
 	}
@@ -65,8 +68,10 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 	return component, nil
 }
 
-const providerName = "testcomponent"
-const version = "0.0.1"
+const (
+	providerName = "testcomponent"
+	version      = "0.0.1"
+)
 
 var currentID int
 
@@ -80,6 +85,8 @@ func main() {
 }
 
 type testcomponentProvider struct {
+	pulumirpc.UnimplementedResourceProviderServer
+
 	host    *provider.HostClient
 	name    string
 	version string
@@ -94,7 +101,8 @@ func makeProvider(host *provider.HostClient, name, version string) (pulumirpc.Re
 }
 
 func (p *testcomponentProvider) Create(ctx context.Context,
-	req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	req *pulumirpc.CreateRequest,
+) (*pulumirpc.CreateResponse, error) {
 	urn := resource.URN(req.GetUrn())
 	typ := urn.Type()
 	if typ != "testcomponent:index:Resource" {
@@ -110,10 +118,11 @@ func (p *testcomponentProvider) Create(ctx context.Context,
 }
 
 func (p *testcomponentProvider) Construct(ctx context.Context,
-	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-
+		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
+	) (*pulumiprovider.ConstructResult, error) {
 		if typ != "testcomponent:index:Component" {
 			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
@@ -133,17 +142,20 @@ func (p *testcomponentProvider) Construct(ctx context.Context,
 }
 
 func (p *testcomponentProvider) CheckConfig(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
 }
 
 func (p *testcomponentProvider) DiffConfig(ctx context.Context,
-	req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
 	return &pulumirpc.DiffResponse{}, nil
 }
 
 func (p *testcomponentProvider) Configure(ctx context.Context,
-	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
@@ -152,22 +164,26 @@ func (p *testcomponentProvider) Configure(ctx context.Context,
 }
 
 func (p *testcomponentProvider) Invoke(ctx context.Context,
-	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	req *pulumirpc.InvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+	server pulumirpc.ResourceProvider_StreamInvokeServer,
+) error {
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Call(ctx context.Context,
-	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	req *pulumirpc.CallRequest,
+) (*pulumirpc.CallResponse, error) {
 	return nil, fmt.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Check(ctx context.Context,
-	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
@@ -183,7 +199,8 @@ func (p *testcomponentProvider) Read(ctx context.Context, req *pulumirpc.ReadReq
 }
 
 func (p *testcomponentProvider) Update(ctx context.Context,
-	req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
 	return &pulumirpc.UpdateResponse{
 		Properties: req.GetNews(),
 	}, nil
@@ -204,10 +221,17 @@ func (p *testcomponentProvider) Attach(ctx context.Context, req *pulumirpc.Plugi
 }
 
 func (p *testcomponentProvider) GetSchema(ctx context.Context,
-	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+	req *pulumirpc.GetSchemaRequest,
+) (*pulumirpc.GetSchemaResponse, error) {
 	return &pulumirpc.GetSchemaResponse{}, nil
 }
 
 func (p *testcomponentProvider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
 	return &pbempty.Empty{}, nil
+}
+
+func (p *testcomponentProvider) GetMapping(
+	context.Context, *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
+	return &pulumirpc.GetMappingResponse{}, nil
 }

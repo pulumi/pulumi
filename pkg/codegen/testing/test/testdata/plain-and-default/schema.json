@@ -3,6 +3,11 @@
   "name": "foobar",
   "resources": {
     "foobar::ModuleResource": {
+      "properties": {
+        "optional_bool": {
+          "type": "boolean"
+        }
+      },
       "inputProperties": {
         "plain_optional_const": {
           "type": "string",
@@ -120,10 +125,7 @@
     "csharp": {
       "namespaces": {
         "foobar": "FooBar"
-      },
-     "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "plain-and-default/foo",

@@ -17,11 +17,13 @@ package model
 import (
 	"fmt"
 	"strings"
-
-	"github.com/zclconf/go-cty/cty"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -51,7 +53,7 @@ type EnumType struct {
 	// Annotations records any annotations associated with the object type.
 	Annotations []interface{}
 
-	s string
+	s atomic.Value // Value<string>
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
@@ -76,9 +78,27 @@ func (*EnumType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (t *EnumType) Pretty() pretty.Formatter {
+	types := make([]pretty.Formatter, len(t.Elements))
+	for i, c := range t.Elements {
+		types[i] = pretty.FromStringer(
+			NewConstType(ctyTypeToType(c.Type(), false), c).Pretty(),
+		)
+	}
+	return &pretty.Wrap{
+		Prefix:  "enum(",
+		Postfix: ")",
+		Value: &pretty.List{
+			Separator: " | ",
+			Elements:  types,
+		},
+	}
+}
+
 // Traverse attempts to traverse the enum type with the given traverser. This always fails.
 func (t *EnumType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
-	return &*t, nil
+	out := *t
+	return &out, nil
 }
 
 // Equals returns true if this type has the same identity as the given type.
@@ -147,16 +167,19 @@ func (t *EnumType) String() string {
 }
 
 func (t *EnumType) string(seen map[Type]struct{}) string {
-	if t.s == "" {
-		underlying := t.Type.string(seen)
-		elements := make([]string, len(t.Elements))
-		for i, e := range t.Elements {
-			elements[i] = e.GoString()
-		}
-
-		t.s = fmt.Sprintf("enum(%s(%s): %s)", t.Token, underlying, strings.Join(elements, ","))
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
-	return t.s
+
+	underlying := t.Type.string(seen)
+	elements := make([]string, len(t.Elements))
+	for i, e := range t.Elements {
+		elements[i] = e.GoString()
+	}
+
+	s := fmt.Sprintf("enum(%s(%s): %s)", t.Token, underlying, strings.Join(elements, ","))
+	t.s.Store(s)
+	return s
 }
 
 func (t *EnumType) unify(other Type) (Type, ConversionKind) {

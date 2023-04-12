@@ -39,14 +39,14 @@ func printDecryptError(e engine.DecryptError) {
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
 	fprintf(writer, "failed to decrypt encrypted configuration value '%s': %s", e.Key, e.Err.Error())
-	fprintf(writer, `
-This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and
-it is not possible to share an encrypted configuration value across stacks.
-
-You can re-encrypt your configuration by running 'pulumi config set %s [value] --secret' with your
-new stack selected.
-
-refusing to proceed`, e.Key)
+	fprintf(writer, ""+
+		"This can occur when a secret is copied from one stack to another. Encryption of secrets is done per-stack and "+
+		"it is not possible to share an encrypted configuration value across stacks.\n"+
+		"\n"+
+		"You can re-encrypt your configuration by running `pulumi config set %s [value] --secret` with your "+
+		"new stack selected.\n"+
+		"\n"+
+		"refusing to proceed", e.Key)
 	contract.IgnoreError(writer.Flush())
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, buf.String()))
 }

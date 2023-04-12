@@ -14,11 +14,10 @@ func ReadMemoryStoreFromFile(file string) (*appdash.MemoryStore, error) {
 	store := appdash.NewMemoryStore()
 
 	traceFile, err := os.Open(file)
-	defer traceFile.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer traceFile.Close()
 
 	_, err = store.ReadFrom(traceFile)
 	if err != nil {
@@ -37,7 +36,6 @@ func WalkTracesWithDescendants(store *appdash.MemoryStore, visit func(t *appdash
 	var recur func(t *appdash.Trace) error
 	recur = func(t *appdash.Trace) error {
 		err := visit(t)
-
 		if err != nil {
 			return err
 		}

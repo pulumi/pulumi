@@ -19,7 +19,7 @@ type BastionShareableLink struct {
 // BastionShareableLinkInput is an input type that accepts BastionShareableLinkArgs and BastionShareableLinkOutput values.
 // You can construct a concrete instance of `BastionShareableLinkInput` via:
 //
-//          BastionShareableLinkArgs{...}
+//	BastionShareableLinkArgs{...}
 type BastionShareableLinkInput interface {
 	pulumi.Input
 
@@ -48,7 +48,7 @@ func (i BastionShareableLinkArgs) ToBastionShareableLinkOutputWithContext(ctx co
 // BastionShareableLinkArrayInput is an input type that accepts BastionShareableLinkArray and BastionShareableLinkArrayOutput values.
 // You can construct a concrete instance of `BastionShareableLinkArrayInput` via:
 //
-//          BastionShareableLinkArray{ BastionShareableLinkArgs{...} }
+//	BastionShareableLinkArray{ BastionShareableLinkArgs{...} }
 type BastionShareableLinkArrayInput interface {
 	pulumi.Input
 
@@ -125,7 +125,7 @@ type SsisEnvironmentReferenceResponse struct {
 // SsisEnvironmentReferenceResponseInput is an input type that accepts SsisEnvironmentReferenceResponseArgs and SsisEnvironmentReferenceResponseOutput values.
 // You can construct a concrete instance of `SsisEnvironmentReferenceResponseInput` via:
 //
-//          SsisEnvironmentReferenceResponseArgs{...}
+//	SsisEnvironmentReferenceResponseArgs{...}
 type SsisEnvironmentReferenceResponseInput interface {
 	pulumi.Input
 
@@ -160,7 +160,7 @@ func (i SsisEnvironmentReferenceResponseArgs) ToSsisEnvironmentReferenceResponse
 // SsisEnvironmentReferenceResponseArrayInput is an input type that accepts SsisEnvironmentReferenceResponseArray and SsisEnvironmentReferenceResponseArrayOutput values.
 // You can construct a concrete instance of `SsisEnvironmentReferenceResponseArrayInput` via:
 //
-//          SsisEnvironmentReferenceResponseArray{ SsisEnvironmentReferenceResponseArgs{...} }
+//	SsisEnvironmentReferenceResponseArray{ SsisEnvironmentReferenceResponseArgs{...} }
 type SsisEnvironmentReferenceResponseArrayInput interface {
 	pulumi.Input
 
@@ -257,7 +257,7 @@ type SsisEnvironmentResponse struct {
 // SsisEnvironmentResponseInput is an input type that accepts SsisEnvironmentResponseArgs and SsisEnvironmentResponseOutput values.
 // You can construct a concrete instance of `SsisEnvironmentResponseInput` via:
 //
-//          SsisEnvironmentResponseArgs{...}
+//	SsisEnvironmentResponseArgs{...}
 type SsisEnvironmentResponseInput interface {
 	pulumi.Input
 
@@ -356,7 +356,7 @@ type SsisFolderResponse struct {
 // SsisFolderResponseInput is an input type that accepts SsisFolderResponseArgs and SsisFolderResponseOutput values.
 // You can construct a concrete instance of `SsisFolderResponseInput` via:
 //
-//          SsisFolderResponseArgs{...}
+//	SsisFolderResponseArgs{...}
 type SsisFolderResponseInput interface {
 	pulumi.Input
 
@@ -449,7 +449,7 @@ type SsisPackageResponse struct {
 // SsisPackageResponseInput is an input type that accepts SsisPackageResponseArgs and SsisPackageResponseOutput values.
 // You can construct a concrete instance of `SsisPackageResponseInput` via:
 //
-//          SsisPackageResponseArgs{...}
+//	SsisPackageResponseArgs{...}
 type SsisPackageResponseInput interface {
 	pulumi.Input
 
@@ -577,7 +577,7 @@ type SsisParameterResponse struct {
 // SsisParameterResponseInput is an input type that accepts SsisParameterResponseArgs and SsisParameterResponseOutput values.
 // You can construct a concrete instance of `SsisParameterResponseInput` via:
 //
-//          SsisParameterResponseArgs{...}
+//	SsisParameterResponseArgs{...}
 type SsisParameterResponseInput interface {
 	pulumi.Input
 
@@ -628,7 +628,7 @@ func (i SsisParameterResponseArgs) ToSsisParameterResponseOutputWithContext(ctx 
 // SsisParameterResponseArrayInput is an input type that accepts SsisParameterResponseArray and SsisParameterResponseArrayOutput values.
 // You can construct a concrete instance of `SsisParameterResponseArrayInput` via:
 //
-//          SsisParameterResponseArray{ SsisParameterResponseArgs{...} }
+//	SsisParameterResponseArray{ SsisParameterResponseArgs{...} }
 type SsisParameterResponseArrayInput interface {
 	pulumi.Input
 
@@ -769,7 +769,7 @@ type SsisProjectResponse struct {
 // SsisProjectResponseInput is an input type that accepts SsisProjectResponseArgs and SsisProjectResponseOutput values.
 // You can construct a concrete instance of `SsisProjectResponseInput` via:
 //
-//          SsisProjectResponseArgs{...}
+//	SsisProjectResponseArgs{...}
 type SsisProjectResponseInput interface {
 	pulumi.Input
 
@@ -887,7 +887,7 @@ type SsisVariableResponse struct {
 // SsisVariableResponseInput is an input type that accepts SsisVariableResponseArgs and SsisVariableResponseOutput values.
 // You can construct a concrete instance of `SsisVariableResponseInput` via:
 //
-//          SsisVariableResponseArgs{...}
+//	SsisVariableResponseArgs{...}
 type SsisVariableResponseInput interface {
 	pulumi.Input
 
@@ -928,7 +928,7 @@ func (i SsisVariableResponseArgs) ToSsisVariableResponseOutputWithContext(ctx co
 // SsisVariableResponseArrayInput is an input type that accepts SsisVariableResponseArray and SsisVariableResponseArrayOutput values.
 // You can construct a concrete instance of `SsisVariableResponseArrayInput` via:
 //
-//          SsisVariableResponseArray{ SsisVariableResponseArgs{...} }
+//	SsisVariableResponseArray{ SsisVariableResponseArgs{...} }
 type SsisVariableResponseArrayInput interface {
 	pulumi.Input
 
@@ -1035,7 +1035,7 @@ type StorageAccountKeyResponse struct {
 // StorageAccountKeyResponseInput is an input type that accepts StorageAccountKeyResponseArgs and StorageAccountKeyResponseOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseInput` via:
 //
-//          StorageAccountKeyResponseArgs{...}
+//	StorageAccountKeyResponseArgs{...}
 type StorageAccountKeyResponseInput interface {
 	pulumi.Input
 
@@ -1070,7 +1070,7 @@ func (i StorageAccountKeyResponseArgs) ToStorageAccountKeyResponseOutputWithCont
 // StorageAccountKeyResponseArrayInput is an input type that accepts StorageAccountKeyResponseArray and StorageAccountKeyResponseArrayOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseArrayInput` via:
 //
-//          StorageAccountKeyResponseArray{ StorageAccountKeyResponseArgs{...} }
+//	StorageAccountKeyResponseArray{ StorageAccountKeyResponseArgs{...} }
 type StorageAccountKeyResponseArrayInput interface {
 	pulumi.Input
 

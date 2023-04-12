@@ -15,6 +15,7 @@ import pulumi
 
 
 config = pulumi.Config("test")
+assert pulumi.get_organization() == "myorg"
 assert pulumi.get_project() == "myproject"
 assert pulumi.get_stack() == "mystack"
 assert config.get("known") == "knownkey"

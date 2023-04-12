@@ -15,8 +15,8 @@ import (
 )
 
 func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expression,
-	parts []model.Traversable) (model.Expression, hcl.Diagnostics) {
-
+	parts []model.Traversable,
+) (model.Expression, hcl.Diagnostics) {
 	// TODO(pdg): transfer trivia
 
 	var rootName string
@@ -52,7 +52,10 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if _, ok := pcl.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+		_, hasSchema := pcl.GetSchemaForType(model.GetTraversableType(receiver))
+		_, isComponent := receiver.(*pcl.Component)
+
+		if hasSchema || isComponent {
 			objectKey, keyVal = true, PyName(keyVal)
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:
@@ -256,7 +259,7 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 	}
 
 	quotes, ok := qa.allocations.quotes[x]
-	contract.Assert(ok)
+	contract.Assertf(ok, "cannot free unknown expression")
 	qa.free(quotes)
 	return x, nil
 }

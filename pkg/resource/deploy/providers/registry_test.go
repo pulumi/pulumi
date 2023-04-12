@@ -17,6 +17,8 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/blang/semver"
@@ -39,47 +41,73 @@ type testPluginHost struct {
 func (host *testPluginHost) SignalCancellation() error {
 	return nil
 }
+
 func (host *testPluginHost) Close() error {
 	return nil
 }
+
 func (host *testPluginHost) ServerAddr() string {
 	host.t.Fatalf("Host RPC address not available")
 	return ""
 }
+
 func (host *testPluginHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
 }
+
 func (host *testPluginHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
 	host.t.Logf("[%v] %v@%v: %v", sev, urn, streamID, msg)
 }
+
 func (host *testPluginHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
+
 func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
-	opts *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+	opts *plugin.PolicyAnalyzerOptions,
+) (plugin.Analyzer, error) {
 	return nil, errors.New("unsupported")
 }
+
 func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
 	return nil
 }
+
 func (host *testPluginHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 	return host.provider(pkg, version)
 }
+
 func (host *testPluginHost) CloseProvider(provider plugin.Provider) error {
 	return host.closeProvider(provider)
 }
-func (host *testPluginHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
+
+func (host *testPluginHost) LanguageRuntime(
+	root, pwd, runtime string, options map[string]interface{},
+) (plugin.LanguageRuntime, error) {
 	return nil, errors.New("unsupported")
 }
-func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds plugin.Flags) error {
+
+func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds plugin.Flags) error {
 	return nil
 }
+
+func (host *testPluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
+	return nil
+}
+
 func (host *testPluginHost) ResolvePlugin(
-	kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error) {
+	kind workspace.PluginKind, name string, version *semver.Version,
+) (*workspace.PluginInfo, error) {
 	return nil, nil
 }
+
+func (host *testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin {
+	return nil
+}
+
 func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
-	kinds plugin.Flags) ([]workspace.PluginInfo, error) {
+	kinds plugin.Flags,
+) ([]workspace.PluginInfo, error) {
 	return nil, nil
 }
 
@@ -96,23 +124,31 @@ type testProvider struct {
 func (prov *testProvider) SignalCancellation() error {
 	return nil
 }
+
 func (prov *testProvider) Close() error {
 	return nil
 }
+
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
+
 func (prov *testProvider) GetSchema(version int) ([]byte, error) {
 	return []byte("{}"), nil
 }
+
 func (prov *testProvider) CheckConfig(urn resource.URN, olds,
-	news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	news resource.PropertyMap, allowUnknowns bool,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
 }
+
 func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	return prov.diffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
 }
+
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	if err := prov.config(inputs); err != nil {
 		return err
@@ -120,54 +156,78 @@ func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	prov.configured = true
 	return nil
 }
+
 func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, _ int) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	olds, news resource.PropertyMap, _ bool, _ []byte,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
+
 func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
-	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+	preview bool,
+) (resource.ID, resource.PropertyMap, resource.Status, error) {
 	return "", nil, resource.StatusOK, errors.New("unsupported")
 }
+
 func (prov *testProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+	inputs, state resource.PropertyMap,
+) (plugin.ReadResult, resource.Status, error) {
 	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
 }
+
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string) (plugin.DiffResult, error) {
+	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string,
+) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
+
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+	ignoreChanges []string, preview bool,
+) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
 }
+
 func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
+	id resource.ID, props resource.PropertyMap, timeout float64,
+) (resource.Status, error) {
 	return resource.StatusOK, errors.New("unsupported")
 }
+
 func (prov *testProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	inputs resource.PropertyMap, options plugin.ConstructOptions,
+) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{}, errors.New("unsupported")
 }
+
 func (prov *testProvider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	args resource.PropertyMap,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return nil, nil, errors.New("unsupported")
 }
+
 func (prov *testProvider) StreamInvoke(
 	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
-
+	onNext func(resource.PropertyMap) error,
+) ([]plugin.CheckFailure, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+
 func (prov *testProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions) (plugin.CallResult, error) {
+	options plugin.CallOptions,
+) (plugin.CallResult, error) {
 	return plugin.CallResult{}, errors.New("unsupported")
 }
+
 func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    "testProvider",
 		Version: &prov.version,
 	}, nil
+}
+
+func (prov *testProvider) GetMapping(key string) ([]byte, string, error) {
+	return nil, "", nil
 }
 
 type providerLoader struct {
@@ -205,8 +265,8 @@ func newPluginHost(t *testing.T, loaders []*providerLoader) plugin.Host {
 }
 
 func newLoader(t *testing.T, pkg, version string,
-	load func(tokens.Package, semver.Version) (plugin.Provider, error)) *providerLoader {
-
+	load func(tokens.Package, semver.Version) (plugin.Provider, error),
+) *providerLoader {
 	var ver semver.Version
 	if version != "" {
 		v, err := semver.ParseTolerant(version)
@@ -233,11 +293,13 @@ func newSimpleLoader(t *testing.T, pkg, version string, config func(resource.Pro
 			pkg:     pkg,
 			version: ver,
 			checkConfig: func(urn resource.URN, olds,
-				news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				news resource.PropertyMap, allowUnknowns bool,
+			) (resource.PropertyMap, []plugin.CheckFailure, error) {
 				return news, nil, nil
 			},
 			diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-				allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+				allowUnknowns bool, ignoreChanges []string,
+			) (plugin.DiffResult, error) {
 				return plugin.DiffResult{}, nil
 			},
 			config: config,
@@ -463,7 +525,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -498,7 +560,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -568,11 +630,13 @@ func TestCRUDPreview(t *testing.T) {
 				pkg:     pkg,
 				version: ver,
 				checkConfig: func(urn resource.URN, olds,
-					news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					news resource.PropertyMap, allowUnknowns bool,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				diffConfig: func(urn resource.URN, olds, news resource.PropertyMap,
-					allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+					allowUnknowns bool, ignoreChanges []string,
+				) (plugin.DiffResult, error) {
 					// Always reuquire replacement.
 					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
 				},
@@ -608,7 +672,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -629,7 +693,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -662,7 +726,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		inputs, failures, err := r.Check(urn, olds, news, false, 0)
+		inputs, failures, err := r.Check(urn, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, news, inputs)
 		assert.Empty(t, failures)
@@ -700,7 +764,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -723,7 +787,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -746,7 +810,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("1.0.0")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.Error(t, err)
 	assert.Empty(t, failures)
 	assert.Nil(t, inputs)
@@ -769,7 +833,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
@@ -793,9 +857,100 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewStringProperty("foo")}
 
 	// Check
-	inputs, failures, err := r.Check(urn, olds, news, false, 0)
+	inputs, failures, err := r.Check(urn, olds, news, false, nil)
 	assert.NoError(t, err)
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
 	assert.Nil(t, inputs)
+}
+
+func TestInstallProviderErrorText(t *testing.T) {
+	t.Parallel()
+
+	v1 := semver.MustParse("0.1.0")
+	err := errors.New("some error")
+	tests := []struct {
+		Name          string
+		Err           InstallProviderError
+		ExpectedError string
+	}{
+		{
+			Name: "Just name",
+			Err: InstallProviderError{
+				Err:  err,
+				Name: "myplugin",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
+				" install the plugin using `pulumi plugin install resource myplugin`: some error",
+		},
+		{
+			Name: "Name and version",
+			Err: InstallProviderError{
+				Err:     err,
+				Name:    "myplugin",
+				Version: &v1,
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
+				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`: some error",
+		},
+		{
+			Name: "Name and version and URL",
+			Err: InstallProviderError{
+				Err:               err,
+				Name:              "myplugin",
+				Version:           &v1,
+				PluginDownloadURL: "github://owner/repo",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
+				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0" +
+				" --server github://owner/repo`: some error",
+		},
+		{
+			Name: "Name and URL",
+			Err: InstallProviderError{
+				Err:               err,
+				Name:              "myplugin",
+				PluginDownloadURL: "github://owner/repo",
+			},
+			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
+				" install the plugin using `pulumi plugin install resource myplugin" +
+				" --server github://owner/repo`: some error",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.ExpectedError, tt.Err.Error())
+		})
+	}
+}
+
+func TestLoadProvider_missingError(t *testing.T) {
+	t.Parallel()
+
+	var count int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	version := semver.MustParse("1.2.3")
+	loader := newLoader(t, "myplugin", "1.2.3",
+		func(p tokens.Package, v semver.Version) (plugin.Provider, error) {
+			return nil, workspace.NewMissingError(
+				workspace.ResourcePlugin, "myplugin", &version, false /* ambient */)
+		})
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	_, err := loadProvider(
+		"myplugin", &version, srv.URL,
+		nil, host, nil /* builtins */)
+	assert.ErrorContains(t, err,
+		"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
+	assert.ErrorContains(t, err,
+		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
+	assert.Equal(t, 5, count)
 }

@@ -15,12 +15,11 @@
 package codegen
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -87,6 +86,17 @@ func (ss StringSet) Subtract(other StringSet) StringSet {
 	return result
 }
 
+func (ss StringSet) Union(other StringSet) StringSet {
+	result := NewStringSet()
+	for v := range ss {
+		result.Add(v)
+	}
+	for v := range other {
+		result.Add(v)
+	}
+	return result
+}
+
 type Set map[interface{}]struct{}
 
 func (s Set) Add(v interface{}) {
@@ -102,16 +112,11 @@ func (s Set) Has(v interface{}) bool {
 	return ok
 }
 
-// SortedKeys returns a sorted list of keys for the given map. The map's key type must be of kind string.
-func SortedKeys(m interface{}) []string {
-	mv := reflect.ValueOf(m)
-
-	contract.Require(mv.Type().Kind() == reflect.Map, "m")
-	contract.Require(mv.Type().Key().Kind() == reflect.String, "m")
-
-	keys := make([]string, mv.Len())
-	for i, k := range mv.MapKeys() {
-		keys[i] = k.String()
+// SortedKeys returns a sorted list of keys for the given map.
+func SortedKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
@@ -123,7 +128,7 @@ func SortedKeys(m interface{}) []string {
 // in a subdirectory, only entire subdirectories. This function will need improvements to be able to
 // target that use-case.
 func CleanDir(dirPath string, exclusions StringSet) error {
-	subPaths, err := ioutil.ReadDir(dirPath)
+	subPaths, err := os.ReadDir(dirPath)
 	if err != nil {
 		return err
 	}
@@ -161,4 +166,37 @@ func ExpandShortEnumName(name string) string {
 		return replacement
 	}
 	return name
+}
+
+// A simple in memory file system.
+type Fs map[string][]byte
+
+// Add a new file to the Fs.
+//
+// Panic if the file is a duplicate.
+func (fs Fs) Add(path string, contents []byte) {
+	_, has := fs[path]
+	contract.Assertf(!has, "duplicate file: %s", path)
+	fs[path] = contents
+}
+
+// Check if two packages are the same.
+func PkgEquals(p1, p2 schema.PackageReference) bool {
+	if p1 == p2 {
+		return true
+	} else if p1 == nil || p2 == nil {
+		return false
+	}
+
+	if p1.Name() != p2.Name() {
+		return false
+	}
+
+	v1, v2 := p1.Version(), p2.Version()
+	if v1 == v2 {
+		return true
+	} else if v1 == nil || v2 == nil {
+		return false
+	}
+	return v1.Equals(*v2)
 }

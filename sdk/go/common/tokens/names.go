@@ -29,24 +29,22 @@ func (nm Name) String() string { return string(nm) }
 // Q turns a Name into a qualified name; this is legal, since Name's is a proper subset of QName's grammar.
 func (nm Name) Q() QName { return QName(nm) }
 
-var NameRegexp = regexp.MustCompile(NameRegexpPattern)
-var nameFirstCharRegexp = regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
-var nameRestCharRegexp = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
+var (
+	NameRegexp          = regexp.MustCompile(NameRegexpPattern)
+	nameFirstCharRegexp = regexp.MustCompile("^" + nameFirstCharRegexpPattern + "$")
+	nameRestCharRegexp  = regexp.MustCompile("^" + nameRestCharRegexpPattern + "$")
+)
 
 var NameRegexpPattern = nameFirstCharRegexpPattern + nameRestCharRegexpPattern
 
-const nameFirstCharRegexpPattern = "[A-Za-z0-9_.-]"
-const nameRestCharRegexpPattern = "[A-Za-z0-9_.-]*"
+const (
+	nameFirstCharRegexpPattern = "[A-Za-z0-9_.-]"
+	nameRestCharRegexpPattern  = "[A-Za-z0-9_.-]*"
+)
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
 	return s != "" && NameRegexp.FindString(s) == s
-}
-
-// AsName converts a given string to a Name, asserting its validity.
-func AsName(s string) Name {
-	contract.Assertf(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexpPattern)
-	return Name(s)
 }
 
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
@@ -58,8 +56,10 @@ func (nm QName) String() string { return string(nm) }
 // QNameDelimiter is what delimits Namespace and Name parts.
 const QNameDelimiter = "/"
 
-var QNameRegexp = regexp.MustCompile(QNameRegexpPattern)
-var QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
+var (
+	QNameRegexp        = regexp.MustCompile(QNameRegexpPattern)
+	QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" + NameRegexpPattern
+)
 
 // IsQName checks whether a string is a legal QName.
 func IsQName(s string) bool {
@@ -89,13 +89,7 @@ func IntoQName(s string) QName {
 	if result == "" {
 		result = "_"
 	}
-	return AsQName(result)
-}
-
-// AsQName converts a given string to a QName, asserting its validity.
-func AsQName(s string) QName {
-	contract.Assertf(IsQName(s), "Expected string '%v' to be a name (%v)", s, QNameRegexpPattern)
-	return QName(s)
+	return QName(result)
 }
 
 // Name extracts the Name portion of a QName (dropping any namespace).
@@ -107,7 +101,7 @@ func (nm QName) Name() Name {
 	} else {
 		nmn = string(nm[ix+1:])
 	}
-	contract.Assert(IsName(nmn))
+	contract.Assertf(IsName(nmn), "QName %q has invalid name %q", nm, nmn)
 	return Name(nmn)
 }
 
@@ -120,7 +114,7 @@ func (nm QName) Namespace() QName {
 	} else {
 		qn = string(nm[:ix])
 	}
-	contract.Assert(IsQName(qn))
+	contract.Assertf(IsQName(qn), "QName %q has invalid namespace %q", nm, qn)
 	return QName(qn)
 }
 

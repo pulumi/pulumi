@@ -1,0 +1,35 @@
+{
+    "name": "world",
+    "version": "0.0.1",
+    "resources": {
+        "world::WorldMap": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "world::Universe": {
+            "type": "object",
+            "inputProperties": {
+                "worlds": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/world::World"
+                    }
+                }
+            }
+        }
+    },
+    "types": {
+        "world::World": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

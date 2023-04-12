@@ -15,16 +15,19 @@
 package pulumi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 	"testing"
 
-	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -32,6 +35,10 @@ type testRes struct {
 	CustomResourceState
 	// equality identifier used for testing
 	foo string
+}
+
+type testComp struct {
+	ResourceState
 }
 
 type testProv struct {
@@ -65,68 +72,112 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 
 	// all providers are merged into a map
 	// last specified provider for a given pkg wins
-	p1 := &testProv{foo: "a"}
-	p1.pkg = "aws"
-	p2 := &testProv{foo: "b"}
-	p2.pkg = "aws"
-	p3 := &testProv{foo: "c"}
-	p3.pkg = "azure"
+	aws1 := &testProv{foo: "a"}
+	aws1.pkg = "aws"
+	aws2 := &testProv{foo: "b"}
+	aws2.pkg = "aws"
+	azure := &testProv{foo: "c"}
+	azure.pkg = "azure"
 
-	// merges two singleton options for same pkg
-	opts := merge(Provider(p1), Provider(p2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+	t.Run("two singleton options for same pkg", func(t *testing.T) {
+		t.Parallel()
 
-	// merges two singleton options for different pkg
-	opts = merge(Provider(p1), Provider(p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(Provider(aws1), Provider(aws2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, aws2, opts.Provider,
+			"Provider should be set to the last specified provider")
+	})
 
-	// merges singleton and array
-	opts = merge(Provider(p1), Providers(p2, p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("two singleton options for different pkg", func(t *testing.T) {
+		t.Parallel()
 
-	// merges singleton and single value array
-	opts = merge(Provider(p1), Providers(p2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+		opts := merge(Provider(aws1), Provider(azure))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, azure, opts.Provider,
+			"Provider should be set to the last specified provider")
+	})
 
-	// merges two arrays
-	opts = merge(Providers(p1), Providers(p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("singleton and array", func(t *testing.T) {
+		t.Parallel()
 
-	// merges overlapping arrays
-	opts = merge(Providers(p1, p2), Providers(p1, p3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p1, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(Provider(aws1), Providers(aws2, azure))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
+	})
 
-	// merge single value maps
-	m1 := map[string]ProviderResource{"aws": p1}
-	m2 := map[string]ProviderResource{"aws": p2}
-	m3 := map[string]ProviderResource{"aws": p2, "azure": p3}
+	t.Run("singleton and single value array", func(t *testing.T) {
+		t.Parallel()
 
-	// merge single value maps
-	opts = merge(ProviderMap(m1), ProviderMap(m2))
-	assert.Equal(t, 1, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
+		opts := merge(Provider(aws1), Providers(aws2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
+	})
 
-	// merge singleton with map
-	opts = merge(Provider(p1), ProviderMap(m3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+	t.Run("two arrays", func(t *testing.T) {
+		t.Parallel()
 
-	// merge arry and map
-	opts = merge(Providers(p2, p1), ProviderMap(m3))
-	assert.Equal(t, 2, len(opts.Providers))
-	assert.Equal(t, p2, opts.Providers["aws"])
-	assert.Equal(t, p3, opts.Providers["azure"])
+		opts := merge(Providers(aws1), Providers(azure))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
+	})
+
+	t.Run("overlapping arrays", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws1, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
+	})
+
+	m1 := map[string]ProviderResource{"aws": aws1}
+	m2 := map[string]ProviderResource{"aws": aws2}
+	m3 := map[string]ProviderResource{"aws": aws2, "azure": azure}
+
+	t.Run("single value maps", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(ProviderMap(m1), ProviderMap(m2))
+		assert.Equal(t, 1, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
+	})
+
+	t.Run("singleton with map", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Provider(aws1), ProviderMap(m3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Equal(t, aws1, opts.Provider,
+			"Provider should be set to the last specified provider")
+	})
+
+	t.Run("array and map", func(t *testing.T) {
+		t.Parallel()
+
+		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
+		assert.Equal(t, 2, len(opts.Providers))
+		assert.Equal(t, aws2, opts.Providers["aws"])
+		assert.Equal(t, azure, opts.Providers["azure"])
+		assert.Nil(t, opts.Provider,
+			"Providers should not upgrade to Provider")
+	})
 }
 
 func TestResourceOptionMergingDependsOn(t *testing.T) {
@@ -150,12 +201,10 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := urnSet{}
-		for _, f := range opts.DependsOn {
-			deps, err := f(context.TODO())
-			if err != nil {
+		for _, ds := range opts.DependsOn {
+			if err := ds.addURNs(context.TODO(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
-			allDeps.union(deps)
 		}
 		return allDeps.sortedValues()
 	}
@@ -267,19 +316,19 @@ func TestInvokeOptionComposite(t *testing.T) {
 	tests := []struct {
 		name  string
 		input []InvokeOption
-		want  *invokeOptions
+		want  *InvokeOptions
 	}{
 		{
 			name:  "no options",
 			input: []InvokeOption{},
-			want:  &invokeOptions{},
+			want:  &InvokeOptions{},
 		},
 		{
 			name: "single option",
 			input: []InvokeOption{
 				Version("test"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test",
 			},
 		},
@@ -289,7 +338,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test1"),
 				Version("test2"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test2",
 			},
 		},
@@ -300,7 +349,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test2"),
 				Version("test1"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version: "test1",
 			},
 		},
@@ -310,7 +359,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 				Version("test"),
 				PluginDownloadURL("url"),
 			},
-			want: &invokeOptions{
+			want: &InvokeOptions{
 				Version:           "test",
 				PluginDownloadURL: "url",
 			},
@@ -322,7 +371,7 @@ func TestInvokeOptionComposite(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			opts := &invokeOptions{}
+			opts := &InvokeOptions{}
 			CompositeInvoke(tt.input...).applyInvokeOption(opts)
 			assert.Equal(t, tt.want, opts)
 		})
@@ -528,15 +577,115 @@ func TestNewResourceInput(t *testing.T) {
 	assert.Equal(t, "abracadabra", unpackedRes.foo)
 }
 
+// Verifies that a Parent resource that has not been initialized will panic,
+// and will instead report a meaningful error message.
+func TestUninitializedParentResource(t *testing.T) {
+	t.Parallel()
+
+	type myComponent struct {
+		ResourceState
+	}
+
+	type myCustomResource struct {
+		CustomResourceState
+	}
+
+	tests := []struct {
+		desc   string
+		parent Resource
+
+		// additional options to pass to RegisterResource
+		// besides the Parent.
+		// The original report of the panic was with an Alias option.
+		opts []ResourceOption
+
+		// Message that should be part of the error message.
+		wantErr string
+	}{
+		{
+			desc:   "component resource",
+			parent: &myComponent{},
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
+		},
+		{
+			desc:   "component resource/alias",
+			parent: &myComponent{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "WARNING: Ignoring component resource *pulumi.myComponent " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterComponentResource",
+		},
+		{
+			desc:   "custom resource",
+			parent: &myCustomResource{},
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
+		},
+		{
+			desc:   "custom resource/alias",
+			parent: &myCustomResource{},
+			opts: []ResourceOption{
+				Aliases([]Alias{
+					{Name: String("alias1")},
+				}),
+			},
+			wantErr: "WARNING: Ignoring resource *pulumi.myCustomResource " +
+				"(parent of my-resource :: test:index:MyResource) " +
+				"because it was not registered with RegisterResource",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			require.NotEmpty(t, tt.wantErr,
+				"test case must specify an error message")
+
+			err := RunErr(func(ctx *Context) error {
+				// This is a hack.
+				// We're accesing context mock internals
+				// because the mock API does not expose a way
+				// to set the logger.
+				//
+				// If this ever becomes a problem,
+				// add a way to supply a logger to the mock
+				// and use that here.
+				var buff bytes.Buffer
+				ctx.engine.(*mockEngine).logger = log.New(&buff, "", 0)
+
+				opts := []ResourceOption{Parent(tt.parent)}
+				opts = append(opts, tt.opts...)
+
+				var res testRes
+				require.NoError(t, ctx.RegisterResource(
+					"test:index:MyResource",
+					"my-resource",
+					nil /* props */, &res, opts...))
+				assert.Contains(t, buff.String(), tt.wantErr)
+				return nil
+			}, WithMocks("project", "stack", &testMonitor{}))
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func TestDependsOnInputs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("known", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			dep1 := newTestRes(t, ctx, "dep1")
 			dep2 := newTestRes(t, ctx, "dep2")
 
@@ -548,16 +697,15 @@ func TestDependsOnInputs(t *testing.T) {
 			res := newTestRes(t, ctx, "res", opts)
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
-		}, WithMocks("project", "stack", &testMonitor{}))
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
 		assert.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
 		t.Parallel()
 
+		depTracker := &dependenciesTracker{}
 		err := RunErr(func(ctx *Context) error {
-			depTracker := trackDependencies(ctx)
-
 			checkDeps := func(name string, dependsOn ResourceArrayInput, expectedDeps ...Resource) {
 				res := newTestRes(t, ctx, name, DependsOnInputs(dependsOn))
 				assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
@@ -580,9 +728,482 @@ func TestDependsOnInputs(t *testing.T) {
 			checkDeps("r4", out4, dep1, dep2, dep4)
 
 			return nil
+		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
+		assert.NoError(t, err)
+	})
+}
+
+// https://github.com/pulumi/pulumi/issues/12161
+func TestComponentResourcePropagatesProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("provider option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Provider(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
+
+	t.Run("providers option", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			var prov struct{ ProviderResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("pulumi:providers:test", "prov", nil /* props */, &prov),
+				"error registering provider")
+
+			var comp struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterComponentResource("custom:foo:Component", "comp", &comp, Providers(&prov)),
+				"error registering component")
+
+			var custom struct{ ResourceState }
+			require.NoError(t,
+				ctx.RegisterResource("test:index:MyResource", "custom", nil /* props */, &custom, Parent(&comp)),
+				"error registering resource")
+
+			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
+		assert.NoError(t, err)
+	})
+}
+
+// Verifies that if we pass an explicit provider to the provider plugin
+// via the Provider() option,
+// that the provider propagates this down to its children.
+//
+// Regression test for https://github.com/pulumi/pulumi/issues/12430
+func TestRemoteComponentResourcePropagatesProvider(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var prov struct{ ProviderResourceState }
+		require.NoError(t,
+			ctx.RegisterResource("pulumi:providers:aws", "myprovider", nil /* props */, &prov),
+			"error registering provider")
+
+		var comp struct{ ResourceState }
+		require.NoError(t,
+			ctx.RegisterRemoteComponentResource("awsx:ec2:Vpc", "myvpc", nil /* props */, &comp, Provider(&prov)),
+			"error registering component")
+
+		var custom struct{ ResourceState }
+		require.NoError(t,
+			ctx.RegisterResource("aws:ec2/vpc:Vpc", "myvpc", nil /* props */, &custom, Parent(&comp)),
+			"error registering resource")
+
+		assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.Name {
+			case "myprovider":
+				assert.Equal(t, "pulumi:providers:aws", args.RegisterRPC.Type)
+
+			case "myvpc":
+				// The remote component resource and the custom resource both
+				// have the same name.
+				//
+				// However, only the custom resource should have the provider set.
+				switch args.RegisterRPC.Type {
+				case "awsx:ec2:Vpc":
+					assert.Empty(t, args.Provider,
+						"provider must not be set on remote component resource")
+
+				case "aws:ec2/vpc:Vpc":
+					assert.NotEmpty(t, args.Provider,
+						"provider must be set on component resource")
+
+				default:
+					assert.Fail(t, "unexpected resource type: %s", args.RegisterRPC.Type)
+				}
+			}
+
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}))
+	assert.NoError(t, err)
+}
+
+// Verifies that Provider takes precedence over Providers.
+func TestResourceProviderVersusProviders(t *testing.T) {
+	t.Parallel()
+
+	mocks := testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return args.Name + "_id", args.Inputs, nil
+		},
+	}
+
+	p1 := &testProv{
+		ProviderResourceState: ProviderResourceState{pkg: "test"},
+		foo:                   "1",
+	}
+
+	p2 := &testProv{
+		ProviderResourceState: ProviderResourceState{pkg: "test"},
+		foo:                   "2",
+	}
+
+	t.Run("singular, plural", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			res := newTestRes(t, ctx, "myres", Provider(p1), Providers(p2))
+			assert.Equal(t, p1, res.getProvider())
+
+			return nil
+		}, WithMocks("project", "stack", &mocks))
+		require.NoError(t, err)
+	})
+
+	t.Run("plural, singular", func(t *testing.T) {
+		t.Parallel()
+
+		err := RunErr(func(ctx *Context) error {
+			res := newTestRes(t, ctx, "myres", Providers(p2), Provider(p1))
+			assert.Equal(t, p1, res.getProvider())
+
+			return nil
+		}, WithMocks("project", "stack", &mocks))
+		require.NoError(t, err)
+	})
+}
+
+// Verifies that multiple Provider options passed to a ComponentResource
+// are inherited by its children.
+//
+// See also NOTE(Provider and Providers).
+func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
+	t.Parallel()
+
+	newTestProvider := func(ctx *Context, pkg, name string) ProviderResource {
+		prov := testProv{foo: fmt.Sprintf("%s/%s", pkg, name)}
+		prov.pkg = pkg
+
+		require.NoError(t,
+			ctx.RegisterResource("pulumi:providers:"+pkg, name, nil /* props */, &prov),
+			"error registering provider")
+		return &prov
+	}
+
+	newCustomResource := func(ctx *Context, typ, name string, opts ...ResourceOption) *testRes {
+		res := testRes{foo: name}
+		require.NoError(t,
+			ctx.RegisterResource(typ, name, nil /* props */, &res, opts...))
+		return &res
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		prov1 := newTestProvider(ctx, "pkg1", "prov1")
+		prov2 := newTestProvider(ctx, "pkg2", "prov2")
+
+		var component struct{ ResourceState }
+		require.NoError(t, ctx.RegisterComponentResource(
+			"my:foo:Component", "comp", &component, Provider(prov1), Provider(prov2)))
+
+		res1 := newCustomResource(ctx, "pkg1:index:MyResource", "res1", Parent(&component))
+		res2 := newCustomResource(ctx, "pkg2:index:MyResource", "res2", Parent(&component))
+
+		assert.Equal(t, prov1, res1.provider, "provider 1 not propagated")
+		assert.Equal(t, prov2, res2.provider, "provider 2 not propagated")
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	assert.NoError(t, err)
+}
+
+func TestNewResourceOptions(t *testing.T) {
+	t.Parallel()
+
+	// Declared up here so that it may be shared to test
+	// referential equality.
+	sampleResourceInput := NewResourceInput(&testRes{foo: "foo"})
+
+	tests := []struct {
+		desc string
+		give ResourceOption
+		want ResourceOptions
+	}{
+		{
+			desc: "AdditionalSecretOutputs",
+			give: AdditionalSecretOutputs([]string{"foo"}),
+			want: ResourceOptions{
+				AdditionalSecretOutputs: []string{"foo"},
+			},
+		},
+		{
+			desc: "Aliases",
+			give: Aliases([]Alias{
+				{Name: String("foo")},
+			}),
+			want: ResourceOptions{
+				Aliases: []Alias{
+					{Name: String("foo")},
+				},
+			},
+		},
+		{
+			desc: "Aliases/multiple options",
+			give: Composite(
+				Aliases([]Alias{{Name: String("foo")}}),
+				Aliases([]Alias{{Name: String("bar")}}),
+			),
+			want: ResourceOptions{
+				Aliases: []Alias{
+					{Name: String("foo")},
+					{Name: String("bar")},
+				},
+			},
+		},
+		{
+			desc: "DeleteBeforeReplace",
+			give: DeleteBeforeReplace(true),
+			want: ResourceOptions{DeleteBeforeReplace: true},
+		},
+		{
+			desc: "DependsOn",
+			give: DependsOn([]Resource{
+				&testRes{foo: "foo"},
+				&testRes{foo: "bar"},
+			}),
+			want: ResourceOptions{
+				DependsOn: []Resource{
+					&testRes{foo: "foo"},
+					&testRes{foo: "bar"},
+				},
+			},
+		},
+		{
+			desc: "DependsOnInputs",
+			give: DependsOnInputs(
+				ResourceArray{sampleResourceInput},
+			),
+			want: ResourceOptions{
+				DependsOnInputs: []ResourceArrayInput{
+					ResourceArray{sampleResourceInput},
+				},
+			},
+		},
+		{
+			desc: "IgnoreChanges",
+			give: IgnoreChanges([]string{"foo"}),
+			want: ResourceOptions{
+				IgnoreChanges: []string{"foo"},
+			},
+		},
+		{
+			desc: "Import",
+			give: Import(ID("bar")),
+			want: ResourceOptions{Import: ID("bar")},
+		},
+		{
+			desc: "Parent",
+			give: Parent(&testRes{foo: "foo"}),
+			want: ResourceOptions{
+				Parent: &testRes{foo: "foo"},
+			},
+		},
+		{
+			desc: "Protect",
+			give: Protect(true),
+			want: ResourceOptions{Protect: true},
+		},
+		{
+			desc: "Provider",
+			give: Provider(&testProv{foo: "bar"}),
+			want: ResourceOptions{
+				Provider: &testProv{foo: "bar"},
+				Providers: []ProviderResource{
+					&testProv{foo: "bar"},
+				},
+			},
+		},
+		{
+			desc: "ProviderMap",
+			give: ProviderMap(map[string]ProviderResource{
+				"foo": &testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "foo"},
+					foo:                   "a",
+				},
+				"bar": &testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "bar"},
+					foo:                   "b",
+				},
+			}),
+			want: ResourceOptions{
+				Providers: []ProviderResource{
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "bar"},
+						foo:                   "b",
+					},
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "foo"},
+						foo:                   "a",
+					},
+				},
+			},
+		},
+		{
+			desc: "Providers",
+			give: Providers(
+				&testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "foo"},
+					foo:                   "a",
+				},
+				&testProv{
+					ProviderResourceState: ProviderResourceState{pkg: "bar"},
+					foo:                   "b",
+				},
+			),
+			want: ResourceOptions{
+				Providers: []ProviderResource{
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "bar"},
+						foo:                   "b",
+					},
+					&testProv{
+						ProviderResourceState: ProviderResourceState{pkg: "foo"},
+						foo:                   "a",
+					},
+				},
+			},
+		},
+		{
+			desc: "ReplaceOnChanges",
+			give: ReplaceOnChanges([]string{"foo", "bar"}),
+			want: ResourceOptions{
+				ReplaceOnChanges: []string{"foo", "bar"},
+			},
+		},
+		{
+			desc: "Timeouts",
+			give: Timeouts(&CustomTimeouts{Create: "10s"}),
+			want: ResourceOptions{
+				CustomTimeouts: &CustomTimeouts{Create: "10s"},
+			},
+		},
+		{
+			desc: "URN",
+			give: URN_("foo::bar"),
+			want: ResourceOptions{URN: "foo::bar"},
+		},
+		{
+			desc: "Version",
+			give: Version("1.2.3"),
+			want: ResourceOptions{Version: "1.2.3"},
+		},
+		{
+			desc: "PluginDownloadURL",
+			give: PluginDownloadURL("https://example.com/whatever"),
+			want: ResourceOptions{PluginDownloadURL: "https://example.com/whatever"},
+		},
+		{
+			desc: "RetainOnDelete",
+			give: RetainOnDelete(true),
+			want: ResourceOptions{RetainOnDelete: true},
+		},
+		{
+			desc: "DeletedWith",
+			give: DeletedWith(&testRes{foo: "a"}),
+			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewResourceOptions(tt.give)
+			require.NoError(t, err)
+			assert.Equal(t, &tt.want, got)
+		})
+	}
+
+	// Not covered in the table above because function pointers
+	// cannot be compared.
+	t.Run("Transformations", func(t *testing.T) {
+		t.Parallel()
+
+		var called bool
+		tr := ResourceTransformation(func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+			called = true
+			return &ResourceTransformationResult{}
+		})
+
+		ropts, err := NewResourceOptions(Transformations([]ResourceTransformation{tr}))
+		require.NoError(t, err)
+		require.Len(t, ropts.Transformations, 1)
+		ropts.Transformations[0](&ResourceTransformationArgs{})
+		assert.True(t, called, "Transformation function was not called")
+	})
+}
+
+func TestNewInvokeOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give InvokeOption
+		want InvokeOptions
+	}{
+		{
+			desc: "Parent",
+			give: Parent(&testRes{foo: "foo"}),
+			want: InvokeOptions{
+				Parent: &testRes{foo: "foo"},
+			},
+		},
+		{
+			desc: "Provider",
+			give: Provider(&testProv{foo: "bar"}),
+			want: InvokeOptions{
+				Provider: &testProv{foo: "bar"},
+			},
+		},
+		{
+			desc: "Version",
+			give: Version("1.2.3"),
+			want: InvokeOptions{Version: "1.2.3"},
+		},
+		{
+			desc: "PluginDownloadURL",
+			give: PluginDownloadURL("https://example.com/whatever"),
+			want: InvokeOptions{PluginDownloadURL: "https://example.com/whatever"},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := NewInvokeOptions(tt.give)
+			require.NoError(t, err)
+			assert.Equal(t, &tt.want, got)
+		})
+	}
 }
 
 func assertHasDeps(
@@ -590,12 +1211,12 @@ func assertHasDeps(
 	ctx *Context,
 	depTracker *dependenciesTracker,
 	res Resource,
-	expectedDeps ...Resource) {
-
+	expectedDeps ...Resource,
+) {
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
-	var expDeps []URN
+	expDeps := make([]URN, 0, len(expectedDeps))
 	for _, expDepRes := range expectedDeps {
 		expDep := urn(t, ctx, expDepRes)
 		expDeps = append(expDeps, expDep)
@@ -630,8 +1251,33 @@ func urn(t *testing.T, ctx *Context, res Resource) URN {
 	return urn
 }
 
+// dependenciesTracker tracks dependencies for registered resources.
+//
+// The zero value of dependenciesTracker is ready to use.
 type dependenciesTracker struct {
-	dependsOn *sync.Map
+	dependsOn sync.Map
+}
+
+// Wrap wraps a ResourceMonitorClient to start tracking RegisterResource calls
+// sent through it.
+//
+// Use this with the WrapResourceMonitorClient option.
+//
+//	var dt dependenciesTracker
+//	RunErr(..., WrapResourceMonitorClient(dt.Wrap))
+func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient {
+	m := newInterceptingResourceMonitor(cl)
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
+		resp *pulumirpc.RegisterResourceResponse,
+		err error,
+	) {
+		var deps []URN
+		for _, dep := range in.GetDependencies() {
+			deps = append(deps, URN(dep))
+		}
+		dt.dependsOn.Store(URN(resp.Urn), deps)
+	}
+	return m
 }
 
 func (dt *dependenciesTracker) dependencies(resource URN) []URN {
@@ -646,76 +1292,85 @@ func (dt *dependenciesTracker) dependencies(resource URN) []URN {
 	return urns
 }
 
-func trackDependencies(ctx *Context) *dependenciesTracker {
-	dependsOn := &sync.Map{}
-	m := newInterceptingResourceMonitor(ctx.monitor)
-	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
-		resp *pulumirpc.RegisterResourceResponse,
-		err error) {
-		var deps []URN
-		for _, dep := range in.GetDependencies() {
-			deps = append(deps, URN(dep))
-		}
-		dependsOn.Store(URN(resp.Urn), deps)
-	}
-	ctx.monitor = m
-	return &dependenciesTracker{dependsOn}
-}
-
 type interceptingResourceMonitor struct {
-	inner                 pulumirpc.ResourceMonitorClient
+	pulumirpc.ResourceMonitorClient
+
 	afterRegisterResource func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
 }
 
 func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *interceptingResourceMonitor {
-	m := &interceptingResourceMonitor{}
-	m.inner = inner
-	return m
+	return &interceptingResourceMonitor{
+		ResourceMonitorClient: inner,
+	}
 }
 
-func (i *interceptingResourceMonitor) Call(
-	ctx context.Context, req *pulumirpc.CallRequest, options ...grpc.CallOption) (*pulumirpc.CallResponse, error) {
-	return i.inner.Call(ctx, req, options...)
-}
-
-func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
-	in *pulumirpc.SupportsFeatureRequest,
-	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
-	return i.inner.SupportsFeature(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
-	return i.inner.Invoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
-	in *pulumirpc.ResourceInvokeRequest,
-	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
-	return i.inner.StreamInvoke(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) ReadResource(ctx context.Context,
-	in *pulumirpc.ReadResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
-	return i.inner.ReadResource(ctx, in, opts...)
-}
-
-func (i *interceptingResourceMonitor) RegisterResource(ctx context.Context,
+func (i *interceptingResourceMonitor) RegisterResource(
+	ctx context.Context,
 	in *pulumirpc.RegisterResourceRequest,
-	opts ...grpc.CallOption) (*pulumirpc.RegisterResourceResponse, error) {
-	resp, err := i.inner.RegisterResource(ctx, in, opts...)
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	resp, err := i.ResourceMonitorClient.RegisterResource(ctx, in, opts...)
 	if i.afterRegisterResource != nil {
 		i.afterRegisterResource(in, resp, err)
 	}
 	return resp, err
 }
 
-func (i *interceptingResourceMonitor) RegisterResourceOutputs(ctx context.Context,
-	in *pulumirpc.RegisterResourceOutputsRequest,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
-	return i.inner.RegisterResourceOutputs(ctx, in, opts...)
+func TestRehydratedComponentConsideredRemote(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var component testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"test:index:MyComponent",
+			"component",
+			&component))
+		require.False(t, component.keepDependency())
+
+		urn, _, _, err := component.URN().awaitURN(context.TODO())
+		require.NoError(t, err)
+
+		var rehydrated testComp
+		require.NoError(t, ctx.RegisterResource(
+			"test:index:MyComponent",
+			"component",
+			nil,
+			&rehydrated,
+			URN_(string(urn))))
+		require.True(t, rehydrated.keepDependency())
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
 }
 
-var _ pulumirpc.ResourceMonitorClient = &interceptingResourceMonitor{}
+// Regression test for https://github.com/pulumi/pulumi/issues/12032
+func TestParentAndDependsOnAreTheSame12032(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var parent testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"pkg:index:first",
+			"first",
+			&parent))
+		var child testComp
+		require.NoError(t, ctx.RegisterComponentResource(
+			"pkg:index:second",
+			"second",
+			&child,
+			Parent(&parent),
+			DependsOn([]Resource{&parent})))
+
+		// This would freeze before the fix.
+		var custom testRes
+		require.NoError(t, ctx.RegisterResource(
+			"foo:bar:baz",
+			"myresource",
+			nil,
+			&custom,
+			Parent(&child)))
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
+}

@@ -5,28 +5,45 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export * from "./provider";
-export * from "./resource";
-export * from "./resourceInput";
+export { MainComponentArgs } from "./mainComponent";
+export type MainComponent = import("./mainComponent").MainComponent;
+export const MainComponent: typeof import("./mainComponent").MainComponent = null as any;
+utilities.lazyLoad(exports, ["MainComponent"], () => require("./mainComponent"));
+
+export { ProviderArgs } from "./provider";
+export type Provider = import("./provider").Provider;
+export const Provider: typeof import("./provider").Provider = null as any;
+utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
+export { ResourceArgs } from "./resource";
+export type Resource = import("./resource").Resource;
+export const Resource: typeof import("./resource").Resource = null as any;
+utilities.lazyLoad(exports, ["Resource"], () => require("./resource"));
+
+export { ResourceInputArgs } from "./resourceInput";
+export type ResourceInput = import("./resourceInput").ResourceInput;
+export const ResourceInput: typeof import("./resourceInput").ResourceInput = null as any;
+utilities.lazyLoad(exports, ["ResourceInput"], () => require("./resourceInput"));
+
 
 // Export enums:
 export * from "./types/enums";
 
 // Export sub-modules:
+import * as mod from "./mod";
 import * as types from "./types";
 
 export {
+    mod,
     types,
 };
-
-// Import resources to register:
-import { Resource } from "./resource";
-import { ResourceInput } from "./resourceInput";
 
 const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "example::MainComponent":
+                return new MainComponent(name, <any>undefined, { urn })
             case "example::Resource":
                 return new Resource(name, <any>undefined, { urn })
             case "example::ResourceInput":
@@ -37,9 +54,6 @@ const _module = {
     },
 };
 pulumi.runtime.registerResourceModule("example", "", _module)
-
-import { Provider } from "./provider";
-
 pulumi.runtime.registerResourcePackage("example", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

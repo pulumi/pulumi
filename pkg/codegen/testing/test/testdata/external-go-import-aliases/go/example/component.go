@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pkg/errors"
+	"errors"
 	awsec2 "github.com/pulumi/pulumi-aws/sdk/v4/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	accesscontextmanager "github.com/pulumi/pulumi-google-native/sdk/go/google/accesscontextmanager/v1"
@@ -142,7 +142,7 @@ func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentO
 // ComponentArrayInput is an input type that accepts ComponentArray and ComponentArrayOutput values.
 // You can construct a concrete instance of `ComponentArrayInput` via:
 //
-//          ComponentArray{ ComponentArgs{...} }
+//	ComponentArray{ ComponentArgs{...} }
 type ComponentArrayInput interface {
 	pulumi.Input
 
@@ -167,7 +167,7 @@ func (i ComponentArray) ToComponentArrayOutputWithContext(ctx context.Context) C
 // ComponentMapInput is an input type that accepts ComponentMap and ComponentMapOutput values.
 // You can construct a concrete instance of `ComponentMapInput` via:
 //
-//          ComponentMap{ "key": ComponentArgs{...} }
+//	ComponentMap{ "key": ComponentArgs{...} }
 type ComponentMapInput interface {
 	pulumi.Input
 

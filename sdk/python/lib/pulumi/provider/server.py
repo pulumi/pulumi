@@ -26,7 +26,7 @@ import grpc
 import grpc.aio
 
 from google.protobuf import struct_pb2
-from pulumi.provider.provider import Provider, CallResult, ConstructResult
+from pulumi.provider.provider import InvokeResult, Provider, CallResult, ConstructResult
 from pulumi.resource import (
     ProviderResource,
     Resource,
@@ -82,7 +82,9 @@ class ProviderServicer(ResourceProviderServicer):
             request, proto.ConstructRequest
         ), f"request is not ConstructRequest but is {type(request)} instead"
 
+        organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
+            organization=organization,
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
             parallel=_zero_as_none(request.parallel),
@@ -92,7 +94,7 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config), request.configSecretKeys
+            dict(request.config), list(request.configSecretKeys)
         )
         inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
@@ -179,6 +181,7 @@ class ProviderServicer(ResourceProviderServicer):
         self, result: ConstructResult
     ) -> proto.ConstructResponse:
         urn = await pulumi.Output.from_input(result.urn).future()
+        assert urn is not None
 
         # Note: property_deps is populated by rpc.serialize_properties.
         property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
@@ -211,7 +214,9 @@ class ProviderServicer(ResourceProviderServicer):
             request, proto.CallRequest
         ), f"request is not CallRequest but is {type(request)} instead"
 
+        organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
+            organization=organization,
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
             parallel=_zero_as_none(request.parallel),
@@ -221,7 +226,8 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config), request.configSecretKeys
+            dict(request.config),
+            list(request.configSecretKeys),
         )
 
         args = await self._call_args(request)
@@ -260,7 +266,7 @@ class ProviderServicer(ResourceProviderServicer):
             ).items()
         }
 
-    async def _call_response(self, result: CallResult):
+    async def _call_response(self, result: CallResult) -> proto.CallResponse:
         # Note: ret_deps is populated by rpc.serialize_properties.
         ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
@@ -272,17 +278,43 @@ class ProviderServicer(ResourceProviderServicer):
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             deps[k] = proto.CallResponse.ReturnDependencies(urns=urns)
 
-        # Since `return` is a keyword, we need to pass the args to `CallResponse` using a dictionary.
-        resp = {
+        failures = None
+        if result.failures:
+            failures = [
+                proto.CheckFailure(property=f.property, reason=f.reason)
+                for f in result.failures
+            ]
+        resp = proto.CallResponse(returnDependencies=deps, failures=failures)
+        # Since `return` is a keyword, we need to use getattr: https://developers.google.com/protocol-buffers/docs/reference/python-generated#keyword-conflicts
+        getattr(resp, "return").CopyFrom(ret)
+        return resp
+
+    async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
+        # Note: ret_deps is populated by rpc.serialize_properties but unused
+        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret = await rpc.serialize_properties(
+            inputs=result.outputs, property_deps=ret_deps
+        )
+        # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
+        resp: Dict[str, Any] = {
             "return": ret,
-            "returnDependencies": deps,
         }
         if result.failures:
             resp["failures"] = [
                 proto.CheckFailure(property=f.property, reason=f.reason)
                 for f in result.failures
             ]
-        return proto.CallResponse(**resp)
+        return proto.InvokeResponse(**resp)
+
+    async def Invoke(  # pylint: disable=invalid-overridden-method
+        self, request: proto.InvokeRequest, context
+    ) -> proto.InvokeResponse:
+        args = rpc.deserialize_properties(
+            request.args, keep_unknowns=False, keep_internal=False
+        )
+        result = self.provider.invoke(token=request.tok, args=args)
+        response = await self._invoke_response(result)
+        return response
 
     async def Configure(  # pylint: disable=invalid-overridden-method
         self, request, context
@@ -329,13 +361,14 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     argp.add_argument("--logflow", action="store_true", help="Currently ignored")
     argp.add_argument("--logtostderr", action="store_true", help="Currently ignored")
 
-    engine_address: str = argp.parse_args().engine
+    known_args, _ = argp.parse_known_args()
+    engine_address: str = known_args.engine
 
     async def serve() -> None:
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
-        port = server.add_insecure_port(address="0.0.0.0:0")
+        port = server.add_insecure_port(address="127.0.0.1:0")
         await server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())
         sys.stdout.buffer.flush()

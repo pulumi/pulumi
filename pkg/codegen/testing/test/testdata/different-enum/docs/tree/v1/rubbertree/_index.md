@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a RubberTree Resource {#create}
+## Create RubberTree Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -596,7 +596,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-## Look up an Existing RubberTree Resource {#look-up}
+## Look up Existing RubberTree Resource {#look-up}
 
 Get an existing RubberTree resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 <div>
@@ -1508,7 +1508,7 @@ The following state arguments are supported:
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">plant </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 </dl>

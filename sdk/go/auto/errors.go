@@ -47,7 +47,9 @@ func IsConcurrentUpdateError(e error) bool {
 		return false
 	}
 
-	return strings.Contains(ae.stderr, "[409] Conflict: Another update is currently in progress.")
+	conflictText := "[409] Conflict: Another update is currently in progress."
+	localBackendConflictText := "the stack is currently locked by"
+	return strings.Contains(ae.stderr, conflictText) || strings.Contains(ae.stderr, localBackendConflictText)
 }
 
 // IsSelectStack404Error returns true if the error was a result of selecting a stack that does not exist.

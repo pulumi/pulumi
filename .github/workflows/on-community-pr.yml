@@ -1,0 +1,50 @@
+# SECURITY: This PR run on untrusted branches.
+#
+# Changes to "permissions" and "secrets" should be narrowly scoped and carefully reviewed.
+#
+# Reusable workflows, "uses" jobs, *must* specify the main branch.
+
+name: Community Pull Request
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+  # Only required for the PR and changelog comment.
+  pull-requests: write
+
+jobs:
+  comment-on-pr:
+    name: Maintainer comment
+    # We only care about commenting on a PR if the PR is from a fork
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@1.0.1
+        with:
+          message: |
+            PR is now waiting for a maintainer to take action.
+
+            **Note for the maintainer:**  Commands available:
+
+            * `/run-acceptance-tests` - used to test run the acceptance tests for the project
+            * `/run-codegen` - used to test the Pull Request against downstream codegen
+            * `/run-docs-gen` - used to test the Pull Request against documentation generation
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  changelog-comment:
+    name: Changelog preview
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: pulumi/pulumi/.github/workflows/on-pr-changelog.yml@master
+    with:
+      ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      base-ref: origin/${{ github.base_ref }}
+      pr-number: ${{ github.event.pull_request.number }}
+      changelog-required: ${{ !contains(github.event.pull_request.labels.*.name, 'impact/no-changelog-required') }}
+    secrets:
+      # Scope secrets to the minimum required:
+      PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}

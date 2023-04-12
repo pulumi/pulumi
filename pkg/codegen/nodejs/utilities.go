@@ -22,8 +22,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // isReservedWord returns true if s is a reserved word as per ECMA-262.
@@ -133,11 +135,34 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 func escape(s string) string {
 	// Seems the most fool-proof way of doing this is by using the JSON marshaler and then stripping the surrounding quotes
 	escaped, err := json.Marshal(s)
-	contract.AssertNoError(err)
+	contract.AssertNoErrorf(err, "JSON(%q)", s)
 	contract.Assertf(len(escaped) >= 2, "JSON(%s) expected a quoted string but returned %s", s, escaped)
 	contract.Assertf(
 		escaped[0] == byte('"') && escaped[len(escaped)-1] == byte('"'),
 		"JSON(%s) expected a quoted string but returned %s", s, escaped)
 
 	return string(escaped)[1:(len(escaped) - 1)]
+}
+
+func lookupNodePackageInfo(pkg *schema.Package) NodePackageInfo {
+	nodePackageInfo := NodePackageInfo{}
+	if pkg == nil {
+		return nodePackageInfo
+	}
+	if languageInfo, ok := pkg.Language["nodejs"]; ok {
+		if info, ok2 := languageInfo.(NodePackageInfo); ok2 {
+			nodePackageInfo = info
+		}
+	}
+	return nodePackageInfo
+}
+
+func nonEmptyStrings(candidates []string) []string {
+	res := []string{}
+	for _, c := range candidates {
+		if c != "" {
+			res = append(res, c)
+		}
+	}
+	return res
 }

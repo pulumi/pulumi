@@ -45,13 +45,13 @@ func Check(t *testing.T, path string, dependencies codegen.StringSet, linkLocal 
 	}
 	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0600)
+	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0o600)
 	require.NoError(t, err)
 
 	tsConfig := map[string]string{}
 	tsConfigJSON, err := json.MarshalIndent(tsConfig, "", "    ")
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0600)
+	err = os.WriteFile(filepath.Join(dir, "tsconfig.json"), tsConfigJSON, 0o600)
 	require.NoError(t, err)
 
 	TypeCheck(t, path, dependencies, linkLocal)
@@ -108,4 +108,18 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 
 	}
 	return result
+}
+
+func GenerateProgramBatchTest(t *testing.T, testCases []test.ProgramTest) {
+	test.TestProgramCodegen(t,
+		test.ProgramCodegenOptions{
+			Language:   "nodejs",
+			Extension:  "ts",
+			OutputFile: "index.ts",
+			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
+				Check(t, path, dependencies, true)
+			},
+			GenProgram: GenerateProgram,
+			TestCases:  testCases,
+		})
 }

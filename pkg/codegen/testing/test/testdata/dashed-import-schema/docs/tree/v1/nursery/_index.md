@@ -15,7 +15,7 @@ no_edit_this_page: true
 
 
 
-## Create a Nursery Resource {#create}
+## Create Nursery Resource {#create}
 <div>
 <pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
 </div>
@@ -603,7 +603,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <h2 id="package-details">Package Details</h2>
 <dl class="package-details">
 	<dt>Repository</dt>
-	<dd><a href=""></a></dd>
+	<dd><a href="">plant </a></dd>
 	<dt>License</dt>
 	<dd></dd>
 </dl>

@@ -61,6 +61,9 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 	case *Resource:
 		diags := b.bindResource(node)
 		diagnostics = append(diagnostics, diags...)
+	case *Component:
+		diags := b.bindComponent(node)
+		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
@@ -96,7 +99,7 @@ func (b *binder) getDependencies(node Node) []Node {
 		}
 		return nil
 	})
-	contract.Assert(len(diags) == 0)
+	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	return SourceOrderNodes(deps)
 }
 
@@ -108,6 +111,33 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.DefaultValue))
 		}
 	}
+	if attr, ok := block.Body.Attribute(LogicalNamePropertyKey); ok {
+		logicalName, lDiags := getStringAttrValue(attr)
+		if lDiags != nil {
+			diagnostics = diagnostics.Append(lDiags)
+		} else {
+			node.logicalName = logicalName
+		}
+	}
+
+	if descriptionAttr, ok := block.Body.Attribute("description"); ok {
+		description, diags := getStringAttrValue(descriptionAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Description = description
+		}
+	}
+
+	if nullableAttr, ok := block.Body.Attribute("nullable"); ok {
+		nullable, diags := getBooleanAttributeValue(nullableAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Nullable = nullable
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

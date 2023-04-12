@@ -21,11 +21,16 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -37,11 +42,11 @@ import (
 const clientRuntimeName = "client"
 
 // ProjectInfoContext returns information about the current project, including its pwd, main, and plugin context.
-func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.ConfigSource,
+func ProjectInfoContext(projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
-	tracingSpan opentracing.Span) (string, string, *plugin.Context, error) {
-
-	contract.Require(projinfo != nil, "projinfo")
+	tracingSpan opentracing.Span, config map[config.Key]string,
+) (string, string, *plugin.Context, error) {
+	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 
 	// If the package contains an override for the main entrypoint, use it.
 	pwd, main, err := projinfo.GetPwdMain()
@@ -50,10 +55,25 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 	}
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, config, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan)
+	ctx, err := plugin.NewContextWithRoot(diag, statusDiag, host, pwd, projinfo.Root,
+		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins, config)
 	if err != nil {
 		return "", "", nil, err
+	}
+
+	if logFile := env.DebugGRPC.Value(); logFile != "" {
+		di, err := interceptors.NewDebugInterceptor(interceptors.DebugInterceptorOptions{
+			LogFile: logFile,
+			Mutex:   ctx.DebugTraceMutex,
+		})
+		if err != nil {
+			return "", "", nil, err
+		}
+		ctx.DialOptions = func(metadata interface{}) []grpc.DialOption {
+			return di.DialOptions(interceptors.LogOptions{
+				Metadata: metadata,
+			})
+		}
 	}
 
 	// If the project wants to connect to an existing language runtime, do so now.
@@ -79,7 +99,7 @@ func ProjectInfoContext(projinfo *Projinfo, host plugin.Host, config plugin.Conf
 // newDeploymentContext creates a context for a subsequent deployment. Callers must call Close on the context after the
 // associated deployment completes.
 func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.SpanContext) (*deploymentContext, error) {
-	contract.Require(u != nil, "u")
+	contract.Requiref(u != nil, "u", "must not be nil")
 
 	// Create a root span for the operation
 	opts := []opentracing.StartSpanOption{}
@@ -136,23 +156,32 @@ type deploymentSourceFunc func(
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error)
 
 // newDeployment creates a new deployment with the given context and options.
-func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions, dryRun bool) (*deployment, error) {
-	contract.Assert(info != nil)
-	contract.Assert(info.Update != nil)
-	contract.Assert(opts.SourceFunc != nil)
+func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions,
+	dryRun bool,
+) (*deployment, error) {
+	contract.Assertf(info != nil, "a deployment context must be provided")
+	contract.Assertf(info.Update != nil, "update info cannot be nil")
+	contract.Assertf(opts.SourceFunc != nil, "a source factory must be provided")
 
 	// First, load the package metadata and the deployment target in preparation for executing the package's program
 	// and creating resources.  This includes fetching its pwd and main overrides.
 	proj, target := info.Update.GetProject(), info.Update.GetTarget()
-	contract.Assert(proj != nil)
-	contract.Assert(target != nil)
+	contract.Assertf(proj != nil, "update project cannot be nil")
+	contract.Assertf(target != nil, "update target cannot be nil")
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.GetRoot()}
-	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host, target,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan)
-	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
+
+	// Decrypt the configuration.
+	config, err := target.Config.Decrypt(target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
+	}
+
+	pwd, main, plugctx, err := ProjectInfoContext(projinfo, opts.Host,
+		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
 	}
+	plugctx = plugctx.WithCancelChannel(ctx.Cancel.Canceled())
 
 	opts.trustDependencies = proj.TrustResourceDependencies()
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
@@ -168,7 +197,8 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
-			plugctx, target, target.Snapshot, opts.Plan, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
+			plugctx, target, target.Snapshot, opts.Plan, source,
+			localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
 			false /*returnInstallErrors*/)
@@ -218,14 +248,14 @@ type deployment struct {
 type runActions interface {
 	deploy.Events
 
-	Changes() ResourceChanges
+	Changes() display.ResourceChanges
 	MaybeCorrupt() bool
 }
 
 // run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
-	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
-
+	preview bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Change into the plugin context's working directory.
 	chdir, err := fsutil.Chdir(deployment.Plugctx.Pwd)
 	if err != nil {
@@ -265,7 +295,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
 			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 			DisableOutputValues:       deployment.Options.DisableOutputValues,
-			ExperimentalPlans:         deployment.Options.UpdateOptions.ExperimentalPlans,
+			GeneratePlan:              deployment.Options.UpdateOptions.GeneratePlan,
 		}
 		newPlan, walkResult = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)

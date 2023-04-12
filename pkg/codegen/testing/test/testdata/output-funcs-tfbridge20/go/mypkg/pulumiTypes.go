@@ -25,7 +25,7 @@ type StorageAccountKeyResponse struct {
 // StorageAccountKeyResponseInput is an input type that accepts StorageAccountKeyResponseArgs and StorageAccountKeyResponseOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseInput` via:
 //
-//          StorageAccountKeyResponseArgs{...}
+//	StorageAccountKeyResponseArgs{...}
 type StorageAccountKeyResponseInput interface {
 	pulumi.Input
 
@@ -60,7 +60,7 @@ func (i StorageAccountKeyResponseArgs) ToStorageAccountKeyResponseOutputWithCont
 // StorageAccountKeyResponseArrayInput is an input type that accepts StorageAccountKeyResponseArray and StorageAccountKeyResponseArrayOutput values.
 // You can construct a concrete instance of `StorageAccountKeyResponseArrayInput` via:
 //
-//          StorageAccountKeyResponseArray{ StorageAccountKeyResponseArgs{...} }
+//	StorageAccountKeyResponseArray{ StorageAccountKeyResponseArgs{...} }
 type StorageAccountKeyResponseArrayInput interface {
 	pulumi.Input
 
@@ -145,7 +145,7 @@ type GetAmiIdsFilter struct {
 // GetAmiIdsFilterInput is an input type that accepts GetAmiIdsFilterArgs and GetAmiIdsFilterOutput values.
 // You can construct a concrete instance of `GetAmiIdsFilterInput` via:
 //
-//          GetAmiIdsFilterArgs{...}
+//	GetAmiIdsFilterArgs{...}
 type GetAmiIdsFilterInput interface {
 	pulumi.Input
 
@@ -173,7 +173,7 @@ func (i GetAmiIdsFilterArgs) ToGetAmiIdsFilterOutputWithContext(ctx context.Cont
 // GetAmiIdsFilterArrayInput is an input type that accepts GetAmiIdsFilterArray and GetAmiIdsFilterArrayOutput values.
 // You can construct a concrete instance of `GetAmiIdsFilterArrayInput` via:
 //
-//          GetAmiIdsFilterArray{ GetAmiIdsFilterArgs{...} }
+//	GetAmiIdsFilterArray{ GetAmiIdsFilterArgs{...} }
 type GetAmiIdsFilterArrayInput interface {
 	pulumi.Input
 

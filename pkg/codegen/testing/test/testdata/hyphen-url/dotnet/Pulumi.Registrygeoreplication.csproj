@@ -10,7 +10,7 @@
     <RepositoryUrl></RepositoryUrl>
     <PackageIcon>logo.png</PackageIcon>
 
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseSharedCompilation>false</UseSharedCompilation>
   </PropertyGroup>
@@ -39,17 +39,17 @@
     <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
-   <ItemGroup>
+  <ItemGroup>
     <EmbeddedResource Include="pulumi-plugin.json" />
     <None Include="pulumi-plugin.json" Pack="True" PackagePath="content" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Pulumi" Version="[3.54.1.0,4)" />
     <PackageReference Include="Pulumi.AzureNative" Version="1.28.*" ExcludeAssets="contentFiles" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj"  />
   </ItemGroup>
 
   <ItemGroup>

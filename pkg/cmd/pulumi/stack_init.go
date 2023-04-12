@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,17 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const (
@@ -30,10 +34,7 @@ const (
 )
 
 func newStackInitCmd() *cobra.Command {
-	var secretsProvider string
-	var stackName string
-	var stackToCopy string
-
+	var sicmd stackInitCmd
 	cmd := &cobra.Command{
 		Use:   "init [<org-name>/]<stack-name>",
 		Args:  cmdutil.MaximumNArgs(1),
@@ -43,7 +44,7 @@ func newStackInitCmd() *cobra.Command {
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
 			"but afterwards it can become the target of a deployment using the `update` command.\n" +
 			"\n" +
-			"To create a stack in an organization when logged in to the Pulumi service,\n" +
+			"To create a stack in an organization when logged in to the Pulumi Cloud,\n" +
 			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev')\n" +
 			"\n" +
 			"By default, a stack created using the pulumi.com backend will use the pulumi.com secrets\n" +
@@ -67,90 +68,157 @@ func newStackInitCmd() *cobra.Command {
 			"`--copy-config-from` flag.\n" +
 			"* `pulumi stack init --copy-config-from dev`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			b, err := currentBackend(opts)
-			if err != nil {
-				return err
-			}
-
-			if len(args) > 0 {
-				if stackName != "" {
-					return errors.New("only one of --stack or argument stack name may be specified, not both")
-				}
-
-				stackName = args[0]
-			}
-
-			// Validate secrets provider type
-			if err := validateSecretsProvider(secretsProvider); err != nil {
-				return err
-			}
-
-			if stackName == "" && cmdutil.Interactive() {
-				if b.SupportsOrganizations() {
-					fmt.Print("Please enter your desired stack name.\n" +
-						"To create a stack in an organization, " +
-						"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
-				}
-
-				name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
-				if nameErr != nil {
-					return nameErr
-				}
-				stackName = name
-			}
-
-			if stackName == "" {
-				return errors.New("missing stack name")
-			}
-
-			if err := b.ValidateStackName(stackName); err != nil {
-				return err
-			}
-
-			stackRef, err := b.ParseStackReference(stackName)
-			if err != nil {
-				return err
-			}
-
-			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
-			if err != nil {
-				return err
-			}
-
-			if stackToCopy != "" {
-				// load the old stack and its project
-				copyStack, err := requireStack(stackToCopy, false, opts, false /*setCurrent*/)
-				if err != nil {
-					return err
-				}
-				copyProjectStack, err := loadProjectStack(copyStack)
-				if err != nil {
-					return err
-				}
-
-				// get the project for the newly created stack
-				newProjectStack, err := loadProjectStack(newStack)
-				if err != nil {
-					return err
-				}
-
-				// copy the config from the old to the new
-				return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
-			}
-
-			return nil
+			ctx := commandContext()
+			return sicmd.Run(ctx, args)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to create")
+		&sicmd.stackName, "stack", "s", "", "The name of the stack to create")
 	cmd.PersistentFlags().StringVar(
-		&secretsProvider, "secrets-provider", "default", possibleSecretsProviderChoices)
+		&sicmd.secretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
-		&stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+		&sicmd.stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.noSelect, "no-select", false, "Do not select the stack")
+	cmd.PersistentFlags().StringArrayVar(&sicmd.teams, "teams", nil, "A list of team "+
+		"names that should have permission to read and update this stack,"+
+		" once created")
 	return cmd
+}
+
+// stackInitCmd implements the `pulumi stack init` command.
+type stackInitCmd struct {
+	secretsProvider string
+	stackName       string
+	stackToCopy     string
+	noSelect        bool
+	teams           []string
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
+}
+
+func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
+	if cmd.secretsProvider == "" {
+		cmd.secretsProvider = "default"
+	}
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = currentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow the top-level function
+
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return err
+	}
+
+	b, err := currentBackend(ctx, project, opts)
+	if err != nil {
+		return err
+	}
+
+	if len(args) > 0 {
+		if cmd.stackName != "" {
+			return errors.New("only one of --stack or argument stack name may be specified, not both")
+		}
+
+		cmd.stackName = args[0]
+	}
+
+	// Validate secrets provider type
+	if err := validateSecretsProvider(cmd.secretsProvider); err != nil {
+		return err
+	}
+
+	if cmd.stackName == "" && cmdutil.Interactive() {
+		if b.SupportsOrganizations() {
+			fmt.Print("Please enter your desired stack name.\n" +
+				"To create a stack in an organization, " +
+				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+		}
+
+		name, nameErr := promptForValue(false, "stack name", "dev", false, b.ValidateStackName, opts)
+		if nameErr != nil {
+			return nameErr
+		}
+		cmd.stackName = name
+	}
+
+	if cmd.stackName == "" {
+		return errors.New("missing stack name")
+	}
+
+	if err := b.ValidateStackName(cmd.stackName); err != nil {
+		return err
+	}
+
+	stackRef, err := b.ParseStackReference(cmd.stackName)
+	if err != nil {
+		return err
+	}
+
+	proj, root, projectErr := readProject()
+	if projectErr != nil && !errors.Is(projectErr, workspace.ErrProjectNotFound) {
+		return projectErr
+	}
+
+	createOpts := newCreateStackOptions(cmd.teams)
+	newStack, err := createStack(ctx, b, stackRef, root, createOpts, !cmd.noSelect, cmd.secretsProvider)
+	if err != nil {
+		if errors.Is(err, backend.ErrTeamsNotSupported) {
+			return fmt.Errorf("stack %s uses the %s backend: "+
+				"%s does not support --teams", cmd.stackName, b.Name(), b.Name())
+		}
+		return err
+	}
+
+	if cmd.stackToCopy != "" {
+		if projectErr != nil {
+			return projectErr
+		}
+
+		// load the old stack and its project
+		copyStack, err := requireStack(ctx, cmd.stackToCopy, stackLoadOnly, opts)
+		if err != nil {
+			return err
+		}
+		copyProjectStack, err := loadProjectStack(proj, copyStack)
+		if err != nil {
+			return err
+		}
+
+		// get the project for the newly created stack
+		newProjectStack, err := loadProjectStack(proj, newStack)
+		if err != nil {
+			return err
+		}
+
+		// copy the config from the old to the new
+		return copyEntireConfigMap(copyStack, copyProjectStack, newStack, newProjectStack)
+	}
+
+	return nil
+}
+
+// newCreateStackOptions constructs a backend.CreateStackOptions object
+// from the provided options.
+func newCreateStackOptions(teams []string) *backend.CreateStackOptions {
+	// Remove any strings from the list that are empty or just whitespace.
+	validTeams := teams[:0] // reuse storage.
+	for _, team := range teams {
+		team = strings.TrimSpace(team)
+		if len(team) > 0 {
+			validTeams = append(validTeams, team)
+		}
+	}
+
+	return &backend.CreateStackOptions{
+		Teams: validTeams,
+	}
 }

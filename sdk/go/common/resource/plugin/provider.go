@@ -57,7 +57,7 @@ type Provider interface {
 	// Check validates that the given property bag is valid for a resource of the given type and returns the inputs
 	// that should be passed to successive calls to Diff, Create, or Update for this resource.
 	Check(urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool, sequenceNumber int) (resource.PropertyMap, []CheckFailure, error)
+		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
@@ -101,6 +101,10 @@ type Provider interface {
 	// non-blocking; it is up to the host to decide how long to wait after SignalCancellation is
 	// called before (e.g.) hard-closing any gRPC connection.
 	SignalCancellation() error
+
+	// GetMapping returns the mapping (if any) for the provider. A provider should return an empty response
+	// (not an error) if it doesn't have a mapping for the given key.
+	GetMapping(key string) ([]byte, string, error)
 }
 
 type GrpcProvider interface {
@@ -227,7 +231,7 @@ type DiffResult struct {
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
 }
 
-// Computes the detailed diff of Updated, Added and Deleted keys.
+// NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
 func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]PropertyDiff {
 	if diff == nil {
 		return map[string]PropertyDiff{}
@@ -238,7 +242,6 @@ func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff) map[string]Propert
 }
 
 func objectDiffToDetailedDiff(prefix string, diff *resource.ObjectDiff, acc map[string]PropertyDiff) {
-
 	getPrefix := func(k resource.PropertyKey) string {
 		if prefix == "" {
 			return string(k)
@@ -273,7 +276,6 @@ func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff, acc map[strin
 	for i := range d.Deletes {
 		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete}
 	}
-
 }
 
 func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff, acc map[string]PropertyDiff) {
@@ -345,7 +347,7 @@ type ConstructInfo struct {
 // ConstructOptions captures options for a call to Construct.
 type ConstructOptions struct {
 	// Aliases is the set of aliases for the component.
-	Aliases []resource.URN
+	Aliases []resource.Alias
 	// Dependencies is the list of resources this component depends on.
 	Dependencies []resource.URN
 	// Protect is true if the component is protected.

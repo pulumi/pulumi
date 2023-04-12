@@ -13,7 +13,7 @@ namespace Pulumi.Example.Inputs
     /// <summary>
     /// Make sure that defaults propagate through types
     /// </summary>
-    public sealed class LayeredTypeArgs : Pulumi.ResourceArgs
+    public sealed class LayeredTypeArgs : global::Pulumi.ResourceArgs
     {
         /// <summary>
         /// The answer to the question
@@ -51,5 +51,6 @@ namespace Pulumi.Example.Inputs
             Question = Utilities.GetEnv("PULUMI_THE_QUESTION") ?? "<unknown>";
             Thinker = "not a good interaction";
         }
+        public static new LayeredTypeArgs Empty => new LayeredTypeArgs();
     }
 }

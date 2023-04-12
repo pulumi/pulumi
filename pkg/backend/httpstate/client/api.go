@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"runtime"
@@ -79,7 +78,7 @@ const (
 // accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
 type accessToken interface {
 	Kind() accessTokenKind
-	String() string
+	Get(ctx context.Context) (string, error)
 }
 
 type httpCallOptions struct {
@@ -98,20 +97,38 @@ func (apiAccessToken) Kind() accessTokenKind {
 	return accessTokenKindAPIToken
 }
 
-func (t apiAccessToken) String() string {
-	return string(t)
+func (t apiAccessToken) Get(_ context.Context) (string, error) {
+	return string(t), nil
 }
 
-// updateAccessToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
-// accessTokenKindUpdateToken)
-type updateAccessToken string
+// UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
+// actual API call (e.g. after marshaling, etc.).
+type UpdateTokenSource interface {
+	GetToken(ctx context.Context) (string, error)
+}
 
-func (updateAccessToken) Kind() accessTokenKind {
+type updateTokenStaticSource string
+
+func (t updateTokenStaticSource) GetToken(_ context.Context) (string, error) {
+	return string(t), nil
+}
+
+// updateToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
+// accessTokenKindUpdateToken)
+type updateToken struct {
+	source UpdateTokenSource
+}
+
+func updateAccessToken(source UpdateTokenSource) updateToken {
+	return updateToken{source: source}
+}
+
+func (updateToken) Kind() accessTokenKind {
 	return accessTokenKindUpdateToken
 }
 
-func (t updateAccessToken) String() string {
-	return string(t)
+func (t updateToken) Get(ctx context.Context) (string, error) {
+	return t.source.GetToken(ctx)
 }
 
 func float64Ptr(f float64) *float64 {
@@ -155,9 +172,11 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
-func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
-	tok accessToken, opts httpCallOptions) (string, *http.Response, error) {
-
+func pulumiAPICall(ctx context.Context,
+	requestSpan opentracing.Span,
+	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+	tok accessToken, opts httpCallOptions,
+) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = cleanPath(path)
@@ -196,14 +215,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 		return "", nil, fmt.Errorf("creating new HTTP request: %w", err)
 	}
 
-	requestSpan, requestContext := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
-		opentracing.Tag{Key: "method", Value: method},
-		opentracing.Tag{Key: "path", Value: path},
-		opentracing.Tag{Key: "api", Value: cloudAPI},
-		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
-	defer requestSpan.Finish()
-
-	req = req.WithContext(requestContext)
+	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
@@ -214,11 +226,15 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 	req.Header.Set("Accept", "application/vnd.pulumi+8")
 
 	// Apply credentials if provided.
-	if tok.String() != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), tok.String()))
+	creds, err := tok.Get(ctx)
+	if err != nil {
+		return "", nil, fmt.Errorf("fetching credentials: %w", err)
+	}
+	if creds != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), creds))
 	}
 
-	tracingOptions := tracing.OptionsFromContext(requestContext)
+	tracingOptions := tracing.OptionsFromContext(ctx)
 	if tracingOptions.PropagateSpans {
 		carrier := opentracing.HTTPHeadersCarrier(req.Header)
 		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {
@@ -261,8 +277,8 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, client httpClient, cloudAPI
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && tok.String() == "" {
-		return "", nil, errors.New("this command requires logging in; try running 'pulumi login' first")
+	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
+		return "", nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
@@ -306,7 +322,14 @@ type defaultRESTClient struct {
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-	respObj interface{}, tok accessToken, opts httpCallOptions) error {
+	respObj interface{}, tok accessToken, opts httpCallOptions,
+) error {
+	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
+		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "path", Value: path},
+		opentracing.Tag{Key: "api", Value: cloudAPI},
+		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
+	defer requestSpan.Finish()
 
 	// Compute query string from query object
 	querystring := ""
@@ -325,15 +348,21 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	var reqBody []byte
 	var err error
 	if reqObj != nil {
-		reqBody, err = json.Marshal(reqObj)
-		if err != nil {
-			return fmt.Errorf("marshalling request object as JSON: %w", err)
+		// Send verbatim if already marshalled. This is
+		// important when sending indented JSON is needed.
+		if raw, ok := reqObj.(json.RawMessage); ok {
+			reqBody = []byte(raw)
+		} else {
+			reqBody, err = json.Marshal(reqObj)
+			if err != nil {
+				return fmt.Errorf("marshalling request object as JSON: %w", err)
+			}
 		}
 	}
 
 	// Make API call
 	url, resp, err := pulumiAPICall(
-		ctx, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
 	if err != nil {
 		return err
 	}
@@ -372,7 +401,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 	defer contract.IgnoreClose(resp.Body)
 	if !ok {
 		// No header implies that there's no additional encoding on this response.
-		return ioutil.ReadAll(resp.Body)
+		return io.ReadAll(resp.Body)
 	}
 
 	if len(contentEncoding) > 1 {
@@ -394,7 +423,7 @@ func readBody(resp *http.Response) ([]byte, error) {
 			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
 
-		return ioutil.ReadAll(reader)
+		return io.ReadAll(reader)
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}

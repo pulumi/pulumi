@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,14 +31,15 @@ import (
 )
 
 func newPolicyPublishCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "publish [org-name]",
 		Args:  cmdutil.MaximumNArgs(1),
-		Short: "Publish a Policy Pack to the Pulumi service",
-		Long: "Publish a Policy Pack to the Pulumi service\n" +
+		Short: "Publish a Policy Pack to the Pulumi Cloud",
+		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
 			"If an organization name is not specified, the current user account is used.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			ctx := commandContext()
 
 			var orgName string
 			if len(args) > 0 {
@@ -57,10 +59,10 @@ func newPolicyPublishCmd() *cobra.Command {
 			policyPackRef := fmt.Sprintf("%s/", orgName)
 
 			//
-			// Obtain current PolicyPack, tied to the Pulumi service backend.
+			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
 			//
 
-			policyPack, err := requirePolicyPack(policyPackRef)
+			policyPack, err := requirePolicyPack(ctx, policyPackRef)
 			if err != nil {
 				return err
 			}
@@ -80,8 +82,8 @@ func newPolicyPublishCmd() *cobra.Command {
 				return err
 			}
 
-			plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd, projinfo.Root,
-				projinfo.Proj.Runtime.Options(), false, nil)
+			plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, pwd, projinfo.Root,
+				projinfo.Proj.Runtime.Options(), false, nil, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -90,8 +92,9 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Attempt to publish the PolicyPack.
 			//
 
-			res := policyPack.Publish(commandContext(), backend.PublishOperation{
-				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
+			res := policyPack.Publish(ctx, backend.PublishOperation{
+				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes,
+			})
 			if res != nil && res.Error() != nil {
 				return res.Error()
 			}
@@ -103,22 +106,28 @@ func newPolicyPublishCmd() *cobra.Command {
 	return cmd
 }
 
-func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
+func requirePolicyPack(ctx context.Context, policyPack string) (backend.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
 	//
 
-	cloudURL, err := workspace.GetCurrentCloudURL()
-	if err != nil {
-		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi service: %w", err)
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
 
+	cloudURL, err := workspace.GetCurrentCloudURL(project)
+	if err != nil {
+		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
 	displayOptions := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+	b, err := httpstate.NewLoginManager().Login(ctx, cmdutil.Diag(), cloudURL, project,
+		workspace.GetCloudInsecure(cloudURL), displayOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +136,7 @@ func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
 	// Obtain PolicyPackReference.
 	//
 
-	policy, err := b.GetPolicyPack(commandContext(), policyPack, cmdutil.Diag())
+	policy, err := b.GetPolicyPack(ctx, policyPack, cmdutil.Diag())
 	if err != nil {
 		return nil, err
 	}

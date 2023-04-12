@@ -12,11 +12,11 @@ namespace Pulumi.My8110
     public static class ExampleFunc
     {
         public static Task InvokeAsync(ExampleFuncArgs? args = null, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync("my8110::exampleFunc", args ?? new ExampleFuncArgs(), options.WithDefaults());
+            => global::Pulumi.Deployment.Instance.InvokeAsync("my8110::exampleFunc", args ?? new ExampleFuncArgs(), options.WithDefaults());
     }
 
 
-    public sealed class ExampleFuncArgs : Pulumi.InvokeArgs
+    public sealed class ExampleFuncArgs : global::Pulumi.InvokeArgs
     {
         [Input("enums")]
         private List<Union<string, Pulumi.My8110.MyEnum>>? _enums;
@@ -29,5 +29,6 @@ namespace Pulumi.My8110
         public ExampleFuncArgs()
         {
         }
+        public static new ExampleFuncArgs Empty => new ExampleFuncArgs();
     }
 }

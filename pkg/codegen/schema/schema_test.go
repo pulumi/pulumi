@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+//nolint:lll
 package schema
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -27,17 +28,26 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
 
-	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-		panic(err)
+	if strings.HasSuffix(file, ".json") {
+		if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+			panic(err)
+		}
+	} else if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
+		if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
+			panic(err)
+		}
+	} else {
+		panic(fmt.Sprintf("unknown schema file extension while parsing %s", file))
 	}
 
 	return pkgSpec
@@ -47,7 +57,7 @@ func TestImportSpec(t *testing.T) {
 	t.Parallel()
 
 	// Read in, decode, and import the schema.
-	pkgSpec := readSchemaFile("kubernetes.json")
+	pkgSpec := readSchemaFile("kubernetes-3.7.2.json")
 
 	pkg, err := ImportSpec(pkgSpec, nil)
 	if err != nil {
@@ -55,7 +65,7 @@ func TestImportSpec(t *testing.T) {
 	}
 
 	for _, r := range pkg.Resources {
-		assert.NotNil(t, r.Package, "expected resource %s to have an associated Package", r.Token)
+		assert.NotNil(t, r.PackageReference, "expected resource %s to have an associated Package", r.Token)
 	}
 }
 
@@ -109,6 +119,118 @@ var enumTests = []struct {
 	}},
 }
 
+func TestUnmarshalYAMLFunctionSpec(t *testing.T) {
+	t.Parallel()
+	var functionSpec *FunctionSpec
+	fnYaml := `
+description: Test function
+outputs:
+  type: number`
+
+	err := yaml.Unmarshal([]byte(fnYaml), &functionSpec)
+	assert.Nil(t, err, "Unmarshalling should work")
+	assert.Equal(t, "Test function", functionSpec.Description)
+	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
+}
+
+func TestUnmarshalJSONFunctionSpec(t *testing.T) {
+	t.Parallel()
+	var functionSpec *FunctionSpec
+	fnJSON := `{"description":"Test function", "outputs": { "type": "number" } }`
+	err := json.Unmarshal([]byte(fnJSON), &functionSpec)
+	assert.Nil(t, err, "Unmarshalling should work")
+	assert.Equal(t, "Test function", functionSpec.Description)
+	assert.NotNil(t, functionSpec.ReturnType, "Return type is not nil")
+	assert.NotNil(t, functionSpec.ReturnType.TypeSpec, "Return type is a type spec")
+	assert.Equal(t, "number", functionSpec.ReturnType.TypeSpec.Type, "Return type is a number")
+}
+
+func TestMarshalJSONFunctionSpec(t *testing.T) {
+	t.Parallel()
+	functionSpec := &FunctionSpec{
+		Description: "Test function",
+		ReturnType: &ReturnTypeSpec{
+			TypeSpec: &TypeSpec{Type: "number"},
+		},
+	}
+
+	dataJSON, err := json.Marshal(functionSpec)
+	data := string(dataJSON)
+	expectedJSON := `{"description":"Test function","outputs":{"type":"number"}}`
+	assert.Nil(t, err, "Unmarshalling should work")
+	assert.Equal(t, expectedJSON, data)
+}
+
+func TestMarshalJSONFunctionSpecWithOutputs(t *testing.T) {
+	t.Parallel()
+	functionSpec := &FunctionSpec{
+		Description: "Test function",
+		Outputs: &ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]PropertySpec{
+				"foo": {
+					TypeSpec: TypeSpec{Type: "string"},
+				},
+			},
+		},
+	}
+
+	dataJSON, err := json.Marshal(functionSpec)
+	data := string(dataJSON)
+	expectedJSON := `{"description":"Test function","outputs":{"properties":{"foo":{"type":"string"}},"type":"object"}}`
+	assert.Nil(t, err, "Unmarshalling should work")
+	assert.Equal(t, expectedJSON, data)
+}
+
+func TestMarshalYAMLFunctionSpec(t *testing.T) {
+	t.Parallel()
+	functionSpec := &FunctionSpec{
+		Description: "Test function",
+		ReturnType: &ReturnTypeSpec{
+			TypeSpec: &TypeSpec{Type: "number"},
+		},
+	}
+
+	dataYAML, err := yaml.Marshal(functionSpec)
+	data := string(dataYAML)
+	expectedYAML := `description: Test function
+outputs:
+    type: number
+`
+
+	assert.Nil(t, err, "Unmarshalling should work")
+	assert.Equal(t, expectedYAML, data)
+}
+
+func TestInvalidTypes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		filename string
+		expected string
+	}{
+		{"bad-type-1.json", "invalid token 'fake-provider:index:provider' (provider is a reserved word for the root module)"},
+		{"bad-type-2.json", "invalid token 'fake-provider::provider' (provider is a reserved word for the root module)"},
+		{"bad-type-3.json", "invalid token 'fake-provider:noModulePart' (should have three parts)"},
+		{"bad-type-4.json", "invalid token 'noParts' (should have three parts); "},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.filename, func(t *testing.T) {
+			t.Parallel()
+
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			_, err := ImportSpec(pkgSpec, nil)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expected)
+		})
+	}
+}
+
 func TestEnums(t *testing.T) {
 	t.Parallel()
 
@@ -127,7 +249,7 @@ func TestEnums(t *testing.T) {
 					t.Error(err)
 				}
 				result := pkg.Types[0]
-				tt.expected.Package = pkg
+				tt.expected.PackageReference = pkg.Reference()
 				assert.Equal(t, tt.expected, result)
 			}
 		})
@@ -202,7 +324,7 @@ func TestImportResourceRef(t *testing.T) {
 			t.Parallel()
 
 			// Read in, decode, and import the schema.
-			schemaBytes, err := ioutil.ReadFile(
+			schemaBytes, err := os.ReadFile(
 				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
 			assert.NoError(t, err)
 
@@ -358,7 +480,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 func TestMethods(t *testing.T) {
 	t.Parallel()
 
-	var tests = []struct {
+	tests := []struct {
 		filename      string
 		validator     func(pkg *Package)
 		expectedError string
@@ -378,15 +500,36 @@ func TestMethods(t *testing.T) {
 					Resource: pkg.Resources[0],
 				}, inputs[0].Type)
 
-				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Outputs)
-				assert.Len(t, pkg.Resources[0].Methods[0].Function.Outputs.Properties, 1)
-				outputs := pkg.Resources[0].Methods[0].Function.Outputs.Properties
+				var objectReturnType *ObjectType
+				if objectType, ok := pkg.Resources[0].Methods[0].Function.ReturnType.(*ObjectType); ok && objectType != nil {
+					objectReturnType = objectType
+				}
+
+				assert.NotNil(t, objectReturnType)
+				assert.Len(t, objectReturnType.Properties, 1)
+				outputs := objectReturnType.Properties
 				assert.Equal(t, "someValue", outputs[0].Name)
 				assert.Equal(t, StringType, outputs[0].Type)
 
 				assert.Len(t, pkg.Functions, 1)
 				assert.True(t, pkg.Functions[0].IsMethod)
 				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
+			},
+		},
+		{
+			filename: "good-simplified-methods.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Functions, 1)
+				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
+			},
+		},
+		{
+			filename: "good-simplified-methods.yml",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Functions, 1)
+				assert.NotNil(t, pkg.Functions[0].ReturnType, "There should be a return type")
+				assert.Equal(t, pkg.Functions[0].ReturnType, NumberType)
 			},
 		},
 		{
@@ -476,6 +619,50 @@ func TestIsOverlay(t *testing.T) {
 	})
 }
 
+func TestBindingOutputsPopulatesReturnType(t *testing.T) {
+	t.Parallel()
+
+	// Test that using Outputs in PackageSpec correctly populates the return type of the function.
+	pkgSpec := PackageSpec{
+		Name:    "xyz",
+		Version: "0.0.1",
+		Functions: map[string]FunctionSpec{
+			"xyz:index:abs": {
+				MultiArgumentInputs: []string{"value"},
+				Inputs: &ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							TypeSpec: TypeSpec{
+								Type: "number",
+							},
+						},
+					},
+				},
+				Outputs: &ObjectTypeSpec{
+					Required: []string{"result"},
+					Properties: map[string]PropertySpec{
+						"result": {
+							TypeSpec: TypeSpec{
+								Type: "number",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, err := ImportSpec(pkgSpec, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.NotNil(t, pkg.Functions[0].ReturnType)
+	objectType, ok := pkg.Functions[0].ReturnType.(*ObjectType)
+	assert.True(t, ok)
+	assert.Equal(t, NumberType, objectType.Properties[0].Type)
+}
+
 // Tests that the method ReplaceOnChanges works as expected. Does not test
 // codegen.
 func TestReplaceOnChanges(t *testing.T) {
@@ -507,10 +694,12 @@ func TestReplaceOnChanges(t *testing.T) {
 				"cat.fish",
 				"dog.bone",
 				"dog.cat.fish",
-				"cat.dog.bone"},
+				"cat.dog.bone",
+			},
 			errors: []string{
 				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"cat\"",
-				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\"",
+			},
 		},
 		{
 			name:     "Singularly Recursive",

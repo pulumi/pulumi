@@ -1,3 +1,0 @@
-name: about-csharp
-runtime: dotnet
-description: An integration test for the pulumi about command

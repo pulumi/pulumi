@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
@@ -31,11 +33,15 @@ type UnionType struct {
 	// Annotations records any annotations associated with the object type.
 	Annotations []interface{}
 
-	s string
+	s atomic.Value // Value<string>
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
-// Any element types that are union types are replaced with their element types.
+// NewUnionTypeAnnotated enforces 3 properties on the returned type:
+// 1. Any element types that are union types are replaced with their element types.
+// 2. Any duplicate types are removed.
+// 3. Unions have have more then 1 type. If only a single type is left after (1) and (2),
+// it is returned as is.
 func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	var elementTypes []Type
 	for _, t := range types {
@@ -46,10 +52,12 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 		}
 	}
 
+	// Remove duplicate types
+	// We first sort the types so duplicates will be adjacent
 	sort.Slice(elementTypes, func(i, j int) bool {
 		return elementTypes[i].String() < elementTypes[j].String()
 	})
-
+	// We then filter out adjacent duplicates
 	dst := 0
 	for src := 0; src < len(elementTypes); {
 		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
@@ -63,6 +71,8 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	}
 	elementTypes = elementTypes[:dst]
 
+	// If the union turns out to be the union of a single type, just return the underlying
+	// type.
 	if len(elementTypes) == 1 {
 		return elementTypes[0]
 	}
@@ -97,28 +107,59 @@ func (*UnionType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (t *UnionType) Pretty() pretty.Formatter {
+	elements := make([]pretty.Formatter, 0, len(t.ElementTypes))
+	isOptional := false
+	for _, el := range t.ElementTypes {
+		if el == NoneType {
+			isOptional = true
+			continue
+		}
+		elements = append(elements, el.Pretty())
+	}
+	var v pretty.Formatter = &pretty.List{
+		Separator: " | ",
+		Elements:  elements,
+	}
+	if isOptional {
+		v = &pretty.Wrap{
+			Value:           v,
+			Postfix:         "?",
+			PostfixSameline: true,
+		}
+	}
+	return v
+}
+
 // Traverse attempts to traverse the union type with the given traverser. This always fails.
 func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	var types []Type
+	var foundDiags hcl.Diagnostics
 	for _, t := range t.ElementTypes {
 		// We handle 'none' specially here: so that traversing an optional type returns an optional type.
-		if t == NoneType {
+		switch t {
+		case NoneType:
 			types = append(types, NoneType)
-		} else {
-			// Note that we intentionally drop errors here and assume that the traversal will dynamically succeed.
+		default:
+			// Note that we only report errors when the entire operation fails. We try to
+			// strike a balance between assuming that the traversal will dynamically
+			// succeed and good error reporting.
 			et, diags := t.Traverse(traverser)
 			if !diags.HasErrors() {
 				types = append(types, et.(Type))
+			}
+			if len(diags) > 0 {
+				foundDiags = append(foundDiags, diags...)
 			}
 		}
 	}
 
 	switch len(types) {
 	case 0:
-		return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+		return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
 	case 1:
 		if types[0] == NoneType {
-			return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
+			return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
 		}
 		return types[0], nil
 	default:
@@ -234,20 +275,23 @@ func (t *UnionType) String() string {
 }
 
 func (t *UnionType) string(seen map[Type]struct{}) string {
-	if t.s == "" {
-		elements := make([]string, len(t.ElementTypes))
-		for i, e := range t.ElementTypes {
-			elements[i] = e.string(seen)
-		}
-
-		annotations := ""
-		if len(t.Annotations) != 0 {
-			annotations = fmt.Sprintf(", annotated(%p)", t)
-		}
-
-		t.s = fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
+	if s := t.s.Load(); s != nil {
+		return s.(string)
 	}
-	return t.s
+
+	elements := make([]string, len(t.ElementTypes))
+	for i, e := range t.ElementTypes {
+		elements[i] = e.string(seen)
+	}
+
+	annotations := ""
+	if len(t.Annotations) != 0 {
+		annotations = fmt.Sprintf(", annotated(%p)", t)
+	}
+
+	s := fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
+	t.s.Store(s)
+	return s
 }
 
 func (t *UnionType) unify(other Type) (Type, ConversionKind) {

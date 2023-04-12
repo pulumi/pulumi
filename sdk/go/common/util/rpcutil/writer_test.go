@@ -17,7 +17,7 @@ package rpcutil
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -62,7 +62,7 @@ func TestWriter_NoTerminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, false)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, false)
 	assert.NoError(t, err)
 
 	// stdout and stderr should just write to server
@@ -77,11 +77,11 @@ func TestWriter_NoTerminal(t *testing.T) {
 	err = closer.Close()
 	assert.NoError(t, err)
 
-	outBytes, err := ioutil.ReadAll(&server.stdout)
+	outBytes, err := io.ReadAll(&server.stdout)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello"), outBytes)
 
-	errBytes, err := ioutil.ReadAll(&server.stderr)
+	errBytes, err := io.ReadAll(&server.stderr)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("world"), errBytes)
 }
@@ -91,7 +91,7 @@ func TestWriter_Terminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, true)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
@@ -132,13 +132,13 @@ func TestWriter_Terminal(t *testing.T) {
 		err = closer.Close()
 		assert.NoError(t, err)
 
-		outBytes, err := ioutil.ReadAll(&server.stdout)
+		outBytes, err := io.ReadAll(&server.stdout)
 		assert.NoError(t, err)
 		// echo adds an extra \n at the end, and line discipline will cause \n to come back as \r\n
-		expected := strings.Replace(text+"\n", "\n", "\r\n", -1)
+		expected := strings.ReplaceAll(text+"\n", "\n", "\r\n")
 		assert.Equal(t, []byte(expected), outBytes)
 
-		errBytes, err := ioutil.ReadAll(&server.stderr)
+		errBytes, err := io.ReadAll(&server.stderr)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{}, errBytes)
 	} else {
@@ -154,11 +154,11 @@ func TestWriter_Terminal(t *testing.T) {
 		err = closer.Close()
 		assert.NoError(t, err)
 
-		outBytes, err := ioutil.ReadAll(&server.stdout)
+		outBytes, err := io.ReadAll(&server.stdout)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("hello"), outBytes)
 
-		errBytes, err := ioutil.ReadAll(&server.stderr)
+		errBytes, err := io.ReadAll(&server.stderr)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("world"), errBytes)
 	}
@@ -169,7 +169,7 @@ func TestWriter_IsPTY(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeStreams(server, true)
+	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty, check IsTerminal returns true
@@ -189,7 +189,7 @@ func TestWriter_SafeToCloseTwice(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, _, _, err := MakeStreams(server, true)
+	closer, _, _, err := MakeInstallDependenciesStreams(server, true)
 	assert.NoError(t, err)
 
 	err = closer.Close()

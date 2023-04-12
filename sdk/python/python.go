@@ -16,6 +16,7 @@ package python
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -24,7 +25,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -32,7 +33,7 @@ const (
 	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
 )
 
-// Find the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
+// CommandPath finds the correct path and command for Python. If the `PULUMI_PYTHON_CMD`
 // variable is set it will be looked for on `PATH`, otherwise, `python3` and
 // `python` will be looked for.
 func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
@@ -67,13 +68,12 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
 		}
 		if err != nil {
-			return "", "", errors.Errorf(
-				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+			return "", "", fmt.Errorf(
+				"failed to locate any of %q on your PATH. Have you installed Python 3.6 or greater?",
 				pythonCmds)
 		}
 	}
 	return pythonPath, pythonCmd, nil
-
 }
 
 // Command returns an *exec.Cmd for running `python`. Uses `ComandPath`
@@ -128,7 +128,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 				path := filepath.Join(dir, pythonCmd+ext)
 				_, err := os.Lstat(path)
 				if err != nil && !os.IsNotExist(err) {
-					return "", "", errors.Wrap(err, "evaluating python execution alias")
+					return "", "", fmt.Errorf("evaluating python execution alias: %w", err)
 				}
 				if os.IsNotExist(err) {
 					continue
@@ -180,7 +180,7 @@ func NewVirtualEnvError(dir, fullPath string) error {
 		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel\n", venvPythonBin) +
 		fmt.Sprintf("    3. %s -m pip install -r requirements.txt\n", venvPythonBin)
 
-	return errors.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
+	return fmt.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
 		"run the following commands to create the virtual environment and install dependencies into it:\n\n%s\n\n"+
 		"For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments",
 		dir, fullPath, message, commandsText)
@@ -195,14 +195,18 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 	var hasPath bool
 	var result []string
 	for _, env := range environ {
-		if strings.HasPrefix(env, "PATH=") {
+		split := strings.SplitN(env, "=", 2)
+		contract.Assertf(len(split) == 2, "unexpected environment variable: %q", env)
+		key, value := split[0], split[1]
+
+		// Case-insensitive compare, as Windows will normally be "Path", not "PATH".
+		if strings.EqualFold(key, "PATH") {
 			hasPath = true
 			// Prepend the virtual environment bin directory to PATH so any calls to run
 			// python or pip will use the binaries in the virtual environment.
-			originalValue := env[len("PATH="):]
-			path := fmt.Sprintf("PATH=%s%s%s", virtualEnvBin, string(os.PathListSeparator), originalValue)
+			path := fmt.Sprintf("%s=%s%s%s", key, virtualEnvBin, string(os.PathListSeparator), value)
 			result = append(result, path)
-		} else if strings.HasPrefix(env, "PYTHONHOME=") {
+		} else if strings.EqualFold(key, "PYTHONHOME") {
 			// Skip PYTHONHOME to "unset" this value.
 		} else {
 			result = append(result, env)
@@ -221,14 +225,15 @@ func InstallDependencies(ctx context.Context, root, venvDir string, showOutput b
 }
 
 func InstallDependenciesWithWriters(ctx context.Context,
-	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
-	print := func(message string) {
+	root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	printmsg := func(message string) {
 		if showOutput {
 			fmt.Fprintf(infoWriter, "%s\n", message)
 		}
 	}
 
-	print("Creating virtual environment...")
+	printmsg("Creating virtual environment...")
 
 	// Create the virtual environment by running `python -m venv <venvDir>`.
 	if !filepath.IsAbs(venvDir) {
@@ -243,10 +248,10 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		if len(output) > 0 {
 			fmt.Fprintf(errorWriter, "%s\n", string(output))
 		}
-		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
+		return fmt.Errorf("creating virtual environment at %s: %w", venvDir, err)
 	}
 
-	print("Finished creating virtual environment")
+	printmsg("Finished creating virtual environment")
 
 	runPipInstall := func(errorMsg string, arg ...string) error {
 		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
@@ -254,7 +259,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
 		wrapError := func(err error) error {
-			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
+			return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
 		}
 
 		if showOutput {
@@ -276,14 +281,14 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		return nil
 	}
 
-	print("Updating pip, setuptools, and wheel in virtual environment...")
+	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
 
 	err = runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
 	if err != nil {
 		return err
 	}
 
-	print("Finished updating")
+	printmsg("Finished updating")
 
 	// If `requirements.txt` doesn't exist, exit early.
 	requirementsPath := filepath.Join(root, "requirements.txt")
@@ -291,14 +296,14 @@ func InstallDependenciesWithWriters(ctx context.Context,
 		return nil
 	}
 
-	print("Installing dependencies in virtual environment...")
+	printmsg("Installing dependencies in virtual environment...")
 
 	err = runPipInstall("installing dependencies", "-r", "requirements.txt")
 	if err != nil {
 		return err
 	}
 
-	print("Finished installing dependencies")
+	printmsg("Finished installing dependencies")
 
 	return nil
 }

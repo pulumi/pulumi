@@ -26,10 +26,15 @@ type Acceptor struct {
 	MaxDelay *time.Duration // an optional maximum delay duration.
 }
 
-// Acceptance is meant to accept a condition.  It returns true when this condition has succeeded, and false otherwise
-// (to which the retry framework responds by waiting and retrying after a certain period of time).  If a non-nil error
-// is returned, retrying halts.  The interface{} data may be used to return final values to the caller.
-type Acceptance func(try int, nextRetryTime time.Duration) (bool, interface{}, error)
+// Acceptance is meant to accept a condition.
+// It returns true when this condition has succeeded, and false otherwise
+// (to which we respond by waiting and retrying after a certain period of time).
+// If a non-nil error is returned, retrying halts.
+// The interface{} data may be used to return final values to the caller.
+//
+// Try specifies the attempt number,
+// zero indicating that this is the first attempt with no retries.
+type Acceptance func(try int, nextRetryTime time.Duration) (success bool, result interface{}, err error)
 
 const (
 	DefaultDelay    time.Duration = 100 * time.Millisecond // by default, delay by 100ms
@@ -37,10 +42,30 @@ const (
 	DefaultMaxDelay time.Duration = 5 * time.Second        // by default, no more than 5 seconds
 )
 
-// Until waits until the acceptor accepts the current condition, or the context expires, whichever comes first.  A
-// return boolean of true means the acceptor eventually accepted; a non-nil error means the acceptor returned an error.
-// If an acceptor accepts a condition after the context has expired, we ignore the expiration and return the condition.
-func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
+// Retryer provides the ability to run and retry a fallible operation
+// with exponential backoff.
+type Retryer struct {
+	// Returns a channel that will send the time after the duration elapses.
+	//
+	// Defaults to time.After.
+	After func(time.Duration) <-chan time.Time
+}
+
+// Until runs the provided acceptor until one of the following conditions is met:
+//
+//   - the operation succeeds: returns true and the result
+//   - the context expires: returns false and no result or errors
+//   - the operation returns an error: returns an error
+//
+// Note that the number of attempts is not limited.
+// The Acceptance function is responsible for determining
+// when to stop retrying.
+func (r *Retryer) Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
+	timeAfter := time.After
+	if r.After != nil {
+		timeAfter = r.After
+	}
+
 	// Prepare our delay and backoff variables.
 	var delay time.Duration
 	if acceptor.Delay == nil {
@@ -64,8 +89,6 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
 	// Loop until the condition is accepted or the context expires, whichever comes first.
 	try := 0
 	for {
-		// Compute the next retry time so the callback can access it.
-		delay = time.Duration(float64(delay) * backoff)
 		if delay > maxDelay {
 			delay = maxDelay
 		}
@@ -78,14 +101,24 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
 
 		// Wait for delay or timeout.
 		select {
-		case <-time.After(delay):
+		case <-timeAfter(delay):
 			// Continue on.
 		case <-ctx.Done():
 			return false, nil, nil
 		}
 
+		delay = time.Duration(float64(delay) * backoff)
 		try++
 	}
+}
+
+// Until waits until the acceptor accepts the current condition, or the context expires, whichever comes first.  A
+// return boolean of true means the acceptor eventually accepted; a non-nil error means the acceptor returned an error.
+// If an acceptor accepts a condition after the context has expired, we ignore the expiration and return the condition.
+//
+// This uses [Retryer] with the default settings.
+func Until(ctx context.Context, acceptor Acceptor) (bool, interface{}, error) {
+	return (&Retryer{}).Until(ctx, acceptor)
 }
 
 // UntilDeadline creates a child context with the given deadline, and then invokes the above Until function.

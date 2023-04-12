@@ -14,7 +14,8 @@ type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)
 
 // RunQuery executes a query program against the resource outputs of a locally hosted stack.
 func RunQuery(ctx context.Context, b Backend, op QueryOperation,
-	callerEventsOpt chan<- engine.Event, newQuery MakeQuery) result.Result {
+	callerEventsOpt chan<- engine.Event, newQuery MakeQuery,
+) result.Result {
 	q, err := newQuery(ctx, op)
 	if err != nil {
 		return result.FromError(err)
@@ -46,7 +47,7 @@ func RunQuery(ctx context.Context, b Backend, op QueryOperation,
 	engineCtx := &engine.Context{
 		Cancel:        cancellationScope.Context(),
 		Events:        engineEvents,
-		BackendClient: NewBackendClient(b),
+		BackendClient: NewBackendClient(b, op.SecretsProvider),
 	}
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
 		engineCtx.ParentSpan = parentSpan.Context()

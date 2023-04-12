@@ -16,6 +16,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
+import { TagMap } from "./tag";
 
 /**
  * Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -36,7 +37,7 @@ export interface Workspace {
     readonly pulumiHome?: string;
     /**
      * The secrets provider to use for encryption and decryption of stack secrets.
-     * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
+     * See: https://www.pulumi.com/docs/intro/concepts/secrets/#available-encryption-providers
      */
     readonly secretsProvider?: string;
     /**
@@ -141,6 +142,35 @@ export interface Workspace {
      */
     refreshConfig(stackName: string): Promise<ConfigMap>;
     /**
+     * Returns the value associated with the specified stack name and key,
+     * scoped to the Workspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     * @param key The key to use for the tag lookup.
+     */
+    getTag(stackName: string, key: string): Promise<string>;
+    /**
+     * Sets the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to set.
+     * @param value The tag value to set.
+     */
+    setTag(stackName: string, key: string, value: string): Promise<void>;
+    /**
+     * Removes the specified key-value pair on the provided stack name.
+     *
+     * @param stackName The stack to operate on.
+     * @param key The tag key to remove.
+     */
+    removeTag(stackName: string, key: string): Promise<void>;
+    /**
+     * Returns the tag map for the specified tag name, scoped to the current Workspace.
+     *
+     * @param stackName The stack to read tag metadata from.
+     */
+    listTags(stackName: string): Promise<TagMap>;
+    /**
      * Returns the currently authenticated user.
      */
     whoAmI(): Promise<WhoAmIResult>;
@@ -177,6 +207,14 @@ export interface Workspace {
      * @param name the name of the plugin.
      * @param version the version of the plugin e.g. "v1.0.0".
      * @param kind the kind of plugin e.g. "resource"
+     */
+    installPluginFromServer(name: string, version: string, server: string): Promise<void>;
+    /**
+     * Installs a plugin in the Workspace from a remote server, for example a third party plugin.
+     *
+     * @param name the name of the plugin.
+     * @param version the version of the plugin e.g. "v1.0.0".
+     * @param server the server to install the plugin into
      */
     installPlugin(name: string, version: string, kind?: string): Promise<void>;
     /**
@@ -251,6 +289,8 @@ export type PulumiFn = () => Promise<Record<string, any> | void>;
  */
 export interface WhoAmIResult {
     user: string;
+    url?: string;
+    organizations?: string[];
 }
 
 export interface PluginInfo {

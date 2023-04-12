@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STDERR=$(mktemp -t previous-version-output.XXXXXX)
+
+# Capture the stderr and success status of this command:
+set +e
+PREVIOUS_VERSION="$(gh release view --json 'tagName' -q '.tagName' 2>"${STDERR}")"
+SUCCESS=$?
+set -e
+# If we fail, but the error is that the release doesn't exist, then we can
+# assume that the previous version is the first release.
+
+if [ "$SUCCESS" = "0" ]; then
+  >&2 echo "::debug::Found previous GitHub release ${PREVIOUS_VERSION}"
+  echo -n "${PREVIOUS_VERSION}"
+elif cat "${STDERR}" | grep -q 'HTTP 404: Not Found'; then
+  >&2 echo "::warn::No previous release ($(cat "${STDERR}")), using initial commit"
+  git rev-list --max-parents=0 HEAD
+else
+  >&2 echo "::error::No previous release ($(cat "${STDERR}"))"
+  exit 1
+fi

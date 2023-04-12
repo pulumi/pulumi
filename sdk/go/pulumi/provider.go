@@ -35,8 +35,8 @@ type constructFunc func(ctx *Context, typ, name string, inputs map[string]interf
 
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
-	constructF constructFunc) (*pulumirpc.ConstructResponse, error) {
-
+	constructF constructFunc,
+) (*pulumirpc.ConstructResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
 		Project:          req.GetProject(),
@@ -47,6 +47,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		DryRun:           req.GetDryRun(),
 		MonitorAddr:      req.GetMonitorEndpoint(),
 		engineConn:       engineConn,
+		Organization:     req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -107,11 +108,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
-		ro.DependsOn = []func(ctx context.Context) (urnSet, error){
-			func(ctx context.Context) (urnSet, error) {
-				return dependencyURNs, nil
-			},
-		}
+		ro.DependsOn = []dependencySet{urnDependencySet(dependencyURNs)}
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
 		ro.Parent = parent
@@ -264,7 +261,7 @@ func gatherDeps(v resource.PropertyValue, deps urnSet) {
 }
 
 func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) error {
-	contract.Assert(dest.CanSet())
+	contract.Requiref(dest.CanSet(), "dest", "value must be settable")
 
 	// Check for nils. The destination will be left with the zero value.
 	if v.IsNull() {
@@ -428,13 +425,16 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 		return nil
 	}
 
-	switch dest.Type().Kind() {
-	case reflect.Map:
-		return copyToMap(ctx, v, dest.Type(), dest)
-	case reflect.Slice:
-		return copyToSlice(ctx, v, dest.Type(), dest)
-	case reflect.Struct:
-		return copyToStruct(ctx, v, dest.Type(), dest)
+	// A resource reference looks like a struct, but must be deserialzed differently.
+	if !v.IsResourceReference() {
+		switch dest.Type().Kind() {
+		case reflect.Map:
+			return copyToMap(ctx, v, dest.Type(), dest)
+		case reflect.Slice:
+			return copyToSlice(ctx, v, dest.Type(), dest)
+		case reflect.Struct:
+			return copyToStruct(ctx, v, dest.Type(), dest)
+		}
 	}
 
 	_, err := unmarshalOutput(ctx, v, dest)
@@ -445,8 +445,8 @@ func copyInputTo(ctx *Context, v resource.PropertyValue, dest reflect.Value) err
 }
 
 func createOutput(ctx *Context, destType reflect.Type, v resource.PropertyValue, known, secret bool,
-	deps []Resource) (reflect.Value, error) {
-
+	deps []Resource,
+) (reflect.Value, error) {
 	outputType := getOutputType(destType)
 	output := ctx.newOutput(outputType, deps...)
 	outputValueDest := reflect.New(output.ElementType()).Elem()
@@ -581,6 +581,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 			field := typ.Field(i)
 			tag, has := field.Tag.Lookup("pulumi")
+			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
 			if !has || tag != k {
 				continue
 			}
@@ -599,7 +600,8 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 			}
 
 			handleField := func(typ reflect.Type, value resource.PropertyValue,
-				deps []Resource) (reflect.Value, error) {
+				deps []Resource,
+			) (reflect.Value, error) {
 				resultType := getOutputType(typ)
 				output := ctx.newOutput(resultType, deps...)
 				dest := reflect.New(output.ElementType()).Elem()
@@ -721,17 +723,18 @@ type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input
 
 // call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
-	callF callFunc) (*pulumirpc.CallResponse, error) {
-
+	callF callFunc,
+) (*pulumirpc.CallResponse, error) {
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Config:      req.GetConfig(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
-		MonitorAddr: req.GetMonitorEndpoint(),
-		engineConn:  engineConn,
+		Project:      req.GetProject(),
+		Stack:        req.GetStack(),
+		Config:       req.GetConfig(),
+		Parallel:     int(req.GetParallel()),
+		DryRun:       req.GetDryRun(),
+		MonitorAddr:  req.GetMonitorEndpoint(),
+		engineConn:   engineConn,
+		Organization: req.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {

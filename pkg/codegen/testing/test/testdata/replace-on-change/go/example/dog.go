@@ -91,7 +91,7 @@ func (i *Dog) ToDogOutputWithContext(ctx context.Context) DogOutput {
 // DogArrayInput is an input type that accepts DogArray and DogArrayOutput values.
 // You can construct a concrete instance of `DogArrayInput` via:
 //
-//          DogArray{ DogArgs{...} }
+//	DogArray{ DogArgs{...} }
 type DogArrayInput interface {
 	pulumi.Input
 
@@ -116,7 +116,7 @@ func (i DogArray) ToDogArrayOutputWithContext(ctx context.Context) DogArrayOutpu
 // DogMapInput is an input type that accepts DogMap and DogMapOutput values.
 // You can construct a concrete instance of `DogMapInput` via:
 //
-//          DogMap{ "key": DogArgs{...} }
+//	DogMap{ "key": DogArgs{...} }
 type DogMapInput interface {
 	pulumi.Input
 

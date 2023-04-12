@@ -1,5 +1,0 @@
-﻿secretsprovider: abc
-config:
-    plain: plain
-    secure:
-        secure: secret

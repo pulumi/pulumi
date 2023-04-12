@@ -73,26 +73,18 @@ func newContToken(s string) backend.ContinuationToken {
 	return &s
 }
 
-// mockStackSummary implements the backend.StackReference interface.
-type mockStackReference struct {
-	name string
-}
-
-func (msr *mockStackReference) Name() tokens.Name {
-	return tokens.Name(msr.name)
-}
-
-func (msr *mockStackReference) String() string {
-	return msr.name
-}
-
 // mockStackSummary implements the backend.StackSummary interface.
 type mockStackSummary struct {
 	name string
 }
 
 func (mss *mockStackSummary) Name() backend.StackReference {
-	return &mockStackReference{mss.name}
+	name := tokens.Name(mss.name)
+	return &backend.MockStackReference{
+		NameV:               name,
+		FullyQualifiedNameV: name.Q(),
+		StringV:             name.String(),
+	}
 }
 
 func (mss *mockStackSummary) LastUpdate() *time.Time {
@@ -145,7 +137,8 @@ func TestListStacksPagination(t *testing.T) {
 
 	backendInstance = &backend.MockBackend{
 		ListStacksF: func(ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
-			[]backend.StackSummary, backend.ContinuationToken, error) {
+			[]backend.StackSummary, backend.ContinuationToken, error,
+		) {
 			requestsMade = append(requestsMade, stackLSInputs{filter, inContToken})
 			requestIdx := len(requestsMade) - 1
 			response := cannedResponses[requestIdx]
@@ -157,11 +150,12 @@ func TestListStacksPagination(t *testing.T) {
 
 	// Execute the command, which will use our mocked backend. Confirm the expected number of
 	// backend calls were made.
-	var args = stackLSArgs{
+	ctx := context.Background()
+	args := stackLSArgs{
 		orgFilter:  testOrgName,
 		projFilter: testProjName,
 	}
-	if err := runStackLS(args); err != nil {
+	if err := runStackLS(ctx, args); err != nil {
 		t.Fatalf("runStackLS returned an error: %v", err)
 	}
 	if len(requestsMade) != 4 {

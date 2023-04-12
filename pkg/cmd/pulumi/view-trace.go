@@ -41,7 +41,7 @@ func readTrace(path string, store io.ReaderFrom) error {
 
 func newViewTraceCmd() *cobra.Command {
 	var port int
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "view-trace [trace-file]",
 		Short: "Display a trace from the Pulumi CLI",
 		Long: "Display a trace from the Pulumi CLI.\n" +
@@ -72,7 +72,7 @@ func newViewTraceCmd() *cobra.Command {
 			app.Store, app.Queryer = store, store
 
 			fmt.Printf("Displaying trace at %v\n", url)
-			return http.ListenAndServe(fmt.Sprintf(":%d", port), app)
+			return http.ListenAndServe(fmt.Sprintf(":%d", port), app) //nolint:gosec
 		}),
 	}
 

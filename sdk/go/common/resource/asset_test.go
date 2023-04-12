@@ -18,16 +18,15 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -120,7 +119,7 @@ func TestAssetSerialize(t *testing.T) {
 	t.Run("path asset", func(t *testing.T) {
 		t.Parallel()
 
-		f, err := ioutil.TempFile("", "")
+		f, err := os.CreateTemp("", "")
 		assert.Nil(t, err)
 		file := f.Name()
 		asset, err := NewPathAsset(file)
@@ -286,7 +285,7 @@ func TestAssetSerialize(t *testing.T) {
 func tempArchive(prefix string, fill bool) (string, error) {
 	for {
 		path := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%x.tar", prefix, rand.Uint32())) //nolint:gosec
-		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		switch {
 		case os.IsExist(err):
 			continue
@@ -302,7 +301,7 @@ func tempArchive(prefix string, fill bool) (string, error) {
 
 				err = w.WriteHeader(&tar.Header{
 					Name: "file",
-					Mode: 0600,
+					Mode: 0o600,
 					Size: 0,
 				})
 			}
@@ -389,6 +388,7 @@ func TestArchiveJar(t *testing.T) {
 	validateTestDirArchive(t, arch, 4)
 }
 
+//nolint:unused // Used by tests that are currently skipped
 func findRepositoryRoot() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -422,7 +422,7 @@ func TestArchiveTarFiles(t *testing.T) {
 	arch, err := NewPathArchive(repoRoot)
 	assert.Nil(t, err)
 
-	err = arch.Archive(TarArchive, ioutil.Discard)
+	err = arch.Archive(TarArchive, io.Discard)
 	assert.Nil(t, err)
 }
 
@@ -436,21 +436,20 @@ func TestArchiveZipFiles(t *testing.T) {
 	arch, err := NewPathArchive(repoRoot)
 	assert.Nil(t, err)
 
-	err = arch.Archive(ZIPArchive, ioutil.Discard)
+	err = arch.Archive(ZIPArchive, io.Discard)
 	assert.Nil(t, err)
 }
 
-//nolint: gosec
+//nolint:gosec
 func TestNestedArchive(t *testing.T) {
 	t.Parallel()
 
 	// Create temp dir and place some files.
-	dirName, err := ioutil.TempDir("", "")
-	assert.Nil(t, err)
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0777))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0777))
+	dirName := t.TempDir()
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "a.txt"), []byte("a"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "c.txt"), []byte("c"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	innerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))
@@ -464,7 +463,7 @@ func TestNestedArchive(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
-	tmpFile, err := ioutil.TempFile("", "")
+	tmpFile, err := os.CreateTemp("", "")
 	fileName := tmpFile.Name()
 	assert.Nil(t, err)
 	err = arch.Archive(ZIPArchive, tmpFile)
@@ -483,15 +482,14 @@ func TestNestedArchive(t *testing.T) {
 	assert.Equal(t, "fake.txt", filepath.ToSlash(files[2].Name))
 }
 
-//nolint: gosec
+//nolint:gosec
 func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	t.Parallel()
 
 	// Create temp dir and place some files.
-	dirName, err := ioutil.TempDir("", "")
-	assert.Nil(t, err)
-	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0777))
-	assert.NoError(t, ioutil.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0777))
+	dirName := t.TempDir()
+	assert.NoError(t, os.MkdirAll(filepath.Join(dirName, "foo", "bar"), 0o777))
+	assert.NoError(t, os.WriteFile(filepath.Join(dirName, "foo", "bar", "b.txt"), []byte("b"), 0o777))
 
 	// Construct an AssetArchive with a nested PathArchive.
 	outerArch, err := NewPathArchive(filepath.Join(dirName, "./foo"))
@@ -505,7 +503,7 @@ func TestFileReferencedThroughMultiplePaths(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Write a ZIP of the AssetArchive to disk.
-	tmpFile, err := ioutil.TempFile("", "")
+	tmpFile, err := os.CreateTemp("", "")
 	fileName := tmpFile.Name()
 	assert.Nil(t, err)
 	err = arch.Archive(ZIPArchive, tmpFile)
@@ -545,7 +543,7 @@ func TestInvalidPathArchive(t *testing.T) {
 	t.Parallel()
 
 	// Create a temp file that is not an asset.
-	tmpFile, err := ioutil.TempFile("", "")
+	tmpFile, err := os.CreateTemp("", "")
 	fileName := tmpFile.Name()
 	assert.NoError(t, err)
 	fmt.Fprintf(tmpFile, "foo\n")

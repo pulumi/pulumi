@@ -27,6 +27,7 @@ import (
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -64,7 +65,8 @@ type LocalPolicyPack struct {
 func MakeLocalPolicyPacks(localPaths []string, configPaths []string) []LocalPolicyPack {
 	// If we have any configPaths, we should have already validated that the length of
 	// the localPaths and configPaths are the same.
-	contract.Assert(len(configPaths) == 0 || len(configPaths) == len(localPaths))
+	contract.Assertf(len(configPaths) == 0 || len(configPaths) == len(localPaths),
+		"configPaths must be empty or match localPaths count (%d), got %d", len(localPaths), len(configPaths))
 
 	r := make([]LocalPolicyPack, len(localPaths))
 	for i, p := range localPaths {
@@ -94,7 +96,8 @@ func ConvertLocalPolicyPacksToPaths(localPolicyPack []LocalPolicyPack) []string 
 //
 // This structure is embedded in another which uses some of the unexported fields, which trips up the `structcheck`
 // linter.
-// nolint: structcheck
+//
+//nolint:structcheck
 type UpdateOptions struct {
 	// LocalPolicyPacks contains an optional set of policy packs to run as part of this deployment.
 	LocalPolicyPacks []LocalPolicyPack
@@ -112,16 +115,16 @@ type UpdateOptions struct {
 	Refresh bool
 
 	// Specific resources to refresh during a refresh operation.
-	RefreshTargets []resource.URN
+	RefreshTargets deploy.UrnTargets
 
 	// Specific resources to replace during an update operation.
-	ReplaceTargets []resource.URN
+	ReplaceTargets deploy.UrnTargets
 
 	// Specific resources to destroy during a destroy operation.
-	DestroyTargets []resource.URN
+	DestroyTargets deploy.UrnTargets
 
 	// Specific resources to update during an update operation.
-	UpdateTargets []resource.URN
+	UpdateTargets deploy.UrnTargets
 
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
@@ -148,15 +151,15 @@ type UpdateOptions struct {
 	// The plan to use for the update, if any.
 	Plan *deploy.Plan
 
-	// true if experimental plans should be generated.
-	ExperimentalPlans bool
+	// GeneratePlan when true cause plans to be generated, we skip this if we know their not needed (e.g. during up)
+	GeneratePlan bool
+
+	// Experimental is true if the engine is in experimental mode (i.e. PULUMI_EXPERIMENTAL was set)
+	Experimental bool
 }
 
-// ResourceChanges contains the aggregate resource changes by operation type.
-type ResourceChanges map[deploy.StepOp]int
-
 // HasChanges returns true if there are any non-same changes in the resulting summary.
-func (changes ResourceChanges) HasChanges() bool {
+func HasChanges(changes display.ResourceChanges) bool {
 	var c int
 	for op, count := range changes {
 		if op != deploy.OpSame &&
@@ -170,10 +173,10 @@ func (changes ResourceChanges) HasChanges() bool {
 }
 
 func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
-	*deploy.Plan, ResourceChanges, result.Result) {
-
-	contract.Require(u != nil, "update")
-	contract.Require(ctx != nil, "ctx")
+	*deploy.Plan, display.ResourceChanges, result.Result,
+) {
+	contract.Requiref(u != nil, "update", "cannot be nil")
+	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
@@ -203,15 +206,16 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
 func RunInstallPlugins(
-	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
+	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context,
+) error {
 	_, _, err := installPlugins(proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]workspace.PluginInfo, error) {
-
+	plugctx *plugin.Context, returnInstallErrors bool,
+) (pluginSet, map[tokens.Package]workspace.PluginSpec, error) {
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
 	// There are two places that we need to look for plugins:
@@ -244,7 +248,8 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(plugctx.Request(), allPlugins.Deduplicate()); err != nil {
+	if err := ensurePluginsAreInstalled(plugctx.Request(), allPlugins.Deduplicate(),
+		plugctx.Host.GetProjectPlugins()); err != nil {
 		if returnInstallErrors {
 			return nil, nil, err
 		}
@@ -258,8 +263,8 @@ func installPlugins(
 }
 
 func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies []RequiredPolicy,
-	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions) error {
-
+	localPolicyPacks []LocalPolicyPack, opts *plugin.PolicyAnalyzerOptions,
+) error {
 	var allValidationErrors []string
 	appendValidationErrors := func(policyPackName, policyPackVersion string, validationErrors []string) {
 		for _, validationError := range validationErrors {
@@ -368,8 +373,8 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 
 func newUpdateSource(
 	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
-	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
-
+	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
+) (deploy.Source, error) {
 	//
 	// Step 1: Install and load plugins.
 	//
@@ -398,10 +403,11 @@ func newUpdateSource(
 		return nil, err
 	}
 	analyzerOpts := plugin.PolicyAnalyzerOptions{
-		Project: proj.Name.String(),
-		Stack:   target.Name.String(),
-		Config:  config,
-		DryRun:  dryRun,
+		Organization: target.Organization.String(),
+		Project:      proj.Name.String(),
+		Stack:        target.Name.String(),
+		Config:       config,
+		DryRun:       dryRun,
 	}
 	if err := installAndLoadPolicyPlugins(plugctx, opts.Diag, opts.RequiredPolicies, opts.LocalPolicyPacks,
 		&analyzerOpts); err != nil {
@@ -425,8 +431,8 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	preview bool) (*deploy.Plan, ResourceChanges, result.Result) {
-
+	preview bool,
+) (*deploy.Plan, display.ResourceChanges, result.Result) {
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}
 	if !opts.isRefresh && !opts.isImport {
@@ -487,7 +493,7 @@ func abbreviateFilePath(path string) string {
 type updateActions struct {
 	Context *Context
 	Steps   int
-	Ops     map[deploy.StepOp]int
+	Ops     map[display.StepOp]int
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
 	Update  UpdateInfo
@@ -499,7 +505,7 @@ type updateActions struct {
 func newUpdateActions(context *Context, u UpdateInfo, opts deploymentOptions) *updateActions {
 	return &updateActions{
 		Context: context,
-		Ops:     make(map[deploy.StepOp]int),
+		Ops:     make(map[display.StepOp]int),
 		Seen:    make(map[resource.URN]deploy.Step),
 		Update:  u,
 		Opts:    opts,
@@ -523,8 +529,8 @@ func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, err
 
 func (acts *updateActions) OnResourceStepPost(
 	ctx interface{}, step deploy.Step,
-	status resource.Status, err error) error {
-
+	status resource.Status, err error,
+) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -597,8 +603,8 @@ func (acts *updateActions) OnResourceStepPost(
 			step.URN())
 		new := step.New()
 		old := step.Old()
-		contract.Assert(new != nil)
-		contract.Assert(old != nil)
+		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
+		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
 		new.Inputs = make(resource.PropertyMap)
 		for key, value := range old.Inputs {
 			new.Inputs[key] = value
@@ -634,12 +640,12 @@ func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
 
-func (acts *updateActions) Changes() ResourceChanges {
-	return ResourceChanges(acts.Ops)
+func (acts *updateActions) Changes() display.ResourceChanges {
+	return display.ResourceChanges(acts.Ops)
 }
 
 type previewActions struct {
-	Ops     map[deploy.StepOp]int
+	Ops     map[display.StepOp]int
 	Opts    deploymentOptions
 	Seen    map[resource.URN]deploy.Step
 	MapLock sync.Mutex
@@ -665,7 +671,7 @@ func ShouldRecordReadStep(step deploy.Step) bool {
 
 func newPreviewActions(opts deploymentOptions) *previewActions {
 	return &previewActions{
-		Ops:  make(map[deploy.StepOp]int),
+		Ops:  make(map[display.StepOp]int),
 		Opts: opts,
 		Seen: make(map[resource.URN]deploy.Step),
 	}
@@ -687,7 +693,8 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, er
 }
 
 func (acts *previewActions) OnResourceStepPost(ctx interface{},
-	step deploy.Step, status resource.Status, err error) error {
+	step deploy.Step, status resource.Status, err error,
+) error {
 	acts.MapLock.Lock()
 	assertSeen(acts.Seen, step)
 	acts.MapLock.Unlock()
@@ -751,6 +758,6 @@ func (acts *previewActions) MaybeCorrupt() bool {
 	return false
 }
 
-func (acts *previewActions) Changes() ResourceChanges {
-	return ResourceChanges(acts.Ops)
+func (acts *previewActions) Changes() display.ResourceChanges {
+	return display.ResourceChanges(acts.Ops)
 }

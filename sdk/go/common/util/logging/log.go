@@ -23,6 +23,7 @@ package logging
 // should be updated to properly filter as well before forwarding things along.
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"strconv"
@@ -36,15 +37,47 @@ type Filter interface {
 	Filter(s string) string
 }
 
-var LogToStderr = false // true if logging is being redirected to stderr.
-var Verbose = 0         // >0 if verbose logging is enabled at a particular level.
-var LogFlow = false     // true to flow logging settings to child processes.
+var (
+	LogToStderr = false // true if logging is being redirected to stderr.
+	Verbose     = 0     // >0 if verbose logging is enabled at a particular level.
+	LogFlow     = false // true to flow logging settings to child processes.
+)
 
-var rwLock sync.RWMutex
-var filters []Filter
+var (
+	rwLock  sync.RWMutex
+	filters []Filter
+)
 
-func V(level glog.Level) glog.Verbose {
-	return glog.V(level)
+// VerboseLogger logs messages only if verbosity matches the level it was built with.
+//
+// It may be used as a boolean to check if it's enabled.
+//
+//	if log := logging.V(lvl); log {
+//		log.Infoln(expensiveComputation())
+//	}
+type VerboseLogger glog.Verbose
+
+// Info is equivalent to the global Info function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v VerboseLogger) Info(args ...interface{}) {
+	glog.Verbose(v).Info(FilterString(fmt.Sprint(args...)))
+}
+
+// Infoln is equivalent to the global Infoln function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v VerboseLogger) Infoln(args ...interface{}) {
+	glog.Verbose(v).Infoln(FilterString(fmt.Sprint(args...)))
+}
+
+// Infof is equivalent to the global Infof function, guarded by the value of v.
+// See the documentation of V for usage.
+func (v VerboseLogger) Infof(format string, args ...interface{}) {
+	glog.Verbose(v).Infof("%s", FilterString(fmt.Sprintf(format, args...)))
+}
+
+// V builds a logger that logs messages only if verbosity is at least at the provided level.
+func V(level glog.Level) VerboseLogger {
+	return VerboseLogger(glog.V(level))
 }
 
 func Errorf(format string, args ...interface{}) {
@@ -102,8 +135,7 @@ func failfast(msg string) {
 	panic(fmt.Sprintf("fatal: %v", msg))
 }
 
-type nopFilter struct {
-}
+type nopFilter struct{}
 
 func (f *nopFilter) Filter(s string) string {
 	return s
@@ -124,7 +156,7 @@ func AddGlobalFilter(filter Filter) {
 }
 
 func CreateFilter(secrets []string, replacement string) Filter {
-	var items []string
+	items := make([]string, 0, len(secrets))
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.
@@ -132,6 +164,15 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			continue
 		}
 		items = append(items, secret, replacement)
+
+		// Catch secrets that are serialized to JSON.
+		bs, err := json.Marshal(secret)
+		if err != nil {
+			continue
+		}
+		if escaped := string(bs[1 : len(bs)-1]); escaped != secret {
+			items = append(items, escaped, replacement)
+		}
 	}
 	if len(items) > 0 {
 		return &replacerFilter{replacer: strings.NewReplacer(items...)}

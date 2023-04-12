@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -63,7 +64,8 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 }
 
 func (t *OpaqueType) conversionFromImpl(
-	src Type, unifying, checkUnsafe bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
+) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		if constType, ok := src.(*ConstType); ok {
 			return t.conversionFrom(constType.Type, unifying, seen)
@@ -71,7 +73,7 @@ func (t *OpaqueType) conversionFromImpl(
 		switch {
 		case t == NumberType:
 			// src == NumberType is handled by t == src above
-			contract.Assert(src != NumberType)
+			contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
 
 			cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
 			switch cki {
@@ -131,7 +133,6 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 // - The number type is safely convertible from int and unsafely convertible from string
 // - The int type is unsafely convertible from string
 // - The bool type is unsafely convertible from string
-//
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
 	kind, _ := t.conversionFrom(src, false, nil)
 	return kind
@@ -159,6 +160,10 @@ func (t *OpaqueType) String() string {
 func NewOpaqueType(name string) *OpaqueType {
 	t := OpaqueType(name)
 	return &t
+}
+
+func (t *OpaqueType) Pretty() pretty.Formatter {
+	return pretty.FromStringer(t)
 }
 
 func (t *OpaqueType) string(_ map[Type]struct{}) string {

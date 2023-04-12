@@ -15,15 +15,15 @@
 package integration
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
 )
 
 // Test that RunCommand writes the command's output to a log file.
@@ -37,14 +37,13 @@ func TestRunCommandLog(t *testing.T) {
 		t.Skip("Couldn't find Node on PATH")
 	}
 
+	testw := iotest.LogWriter(t)
 	opts := &ProgramTestOptions{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdout: testw,
+		Stderr: testw,
 	}
 
-	tempdir, err := ioutil.TempDir("", "test")
-	contract.AssertNoError(err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 
 	args := []string{node, "-e", "console.log('output from node');"}
 	err = RunCommand(t, "node", args, tempdir, opts)
@@ -54,7 +53,7 @@ func TestRunCommandLog(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(matches))
 
-	output, err := ioutil.ReadFile(matches[0])
+	output, err := os.ReadFile(matches[0])
 	assert.Nil(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }
@@ -94,4 +93,97 @@ func TestDepRootCalc(t *testing.T) {
 
 	dep = getRewritePath("github.com/pulumi/pulumi-auth0/sdk", "gopath", "/my-go-src")
 	assert.Equal(t, "/my-go-src/pulumi-auth0/sdk", filepath.ToSlash(dep))
+}
+
+func TestGoModEdits(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	depRoot := filepath.Clean(filepath.Join(cwd, "../../../.."))
+
+	gopath, err := GoPath()
+	require.NoError(t, err)
+
+	// Were we to commit this go.mod file, `make tidy` would fail, and we should keep the complexity
+	// of tests constrained to the test itself.
+
+	// The dir must be a relative path as well, so we make it relative to cwd (which is absolute).
+	badModDir := t.TempDir()
+	badModDir, err = filepath.Rel(cwd, badModDir)
+	require.NoError(t, err)
+	badModFile := filepath.Join(badModDir, "go.mod")
+	err = os.WriteFile(badModFile, []byte(`
+# invalid go.mod
+`), 0o600)
+	require.NoError(t, err)
+
+	errNotExists := "no such file or directory"
+	if runtime.GOOS == "windows" {
+		errNotExists = "The system cannot find the path specified"
+	}
+
+	tests := []struct {
+		name          string
+		dep           string
+		expectedValue string
+		expectedError string
+	}{
+		{
+			name:          "valid-path",
+			dep:           "../../../sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
+			name:          "invalid-path-non-existent",
+			dep:           "../../../.tmp.non-existent-dir",
+			expectedError: errNotExists,
+		},
+		{
+			name:          "invalid-path-bad-go-mod",
+			dep:           badModDir,
+			expectedError: "error parsing go.mod",
+		},
+		{
+			name:          "valid-module-name",
+			dep:           "github.com/pulumi/pulumi/sdk/v3",
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
+			name:          "valid-module-name-version-skew",
+			dep:           "github.com/pulumi/pulumi/sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
+			name:          "valid-rel-path",
+			dep:           "github.com/pulumi/pulumi/sdk/v3=../../../sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
+			name:          "valid-rel-path-version-skew",
+			dep:           "github.com/pulumi/pulumi/sdk=../../../sdk",
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+		},
+		{
+			name:          "invalid-rel-path",
+			dep:           "github.com/pulumi/pulumi/pkg=../../../sdk",
+			expectedError: "found module path with prefix github.com/pulumi/pulumi/sdk, expected github.com/pulumi/pulumi/pkg",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			editStr, err := getEditStr(test.dep, gopath, depRoot)
+
+			if test.expectedError != "" {
+				assert.ErrorContains(t, err, test.expectedError)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, test.expectedValue, editStr)
+			}
+		})
+	}
 }

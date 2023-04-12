@@ -38,8 +38,8 @@ import (
 // underlying resources of the `@pulumi/aws` implementation.
 func AWSOperationsProvider(
 	config map[config.Key]string,
-	component *Resource) (Provider, error) {
-
+	component *Resource,
+) (Provider, error) {
 	awsRegion, ok := config[regionKey]
 	if !ok {
 		return nil, errors.New("no AWS region found")
@@ -129,8 +129,10 @@ type awsConnection struct {
 	logSvc *cloudwatchlogs.CloudWatchLogs
 }
 
-var awsDefaultSession *session.Session
-var awsDefaultSessionMutex sync.Mutex
+var (
+	awsDefaultSession      *session.Session
+	awsDefaultSessionMutex sync.Mutex
+)
 
 func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*session.Session, error) {
 	// AWS SDK for Go documentation: "Sessions should be cached when possible"
@@ -161,8 +163,8 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	names []string,
 	logGroups []string,
 	startTime *time.Time,
-	endTime *time.Time) []LogEntry {
-
+	endTime *time.Time,
+) []LogEntry {
 	// Create a channel for collecting log event outputs
 	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
 

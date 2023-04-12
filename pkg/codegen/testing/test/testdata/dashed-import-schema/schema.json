@@ -241,10 +241,7 @@
       "namespaces": {
         "plant": "Plant",
         "tree/v1": "Tree.V1"
-      },
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
+      }
     },
     "go": {
       "importBasePath": "dashed-import-schema/plant-provider",

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -64,13 +64,36 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
-	contract.Require(stdout != nil, "stdout")
-	contract.Require(stderr != nil, "stderr")
+	contract.Requiref(stdout != nil, "stdout", "must not be nil")
+	contract.Requiref(stderr != nil, "stderr", "must not be nil")
+
+	stdoutMu := &sync.Mutex{}
+	stderrMu := &sync.Mutex{}
+	func() {
+		defer func() {
+			// The == check below can panic if stdout and stderr are not comparable.
+			// If that happens, ignore the panic and use separate mutexes.
+			_ = recover()
+		}()
+
+		if stdout == stderr {
+			// If stdout and stderr point to the same stream,
+			// use the same mutex for them.
+			stderrMu = stdoutMu
+		}
+	}()
+
+	// Wrap the stdout and stderr writers in a mutex
+	// to ensure that we don't interleave output.
+	stdout = &syncWriter{Writer: stdout, mu: stdoutMu}
+	stderr = &syncWriter{Writer: stderr, mu: stderrMu}
+
 	// Discard debug output by default unless requested.
-	debug := ioutil.Discard
+	debug := io.Discard
 	if opts.Debug {
 		debug = stdout
 	}
+
 	return newDefaultSink(opts, map[Severity]io.Writer{
 		Debug:   debug,
 		Info:    stdout,
@@ -81,11 +104,11 @@ func DefaultSink(stdout io.Writer, stderr io.Writer, opts FormatOptions) Sink {
 }
 
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
-	contract.Assert(writers[Debug] != nil)
-	contract.Assert(writers[Info] != nil)
-	contract.Assert(writers[Infoerr] != nil)
-	contract.Assert(writers[Error] != nil)
-	contract.Assert(writers[Warning] != nil)
+	contract.Assertf(writers[Debug] != nil, "Writer for %v must be set", Debug)
+	contract.Assertf(writers[Info] != nil, "Writer for %v must be set", Info)
+	contract.Assertf(writers[Infoerr] != nil, "Writer for %v must be set", Infoerr)
+	contract.Assertf(writers[Error] != nil, "Writer for %v must be set", Error)
+	contract.Assertf(writers[Warning] != nil, "Writer for %v must be set", Warning)
 	contract.Assertf(opts.Color != "", "FormatOptions.Color must be set")
 	return &defaultSink{
 		opts:    opts,
@@ -130,7 +153,7 @@ func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
 	if logging.V(9) {
 		logging.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprint(d.writers[Debug], msg)
+	d.print(Debug, msg)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
@@ -138,7 +161,7 @@ func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprint(d.writers[Info], msg)
+	d.print(Info, msg)
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
@@ -146,7 +169,7 @@ func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprint(d.writers[Infoerr], msg)
+	d.print(Infoerr, msg)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -154,7 +177,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprint(d.writers[Error], msg)
+	d.print(Error, msg)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
@@ -162,7 +185,11 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	if logging.V(5) {
 		logging.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprint(d.writers[Warning], msg)
+	d.print(Warning, msg)
+}
+
+func (d *defaultSink) print(sev Severity, msg string) {
+	fmt.Fprint(d.writers[sev], msg)
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string) {
@@ -192,7 +219,7 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 	if diag.Raw {
 		buffer.WriteString(diag.Message)
 	} else {
-		buffer.WriteString(fmt.Sprintf(diag.Message, args...))
+		fmt.Fprintf(&buffer, diag.Message, args...)
 	}
 
 	buffer.WriteString(colors.Reset)
@@ -203,4 +230,18 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (
 
 	// If colorization was requested, compile and execute the directives now.
 	return d.opts.Color.Colorize(prefix.String()), d.opts.Color.Colorize(filtered)
+}
+
+// syncWriter wraps an io.Writer and ensures that all writes are synchronized
+// with a mutex.
+type syncWriter struct {
+	io.Writer
+
+	mu *sync.Mutex
+}
+
+func (w *syncWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.Writer.Write(p)
 }

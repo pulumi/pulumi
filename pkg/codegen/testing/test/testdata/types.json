@@ -4,6 +4,9 @@
   "meta": {
     "moduleFormat": "(.*)"
   },
+  "language": {
+    "nodejs": {}
+  },
   "config": {},
   "types": {
     "typetests::object": {

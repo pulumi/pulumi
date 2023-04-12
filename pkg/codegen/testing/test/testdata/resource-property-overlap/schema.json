@@ -11,11 +11,6 @@
     }
   },
   "language": {
-    "csharp": {
-      "projectReferences": [
-        "..\\..\\..\\..\\..\\..\\..\\sdk\\dotnet\\Pulumi\\Pulumi.csproj"
-      ]
-    },
     "go": {
       "generateResourceContainerTypes": true,
       "generateExtraInputTypes": true

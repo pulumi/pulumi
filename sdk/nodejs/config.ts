@@ -13,16 +13,42 @@
 // limitations under the License.
 
 import { RunError } from "./errors";
-import { getProject } from "./metadata";
+import { getProject as metadataGetProject } from "./metadata";
 import { Output } from "./output";
-import { getConfig } from "./runtime";
+import { allConfig, getConfig as runtimeGetConfig } from "./runtime/config";
 
 function makeSecret<T>(value: T): Output<T> {
-    return new Output(
+    const output = require("./output");
+    return new output.Output(
         [], Promise.resolve(value),
         /*isKnown:*/ Promise.resolve(true), /*isSecret:*/ Promise.resolve(true),
         Promise.resolve([]));
 }
+
+function getProject(): string {
+    return metadataGetProject();
+};
+
+// This is used to capture and serialize the results of
+// getProject for use in non-pulumi engine contexts
+(<any>getProject).captureReplacement = () => {
+    const project = metadataGetProject();
+    const funcToSerialize = () => project;
+    return funcToSerialize;
+};
+
+function getConfig(k: string): string | undefined {
+    return runtimeGetConfig(k);
+};
+
+// This is used to capture and serialize the results of
+// getConfig for use in non-pulumi engine contexts
+(<any>getConfig).captureReplacement = () => {
+    const config = allConfig();
+
+    const funcToSerialize = (k: string) => config[k];
+    return funcToSerialize;
+};
 
 /**
  * Config is a bag of related configuration state.  Each bag contains any number of configuration variables, indexed by

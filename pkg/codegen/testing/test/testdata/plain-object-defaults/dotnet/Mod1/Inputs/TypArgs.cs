@@ -13,7 +13,7 @@ namespace Pulumi.Example.Mod1.Inputs
     /// <summary>
     /// A test for namespaces (mod 1)
     /// </summary>
-    public sealed class TypArgs : Pulumi.ResourceArgs
+    public sealed class TypArgs : global::Pulumi.ResourceArgs
     {
         [Input("val")]
         public Input<string>? Val { get; set; }
@@ -22,5 +22,6 @@ namespace Pulumi.Example.Mod1.Inputs
         {
             Val = Utilities.GetEnv("PULUMI_EXAMPLE_MOD1_DEFAULT") ?? "mod1";
         }
+        public static new TypArgs Empty => new TypArgs();
     }
 }

@@ -35,7 +35,7 @@ func (val *FuncWithAllOptionalInputsArgs) Defaults() *FuncWithAllOptionalInputsA
 	tmp := *val
 	tmp.A = tmp.A.Defaults()
 
-	if isZero(tmp.B) {
+	if tmp.B == nil {
 		b_ := "defValue"
 		tmp.B = &b_
 	}

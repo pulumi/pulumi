@@ -74,7 +74,7 @@ namespace Pulumi.Mongodbatlas
         }
     }
 
-    internal sealed class MongodbatlasResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    internal sealed class MongodbatlasResourceTypeAttribute : global::Pulumi.ResourceTypeAttribute
     {
         public MongodbatlasResourceTypeAttribute(string type) : base(type, Utilities.Version)
         {
