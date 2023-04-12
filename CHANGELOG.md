@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.63.0 (2023-04-12)
+
+
+### Bug Fixes
+
+- [cli/config] Fix config set-all not saving secret provider configuration.
+  [#12643](https://github.com/pulumi/pulumi/pull/12643)
+
+- [cli/display] Fix a panic when diffing empty archives.
+  [#12656](https://github.com/pulumi/pulumi/pull/12656)
+
+- [programgen] Suppport the `any` type in config and outputs.
+  [#12619](https://github.com/pulumi/pulumi/pull/12619)
+
+- [sdk/go] Fix hang due to component children cycles
+  [#12516](https://github.com/pulumi/pulumi/pull/12516)
+
+- [sdk/nodejs] Fix hang due to component children cycles
+  [#12515](https://github.com/pulumi/pulumi/pull/12515)
+
+- [sdk/python] Fix hang due to component children cycles
+  [#12462](https://github.com/pulumi/pulumi/pull/12462)
+
+
+### Miscellaneous
+
+- [backend/filestate] Propagate request context to external call sites.
+  [#12638](https://github.com/pulumi/pulumi/pull/12638)
+
 ## 3.62.0 (2023-04-06)
 
 
