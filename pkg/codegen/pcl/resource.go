@@ -98,6 +98,10 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 }
 
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	if r == nil || r.VariableType == nil {
+		return model.DynamicType.Traverse(traverser)
+	}
+
 	return r.VariableType.Traverse(traverser)
 }
 
