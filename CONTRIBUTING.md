@@ -29,7 +29,7 @@ Finally, please limit your pull requests to contain only one feature at a time. 
 
 You'll want to install the following on your machine:
 
-- [Go 1.18 or later](https://go.dev/dl/)
+- [Go](https://go.dev/dl/) (a [supported version](https://go.dev/doc/devel/release#policy))
 - [NodeJS 14.X.X or later](https://nodejs.org/en/download/)
 - [Python 3.6 or later](https://www.python.org/downloads/)
 - [.NET](https://dotnet.microsoft.com/download)
