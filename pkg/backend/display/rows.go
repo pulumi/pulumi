@@ -294,7 +294,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
 	name := string(urn.Name())
-	typ := simplifyTypeName(urn.Type())
+	typ := urn.Type().DisplayName()
 
 	done := data.IsDone()
 
