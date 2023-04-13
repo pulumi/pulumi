@@ -148,13 +148,11 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 			break
 		}
 		fmt.Printf(
-			infoPrefix+"This update will leave %d resource(s) untracked in your environment:\n",
-			len(stats.retainedResources))
+			"%sThis update will leave %d resource(s) untracked in your environment:\n",
+			infoPrefix, len(stats.retainedResources))
 		for _, res := range stats.retainedResources {
 			urn := res.URN
-			name := string(urn.Name())
-			typ := display.SimplifyTypeName(urn.Type())
-			fmt.Printf("    - %s %s\n", typ, name)
+			fmt.Printf("    - %s %s\n", urn.Type().DisplayName(), urn.Name())
 		}
 		fmt.Print("\n")
 	}
@@ -301,7 +299,7 @@ func computeUpdateStats(events []engine.Event) updateStats {
 		// Track deleted resources that are retained.
 		switch p.Metadata.Op {
 		case deploy.OpDelete, deploy.OpReplace:
-			if p.Metadata.Old != nil && p.Metadata.Old.State != nil && p.Metadata.Old.State.RetainOnDelete {
+			if old := p.Metadata.Old; old != nil && old.State != nil && old.State.RetainOnDelete {
 				stats.retainedResources = append(stats.retainedResources, p.Metadata)
 			}
 		}

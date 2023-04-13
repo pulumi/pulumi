@@ -315,17 +315,11 @@ func (data *resourceRowData) ColorizedColumns() []string {
 // addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
 // RetainOnDelete and the step will discard the resource.
 func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
-	// Guard against nil pointer dereference and return the status string as is.
-	if step.Old == nil {
+	// If there's no old status, we don't need to report retain.
+	if step.Old == nil || step.Old.State == nil {
 		return status
 	}
 
-	// Guard against nil pointer dereference and return the status string as is.
-	if step.Old.State == nil {
-		return status
-	}
-
-	// If a resource is not marked as RetainOnDelete, return the status string as is.
 	if !step.Old.State.RetainOnDelete {
 		return status
 	}
@@ -333,7 +327,7 @@ func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
 	// Deletes and Replacements should indicate retain on delete behavior as they can leave
 	// untracked resources in the environment.
 	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
-		return status + "[retain]"
+		status += "[retain]"
 	}
 
 	// The resource's update status behavior is not affected by the RetainOnDelete flag.
