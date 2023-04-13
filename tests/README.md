@@ -19,3 +19,11 @@ In order to speed up integration tests in GitHub actions, Go build tags are used
 // integration_nodejs_acceptance_test.go
 //go:build nodejs || all
 ```
+
+When running tests locally, make sure you run:
+
+```bash
+$ go test --tags=nodejs -run 'TestName' .
+```
+
+to run a test `TestName` which is tagged with the `nodejs` build tag.

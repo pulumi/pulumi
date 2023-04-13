@@ -1328,6 +1328,25 @@ func TestErrorCreateDynamicNode(t *testing.T) {
 	})
 }
 
+// Tests errors in dynamic provider methods
+func TestShadowsExportDynamicNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:           filepath.Join("dynamic", "nodejs-shadows-export"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		ExpectFailure: false,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			noError := true
+			for _, event := range stack.Events {
+				if event.ResOpFailedEvent != nil {
+					noError = false
+					assert.Equal(t, apitype.OpType("create"), event.ResOpFailedEvent.Metadata.Op)
+				}
+			}
+			assert.True(t, noError, "We found an error")
+		},
+	})
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/12301
 func TestRegression12301Node(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
