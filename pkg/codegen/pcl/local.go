@@ -36,6 +36,9 @@ func (lv *LocalVariable) SyntaxNode() hclsyntax.Node {
 }
 
 func (lv *LocalVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	if lv == nil || lv.Type() == nil {
+		return model.DynamicType.Traverse(traverser)
+	}
 	return lv.Type().Traverse(traverser)
 }
 
