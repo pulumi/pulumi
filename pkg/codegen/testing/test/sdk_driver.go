@@ -328,6 +328,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "provider-type-schema",
 		Description: "A schema with a type called Provider schema",
 	},
+	{
+		Directory:   "embedded-crd-types",
+		Description: "A schema with CRD types with package names different from the main package",
+		Skip:        codegen.NewStringSet("dotnet/any"),
+	},
 }
 
 var genSDKOnly bool

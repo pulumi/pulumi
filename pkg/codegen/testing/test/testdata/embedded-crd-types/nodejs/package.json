@@ -1,0 +1,20 @@
+{
+    "name": "@pulumi/foo",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc",
+        "install": "node scripts/install-pulumi-plugin.js resource foo ${VERSION}"
+    },
+    "dependencies": {
+        "@pulumi/kubernetes": "^3.0.0",
+        "@pulumi/pulumi": "^3.42.0"
+    },
+    "devDependencies": {
+        "@types/node": "^14",
+        "typescript": "^3.7.0"
+    },
+    "pulumi": {
+        "resource": true,
+        "name": "foo"
+    }
+}

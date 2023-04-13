@@ -1,0 +1,16 @@
+{
+  "emittedFiles": [
+    "pulumi_foo/README.md",
+    "pulumi_foo/__init__.py",
+    "pulumi_foo/_utilities.py",
+    "pulumi_foo/component.py",
+    "pulumi_foo/crd_k8s_amazonaws_com/__init__.py",
+    "pulumi_foo/crd_k8s_amazonaws_com/v1alpha1/__init__.py",
+    "pulumi_foo/crd_k8s_amazonaws_com/v1alpha1/_inputs.py",
+    "pulumi_foo/crd_k8s_amazonaws_com/v1alpha1/outputs.py",
+    "pulumi_foo/provider.py",
+    "pulumi_foo/pulumi-plugin.json",
+    "pulumi_foo/py.typed",
+    "setup.py"
+  ]
+}

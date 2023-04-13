@@ -1,0 +1,11 @@
+{
+  "emittedFiles": [
+    "foo/component.go",
+    "foo/crd.k8s.amazonaws.com/v1alpha1/pulumiTypes.go",
+    "foo/doc.go",
+    "foo/init.go",
+    "foo/provider.go",
+    "foo/pulumi-plugin.json",
+    "foo/pulumiUtilities.go"
+  ]
+}
