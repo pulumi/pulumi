@@ -66,6 +66,10 @@ func (a *Attribute) print(w io.Writer, p *printer) {
 }
 
 func (a *Attribute) Type() Type {
+	if a == nil || a.Value == nil {
+		return DynamicType
+	}
+
 	return a.Value.Type()
 }
 
