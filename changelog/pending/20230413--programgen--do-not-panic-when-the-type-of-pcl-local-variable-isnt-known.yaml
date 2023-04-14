@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen
+  description: Do not panic when the type of PCL local variable isn't known
