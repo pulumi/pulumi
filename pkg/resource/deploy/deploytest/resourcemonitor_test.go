@@ -2,6 +2,7 @@ package deploytest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -52,12 +53,70 @@ func TestResourceMonitor_Call_deps(t *testing.T) {
 	}, deps)
 }
 
+func TestResourceMonitor_RegisterResource_customTimeouts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give *resource.CustomTimeouts
+		want *pulumirpc.RegisterResourceRequest_CustomTimeouts
+	}{
+		{desc: "nil", give: nil, want: nil},
+		{
+			desc: "create",
+			give: &resource.CustomTimeouts{Create: 1},
+			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Create: "1s"},
+		},
+		{
+			desc: "update",
+			give: &resource.CustomTimeouts{Update: 1},
+			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Update: "1s"},
+		},
+		{
+			desc: "delete",
+			give: &resource.CustomTimeouts{Delete: 1},
+			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{Delete: "1s"},
+		},
+		{
+			desc: "all",
+			give: &resource.CustomTimeouts{Create: 1, Update: 2, Delete: 3},
+			want: &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+				Create: "1s",
+				Update: "2s",
+				Delete: "3s",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			client := stubResourceMonitorClient{
+				RegisterResourceFunc: func(
+					req *pulumirpc.RegisterResourceRequest,
+				) (*pulumirpc.RegisterResourceResponse, error) {
+					assert.Equal(t, tt.want, req.CustomTimeouts)
+					return &pulumirpc.RegisterResourceResponse{}, nil
+				},
+			}
+
+			_, _, _, err := NewResourceMonitor(&client).RegisterResource("pkg:m:typ", "foo", true, ResourceOptions{
+				CustomTimeouts: tt.give,
+			})
+			require.NoError(t, err)
+		})
+	}
+}
+
 // stubResourceMonitorClient is a ResourceMonitorClient
 // that can stub out specific functions.
 type stubResourceMonitorClient struct {
 	pulumirpc.ResourceMonitorClient
 
-	CallFunc func(req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+	CallFunc             func(req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error)
+	RegisterResourceFunc func(req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 }
 
 func (cl *stubResourceMonitorClient) Call(
@@ -69,4 +128,38 @@ func (cl *stubResourceMonitorClient) Call(
 		return cl.CallFunc(req)
 	}
 	return cl.ResourceMonitorClient.Call(ctx, req, opts...)
+}
+
+func (cl *stubResourceMonitorClient) RegisterResource(
+	ctx context.Context,
+	req *pulumirpc.RegisterResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.RegisterResourceResponse, error) {
+	if cl.RegisterResourceFunc != nil {
+		return cl.RegisterResourceFunc(req)
+	}
+	return cl.ResourceMonitorClient.RegisterResource(ctx, req, opts...)
+}
+
+func TestPrepareTestTimeout(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		give float64
+		want string
+	}{
+		{0, ""},
+		{1, "1s"},
+		{1.5, "1.5s"},
+		{62, "1m2s"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, prepareTestTimeout(tt.give))
+		})
+	}
 }

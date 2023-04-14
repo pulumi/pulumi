@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg/testing
+  description: "deploytest: Fix nil custom timeouts and timeouts smaller than a minute being ignored."
