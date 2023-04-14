@@ -602,7 +602,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 			}
 
-			for _, node := range component.Program.Nodes {
+			for _, node := range pcl.Linearize(component.Program) {
 				switch node := node.(type) {
 				case *pcl.LocalVariable:
 					g.genLocalVariable(w, node)
