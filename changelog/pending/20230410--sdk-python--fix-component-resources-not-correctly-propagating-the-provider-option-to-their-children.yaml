@@ -1,0 +1,6 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: |
+    Fix component resources not correctly propagating the `provider` option to their children.
+    This is a re-application of #12292, which was previously reverted in #12522.

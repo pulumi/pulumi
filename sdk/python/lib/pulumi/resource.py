@@ -848,7 +848,7 @@ class Resource:
         if len(type_components) == 3:
             [pkg, _, _] = type_components
 
-        opts.provider, providers = self._get_providers(t, pkg, opts)
+        opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
         self._protect = bool(opts.protect)
         self._provider = opts.provider if custom else None
@@ -863,7 +863,7 @@ class Resource:
             raise ValueError(
                 f"Attempted to {action} resource {t} with a provider for '{self._provider.package}'"
             )
-        self._providers = providers
+        self._providers = opts.providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
         if opts.urn is not None:
@@ -920,16 +920,25 @@ class Resource:
             Optional[ProviderResource], opts.parent and opts.parent.get_provider(t)
         )
 
-        provider = opts.provider or ambient_provider or parent_provider
+        provider = ambient_provider or parent_provider
+        if opts.provider:
+            # If an explicit provider was passed in,
+            # its package may or may not match the package we're looking for.
+            provider_pkg = opts.provider.package
+            if pkg == provider_pkg:
+                # Explicit provider takes precedence over parent or ambient providers.
+                provider = opts.provider
 
-        if pkg and opts.provider:
-            if pkg in opts_providers:
-                message = f"There is a conflict between the `provider` field ({pkg}) and a member of the `providers` map"
+            # Regardless of whether it matches,
+            # we still want to keep the provider in the
+            # providers map, so that it can be used for child resources.
+            if provider_pkg in opts_providers:
+                message = f"There is a conflict between the `provider` field ({provider_pkg}) and a member of the `providers` map"
                 depreciation = "This will become an error in a future version. See https://github.com/pulumi/pulumi/issues/8799 for more details"
                 warnings.warn(f"{message} for resource {t}. " + depreciation)
                 log.warn(f"{message}. {depreciation}", resource=self)
             else:
-                opts_providers[pkg] = opts.provider
+                opts_providers[provider_pkg] = opts.provider
 
         # opts_providers takes priority over self._providers
         providers = {**self._providers, **opts_providers}

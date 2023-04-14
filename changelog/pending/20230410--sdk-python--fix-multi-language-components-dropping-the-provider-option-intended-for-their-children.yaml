@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Fix multi-language components dropping the `provider` option intended for their descendants.
