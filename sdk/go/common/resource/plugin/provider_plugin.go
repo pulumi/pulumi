@@ -1299,24 +1299,39 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		configSecretKeys = append(configSecretKeys, k.String())
 	}
 
-	resp, err := client.Construct(p.requestContext(), &pulumirpc.ConstructRequest{
-		Project:           info.Project,
-		Stack:             info.Stack,
-		Config:            config,
-		ConfigSecretKeys:  configSecretKeys,
-		DryRun:            info.DryRun,
-		Parallel:          int32(info.Parallel),
-		MonitorEndpoint:   info.MonitorAddress,
-		Type:              string(typ),
-		Name:              string(name),
-		Parent:            string(parent),
-		Inputs:            minputs,
-		Protect:           options.Protect,
-		Providers:         options.Providers,
-		InputDependencies: inputDependencies,
-		Aliases:           aliasURNs,
-		Dependencies:      dependencies,
-	})
+	req := &pulumirpc.ConstructRequest{
+		Project:                 info.Project,
+		Stack:                   info.Stack,
+		Config:                  config,
+		ConfigSecretKeys:        configSecretKeys,
+		DryRun:                  info.DryRun,
+		Parallel:                int32(info.Parallel),
+		MonitorEndpoint:         info.MonitorAddress,
+		Type:                    string(typ),
+		Name:                    string(name),
+		Parent:                  string(parent),
+		Inputs:                  minputs,
+		Protect:                 options.Protect,
+		Providers:               options.Providers,
+		InputDependencies:       inputDependencies,
+		Aliases:                 aliasURNs,
+		Dependencies:            dependencies,
+		AdditionalSecretOutputs: options.AdditionalSecretOutputs,
+		DeletedWith:             string(options.DeletedWith),
+		DeleteBeforeReplace:     options.DeleteBeforeReplace,
+		IgnoreChanges:           options.IgnoreChanges,
+		ReplaceOnChanges:        options.ReplaceOnChanges,
+		RetainOnDelete:          options.RetainOnDelete,
+	}
+	if ct := options.CustomTimeouts; ct != nil {
+		req.CustomTimeouts = &pulumirpc.ConstructRequest_CustomTimeouts{
+			Create: ct.Create,
+			Update: ct.Update,
+			Delete: ct.Delete,
+		}
+	}
+
+	resp, err := client.Construct(p.requestContext(), req)
 	if err != nil {
 		return ConstructResult{}, err
 	}
