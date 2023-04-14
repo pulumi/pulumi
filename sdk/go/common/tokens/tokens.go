@@ -18,6 +18,7 @@ package tokens
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -252,3 +253,44 @@ func (tok Type) Primitive() bool {
 }
 
 func (tok Type) String() string { return string(tok) }
+
+func camelCase(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+
+	runes := []rune(s)
+	runes[0] = unicode.ToLower(runes[0])
+	return string(runes)
+}
+
+// DisplayName returns a simpler, user-readable version of this type name.
+//
+//	{package}:{module path truncated to the last slash}:{type name}
+//
+// If not possible, it will return the string representation of the type.
+func (tok Type) DisplayName() string {
+	typeString := string(tok)
+
+	components := strings.Split(typeString, ":")
+	if len(components) != 3 {
+		return typeString
+	}
+	pkg, module, name := components[0], components[1], components[2]
+
+	if len(name) == 0 {
+		return typeString
+	}
+
+	lastSlashInModule := strings.LastIndexByte(module, '/')
+	if lastSlashInModule == -1 {
+		return typeString
+	}
+	file := module[lastSlashInModule+1:]
+
+	if file != camelCase(name) {
+		return typeString
+	}
+
+	return fmt.Sprintf("%v:%v:%v", pkg, module[:lastSlashInModule], name)
+}

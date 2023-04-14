@@ -155,42 +155,6 @@ func newOpStopwatch() opStopwatch {
 // policyPayloads is a collection of policy violation events for a single resource.
 var policyPayloads []engine.PolicyViolationEventPayload
 
-func camelCase(s string) string {
-	if len(s) == 0 {
-		return s
-	}
-
-	runes := []rune(s)
-	runes[0] = unicode.ToLower(runes[0])
-	return string(runes)
-}
-
-func simplifyTypeName(typ tokens.Type) string {
-	typeString := string(typ)
-
-	components := strings.Split(typeString, ":")
-	if len(components) != 3 {
-		return typeString
-	}
-	pkg, module, name := components[0], components[1], components[2]
-
-	if len(name) == 0 {
-		return typeString
-	}
-
-	lastSlashInModule := strings.LastIndexByte(module, '/')
-	if lastSlashInModule == -1 {
-		return typeString
-	}
-	file := module[lastSlashInModule+1:]
-
-	if file != camelCase(name) {
-		return typeString
-	}
-
-	return fmt.Sprintf("%v:%v:%v", pkg, module[:lastSlashInModule], name)
-}
-
 // getEventUrn returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
 // well.
@@ -828,7 +792,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 				Ephemeral: true,
 				Severity:  diag.Info,
 				Color:     cmdutil.GetGlobalColorization(),
-				Message:   fmt.Sprintf("read %v %v", simplifyTypeName(eventUrn.Type()), eventUrn.Name()),
+				Message:   fmt.Sprintf("read %v %v", eventUrn.Type().DisplayName(), eventUrn.Name()),
 			}))
 			return
 		}
@@ -974,6 +938,18 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 	}
 
 	return strings.TrimRightFunc(msg, unicode.IsSpace)
+}
+
+// getStepStatus handles getting the value to put in the status column.
+func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done bool, failed bool) string {
+	var status string
+	if done {
+		status = display.getStepDoneDescription(step, failed)
+	} else {
+		status = display.getStepInProgressDescription(step)
+	}
+	status = addRetainStatusFlag(status, step)
+	return status
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {

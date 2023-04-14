@@ -9,7 +9,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,6 +120,74 @@ func TestProgressEvents(t *testing.T) {
 			t.Parallel()
 
 			testProgressEvents(t, path, accept, false, 80, 24, false)
+		})
+	}
+}
+
+// The following test checks that the status display elements have retain on delete details added.
+func TestStatusDisplayFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		stepOp       display.StepOp
+		shouldRetain bool
+	}{
+		// Should display `retain`.
+		{"delete", deploy.OpDelete, true},
+		{"replace", deploy.OpReplace, true},
+		{"create-replacement", deploy.OpCreateReplacement, true},
+		{"delete-replaced", deploy.OpDeleteReplaced, true},
+
+		// Should be unaffected.
+		{"same", deploy.OpSame, false},
+		{"create", deploy.OpCreate, false},
+		{"update", deploy.OpUpdate, false},
+		{"read", deploy.OpRead, false},
+		{"read-replacement", deploy.OpReadReplacement, false},
+		{"refresh", deploy.OpRefresh, false},
+		{"discard", deploy.OpReadDiscard, false},
+		{"discard-replaced", deploy.OpDiscardReplaced, false},
+		{"import", deploy.OpImport, false},
+		{"import-replacement", deploy.OpImportReplacement, false},
+
+		// "remove-pending-replace" is not a valid step operation.
+		// {"remove-pending-replace", deploy.OpRemovePendingReplace, false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			d := &ProgressDisplay{}
+			name := resource.NewURN("test", "test", "test", "test", "test")
+
+			step := engine.StepEventMetadata{
+				URN: name,
+				Op:  tt.stepOp,
+				Old: &engine.StepEventStateMetadata{
+					State: &resource.State{
+						RetainOnDelete: true,
+					},
+				},
+			}
+
+			doneStatus := d.getStepStatus(step,
+				true,  // done
+				false, // failed
+			)
+			inProgressStatus := d.getStepStatus(step,
+				false, // done
+				false, // failed
+			)
+			if tt.shouldRetain {
+				assert.Contains(t, doneStatus, "[retain]", "%s should contain [retain] (done)", step.Op)
+				assert.Contains(t, inProgressStatus, "[retain]", "%s should contain [retain] (in-progress)", step.Op)
+			} else {
+				assert.NotContains(t, doneStatus, "[retain]", "%s should NOT contain [retain] (done)", step.Op)
+				assert.NotContains(t, inProgressStatus, "[retain]", "%s should NOT contain [retain] (in-progress)", step.Op)
+			}
 		})
 	}
 }

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Adds an indicator for resources that are being deleted/replaced with `retainOnDelete` set as well as an itemized warning.
