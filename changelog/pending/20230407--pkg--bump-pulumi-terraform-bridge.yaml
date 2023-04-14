@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg
+  description: Bump pulumi-terraform-bridge
