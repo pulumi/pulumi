@@ -90,10 +90,12 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	for i, urn := range req.GetAliases() {
 		aliases[i] = Alias{URN: URN(urn)}
 	}
-	dependencyURNs := urnSet{}
+
+	dependencies := make([]Resource, 0, len(req.GetDependencies()))
 	for _, urn := range req.GetDependencies() {
-		dependencyURNs.add(URN(urn))
+		dependencies = append(dependencies, pulumiCtx.newDependencyResource(URN(urn)))
 	}
+
 	providers := make(map[string]ProviderResource, len(req.GetProviders()))
 	for pkg, ref := range req.GetProviders() {
 		resource, err := createProviderResource(pulumiCtx, ref)
@@ -108,7 +110,9 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
-		ro.DependsOn = []dependencySet{urnDependencySet(dependencyURNs)}
+		if len(dependencies) > 0 {
+			ro.DependsOn = append(ro.DependsOn, resourceDependencySet(dependencies))
+		}
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
 		ro.Parent = parent
