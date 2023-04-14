@@ -17,6 +17,7 @@ package deploytest
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -178,11 +179,13 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		}
 	}
 
-	var timeouts pulumirpc.RegisterResourceRequest_CustomTimeouts
+	var timeouts *pulumirpc.RegisterResourceRequest_CustomTimeouts
 	if opts.CustomTimeouts != nil {
-		timeouts.Create = prepareTestTimeout(opts.CustomTimeouts.Create)
-		timeouts.Update = prepareTestTimeout(opts.CustomTimeouts.Update)
-		timeouts.Delete = prepareTestTimeout(opts.CustomTimeouts.Delete)
+		timeouts = &pulumirpc.RegisterResourceRequest_CustomTimeouts{
+			Create: prepareTestTimeout(opts.CustomTimeouts.Create),
+			Update: prepareTestTimeout(opts.CustomTimeouts.Update),
+			Delete: prepareTestTimeout(opts.CustomTimeouts.Delete),
+		}
 	}
 
 	deleteBeforeReplace := false
@@ -215,7 +218,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Version:                    opts.Version,
 		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),
-		CustomTimeouts:             &timeouts,
+		CustomTimeouts:             timeouts,
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
@@ -396,7 +399,8 @@ func (rm *ResourceMonitor) Call(tok tokens.ModuleMember, inputs resource.Propert
 }
 
 func prepareTestTimeout(timeout float64) string {
-	mins := int(timeout) / 60
-
-	return fmt.Sprintf("%dm", mins)
+	if timeout == 0 {
+		return ""
+	}
+	return time.Duration(timeout * float64(time.Second)).String()
 }
