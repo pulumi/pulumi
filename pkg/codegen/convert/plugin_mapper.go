@@ -27,26 +27,92 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// Workspace is the current workspace.
+// This is used to get the list of plugins installed in the workspace.
+// It's analogous to the workspace package, but scoped down to just the parts we need.
+//
+// This should probably be used to replace a load of our currently hardcoded for real world (i.e actual file
+// system, actual http calls) plugin workspace code, but for now we're keeping it scoped just to help out with
+// testing the mapper code.
+type Workspace interface {
+	// GetPlugins returns the list of plugins installed in the workspace.
+	GetPlugins() ([]workspace.PluginInfo, error)
+}
+
+type defaultWorkspace struct{}
+
+func (defaultWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
+	return workspace.GetPlugins()
+}
+
+// DefaultWorkspace returns a default workspace implementation
+// that uses the workspace module directly to get plugin info.
+func DefaultWorkspace() Workspace {
+	return defaultWorkspace{}
+}
+
+// ProviderFactory creates a provider for a given package and version.
+type ProviderFactory func(tokens.Package, *semver.Version) (plugin.Provider, error)
+
+// hostManagedProvider is Provider built from a plugin.Host.
+type hostManagedProvider struct {
+	plugin.Provider
+
+	host plugin.Host
+}
+
+var _ plugin.Provider = (*hostManagedProvider)(nil)
+
+func (pc *hostManagedProvider) Close() error {
+	return pc.host.CloseProvider(pc.Provider)
+}
+
+// ProviderFactoryFromHost builds a ProviderFactory
+// that uses the given plugin host to create providers.
+func ProviderFactoryFromHost(host plugin.Host) ProviderFactory {
+	return func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		provider, err := host.Provider(pkg, version)
+		if err != nil {
+			desc := pkg.String()
+			if version != nil {
+				desc += "@" + version.String()
+			}
+			return nil, fmt.Errorf("load plugin %v: %w", desc, err)
+		}
+
+		return &hostManagedProvider{
+			Provider: provider,
+			host:     host,
+		}, nil
+	}
+}
+
 type mapperPluginSpec struct {
 	name    tokens.Package
 	version semver.Version
 }
 
 type pluginMapper struct {
-	host          plugin.Host
-	conversionKey string
-	plugins       []mapperPluginSpec
-	entries       map[string][]byte
+	providerFactory ProviderFactory
+	conversionKey   string
+	plugins         []mapperPluginSpec
+	entries         map[string][]byte
 }
 
-func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, error) {
+func NewPluginMapper(ws Workspace,
+	providerFactory ProviderFactory,
+	key string, mappings []string,
+) (Mapper, error) {
+	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
+	contract.Requiref(ws != nil, "ws", "must not be nil")
+
 	entries := map[string][]byte{}
 
 	// Enumerate _all_ our installed plugins to ask for any mappings they provide. This allows users to
 	// convert aws terraform code for example by just having 'pulumi-aws' plugin locally, without needing to
 	// specify it anywhere on the command line, and without tf2pulumi needing to know about every possible
 	// plugin.
-	allPlugins, err := workspace.GetPlugins()
+	allPlugins, err := ws.GetPlugins()
 	if err != nil {
 		return nil, fmt.Errorf("could not get plugins: %w", err)
 	}
@@ -100,10 +166,10 @@ func NewPluginMapper(host plugin.Host, key string, mappings []string) (Mapper, e
 		entries[provider] = data
 	}
 	return &pluginMapper{
-		host:          host,
-		conversionKey: key,
-		plugins:       plugins,
-		entries:       entries,
+		providerFactory: providerFactory,
+		conversionKey:   key,
+		plugins:         plugins,
+		entries:         entries,
 	}, nil
 }
 
@@ -122,22 +188,20 @@ func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
 	for {
 		if len(l.plugins) == 0 {
 			// No plugins left to look in, return that we don't have a mapping
-			return nil, nil
+			return []byte{}, nil
 		}
 
 		// Pop the first spec off the plugins list
 		pluginSpec := l.plugins[0]
 		l.plugins = l.plugins[1:]
 
-		providerPlugin, err := l.host.Provider(pluginSpec.name, &pluginSpec.version)
+		providerPlugin, err := l.providerFactory(pluginSpec.name, &pluginSpec.version)
 		if err != nil {
 			// We should maybe be lenient here and ignore errors but for now assume it's better to fail out on
 			// things like providers failing to start.
 			return nil, fmt.Errorf("could not create provider '%s': %w", pluginSpec.name, err)
 		}
-		defer func() {
-			contract.IgnoreError(l.host.CloseProvider(providerPlugin))
-		}()
+		defer contract.IgnoreClose(providerPlugin)
 
 		data, mappedProvider, err := providerPlugin.GetMapping(l.conversionKey)
 		if err != nil {
