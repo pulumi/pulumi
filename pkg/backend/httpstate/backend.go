@@ -1005,28 +1005,34 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
+type updateMetadata struct {
+	version    int
+	leaseToken string
+	messages   []apitype.Message
+}
+
 func (b *cloudBackend) createAndStartUpdate(
 	ctx context.Context, action apitype.UpdateKind, stack backend.Stack,
 	op *backend.UpdateOperation, dryRun bool,
-) (client.UpdateIdentifier, int, string, error) {
+) (client.UpdateIdentifier, updateMetadata, error) {
 	stackRef := stack.Ref()
 
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
+		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
 	if currentProjectContradictsWorkspace(op.Proj, stackID) {
-		return client.UpdateIdentifier{}, 0, "", fmt.Errorf(
+		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf(
 			"provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 	metadata := apitype.UpdateMetadata{
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
-	update, reqdPolicies, err := b.client.CreateUpdate(
+	update, updateDetails, err := b.client.CreateUpdate(
 		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
 	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
+		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
 
 	//
@@ -1041,7 +1047,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	// Once this API is implemented, we can safely move these lines to the plugin-gathering code,
 	// which is much closer to being the "correct" place for this stuff.
 	//
-	for _, policy := range reqdPolicies {
+	for _, policy := range updateDetails.RequiredPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
 			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
 	}
@@ -1053,16 +1059,20 @@ func (b *cloudBackend) createAndStartUpdate(
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backend.ConflictingUpdateError{Err: err}
-			return client.UpdateIdentifier{}, 0, "", conflict
+			return client.UpdateIdentifier{}, updateMetadata{}, conflict
 		}
-		return client.UpdateIdentifier{}, 0, "", err
+		return client.UpdateIdentifier{}, updateMetadata{}, err
 	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
-	return update, version, token, nil
+	return update, updateMetadata{
+		version:    version,
+		leaseToken: token,
+		messages:   updateDetails.Messages,
+	}, nil
 }
 
 // apply actually performs the provided type of update on a stack hosted in the Pulumi Cloud.
@@ -1080,13 +1090,33 @@ func (b *cloudBackend) apply(
 	}
 
 	// Create an update object to persist results.
-	update, version, token, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
+	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
 
-	permalink := b.getPermalink(update, version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, permalink, events, opts.DryRun)
+	// Display messages from the backend if present.
+	if len(updateMeta.messages) > 0 {
+		for _, msg := range updateMeta.messages {
+			m := diag.RawMessage("", msg.Message)
+			switch msg.Severity {
+			case apitype.MessageSeverityError:
+				cmdutil.Diag().Errorf(m)
+			case apitype.MessageSeverityWarning:
+				cmdutil.Diag().Warningf(m)
+			case apitype.MessageSeverityInfo:
+				cmdutil.Diag().Infof(m)
+			default:
+				// Fallback on Info if we don't recognize the severity.
+				cmdutil.Diag().Infof(m)
+				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+			}
+		}
+		fmt.Print("\n")
+	}
+
+	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
