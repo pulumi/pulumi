@@ -16,6 +16,7 @@ package afero
 
 import (
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/afero"
@@ -25,6 +26,10 @@ import (
 func CopyDir(fs afero.Fs, src, dst string) error {
 	entries, err := afero.ReadDir(fs, src)
 	if err != nil {
+		return err
+	}
+	err = fs.Mkdir(dst, 0o755)
+	if err != nil && !os.IsExist(err) {
 		return err
 	}
 	for _, entry := range entries {
