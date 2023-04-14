@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
@@ -34,13 +35,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/spf13/afero"
+
+	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
 )
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
@@ -95,23 +98,47 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
-// pclGenerateProject writes out a pcl.Program directly as .pp files
-func pclGenerateProject(directory string, project workspace.Project, p *pcl.Program) error {
-	if directory == "." {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("get working directory: %w", err)
-		}
-		directory = cwd
+// writeProgram writes a project and pcl program to the given directory
+func writeProgram(directory string, proj *workspace.Project, program *pcl.Program) error {
+	fs := afero.NewOsFs()
+	err := program.WriteSource(afero.NewBasePathFs(fs, directory))
+	if err != nil {
+		return fmt.Errorf("writing program: %w", err)
 	}
 
-	// We don't write out the Pulumi.yaml for PCL, just the .pp files.
-	fs := afero.NewOsFs()
-	return p.WriteSource(afero.NewBasePathFs(fs, directory))
+	// Write out the Pulumi.yaml file if we've got one
+	if proj != nil {
+		projBytes, err := encoding.YAML.Marshal(proj)
+		if err != nil {
+			return fmt.Errorf("marshaling project: %w", err)
+		}
+
+		err = afero.WriteFile(fs, filepath.Join(directory, "Pulumi.yaml"), projBytes, 0o644)
+		if err != nil {
+			return fmt.Errorf("writing project: %w", err)
+		}
+	}
+
+	return nil
 }
 
-// pclEject
-func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Project, *pcl.Program, error) {
+// pclGenerateProject writes out a pcl.Program directly as .pp files
+func pclGenerateProject(sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
+	program, err := pclBindProgram(sourceDirectory, loader)
+	if err == nil {
+		// If we successfully bound the program, write out the .pp files from it
+		// We don't write out a Pulumi.yaml for PCL, just the .pp files.
+		return writeProgram(targetDirectory, nil, program)
+	}
+	// We couldn't bind the program so print that for the user to see but then just copy the filetree across
+	fmt.Printf("Could not bind program: %v", err)
+
+	// Copy the source directory to the target directory
+	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
+}
+
+// pclBindProgram binds a PCL in the given directory.
+func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Program, error) {
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
 	files, err := os.ReadDir(directory)
@@ -125,22 +152,22 @@ func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Proje
 		if filepath.Ext(path) == ".pp" {
 			file, err := os.Open(path)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			err = parser.ParseFile(file, filepath.Base(path))
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			diags := parser.Diagnostics
 			if diags.HasErrors() {
-				return nil, nil, diags
+				return nil, diags
 			}
 		}
 	}
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	program, pdiags, err := pcl.BindProgram(parser.Files,
@@ -148,13 +175,13 @@ func pclEject(directory string, loader schema.ReferenceLoader) (*workspace.Proje
 		pcl.DirPath(directory),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if pdiags.HasErrors() || program == nil {
-		return nil, nil, fmt.Errorf("internal error: %w", pdiags)
+		return nil, fmt.Errorf("internal error: %w", pdiags)
 	}
 
-	return &workspace.Project{Name: "pcl"}, program, nil
+	return program, nil
 }
 
 func runConvert(
@@ -162,20 +189,41 @@ func runConvert(
 	cwd string, mappings []string, from string, language string,
 	outDir string, generateOnly bool,
 ) result.Result {
-	var projectGenerator projectGeneratorFunc
+	wrapper := func(generator projectGeneratorFunc) func(string, string, schema.ReferenceLoader) error {
+		return func(sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
+			program, err := pclBindProgram(sourceDirectory, loader)
+			if err != nil {
+				return fmt.Errorf("load pcl program: %w", err)
+			}
+
+			// Load the project from the target directory
+			path, err := workspace.DetectProjectPathFrom(sourceDirectory)
+			if err != nil {
+				return fmt.Errorf("find project: %w", err)
+			}
+			proj, err := workspace.LoadProject(path)
+			if err != nil {
+				return fmt.Errorf("load project: %w", err)
+			}
+
+			return generator(targetDirectory, *proj, program)
+		}
+	}
+
+	var projectGenerator func(string, string, schema.ReferenceLoader) error
 	switch language {
 	case "csharp", "c#":
-		projectGenerator = dotnet.GenerateProject
+		projectGenerator = wrapper(dotnet.GenerateProject)
 	case "go":
-		projectGenerator = gogen.GenerateProject
+		projectGenerator = wrapper(gogen.GenerateProject)
 	case "typescript":
-		projectGenerator = nodejs.GenerateProject
+		projectGenerator = wrapper(nodejs.GenerateProject)
 	case "python":
-		projectGenerator = python.GenerateProject
+		projectGenerator = wrapper(python.GenerateProject)
 	case "java":
-		projectGenerator = javagen.GenerateProject
+		projectGenerator = wrapper(javagen.GenerateProject)
 	case "yaml":
-		projectGenerator = yamlgen.GenerateProject
+		projectGenerator = wrapper(yamlgen.GenerateProject)
 	case "pulumi", "pcl":
 		if e.GetBool(env.Dev) {
 			// No plugin for PCL to install dependencies with
@@ -192,41 +240,50 @@ func runConvert(
 	if outDir != "." {
 		err := os.MkdirAll(outDir, 0o755)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not create output directory: %w", err))
+			return result.FromError(fmt.Errorf("create output directory: %w", err))
 		}
 	}
 
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
-		return result.FromError(fmt.Errorf("could not create plugin host: %w", err))
+		return result.FromError(fmt.Errorf("create plugin host: %w", err))
 	}
 	defer contract.IgnoreClose(pCtx.Host)
 	loader := schema.NewPluginLoader(pCtx.Host)
 	mapper, err := convert.NewPluginMapper(pCtx.Host, from, mappings)
 	if err != nil {
-		return result.FromError(fmt.Errorf("could not create provider mapper: %w", err))
+		return result.FromError(fmt.Errorf("create provider mapper: %w", err))
 	}
 
-	var proj *workspace.Project
-	var program *pcl.Program
+	pclDirectory, err := os.MkdirTemp("", "pulumi-convert")
+	if err != nil {
+		return result.FromError(fmt.Errorf("create temporary directory: %w", err))
+	}
+
 	if from == "" || from == "yaml" {
-		proj, program, err = yamlgen.Eject(cwd, loader)
+		proj, program, err := yamlgen.Eject(cwd, loader)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not load yaml program: %w", err))
+			return result.FromError(fmt.Errorf("load yaml program: %w", err))
+		}
+		err = writeProgram(pclDirectory, proj, program)
+		if err != nil {
+			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
 		}
 	} else if from == "pcl" {
 		if e.GetBool(env.Dev) {
-			proj, program, err = pclEject(cwd, loader)
-			if err != nil {
-				return result.FromError(fmt.Errorf("could not load pcl program: %w", err))
-			}
+			// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it
+			pclDirectory = cwd
 		} else {
 			return result.FromError(fmt.Errorf("unrecognized source %q", from))
 		}
 	} else if from == "tf" {
-		proj, program, err = tfgen.Eject(cwd, loader, mapper)
+		proj, program, err := tfgen.Eject(cwd, loader, mapper)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not load terraform program: %w", err))
+			return result.FromError(fmt.Errorf("load terraform program: %w", err))
+		}
+		err = writeProgram(pclDirectory, proj, program)
+		if err != nil {
+			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
 		}
 	} else {
 		// Try and load the converter plugin for this
@@ -235,11 +292,6 @@ func runConvert(
 			return result.FromError(fmt.Errorf("plugin source %q: %w", from, err))
 		}
 		defer contract.IgnoreClose(converter)
-
-		targetDirectory, err := os.MkdirTemp("", "pulumi-convert")
-		if err != nil {
-			return result.FromError(fmt.Errorf("create temporary directory: %w", err))
-		}
 
 		pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
@@ -251,29 +303,15 @@ func runConvert(
 
 		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,
-			TargetDirectory: targetDirectory,
+			TargetDirectory: pclDirectory,
 			MapperAddress:   grpcServer.Addr(),
 		})
 		if err != nil {
 			return result.FromError(err)
 		}
-
-		proj, program, err = pclEject(targetDirectory, loader)
-		if err != nil {
-			return result.FromError(fmt.Errorf("load pcl program: %w", err))
-		}
-
-		// Load the project from the target directory if there is one
-		path, _ := workspace.DetectProjectPathFrom(targetDirectory)
-		if path != "" {
-			proj, err = workspace.LoadProject(path)
-			if err != nil {
-				return result.FromError(fmt.Errorf("load project: %w", err))
-			}
-		}
 	}
 
-	err = projectGenerator(outDir, *proj, program)
+	err = projectGenerator(pclDirectory, outDir, loader)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 	}

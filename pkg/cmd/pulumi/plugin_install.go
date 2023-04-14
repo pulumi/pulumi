@@ -50,15 +50,15 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used manually install plugins required by your program. It may\n" +
-			"be run either with a specific KIND, NAME, and optionally VERSION, or by omitting\n" +
-			"these and letting Pulumi compute the set of plugins that may be required by the\n" +
-			"current project. If specified VERSION cannot be a range: it must be a specific\n" +
-			"number. If not specified pulumi will try to look up the latest version of the\n" +
-			"plugin, this is not always possible.\n" +
+			"This command is used to manually install plugins required by your program. It\n" +
+			"may be run with a specific KIND, NAME, and optionally, VERSION, or by omitting\n" +
+			"these arguments and letting Pulumi compute the set of plugins required by the\n" +
+			"current project. When Pulumi computes the download set automatically, it may\n" +
+			"download more plugins than are strictly necessary.\n" +
 			"\n" +
-			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
-			"downloading more plugins than is strictly necessary.",
+			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
+			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
+			"the plugin, though the result is not guaranteed.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			displayOpts := display.Options{
