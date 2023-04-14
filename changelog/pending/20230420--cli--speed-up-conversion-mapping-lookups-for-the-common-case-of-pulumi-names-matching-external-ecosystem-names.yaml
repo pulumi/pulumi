@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Speed up conversion mapping lookups for the common case of Pulumi names matching external ecosystem names.
