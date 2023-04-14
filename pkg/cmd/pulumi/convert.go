@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -196,14 +197,15 @@ func runConvert(
 				return fmt.Errorf("load pcl program: %w", err)
 			}
 
-			// Load the project from the target directory
-			path, err := workspace.DetectProjectPathFrom(sourceDirectory)
-			if err != nil {
-				return fmt.Errorf("find project: %w", err)
-			}
-			proj, err := workspace.LoadProject(path)
-			if err != nil {
-				return fmt.Errorf("load project: %w", err)
+			// Load the project from the target directory if there is one. We default to a project with just
+			// the name of the original directory.
+			proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+			path, _ := workspace.DetectProjectPathFrom(sourceDirectory)
+			if path != "" {
+				proj, err = workspace.LoadProject(path)
+				if err != nil {
+					return fmt.Errorf("load project: %w", err)
+				}
 			}
 
 			return generator(targetDirectory, *proj, program)
