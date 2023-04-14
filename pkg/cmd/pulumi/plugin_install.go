@@ -50,10 +50,12 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used manually install plugins required by your program.  It may\n" +
-			"be run either with a specific KIND, NAME, and VERSION, or by omitting these and\n" +
-			"letting Pulumi compute the set of plugins that may be required by the current\n" +
-			"project. If specified VERSION cannot be a range: it must be a specific number.\n" +
+			"This command is used manually install plugins required by your program. It may\n" +
+			"be run either with a specific KIND, NAME, and optionally VERSION, or by omitting\n" +
+			"these and letting Pulumi compute the set of plugins that may be required by the\n" +
+			"current project. If specified VERSION cannot be a range: it must be a specific\n" +
+			"number. If not specified pulumi will try to look up the latest version of the\n" +
+			"plugin, this is not always possible.\n" +
 			"\n" +
 			"If you let Pulumi compute the set to download, it is conservative and may end up\n" +
 			"downloading more plugins than is strictly necessary.",
