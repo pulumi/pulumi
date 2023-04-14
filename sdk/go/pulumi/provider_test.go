@@ -1826,4 +1826,111 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		})
 		assert.NotNil(t, snap.Parent, "parent was not set")
 	})
+
+	t.Run("AdditionalSecretOutputs", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			AdditionalSecretOutputs: []string{"foo"},
+		})
+		assert.Equal(t, []string{"foo"}, snap.AdditionalSecretOutputs)
+	})
+
+	t.Run("CustomTimeouts", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name string
+			give *pulumirpc.ConstructRequest_CustomTimeouts
+			want *CustomTimeouts
+		}{
+			{
+				name: "Create",
+				give: &pulumirpc.ConstructRequest_CustomTimeouts{Create: "1m"},
+				want: &CustomTimeouts{Create: "1m"},
+			},
+			{
+				name: "Update",
+				give: &pulumirpc.ConstructRequest_CustomTimeouts{Update: "2m"},
+				want: &CustomTimeouts{Update: "2m"},
+			},
+			{
+				name: "Delete",
+				give: &pulumirpc.ConstructRequest_CustomTimeouts{Delete: "3m"},
+				want: &CustomTimeouts{Delete: "3m"},
+			},
+			{
+				name: "all",
+				give: &pulumirpc.ConstructRequest_CustomTimeouts{
+					Create: "1m",
+					Update: "2m",
+					Delete: "3m",
+				},
+				want: &CustomTimeouts{
+					Create: "1m",
+					Update: "2m",
+					Delete: "3m",
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			tt := tt
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+					CustomTimeouts: tt.give,
+				})
+
+				assert.Equal(t, tt.want, snap.CustomTimeouts)
+			})
+		}
+	})
+
+	t.Run("DeletedWith", func(t *testing.T) {
+		t.Parallel()
+
+		urn := resource.NewURN("mystack", "myproject", "", "foo:bar:Baz", "qux")
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			DeletedWith: string(urn),
+		})
+		assert.NotNil(t, snap.DeletedWith, "deletedWith was not set")
+	})
+
+	t.Run("DeleteBeforeReplace", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			DeleteBeforeReplace: true,
+		})
+		assert.True(t, snap.DeleteBeforeReplace, "deleteBeforeReplace was not set")
+	})
+
+	t.Run("IgnoreChanges", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			IgnoreChanges: []string{"foo"},
+		})
+		assert.Equal(t, []string{"foo"}, snap.IgnoreChanges)
+	})
+
+	t.Run("ReplaceOnChanges", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			ReplaceOnChanges: []string{"foo"},
+		})
+		assert.Equal(t, []string{"foo"}, snap.ReplaceOnChanges)
+	})
+
+	t.Run("RetainOnDelete", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			RetainOnDelete: true,
+		})
+		assert.True(t, snap.RetainOnDelete, "retainOnDelete was not set")
+	})
 }

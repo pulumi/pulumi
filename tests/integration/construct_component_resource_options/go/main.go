@@ -33,6 +33,34 @@ func main() {
 			return err
 		}
 
+		_, err = newComponent("AdditionalSecretOutputs", pulumi.AdditionalSecretOutputs([]string{"foo"}))
+		if err != nil {
+			return err
+		}
+
+		_, err = newComponent("CustomTimeouts", pulumi.Timeouts(&pulumi.CustomTimeouts{
+			Create: ("1m"),
+			Update: ("2m"),
+			Delete: ("3m"),
+		}))
+		if err != nil {
+			return err
+		}
+
+		getDeletedWithMe, err := newComponent("getDeletedWithMe")
+		if err != nil {
+			return err
+		}
+		_, err = newComponent("DeletedWith", pulumi.DeletedWith(getDeletedWithMe))
+		if err != nil {
+			return err
+		}
+
+		_, err = newComponent("RetainOnDelete", pulumi.RetainOnDelete(true))
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }

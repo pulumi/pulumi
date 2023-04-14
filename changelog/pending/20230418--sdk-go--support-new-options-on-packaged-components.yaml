@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: >-
+    Support new options on packaged components (MLCs), including:
+    AdditionalSecretOutputs, Timeouts, DeletedWith, DeleteBeforeReplace,
+    IgnoreChanges, ReplaceOnChanges, and RetainOnDelete.

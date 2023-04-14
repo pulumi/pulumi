@@ -806,6 +806,24 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 				wantDeps := []resource.URN{urns["Dep1"], urns["Dep2"]}
 				assert.ElementsMatch(t, wantDeps, res.Dependencies,
 					"DependsOn(%s)", name)
+
+			case "AdditionalSecretOutputs":
+				assert.Equal(t,
+					[]resource.PropertyKey{"foo"}, res.AdditionalSecretOutputs,
+					"AdditionalSecretOutputs(%s)", name)
+
+			case "CustomTimeouts":
+				if ct := res.CustomTimeouts; assert.NotNil(t, ct, "CustomTimeouts(%s)", name) {
+					assert.Equal(t, float64(60), ct.Create, "CustomTimeouts.Create(%s)", name)
+					assert.Equal(t, float64(120), ct.Update, "CustomTimeouts.Update(%s)", name)
+					assert.Equal(t, float64(180), ct.Delete, "CustomTimeouts.Delete(%s)", name)
+				}
+
+			case "DeletedWith":
+				assert.Equal(t, urns["getDeletedWithMe"], res.DeletedWith, "DeletedWith(%s)", name)
+
+			case "RetainOnDelete":
+				assert.True(t, res.RetainOnDelete, "RetainOnDelete(%s)", name)
 			}
 		}
 	}

@@ -116,6 +116,22 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
 		ro.Parent = parent
+
+		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, req.GetAdditionalSecretOutputs()...)
+		if t := req.CustomTimeouts; t != nil {
+			ro.CustomTimeouts = &CustomTimeouts{
+				Create: t.GetCreate(),
+				Update: t.GetUpdate(),
+				Delete: t.GetDelete(),
+			}
+		}
+		if urn := req.DeletedWith; urn != "" {
+			ro.DeletedWith = pulumiCtx.newDependencyResource(URN(urn))
+		}
+		ro.DeleteBeforeReplace = req.GetDeleteBeforeReplace()
+		ro.IgnoreChanges = append(ro.IgnoreChanges, req.GetIgnoreChanges()...)
+		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, req.GetReplaceOnChanges()...)
+		ro.RetainOnDelete = req.GetRetainOnDelete()
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
