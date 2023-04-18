@@ -426,27 +426,24 @@ func (sg *stepGenerator) inheritedChildAlias(
 
 // configureGoal mutates the passed goal to inherit the correct ResourceOptions from its parent.
 func (sg *stepGenerator) configureGoal(goal *resource.Goal) result.Result {
-	originalParent := goal.Parent
-
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
 	p, res := sg.checkParent(goal.Parent, goal.Type)
 	if res != nil {
 		return res
 	}
 
-	if p != "" {
-		parentGoal, ok := sg.resourceGoals[p]
-		if !ok {
-			return result.Errorf("could not find parent goal %v (originally %v)", p, originalParent)
-		}
-
-		// Make resource goal inherit parent's default resource options if left unset.
-		if goal.DeletedWith == "" {
-			goal.DeletedWith = parentGoal.DeletedWith
-		}
+	goal.Parent = p
+	if p == "" {
+		return nil
 	}
 
-	goal.Parent = p
+	if sg.deployment == nil || sg.deployment.news == nil {
+		return nil
+	}
+
+	if parent, ok := sg.deployment.news.get(goal.Parent); ok && goal.DeletedWith == "" {
+		goal.DeletedWith = parent.DeletedWith
+	}
 	return nil
 }
 
