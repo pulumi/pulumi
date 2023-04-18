@@ -150,8 +150,6 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - name: Templates Smoke Test
-            run-command: pulumictl dispatch -r pulumi/templates -c trigger-cron "${PULUMI_VERSION}"
           - name: Update Templates Version
             run-command: pulumictl dispatch -r pulumi/templates -c update-templates "${PULUMI_VERSION}"
           - name: Examples Templates Version
