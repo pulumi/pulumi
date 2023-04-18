@@ -858,3 +858,9 @@ func TestConstructProviderPropagationGo(t *testing.T) {
 
 	testConstructProviderPropagation(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
 }
+
+func TestConstructResourceOptionsGo(t *testing.T) {
+	t.Parallel()
+
+	testConstructResourceOptions(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
+}
