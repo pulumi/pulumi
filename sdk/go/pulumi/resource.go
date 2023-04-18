@@ -419,11 +419,6 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 	)
 	for _, d := range ro.DependsOn {
 		switch d := d.(type) {
-		case urnDependencySet:
-			// There is no user-facing option
-			// to specify URN dependencies directly.
-			// This is only used internally,
-			// so omit this from the snapshot.
 		case resourceDependencySet:
 			dependsOn = append(dependsOn, []Resource(d)...)
 		case *resourceArrayInputDependencySet:
@@ -618,16 +613,6 @@ type dependencySet interface {
 	// Optionally pass the last Resource arg to short-circuit component
 	// children cycles.
 	addURNs(context.Context, urnSet, Resource) error
-}
-
-// urnDependencySet is a dependencySet built from a constant set of URNs.
-type urnDependencySet urnSet
-
-var _ dependencySet = (urnDependencySet)(nil)
-
-func (us urnDependencySet) addURNs(ctx context.Context, urns urnSet, _ Resource) error {
-	urns.union(urnSet(us))
-	return nil
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.

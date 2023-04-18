@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type BoolEnumInput interface {
@@ -1735,4 +1737,93 @@ func TestSerdeNilNestedResource(t *testing.T) {
 
 	_, _, _, err = marshalInputs(state)
 	assert.NoError(t, err)
+}
+
+func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
+	t.Parallel()
+
+	// Runs Construct with the given request and a fake constructor,
+	// and returns a snapshot (ResourceOptions) of the resulting options.
+	//
+	// Fails the test if any operation fails.
+	snapshotFromRequest := func(t *testing.T, req *pulumirpc.ConstructRequest) *ResourceOptions {
+		// Keep test cases simple:
+		req.Stack = "mystack"
+		req.Project = "myproject"
+
+		var got *ResourceOptions
+		ctx := context.Background()
+		_, err := construct(ctx, req, nil, func(
+			ctx *Context,
+			typ, name string,
+			inputs map[string]interface{},
+			opts ResourceOption,
+		) (URNInput, Input, error) {
+			urn := resource.NewURN(
+				tokens.QName(ctx.Stack()),
+				tokens.PackageName(ctx.Project()),
+				"", // parent
+				tokens.Type(typ),
+				tokens.QName(name),
+			)
+
+			snap, err := NewResourceOptions(opts)
+			require.NoError(t, err, "failed to create snapshot")
+			got = snap
+
+			return URN(urn), nil, nil
+		})
+		require.NoError(t, err, "failed to construct")
+		require.NotNil(t, got, "Construct was never called")
+		return got
+	}
+
+	t.Run("Aliases", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			Aliases: []string{"test"},
+		})
+		assert.Len(t, snap.Aliases, 1, "aliases were not set")
+	})
+
+	t.Run("DependsOn", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			Dependencies: []string{"test"},
+		})
+		assert.Len(t, snap.DependsOn, 1, "dependencies were not set")
+	})
+
+	t.Run("Protect", func(t *testing.T) {
+		t.Parallel()
+
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			Protect: true,
+		})
+		assert.True(t, snap.Protect, "protect was not set")
+	})
+
+	t.Run("Providers", func(t *testing.T) {
+		t.Parallel()
+
+		urn := resource.NewURN("mystack", "myproject", "", "pulumi:providers:foo", "bar")
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			Providers: map[string]string{
+				"baz": string(urn) + "::qux",
+			},
+		})
+		assert.Len(t, snap.Providers, 1, "providers were not set")
+	})
+
+	t.Run("Parent", func(t *testing.T) {
+		t.Parallel()
+
+		urn := resource.NewURN("mystack", "myproject", "", "pulumi:providers:foo", "bar")
+		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
+			Parent: string(urn),
+		})
+		assert.NotNil(t, snap.Parent, "parent was not set")
+	})
 }

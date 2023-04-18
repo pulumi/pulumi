@@ -25,12 +25,14 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/spf13/pflag"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -48,6 +50,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -57,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -597,11 +601,15 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root, execKind, execAgent string, updatePlan bool) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(
+	msg, root, execKind, execAgent string, updatePlan bool, flags *pflag.FlagSet,
+) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
 	}
+
+	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
 
 	if err := addGitMetadata(root, m); err != nil {
 		logging.V(3).Infof("errors detecting git metadata: %s", err)
@@ -614,6 +622,71 @@ func getUpdateMetadata(msg, root, execKind, execAgent string, updatePlan bool) (
 	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
 
 	return m, nil
+}
+
+// addPulumiCLIMetadataToEnvironment enriches updates with metadata to provide context about
+// the system, environment, and options that an update is being performed with.
+func addPulumiCLIMetadataToEnvironment(env map[string]string, flags *pflag.FlagSet, getEnviron func() []string) {
+	// Pulumi Environment Variables (Name and Set/Truthiness Only)
+
+	// Set up a map of all known bool environment variables.
+	boolVars := map[string]struct{}{}
+	for _, e := range declared.Variables() {
+		_, ok := e.Value.(declared.BoolValue)
+		if !ok {
+			continue
+		}
+		boolVars[e.Name()] = struct{}{}
+	}
+
+	// Add all environment variables that start with "PULUMI_" and their set-ness or truthiness.
+	for _, envvar := range getEnviron() {
+		if !strings.HasPrefix(envvar, "PULUMI_") {
+			// Not a Pulumi environment variable. Skip.
+			continue
+		}
+		name, value, ok := strings.Cut(envvar, "=")
+		if !ok {
+			// Invalid environment variable. Skip.
+			continue
+		}
+		flag := "set"
+		if _, isBoolVar := boolVars[name]; isBoolVar {
+			flag = "false"
+			if cmdutil.IsTruthy(value) {
+				flag = "true"
+			}
+		}
+
+		// Only store the variable name and set-ness or truthiness not the value.
+		env["pulumi.env."+name] = flag
+	}
+
+	// System information
+	env["pulumi.version"] = version.Version
+	env["pulumi.os"] = runtime.GOOS
+	env["pulumi.arch"] = runtime.GOARCH
+
+	// Guard against nil pointer dereference.
+	if flags == nil {
+		// No command was provided. Don't add flags.
+		return
+	}
+
+	// Pulumi CLI Flags (Name Only)
+	flags.Visit(func(f *pflag.Flag) {
+		env["pulumi.flag."+f.Name] = func() string {
+			truth, err := flags.GetBool(f.Name)
+			switch {
+			case err != nil:
+				return "set" // not a bool flag
+			case truth:
+				return "true"
+			default:
+				return "false"
+			}
+		}()
+	})
 }
 
 // addGitMetadata populate's the environment metadata bag with Git-related values.

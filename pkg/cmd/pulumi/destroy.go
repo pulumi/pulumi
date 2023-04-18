@@ -176,7 +176,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind, execAgent, false)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent, false, cmd.Flags())
 			if err != nil {
 				return result.FromError(fmt.Errorf("gathering environment metadata: %w", err))
 			}
