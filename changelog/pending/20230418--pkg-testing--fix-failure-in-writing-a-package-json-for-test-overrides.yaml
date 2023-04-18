@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pkg/testing
+  description: Fix failure in writing a package.json for test overrides.
