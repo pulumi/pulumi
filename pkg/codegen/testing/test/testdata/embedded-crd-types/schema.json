@@ -1,0 +1,96 @@
+{
+    "name": "foo",
+    "allowedPackageNames": [
+        "kubernetes"
+    ],
+    "types": {
+        "kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfig": {
+            "properties": {
+                "apiVersion": {
+                    "type": "string",
+                    "const": "crd.k8s.amazonaws.com/v1alpha1"
+                },
+                "kind": {
+                    "type": "string",
+                    "const": "ENIConfig"
+                },
+                "spec": {
+                    "type": "object",
+                    "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                }
+            },
+            "type": "object"
+        },
+        "kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec": {
+            "properties": {
+                "securityGroups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subnet": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "resources": {
+        "foo:index:Component": {
+            "isComponent": true,
+            "inputProperties": {
+                "eniConfig": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                    }
+                },
+                "pod": {
+                    "type": "object",
+                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                }
+            },
+            "properties": {
+                "eniConfig": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/kubernetes:crd.k8s.amazonaws.com/v1alpha1:ENIConfigSpec"
+                    }
+                },
+                "pod": {
+                    "type": "object",
+                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                }
+            }
+        }
+    },
+    "language": {
+        "csharp": {
+            "packageReferences": {
+                "Pulumi": "3.*",
+                "Pulumi.Kubernetes": "3.*"
+            },
+            "namespaces": {
+                "foo": "Foo"
+            }
+        },
+        "go": {
+            "importBasePath": "embedded-crd-types/foo"
+        },
+        "nodejs": {
+            "dependencies": {
+                "@pulumi/kubernetes": "^3.0.0"
+            },
+            "devDependencies": {
+                "typescript": "^3.7.0"
+            }
+        },
+        "python": {
+            "requires": {
+                "pulumi": ">=3.0.0,<4.0.0",
+                "pulumi-kubernetes": ">=3.0.0,<4.0.0"
+            }
+        }
+    }
+}

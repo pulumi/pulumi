@@ -780,7 +780,6 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 	tok := t.Token
 	parts := strings.Split(tok, ":")
 	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
-	refPkgName := parts[0]
 
 	modName := mod.tokenToModule(tok)
 	if modName == mod.mod {
@@ -791,9 +790,6 @@ func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string
 	}
 
 	importPath := mod.getRelImportFromRoot()
-	if mod.pkg.Name() != parts[0] {
-		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
-	}
 
 	if modName == "" {
 		imp, as := "outputs", "_root_outputs"
@@ -841,14 +837,9 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		return fmt.Sprintf("import pulumi_%s", parts[2])
 	}
 
-	refPkgName := parts[0]
-
 	modName := mod.tokenToResource(tok)
 
 	importPath := mod.getRelImportFromRoot()
-	if mod.pkg.Name() != parts[0] {
-		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
-	}
 
 	name := PyName(tokenToName(r.Token))
 	if mod.compatibility == kubernetes20 {
