@@ -2052,8 +2052,10 @@ func writePackageJSON(pathToPackage string, metadata map[string]interface{}) err
 	encoder := json.NewEncoder(f)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
-
-	return fmt.Errorf("writing package.json: %w", encoder.Encode(metadata))
+	if err := encoder.Encode(metadata); err != nil {
+		return fmt.Errorf("writing package.json: %w", err)
+	}
+	return nil
 }
 
 // preparePythonProject runs setup necessary to get a Python project ready for `pulumi` commands.
