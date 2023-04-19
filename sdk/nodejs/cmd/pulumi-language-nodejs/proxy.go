@@ -227,7 +227,7 @@ func (p *monitorProxy) RegisterResourceOutputs(
 func (p *monitorProxy) SupportsFeature(
 	ctx context.Context, req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	return p.target.SupportsFeature(ctx, req)
+	return p.target.SupportsFeature(ctx, req) //nolint: staticcheck // deprecated, but still needs to be proxied.
 }
 
 func (p *monitorProxy) RegisterStackTransform(
@@ -258,4 +258,10 @@ func (p *monitorProxy) SignalAndWaitForShutdown(
 	ctx context.Context, req *emptypb.Empty,
 ) (*emptypb.Empty, error) {
 	return p.target.SignalAndWaitForShutdown(ctx, req)
+}
+
+func (p *monitorProxy) GetState(
+	ctx context.Context, req *emptypb.Empty,
+) (*pulumirpc.MonitorState, error) {
+	return p.target.GetState(ctx, req)
 }

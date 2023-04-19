@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -77,7 +78,8 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 }
 
 func supportsFeature(ctx context.Context, resmon pulumirpc.ResourceMonitorClient, id string) (bool, error) {
-	resp, err := resmon.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
+	// Check feature support using the legacy SupportsFeature API.
+	resp, err := resmon.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id}) //nolint: staticcheck
 	if err != nil {
 		return false, err
 	}
@@ -518,6 +520,10 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
 	_, err := rm.resmon.SignalAndWaitForShutdown(ctx, &emptypb.Empty{})
 	return err
+}
+
+func (rm *ResourceMonitor) GetState() (*pulumirpc.MonitorState, error) {
+	return rm.resmon.GetState(context.Background(), &pbempty.Empty{})
 }
 
 func prepareTestTimeout(timeout float64) string {

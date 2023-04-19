@@ -570,7 +570,8 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 			HasSupport: false,
 		}, nil
 	}
-	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
+	// SupportsFeatures is deprecated but we still need to forward it for backwards compatibility.
+	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...) //nolint: staticcheck
 }
 
 func TestSourcePosition(t *testing.T) {

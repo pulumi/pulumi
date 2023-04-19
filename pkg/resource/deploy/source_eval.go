@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -702,6 +703,9 @@ type resmon struct {
 	packageRefLock sync.Mutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
+
+	// The runinfo for this resource monitor. Most of this is information returned to clients via GetState.
+	runInfo *EvalRunInfo
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -758,6 +762,7 @@ func newResourceMonitor(
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
 		grpcDialOptions:     src.plugctx.DialOptions,
+		runInfo:             src.runinfo,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -992,6 +997,52 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	rm.packageRefMap[uuid] = pi
 	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, uuid)
 	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
+}
+
+func (rm *resmon) GetState(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.MonitorState, error) {
+	logging.V(5).Infof("ResourceMonitor.GetState()")
+	contract.Assertf(rm.runInfo != nil, "runInfo must be set before calling GetState()")
+	ri := rm.runInfo
+	target := ri.Target
+	contract.Assertf(target != nil, "target must be set before calling GetState()")
+
+	configMap, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
+	}
+	configStruct, err := plugin.MarshalProperties(configMap, plugin.MarshalOptions{
+		Label:          "config",
+		KeepSecrets:    true,
+		RejectUnknowns: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	features := []pulumirpc.MonitorState_Feature{
+		pulumirpc.MonitorState_FEATURE_SECRETS,
+		pulumirpc.MonitorState_FEATURE_ALIAS_SPECS,
+		pulumirpc.MonitorState_FEATURE_DELETED_WITH,
+	}
+	if !rm.opts.DisableResourceReferences {
+		features = append(features, pulumirpc.MonitorState_FEATURE_RESOURCE_REFERENCES)
+	}
+	if !rm.opts.DisableOutputValues {
+		features = append(features, pulumirpc.MonitorState_FEATURE_OUTPUT_VALUES)
+	}
+
+	return &pulumirpc.MonitorState{
+		// Prefer using data from constructInfo so that this matches what we're sending for legacy interfaces.
+		Organization: target.Organization.String(),
+		Project:      rm.constructInfo.Project,
+		Stack:        rm.constructInfo.Stack,
+		Pwd:          ri.Pwd,
+		Config:       configStruct,
+		DryRun:       rm.constructInfo.DryRun,
+		Parallel:     int32(rm.constructInfo.Parallel),
+		QueryMode:    false,
+		Features:     features,
+	}, nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,

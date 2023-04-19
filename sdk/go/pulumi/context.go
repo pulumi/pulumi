@@ -134,7 +134,8 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 
 	supportsFeature := func(id string) (bool, error) {
 		if monitor != nil {
-			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
+			// Needed for backcompat with old engines
+			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id}) //nolint: staticcheck
 			if err != nil {
 				return false, fmt.Errorf("checking monitor features: %w", err)
 			}

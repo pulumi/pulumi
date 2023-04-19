@@ -25,6 +25,7 @@ interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedSer
     registerResourceHook: IResourceMonitorService_IRegisterResourceHook;
     registerPackage: IResourceMonitorService_IRegisterPackage;
     signalAndWaitForShutdown: IResourceMonitorService_ISignalAndWaitForShutdown;
+    getState: IResourceMonitorService_IGetState;
 }
 
 interface IResourceMonitorService_ISupportsFeature extends grpc.MethodDefinition<pulumi_resource_pb.SupportsFeatureRequest, pulumi_resource_pb.SupportsFeatureResponse> {
@@ -126,6 +127,15 @@ interface IResourceMonitorService_ISignalAndWaitForShutdown extends grpc.MethodD
     responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
     responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
 }
+interface IResourceMonitorService_IGetState extends grpc.MethodDefinition<google_protobuf_empty_pb.Empty, pulumi_resource_pb.MonitorState> {
+    path: "/pulumirpc.ResourceMonitor/GetState";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
+    requestDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
+    responseSerialize: grpc.serialize<pulumi_resource_pb.MonitorState>;
+    responseDeserialize: grpc.deserialize<pulumi_resource_pb.MonitorState>;
+}
 
 export const ResourceMonitorService: IResourceMonitorService;
 
@@ -141,6 +151,7 @@ export interface IResourceMonitorServer extends grpc.UntypedServiceImplementatio
     registerResourceHook: grpc.handleUnaryCall<pulumi_resource_pb.RegisterResourceHookRequest, google_protobuf_empty_pb.Empty>;
     registerPackage: grpc.handleUnaryCall<pulumi_resource_pb.RegisterPackageRequest, pulumi_resource_pb.RegisterPackageResponse>;
     signalAndWaitForShutdown: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty>;
+    getState: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_resource_pb.MonitorState>;
 }
 
 export interface IResourceMonitorClient {
@@ -177,6 +188,9 @@ export interface IResourceMonitorClient {
     signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    getState(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
+    getState(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
+    getState(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
 }
 
 export class ResourceMonitorClient extends grpc.Client implements IResourceMonitorClient {
@@ -214,4 +228,7 @@ export class ResourceMonitorClient extends grpc.Client implements IResourceMonit
     public signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public signalAndWaitForShutdown(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public getState(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
+    public getState(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
+    public getState(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.MonitorState) => void): grpc.ClientUnaryCall;
 }

@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -115,6 +116,26 @@ func (m *mockMonitor) newURN(parent, typ, name string) string {
 
 	return string(resource.NewURN(tokens.QName(m.stack), tokens.PackageName(m.project), parentType, tokens.Type(typ),
 		name))
+}
+
+func (m *mockMonitor) GetState(
+	ctx context.Context, _ *pbempty.Empty, opts ...grpc.CallOption,
+) (*pulumirpc.MonitorState, error) {
+	features := []pulumirpc.MonitorState_Feature{}
+	for _, feature := range pulumirpc.MonitorState_Feature_value {
+		// Support for "outputValues" is deliberately disabled for the mock monitor so
+		// instances of `Output` don't show up in `MockResourceArgs` Inputs.
+		if feature == int32(pulumirpc.MonitorState_FEATURE_OUTPUT_VALUES) {
+			continue
+		}
+		features = append(features, pulumirpc.MonitorState_Feature(feature))
+	}
+
+	return &pulumirpc.MonitorState{
+		Project:  m.project,
+		Stack:    m.stack,
+		Features: features,
+	}, nil
 }
 
 func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.SupportsFeatureRequest,

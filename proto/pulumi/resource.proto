@@ -27,7 +27,9 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
-    rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
+    rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {
+        option deprecated = true;
+    }
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
@@ -54,6 +56,45 @@ service ResourceMonitor {
     // after the user program has completed. Runtime SDKs should call this after
     // executing the user's program. This can only be called once.
     rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+
+    rpc GetState(google.protobuf.Empty) returns (MonitorState) {}
+}
+
+// MonitorState is all the current state for the resource monitor, such as stack names, config, and service endpoints.
+message MonitorState {
+
+    // Feature is an enum of optional features that a monitor can support.
+    enum Feature {
+        FEATURE_UNSPECIFIED = 0;
+        FEATURE_SECRETS = 1;
+        FEATURE_RESOURCE_REFERENCES = 2;
+        FEATURE_OUTPUT_VALUES = 3;
+        FEATURE_ALIAS_SPECS = 4;
+        FEATURE_DELETED_WITH = 5;
+    }
+
+    // the organization of the stack being deployed into.
+    string organization = 1;
+    // the project name.
+    string project = 2;
+    // the name of the stack being deployed into.
+    string stack = 3;
+
+    // the projects's working directory.
+    string pwd = 4;
+    // the configuration variables for the current stack.
+    google.protobuf.Struct config = 5;
+
+    // true if we're only doing a dryrun (preview).
+    bool dryRun = 6;
+    // the degree of parallelism for resource operations (<=1 for serial).
+    int32 parallel = 7;
+
+    // true if we're only doing a query.
+    bool queryMode = 8;
+
+    // features that this monitor supports.
+    repeated Feature features = 9;
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use

@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ResourceMonitorClient interface {
+	// Deprecated: Do not use.
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
@@ -46,6 +47,7 @@ type ResourceMonitorClient interface {
 	// after the user program has completed. Runtime SDKs should call this after
 	// executing the user's program. This can only be called once.
 	SignalAndWaitForShutdown(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetState(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MonitorState, error)
 }
 
 type resourceMonitorClient struct {
@@ -56,6 +58,7 @@ func NewResourceMonitorClient(cc grpc.ClientConnInterface) ResourceMonitorClient
 	return &resourceMonitorClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *resourceMonitorClient) SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error) {
 	out := new(SupportsFeatureResponse)
 	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/SupportsFeature", in, out, opts...)
@@ -155,10 +158,20 @@ func (c *resourceMonitorClient) SignalAndWaitForShutdown(ctx context.Context, in
 	return out, nil
 }
 
+func (c *resourceMonitorClient) GetState(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MonitorState, error) {
+	out := new(MonitorState)
+	err := c.cc.Invoke(ctx, "/pulumirpc.ResourceMonitor/GetState", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ResourceMonitorServer is the server API for ResourceMonitor service.
 // All implementations must embed UnimplementedResourceMonitorServer
 // for forward compatibility
 type ResourceMonitorServer interface {
+	// Deprecated: Do not use.
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
@@ -182,6 +195,7 @@ type ResourceMonitorServer interface {
 	// after the user program has completed. Runtime SDKs should call this after
 	// executing the user's program. This can only be called once.
 	SignalAndWaitForShutdown(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	GetState(context.Context, *emptypb.Empty) (*MonitorState, error)
 	mustEmbedUnimplementedResourceMonitorServer()
 }
 
@@ -221,6 +235,9 @@ func (UnimplementedResourceMonitorServer) RegisterPackage(context.Context, *Regi
 }
 func (UnimplementedResourceMonitorServer) SignalAndWaitForShutdown(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignalAndWaitForShutdown not implemented")
+}
+func (UnimplementedResourceMonitorServer) GetState(context.Context, *emptypb.Empty) (*MonitorState, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetState not implemented")
 }
 func (UnimplementedResourceMonitorServer) mustEmbedUnimplementedResourceMonitorServer() {}
 
@@ -433,6 +450,24 @@ func _ResourceMonitor_SignalAndWaitForShutdown_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMonitor_GetState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).GetState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.ResourceMonitor/GetState",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).GetState(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ResourceMonitor_ServiceDesc is the grpc.ServiceDesc for ResourceMonitor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -483,6 +518,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SignalAndWaitForShutdown",
 			Handler:    _ResourceMonitor_SignalAndWaitForShutdown_Handler,
+		},
+		{
+			MethodName: "GetState",
+			Handler:    _ResourceMonitor_GetState_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

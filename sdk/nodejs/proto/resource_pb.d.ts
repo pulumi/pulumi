@@ -12,6 +12,65 @@ import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
 
+export class MonitorState extends jspb.Message { 
+    getOrganization(): string;
+    setOrganization(value: string): MonitorState;
+    getProject(): string;
+    setProject(value: string): MonitorState;
+    getStack(): string;
+    setStack(value: string): MonitorState;
+    getPwd(): string;
+    setPwd(value: string): MonitorState;
+
+    hasConfig(): boolean;
+    clearConfig(): void;
+    getConfig(): google_protobuf_struct_pb.Struct | undefined;
+    setConfig(value?: google_protobuf_struct_pb.Struct): MonitorState;
+    getDryrun(): boolean;
+    setDryrun(value: boolean): MonitorState;
+    getParallel(): number;
+    setParallel(value: number): MonitorState;
+    getQuerymode(): boolean;
+    setQuerymode(value: boolean): MonitorState;
+    clearFeaturesList(): void;
+    getFeaturesList(): Array<MonitorState.Feature>;
+    setFeaturesList(value: Array<MonitorState.Feature>): MonitorState;
+    addFeatures(value: MonitorState.Feature, index?: number): MonitorState.Feature;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): MonitorState.AsObject;
+    static toObject(includeInstance: boolean, msg: MonitorState): MonitorState.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: MonitorState, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): MonitorState;
+    static deserializeBinaryFromReader(message: MonitorState, reader: jspb.BinaryReader): MonitorState;
+}
+
+export namespace MonitorState {
+    export type AsObject = {
+        organization: string,
+        project: string,
+        stack: string,
+        pwd: string,
+        config?: google_protobuf_struct_pb.Struct.AsObject,
+        dryrun: boolean,
+        parallel: number,
+        querymode: boolean,
+        featuresList: Array<MonitorState.Feature>,
+    }
+
+    export enum Feature {
+    FEATURE_UNSPECIFIED = 0,
+    FEATURE_SECRETS = 1,
+    FEATURE_RESOURCE_REFERENCES = 2,
+    FEATURE_OUTPUT_VALUES = 3,
+    FEATURE_ALIAS_SPECS = 4,
+    FEATURE_DELETED_WITH = 5,
+    }
+
+}
+
 export class SupportsFeatureRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): SupportsFeatureRequest;

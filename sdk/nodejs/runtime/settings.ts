@@ -24,6 +24,7 @@ import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
+import { Empty } from "google-protobuf/google/protobuf/empty_pb";
 
 /**
  * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
@@ -243,6 +244,7 @@ export async function awaitFeatureSupport(): Promise<void> {
     const monitorRef = getMonitor();
     if (monitorRef !== undefined) {
         const store = getStore();
+<<<<<<< HEAD
         const [
             secrets,
             resourceReferences,
@@ -273,6 +275,46 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsTransforms = transforms;
         store.supportsInvokeTransforms = invokeTransforms;
         store.supportsParameterization = parameterization;
+=======
+
+        // Before calling monitorSupportsFeature, first see if we can just use GetState
+        const state = await new Promise<resproto.MonitorState | undefined>((resolve, reject) => {
+            monitorRef.getState(
+                new Empty(),
+                (err: grpc.ServiceError | null, resp: resproto.MonitorState | undefined) => {
+                    // Back-compat case for old monitors that don't implement GetState.
+                    if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                        return resolve(undefined);
+                    }
+    
+                    if (err) {
+                        return reject(err);
+                    }
+    
+                    if (resp === undefined) {
+                        return reject(new Error("No response from resource monitor"));
+                    }
+    
+                    return resolve(resp)
+                },
+            );
+        });
+
+        if (state !== undefined) {
+            const featuresList = state.getFeaturesList();
+            store.supportsSecrets = featuresList.includes(resproto.MonitorState.Feature.FEATURE_SECRETS);
+            store.supportsResourceReferences = featuresList.includes(resproto.MonitorState.Feature.FEATURE_RESOURCE_REFERENCES);
+            store.supportsOutputValues = featuresList.includes(resproto.MonitorState.Feature.FEATURE_OUTPUT_VALUES);
+            store.supportsDeletedWith = featuresList.includes(resproto.MonitorState.Feature.FEATURE_DELETED_WITH);
+            store.supportsAliasSpecs = featuresList.includes(resproto.MonitorState.Feature.FEATURE_ALIAS_SPECS);
+        } else {
+            store.supportsSecrets = await monitorSupportsFeature(monitorRef, "secrets");
+            store.supportsResourceReferences = await monitorSupportsFeature(monitorRef, "resourceReferences");
+            store.supportsOutputValues = await monitorSupportsFeature(monitorRef, "outputValues");
+            store.supportsDeletedWith = await monitorSupportsFeature(monitorRef, "deletedWith");
+            store.supportsAliasSpecs = await monitorSupportsFeature(monitorRef, "aliasSpecs");
+        }
+>>>>>>> 13a7516ce0 (Add GetState to resource monitor)
     }
 }
 

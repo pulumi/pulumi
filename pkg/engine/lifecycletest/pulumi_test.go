@@ -4494,3 +4494,48 @@ func TestParallelDiff(t *testing.T) {
 	// Wait for the diff to complete, but don't wait forever
 	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for diff to complete timed out")
 }
+
+// Ensure that GetState returns the same state that was set in RunInfo.
+func TestGetState(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		state, err := monitor.GetState()
+		assert.NoError(t, err)
+
+		config, err := plugin.UnmarshalProperties(state.Config, plugin.MarshalOptions{
+			RejectUnknowns: true,
+			KeepSecrets:    true,
+		})
+		assert.NoError(t, err)
+
+		assert.Equal(t, info.Stack, state.Stack)
+		assert.Equal(t, info.Project, state.Project)
+		assert.Equal(t, info.ConfigPropertyMap, config)
+		assert.Equal(t, info.Pwd, state.Pwd)
+		assert.Equal(t, info.DryRun, state.DryRun)
+		assert.Equal(t, int32(info.Parallel), state.Parallel)
+		assert.Contains(t, pulumirpc.MonitorState_FEATURE_SECRETS, state.Features)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	p := &TestPlan{
+		Options:   TestUpdateOptions{HostF: hostF},
+		Project:   "test-project",
+		Decrypter: config.NopDecrypter,
+		Config: config.Map{
+			config.MustMakeKey("test-project", "plain"):  config.NewValue("a value"),
+			config.MustMakeKey("test-project", "secret"): config.NewSecureValue("a secret"),
+		},
+	}
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.NoError(t, err)
+
+	_, err = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil)
+	assert.NoError(t, err)
+}
