@@ -170,6 +170,30 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	return b.String()
 }
 
+func censoredOutputs(meta *engine.StepEventStateMetadata) *engine.StepEventStateMetadata {
+	if meta == nil {
+		return nil
+	}
+	// Copy the metadata so we don't mutate the original.
+	newStep := *meta
+
+	// duplicate newStep.Outputs
+	newStep.Outputs = newStep.Outputs.Copy()
+	for k, in := range meta.Inputs {
+		out, ok := newStep.Outputs[k]
+		if !ok {
+			continue
+		}
+		if in.IsSecret() {
+			// Ensure that the output is
+			if !out.IsSecret() {
+				newStep.Outputs[k] = resource.MakeSecret(out)
+			}
+		}
+	}
+	return &newStep
+}
+
 func getResourcePropertiesDetails(
 	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool, debug bool,
 ) string {
@@ -178,7 +202,8 @@ func getResourcePropertiesDetails(
 	// indent everything an additional level, like other properties.
 	indent++
 
-	old, new := step.Old, step.New
+	old := censoredOutputs(step.Old)
+	new := censoredOutputs(step.New)
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
 			PrintObject(&b, new.Outputs, planning, indent, step.Op, false, truncateOutput, debug)

@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -136,4 +137,215 @@ func TestDiffEvents(t *testing.T) {
 			testDiffEvents(t, path, accept, true)
 		})
 	}
+}
+
+func TestDiffNoSecret(t *testing.T) {
+	t.Parallel()
+	// Test that we don't show the secret value in the diff.
+	event := engine.StepEventMetadata{
+		Op:   "create",
+		URN:  "urn:pulumi:dev::secret-random-yaml::random:index/randomPet:RandomPet::param",
+		Type: "random:index/randomPet:RandomPet",
+		Old: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+		},
+	}
+	details := getResourcePropertiesDetails(
+		event,
+		1,     // indent
+		true,  // planning
+		false, // summary
+		false, // truncateOutput
+		false, // debug
+	)
+	assert.Contains(t, details, "222")
+	assert.NotContains(t, details, "[secret]")
+}
+
+func TestDiffSecretOld(t *testing.T) {
+	t.Parallel()
+	// Test that we don't show the secret value in the diff.
+	event := engine.StepEventMetadata{
+		Op:   "create",
+		URN:  "urn:pulumi:dev::secret-random-yaml::random:index/randomPet:RandomPet::param",
+		Type: "random:index/randomPet:RandomPet",
+		Old: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: float64(222),
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+		},
+	}
+	details := getResourcePropertiesDetails(
+		event,
+		1,     // indent
+		true,  // planning
+		false, // summary
+		false, // truncateOutput
+		false, // debug
+	)
+	assert.NotContains(t, details, "222")
+	assert.Contains(t, details, "[secret]")
+}
+
+func TestDiffSecretCreate(t *testing.T) {
+	t.Parallel()
+	// Test that we don't show the secret value in the diff.
+	event := engine.StepEventMetadata{
+		Op:   "create",
+		URN:  "urn:pulumi:dev::secret-random-yaml::random:index/randomPet:RandomPet::param",
+		Type: "random:index/randomPet:RandomPet",
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: float64(222),
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+		},
+	}
+	details := getResourcePropertiesDetails(
+		event,
+		1,     // indent
+		true,  // planning
+		true,  // summary
+		false, // truncateOutput
+		false, // debug
+	)
+	assert.NotContains(t, details, "222")
+	assert.Contains(t, details, "[secret]")
+}
+
+func TestDiffSecret(t *testing.T) {
+	t.Parallel()
+	// Test that we don't show the secret value in the diff.
+	event := engine.StepEventMetadata{
+		Op:   "update",
+		URN:  "urn:pulumi:dev::secret-random-yaml::random:index/randomPet:RandomPet::param",
+		Type: "random:index/randomPet:RandomPet",
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: float64(222),
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(333),
+				},
+			},
+		},
+		Old: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: float64(333),
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(333),
+				},
+			},
+		},
+	}
+	details := getResourcePropertiesDetails(
+		event,
+		1,     // indent
+		true,  // planning
+		true,  // summary
+		false, // truncateOutput
+		false, // debug
+	)
+	assert.NotContains(t, details, "333")
+	assert.NotContains(t, details, "222")
+	assert.Contains(t, details, "[secret]")
+}
+
+func TestDiffReplaceSecret(t *testing.T) {
+	t.Parallel()
+	// Test that we don't show the secret value in the diff.
+	event := engine.StepEventMetadata{
+		Op:   "delete-replaced",
+		URN:  "urn:pulumi:dev::secret-random-yaml::random:index/randomPet:RandomPet::param",
+		Type: "random:index/randomPet:RandomPet",
+		Old: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: "[secret]",
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+		},
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"length": {
+					V: &resource.Secret{
+						Element: resource.PropertyValue{
+							V: float64(333),
+						},
+					},
+				},
+			},
+			Outputs: resource.PropertyMap{
+				"length": {
+					V: float64(222),
+				},
+			},
+		},
+	}
+	details := getResourcePropertiesDetails(
+		event,
+		1,     // indent
+		true,  // planning
+		false, // summary
+		false, // truncateOutput
+		false, // debug
+	)
+
+	assert.NotContains(t, details, "333")
+	assert.NotContains(t, details, "222")
+	assert.Contains(t, details, "[secret]")
 }
