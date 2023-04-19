@@ -68,6 +68,17 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_MonitorState(arg) {
+  if (!(arg instanceof pulumi_resource_pb.MonitorState)) {
+    throw new Error('Expected argument of type pulumirpc.MonitorState');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_MonitorState(buffer_arg) {
+  return pulumi_resource_pb.MonitorState.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ReadResourceRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.ReadResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadResourceRequest');
@@ -235,6 +246,17 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestDeserialize: deserialize_pulumirpc_RegisterResourceOutputsRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  getState: {
+    path: '/pulumirpc.ResourceMonitor/GetState',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: pulumi_resource_pb.MonitorState,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_MonitorState,
+    responseDeserialize: deserialize_pulumirpc_MonitorState,
   },
 };
 

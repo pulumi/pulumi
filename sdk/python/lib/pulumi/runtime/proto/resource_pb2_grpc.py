@@ -52,6 +52,11 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.GetState = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/GetState',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.MonitorState.FromString,
+                )
 
 
 class ResourceMonitorServicer(object):
@@ -100,6 +105,12 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetState(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -137,6 +148,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     servicer.RegisterResourceOutputs,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetState': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetState,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.MonitorState.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -265,5 +281,22 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
             pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetState(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/GetState',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_resource__pb2.MonitorState.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

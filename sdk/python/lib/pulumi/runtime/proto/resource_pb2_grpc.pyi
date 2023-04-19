@@ -56,6 +56,10 @@ class ResourceMonitorStub:
         pulumi.resource_pb2.RegisterResourceOutputsRequest,
         google.protobuf.empty_pb2.Empty,
     ]
+    GetState: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.MonitorState,
+    ]
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
@@ -102,5 +106,11 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.RegisterResourceOutputsRequest,
         context: grpc.ServicerContext,
     ) -> google.protobuf.empty_pb2.Empty: ...
+    
+    def GetState(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: grpc.ServicerContext,
+    ) -> pulumi.resource_pb2.MonitorState: ...
 
 def add_ResourceMonitorServicer_to_server(servicer: ResourceMonitorServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

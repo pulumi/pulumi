@@ -249,5 +249,5 @@ func (p *monitorProxy) RegisterResourceOutputs(
 func (p *monitorProxy) SupportsFeature(
 	ctx context.Context, req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	return p.target.SupportsFeature(ctx, req)
+	return p.target.SupportsFeature(ctx, req) //nolint: staticcheck // deprecated, but still needs to be proxied.
 }

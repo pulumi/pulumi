@@ -24,6 +24,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -247,6 +248,7 @@ func newQueryResourceMonitor(
 		defaultProviders: d,
 		cancel:           cancel,
 		reg:              reg,
+		runInfo:          runinfo,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -301,7 +303,7 @@ func newQueryResourceMonitor(
 //  2. Services requests for stack snapshots. This is primarily to allow us to allow queries across
 //     stack snapshots.
 type queryResmon struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	builtins         *builtinProvider    // provides builtins such as `getStack`.
 	providers        ProviderSource      // the provider source itself.
@@ -311,6 +313,9 @@ type queryResmon struct {
 	done             <-chan error        // a channel that resolves when the server completes.
 	reg              *providers.Registry // registry for resource providers.
 	callInfo         plugin.CallInfo     // information for call calls.
+
+	// The runinfo for this resource monitor. Most of this is information returned to clients via GetState.
+	runInfo *EvalRunInfo
 }
 
 var _ SourceResourceMonitor = (*queryResmon)(nil)
@@ -543,6 +548,42 @@ func (rm *queryResmon) SupportsFeature(ctx context.Context,
 	hasSupport := false
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
+	}, nil
+}
+
+func (rm *queryResmon) GetState(ctx context.Context,
+	req *emptypb.Empty,
+) (*pulumirpc.MonitorState, error) {
+	logging.V(5).Infof("QueryResourceMonitor.GetState()")
+	contract.Assertf(rm.runInfo != nil, "runInfo must be set before calling GetState()")
+	ri := rm.runInfo
+	target := ri.Target
+	contract.Assertf(target != nil, "target must be set before calling GetState()")
+
+	configMap, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
+	}
+	configStruct, err := plugin.MarshalProperties(configMap, plugin.MarshalOptions{
+		Label:          "config",
+		KeepSecrets:    true,
+		RejectUnknowns: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	return &pulumirpc.MonitorState{
+		// Prefer using data from callInfo so that this matches what we're sending for legacy interfaces.
+		Organization: target.Organization.String(),
+		Project:      rm.callInfo.Project,
+		Stack:        rm.callInfo.Stack,
+		Pwd:          ri.Pwd,
+		Config:       configStruct,
+		DryRun:       rm.callInfo.DryRun,
+		Parallel:     int32(rm.callInfo.Parallel),
+		QueryMode:    true,
+		Features:     nil,
 	}, nil
 }
 

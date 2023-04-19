@@ -514,7 +514,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	pulumirpc.UnimplementedResourceMonitorServer
+	pulumirpc.UnsafeResourceMonitorServer
 
 	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
 	resGoalsLock              sync.Mutex                         // locks the resGoals map.
@@ -532,6 +532,9 @@ type resmon struct {
 	done                      <-chan error                       // a channel that resolves when the server completes.
 	disableResourceReferences bool                               // true if resource references are disabled.
 	disableOutputValues       bool                               // true if output values are disabled.
+
+	// The runinfo for this resource monitor. Most of this is information returned to clients via GetState.
+	runInfo *EvalRunInfo
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -556,6 +559,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
+		runInfo:                   src.runinfo,
 		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
@@ -696,6 +700,52 @@ func parseProviderRequest(
 	url := strings.TrimSuffix(pluginDownloadURL, "/")
 
 	return providers.NewProviderRequest(&parsedVersion, pkg, url, pluginChecksums), nil
+}
+
+func (rm *resmon) GetState(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.MonitorState, error) {
+	logging.V(5).Infof("ResourceMonitor.GetState()")
+	contract.Assertf(rm.runInfo != nil, "runInfo must be set before calling GetState()")
+	ri := rm.runInfo
+	target := ri.Target
+	contract.Assertf(target != nil, "target must be set before calling GetState()")
+
+	configMap, err := target.Config.AsDecryptedPropertyMap(ctx, target.Decrypter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config: %w", err)
+	}
+	configStruct, err := plugin.MarshalProperties(configMap, plugin.MarshalOptions{
+		Label:          "config",
+		KeepSecrets:    true,
+		RejectUnknowns: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	features := []pulumirpc.MonitorState_Feature{
+		pulumirpc.MonitorState_FEATURE_SECRETS,
+		pulumirpc.MonitorState_FEATURE_ALIAS_SPECS,
+		pulumirpc.MonitorState_FEATURE_DELETED_WITH,
+	}
+	if !rm.disableResourceReferences {
+		features = append(features, pulumirpc.MonitorState_FEATURE_RESOURCE_REFERENCES)
+	}
+	if !rm.disableOutputValues {
+		features = append(features, pulumirpc.MonitorState_FEATURE_OUTPUT_VALUES)
+	}
+
+	return &pulumirpc.MonitorState{
+		// Prefer using data from constructInfo so that this matches what we're sending for legacy interfaces.
+		Organization: target.Organization.String(),
+		Project:      rm.constructInfo.Project,
+		Stack:        rm.constructInfo.Stack,
+		Pwd:          ri.Pwd,
+		Config:       configStruct,
+		DryRun:       rm.constructInfo.DryRun,
+		Parallel:     int32(rm.constructInfo.Parallel),
+		QueryMode:    false,
+		Features:     features,
+	}, nil
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,

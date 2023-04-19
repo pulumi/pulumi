@@ -36,6 +36,186 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Feature is an enum of optional features that a monitor can support.
+type MonitorState_Feature int32
+
+const (
+	MonitorState_FEATURE_UNSPECIFIED         MonitorState_Feature = 0
+	MonitorState_FEATURE_SECRETS             MonitorState_Feature = 1
+	MonitorState_FEATURE_RESOURCE_REFERENCES MonitorState_Feature = 2
+	MonitorState_FEATURE_OUTPUT_VALUES       MonitorState_Feature = 3
+	MonitorState_FEATURE_ALIAS_SPECS         MonitorState_Feature = 4
+	MonitorState_FEATURE_DELETED_WITH        MonitorState_Feature = 5
+)
+
+// Enum value maps for MonitorState_Feature.
+var (
+	MonitorState_Feature_name = map[int32]string{
+		0: "FEATURE_UNSPECIFIED",
+		1: "FEATURE_SECRETS",
+		2: "FEATURE_RESOURCE_REFERENCES",
+		3: "FEATURE_OUTPUT_VALUES",
+		4: "FEATURE_ALIAS_SPECS",
+		5: "FEATURE_DELETED_WITH",
+	}
+	MonitorState_Feature_value = map[string]int32{
+		"FEATURE_UNSPECIFIED":         0,
+		"FEATURE_SECRETS":             1,
+		"FEATURE_RESOURCE_REFERENCES": 2,
+		"FEATURE_OUTPUT_VALUES":       3,
+		"FEATURE_ALIAS_SPECS":         4,
+		"FEATURE_DELETED_WITH":        5,
+	}
+)
+
+func (x MonitorState_Feature) Enum() *MonitorState_Feature {
+	p := new(MonitorState_Feature)
+	*p = x
+	return p
+}
+
+func (x MonitorState_Feature) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MonitorState_Feature) Descriptor() protoreflect.EnumDescriptor {
+	return file_pulumi_resource_proto_enumTypes[0].Descriptor()
+}
+
+func (MonitorState_Feature) Type() protoreflect.EnumType {
+	return &file_pulumi_resource_proto_enumTypes[0]
+}
+
+func (x MonitorState_Feature) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MonitorState_Feature.Descriptor instead.
+func (MonitorState_Feature) EnumDescriptor() ([]byte, []int) {
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{0, 0}
+}
+
+// MonitorState is all the current state for the resource monitor, such as stack names, config, and service endpoints.
+type MonitorState struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// the organization of the stack being deployed into.
+	Organization string `protobuf:"bytes,1,opt,name=organization,proto3" json:"organization,omitempty"`
+	// the project name.
+	Project string `protobuf:"bytes,2,opt,name=project,proto3" json:"project,omitempty"`
+	// the name of the stack being deployed into.
+	Stack string `protobuf:"bytes,3,opt,name=stack,proto3" json:"stack,omitempty"`
+	// the projects's working directory.
+	Pwd string `protobuf:"bytes,4,opt,name=pwd,proto3" json:"pwd,omitempty"`
+	// the configuration variables for the current stack.
+	Config *structpb.Struct `protobuf:"bytes,5,opt,name=config,proto3" json:"config,omitempty"`
+	// true if we're only doing a dryrun (preview).
+	DryRun bool `protobuf:"varint,6,opt,name=dryRun,proto3" json:"dryRun,omitempty"`
+	// the degree of parallelism for resource operations (<=1 for serial).
+	Parallel int32 `protobuf:"varint,7,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	// true if we're only doing a query.
+	QueryMode bool `protobuf:"varint,8,opt,name=queryMode,proto3" json:"queryMode,omitempty"`
+	// features that this monitor supports.
+	Features []MonitorState_Feature `protobuf:"varint,9,rep,packed,name=features,proto3,enum=pulumirpc.MonitorState_Feature" json:"features,omitempty"`
+}
+
+func (x *MonitorState) Reset() {
+	*x = MonitorState{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pulumi_resource_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *MonitorState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MonitorState) ProtoMessage() {}
+
+func (x *MonitorState) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_resource_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MonitorState.ProtoReflect.Descriptor instead.
+func (*MonitorState) Descriptor() ([]byte, []int) {
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *MonitorState) GetOrganization() string {
+	if x != nil {
+		return x.Organization
+	}
+	return ""
+}
+
+func (x *MonitorState) GetProject() string {
+	if x != nil {
+		return x.Project
+	}
+	return ""
+}
+
+func (x *MonitorState) GetStack() string {
+	if x != nil {
+		return x.Stack
+	}
+	return ""
+}
+
+func (x *MonitorState) GetPwd() string {
+	if x != nil {
+		return x.Pwd
+	}
+	return ""
+}
+
+func (x *MonitorState) GetConfig() *structpb.Struct {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *MonitorState) GetDryRun() bool {
+	if x != nil {
+		return x.DryRun
+	}
+	return false
+}
+
+func (x *MonitorState) GetParallel() int32 {
+	if x != nil {
+		return x.Parallel
+	}
+	return 0
+}
+
+func (x *MonitorState) GetQueryMode() bool {
+	if x != nil {
+		return x.QueryMode
+	}
+	return false
+}
+
+func (x *MonitorState) GetFeatures() []MonitorState_Feature {
+	if x != nil {
+		return x.Features
+	}
+	return nil
+}
+
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
 // to control the format or types of messages it sends.
 type SupportsFeatureRequest struct {
@@ -49,7 +229,7 @@ type SupportsFeatureRequest struct {
 func (x *SupportsFeatureRequest) Reset() {
 	*x = SupportsFeatureRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[0]
+		mi := &file_pulumi_resource_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -62,7 +242,7 @@ func (x *SupportsFeatureRequest) String() string {
 func (*SupportsFeatureRequest) ProtoMessage() {}
 
 func (x *SupportsFeatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[0]
+	mi := &file_pulumi_resource_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -75,7 +255,7 @@ func (x *SupportsFeatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupportsFeatureRequest.ProtoReflect.Descriptor instead.
 func (*SupportsFeatureRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{0}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *SupportsFeatureRequest) GetId() string {
@@ -96,7 +276,7 @@ type SupportsFeatureResponse struct {
 func (x *SupportsFeatureResponse) Reset() {
 	*x = SupportsFeatureResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[1]
+		mi := &file_pulumi_resource_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -109,7 +289,7 @@ func (x *SupportsFeatureResponse) String() string {
 func (*SupportsFeatureResponse) ProtoMessage() {}
 
 func (x *SupportsFeatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[1]
+	mi := &file_pulumi_resource_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -122,7 +302,7 @@ func (x *SupportsFeatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupportsFeatureResponse.ProtoReflect.Descriptor instead.
 func (*SupportsFeatureResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{1}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SupportsFeatureResponse) GetHasSupport() bool {
@@ -157,7 +337,7 @@ type ReadResourceRequest struct {
 func (x *ReadResourceRequest) Reset() {
 	*x = ReadResourceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[2]
+		mi := &file_pulumi_resource_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -170,7 +350,7 @@ func (x *ReadResourceRequest) String() string {
 func (*ReadResourceRequest) ProtoMessage() {}
 
 func (x *ReadResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[2]
+	mi := &file_pulumi_resource_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -183,7 +363,7 @@ func (x *ReadResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadResourceRequest.ProtoReflect.Descriptor instead.
 func (*ReadResourceRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{2}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ReadResourceRequest) GetId() string {
@@ -297,7 +477,7 @@ type ReadResourceResponse struct {
 func (x *ReadResourceResponse) Reset() {
 	*x = ReadResourceResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[3]
+		mi := &file_pulumi_resource_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -310,7 +490,7 @@ func (x *ReadResourceResponse) String() string {
 func (*ReadResourceResponse) ProtoMessage() {}
 
 func (x *ReadResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[3]
+	mi := &file_pulumi_resource_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -323,7 +503,7 @@ func (x *ReadResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadResourceResponse.ProtoReflect.Descriptor instead.
 func (*ReadResourceResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{3}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ReadResourceResponse) GetUrn() string {
@@ -388,7 +568,7 @@ type RegisterResourceRequest struct {
 func (x *RegisterResourceRequest) Reset() {
 	*x = RegisterResourceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[4]
+		mi := &file_pulumi_resource_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -401,7 +581,7 @@ func (x *RegisterResourceRequest) String() string {
 func (*RegisterResourceRequest) ProtoMessage() {}
 
 func (x *RegisterResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[4]
+	mi := &file_pulumi_resource_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -414,7 +594,7 @@ func (x *RegisterResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResourceRequest.ProtoReflect.Descriptor instead.
 func (*RegisterResourceRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{4}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *RegisterResourceRequest) GetType() string {
@@ -645,7 +825,7 @@ type RegisterResourceResponse struct {
 func (x *RegisterResourceResponse) Reset() {
 	*x = RegisterResourceResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[5]
+		mi := &file_pulumi_resource_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -658,7 +838,7 @@ func (x *RegisterResourceResponse) String() string {
 func (*RegisterResourceResponse) ProtoMessage() {}
 
 func (x *RegisterResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[5]
+	mi := &file_pulumi_resource_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -671,7 +851,7 @@ func (x *RegisterResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResourceResponse.ProtoReflect.Descriptor instead.
 func (*RegisterResourceResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{5}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RegisterResourceResponse) GetUrn() string {
@@ -729,7 +909,7 @@ type RegisterResourceOutputsRequest struct {
 func (x *RegisterResourceOutputsRequest) Reset() {
 	*x = RegisterResourceOutputsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[6]
+		mi := &file_pulumi_resource_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -742,7 +922,7 @@ func (x *RegisterResourceOutputsRequest) String() string {
 func (*RegisterResourceOutputsRequest) ProtoMessage() {}
 
 func (x *RegisterResourceOutputsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[6]
+	mi := &file_pulumi_resource_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +935,7 @@ func (x *RegisterResourceOutputsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResourceOutputsRequest.ProtoReflect.Descriptor instead.
 func (*RegisterResourceOutputsRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{6}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RegisterResourceOutputsRequest) GetUrn() string {
@@ -790,7 +970,7 @@ type ResourceInvokeRequest struct {
 func (x *ResourceInvokeRequest) Reset() {
 	*x = ResourceInvokeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[7]
+		mi := &file_pulumi_resource_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -803,7 +983,7 @@ func (x *ResourceInvokeRequest) String() string {
 func (*ResourceInvokeRequest) ProtoMessage() {}
 
 func (x *ResourceInvokeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[7]
+	mi := &file_pulumi_resource_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +996,7 @@ func (x *ResourceInvokeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceInvokeRequest.ProtoReflect.Descriptor instead.
 func (*ResourceInvokeRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{7}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ResourceInvokeRequest) GetTok() string {
@@ -887,7 +1067,7 @@ type RegisterResourceRequest_PropertyDependencies struct {
 func (x *RegisterResourceRequest_PropertyDependencies) Reset() {
 	*x = RegisterResourceRequest_PropertyDependencies{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[9]
+		mi := &file_pulumi_resource_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -900,7 +1080,7 @@ func (x *RegisterResourceRequest_PropertyDependencies) String() string {
 func (*RegisterResourceRequest_PropertyDependencies) ProtoMessage() {}
 
 func (x *RegisterResourceRequest_PropertyDependencies) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[9]
+	mi := &file_pulumi_resource_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -913,7 +1093,7 @@ func (x *RegisterResourceRequest_PropertyDependencies) ProtoReflect() protorefle
 
 // Deprecated: Use RegisterResourceRequest_PropertyDependencies.ProtoReflect.Descriptor instead.
 func (*RegisterResourceRequest_PropertyDependencies) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{4, 0}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{5, 0}
 }
 
 func (x *RegisterResourceRequest_PropertyDependencies) GetUrns() []string {
@@ -937,7 +1117,7 @@ type RegisterResourceRequest_CustomTimeouts struct {
 func (x *RegisterResourceRequest_CustomTimeouts) Reset() {
 	*x = RegisterResourceRequest_CustomTimeouts{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[10]
+		mi := &file_pulumi_resource_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -950,7 +1130,7 @@ func (x *RegisterResourceRequest_CustomTimeouts) String() string {
 func (*RegisterResourceRequest_CustomTimeouts) ProtoMessage() {}
 
 func (x *RegisterResourceRequest_CustomTimeouts) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[10]
+	mi := &file_pulumi_resource_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +1143,7 @@ func (x *RegisterResourceRequest_CustomTimeouts) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use RegisterResourceRequest_CustomTimeouts.ProtoReflect.Descriptor instead.
 func (*RegisterResourceRequest_CustomTimeouts) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{4, 1}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{5, 1}
 }
 
 func (x *RegisterResourceRequest_CustomTimeouts) GetCreate() string {
@@ -999,7 +1179,7 @@ type RegisterResourceResponse_PropertyDependencies struct {
 func (x *RegisterResourceResponse_PropertyDependencies) Reset() {
 	*x = RegisterResourceResponse_PropertyDependencies{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pulumi_resource_proto_msgTypes[14]
+		mi := &file_pulumi_resource_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1012,7 +1192,7 @@ func (x *RegisterResourceResponse_PropertyDependencies) String() string {
 func (*RegisterResourceResponse_PropertyDependencies) ProtoMessage() {}
 
 func (x *RegisterResourceResponse_PropertyDependencies) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[14]
+	mi := &file_pulumi_resource_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1025,7 +1205,7 @@ func (x *RegisterResourceResponse_PropertyDependencies) ProtoReflect() protorefl
 
 // Deprecated: Use RegisterResourceResponse_PropertyDependencies.ProtoReflect.Descriptor instead.
 func (*RegisterResourceResponse_PropertyDependencies) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{5, 0}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{6, 0}
 }
 
 func (x *RegisterResourceResponse_PropertyDependencies) GetUrns() []string {
@@ -1047,7 +1227,37 @@ var file_pulumi_resource_proto_rawDesc = []byte{
 	0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x12, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x61, 0x6c, 0x69,
 	0x61, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x13, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69,
-	0x2f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x28, 0x0a,
+	0x2f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xdd, 0x03,
+	0x0a, 0x0c, 0x4d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x53, 0x74, 0x61, 0x74, 0x65, 0x12, 0x22,
+	0x0a, 0x0c, 0x6f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x6f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x72, 0x6f, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x14, 0x0a, 0x05,
+	0x73, 0x74, 0x61, 0x63, 0x6b, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x73, 0x74, 0x61,
+	0x63, 0x6b, 0x12, 0x10, 0x0a, 0x03, 0x70, 0x77, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x70, 0x77, 0x64, 0x12, 0x2f, 0x0a, 0x06, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x18, 0x05,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x52, 0x06, 0x63,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x16, 0x0a, 0x06, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e, 0x18,
+	0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x06, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e, 0x12, 0x1a, 0x0a,
+	0x08, 0x70, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x18, 0x07, 0x20, 0x01, 0x28, 0x05, 0x52,
+	0x08, 0x70, 0x61, 0x72, 0x61, 0x6c, 0x6c, 0x65, 0x6c, 0x12, 0x1c, 0x0a, 0x09, 0x71, 0x75, 0x65,
+	0x72, 0x79, 0x4d, 0x6f, 0x64, 0x65, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x09, 0x71, 0x75,
+	0x65, 0x72, 0x79, 0x4d, 0x6f, 0x64, 0x65, 0x12, 0x3b, 0x0a, 0x08, 0x66, 0x65, 0x61, 0x74, 0x75,
+	0x72, 0x65, 0x73, 0x18, 0x09, 0x20, 0x03, 0x28, 0x0e, 0x32, 0x1f, 0x2e, 0x70, 0x75, 0x6c, 0x75,
+	0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x4d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x2e, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72, 0x65, 0x52, 0x08, 0x66, 0x65, 0x61, 0x74,
+	0x75, 0x72, 0x65, 0x73, 0x22, 0xa6, 0x01, 0x0a, 0x07, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72, 0x65,
+	0x12, 0x17, 0x0a, 0x13, 0x46, 0x45, 0x41, 0x54, 0x55, 0x52, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50,
+	0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x13, 0x0a, 0x0f, 0x46, 0x45, 0x41,
+	0x54, 0x55, 0x52, 0x45, 0x5f, 0x53, 0x45, 0x43, 0x52, 0x45, 0x54, 0x53, 0x10, 0x01, 0x12, 0x1f,
+	0x0a, 0x1b, 0x46, 0x45, 0x41, 0x54, 0x55, 0x52, 0x45, 0x5f, 0x52, 0x45, 0x53, 0x4f, 0x55, 0x52,
+	0x43, 0x45, 0x5f, 0x52, 0x45, 0x46, 0x45, 0x52, 0x45, 0x4e, 0x43, 0x45, 0x53, 0x10, 0x02, 0x12,
+	0x19, 0x0a, 0x15, 0x46, 0x45, 0x41, 0x54, 0x55, 0x52, 0x45, 0x5f, 0x4f, 0x55, 0x54, 0x50, 0x55,
+	0x54, 0x5f, 0x56, 0x41, 0x4c, 0x55, 0x45, 0x53, 0x10, 0x03, 0x12, 0x17, 0x0a, 0x13, 0x46, 0x45,
+	0x41, 0x54, 0x55, 0x52, 0x45, 0x5f, 0x41, 0x4c, 0x49, 0x41, 0x53, 0x5f, 0x53, 0x50, 0x45, 0x43,
+	0x53, 0x10, 0x04, 0x12, 0x18, 0x0a, 0x14, 0x46, 0x45, 0x41, 0x54, 0x55, 0x52, 0x45, 0x5f, 0x44,
+	0x45, 0x4c, 0x45, 0x54, 0x45, 0x44, 0x5f, 0x57, 0x49, 0x54, 0x48, 0x10, 0x05, 0x22, 0x28, 0x0a,
 	0x16, 0x53, 0x75, 0x70, 0x70, 0x6f, 0x72, 0x74, 0x73, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72, 0x65,
 	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x39, 0x0a, 0x17, 0x53, 0x75, 0x70, 0x70, 0x6f,
@@ -1278,48 +1488,53 @@ var file_pulumi_resource_proto_rawDesc = []byte{
 	0x43, 0x68, 0x65, 0x63, 0x6b, 0x73, 0x75, 0x6d, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10,
 	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
 	0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x32, 0xd4, 0x04, 0x0a, 0x0f, 0x52,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x12, 0x5a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x32, 0x96, 0x05, 0x0a, 0x0f, 0x52,
+	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x12, 0x5d,
 	0x0a, 0x0f, 0x53, 0x75, 0x70, 0x70, 0x6f, 0x72, 0x74, 0x73, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72,
 	0x65, 0x12, 0x21, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x53, 0x75,
 	0x70, 0x70, 0x6f, 0x72, 0x74, 0x73, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72, 0x65, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x1a, 0x22, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63,
 	0x2e, 0x53, 0x75, 0x70, 0x70, 0x6f, 0x72, 0x74, 0x73, 0x46, 0x65, 0x61, 0x74, 0x75, 0x72, 0x65,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x47, 0x0a, 0x06, 0x49, 0x6e,
-	0x76, 0x6f, 0x6b, 0x65, 0x12, 0x20, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63,
-	0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72,
-	0x70, 0x63, 0x2e, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x12, 0x4f, 0x0a, 0x0c, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x49, 0x6e, 0x76,
-	0x6f, 0x6b, 0x65, 0x12, 0x20, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e,
-	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70,
-	0x63, 0x2e, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x30, 0x01, 0x12, 0x39, 0x0a, 0x04, 0x43, 0x61, 0x6c, 0x6c, 0x12, 0x16, 0x2e, 0x70,
-	0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x61, 0x6c, 0x6c, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63,
-	0x2e, 0x43, 0x61, 0x6c, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12,
-	0x51, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12,
-	0x1e, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x61, 0x64,
-	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
-	0x1f, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x61, 0x64,
-	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x5d, 0x0a, 0x10, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65,
-	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12, 0x22, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72,
-	0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75,
-	0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x70, 0x75, 0x6c,
-	0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x00, 0x12, 0x5e, 0x0a, 0x17, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x73, 0x12, 0x29, 0x2e, 0x70,
-	0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65,
-	0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x73,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x22,
-	0x00, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x73, 0x64,
-	0x6b, 0x2f, 0x76, 0x33, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x3b, 0x70, 0x75,
-	0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x03, 0x88, 0x02, 0x01, 0x12, 0x47, 0x0a,
+	0x06, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x12, 0x20, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69,
+	0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x6e, 0x76, 0x6f,
+	0x6b, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x70, 0x75, 0x6c, 0x75,
+	0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52, 0x65, 0x73, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x4f, 0x0a, 0x0c, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d,
+	0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x12, 0x20, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72,
+	0x70, 0x63, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x6e, 0x76, 0x6f, 0x6b,
+	0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d,
+	0x69, 0x72, 0x70, 0x63, 0x2e, 0x49, 0x6e, 0x76, 0x6f, 0x6b, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x30, 0x01, 0x12, 0x39, 0x0a, 0x04, 0x43, 0x61, 0x6c, 0x6c, 0x12,
+	0x16, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x43, 0x61, 0x6c, 0x6c,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x17, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69,
+	0x72, 0x70, 0x63, 0x2e, 0x43, 0x61, 0x6c, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x51, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
+	0x63, 0x65, 0x12, 0x1e, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52,
+	0x65, 0x61, 0x64, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x5d, 0x0a, 0x10, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65,
+	0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12, 0x22, 0x2e, 0x70, 0x75, 0x6c, 0x75,
+	0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65,
+	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e,
+	0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74,
+	0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x22, 0x00, 0x12, 0x5e, 0x0a, 0x17, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
+	0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x73, 0x12,
+	0x29, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x2e, 0x52, 0x65, 0x67, 0x69,
+	0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x4f, 0x75, 0x74, 0x70,
+	0x75, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f,
+	0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70,
+	0x74, 0x79, 0x22, 0x00, 0x12, 0x3d, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x53, 0x74, 0x61, 0x74, 0x65,
+	0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x17, 0x2e, 0x70, 0x75, 0x6c, 0x75, 0x6d,
+	0x69, 0x72, 0x70, 0x63, 0x2e, 0x4d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x53, 0x74, 0x61, 0x74,
+	0x65, 0x22, 0x00, 0x42, 0x34, 0x5a, 0x32, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2f,
+	0x73, 0x64, 0x6b, 0x2f, 0x76, 0x33, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x67, 0x6f, 0x3b,
+	0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -1334,72 +1549,79 @@ func file_pulumi_resource_proto_rawDescGZIP() []byte {
 	return file_pulumi_resource_proto_rawDescData
 }
 
-var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_pulumi_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_pulumi_resource_proto_goTypes = []interface{}{
-	(*SupportsFeatureRequest)(nil),                       // 0: pulumirpc.SupportsFeatureRequest
-	(*SupportsFeatureResponse)(nil),                      // 1: pulumirpc.SupportsFeatureResponse
-	(*ReadResourceRequest)(nil),                          // 2: pulumirpc.ReadResourceRequest
-	(*ReadResourceResponse)(nil),                         // 3: pulumirpc.ReadResourceResponse
-	(*RegisterResourceRequest)(nil),                      // 4: pulumirpc.RegisterResourceRequest
-	(*RegisterResourceResponse)(nil),                     // 5: pulumirpc.RegisterResourceResponse
-	(*RegisterResourceOutputsRequest)(nil),               // 6: pulumirpc.RegisterResourceOutputsRequest
-	(*ResourceInvokeRequest)(nil),                        // 7: pulumirpc.ResourceInvokeRequest
-	nil,                                                  // 8: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceRequest_PropertyDependencies)(nil), // 9: pulumirpc.RegisterResourceRequest.PropertyDependencies
-	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 10: pulumirpc.RegisterResourceRequest.CustomTimeouts
-	nil, // 11: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	nil, // 12: pulumirpc.RegisterResourceRequest.ProvidersEntry
-	nil, // 13: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceResponse_PropertyDependencies)(nil), // 14: pulumirpc.RegisterResourceResponse.PropertyDependencies
-	nil,                     // 15: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	nil,                     // 16: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	(*structpb.Struct)(nil), // 17: google.protobuf.Struct
-	(*SourcePosition)(nil),  // 18: pulumirpc.SourcePosition
-	(*Alias)(nil),           // 19: pulumirpc.Alias
-	(*CallRequest)(nil),     // 20: pulumirpc.CallRequest
-	(*InvokeResponse)(nil),  // 21: pulumirpc.InvokeResponse
-	(*CallResponse)(nil),    // 22: pulumirpc.CallResponse
+	(MonitorState_Feature)(0),                            // 0: pulumirpc.MonitorState.Feature
+	(*MonitorState)(nil),                                 // 1: pulumirpc.MonitorState
+	(*SupportsFeatureRequest)(nil),                       // 2: pulumirpc.SupportsFeatureRequest
+	(*SupportsFeatureResponse)(nil),                      // 3: pulumirpc.SupportsFeatureResponse
+	(*ReadResourceRequest)(nil),                          // 4: pulumirpc.ReadResourceRequest
+	(*ReadResourceResponse)(nil),                         // 5: pulumirpc.ReadResourceResponse
+	(*RegisterResourceRequest)(nil),                      // 6: pulumirpc.RegisterResourceRequest
+	(*RegisterResourceResponse)(nil),                     // 7: pulumirpc.RegisterResourceResponse
+	(*RegisterResourceOutputsRequest)(nil),               // 8: pulumirpc.RegisterResourceOutputsRequest
+	(*ResourceInvokeRequest)(nil),                        // 9: pulumirpc.ResourceInvokeRequest
+	nil,                                                  // 10: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
+	(*RegisterResourceRequest_PropertyDependencies)(nil), // 11: pulumirpc.RegisterResourceRequest.PropertyDependencies
+	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 12: pulumirpc.RegisterResourceRequest.CustomTimeouts
+	nil, // 13: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+	nil, // 14: pulumirpc.RegisterResourceRequest.ProvidersEntry
+	nil, // 15: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+	(*RegisterResourceResponse_PropertyDependencies)(nil), // 16: pulumirpc.RegisterResourceResponse.PropertyDependencies
+	nil,                     // 17: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+	nil,                     // 18: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+	(*structpb.Struct)(nil), // 19: google.protobuf.Struct
+	(*SourcePosition)(nil),  // 20: pulumirpc.SourcePosition
+	(*Alias)(nil),           // 21: pulumirpc.Alias
+	(*CallRequest)(nil),     // 22: pulumirpc.CallRequest
 	(*emptypb.Empty)(nil),   // 23: google.protobuf.Empty
+	(*InvokeResponse)(nil),  // 24: pulumirpc.InvokeResponse
+	(*CallResponse)(nil),    // 25: pulumirpc.CallResponse
 }
 var file_pulumi_resource_proto_depIdxs = []int32{
-	17, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
-	8,  // 1: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry
-	18, // 2: pulumirpc.ReadResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	17, // 3: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
-	17, // 4: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
-	11, // 5: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	10, // 6: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
-	12, // 7: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
-	13, // 8: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	19, // 9: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
-	18, // 10: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	17, // 11: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
-	15, // 12: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	17, // 13: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
-	17, // 14: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
-	16, // 15: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	18, // 16: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	9,  // 17: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
-	14, // 18: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
-	0,  // 19: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
-	7,  // 20: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
-	7,  // 21: pulumirpc.ResourceMonitor.StreamInvoke:input_type -> pulumirpc.ResourceInvokeRequest
-	20, // 22: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.CallRequest
-	2,  // 23: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
-	4,  // 24: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
-	6,  // 25: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
-	1,  // 26: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
-	21, // 27: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
-	21, // 28: pulumirpc.ResourceMonitor.StreamInvoke:output_type -> pulumirpc.InvokeResponse
-	22, // 29: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
-	3,  // 30: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
-	5,  // 31: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
-	23, // 32: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
-	26, // [26:33] is the sub-list for method output_type
-	19, // [19:26] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	19, // 0: pulumirpc.MonitorState.config:type_name -> google.protobuf.Struct
+	0,  // 1: pulumirpc.MonitorState.features:type_name -> pulumirpc.MonitorState.Feature
+	19, // 2: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
+	10, // 3: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry
+	20, // 4: pulumirpc.ReadResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	19, // 5: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
+	19, // 6: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
+	13, // 7: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+	12, // 8: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	14, // 9: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
+	15, // 10: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+	21, // 11: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
+	20, // 12: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	19, // 13: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
+	17, // 14: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+	19, // 15: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
+	19, // 16: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
+	18, // 17: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+	20, // 18: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	11, // 19: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
+	16, // 20: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
+	2,  // 21: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
+	9,  // 22: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
+	9,  // 23: pulumirpc.ResourceMonitor.StreamInvoke:input_type -> pulumirpc.ResourceInvokeRequest
+	22, // 24: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.CallRequest
+	4,  // 25: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
+	6,  // 26: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
+	8,  // 27: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
+	23, // 28: pulumirpc.ResourceMonitor.GetState:input_type -> google.protobuf.Empty
+	3,  // 29: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
+	24, // 30: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
+	24, // 31: pulumirpc.ResourceMonitor.StreamInvoke:output_type -> pulumirpc.InvokeResponse
+	25, // 32: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
+	5,  // 33: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
+	7,  // 34: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
+	23, // 35: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
+	1,  // 36: pulumirpc.ResourceMonitor.GetState:output_type -> pulumirpc.MonitorState
+	29, // [29:37] is the sub-list for method output_type
+	21, // [21:29] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_resource_proto_init() }
@@ -1412,7 +1634,7 @@ func file_pulumi_resource_proto_init() {
 	file_pulumi_source_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_pulumi_resource_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SupportsFeatureRequest); i {
+			switch v := v.(*MonitorState); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1424,7 +1646,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SupportsFeatureResponse); i {
+			switch v := v.(*SupportsFeatureRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1436,7 +1658,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadResourceRequest); i {
+			switch v := v.(*SupportsFeatureResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1448,7 +1670,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadResourceResponse); i {
+			switch v := v.(*ReadResourceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1460,7 +1682,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterResourceRequest); i {
+			switch v := v.(*ReadResourceResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1472,7 +1694,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterResourceResponse); i {
+			switch v := v.(*RegisterResourceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1484,7 +1706,7 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RegisterResourceOutputsRequest); i {
+			switch v := v.(*RegisterResourceResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1496,6 +1718,18 @@ func file_pulumi_resource_proto_init() {
 			}
 		}
 		file_pulumi_resource_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RegisterResourceOutputsRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pulumi_resource_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ResourceInvokeRequest); i {
 			case 0:
 				return &v.state
@@ -1507,7 +1741,7 @@ func file_pulumi_resource_proto_init() {
 				return nil
 			}
 		}
-		file_pulumi_resource_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_pulumi_resource_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisterResourceRequest_PropertyDependencies); i {
 			case 0:
 				return &v.state
@@ -1519,7 +1753,7 @@ func file_pulumi_resource_proto_init() {
 				return nil
 			}
 		}
-		file_pulumi_resource_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_pulumi_resource_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisterResourceRequest_CustomTimeouts); i {
 			case 0:
 				return &v.state
@@ -1531,7 +1765,7 @@ func file_pulumi_resource_proto_init() {
 				return nil
 			}
 		}
-		file_pulumi_resource_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
+		file_pulumi_resource_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisterResourceResponse_PropertyDependencies); i {
 			case 0:
 				return &v.state
@@ -1549,13 +1783,14 @@ func file_pulumi_resource_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pulumi_resource_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   17,
+			NumEnums:      1,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_pulumi_resource_proto_goTypes,
 		DependencyIndexes: file_pulumi_resource_proto_depIdxs,
+		EnumInfos:         file_pulumi_resource_proto_enumTypes,
 		MessageInfos:      file_pulumi_resource_proto_msgTypes,
 	}.Build()
 	File_pulumi_resource_proto = out.File
