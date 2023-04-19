@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.64.0 (2023-04-18)
+
+
+### Features
+
+- [cli/display] Adds an indicator for resources that are being deleted/replaced with `retainOnDelete` set as well as an itemized warning.
+  [#12157](https://github.com/pulumi/pulumi/pull/12157)
+
+- [backend/{filestate,service}] Add more information to `pulumi stack history` (Update CLI Args, Environment Variables, Pulumi Version, OS, Architecture).
+  [#12574](https://github.com/pulumi/pulumi/pull/12574)
+
+
+### Bug Fixes
+
+- [pkg/testing] deploytest: Fix nil custom timeouts and timeouts smaller than a minute being ignored.
+  [#12681](https://github.com/pulumi/pulumi/pull/12681)
+
+- [programgen] Do not panic when PCL attribute type or PCL resource variable type isn't fully bound
+  [#12661](https://github.com/pulumi/pulumi/pull/12661)
+
+- [sdk/go] Fixed NewResourceOptions dropping MLC dependencies from the options preview.
+  [#12683](https://github.com/pulumi/pulumi/pull/12683)
+
+- [programgen/nodejs] Linearize component resource nodes
+  [#12676](https://github.com/pulumi/pulumi/pull/12676)
+
+- [sdk/python] Fix component resources not correctly propagating the `provider` option to their children.
+This is a re-application of #12292, which was previously reverted in #12522.
+
+  [#12639](https://github.com/pulumi/pulumi/pull/12639)
+
+- [sdk/python] Fix multi-language components dropping the `provider` option intended for their descendants.
+  [#12639](https://github.com/pulumi/pulumi/pull/12639)
+
+- [sdkgen/python] Fix referencing local types with a different package name
+  [#12669](https://github.com/pulumi/pulumi/pull/12669)
+
+
+### Miscellaneous
+
+- [pkg] Bump pulumi-terraform-bridge
+  [#12625](https://github.com/pulumi/pulumi/pull/12625)
+
+- [programgen] Do not panic when the type of PCL local variable isn't known
+  [#12670](https://github.com/pulumi/pulumi/pull/12670)
+
 ## 3.63.0 (2023-04-12)
 
 

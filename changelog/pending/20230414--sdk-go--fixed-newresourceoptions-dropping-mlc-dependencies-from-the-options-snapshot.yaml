@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: Fixed NewResourceOptions dropping MLC dependencies from the options preview.
