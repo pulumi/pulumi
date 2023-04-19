@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Do not panic when PCL attribute type or PCL resource variable type isn't fully bound
