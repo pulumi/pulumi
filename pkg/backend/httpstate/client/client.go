@@ -939,7 +939,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
-func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, deployment *apitype.DeploymentV3,
+func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdentifier, resourceCount int, deployment *apitype.DeploymentV3,
 	token UpdateTokenSource,
 ) error {
 	rawDeployment, err := json.Marshal(deployment)
@@ -948,8 +948,9 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	}
 
 	req := apitype.PatchUpdateCheckpointRequest{
-		Version:    3,
-		Deployment: rawDeployment,
+		Version:       3,
+		ResourceCount: &resourceCount,
+		Deployment:    rawDeployment,
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
@@ -961,10 +962,11 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
 // UntypedDeployment transferred over the wire.
 func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource,
+	sequenceNumber, resourceCount int, untypedDeploymentBytes json.RawMessage, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateVerbatimCheckpointRequest{
 		Version:           3,
+		ResourceCount:     &resourceCount,
 		UntypedDeployment: untypedDeploymentBytes,
 		SequenceNumber:    sequenceNumber,
 	}
@@ -984,10 +986,11 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 // PatchUpdateCheckpoint. Unlike PatchUpdateCheckpoint, it uses a text diff-based protocol to conserve bandwidth on
 // large stack states.
 func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateIdentifier,
-	sequenceNumber int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource,
+	sequenceNumber, resourceCount int, checkpointHash string, deploymentDelta json.RawMessage, token UpdateTokenSource,
 ) error {
 	req := apitype.PatchUpdateCheckpointDeltaRequest{
 		Version:         3,
+		ResourceCount:   &resourceCount,
 		CheckpointHash:  checkpointHash,
 		SequenceNumber:  sequenceNumber,
 		DeploymentDelta: deploymentDelta,

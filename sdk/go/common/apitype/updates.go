@@ -211,9 +211,10 @@ type CompleteUpdateRequest struct {
 // API. The `Deployment` field is expected to contain a serialized `Deployment` value, the schema of which is indicated
 // by the `Version` field.
 type PatchUpdateCheckpointRequest struct {
-	IsInvalid  bool            `json:"isInvalid"`
-	Version    int             `json:"version"`
-	Deployment json.RawMessage `json:"deployment,omitempty"`
+	IsInvalid     bool            `json:"isInvalid"`
+	Version       int             `json:"version"`
+	ResourceCount *int            `json:"resourceCount,omitempty"`
+	Deployment    json.RawMessage `json:"deployment,omitempty"`
 }
 
 // PatchUpdateVerbatimCheckpointRequest defines the body of a request to a patch update checkpoint endpoint of the
@@ -224,6 +225,7 @@ type PatchUpdateCheckpointRequest struct {
 // textual diffs.
 type PatchUpdateVerbatimCheckpointRequest struct {
 	Version           int             `json:"version"`
+	ResourceCount     *int            `json:"resourceCount,omitempty"`
 	UntypedDeployment json.RawMessage `json:"untypedDeployment,omitempty"`
 
 	// Idempotency key incremented by the client on every PATCH call within the same update.
@@ -246,6 +248,9 @@ type PatchUpdateCheckpointDeltaRequest struct {
 
 	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
 	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
+
+	// The number of resources in the checkpoint.
+	ResourceCount *int `json:"resourceCount,omitempty"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.

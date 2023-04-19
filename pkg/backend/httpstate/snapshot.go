@@ -49,11 +49,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
+	resourceCount := len(snapshot.Resources)
+
 	// Diff capability can be nil because of feature flagging.
 	if persister.deploymentDiffState == nil {
 		// Continue with how deployments were saved before diff.
 		return persister.backend.client.PatchUpdateCheckpoint(
-			persister.context, persister.update, deploymentV3, persister.tokenSource)
+			persister.context, persister.update, resourceCount, deploymentV3, persister.tokenSource)
 	}
 
 	deployment, err := client.MarshalUntypedDeployment(deploymentV3)
@@ -65,7 +67,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
 	if !differ.ShouldDiff(deployment) {
-		if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
+		if err := persister.saveFullVerbatim(ctx, differ, resourceCount, deployment, persister.tokenSource); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
@@ -73,13 +75,13 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 		if err != nil {
 			return err
 		}
-		if err := persister.saveDiff(ctx, diff, persister.tokenSource); err != nil {
+		if err := persister.saveDiff(ctx, resourceCount, diff, persister.tokenSource); err != nil {
 			if logging.V(3) {
 				logging.V(3).Infof("ignoring error saving checkpoint "+
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)
 			}
-			if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
+			if err := persister.saveFullVerbatim(ctx, differ, resourceCount, deployment, persister.tokenSource); err != nil {
 				return err
 			}
 		}
@@ -88,20 +90,20 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 	return persister.deploymentDiffState.Saved(ctx, deployment)
 }
 
-func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context,
+func (persister *cloudSnapshotPersister) saveDiff(ctx context.Context, resourceCount int,
 	diff deploymentDiff, token client.UpdateTokenSource,
 ) error {
 	return persister.backend.client.PatchUpdateCheckpointDelta(
 		persister.context, persister.update,
-		diff.sequenceNumber, diff.checkpointHash, diff.deploymentDelta, token)
+		diff.sequenceNumber, resourceCount, diff.checkpointHash, diff.deploymentDelta, token)
 }
 
 func (persister *cloudSnapshotPersister) saveFullVerbatim(ctx context.Context,
-	differ *deploymentDiffState, deployment json.RawMessage, token client.UpdateTokenSource,
+	differ *deploymentDiffState, resourceCount int, deployment json.RawMessage, token client.UpdateTokenSource,
 ) error {
 	return persister.backend.client.PatchUpdateCheckpointVerbatim(
 		persister.context, persister.update, differ.SequenceNumber(),
-		deployment, token)
+		resourceCount, deployment, token)
 }
 
 var _ backend.SnapshotPersister = (*cloudSnapshotPersister)(nil)
