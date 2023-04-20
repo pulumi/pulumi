@@ -498,7 +498,9 @@ func newImportCmd() *cobra.Command {
 
 				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
-				mapper, err := convert.NewPluginMapper(pCtx.Host, from, nil)
+				mapper, err := convert.NewPluginMapper(
+					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
+					from, nil)
 				if err != nil {
 					return result.FromError(err)
 				}

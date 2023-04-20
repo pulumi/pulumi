@@ -252,7 +252,9 @@ func runConvert(
 	}
 	defer contract.IgnoreClose(pCtx.Host)
 	loader := schema.NewPluginLoader(pCtx.Host)
-	mapper, err := convert.NewPluginMapper(pCtx.Host, from, mappings)
+	mapper, err := convert.NewPluginMapper(
+		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
+		from, mappings)
 	if err != nil {
 		return result.FromError(fmt.Errorf("create provider mapper: %w", err))
 	}
