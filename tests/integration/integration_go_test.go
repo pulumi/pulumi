@@ -740,20 +740,16 @@ func TestTracePropagationGo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, store)
 
-	t.Run("traced `go list -m -json -mod=mod all`", func(t *testing.T) {
+	t.Run("traced `go list -m -json`", func(t *testing.T) {
 		isGoListTrace := func(t *appdash.Trace) bool {
 			m := t.Span.Annotations.StringMap()
 
 			isGoCmd := strings.HasSuffix(m["command"], "go") ||
 				strings.HasSuffix(m["command"], "go.exe")
 
-			if m["component"] == "exec.Command" &&
-				m["args"] == "[list -m -json -mod=mod all]" &&
-				isGoCmd {
-				return true
-			}
-
-			return false
+			return isGoCmd &&
+				m["component"] == "exec.Command" &&
+				strings.Contains(m["args"], "list -m -json")
 		}
 		tr, err := FindTrace(store, isGoListTrace)
 		assert.NoError(t, err)

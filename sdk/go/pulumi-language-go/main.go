@@ -32,12 +32,14 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
+	"github.com/rogpeppe/go-internal/modfile"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -218,41 +220,60 @@ func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pu
 }
 
 // modInfo is the useful portion of the output from `go list -m -json all`
-// with respect to plugin acquisition
+// with respect to plugin acquisition.
 type modInfo struct {
-	Path    string
+	// Path is the module import path.
+	Path string
+
+	// Version of the module.
 	Version string
-	Dir     string
+
+	// Dir is the directory holding the source code of the module.
+	//
+	// This is empty in vendor mode.
+	Dir string
 }
 
-// Returns the pulumi-plugin.json if found. If not found, then returns nil, nil.
-// The lookup path for pulumi-plugin.json is
-// 1. m.Dir
-// 2. m.Dir/go
-// 3. m.Dir/go/*
-func (m *modInfo) readPulumiPluginJSON() (*plugin.PulumiPluginJSON, error) {
-	if m.Dir == "" {
-		return nil, nil
+// Returns the pulumi-plugin.json if found.
+// If not found, then returns nil, nil.
+//
+// The lookup path for pulumi-plugin.json is:
+//
+//   - m.Dir
+//   - m.Dir/go
+//   - m.Dir/go/*
+//
+// moduleRoot is the root directory of the module that imports this plugin.
+// It is used to resolve the vendor directory.
+// moduleRoot may be empty if unknown.
+func (m *modInfo) readPulumiPluginJSON(moduleRoot string) (*plugin.PulumiPluginJSON, error) {
+	dir := m.Dir
+	if dir == "" {
+		contract.Requiref(moduleRoot != "", "moduleRoot", "Pulumi program must have a root directory")
+		// m.Dir is empty in vendor mode.
+		//
+		// In this case, we use the vendor directory to find the plugin
+		// if we know the root of the module that imports this plugin.
+		dir = filepath.Join(moduleRoot, "vendor", filepath.ToSlash(m.Path))
 	}
 
-	path1 := filepath.Join(m.Dir, "pulumi-plugin.json")
-	path2 := filepath.Join(m.Dir, "go", "pulumi-plugin.json")
-	path3, err := filepath.Glob(filepath.Join(m.Dir, "go", "*", "pulumi-plugin.json"))
-	if err != nil {
-		path3 = []string{}
+	paths := []string{
+		filepath.Join(dir, "pulumi-plugin.json"),
+		filepath.Join(dir, "go", "pulumi-plugin.json"),
 	}
-	paths := append([]string{path1, path2}, path3...)
+	if path, err := filepath.Glob(filepath.Join(dir, "go", "*", "pulumi-plugin.json")); err == nil {
+		paths = append(paths, path...)
+	}
 
 	for _, path := range paths {
 		plugin, err := plugin.LoadPulumiPluginJSON(path)
-		switch {
-		case os.IsNotExist(err):
-			continue
-		case err != nil:
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			return nil, err
-		default:
-			return plugin, nil
 		}
+		return plugin, nil
 	}
 	return nil, nil
 }
@@ -282,8 +303,8 @@ func normalizeVersion(version string) (string, error) {
 	return version, nil
 }
 
-func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
-	pulumiPlugin, err := m.readPulumiPluginJSON()
+func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, error) {
+	pulumiPlugin, err := m.readPulumiPluginJSON(moduleRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load pulumi-plugin.json: %w", err)
 	}
@@ -328,6 +349,22 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 	return plugin, nil
 }
 
+// Reads and parses the go.mod file from the current working directory.
+func (host *goLanguageHost) loadGomod() (*modfile.File, error) {
+	path := filepath.Join(host.cwd, "go.mod")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := modfile.ParseLax(path, body, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
+	}
+
+	return f, nil
+}
+
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 // We're lenient here as this relies on the `go list` command and the use of modules.
 // If the consumer insists on using some other form of dependency management tool like
@@ -347,7 +384,18 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	args := []string{"list", "-m", "-json", "-mod=mod", "all"}
+	gomod, err := host.loadGomod()
+	if err != nil {
+		// Don't fail if not using Go modules.
+		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
+		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+	}
+
+	args := make([]string, 0, len(gomod.Require)+3)
+	args = append(args, "list", "-m", "-json")
+	for _, req := range gomod.Require {
+		args = append(args, req.Mod.Path)
+	}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		fmt.Sprintf("%s %s", gobin, strings.Join(args, " ")),
@@ -355,15 +403,15 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
 
-	// don't wire up stderr so non-module users don't see error output from list
 	cmd := exec.Command(gobin, args...)
 	cmd.Dir = host.cwd
+	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
-
 	tracingSpan.Finish()
 
 	if err != nil {
+		// Don't fail if not using Go modules.
 		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
@@ -381,18 +429,19 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 			return &pulumirpc.GetRequiredPluginsResponse{}, nil
 		}
 
-		plugin, err := m.getPlugin()
-		if err == nil {
-			logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
-			plugins = append(plugins, plugin)
-		} else {
+		plugin, err := m.getPlugin(host.cwd)
+		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
 				m.Path,
 				m.Version,
 				err.Error(),
 			)
+			continue
 		}
+
+		logging.V(5).Infof("GetRequiredPlugins: Found plugin name: %s, version: %s", plugin.Name, plugin.Version)
+		plugins = append(plugins, plugin)
 	}
 
 	return &pulumirpc.GetRequiredPluginsResponse{
@@ -652,58 +701,20 @@ func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pul
 	}, nil
 }
 
-type goModule struct {
-	Path     string
-	Version  string
-	Time     string
-	Indirect bool
-	Dir      string
-	GoMod    string
-	Main     bool
-}
-
 func (host *goLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	// go list -m ...
-	//
-	//Go has a --json flag, but it doesn't emit a single json object (which
-	//makes it invalid json).
-	ex, err := executable.FindExecutable("go")
+	gomod, err := host.loadGomod()
 	if err != nil {
-		return nil, err
-	}
-	if err := goversion.CheckMinimumGoVersion(ex); err != nil {
-		return nil, err
-	}
-	cmdArgs := []string{"list", "--json", "-m", "..."}
-	cmd := exec.Command(ex, cmdArgs...)
-	cmd.Dir = host.cwd
-	var out []byte
-	if out, err = cmd.Output(); err != nil {
-		return nil, fmt.Errorf("failed to get modules: %w", err)
+		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(out))
-	parsed := []goModule{}
-	for {
-		var m goModule
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, fmt.Errorf("failed to parse \"%s %s\" output: %w", ex, strings.Join(cmdArgs, " "), err)
-		}
-		parsed = append(parsed, m)
-
-	}
-
-	result := []*pulumirpc.DependencyInfo{}
-	for _, d := range parsed {
-		if (!d.Indirect || req.TransitiveDependencies) && !d.Main {
+	result := make([]*pulumirpc.DependencyInfo, 0, len(gomod.Require))
+	for _, d := range gomod.Require {
+		if !d.Indirect || req.TransitiveDependencies {
 			datum := pulumirpc.DependencyInfo{
-				Name:    d.Path,
-				Version: d.Version,
+				Name:    d.Mod.Path,
+				Version: d.Mod.Version,
 			}
 			result = append(result, &datum)
 		}
