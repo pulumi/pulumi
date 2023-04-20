@@ -114,6 +114,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
+		Directory:   "aws-acm",
+		Description: "Aws ACM certificate creation with double iteration",
+		Skip:        allProgLanguages.Except("python").Except("nodejs"),
+		SkipCompile: allProgLanguages.Except("python").Except("nodejs"),
+	},
+	{
 		Directory:   "simple-range",
 		Description: "Simple range as int expression translation",
 	},
