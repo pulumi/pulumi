@@ -348,14 +348,53 @@ type ConstructInfo struct {
 type ConstructOptions struct {
 	// Aliases is the set of aliases for the component.
 	Aliases []resource.Alias
+
 	// Dependencies is the list of resources this component depends on.
 	Dependencies []resource.URN
+
 	// Protect is true if the component is protected.
 	Protect bool
+
 	// Providers is a map from package name to provider reference.
 	Providers map[string]string
+
 	// PropertyDependencies is a map from property name to a list of resources that property depends on.
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
+
+	// AdditionalSecretOutputs lists extra output properties
+	// that should be treated as secrets.
+	AdditionalSecretOutputs []string
+
+	// CustomTimeouts overrides default timeouts for resource operations.
+	CustomTimeouts *CustomTimeouts
+
+	// DeletedWith specifies that if the given resource is deleted,
+	// it will also delete this resource.
+	DeletedWith resource.URN
+
+	// DeleteBeforeReplace specifies that replacements of this resource
+	// should delete the old resource before creating the new resource.
+	DeleteBeforeReplace bool
+
+	// IgnoreChanges lists properties that should be ignored
+	// when determining whether the resource should has changed.
+	IgnoreChanges []string
+
+	// ReplaceOnChanges lists properties changing which should cause
+	// the resource to be replaced.
+	ReplaceOnChanges []string
+
+	// RetainOnDelete is true if deletion of the resource should not
+	// delete the resource in the provider.
+	RetainOnDelete bool
+}
+
+// CustomTimeouts overrides default timeouts for resource operations.
+// Timeout values are strings in the format accepted by time.ParseDuration.
+type CustomTimeouts struct {
+	Create string
+	Update string
+	Delete string
 }
 
 // ConstructResult is the result of a call to Construct.

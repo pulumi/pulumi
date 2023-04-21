@@ -326,8 +326,9 @@ func TestGetPlugin(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // changes current directory
 func TestPluginsAndDependencies_moduleMode(t *testing.T) {
+	t.Parallel()
+
 	root := t.TempDir()
 	require.NoError(t,
 		fsutil.CopyFile(root, filepath.Join("testdata", "sample"), nil),
@@ -345,7 +346,7 @@ func testPluginsAndDependencies(t *testing.T, progDir string) {
 		assert.NoError(t, os.Chdir(cwd), "restore working directory")
 	}()
 
-	host := newLanguageHost("0.0.0.0:0", "", "", "")
+	host := newLanguageHost("0.0.0.0:0", progDir, "", "", "")
 	ctx := context.Background()
 
 	t.Run("GetRequiredPlugins", func(t *testing.T) {

@@ -905,6 +905,44 @@ class ConstructRequest(google.protobuf.message.Message):
         def ClearField(self, field_name: typing_extensions.Literal["urns", b"urns"]) -> None: ...
 
     @typing_extensions.final
+    class CustomTimeouts(google.protobuf.message.Message):
+        """CustomTimeouts specifies timeouts for resource provisioning operations.
+        Use it with the [Timeouts] option when creating new resources
+        to override default timeouts.
+
+        Each timeout is specified as a duration string such as,
+        "5ms" (5 milliseconds), "40s" (40 seconds),
+        and "1m30s" (1 minute, 30 seconds).
+
+        The following units are accepted.
+
+          - ns: nanoseconds
+          - us: microseconds
+          - µs: microseconds
+          - ms: milliseconds
+          - s: seconds
+          - m: minutes
+          - h: hours
+        """
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        CREATE_FIELD_NUMBER: builtins.int
+        UPDATE_FIELD_NUMBER: builtins.int
+        DELETE_FIELD_NUMBER: builtins.int
+        create: builtins.str
+        update: builtins.str
+        delete: builtins.str
+        def __init__(
+            self,
+            *,
+            create: builtins.str = ...,
+            update: builtins.str = ...,
+            delete: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
+
+    @typing_extensions.final
     class ConfigEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -965,12 +1003,19 @@ class ConstructRequest(google.protobuf.message.Message):
     PARENT_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
     INPUTDEPENDENCIES_FIELD_NUMBER: builtins.int
-    PROTECT_FIELD_NUMBER: builtins.int
     PROVIDERS_FIELD_NUMBER: builtins.int
-    ALIASES_FIELD_NUMBER: builtins.int
     DEPENDENCIES_FIELD_NUMBER: builtins.int
     CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
+    PROTECT_FIELD_NUMBER: builtins.int
+    ALIASES_FIELD_NUMBER: builtins.int
+    ADDITIONALSECRETOUTPUTS_FIELD_NUMBER: builtins.int
+    CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
+    DELETEDWITH_FIELD_NUMBER: builtins.int
+    DELETEBEFOREREPLACE_FIELD_NUMBER: builtins.int
+    IGNORECHANGES_FIELD_NUMBER: builtins.int
+    REPLACEONCHANGES_FIELD_NUMBER: builtins.int
+    RETAINONDELETE_FIELD_NUMBER: builtins.int
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -996,14 +1041,9 @@ class ConstructRequest(google.protobuf.message.Message):
     @property
     def inputDependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructRequest.PropertyDependencies]:
         """a map from property keys to the dependencies of the property."""
-    protect: builtins.bool
-    """true if the resource should be marked protected."""
     @property
     def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """the map of providers to use for this resource's children."""
-    @property
-    def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
-        """a list of additional URNs that shoud be considered the same."""
     @property
     def dependencies(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """a list of URNs that this resource depends on, as observed by the language host."""
@@ -1012,6 +1052,32 @@ class ConstructRequest(google.protobuf.message.Message):
         """the configuration keys that have secret values."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
+    protect: builtins.bool
+    """Resource options:
+    Do not change field IDs. Add new fields at the end.
+    true if the resource should be marked protected.
+    """
+    @property
+    def aliases(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """a list of additional URNs that shoud be considered the same."""
+    @property
+    def additionalSecretOutputs(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """additional output properties that should be treated as secrets."""
+    @property
+    def customTimeouts(self) -> global___ConstructRequest.CustomTimeouts:
+        """default timeouts for CRUD operations on this resource."""
+    deletedWith: builtins.str
+    """URN of a resource that, if deleted, also deletes this resource."""
+    deleteBeforeReplace: builtins.bool
+    """whether to delete the resource before replacing it."""
+    @property
+    def ignoreChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """properties that should be ignored during a diff"""
+    @property
+    def replaceOnChanges(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """properties that, when changed, trigger a replacement"""
+    retainOnDelete: builtins.bool
+    """whether to retain the resource in the cloud provider when it is deleted"""
     def __init__(
         self,
         *,
@@ -1026,15 +1092,22 @@ class ConstructRequest(google.protobuf.message.Message):
         parent: builtins.str = ...,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
         inputDependencies: collections.abc.Mapping[builtins.str, global___ConstructRequest.PropertyDependencies] | None = ...,
-        protect: builtins.bool = ...,
         providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
-        aliases: collections.abc.Iterable[builtins.str] | None = ...,
         dependencies: collections.abc.Iterable[builtins.str] | None = ...,
         configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
         organization: builtins.str = ...,
+        protect: builtins.bool = ...,
+        aliases: collections.abc.Iterable[builtins.str] | None = ...,
+        additionalSecretOutputs: collections.abc.Iterable[builtins.str] | None = ...,
+        customTimeouts: global___ConstructRequest.CustomTimeouts | None = ...,
+        deletedWith: builtins.str = ...,
+        deleteBeforeReplace: builtins.bool = ...,
+        ignoreChanges: collections.abc.Iterable[builtins.str] | None = ...,
+        replaceOnChanges: collections.abc.Iterable[builtins.str] | None = ...,
+        retainOnDelete: builtins.bool = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "dependencies", b"dependencies", "dryRun", b"dryRun", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "stack", b"stack", "type", b"type"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "config", b"config", "configSecretKeys", b"configSecretKeys", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "dryRun", b"dryRun", "ignoreChanges", b"ignoreChanges", "inputDependencies", b"inputDependencies", "inputs", b"inputs", "monitorEndpoint", b"monitorEndpoint", "name", b"name", "organization", b"organization", "parallel", b"parallel", "parent", b"parent", "project", b"project", "protect", b"protect", "providers", b"providers", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "stack", b"stack", "type", b"type"]) -> None: ...
 
 global___ConstructRequest = ConstructRequest
 
