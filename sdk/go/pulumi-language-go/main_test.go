@@ -15,15 +15,19 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRunParams(t *testing.T) {
@@ -320,4 +324,69 @@ func TestGetPlugin(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // changes current directory
+func TestPluginsAndDependencies_moduleMode(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t,
+		fsutil.CopyFile(root, filepath.Join("testdata", "sample"), nil),
+		"copy test data")
+
+	testPluginsAndDependencies(t, filepath.Join(root, "prog"))
+}
+
+func testPluginsAndDependencies(t *testing.T, progDir string) {
+	// Language host expects to run in the program directory.
+	cwd, err := os.Getwd()
+	require.NoError(t, err, "get current directory")
+	require.NoError(t, os.Chdir(progDir))
+	defer func() {
+		assert.NoError(t, os.Chdir(cwd), "restore working directory")
+	}()
+
+	host := newLanguageHost("0.0.0.0:0", "", "", "")
+	ctx := context.Background()
+
+	t.Run("GetRequiredPlugins", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		res, err := host.GetRequiredPlugins(ctx, &pulumirpc.GetRequiredPluginsRequest{
+			Project: "prog",
+			Pwd:     progDir,
+		})
+		require.NoError(t, err)
+
+		require.Len(t, res.Plugins, 1)
+		plug := res.Plugins[0]
+
+		assert.Equal(t, "example", plug.Name, "plugin name")
+		assert.Equal(t, "v1.2.3", plug.Version, "plugin version")
+		assert.Equal(t, "resource", plug.Kind, "plugin kind")
+		assert.Equal(t, "example.com/download", plug.Server, "plugin server")
+	})
+
+	t.Run("GetProgramDependencies", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		res, err := host.GetProgramDependencies(ctx, &pulumirpc.GetProgramDependenciesRequest{
+			Project:                "prog",
+			Pwd:                    progDir,
+			TransitiveDependencies: true,
+		})
+		require.NoError(t, err)
+
+		gotDeps := make(map[string]string) // name => version
+		for _, dep := range res.Dependencies {
+			gotDeps[dep.Name] = dep.Version
+		}
+
+		assert.Equal(t, map[string]string{
+			"example.com/plugin":          "v1.2.3",
+			"example.com/dep":             "v1.5.0",
+			"example.com/indirect-dep/v2": "v2.1.0",
+		}, gotDeps)
+	})
 }
