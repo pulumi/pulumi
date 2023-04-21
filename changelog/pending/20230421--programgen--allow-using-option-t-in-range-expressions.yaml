@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Allow using option(T) in range expressions

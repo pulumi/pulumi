@@ -69,6 +69,19 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Dia
 			types = append(types, t)
 		}
 		valueType, _ = UnifyTypes(types...)
+	case *UnionType:
+		// optional types are implemented as union(T, None)
+		// extract the T from the union and try to get its collection type
+		if len(collectionType.ElementTypes) == 2 && collectionType.ElementTypes[0] == NoneType {
+			elementType := collectionType.ElementTypes[1]
+			return GetCollectionTypes(elementType, rng)
+		} else if len(collectionType.ElementTypes) == 2 && collectionType.ElementTypes[1] == NoneType {
+			elementType := collectionType.ElementTypes[0]
+			return GetCollectionTypes(elementType, rng)
+		} else {
+			diagnostics = append(diagnostics, unsupportedCollectionType(collectionType, rng))
+			return DynamicType, DynamicType, diagnostics
+		}
 	default:
 		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic). Otherwise, issue an error.
 		if collectionType != DynamicType {
