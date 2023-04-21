@@ -138,17 +138,26 @@ func main() {
 }
 
 type mainCmd struct {
-	Stdout io.Writer // == os.Stdout
+	Stdout io.Writer              // == os.Stdout
+	Getwd  func() (string, error) // == os.Getwd
 }
 
 func (cmd *mainCmd) init() {
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
 	}
+	if cmd.Getwd == nil {
+		cmd.Getwd = os.Getwd
+	}
 }
 
 func (cmd *mainCmd) Run(p *runParams) error {
 	cmd.init()
+
+	cwd, err := cmd.Getwd()
+	if err != nil {
+		return err
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// map the context Done channel to the rpcutil boolean cancel channel
@@ -157,7 +166,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		<-ctx.Done()
 		close(cancelChannel)
 	}()
-	err := rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
+	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
 		return fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
@@ -166,7 +175,7 @@ func (cmd *mainCmd) Run(p *runParams) error {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(p.engineAddress, p.tracing, p.binary, p.buildTarget)
+			host := newLanguageHost(p.engineAddress, cwd, p.tracing, p.binary, p.buildTarget)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -191,15 +200,17 @@ func (cmd *mainCmd) Run(p *runParams) error {
 type goLanguageHost struct {
 	pulumirpc.UnsafeLanguageRuntimeServer // opt out of forward compat
 
+	cwd           string
 	engineAddress string
 	tracing       string
 	binary        string
 	buildTarget   string
 }
 
-func newLanguageHost(engineAddress, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(engineAddress, cwd, tracing, binary, buildTarget string) pulumirpc.LanguageRuntimeServer {
 	return &goLanguageHost{
 		engineAddress: engineAddress,
+		cwd:           cwd,
 		tracing:       tracing,
 		binary:        binary,
 		buildTarget:   buildTarget,
@@ -346,6 +357,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	// don't wire up stderr so non-module users don't see error output from list
 	cmd := exec.Command(gobin, args...)
+	cmd.Dir = host.cwd
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
 
@@ -471,7 +483,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		}
 
 		cmd := exec.Command(gobin, "run", req.Program)
-
+		cmd.Dir = host.cwd
 		status, err := runCmdStatus(cmd, env)
 		if err != nil {
 			return &pulumirpc.RunResponse{
@@ -617,6 +629,7 @@ func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pul
 			return "", "", fmt.Errorf("could not find executable '%s': %w", execString, err)
 		}
 		cmd := exec.Command(ex, args...)
+		cmd.Dir = host.cwd
 		var out []byte
 		if out, err = cmd.Output(); err != nil {
 			cmd := ex
@@ -665,6 +678,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 	}
 	cmdArgs := []string{"list", "--json", "-m", "..."}
 	cmd := exec.Command(ex, cmdArgs...)
+	cmd.Dir = host.cwd
 	var out []byte
 	if out, err = cmd.Output(); err != nil {
 		return nil, fmt.Errorf("failed to get modules: %w", err)
