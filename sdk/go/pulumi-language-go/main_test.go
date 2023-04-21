@@ -15,14 +15,104 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestParseRunParams(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc    string
+		give    []string
+		want    runParams
+		wantErr string // non-empty if we expect an error
+	}{
+		{
+			desc:    "no arguments",
+			wantErr: "missing required engine RPC address argument",
+		},
+		{
+			desc: "no options",
+			give: []string{"localhost:1234"},
+			want: runParams{
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc:    "binary buildTarget exclusivity",
+			give:    []string{"-binary", "foo", "-buildTarget=bar"},
+			wantErr: "binary and buildTarget cannot both be specified",
+		},
+		{
+			desc: "tracing",
+			give: []string{"-tracing", "foo.trace", "localhost:1234"},
+			want: runParams{
+				tracing:       "foo.trace",
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "binary",
+			give: []string{"-binary", "foo", "localhost:1234"},
+			want: runParams{
+				binary:        "foo",
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "buildTarget",
+			give: []string{"-buildTarget", "foo", "localhost:1234"},
+			want: runParams{
+				buildTarget:   "foo",
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc: "root",
+			give: []string{"-root", "path/to/root", "localhost:1234"},
+			want: runParams{
+				root:          "path/to/root",
+				engineAddress: "localhost:1234",
+			},
+		},
+		{
+			desc:    "unknown option",
+			give:    []string{"-unknown-option", "bar", "localhost:1234"},
+			wantErr: "flag provided but not defined: -unknown-option",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			// Use a FlagSet with ContinueOnError for each case
+			// instead of using the global flag set.
+			//
+			// The global flag set uses flag.ExitOnError,
+			// so it cannot validate error cases during tests.
+			fset := flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+			fset.SetOutput(iotest.LogWriter(t))
+
+			got, err := parseRunParams(fset, tt.give)
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, &tt.want, got)
+			}
+		})
+	}
+}
 
 func TestGetPlugin(t *testing.T) {
 	t.Parallel()

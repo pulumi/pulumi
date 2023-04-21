@@ -205,6 +205,9 @@ type ProgramTestOptions struct {
 	//
 	// Implies NoParallel because we expect that another caller to ProgramTest will set that
 	DestroyOnCleanup bool
+	// DestroyExcludeProtected indicates that when the test stack is destroyed,
+	// protected resources should be excluded from the destroy operation.
+	DestroyExcludeProtected bool
 	// Quick implies SkipPreview, SkipExportImport and SkipEmptyPreviewUpdate
 	Quick bool
 	// RequireService indicates that the test must be run against the Pulumi Service
@@ -506,6 +509,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.DestroyOnCleanup {
 		opts.DestroyOnCleanup = overrides.DestroyOnCleanup
+	}
+	if overrides.DestroyExcludeProtected {
+		opts.DestroyExcludeProtected = overrides.DestroyExcludeProtected
 	}
 	if overrides.Quick {
 		opts.Quick = overrides.Quick
@@ -1349,6 +1355,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 		if pt.opts.JSONOutput {
 			destroy = append(destroy, "--json")
+		}
+		if pt.opts.DestroyExcludeProtected {
+			destroy = append(destroy, "--exclude-protected")
 		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err

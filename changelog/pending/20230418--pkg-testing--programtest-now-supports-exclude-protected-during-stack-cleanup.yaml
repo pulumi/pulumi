@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg/testing
+  description: ProgramTest now supports --exclude-protected during stack cleanup.

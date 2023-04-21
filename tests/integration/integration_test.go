@@ -782,3 +782,49 @@ func testConstructProviderPropagation(t *testing.T, lang string, deps []string) 
 		},
 	})
 }
+
+// Test to validate that various resource options are propagated for MLCs.
+func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
+	const (
+		testDir      = "construct_component_resource_options"
+		componentDir = "testcomponent-go"
+	)
+	runComponentSetup(t, testDir)
+
+	validate := func(t *testing.T, resources []apitype.ResourceV3) {
+		urns := make(map[tokens.QName]resource.URN) // name => URN
+		for _, res := range resources {
+			urns[res.URN.Name()] = res.URN
+		}
+
+		for _, res := range resources {
+			switch name := res.URN.Name(); name {
+			case "Protect":
+				assert.True(t, res.Protect, "Protect(%s)", name)
+
+			case "DependsOn":
+				wantDeps := []resource.URN{urns["Dep1"], urns["Dep2"]}
+				assert.ElementsMatch(t, wantDeps, res.Dependencies,
+					"DependsOn(%s)", name)
+			}
+		}
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join(testDir, dir),
+		Dependencies: deps,
+		LocalProviders: []integration.LocalDependency{
+			{
+				Package: "testcomponent",
+				Path:    filepath.Join(testDir, componentDir),
+			},
+		},
+		Quick:                   true,
+		NoParallel:              true, // already called by tests
+		DestroyExcludeProtected: true, // test contains protected resources
+		SkipStackRemoval:        true, // protected resources prevent stack removal
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			validate(t, stackInfo.Deployment.Resources)
+		},
+	})
+}
