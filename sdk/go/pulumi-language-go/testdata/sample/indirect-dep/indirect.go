@@ -1,0 +1,3 @@
+package indirect
+
+func Baz() {}
