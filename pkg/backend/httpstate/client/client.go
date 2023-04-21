@@ -532,6 +532,11 @@ func (pc *Client) ImportStackDeployment(ctx context.Context, stack StackIdentifi
 	}, nil
 }
 
+type CreateUpdateDetails struct {
+	Messages         []apitype.Message
+	RequiredPolicies []apitype.RequiredPolicy
+}
+
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
@@ -539,7 +544,7 @@ func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
 	dryRun bool,
-) (UpdateIdentifier, []apitype.RequiredPolicy, error) {
+) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
 	for k, cv := range cfg {
@@ -594,14 +599,17 @@ func (pc *Client) CreateUpdate(
 	path := getStackPath(stack, endpoint)
 	var updateResponse apitype.UpdateProgramResponse
 	if err := pc.restCall(ctx, "POST", path, nil, &updateRequest, &updateResponse); err != nil {
-		return UpdateIdentifier{}, []apitype.RequiredPolicy{}, err
+		return UpdateIdentifier{}, CreateUpdateDetails{}, err
 	}
 
 	return UpdateIdentifier{
-		StackIdentifier: stack,
-		UpdateKind:      kind,
-		UpdateID:        updateResponse.UpdateID,
-	}, updateResponse.RequiredPolicies, nil
+			StackIdentifier: stack,
+			UpdateKind:      kind,
+			UpdateID:        updateResponse.UpdateID,
+		}, CreateUpdateDetails{
+			Messages:         updateResponse.Messages,
+			RequiredPolicies: updateResponse.RequiredPolicies,
+		}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.

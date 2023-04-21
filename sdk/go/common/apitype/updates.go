@@ -70,6 +70,22 @@ type UpdateMetadata struct {
 	Environment map[string]string `json:"environment"`
 }
 
+type MessageSeverity string
+
+const (
+	MessageSeverityWarning MessageSeverity = "warning"
+	MessageSeverityError   MessageSeverity = "error"
+	MessageSeverityInfo    MessageSeverity = "info"
+)
+
+// Message is a message from the backend to be displayed to the user.
+type Message struct {
+	// Severity is the severity of the message.
+	Severity MessageSeverity `json:"severity,omitempty"`
+	// Message is the message to display to the user.
+	Message string `json:"message"`
+}
+
 // UpdateProgramResponse is the result of an update program request.
 type UpdateProgramResponse struct {
 	// UpdateID is the opaque identifier of the requested update. This value is needed to begin an update, as
@@ -78,6 +94,9 @@ type UpdateProgramResponse struct {
 
 	// RequiredPolicies is a list of required Policy Packs to run during the update.
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
+
+	// Messages is a list of messages that should be displayed to the user.
+	Messages []Message `json:"messages,omitempty"`
 }
 
 // StartUpdateRequest requests that an update starts getting applied to a stack.
