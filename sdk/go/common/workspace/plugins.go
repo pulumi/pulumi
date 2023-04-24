@@ -432,7 +432,7 @@ func (source *githubSource) getHTTPResponse(
 		addAuth = " You can set GITHUB_TOKEN to make an authenticated request with a higher rate limit."
 	}
 
-	logging.Errorf("GitHub rate limit exceeded%s%s", tryAgain, addAuth)
+	logging.Errorf("GitHub rate limit exceeded for %s%s%s", req.URL, tryAgain, addAuth)
 	return nil, -1, fmt.Errorf("rate limit exceeded: %w", err)
 }
 
