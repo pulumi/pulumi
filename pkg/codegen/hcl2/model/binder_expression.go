@@ -330,11 +330,8 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 	collection, collectionDiags := b.bindExpression(syntax.CollExpr)
 	diagnostics = append(diagnostics, collectionDiags...)
 
-	// Poke through any eventual and optional types that may wrap the collection type.
-	collectionType := unwrapIterableSourceType(collection.Type())
-
 	// TODO(pdg): handle union types.
-	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, syntax.CollExpr.Range())
+	keyType, valueType, kvDiags := GetCollectionTypes(collection.Type(), syntax.CollExpr.Range())
 	diagnostics = append(diagnostics, kvDiags...)
 
 	// Push a scope for the key and value variables and define these vars.

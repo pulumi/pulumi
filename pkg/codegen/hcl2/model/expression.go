@@ -760,10 +760,7 @@ func (x *ForExpression) typecheck(typecheckCollection, typecheckOperands bool) h
 	}
 
 	if typecheckCollection {
-		// Poke through any eventual and optional types that may wrap the collection type.
-		collectionType := unwrapIterableSourceType(x.Collection.Type())
-
-		keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
+		keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng)
 		diagnostics = append(diagnostics, kvDiags...)
 
 		if x.KeyVariable != nil {
@@ -1193,8 +1190,7 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		rng = x.Syntax.Collection.Range()
 	}
 
-	collectionType := unwrapIterableSourceType(x.Collection.Type())
-	keyType, valueType, kvDiags := GetCollectionTypes(collectionType, rng)
+	keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng)
 	diagnostics = append(diagnostics, kvDiags...)
 	x.keyType = keyType
 

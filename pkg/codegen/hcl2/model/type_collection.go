@@ -27,6 +27,16 @@ func unwrapIterableSourceType(t Type) Type {
 			t = tt.ElementType
 		case *PromiseType:
 			t = tt.ElementType
+		case *UnionType:
+			// option(T) is implemented as union(T, None)
+			// so we unwrap the optional type here
+			if len(tt.ElementTypes) == 2 && tt.ElementTypes[0] == NoneType {
+				t = tt.ElementTypes[1]
+			} else if len(tt.ElementTypes) == 2 && tt.ElementTypes[1] == NoneType {
+				t = tt.ElementTypes[0]
+			} else {
+				return t
+			}
 		default:
 			return t
 		}
@@ -53,7 +63,9 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	var keyType, valueType Type
-	switch collectionType := collectionType.(type) {
+	// Poke through any eventual and optional types that may wrap the collection type.
+	unwrappedCollectionType := unwrapIterableSourceType(collectionType)
+	switch collectionType := unwrappedCollectionType.(type) {
 	case *ListType:
 		keyType, valueType = NumberType, collectionType.ElementType
 	case *MapType:

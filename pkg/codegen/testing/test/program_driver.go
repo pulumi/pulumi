@@ -258,6 +258,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Test python reserved words aren't used",
 		Skip:        allProgLanguages.Except("python"),
 	},
+	{
+		Directory:   "iterating-optional-range-expressions",
+		Description: "Test that we can iterate over range expression that are option(iterator)",
+		// TODO: the example doesn't generate correct code because we iterate over a range which is an output
+		Skip: allProgLanguages,
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
