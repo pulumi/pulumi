@@ -478,6 +478,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.targetDependents) {
                 args.push("--target-dependents");
             }
+            if (opts.excludeProtected) {
+                args.push("--exclude-protected");
+            }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
@@ -929,6 +932,10 @@ export interface DestroyOptions extends GlobalOpts {
     color?: "always" | "never" | "raw" | "auto";
     // Include secrets in the DestroySummary
     showSecrets?: boolean;
+    /**
+     * Do not destroy protected resources.
+     */
+    excludeProtected?: boolean;
 }
 
 const execKind = {
