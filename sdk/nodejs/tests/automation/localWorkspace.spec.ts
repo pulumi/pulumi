@@ -26,7 +26,7 @@ import {
     Stack,
     parseAndValidatePulumiVersion,
 } from "../../automation";
-import { Config, output } from "../../index";
+import { ComponentResource, ComponentResourceOptions, Config, output } from "../../index";
 import { getTestOrg, getTestSuffix } from "./util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -384,6 +384,42 @@ describe("LocalWorkspace", () => {
         const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    });
+    it(`destroys an inline program with excludeProtected`, async () => {
+        const program = async () => {
+            class MyResource extends ComponentResource {
+                constructor(name: string, opts?: ComponentResourceOptions) {
+                    super("my:module:MyResource", name, {}, opts);
+                }
+            }
+            const config = new Config();
+            const protect = config.getBoolean("protect") ?? false;
+            new MyResource("first", { protect });
+            new MyResource("second");
+            return {};
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // initial up
+        await stack.setConfig("protect", { value: "true" });
+        await stack.up({ userAgent });
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy({ userAgent, excludeProtected: true });
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+        assert.match(destroyRes.stdout, /All unprotected resources were destroyed/);
+
+        // unprotected resources
+        await stack.removeConfig("protect");
+        await stack.up({ userAgent });
+
+        // pulumi destroy to cleanup all resources
+        await stack.destroy({ userAgent });
 
         await stack.workspace.removeStack(stackName);
     });
