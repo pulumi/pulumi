@@ -338,14 +338,6 @@ func TestPluginsAndDependencies_moduleMode(t *testing.T) {
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
-	// Language host expects to run in the program directory.
-	cwd, err := os.Getwd()
-	require.NoError(t, err, "get current directory")
-	require.NoError(t, os.Chdir(progDir))
-	defer func() {
-		assert.NoError(t, os.Chdir(cwd), "restore working directory")
-	}()
-
 	host := newLanguageHost("0.0.0.0:0", progDir, "", "", "")
 	ctx := context.Background()
 
