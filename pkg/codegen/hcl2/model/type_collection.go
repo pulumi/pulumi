@@ -27,6 +27,16 @@ func unwrapIterableSourceType(t Type) Type {
 			t = tt.ElementType
 		case *PromiseType:
 			t = tt.ElementType
+		case *UnionType:
+			// option(T) is implemented as union(T, None)
+			// so we unwrap the optional type here
+			if len(tt.ElementTypes) == 2 && tt.ElementTypes[0] == NoneType {
+				t = tt.ElementTypes[1]
+			} else if len(tt.ElementTypes) == 2 && tt.ElementTypes[1] == NoneType {
+				t = tt.ElementTypes[0]
+			} else {
+				return t
+			}
 		default:
 			return t
 		}
@@ -53,7 +63,9 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	var keyType, valueType Type
-	switch collectionType := collectionType.(type) {
+	// Poke through any eventual and optional types that may wrap the collection type.
+	unwrappedCollectionType := unwrapIterableSourceType(collectionType)
+	switch collectionType := unwrappedCollectionType.(type) {
 	case *ListType:
 		keyType, valueType = NumberType, collectionType.ElementType
 	case *MapType:
@@ -69,19 +81,6 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Dia
 			types = append(types, t)
 		}
 		valueType, _ = UnifyTypes(types...)
-	case *UnionType:
-		// optional types are implemented as union(T, None)
-		// extract the T from the union and try to get its collection type
-		if len(collectionType.ElementTypes) == 2 && collectionType.ElementTypes[0] == NoneType {
-			elementType := collectionType.ElementTypes[1]
-			return GetCollectionTypes(elementType, rng)
-		} else if len(collectionType.ElementTypes) == 2 && collectionType.ElementTypes[1] == NoneType {
-			elementType := collectionType.ElementTypes[0]
-			return GetCollectionTypes(elementType, rng)
-		} else {
-			diagnostics = append(diagnostics, unsupportedCollectionType(collectionType, rng))
-			return DynamicType, DynamicType, diagnostics
-		}
 	default:
 		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic). Otherwise, issue an error.
 		if collectionType != DynamicType {
