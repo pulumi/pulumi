@@ -609,28 +609,12 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 // Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
 // If the CWD is not in a Pulumi project, does not contradict.
 // If the project name in Pulumi.yaml is "foo", a stack with a name of bar/foo should not work.
-func currentProjectContradictsWorkspace(stack *localBackendReference) bool {
-	contract.Requiref(stack != nil, "stack", "is nil")
-
-	if stack.project == "" {
+func currentProjectContradictsWorkspace(project *workspace.Project, stack *localBackendReference) bool {
+	if project == nil {
 		return false
 	}
 
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return false
-	}
-
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.project.String()
+	return project.Name != tokens.PackageName(stack.project)
 }
 
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -651,7 +635,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 	}
 	defer b.Unlock(ctx, stackRef)
 
-	if currentProjectContradictsWorkspace(localStackRef) {
+	if currentProjectContradictsWorkspace(b.currentProject.Load(), localStackRef) {
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
@@ -920,7 +904,7 @@ func (b *localBackend) apply(
 		return nil, nil, result.FromError(err)
 	}
 
-	if currentProjectContradictsWorkspace(localStackRef) {
+	if currentProjectContradictsWorkspace(op.Proj, localStackRef) {
 		return nil, nil, result.Errorf("provided project name %q doesn't match Pulumi.yaml", localStackRef.project)
 	}
 
