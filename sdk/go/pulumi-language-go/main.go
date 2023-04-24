@@ -350,8 +350,8 @@ func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, err
 }
 
 // Reads and parses the go.mod file from the current working directory.
-func (host *goLanguageHost) loadGomod() (*modfile.File, error) {
-	path := filepath.Join(host.cwd, "go.mod")
+func (host *goLanguageHost) loadGomod(moduleDir string) (*modfile.File, error) {
+	path := filepath.Join(moduleDir, "go.mod")
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -384,7 +384,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	gomod, err := host.loadGomod()
+	gomod, err := host.loadGomod(req.Pwd)
 	if err != nil {
 		// Don't fail if not using Go modules.
 		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
@@ -404,7 +404,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		opentracing.Tag{Key: "args", Value: args})
 
 	cmd := exec.Command(gobin, args...)
-	cmd.Dir = host.cwd
+	cmd.Dir = req.Pwd
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
@@ -429,7 +429,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 			return &pulumirpc.GetRequiredPluginsResponse{}, nil
 		}
 
-		plugin, err := m.getPlugin(host.cwd)
+		plugin, err := m.getPlugin(req.Pwd)
 		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
@@ -704,7 +704,7 @@ func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pul
 func (host *goLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	gomod, err := host.loadGomod()
+	gomod, err := host.loadGomod(req.Pwd)
 	if err != nil {
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
