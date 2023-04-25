@@ -59,6 +59,7 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 	assert.Contains(t, stdout, "User: user2")
 	assert.Contains(t, stdout, "Organizations: org1, org2")
 	assert.Contains(t, stdout, "Backend URL: https://pulumi.example.com")
+	assert.Contains(t, stdout, "CLI version: ")
 }
 
 func TestWhoAmICmd_json(t *testing.T) {

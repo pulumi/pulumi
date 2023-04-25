@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -106,6 +107,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		fmt.Fprintf(cmd.Stdout, "User: %s\n", name)
 		fmt.Fprintf(cmd.Stdout, "Organizations: %s\n", strings.Join(orgs, ", "))
 		fmt.Fprintf(cmd.Stdout, "Backend URL: %s\n", b.URL())
+		fmt.Fprintf(cmd.Stdout, "CLI version: %v\n", version.Version)
 	} else {
 		fmt.Fprint(cmd.Stdout, name)
 	}
