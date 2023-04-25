@@ -404,7 +404,7 @@ describe("LocalWorkspace", () => {
         // • Next, run preview with refresh and check that the refresh was performed.
         const previewRes = await stack.preview({ userAgent, refresh });
         assert.match(previewRes.stdout, /refreshing/);
-        assert.strictEqual(previewRes.changeSummary.same, 1, 'preview expected 1 same (the stack)');
+        assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {
