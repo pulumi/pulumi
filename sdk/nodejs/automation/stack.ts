@@ -889,8 +889,8 @@ export interface PreviewOptions extends GlobalOpts {
     message?: string;
     expectNoChanges?: boolean;
     /**
-      * Refresh the state of the stack's resources against the cloud provider before running preview.
-      */
+     * Refresh the state of the stack's resources against the cloud provider before running preview.
+     */
     refresh?: boolean;
     diff?: boolean;
     replace?: string[];
