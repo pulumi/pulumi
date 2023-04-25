@@ -388,13 +388,11 @@ describe("LocalWorkspace", () => {
         await stack.workspace.removeStack(stackName);
     });
     it(`refreshes before preview`, async() => {
-        // We create a toggle representing state that we can modify from
-        // within the program. When we call `preview --refresh`, we expect
-        // a change between what we have saved and what we see in state.
-        var toggle = false;
+        // We create a simple program, and scan the output for an indication
+        // that adding refresh: true will perfrom a refresh operation.
         const program = async () => {
             return {
-                toggle,
+                toggle: true,
             };
         };
         const projectName = "inline_node";
@@ -403,17 +401,10 @@ describe("LocalWorkspace", () => {
         const refresh = true;
         // • First, run Up so we can set the initial state.
         await stack.up({ userAgent });
-        // • Next, run preview with refres to demonstrate nothing has changed.
+        // • Next, run preview with refresh and check that the refresh was performed.
         const previewRes = await stack.preview({ userAgent, refresh });
-        assert.strictEqual(previewRes.changeSummary.same, 1);
-        // • Now, we modify the state and refresh again.
-        // const state = await stack.exportStack();
-        // await stack.importStack(state);
-        toggle = false;
-        const secondPreview = await stack.preview({ userAgent, refresh });
-        assert.strictEqual(secondPreview.changeSummary.same, 0);
-        assert.strictEqual(secondPreview.changeSummary.refresh, 1);        
-        assert.strictEqual(true, false);        
+        assert.match(previewRes.stdout, /refreshing/);
+        assert.strictEqual(previewRes.changeSummary.same, 1, 'preview expected 1 same (the stack)');
     });
     it(`destroys an inline program with excludeProtected`, async () => {
         const program = async () => {
