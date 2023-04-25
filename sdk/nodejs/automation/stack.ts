@@ -293,6 +293,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.refresh) {
+                args.push("--refresh");
+            }
             if (opts.diff) {
                 args.push("--diff");
             }
@@ -885,6 +888,10 @@ export interface PreviewOptions extends GlobalOpts {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    /**
+      * Refresh the state of the stack's resources against the cloud provider before running preview.
+      */
+    refresh?: boolean;
     diff?: boolean;
     replace?: string[];
     policyPacks?: string[];
