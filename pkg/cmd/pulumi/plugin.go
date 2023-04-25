@@ -39,7 +39,9 @@ func newPluginCmd() *cobra.Command {
 			"resources, although most people will never need to do this.  To understand how to\n" +
 			"write and distribute your own plugins, please consult the relevant documentation.\n" +
 			"\n" +
-			"The plugin family of commands provides a way of explicitly managing plugins.",
+			"The plugin family of commands provides a way of explicitly managing plugins.\n" +
+			"\n" +
+			"For a list of available resource plugins, please see https://www.pulumi.com/registry/.",
 		Args: cmdutil.NoArgs,
 	}
 
