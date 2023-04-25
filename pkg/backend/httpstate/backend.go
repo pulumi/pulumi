@@ -653,7 +653,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
-		project: qualifiedName.Project,
+		project: tokens.Name(qualifiedName.Project),
 		name:    tokens.Name(qualifiedName.Name),
 		b:       b,
 	}, nil
@@ -1452,7 +1452,7 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 
 	return client.StackIdentifier{
 		Owner:   cloudBackendStackRef.owner,
-		Project: cleanProjectName(cloudBackendStackRef.project),
+		Project: cleanProjectName(string(cloudBackendStackRef.project)),
 		Stack:   string(cloudBackendStackRef.name),
 	}, nil
 }
