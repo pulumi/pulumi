@@ -398,10 +398,10 @@ describe("LocalWorkspace", () => {
         const projectName = "inline_node";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
-        const refresh = true;
         // • First, run Up so we can set the initial state.
         await stack.up({ userAgent });
         // • Next, run preview with refresh and check that the refresh was performed.
+        const refresh = true;
         const previewRes = await stack.preview({ userAgent, refresh });
         assert.match(previewRes.stdout, /refreshing/);
         assert.strictEqual(previewRes.changeSummary.same, 1, "preview expected 1 same (the stack)");
