@@ -249,3 +249,99 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 }
+
+func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
+	t.Parallel()
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "otherProvider",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+			{
+				Name:    "provider",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+	testProvider := &testProvider{
+		pkg: tokens.Package("provider"),
+		mapping: func(key string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			return []byte("data"), "provider", nil
+		},
+	}
+
+	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
+		return testProvider, nil
+	}
+
+	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	data, err := mapper.GetMapping("provider")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("data"), data)
+}
+
+func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
+	t.Parallel()
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "pulumiProviderAws",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+			{
+				Name:    "pulumiProviderGcp",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+	testProviderAws := &testProvider{
+		pkg: tokens.Package("pulumiProviderAws"),
+		mapping: func(key string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			return []byte("dataaws"), "aws", nil
+		},
+	}
+	testProviderGcp := &testProvider{
+		pkg: tokens.Package("pulumiProviderGcp"),
+		mapping: func(key string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			return []byte("datagcp"), "gcp", nil
+		},
+	}
+
+	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		if pkg == testProviderAws.pkg {
+			return testProviderAws, nil
+		} else if pkg == testProviderGcp.pkg {
+			return testProviderGcp, nil
+		}
+		assert.Fail(t, "unexpected package %s", pkg)
+		return nil, fmt.Errorf("unexpected package %s", pkg)
+	}
+
+	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	// Get the mapping for the GCP provider.
+	data, err := mapper.GetMapping("gcp")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("datagcp"), data)
+
+	// Now get the mapping for the AWS provider, it should be cached.
+	data, err = mapper.GetMapping("aws")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("dataaws"), data)
+}
