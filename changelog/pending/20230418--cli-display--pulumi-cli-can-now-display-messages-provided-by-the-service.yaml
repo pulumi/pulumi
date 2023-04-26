@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Pulumi CLI can now display messages provided by the service.

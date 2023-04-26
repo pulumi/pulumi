@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.65.0 (2023-04-26)
+
+
+### Features
+
+- [auto/nodejs] Add `excludeProtected` option for `destroy`
+  [#12734](https://github.com/pulumi/pulumi/pull/12734)
+
+- [auto/nodejs] Add `refresh` option for `preview`
+  [#12743](https://github.com/pulumi/pulumi/pull/12743)
+
+- [cli] Speed up conversion mapping lookups for the common case of Pulumi names matching external ecosystem names.
+  [#12711](https://github.com/pulumi/pulumi/pull/12711)
+
+- [engine] Support propagating more resource options to packaged components.
+  [#12682](https://github.com/pulumi/pulumi/pull/12682)
+
+- [cli/display] Pulumi CLI can now display messages provided by the service.
+  [#12671](https://github.com/pulumi/pulumi/pull/12671)
+
+- [sdk/go] Support new options on packaged components (MLCs), including: AdditionalSecretOutputs, Timeouts, DeletedWith, DeleteBeforeReplace, IgnoreChanges, ReplaceOnChanges, and RetainOnDelete.
+  [#12701](https://github.com/pulumi/pulumi/pull/12701)
+
+- [sdk/go] Support vendored dependencies for Pulumi programs.
+  [#12727](https://github.com/pulumi/pulumi/pull/12727)
+
+
+### Bug Fixes
+
+- [cli] Fix destroy without project file.
+  [#12728](https://github.com/pulumi/pulumi/pull/12728)
+
+- [programgen] Allow using option(T) in range expressions
+  [#12717](https://github.com/pulumi/pulumi/pull/12717)
+
+- [sdk/go] Ensure that dependency searches happen in the Pulumi program directory.
+  [#12732](https://github.com/pulumi/pulumi/pull/12732)
+
+- [pkg/testing] Fix failure in writing a package.json for test overrides.
+  [#12700](https://github.com/pulumi/pulumi/pull/12700)
+
+
+### Miscellaneous
+
+- [pkg/testing] ProgramTest now supports --exclude-protected during stack cleanup.
+  [#12699](https://github.com/pulumi/pulumi/pull/12699)
+
 ## 3.64.0 (2023-04-18)
 
 
