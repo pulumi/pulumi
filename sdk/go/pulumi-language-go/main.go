@@ -32,7 +32,7 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opentracing/opentracing-go"
-	"github.com/rogpeppe/go-internal/modfile"
+	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
