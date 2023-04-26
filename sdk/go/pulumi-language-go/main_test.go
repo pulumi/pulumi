@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -311,7 +312,8 @@ func TestGetPlugin(t *testing.T) {
 				err = os.WriteFile(filepath.Join(path, "pulumi-plugin.json"), bytes, 0o600)
 				assert.NoError(t, err, "Failed to write pulumi-plugin.json")
 			}
-			actual, err := c.Mod.getPlugin()
+
+			actual, err := c.Mod.getPlugin(t.TempDir())
 			if c.ShouldErr {
 				assert.Error(t, err)
 			} else {
@@ -335,6 +337,33 @@ func TestPluginsAndDependencies_moduleMode(t *testing.T) {
 		"copy test data")
 
 	testPluginsAndDependencies(t, filepath.Join(root, "prog"))
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/12526.
+// Validates that if a Pulumi program has vendored its dependencies,
+// the language host can still find the plugin and run the program.
+func TestPluginsAndDependencies_vendored(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t,
+		fsutil.CopyFile(root, filepath.Join("testdata", "sample"), nil),
+		"copy test data")
+
+	progDir := filepath.Join(root, "prog")
+
+	// Vendor the dependencies and nuke the sources
+	// to ensure that the language host can only use the vendored version.
+	cmd := exec.Command("go", "mod", "vendor")
+	cmd.Dir = progDir
+	cmd.Stdout = iotest.LogWriter(t)
+	cmd.Stderr = iotest.LogWriter(t)
+	require.NoError(t, cmd.Run(), "vendor dependencies")
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "plugin")))
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "dep")))
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "indirect-dep")))
+
+	testPluginsAndDependencies(t, progDir)
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {
