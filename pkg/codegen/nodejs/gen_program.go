@@ -800,8 +800,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	return buffer.String()
 }
 
-// genResource handles the generation of instantiations of non-builtin resources.
-func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
+// genResourceDeclaration handles the generation of instantiations of resources.
+func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	pkg, module, memberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
 
@@ -816,11 +816,13 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
 
-	g.genTrivia(w, r.Definition.Tokens.GetType(""))
-	for _, l := range r.Definition.Tokens.GetLabels(nil) {
-		g.genTrivia(w, l)
+	if needsDefinition {
+		g.genTrivia(w, r.Definition.Tokens.GetType(""))
+		for _, l := range r.Definition.Tokens.GetLabels(nil) {
+			g.genTrivia(w, l)
+		}
+		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	}
-	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	instantiate := func(resName string) {
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
@@ -853,11 +855,110 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	if r.Options != nil && r.Options.Range != nil {
-		rangeType := model.ResolveOutputs(r.Options.Range.Type())
-		rangeExpr := g.lowerExpression(r.Options.Range, rangeType)
+		rangeType := r.Options.Range.Type()
+		rangeExpr := r.Options.Range
+		if model.ContainsOutputs(r.Options.Range.Type()) {
+			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
+			if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
+				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			} else {
+				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
+			}
 
+			switch expr := rangeExpr.(type) {
+			case *model.FunctionCallExpression:
+				if expr.Name == pcl.IntrinsicApply {
+					applyArgs, applyLambda := pcl.ParseApplyCall(expr)
+					// Step 1: generate the apply function call:
+					if len(applyArgs) == 1 {
+						// If we only have a single output, just generate a normal `.apply`
+						g.Fgenf(w, "%.20v.apply(", applyArgs[0])
+					} else {
+						// Otherwise, generate a call to `pulumi.all([]).apply()`.
+						g.Fgen(w, "pulumi.all([")
+						for i, o := range applyArgs {
+							if i > 0 {
+								g.Fgen(w, ", ")
+							}
+							g.Fgenf(w, "%v", o)
+						}
+						g.Fgen(w, "]).apply(")
+					}
+
+					// Step 2: apply lambda function arguments
+					switch len(applyLambda.Signature.Parameters) {
+					case 0:
+						g.Fgen(w, "()")
+					case 1:
+						g.Fgenf(w, "%s", applyLambda.Signature.Parameters[0].Name)
+					default:
+						g.Fgen(w, "([")
+						for i, p := range applyLambda.Signature.Parameters {
+							if i > 0 {
+								g.Fgen(w, ", ")
+							}
+							g.Fgenf(w, "%s", p.Name)
+						}
+						g.Fgen(w, "])")
+					}
+
+					// Step 3: The function body is where the resources are generated:
+					// The function body is also a non-output value so we rewrite the range of
+					// the resource declaration to this non-output value
+					g.Fgen(w, " => {\n")
+					g.Indented(func() {
+						r.Options.Range = applyLambda.Body
+						g.genResourceDeclaration(w, r, false)
+					})
+					g.Fgenf(w, "%s});\n", g.Indent)
+					return
+				}
+
+				// If we have anything else that returns output, just generate a normal `.apply`
+				g.Fgenf(w, "%.20v.apply(rangeBody => {\n", rangeExpr)
+				g.Indented(func() {
+					r.Options.Range = model.VariableReference(&model.Variable{
+						Name:         "rangeBody",
+						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+					})
+					g.genResourceDeclaration(w, r, false)
+				})
+				g.Fgenf(w, "%s});\n", g.Indent)
+				return
+			case *model.TupleConsExpression, *model.ForExpression:
+				// A list or list generator that contains outputs looks like list(output(T))
+				// ideally we want this to be output(list(T)) and then call apply:
+				// so we call pulumi.all to lift the elements of the list, then call apply
+				g.Fgenf(w, "pulumi.all(%.20v).apply(rangeBody => {\n", rangeExpr)
+				g.Indented(func() {
+					r.Options.Range = model.VariableReference(&model.Variable{
+						Name:         "rangeBody",
+						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+					})
+					g.genResourceDeclaration(w, r, false)
+				})
+				g.Fgenf(w, "%s});\n", g.Indent)
+				return
+
+			default:
+				// If we have anything else that returns output, just generate a normal `.apply`
+				g.Fgenf(w, "%.20v.apply(rangeBody => {\n", rangeExpr)
+				g.Indented(func() {
+					r.Options.Range = model.VariableReference(&model.Variable{
+						Name:         "rangeBody",
+						VariableType: model.ResolveOutputs(rangeExpr.Type()),
+					})
+					g.genResourceDeclaration(w, r, false)
+				})
+				g.Fgenf(w, "%s});\n", g.Indent)
+				return
+			}
+		}
 		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
-			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			if needsDefinition {
+				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			}
+
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
@@ -866,8 +967,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
-			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
-
+			if needsDefinition {
+				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
+			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
@@ -895,6 +997,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
+}
+
+func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
+	g.genResourceDeclaration(w, r, true)
 }
 
 // genResource handles the generation of instantiations of non-builtin resources.

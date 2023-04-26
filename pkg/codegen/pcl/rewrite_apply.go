@@ -71,9 +71,13 @@ type observeContext struct {
 	nameCounts    map[string]int
 }
 
-func (r *applyRewriter) hasEventualTypes(t model.Type) bool {
+func HasEventualTypes(t model.Type) bool {
 	resolved := model.ResolveOutputs(t)
 	return resolved != t
+}
+
+func (r *applyRewriter) hasEventualTypes(t model.Type) bool {
+	return HasEventualTypes(t)
 }
 
 func (r *applyRewriter) hasEventualValues(x model.Expression) bool {

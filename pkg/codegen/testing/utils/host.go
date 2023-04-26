@@ -79,6 +79,7 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 
 		SchemaProvider{"other", "0.1.0"},
 		SchemaProvider{"synthetic", "1.0.0"},
+		SchemaProvider{"range", "1.0.0"},
 		SchemaProvider{"lambda", "0.1.0"},
 	)
 }

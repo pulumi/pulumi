@@ -1,18 +1,40 @@
-resource "vpc" "aws:ec2/vpc:Vpc" {
-  cidrBlock          = "10.0.0.0/16"
-  enableDnsHostnames = true
-  enableDnsSupport   = true
-  tags = {
-    Name = "Example VPC"
+resource "root" "range:index:Root" {}
+
+// creating resources by iterating a property of type array(string) of another resource
+resource "fromListOfStrings" "range:index:Example" {
+  options {
+    range = root.arrayOfString
   }
+
+  someString = range.value
 }
 
-resource "gateway" "aws:ec2/internetGateway:InternetGateway" {
+// creating resources by iterating a property of type map(string) of another resource
+resource "fromMapOfStrings" "range:index:Example" {
   options {
-    range = vpc.tags
+    range = root.mapOfString
   }
-  vpcId = "${vpc.id}"
-  tags = {
-    Name = "${range.key} ${range.value}"
+
+  someString = "${range.key} ${range.value}"
+}
+
+// computed range list expression to create instances of range:index:Example resource
+resource "fromComputedListOfStrings" "range:index:Example" {
+  options {
+    range = [
+        root.mapOfString["hello"],
+        root.mapOfString["world"]
+    ]
   }
+
+  someString = "${range.key} ${range.value}"
+}
+
+// computed range for expression to create instances of range:index:Example resource
+resource "fromComputedForExpression" "range:index:Example" {
+  options {
+    range = [for value in root.arrayOfString : root.mapOfString[value]]
+  }
+
+  someString = "${range.key} ${range.value}"
 }

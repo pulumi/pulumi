@@ -246,3 +246,19 @@ func SortedStringKeys[V any](m map[string]V) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// UnwrapOption returns type T if the input is an Option(T)
+func UnwrapOption(exprType model.Type) model.Type {
+	switch exprType := exprType.(type) {
+	case *model.UnionType:
+		if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[0] == model.NoneType {
+			return exprType.ElementTypes[1]
+		} else if len(exprType.ElementTypes) == 2 && exprType.ElementTypes[1] == model.NoneType {
+			return exprType.ElementTypes[0]
+		} else {
+			return exprType
+		}
+	default:
+		return exprType
+	}
+}
