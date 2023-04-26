@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as fspromises from "fs/promises";
 import * as ini from "ini";
 import * as minimist from "minimist";
 import * as path from "path";
@@ -29,6 +30,16 @@ import * as tsutils from "../../tsutils";
 import * as tracing from "./tracing";
 
 import * as mod from ".";
+
+// Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
+// Follow this issue for progress on when we can remove this:
+// https://github.com/microsoft/TypeScript/issues/43329
+//
+// Workaround inspired by es-module-shims:
+// https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
+/** @internal */
+// eslint-disable-next-line no-eval
+const dynamicImport = (0, eval)("u=>import(u)");
 
 /**
  * Attempts to provide a detailed error message for module load failure if the
@@ -53,14 +64,44 @@ function projectRootFromProgramPath(program: string): string {
     }
 }
 
+async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
+    console.log("Executing npmPackageRoot");
+    // pkg-dir is an ESM module which we use to find the location of package.json
+    // Because it's an ESM module, we cannot import it directly.
+    const { packageDirectory } = await dynamicImport("pkg-dir");
+    // Check if programPath is a directory. If not, then we
+    // look at it's parent dir for the package root.
+    let isDirectory = false;
+    if(fs.existsSync(programPath)) {
+        const fileStat = await fspromises.lstat(programPath);
+        isDirectory = fileStat.isDirectory();
+    }
+    console.log(`Is directory: ${isDirectory}`);
+    const programDirectory = isDirectory ? programPath : path.dirname(programPath);
+    console.log(`Program directory: ${programDirectory}`);
+    const pkgDir = await packageDirectory({
+        cwd: programDirectory,
+    });
+    if (pkgDir === undefined) {
+        console.log(`Returning program dir: ${programDirectory}`);
+        log.warn("Could not find a package.json file for the program. Using the pulumi program directory as the project root.");
+        return programDirectory;
+    }
+    console.log(`Pkg Dir: ${pkgDir}`);
+    return pkgDir;
+}
+
+
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
+    let packageObject = {};
     try {
         const packageJson = path.join(projectRoot, "package.json");
-        return require(packageJson);
-    } catch {
+        packageObject = require(packageJson);
+        console.log(`Successfully loaded object from ${packageJson}`);
+    } finally {
         // This is all best-effort so if we can't load the package.json file, that's
         // fine.
-        return {};
+        return packageObject;
     }
 }
 
@@ -342,9 +383,13 @@ ${defaultMessage}`,
         const runProgramSpan = tracing.newSpan("language-runtime.runProgram");
 
         try {
-            const projectRoot = projectRootFromProgramPath(program);
-            const packageObject = packageObjectFromProjectRoot(projectRoot);
-
+            const packageRoot = await npmPackageRootFromProgramPath(program);
+            console.log(`Breakpoint 1: Observed package root ${packageRoot}`);
+            const packageObject = packageObjectFromProjectRoot(packageRoot);
+            console.log(`Observed package object: ${packageObject}`);
+            const keys = Object.keys(packageObject);
+            console.log(`Package object keys: ${keys}`);
+            
             let programExport: any;
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
@@ -354,14 +399,6 @@ ${defaultMessage}`,
                 const mainPath: string =
                     require("module").Module._findPath(path.resolve(program), null, true) || program;
                 const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
-                // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
-                // Follow this issue for progress on when we can remove this:
-                // https://github.com/microsoft/TypeScript/issues/43329
-                //
-                // Workaround inspired by es-module-shims:
-                // https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
-                // eslint-disable-next-line no-eval
-                const dynamicImport = (0, eval)("u=>import(u)");
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
@@ -376,13 +413,22 @@ ${defaultMessage}`,
                     programExport = programExport.default;
                 }
             } else {
+                // If the user provided an entrypoint, we use that file
+                // relative to the working dir.
+                // TODO(@Robbie): Confirm what happens if `main` is provided in a CommonJS module.
+                //                Maybe I need to return whether the `package.json` object is not
+                //                in pwd, because that indicates whether we will need to apply this `main`
+                //                function now or not.
+                if (packageObject["main"]) {
+                    program = path.join(program, packageObject["main"]);
+                }
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
-
                 // If this is a folder ensure it ends with a "/" so we require the folder, not any adjacent .json file
                 const programStats = await fs.promises.lstat(program);
                 if (programStats.isDirectory() && !program.endsWith("/")) {
                     program = program + "/";
                 }
+                console.log(`Observed program path: ${program}`);
                 programExport = require(program);
             }
 
@@ -393,7 +439,7 @@ ${defaultMessage}`,
             }
 
             // Check compatible engines before running the program:
-            const npmRc = npmRcFromProjectRoot(projectRoot);
+            const npmRc = npmRcFromProjectRoot(packageRoot);
             if (npmRc["engine-strict"] && packageObject.engines && packageObject.engines.node) {
                 // found:
                 //   - { engines: { node: "<version>" } } in package.json
@@ -404,7 +450,7 @@ ${defaultMessage}`,
                 const currentNodeVersion = process.versions.node;
                 if (!semver.satisfies(currentNodeVersion, requiredNodeVersion)) {
                     const errorMessage = [
-                        `Your current Node version is incompatible to run ${projectRoot}`,
+                        `Your current Node version is incompatible to run ${packageRoot}`,
                         `Expected version: ${requiredNodeVersion} as found in package.json > engines > node`,
                         `Actual Node version: ${currentNodeVersion}`,
                         `To fix issue, install a Node version that is compatible with ${requiredNodeVersion}`,
