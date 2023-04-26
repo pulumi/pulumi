@@ -65,7 +65,6 @@ function projectRootFromProgramPath(program: string): string {
 }
 
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    console.log("Executing npmPackageRoot");
     // pkg-dir is an ESM module which we use to find the location of package.json
     // Because it's an ESM module, we cannot import it directly.
     const { packageDirectory } = await dynamicImport("pkg-dir");
@@ -76,18 +75,14 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         const fileStat = await fspromises.lstat(programPath);
         isDirectory = fileStat.isDirectory();
     }
-    console.log(`Is directory: ${isDirectory}`);
     const programDirectory = isDirectory ? programPath : path.dirname(programPath);
-    console.log(`Program directory: ${programDirectory}`);
     const pkgDir = await packageDirectory({
         cwd: programDirectory,
     });
     if (pkgDir === undefined) {
-        console.log(`Returning program dir: ${programDirectory}`);
         log.warn("Could not find a package.json file for the program. Using the pulumi program directory as the project root.");
         return programDirectory;
     }
-    console.log(`Pkg Dir: ${pkgDir}`);
     return pkgDir;
 }
 
@@ -97,7 +92,6 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
     try {
         const packageJson = path.join(projectRoot, "package.json");
         packageObject = require(packageJson);
-        console.log(`Successfully loaded object from ${packageJson}`);
     } finally {
         // This is all best-effort so if we can't load the package.json file, that's
         // fine.
@@ -383,13 +377,14 @@ ${defaultMessage}`);
 
         try {
             const packageRoot = await npmPackageRootFromProgramPath(program);
-            console.log(`Breakpoint 1: Observed package root ${packageRoot}`);
             const packageObject = packageObjectFromProjectRoot(packageRoot);
-            console.log(`Observed package object: ${packageObject}`);
-            const keys = Object.keys(packageObject);
-            console.log(`Package object keys: ${keys}`);
-            
             let programExport: any;
+
+            // If the user provided an entrypoint, we use that file
+            // relative to the working dir.
+            if (packageObject["main"]) {
+                program = path.join(program, packageObject["main"]);
+            }
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
@@ -409,22 +404,12 @@ ${defaultMessage}`);
                     programExport = programExport.default;
                 }
             } else {
-                // If the user provided an entrypoint, we use that file
-                // relative to the working dir.
-                // TODO(@Robbie): Confirm what happens if `main` is provided in a CommonJS module.
-                //                Maybe I need to return whether the `package.json` object is not
-                //                in pwd, because that indicates whether we will need to apply this `main`
-                //                function now or not.
-                if (packageObject["main"]) {
-                    program = path.join(program, packageObject["main"]);
-                }
                 // It's a CommonJS module, so require the module and capture any module outputs it exported.
                 // If this is a folder ensure it ends with a "/" so we require the folder, not any adjacent .json file
                 const programStats = await fs.promises.lstat(program);
                 if (programStats.isDirectory() && !program.endsWith("/")) {
                     program = program + "/";
                 }
-                console.log(`Observed program path: ${program}`);
                 programExport = require(program);
             }
 
