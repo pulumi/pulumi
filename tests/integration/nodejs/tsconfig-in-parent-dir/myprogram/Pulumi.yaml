@@ -1,0 +1,3 @@
+name: tsconfig-in-parent-dir
+runtime: nodejs
+description: Run a TypeScript program where tsconfig is in a parent directory.

@@ -1150,6 +1150,15 @@ func TestESMWithPackageJsonInParentDir(t *testing.T) {
 	})
 }
 
+func TestTSConfigInParentDir(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "tsconfig-in-parent-dir"),
+		RelativeWorkDir: filepath.Join("myprogram"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
+	})
+}
+
 func TestESMTSDefaultExport(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("nodejs", "esm-ts-default-export"),
