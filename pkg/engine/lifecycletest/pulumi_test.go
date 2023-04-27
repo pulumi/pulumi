@@ -1573,7 +1573,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
-		aliases: []resource.Alias{{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"}},
+		aliases: []resource.Alias{{Name: "n1"}},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
@@ -1581,8 +1581,8 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n3",
 		aliases: []resource.Alias{
-			{Name: "n2", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
-			{Name: "n1", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n2"},
+			{Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1592,7 +1592,7 @@ func TestAliases(t *testing.T) {
 		name: "n3",
 		aliases: []resource.Alias{
 			{URN: "urn:pulumi:test::test::pkgA:index:t1::n2"},
-			{Name: "n1", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1602,9 +1602,8 @@ func TestAliases(t *testing.T) {
 		name: "n1",
 		aliases: []resource.Alias{
 			{URN: "urn:pulumi:test::test::pkgA:index:t1::n3"},
-			{Name: "n2", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n2"},
 		},
-		aliasURNs: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n3"},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
@@ -1618,7 +1617,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t2",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1627,8 +1626,8 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:othermod:t3",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n1"},
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1637,9 +1636,9 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:othermod:t3",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:othermod:t3::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n1"},
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:othermod:t3"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1657,7 +1656,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("x"): resource.NewNumberProperty(42),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:othermod:t3::n1"},
+			{Type: "pkgA:othermod:t3", Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
 
@@ -1669,7 +1668,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t4::n2"},
+			{Type: "pkgA:index:t4", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
 
@@ -1681,7 +1680,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t5::n3"},
+			{Type: "pkgA:index:t5", Name: "n3"},
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1695,7 +1694,7 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t6::n4"},
+			{Type: "pkgA:index:t6", Name: "n4"},
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1721,14 +1720,14 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:            "pkgA:index:t2-new",
 		name:         "n2-new",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n2"},
+			{Type: "pkgA:index:t2", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1754,14 +1753,14 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:      "pkgA:index:t2-new",
 		name:   "n2-new",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2"},
+			{Type: "pkgA:index:t2", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1770,13 +1769,13 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n2",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Name: "n1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n3",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpCreate}, true)
 
@@ -1785,13 +1784,13 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Name: "n1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n2",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n2"},
+			{Type: "index:t1"},
 		},
 	}}, []display.StepOp{deploy.OpCreate}, false)
 
@@ -1815,21 +1814,21 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:      "pkgA:index:t2",
 		name:   "n1-new-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n1-sub"},
+			{Type: "pkgA:index:t2", Name: "n1-sub"},
 		},
 	}, {
 		t:      "pkgA:index:t3",
 		name:   "n1-new-sub-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new$pkgA:index:t2::n1-new-sub"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2$pkgA:index:t3::n1-sub-sub"},
+			{Type: "pkgA:index:t3", Name: "n1-sub-sub"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
