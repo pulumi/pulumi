@@ -167,8 +167,8 @@ func (r *localBackendReference) Name() tokens.Name {
 	return r.name
 }
 
-func (r *localBackendReference) Project() tokens.Name {
-	return r.project
+func (r *localBackendReference) Project() (tokens.Name, bool) {
+	return r.project, r.project != ""
 }
 
 func (r *localBackendReference) FullyQualifiedName() tokens.QName {

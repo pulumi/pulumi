@@ -521,6 +521,7 @@ func (ms *MockStack) DefaultSecretManager(info *workspace.ProjectStack) (secrets
 type MockStackReference struct {
 	StringV             string
 	NameV               tokens.Name
+	ProjectV            tokens.Name
 	FullyQualifiedNameV tokens.QName
 }
 
@@ -538,6 +539,13 @@ func (r *MockStackReference) Name() tokens.Name {
 		return r.NameV
 	}
 	panic("not implemented")
+}
+
+func (r *MockStackReference) Project() (tokens.Name, bool) {
+	if r.ProjectV != "" {
+		return r.ProjectV, true
+	}
+	return "", false
 }
 
 func (r *MockStackReference) FullyQualifiedName() tokens.QName {

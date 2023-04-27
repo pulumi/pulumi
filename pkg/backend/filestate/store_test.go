@@ -112,7 +112,9 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 
 			assert.Equal(t, tt.fqname, ref.FullyQualifiedName())
 			assert.Equal(t, tt.name, ref.Name())
-			assert.Equal(t, tt.project, ref.Project())
+			proj, has := ref.Project()
+			assert.True(t, has)
+			assert.Equal(t, tt.project, proj)
 			assert.Equal(t, tt.str, ref.String())
 		})
 	}

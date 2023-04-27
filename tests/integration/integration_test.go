@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -515,8 +517,30 @@ func TestConfigPaths(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 }
 
+func testDestroyStackRef(e *ptesting.Environment, organization string) {
+	e.ImportDirectory("large_resource/nodejs")
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	e.CWD = os.TempDir()
+	stackRef := stackName
+	if organization != "" {
+		stackRef = organization + "/large_resource_js/" + stackName
+	}
+
+	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", stackRef)
+	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
+}
+
 //nolint:paralleltest // uses parallel programtest
-func TestDestroyStackRef(t *testing.T) {
+func TestDestroyStackRef_LocalProject(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
@@ -524,17 +548,40 @@ func TestDestroyStackRef(t *testing.T) {
 		}
 	}()
 
-	e.ImportDirectory("large_resource/nodejs")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testDestroyStackRef(e, "organization")
+}
 
-	e.RunCommand("pulumi", "stack", "init", "dev")
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef_LocalNonProject(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
 
-	e.RunCommand("yarn", "link", "@pulumi/pulumi")
-	e.RunCommand("yarn", "install")
+	t.Setenv("PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT", "true")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testDestroyStackRef(e, "")
+}
 
-	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
-	e.CWD = os.TempDir()
-	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", "organization/large_resource_js/dev")
+//nolint:paralleltest // uses parallel programtest
+func TestDestroyStackRef_Cloud(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	output, _ := e.RunCommand("pulumi", "whoami")
+	organization := strings.TrimSpace(output)
+	testDestroyStackRef(e, organization)
 }
 
 //nolint:paralleltest // uses parallel programtest
