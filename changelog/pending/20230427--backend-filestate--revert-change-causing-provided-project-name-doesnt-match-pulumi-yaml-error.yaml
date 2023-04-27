@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: Revert change causing `provided project name "" doesn't match Pulumi.yaml` error
