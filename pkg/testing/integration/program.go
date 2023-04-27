@@ -1819,11 +1819,6 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
 	}
-	// Reload the projinfo before making mutating changes (workspace.LoadProject caches the in-memory Project by path)
-	projinfo, err = pt.getProjinfo(projdir)
-	if err != nil {
-		return "", "", err
-	}
 
 	// Add dynamic plugin paths from ProgramTester
 	if (projinfo.Proj.Plugins == nil || projinfo.Proj.Plugins.Providers == nil) && pt.opts.LocalProviders != nil {
