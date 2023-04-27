@@ -1,9 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/shortcut/*": ["shortcut/*"]
-    },
+    "baseUrl": "./library"
   },
   "exclude": ["node_modules"]
 }

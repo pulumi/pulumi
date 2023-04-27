@@ -1,4 +1,10 @@
-import * as assert from "assert";
-import Hello from "@/shortcut";
+// Because basePath is set in tsconfig, as long as tsconfig is loaded,
+// this package should be found.
 
-assert.ok(Hello);
+import { MyFavoriteType } from "myLibrary";
+
+const greeter: MyFavoriteType = {
+  greeting: "Bonjour!",
+};
+
+console.log(greeter);
