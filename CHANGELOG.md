@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.65.1 (2023-04-27)
+
+
+### Bug Fixes
+
+- [backend/filestate] Revert change causing `provided project name "" doesn't match Pulumi.yaml` error
+  [#12761](https://github.com/pulumi/pulumi/pull/12761)
+
 ## 3.65.0 (2023-04-26)
 
 
