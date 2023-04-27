@@ -64,6 +64,13 @@ function projectRootFromProgramPath(program: string): string {
     }
 }
 
+/**
+  * @internal
+  * This function searches for the nearest package.json file, scanning up from the
+  * program path until it finds one. If it does not find a package.json file, it
+  * it returns the folder enclosing the program.
+  * @param programPath the path to the Pulumi program; usually the current working directory.
+  */
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
     // pkg-dir is an ESM module which we use to find the location of package.json
     // Because it's an ESM module, we cannot import it directly.
@@ -71,7 +78,7 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;
-    if(fs.existsSync(programPath)) {
+    if (fs.existsSync(programPath)) {
         const fileStat = await fspromises.lstat(programPath);
         isDirectory = fileStat.isDirectory();
     }
@@ -80,22 +87,20 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         cwd: programDirectory,
     });
     if (pkgDir === undefined) {
-        log.warn("Could not find a package.json file for the program. Using the pulumi program directory as the project root.");
+        log.warn("Could not find a package.json file for the program. Using the Pulumi program directory as the project root.");
         return programDirectory;
     }
     return pkgDir;
 }
 
-
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
-    let packageObject = {};
+    const packageJson = path.join(projectRoot, "package.json");
     try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
-    } finally {
+        return require(packageJson);
+    } catch {
         // This is all best-effort so if we can't load the package.json file, that's
         // fine.
-        return packageObject;
+        return {};
     }
 }
 

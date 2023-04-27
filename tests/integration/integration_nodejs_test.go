@@ -1132,36 +1132,8 @@ func TestESMTS(t *testing.T) {
 	})
 }
 
-/*
-// Finding package.json when in the parent directory.
-// Two variables to test: whether the package is an ESM, and whether `main` is provided.
-//
-// Case 1 of 4:
-// main not provided, not an ESM.
-func TestPackageJsonInParentDirWithoutMain(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:             filepath.Join("nodejs", "package-json-in-parent-dir-without-main"),
-		RelativeWorkDir: filepath.Join("myprogram"),
-		Dependencies:    []string{"@pulumi/pulumi", "@types/node"},
-		Quick:           true,
-	})
-}
-
-// Case 2 of 4:
-// main not provided, is an ESM.
-func TestESMPackageJsonInParentDirWithoutMain(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:             filepath.Join("nodejs", "esm-package-json-in-parent-dir-without-main"),
-		RelativeWorkDir: filepath.Join("myprogram"),
-		Dependencies:    []string{"@pulumi/pulumi"},
-		Quick:           true,
-	})
-}
-*/
-
-// Case 3 of 4:
-// main provided, not an ESM.
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),
 		RelativeWorkDir: filepath.Join("myprogram"),
@@ -1170,9 +1142,8 @@ func TestTSWithPackageJsonInParentDir(t *testing.T) {
 	})
 }
 
-// Case 4 of 4:
-// main provided, is an ESM.
 func TestESMWithPackageJsonInParentDir(t *testing.T) {
+	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "esm-with-package-json-in-parent-dir"),
 		RelativeWorkDir: filepath.Join("myprogram"),
