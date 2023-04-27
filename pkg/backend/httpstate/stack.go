@@ -43,7 +43,7 @@ type Stack interface {
 
 type cloudBackendReference struct {
 	name    tokens.Name
-	project tokens.Name
+	project string
 	owner   string
 	b       *cloudBackend
 }
@@ -53,7 +53,7 @@ func (c cloudBackendReference) String() string {
 	currentProject := c.b.currentProject
 
 	// If the project names match, we can elide them.
-	if currentProject != nil && c.project == tokens.Name(currentProject.Name) {
+	if currentProject != nil && c.project == string(currentProject.Name) {
 
 		// Elide owner too, if it is the default owner.
 		defaultOrg, err := workspace.GetBackendConfigDefaultOrg(currentProject)
@@ -76,10 +76,6 @@ func (c cloudBackendReference) String() string {
 
 func (c cloudBackendReference) Name() tokens.Name {
 	return c.name
-}
-
-func (c cloudBackendReference) Project() tokens.Name {
-	return c.project
 }
 
 func (c cloudBackendReference) FullyQualifiedName() tokens.QName {
@@ -107,7 +103,7 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 	return &cloudStack{
 		ref: cloudBackendReference{
 			owner:   apistack.OrgName,
-			project: tokens.Name(apistack.ProjectName),
+			project: apistack.ProjectName,
 			name:    tokens.Name(apistack.StackName.String()),
 			b:       b,
 		},
@@ -218,7 +214,7 @@ func (css cloudStackSummary) Name() backend.StackReference {
 
 	return cloudBackendReference{
 		owner:   css.summary.OrgName,
-		project: tokens.Name(css.summary.ProjectName),
+		project: css.summary.ProjectName,
 		name:    tokens.Name(css.summary.StackName),
 		b:       css.b,
 	}
