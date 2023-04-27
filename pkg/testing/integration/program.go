@@ -1265,11 +1265,6 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	dir := pt.projdir
 	stackName := pt.opts.GetStackName()
 
-	// If RelativeWorkDir is specified, apply that relative to the temp folder for use as working directory during tests.
-	if pt.opts.RelativeWorkDir != "" {
-		dir = filepath.Join(dir, pt.opts.RelativeWorkDir)
-	}
-
 	// Set the default target Pulumi API if not overridden in options.
 	if pt.opts.CloudURL == "" {
 		pulumiAPI := os.Getenv("PULUMI_API")
@@ -1776,9 +1771,13 @@ func (pt *ProgramTester) readUpdateEventLog() ([]apitype.EngineEvent, error) {
 func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) {
 	// Get the source dir and project info.
 	sourceDir := pt.opts.Dir
-	projinfo, err := pt.getProjinfo(sourceDir)
+	projSourceDir := sourceDir
+	if wd := pt.opts.RelativeWorkDir; wd != "" {
+		projSourceDir = filepath.Join(projSourceDir, wd)
+	}
+	projinfo, err := pt.getProjinfo(projSourceDir)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("could not get project info from source: %w", err)
 	}
 
 	if pt.opts.Stdout == nil {
@@ -1815,6 +1814,9 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	}
+	if wd := pt.opts.RelativeWorkDir; wd != "" {
+		projdir = filepath.Join(projdir, wd)
+	}
 	// Copy the source project.
 	if copyErr := fsutil.CopyFile(tmpdir, sourceDir, nil); copyErr != nil {
 		return "", "", copyErr
@@ -1822,7 +1824,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 	// Reload the projinfo before making mutating changes (workspace.LoadProject caches the in-memory Project by path)
 	projinfo, err = pt.getProjinfo(projdir)
 	if err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("could not get project info: %w", err)
 	}
 
 	// Add dynamic plugin paths from ProgramTester
