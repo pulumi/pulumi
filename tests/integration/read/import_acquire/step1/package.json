@@ -1,7 +1,5 @@
 {
     "name": "read_relinquish",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
     "scripts": {
         "build": "tsc"
     },
