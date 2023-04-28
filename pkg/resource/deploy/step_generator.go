@@ -622,7 +622,6 @@ func (sg *stepGenerator) generateStepsInner(
 	randomSeed []byte,
 	oldImportID resource.ID,
 ) ([]Step, result.Result) {
-
 	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
 	if isImport {
 		// TODO(seqnum) Not sure how sequence numbers should interact with imports
@@ -718,46 +717,28 @@ func (sg *stepGenerator) generateStepsInner(
 	}
 
 	// Send the resource off to any Analyzers before being operated on.
-	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, analyzer := range analyzers {
-		r := plugin.AnalyzerResource{
-			URN:        new.URN,
-			Type:       new.Type,
-			Name:       new.URN.Name(),
-			Properties: inputs,
-			Options: plugin.AnalyzerResourceOptions{
-				Protect:                 new.Protect,
-				IgnoreChanges:           goal.IgnoreChanges,
-				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.GetAliases(),
-				CustomTimeouts:          new.CustomTimeouts,
-			},
-		}
-		providerResource := sg.getProviderResource(new.URN, new.Provider)
-		if providerResource != nil {
-			r.Provider = &plugin.AnalyzerProviderResource{
-				URN:        providerResource.URN,
-				Type:       providerResource.Type,
-				Name:       providerResource.URN.Name(),
-				Properties: providerResource.Inputs,
-			}
-		}
-
-		diagnostics, err := analyzer.Analyze(r)
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-		for _, d := range diagnostics {
-			if d.EnforcementLevel == apitype.Mandatory {
-				if !sg.deployment.preview {
-					invalid = true
-				}
-				sg.sawError = true
-			}
-			// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-			sg.opts.Events.OnPolicyViolation(new.URN, d)
-		}
+	r := plugin.AnalyzerResource{
+		URN:        new.URN,
+		Type:       new.Type,
+		Name:       new.URN.Name(),
+		Properties: inputs,
+		Options: plugin.AnalyzerResourceOptions{
+			Protect:                 new.Protect,
+			IgnoreChanges:           goal.IgnoreChanges,
+			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+			Aliases:                 new.GetAliases(),
+			CustomTimeouts:          new.CustomTimeouts,
+		},
+	}
+	providerResource := sg.getProviderResource(new.URN, new.Provider)
+	passesAnalyzer, err := sg.runAnalyzers(r, providerResource)
+	if err != nil {
+		//
+		return nil, result.FromError(err)
+	}
+	if !passesAnalyzer {
+		invalid = true
 	}
 
 	// If the resource isn't valid, don't proceed any further.
@@ -897,6 +878,38 @@ func (sg *stepGenerator) generateStepsInner(
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.deployment, event, new)}, nil
+}
+
+func (sg *stepGenerator) runAnalyzers(r plugin.AnalyzerResource, providerResource *resource.State) (bool, error) {
+	ok := true
+
+	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+	for _, analyzer := range analyzers {
+		if providerResource != nil {
+			r.Provider = &plugin.AnalyzerProviderResource{
+				URN:        providerResource.URN,
+				Type:       providerResource.Type,
+				Name:       providerResource.URN.Name(),
+				Properties: providerResource.Inputs,
+			}
+		}
+
+		diagnostics, err := analyzer.Analyze(r)
+		if err != nil {
+			return false, err
+		}
+		for _, d := range diagnostics {
+			if d.EnforcementLevel == apitype.Mandatory {
+				if !sg.deployment.preview {
+					ok = false
+				}
+				sg.sawError = true
+			}
+			// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+			sg.opts.Events.OnPolicyViolation(r.URN, d)
+		}
+	}
+	return ok, nil
 }
 
 func (sg *stepGenerator) generateStepsFromDiff(
