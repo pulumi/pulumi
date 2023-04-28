@@ -27,6 +27,12 @@ ensure:: yarn.ensure node.ensure .ensure.phony
 	yarn install --frozen-lockfile
 	@touch .ensure.phony
 
+format:: ensure
+	yarn rome format --write .
+
+format_ci:: ensure
+	yarn rome ci .
+
 lint:: ensure
 	yarn run eslint -c .eslintrc.js --ext .ts .
 
