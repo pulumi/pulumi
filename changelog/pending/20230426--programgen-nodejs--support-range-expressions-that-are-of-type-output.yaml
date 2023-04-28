@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/nodejs
+  description: Support range expressions that are of type output

@@ -177,7 +177,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 
 	if expr.Key != nil {
 		// TODO(pdg): grouping
-		g.Fgenf(w, ".reduce((__obj, %s) => { ...__obj, [%.v]: %.v })", reduceParams, expr.Key, expr.Value)
+		g.Fgenf(w, ".reduce((__obj, %s) => ({ ...__obj, [%.v]: %.v }))", reduceParams, expr.Key, expr.Value)
 	} else {
 		g.Fgenf(w, ".map(%s => (%.v))", fnParams, expr.Value)
 	}
@@ -325,6 +325,23 @@ func enumName(enum *model.EnumType) (string, error) {
 	return fmt.Sprintf("%s.%s", pkg, name), nil
 }
 
+func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) {
+	entriesArg := expr.Args[0]
+	entriesArgType := pcl.UnwrapOption(model.ResolveOutputs(entriesArg.Type()))
+	switch entriesArgType.(type) {
+	case *model.ListType, *model.TupleType:
+		if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
+			g.genRange(w, call, true)
+			return
+		}
+		// Mapping over a list with a tuple receiver accepts (value, index).
+		g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
+	case *model.MapType, *model.ObjectType:
+		g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+	}
+	g.Fgenf(w, " => ({key: k, value: v}))")
+}
+
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
 	switch expr.Name {
 	case pcl.IntrinsicConvert:
@@ -374,18 +391,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
-		case *model.ListType, *model.TupleType:
-			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
-				g.genRange(w, call, true)
-				return
-			}
-			// Mapping over a list with a tuple receiver accepts (value, index).
-			g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
-		case *model.MapType, *model.ObjectType:
-			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
-		}
-		g.Fgenf(w, " => ({key: k, value: v}))")
+		g.genEntries(w, expr)
 	case "fileArchive":
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":

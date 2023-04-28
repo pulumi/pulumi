@@ -261,8 +261,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "iterating-optional-range-expressions",
 		Description: "Test that we can iterate over range expression that are option(iterator)",
-		// TODO: the example doesn't generate correct code because we iterate over a range which is an output
-		Skip: allProgLanguages,
+		// TODO: python, dotnet and go
+		Skip: allProgLanguages.Except("nodejs"),
+		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
+		SkipCompile: allProgLanguages,
 	},
 }
 
