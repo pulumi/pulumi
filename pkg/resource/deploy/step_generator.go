@@ -759,6 +759,44 @@ func (sg *stepGenerator) generateStepsInner(
 	if invalid {
 		return nil, result.Bail()
 	}
+	return sg.generateStepsInner2(
+		event,
+		goal,
+		urn,
+		hasOld,
+		old,
+		new,
+		inputs,
+		invalid,
+		oldInputs,
+		oldOutputs,
+		prov,
+		allowUnknowns,
+		recreating,
+		wasExternal,
+		randomSeed,
+		oldImportID,
+	)
+}
+
+func (sg *stepGenerator) generateStepsInner2(
+	event RegisterResourceEvent,
+	goal *resource.Goal,
+	urn resource.URN,
+	hasOld bool,
+	old *resource.State,
+	new *resource.State,
+	inputs resource.PropertyMap,
+	invalid bool,
+	oldInputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
+	prov plugin.Provider,
+	allowUnknowns bool,
+	recreating bool,
+	wasExternal bool,
+	randomSeed []byte,
+	oldImportID resource.ID,
+) ([]Step, result.Result) {
 
 	// There are four cases we need to consider when figuring out what to do with this resource.
 	//
@@ -799,10 +837,6 @@ func (sg *stepGenerator) generateStepsInner(
 	if wasExternal {
 		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
 		sg.creates[urn] = true
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-
 		return []Step{
 			NewCreateReplacementStep(sg.deployment, event, old, new, nil, nil, nil, true),
 			NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
