@@ -673,53 +673,59 @@ func (sg *stepGenerator) generateStepsInner(
 	}
 
 	// If the resource is valid and we're generating plans then generate a plan
-	if !invalid {
-		handlePlan := func() error {
-			if sg.opts.GeneratePlan {
-				if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-					oldInputs = nil
-				}
-				inputDiff := oldInputs.Diff(inputs)
-
-				// Generate the output goal plan, if we're recreating this it should already exist
-				if recreating {
-					plan, ok := sg.deployment.newPlans.get(urn)
-					if !ok {
-						return fmt.Errorf("no plan for resource %v", urn)
-					}
-					// The plan will have had it's Ops already partially filled in for the delete operation, but we
-					// now have the information needed to fill in Seed and Goal.
-					plan.Seed = randomSeed
-					plan.Goal = NewGoalPlan(inputDiff, goal)
-				} else {
-					newResourcePlan := &ResourcePlan{
-						Seed: randomSeed,
-						Goal: NewGoalPlan(inputDiff, goal),
-					}
-					sg.deployment.newPlans.set(urn, newResourcePlan)
-				}
-			}
-
-			// If there is a plan for this resource, validate that the program goal conforms to the plan.
-			// If theres no plan for this resource check that nothing has been changed.
-			// We don't check plans if the resource is invalid, it's going to fail anyway.
-			if sg.deployment.plan != nil {
-				resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
+	if !invalid && sg.opts.GeneratePlan {
+		discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
+		if discardOldInputs {
+			oldInputs = nil
+		}
+		inputDiff := oldInputs.Diff(inputs)
+		addToPlan := func(inputDiff *resource.ObjectDiff) error {
+			// Generate the output goal plan, if we're recreating this it should already exist
+			if recreating {
+				plan, ok := sg.deployment.newPlans.get(urn)
 				if !ok {
-					if old == nil {
-						// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
-					} else if err := checkMissingPlan(old, inputs, goal); err != nil {
-						return fmt.Errorf("resource %s violates plan: %w", urn, err)
-					}
-				} else {
-					if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-						return fmt.Errorf("resource %s violates plan: %w", urn, err)
-					}
+					return fmt.Errorf("no plan for resource %v", urn)
+				}
+				// The plan will have had it's Ops already partially filled in for the delete operation, but we
+				// now have the information needed to fill in Seed and Goal.
+				plan.Seed = randomSeed
+				plan.Goal = NewGoalPlan(inputDiff, goal)
+			} else {
+				newResourcePlan := &ResourcePlan{
+					Seed: randomSeed,
+					Goal: NewGoalPlan(inputDiff, goal),
+				}
+				sg.deployment.newPlans.set(urn, newResourcePlan)
+			}
+			return nil
+		}
+		if err := addToPlan(inputDiff); err != nil {
+			return nil, result.FromError(err)
+		}
+	}
+
+	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	// If theres no plan for this resource check that nothing has been changed.
+	// We don't check plans if the resource is invalid, it's going to fail anyway.
+	if !invalid && sg.deployment.plan != nil {
+		checkPlan := func() error {
+			resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
+			if !ok {
+				if old == nil {
+					// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
+				} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+					return fmt.Errorf("resource %s violates plan: %w", urn, err)
+				}
+			} else {
+				if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+					return fmt.Errorf("resource %s violates plan: %w", urn, err)
 				}
 			}
 			return nil
 		}
-		handlePlan()
+		if err := checkPlan(); err != nil {
+			return nil, result.FromError(err)
+		}
 	}
 
 	// Send the resource off to any Analyzers before being operated on.
