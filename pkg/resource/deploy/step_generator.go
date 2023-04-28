@@ -584,6 +584,45 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			oldImportID = old.ImportID
 		}
 	}
+	return sg.generateStepsInner(
+		event,
+		goal,
+		urn,
+		hasOld,
+		old,
+		new,
+		inputs,
+		invalid,
+		oldInputs,
+		oldOutputs,
+		prov,
+		allowUnknowns,
+		recreating,
+		wasExternal,
+		randomSeed,
+		oldImportID,
+	)
+}
+
+func (sg *stepGenerator) generateStepsInner(
+	event RegisterResourceEvent,
+	goal *resource.Goal,
+	urn resource.URN,
+	hasOld bool,
+	old *resource.State,
+	new *resource.State,
+	inputs resource.PropertyMap,
+	invalid bool,
+	oldInputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
+	prov plugin.Provider,
+	allowUnknowns bool,
+	recreating bool,
+	wasExternal bool,
+	randomSeed []byte,
+	oldImportID resource.ID,
+) ([]Step, result.Result) {
+
 	isImport := goal.Custom && goal.ID != "" && (!hasOld || old.External || oldImportID != goal.ID)
 	if isImport {
 		// TODO(seqnum) Not sure how sequence numbers should interact with imports
