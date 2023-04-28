@@ -797,7 +797,6 @@ func (sg *stepGenerator) generateStepsInner2(
 	randomSeed []byte,
 	oldImportID resource.ID,
 ) ([]Step, result.Result) {
-
 	// There are four cases we need to consider when figuring out what to do with this resource.
 	//
 	// Case 1: recreating
