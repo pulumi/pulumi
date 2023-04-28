@@ -18,8 +18,14 @@ import * as assert from "assert";
 import { all } from "../output";
 import * as runtime from "../runtime";
 import {
-    allAliases, createUrn, ProviderResource, CustomResource, ComponentResource,
-    ComponentResourceOptions, CustomResourceOptions, DependencyProviderResource
+    allAliases,
+    createUrn,
+    ProviderResource,
+    CustomResource,
+    ComponentResource,
+    ComponentResourceOptions,
+    CustomResourceOptions,
+    DependencyProviderResource,
 } from "../resource";
 
 class MyResource extends ComponentResource {
@@ -45,7 +51,7 @@ describe("createUrn", () => {
     after(() => {
         runtime._setProject(undefined);
         runtime._setStack(undefined);
-    })
+    });
 
     it("handles name and type", async () => {
         const urn = await createUrn("n", "t").promise();
@@ -80,7 +86,7 @@ describe("allAliases", () => {
     after(() => {
         runtime._setProject(undefined);
         runtime._setStack(undefined);
-    })
+    });
 
     const testCases = [
         {
@@ -157,7 +163,9 @@ describe("allAliases", () => {
 describe("DependencyProviderResource", () => {
     describe("getPackage", () => {
         it("returns the expected package", () => {
-            const res = new DependencyProviderResource("urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0");
+            const res = new DependencyProviderResource(
+                "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0",
+            );
             assert.strictEqual(res.getPackage(), "aws");
         });
     });
@@ -187,8 +195,8 @@ describe("ComponentResource", () => {
         const component = new MyResource("comp", { providers: [provider] });
         const custom = new MyCustomResource("custom", { parent: component });
         assert.strictEqual(custom.__prov, provider);
-    })
-})
+    });
+});
 
 class MyProvider extends ProviderResource {
     constructor(name: string) {
@@ -215,15 +223,20 @@ describe("parent and dependsOn are the same 12032", () => {
 
     // https://github.com/pulumi/pulumi/issues/12161
     it("runs without error", async () => {
-        const parent = new ComponentResource("pkg:index:first", "first")
-        const child = new ComponentResource("pkg:index:second", "second", {}, {
-            parent,
-            dependsOn: parent,
-        });
+        const parent = new ComponentResource("pkg:index:first", "first");
+        const child = new ComponentResource(
+            "pkg:index:second",
+            "second",
+            {},
+            {
+                parent,
+                dependsOn: parent,
+            },
+        );
 
         // This would result in warnings about leaked promises before the fix.
         new MyCustomResource("myresource", {
             parent: child,
         });
     });
-})
+});

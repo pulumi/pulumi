@@ -19,12 +19,12 @@
  * configEnvKey is the environment variable key that the language plugin uses to set configuration values.
  */
 
-const config: {[key: string]: string} = {};
+const config: { [key: string]: string } = {};
 
 /**
  * allConfig returns a copy of the full config map.
  */
-export function allConfig(): {[key: string]: string} {
+export function allConfig(): { [key: string]: string } {
     return Object.assign({}, config);
 }
 

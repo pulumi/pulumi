@@ -35,7 +35,7 @@ let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
     if (!programRunning && !loggedErrors.has(err)) {
-        log.error(err.stack || err.message || ("" + err));
+        log.error(err.stack || err.message || "" + err);
         // dedupe errors that we're reporting when the program is not running
         loggedErrors.add(err);
     }
@@ -115,9 +115,9 @@ function main(args: string[]): void {
     // See usage above for the intended usage of this program, including flags and required args.
     const argv: minimist.ParsedArgs = minimist(args, {
         // eslint-disable-next-line id-blacklist
-        boolean: [ "dry-run", "query-mode" ],
+        boolean: ["dry-run", "query-mode"],
         // eslint-disable-next-line id-blacklist
-        string: [ "organization", "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing" ],
+        string: ["organization", "project", "stack", "parallel", "pwd", "monitor", "engine", "tracing"],
         unknown: (arg: string) => {
             return true;
         },
@@ -128,7 +128,8 @@ function main(args: string[]): void {
     if (argv["parallel"]) {
         if (isNaN(parseInt(argv["parallel"], 10))) {
             return printErrorUsageAndExit(
-                `error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`);
+                `error: --parallel flag must specify a number: ${argv["parallel"]} is not a number`,
+            );
         }
     }
 
@@ -161,9 +162,10 @@ function main(args: string[]): void {
     v8Hooks.isInitializedAsync().then(() => {
         const promise: Promise<void> = require("./run").run(
             argv,
-            /*programStarted:   */ () => programRunning = true,
+            /*programStarted:   */ () => (programRunning = true),
             /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
-            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err));
+            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
+        );
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.
@@ -171,7 +173,9 @@ function main(args: string[]): void {
         // Note: we only do this in the 'resolved' arg of '.then' (not the 'rejected' arg).  If the users code throws
         // an exception, this promise will get rejected, and we don't want to touch or otherwise intercept the exception
         // or change the programRunning state here at all.
-        promise.then(() => { programRunning = false; });
+        promise.then(() => {
+            programRunning = false;
+        });
     });
 }
 

@@ -86,13 +86,13 @@ export interface CapturedVariables {
 // These values have a dual meaning.  They mean one thing at deployment time and one thing
 // at cloud-execution time.  By **not** capturing-by-value we take the view that the user
 // wants the cloud-execution time view of things.
-const nodeModuleGlobals: {[key: string]: boolean} = {
-    "__dirname": true,
-    "__filename": true,
+const nodeModuleGlobals: { [key: string]: boolean } = {
+    __dirname: true,
+    __filename: true,
     // We definitely should not try to capture/serialize 'require'.  Not only will it bottom
     // out as a native function, but it is definitely something the user intends to run
     // against the right module environment at cloud-execution time and not deployment time.
-    "require": true,
+    require: true,
 };
 
 // Gets the text of the provided function (using .toString()) and massages it so that it is a legal
@@ -181,22 +181,29 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
             return [`the class could not be parsed: ${firstDiagnostic}`, <any>undefined];
         }
 
-        const classDecl = <ts.ClassDeclaration>file!.statements.find(x => ts.isClassDeclaration(x));
+        const classDecl = <ts.ClassDeclaration>file!.statements.find((x) => ts.isClassDeclaration(x));
         if (!classDecl) {
             return [`the class form was not understood:\n${funcString}`, <any>undefined];
         }
 
-        const constructor = <ts.ConstructorDeclaration>classDecl.members.find(m => ts.isConstructorDeclaration(m));
+        const constructor = <ts.ConstructorDeclaration>classDecl.members.find((m) => ts.isConstructorDeclaration(m));
         if (!constructor) {
             // class without explicit constructor.
-            const isSubClass = classDecl.heritageClauses && classDecl.heritageClauses.some(
-                c => c.token === ts.SyntaxKind.ExtendsKeyword);
+            const isSubClass =
+                classDecl.heritageClauses &&
+                classDecl.heritageClauses.some((c) => c.token === ts.SyntaxKind.ExtendsKeyword);
             return isSubClass
-                ? makeFunctionDeclaration("constructor() { super(); }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false)
+                ? makeFunctionDeclaration(
+                      "constructor() { super(); }",
+                      /*isAsync:*/ false,
+                      /*isFunctionDeclaration:*/ false,
+                  )
                 : makeFunctionDeclaration("constructor() { }", /*isAsync:*/ false, /*isFunctionDeclaration:*/ false);
         }
 
-        const constructorCode = funcString.substring(constructor.getStart(file, /*includeJsDocComment*/ false), constructor.end).trim();
+        const constructorCode = funcString
+            .substring(constructor.getStart(file, /*includeJsDocComment*/ false), constructor.end)
+            .trim();
         return makeFunctionDeclaration(constructorCode, /*isAsync:*/ false, /*isFunctionDeclaration: */ false);
     }
 
@@ -234,13 +241,14 @@ function tryParseAsArrowFunction(toParse: string): boolean {
     }
 
     const firstStatement = file.statements[0];
-    return ts.isExpressionStatement(firstStatement) &&
-           ts.isArrowFunction(firstStatement.expression);
+    return ts.isExpressionStatement(firstStatement) && ts.isArrowFunction(firstStatement.expression);
 }
 
 function makeFunctionDeclaration(
-    v: string, isAsync: boolean, isFunctionDeclaration: boolean): [string, ParsedFunctionCode] {
-
+    v: string,
+    isAsync: boolean,
+    isFunctionDeclaration: boolean,
+): [string, ParsedFunctionCode] {
     let prefix = isAsync ? "async " : "";
     prefix += "function ";
 
@@ -258,27 +266,35 @@ function makeFunctionDeclaration(
 
     if (isComputed(v, openParenIndex)) {
         v = v.slice(openParenIndex);
-        return ["", {
-            funcExprWithoutName: prefix + v,
-            funcExprWithName: prefix + "__computed" + v,
-            functionDeclarationName: undefined,
-            isArrowFunction: false,
-        }];
+        return [
+            "",
+            {
+                funcExprWithoutName: prefix + v,
+                funcExprWithName: prefix + "__computed" + v,
+                functionDeclarationName: undefined,
+                isArrowFunction: false,
+            },
+        ];
     }
 
     const nameChunk = v.slice(0, openParenIndex);
     const funcName = utils.isLegalMemberName(nameChunk)
-        ? utils.isLegalFunctionName(nameChunk) ? nameChunk : "/*" + nameChunk + "*/"
+        ? utils.isLegalFunctionName(nameChunk)
+            ? nameChunk
+            : "/*" + nameChunk + "*/"
         : "";
     const commentedName = utils.isLegalMemberName(nameChunk) ? "/*" + nameChunk + "*/" : "";
     v = v.slice(openParenIndex).trimLeft();
 
-    return ["", {
-        funcExprWithoutName: prefix + commentedName + v,
-        funcExprWithName: prefix + funcName + v,
-        functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
-        isArrowFunction: false,
-    }];
+    return [
+        "",
+        {
+            funcExprWithoutName: prefix + commentedName + v,
+            funcExprWithName: prefix + funcName + v,
+            functionDeclarationName: isFunctionDeclaration ? nameChunk : undefined,
+            isArrowFunction: false,
+        },
+    ];
 }
 
 function isComputed(v: string, openParenIndex: number) {
@@ -313,8 +329,7 @@ function createSourceFile(serializedFunction: ParsedFunctionCode): [string, ts.S
 }
 
 function tryCreateSourceFile(toParse: string): [ts.SourceFile | undefined, string | undefined] {
-    const file = ts.createSourceFile(
-        "", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
+    const file = ts.createSourceFile("", toParse, ts.ScriptTarget.Latest, /*setParentNodes:*/ true, ts.ScriptKind.TS);
 
     const diagnostics: ts.Diagnostic[] = (<any>file).parseDiagnostics;
     if (diagnostics.length) {
@@ -338,18 +353,18 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
         }
 
         switch (node.kind) {
-        case ts.SyntaxKind.SuperKeyword:
-        case ts.SyntaxKind.ThisKeyword:
-            usesNonLexicalThis = true;
-            break;
+            case ts.SyntaxKind.SuperKeyword:
+            case ts.SyntaxKind.ThisKeyword:
+                usesNonLexicalThis = true;
+                break;
 
-        case ts.SyntaxKind.CallExpression:
-            return visitCallExpression(<ts.CallExpression>node);
+            case ts.SyntaxKind.CallExpression:
+                return visitCallExpression(<ts.CallExpression>node);
 
-        case ts.SyntaxKind.MethodDeclaration:
-        case ts.SyntaxKind.FunctionDeclaration:
-        case ts.SyntaxKind.FunctionExpression:
-            return visitBaseFunction(<ts.FunctionLikeDeclarationBase>node);
+            case ts.SyntaxKind.MethodDeclaration:
+            case ts.SyntaxKind.FunctionDeclaration:
+            case ts.SyntaxKind.FunctionExpression:
+                return visitBaseFunction(<ts.FunctionLikeDeclarationBase>node);
 
             // Note: it is intentional that we ignore ArrowFunction.  If we use 'this' inside of it,
             // then that should be considered a use of the non-lexical-this from an outer function.
@@ -357,8 +372,8 @@ function computeUsesNonLexicalThis(file: ts.SourceFile): boolean {
             //          function f() { var v = () => console.log(this) }
             //
             // case ts.SyntaxKind.ArrowFunction:
-        default:
-            break;
+            default:
+                break;
         }
 
         ts.forEachChild(node, walk);
@@ -431,8 +446,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     for (const key of required.keys()) {
         if (!isBuiltIn(key)) {
-            result.required.set(key, required.get(key)!.concat(
-                optional.has(key) ? optional.get(key)! : []));
+            result.required.set(key, required.get(key)!.concat(optional.has(key) ? optional.get(key)! : []));
         }
     }
 
@@ -494,47 +508,48 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
 
         switch (node.kind) {
-        case ts.SyntaxKind.Identifier:
-            return visitIdentifier(<ts.Identifier>node);
-        case ts.SyntaxKind.ThisKeyword:
-            return visitThisExpression(<ts.ThisExpression>node);
-        case ts.SyntaxKind.Block:
-            return visitBlockStatement(<ts.Block>node);
-        case ts.SyntaxKind.CallExpression:
-            return visitCallExpression(<ts.CallExpression>node);
-        case ts.SyntaxKind.CatchClause:
-            return visitCatchClause(<ts.CatchClause>node);
-        case ts.SyntaxKind.MethodDeclaration:
-            return visitMethodDeclaration(<ts.MethodDeclaration>node);
-        case ts.SyntaxKind.MetaProperty:
-            // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
-            // capture anything.
-            return;
-        case ts.SyntaxKind.PropertyAssignment:
-            return visitPropertyAssignment(<ts.PropertyAssignment>node);
-        case ts.SyntaxKind.PropertyAccessExpression:
-            return visitPropertyAccessExpression(<ts.PropertyAccessExpression>node);
-        case ts.SyntaxKind.FunctionDeclaration:
-        case ts.SyntaxKind.FunctionExpression:
-            return visitFunctionDeclarationOrExpression(<ts.FunctionDeclaration>node);
-        case ts.SyntaxKind.ArrowFunction:
-            return visitBaseFunction(<ts.ArrowFunction>node, /*isArrowFunction:*/true, /*name:*/ undefined);
-        case ts.SyntaxKind.VariableDeclaration:
-            return visitVariableDeclaration(<ts.VariableDeclaration>node);
-        default:
-            break;
+            case ts.SyntaxKind.Identifier:
+                return visitIdentifier(<ts.Identifier>node);
+            case ts.SyntaxKind.ThisKeyword:
+                return visitThisExpression(<ts.ThisExpression>node);
+            case ts.SyntaxKind.Block:
+                return visitBlockStatement(<ts.Block>node);
+            case ts.SyntaxKind.CallExpression:
+                return visitCallExpression(<ts.CallExpression>node);
+            case ts.SyntaxKind.CatchClause:
+                return visitCatchClause(<ts.CatchClause>node);
+            case ts.SyntaxKind.MethodDeclaration:
+                return visitMethodDeclaration(<ts.MethodDeclaration>node);
+            case ts.SyntaxKind.MetaProperty:
+                // don't walk down an es6 metaproperty (i.e. "new.target").  It doesn't
+                // capture anything.
+                return;
+            case ts.SyntaxKind.PropertyAssignment:
+                return visitPropertyAssignment(<ts.PropertyAssignment>node);
+            case ts.SyntaxKind.PropertyAccessExpression:
+                return visitPropertyAccessExpression(<ts.PropertyAccessExpression>node);
+            case ts.SyntaxKind.FunctionDeclaration:
+            case ts.SyntaxKind.FunctionExpression:
+                return visitFunctionDeclarationOrExpression(<ts.FunctionDeclaration>node);
+            case ts.SyntaxKind.ArrowFunction:
+                return visitBaseFunction(<ts.ArrowFunction>node, /*isArrowFunction:*/ true, /*name:*/ undefined);
+            case ts.SyntaxKind.VariableDeclaration:
+                return visitVariableDeclaration(<ts.VariableDeclaration>node);
+            default:
+                break;
         }
 
         ts.forEachChild(node, walk);
     }
 
     function visitThisExpression(node: ts.ThisExpression): void {
-        required.set(
-            "this", combineProperties(required.get("this"), determineCapturedPropertyChain(node)));
+        required.set("this", combineProperties(required.get("this"), determineCapturedPropertyChain(node)));
     }
 
-    function combineProperties(existing: CapturedPropertyChain[] | undefined,
-                               current: CapturedPropertyChain | undefined) {
+    function combineProperties(
+        existing: CapturedPropertyChain[] | undefined,
+        current: CapturedPropertyChain | undefined,
+    ) {
         if (existing && existing.length === 0) {
             // We already want to capture everything.  Keep things that way.
             return existing;
@@ -556,7 +571,9 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
     // Finds nodes of the form `(...expr...).PropName` or `(...expr...)["PropName"]`
     // For element access expressions, the argument must be a string literal.
-    function isPropertyOrElementAccessExpression(node: ts.Node): node is (ts.PropertyAccessExpression | ts.ElementAccessExpression) {
+    function isPropertyOrElementAccessExpression(
+        node: ts.Node,
+    ): node is ts.PropertyAccessExpression | ts.ElementAccessExpression {
         if (ts.isPropertyAccessExpression(node)) {
             return true;
         }
@@ -573,11 +590,12 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         // Walk up a sequence of property-access'es, recording the names we hit, until we hit
         // something that isn't a property-access.
-        while (node &&
-               node.parent &&
-               isPropertyOrElementAccessExpression(node.parent) &&
-               node.parent.expression === node) {
-
+        while (
+            node &&
+            node.parent &&
+            isPropertyOrElementAccessExpression(node.parent) &&
+            node.parent.expression === node
+        ) {
             if (!infos) {
                 infos = [];
             }
@@ -588,9 +606,10 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
                 ? propOrElementAccess.name.text
                 : (<ts.StringLiteral>propOrElementAccess.argumentExpression).text;
 
-            const invoked = propOrElementAccess.parent !== undefined &&
-                            ts.isCallExpression(propOrElementAccess.parent) &&
-                            propOrElementAccess.parent.expression === propOrElementAccess;
+            const invoked =
+                propOrElementAccess.parent !== undefined &&
+                ts.isCallExpression(propOrElementAccess.parent) &&
+                propOrElementAccess.parent.expression === propOrElementAccess;
 
             // Keep track if this name was invoked.  If so, we'll have to analyze it later
             // to see if it captured 'this'
@@ -624,8 +643,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         scopes.pop();
     }
 
-    function visitFunctionDeclarationOrExpression(
-        node: ts.FunctionDeclaration | ts.FunctionExpression): void {
+    function visitFunctionDeclarationOrExpression(node: ts.FunctionDeclaration | ts.FunctionExpression): void {
         // A function declaration is special in one way: its identifier is added to the current function's
         // var-style variables, so that its name is in scope no matter the order of surrounding references to it.
 
@@ -633,13 +651,14 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
             functionVars.add(node.name.text);
         }
 
-        visitBaseFunction(node, /*isArrowFunction:*/false, node.name);
+        visitBaseFunction(node, /*isArrowFunction:*/ false, node.name);
     }
 
     function visitBaseFunction(
         node: ts.FunctionLikeDeclarationBase,
         isArrowFunction: boolean,
-        functionName: ts.Identifier | undefined): void {
+        functionName: ts.Identifier | undefined,
+    ): void {
         // First, push new free vars list, scope, and function vars
         const savedRequired = required;
         const savedOptional = optional;
@@ -699,8 +718,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
             if (sourcePropInfos.length === 0) {
                 // we want to capture everything.  Make sure that's reflected in the target.
                 targetPropInfos = [];
-            }
-            else {
+            } else {
                 // we want to capture a subet of properties.  merge that subset into whatever
                 // subset we've recorded so far.
                 for (const sourceInfo of sourcePropInfos) {
@@ -746,9 +764,10 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         if (isAwaiterCall(node)) {
             return visitBaseFunction(
-                <ts.FunctionLikeDeclarationBase><ts.FunctionExpression>node.arguments[3],
+                <ts.FunctionLikeDeclarationBase>(<ts.FunctionExpression>node.arguments[3]),
                 /*isArrowFunction*/ true,
-                /*name*/ undefined);
+                /*name*/ undefined,
+            );
         }
 
         // For normal calls, just walk all arguments normally.
@@ -794,28 +813,34 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         }
 
         switch (n.kind) {
-        case ts.SyntaxKind.Identifier:
-            return visitVariableDeclarationIdentifier(<ts.Identifier>n, isVar);
-        case ts.SyntaxKind.ObjectBindingPattern:
-        case ts.SyntaxKind.ArrayBindingPattern:
-            const bindingPattern = <ts.BindingPattern>n;
-            for (const element of bindingPattern.elements) {
-                if (ts.isBindingElement(element)) {
-                    visitBindingElement(element, isVar);
+            case ts.SyntaxKind.Identifier:
+                return visitVariableDeclarationIdentifier(<ts.Identifier>n, isVar);
+            case ts.SyntaxKind.ObjectBindingPattern:
+            case ts.SyntaxKind.ArrayBindingPattern:
+                const bindingPattern = <ts.BindingPattern>n;
+                for (const element of bindingPattern.elements) {
+                    if (ts.isBindingElement(element)) {
+                        visitBindingElement(element, isVar);
+                    }
                 }
-            }
 
-            return;
-        default:
-            return;
+                return;
+            default:
+                return;
         }
     }
 
     function visitVariableDeclaration(node: ts.VariableDeclaration): void {
         // eslint-disable-next-line max-len
-        const isLet = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Let) !== 0;
+        const isLet =
+            node.parent !== undefined &&
+            ts.isVariableDeclarationList(node.parent) &&
+            (node.parent.flags & ts.NodeFlags.Let) !== 0;
         // eslint-disable-next-line max-len
-        const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
+        const isConst =
+            node.parent !== undefined &&
+            ts.isVariableDeclarationList(node.parent) &&
+            (node.parent.flags & ts.NodeFlags.Const) !== 0;
         const isVar = !isLet && !isConst;
 
         // Walk the declaration's `name` property (which may be an Identifier or Pattern) placing

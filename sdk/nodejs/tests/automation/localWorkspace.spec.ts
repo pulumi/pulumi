@@ -180,16 +180,16 @@ describe("LocalWorkspace", () => {
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
-        await stack.setConfig("key", {value: "-value"});
-        await stack.setConfig("secret-key", {value: "-value", secret: true});
+        await stack.setConfig("key", { value: "-value" });
+        await stack.setConfig("secret-key", { value: "-value", secret: true });
         const values = await stack.getAllConfig();
         assert.strictEqual(values["config_flag_like:key"].value, "-value");
         assert.strictEqual(values["config_flag_like:key"].secret, false);
         assert.strictEqual(values["config_flag_like:secret-key"].value, "-value");
         assert.strictEqual(values["config_flag_like:secret-key"].secret, true);
         await stack.setAllConfig({
-            "key": {value: "-value2"},
-            "secret-key": {value: "-value2", secret: true},
+            key: { value: "-value2" },
+            "secret-key": { value: "-value2", secret: true },
         });
         const values2 = await stack.getAllConfig();
         assert.strictEqual(values2["config_flag_like:key"].value, "-value2");
@@ -208,19 +208,19 @@ describe("LocalWorkspace", () => {
         const allConfig = await stack.getAllConfig();
         const outerVal = allConfig["nested_config:outer"];
         assert.strictEqual(outerVal.secret, true);
-        assert.strictEqual(outerVal.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}");
+        assert.strictEqual(outerVal.value, '{"inner":"my_secret","other":"something_else"}');
 
         const listVal = allConfig["nested_config:myList"];
         assert.strictEqual(listVal.secret, false);
-        assert.strictEqual(listVal.value, "[\"one\",\"two\",\"three\"]");
+        assert.strictEqual(listVal.value, '["one","two","three"]');
 
         const outer = await stack.getConfig("outer");
         assert.strictEqual(outer.secret, true);
-        assert.strictEqual(outer.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}");
+        assert.strictEqual(outer.value, '{"inner":"my_secret","other":"something_else"}');
 
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
-        assert.strictEqual(list.value, "[\"one\",\"two\",\"three\"]");
+        assert.strictEqual(list.value, '["one","two","three"]');
     });
     it(`can list stacks and currently selected stack`, async () => {
         const projectName = `node_list_test${getTestSuffix()}`;
@@ -268,7 +268,7 @@ describe("LocalWorkspace", () => {
         const history = await stack.history();
         assert.strictEqual(history.length, 0);
         const info = await stack.info();
-        assert.strictEqual(typeof (info), "undefined");
+        assert.strictEqual(typeof info, "undefined");
         await ws.removeStack(stackName);
     });
     // TODO[pulumi/pulumi#8220] understand why this test was flaky
@@ -278,8 +278,8 @@ describe("LocalWorkspace", () => {
         const stack = await LocalWorkspace.createStack({ stackName, workDir });
 
         const config: ConfigMap = {
-            "bar": { value: "abc" },
-            "buzz": { value: "secret", secret: true },
+            bar: { value: "abc" },
+            buzz: { value: "secret", secret: true },
         };
         await stack.setAllConfig(config);
 
@@ -354,8 +354,8 @@ describe("LocalWorkspace", () => {
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
-            "bar": { value: "abc" },
-            "buzz": { value: "secret", secret: true },
+            bar: { value: "abc" },
+            buzz: { value: "secret", secret: true },
         };
         await stack.setAllConfig(stackConfig);
 
@@ -387,7 +387,7 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     });
-    it(`refreshes before preview`, async() => {
+    it(`refreshes before preview`, async () => {
         // We create a simple program, and scan the output for an indication
         // that adding refresh: true will perfrom a refresh operation.
         const program = async () => {
@@ -452,9 +452,13 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackNames = Array.from(Array(10).keys()).map(_ => fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`));
-        const stacks = await Promise.all(stackNames.map(async stackName => LocalWorkspace.createStack({ stackName, projectName, program })));
-        await stacks.map(stack => stack.workspace.removeStack(stack.name));
+        const stackNames = Array.from(Array(10).keys()).map((_) =>
+            fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
+        );
+        const stacks = await Promise.all(
+            stackNames.map(async (stackName) => LocalWorkspace.createStack({ stackName, projectName, program })),
+        );
+        await stacks.map((stack) => stack.workspace.removeStack(stack.name));
     });
     it(`runs through the stack lifecycle with multiple inline programs in parallel`, async () => {
         const program = async () => {
@@ -466,14 +470,16 @@ describe("LocalWorkspace", () => {
             };
         };
         const projectName = "inline_node";
-        const stackNames = Array.from(Array(10).keys()).map(_ => fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`));
+        const stackNames = Array.from(Array(10).keys()).map((_) =>
+            fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`),
+        );
 
         const testStackLifetime = async (stackName: string) => {
             const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
             const stackConfig: ConfigMap = {
-                "bar": { value: "abc" },
-                "buzz": { value: "secret", secret: true },
+                bar: { value: "abc" },
+                buzz: { value: "secret", secret: true },
             };
             await stack.setAllConfig(stackConfig);
 
@@ -506,7 +512,7 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stack.name);
         };
 
-        await Promise.all(stackNames.map(async stackName => await testStackLifetime(stackName)));
+        await Promise.all(stackNames.map(async (stackName) => await testStackLifetime(stackName)));
     });
     it(`handles events`, async () => {
         const program = async () => {
@@ -522,8 +528,8 @@ describe("LocalWorkspace", () => {
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
-            "bar": { value: "abc" },
-            "buzz": { value: "secret", secret: true },
+            bar: { value: "abc" },
+            buzz: { value: "secret", secret: true },
         };
         await stack.setAllConfig(stackConfig);
 
@@ -619,38 +625,38 @@ describe("LocalWorkspace", () => {
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
-            "plainstr1": { value: "1" },
-            "plainstr2": { value: "2" },
-            "plainstr3": { value: "3" },
-            "plainstr4": { value: "4" },
-            "plainbool1": { value: "true" },
-            "plainbool2": { value: "true" },
-            "plainbool3": { value: "true" },
-            "plainbool4": { value: "true" },
-            "plainnum1": { value: "1" },
-            "plainnum2": { value: "2" },
-            "plainnum3": { value: "3" },
-            "plainnum4": { value: "4" },
-            "plainobj1": { value: "{}" },
-            "plainobj2": { value: "{}" },
-            "plainobj3": { value: "{}" },
-            "plainobj4": { value: "{}" },
-            "str1": { value: "1", secret: true },
-            "str2": { value: "2", secret: true },
-            "str3": { value: "3", secret: true },
-            "str4": { value: "4", secret: true },
-            "bool1": { value: "true", secret: true },
-            "bool2": { value: "true", secret: true },
-            "bool3": { value: "true", secret: true },
-            "bool4": { value: "true", secret: true },
-            "num1": { value: "1", secret: true },
-            "num2": { value: "2", secret: true },
-            "num3": { value: "3", secret: true },
-            "num4": { value: "4", secret: true },
-            "obj1": { value: "{}", secret: true },
-            "obj2": { value: "{}", secret: true },
-            "obj3": { value: "{}", secret: true },
-            "obj4": { value: "{}", secret: true },
+            plainstr1: { value: "1" },
+            plainstr2: { value: "2" },
+            plainstr3: { value: "3" },
+            plainstr4: { value: "4" },
+            plainbool1: { value: "true" },
+            plainbool2: { value: "true" },
+            plainbool3: { value: "true" },
+            plainbool4: { value: "true" },
+            plainnum1: { value: "1" },
+            plainnum2: { value: "2" },
+            plainnum3: { value: "3" },
+            plainnum4: { value: "4" },
+            plainobj1: { value: "{}" },
+            plainobj2: { value: "{}" },
+            plainobj3: { value: "{}" },
+            plainobj4: { value: "{}" },
+            str1: { value: "1", secret: true },
+            str2: { value: "2", secret: true },
+            str3: { value: "3", secret: true },
+            str4: { value: "4", secret: true },
+            bool1: { value: "true", secret: true },
+            bool2: { value: "true", secret: true },
+            bool3: { value: "true", secret: true },
+            bool4: { value: "true", secret: true },
+            num1: { value: "1", secret: true },
+            num2: { value: "2", secret: true },
+            num3: { value: "3", secret: true },
+            num4: { value: "4", secret: true },
+            obj1: { value: "{}", secret: true },
+            obj2: { value: "{}", secret: true },
+            obj3: { value: "{}", secret: true },
+            obj4: { value: "{}", secret: true },
         };
         await stack.setAllConfig(stackConfig);
 
@@ -713,8 +719,11 @@ describe("LocalWorkspace", () => {
             }
             for (const unexpected of unexpectedWarnings) {
                 for (const warning of warnings) {
-                    assert.strictEqual(warning.includes(unexpected), false,
-                        `Unexpected '${unexpected}' found in warning`);
+                    assert.strictEqual(
+                        warning.includes(unexpected),
+                        false,
+                        `Unexpected '${unexpected}' found in warning`,
+                    );
                 }
             }
         };
@@ -745,8 +754,8 @@ describe("LocalWorkspace", () => {
 
         try {
             await stack.setAllConfig({
-                "bar": { value: "abc" },
-                "buzz": { value: "secret", secret: true },
+                bar: { value: "abc" },
+                buzz: { value: "secret", secret: true },
             });
             await stack.up();
 
@@ -790,8 +799,8 @@ describe("LocalWorkspace", () => {
 
         try {
             await stack.setAllConfig({
-                "bar": { value: "abc" },
-                "buzz": { value: "secret", secret: true },
+                bar: { value: "abc" },
+                buzz: { value: "secret", secret: true },
             });
 
             const initialOutputs = await stack.outputs();
@@ -836,7 +845,6 @@ describe("LocalWorkspace", () => {
         await stack.workspace.removeStack(stackName);
     });
     it(`detects inline programs with side by side pulumi and throws an error`, async () => {
-
         const program = async () => {
             // clear pulumi/pulumi from require cache
             delete require.cache[require.resolve("../../runtime")];
@@ -876,7 +884,13 @@ describe("LocalWorkspace", () => {
         const projectName = "correct_project";
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
-            { stackName, projectName, program: async () => { return; } },
+            {
+                stackName,
+                projectName,
+                program: async () => {
+                    return;
+                },
+            },
             { workDir: upath.joinSafe(__dirname, "data", "correct_project") },
         );
         const projectSettings = await stack.workspace.projectSettings();
@@ -897,7 +911,7 @@ describe("LocalWorkspace", () => {
                 backend: { url: "file://~" },
             },
             envVars: {
-                "PULUMI_CONFIG_PASSPHRASE": "test",
+                PULUMI_CONFIG_PASSPHRASE: "test",
             },
         });
         for (let i = 0; i < stacks.length; i++) {
@@ -906,11 +920,13 @@ describe("LocalWorkspace", () => {
         for (let i = 0; i < stacks.length; i++) {
             const x = i;
             const s = stacks[i];
-            dones.push((async () => {
-                for (let j = 0; j < 20; j++) {
-                    await ws.setConfig(s, "var-" + j, { value: ((x * 20) + j).toString() });
-                }
-            })());
+            dones.push(
+                (async () => {
+                    for (let j = 0; j < 20; j++) {
+                        await ws.setConfig(s, "var-" + j, { value: (x * 20 + j).toString() });
+                    }
+                })(),
+            );
         }
         await Promise.all(dones);
 
@@ -1008,7 +1024,7 @@ describe(`checkVersionIsValid`, () => {
     ];
     const minVersion = new semver.SemVer("v2.21.1");
 
-    versionTests.forEach(test => {
+    versionTests.forEach((test) => {
         it(`validates ${test.name} (${test.currentVersion})`, () => {
             const validate = () => parseAndValidatePulumiVersion(minVersion, test.currentVersion, test.optOut);
             if (test.expectError) {

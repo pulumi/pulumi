@@ -5,19 +5,19 @@ let pulumi = require("../../../../../");
 let semver = require("semver");
 
 class Provider extends pulumi.ProviderResource {
-	constructor(name, opts) {
-		super("test", name, {}, opts);
-	}
+    constructor(name, opts) {
+        super("test", name, {}, opts);
+    }
 }
 
 class Resource extends pulumi.CustomResource {
-	constructor(name, opts) {
-		super("test:index:Resource", name, {}, opts)
-	}
+    constructor(name, opts) {
+        super("test:index:Resource", name, {}, opts);
+    }
 }
 
 const provider = new Provider("p");
-const parent = new Resource("r", { provider })
+const parent = new Resource("r", { provider });
 
 let args = {
     a: "hello",
@@ -29,5 +29,5 @@ let args = {
 
 let result2 = pulumi.runtime.invoke("test:index:echo", args, { parent });
 result2.then((v) => {
-	assert.deepStrictEqual(v, args);
+    assert.deepStrictEqual(v, args);
 });

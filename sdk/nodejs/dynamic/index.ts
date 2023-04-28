@@ -17,7 +17,6 @@ import * as resource from "../resource";
 import * as settings from "../runtime/settings";
 import * as serializeClosure from "../runtime/closure/serializeClosure";
 
-
 /**
  * CheckResult represents the results of a call to `ResourceProvider.check`.
  */
@@ -178,11 +177,11 @@ function serializeProvider(provider: ResourceProvider): Promise<string> {
         if (cachedProvider) {
             result = cachedProvider;
         } else {
-            result = sc.serializeFunction(() => provider).then(sf => sf.text);
+            result = sc.serializeFunction(() => provider).then((sf) => sf.text);
             providerCache.set(provider, result);
         }
     } else {
-        result = sc.serializeFunction(() => provider).then(sf => sf.text);
+        result = sc.serializeFunction(() => provider).then((sf) => sf.text);
     }
     return result;
 }
@@ -202,8 +201,14 @@ export abstract class Resource extends resource.CustomResource {
      * @param module The module of the resource.
      * @param type The type of the resource.
      */
-    constructor(provider: ResourceProvider, name: string, props: Inputs,
-                opts?: resource.CustomResourceOptions, module?: string, type: string = "Resource") {
+    constructor(
+        provider: ResourceProvider,
+        name: string,
+        props: Inputs,
+        opts?: resource.CustomResourceOptions,
+        module?: string,
+        type: string = "Resource",
+    ) {
         const providerKey: string = "__provider";
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");

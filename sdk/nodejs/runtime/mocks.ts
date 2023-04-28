@@ -99,8 +99,7 @@ export interface Mocks {
 export class MockMonitor {
     readonly resources = new Map<string, { urn: string; id: string | undefined; state: any }>();
 
-    constructor(readonly mocks: Mocks) {
-    }
+    constructor(readonly mocks: Mocks) {}
 
     private newUrn(parent: string, type: string, name: string): string {
         if (parent) {

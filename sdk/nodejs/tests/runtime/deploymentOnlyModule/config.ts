@@ -62,4 +62,3 @@ export class Config {
         return this.name + ":" + key;
     }
 }
-

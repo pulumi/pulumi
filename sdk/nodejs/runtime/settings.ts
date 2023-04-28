@@ -24,7 +24,6 @@ const engproto = require("../proto/engine_pb.js");
 const resrpc = require("../proto/resource_grpc_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
-
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
 export const maxRPCMessageSize: number = 1024 * 1024 * 400;
@@ -63,9 +62,14 @@ let engine: any | undefined;
 // reset options resets nodejs runtime global state (such as rpc clients),
 // and sets nodejs runtime option env vars to the specified values.
 export function resetOptions(
-    project: string, stack: string, parallel: number, engineAddr: string,
-    monitorAddr: string, preview: boolean, organization: string) {
-
+    project: string,
+    stack: string,
+    parallel: number,
+    engineAddr: string,
+    monitorAddr: string,
+    preview: boolean,
+    organization: string,
+) {
     const { settings } = getStore();
 
     monitor = undefined;
@@ -74,7 +78,6 @@ export function resetOptions(
     settings.engine = undefined;
     settings.rpcDone = Promise.resolve();
     settings.featureSupport = {};
-
 
     // reset node specific environment variables in the process
     settings.options.project = project;
@@ -87,7 +90,13 @@ export function resetOptions(
     settings.options.organization = organization;
 }
 
-export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean, organization?: string) {
+export function setMockOptions(
+    mockMonitor: any,
+    project?: string,
+    stack?: string,
+    preview?: boolean,
+    organization?: string,
+) {
     const opts = options();
     resetOptions(
         project || opts.project || "project",
@@ -116,7 +125,6 @@ export function _setIsDryRun(val: boolean) {
 export function isDryRun(): boolean {
     return options().dryRun === true;
 }
-
 
 /** @internal Used only for testing purposes */
 export function _setFeatureSupport(key: string, val: boolean) {
@@ -207,7 +215,6 @@ export function _setStack(val: string | undefined) {
     return settings.options.stack;
 }
 
-
 /**
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
  */
@@ -226,11 +233,7 @@ export function getMonitor(): Object | undefined {
         if (monitor === undefined) {
             if (addr) {
                 // Lazily initialize the RPC connection to the monitor.
-                monitor = new resrpc.ResourceMonitorClient(
-                    addr,
-                    grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
-                );
+                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
                 settings.options.monitorAddr = addr;
             }
         }
@@ -271,7 +274,6 @@ export function tryGetSyncInvokes(): SyncInvokes | undefined {
     return syncInvokes;
 }
 
-
 /**
  * hasEngine returns true if we are currently connected to an engine.
  */
@@ -289,11 +291,7 @@ export function getEngine(): Object | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                engine = new engrpc.EngineClient(
-                    addr,
-                    grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
-                );
+                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
             }
         }
         return engine;
@@ -302,11 +300,7 @@ export function getEngine(): Object | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                settings.engine = new engrpc.EngineClient(
-                    addr,
-                    grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
-                );
+                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
             }
         }
         return settings.engine;
@@ -385,8 +379,7 @@ export function disconnectSync(): void {
     if (monitor) {
         try {
             monitor.close();
-        }
-        catch (err) {
+        } catch (err) {
             // ignore.
         }
         monitor = null;
@@ -394,14 +387,12 @@ export function disconnectSync(): void {
     if (engine) {
         try {
             engine.close();
-        }
-        catch (err) {
+        } catch (err) {
             // ignore.
         }
         engine = null;
     }
 }
-
 
 /**
  * rpcKeepAlive registers a pending call to ensure that we don't prematurely disconnect from the server.  It returns
@@ -410,7 +401,7 @@ export function disconnectSync(): void {
 export function rpcKeepAlive(): () => void {
     const localStore = getStore();
     let done: (() => void) | undefined = undefined;
-    const donePromise = debuggablePromise(new Promise<void>(resolve => done = resolve), "rpcKeepAlive");
+    const donePromise = debuggablePromise(new Promise<void>((resolve) => (done = resolve)), "rpcKeepAlive");
     localStore.settings.rpcDone = localStore.settings.rpcDone.then(() => donePromise);
     return done!;
 }
@@ -558,7 +549,9 @@ function runSxSCheck() {
 
     // if we see a different identifier, another version of pulumi has been loaded and we should fail.
     if (!!envSxS && envSxS !== sxsRandomIdentifier) {
-        throw new Error("Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
-            "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.");
+        throw new Error(
+            "Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
+                "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.",
+        );
     }
 }

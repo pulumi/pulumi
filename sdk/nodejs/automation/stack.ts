@@ -99,29 +99,28 @@ export class Stack {
         this.workspace = workspace;
 
         switch (mode) {
-        case "create":
-            this.ready = workspace.createStack(name);
-            return this;
-        case "select":
-            this.ready = workspace.selectStack(name);
-            return this;
-        case "createOrSelect":
-            this.ready = workspace.selectStack(name).catch((err) => {
-                if (err instanceof StackNotFoundError) {
-                    return workspace.createStack(name);
-                }
-                throw err;
-            });
-            return this;
-        default:
-            throw new Error(`unexpected Stack creation mode: ${mode}`);
+            case "create":
+                this.ready = workspace.createStack(name);
+                return this;
+            case "select":
+                this.ready = workspace.selectStack(name);
+                return this;
+            case "createOrSelect":
+                this.ready = workspace.selectStack(name).catch((err) => {
+                    if (err instanceof StackNotFoundError) {
+                        return workspace.createStack(name);
+                    }
+                    throw err;
+                });
+                return this;
+            default:
+                throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 })
-            .on("tail_error", (err) => {
-                throw err;
-            });
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 }).on("tail_error", (err) => {
+            throw err;
+        });
         await eventLogTail.start();
         const lineSplitter = readline.createInterface({ input: eventLogTail });
         lineSplitter.on("line", (line) => {
@@ -204,7 +203,9 @@ Event: ${line}\n${e.toString()}`);
             applyGlobalOpts(opts, args);
         }
 
-        let onExit = (hasError: boolean) => { return; };
+        let onExit = (hasError: boolean) => {
+            return;
+        };
         let didError = false;
 
         if (program) {
@@ -334,7 +335,9 @@ Event: ${line}\n${e.toString()}`);
             applyGlobalOpts(opts, args);
         }
 
-        let onExit = (hasError: boolean) => { return; };
+        let onExit = (hasError: boolean) => {
+            return;
+        };
         let didError = false;
 
         if (program) {
@@ -389,7 +392,9 @@ Event: ${line}\n${e.toString()}`);
         }
 
         if (!summaryEvent) {
-            log.warn("Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.");
+            log.warn(
+                "Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.",
+            );
         }
 
         return {
@@ -673,7 +678,7 @@ Event: ${line}\n${e.toString()}`);
 
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
-            "PULUMI_DEBUG_COMMANDS": "true",
+            PULUMI_DEBUG_COMMANDS: "true",
         };
         if (this.isRemote) {
             envs["PULUMI_EXPERIMENTAL"] = "true";
@@ -774,21 +779,22 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
 /**
  * The granular CRUD operation performed on a particular resource during an update.
  */
-export type OpType = "same"
-| "create"
-| "update"
-| "delete"
-| "replace"
-| "create-replacement"
-| "delete-replaced"
-| "read"
-| "read-replacement"
-| "refresh"
-| "discard"
-| "discard-replaced"
-| "remove-pending-replace"
-| "import"
-| "import-replacement";
+export type OpType =
+    | "same"
+    | "create"
+    | "update"
+    | "delete"
+    | "replace"
+    | "create-replacement"
+    | "delete-replaced"
+    | "read"
+    | "read-replacement"
+    | "refresh"
+    | "discard"
+    | "discard-replaced"
+    | "remove-pending-replace"
+    | "import"
+    | "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.
@@ -969,12 +975,16 @@ const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     }
     if (logFile) {
         // remove the logfile
-        if(fs.rm) {
+        if (fs.rm) {
             // remove with Node JS 15.X+
-            fs.rm(path.dirname(logFile), { recursive: true }, () => { return; });
+            fs.rm(path.dirname(logFile), { recursive: true }, () => {
+                return;
+            });
         } else {
             // remove with Node JS 14.X
-            fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+            fs.rmdir(path.dirname(logFile), { recursive: true }, () => {
+                return;
+            });
         }
     }
 };

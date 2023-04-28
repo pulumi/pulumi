@@ -15,12 +15,24 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { all, concat, interpolate, isSecret, jsonParse, jsonStringify, Output, output, secret, unknown, unsecret } from "../output";
+import {
+    all,
+    concat,
+    interpolate,
+    isSecret,
+    jsonParse,
+    jsonStringify,
+    Output,
+    output,
+    secret,
+    unknown,
+    unsecret,
+} from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 
 interface Widget {
-    type: string;  // metric | text
+    type: string; // metric | text
     x?: number;
     y?: number;
     properties: Object;
@@ -34,8 +46,8 @@ function mustCompile(): Output<Widget> {
         type: "foo",
         properties: {
             whatever: 1,
-        }
-    })
+        },
+    });
 }
 
 // mockOutput returns a value that looks like an Output, but allows for greater control over its behavior. This can be
@@ -52,22 +64,40 @@ function mockOutput(isKnown: boolean | Promise<boolean>, value: any | Promise<an
         resources: () => new Set<Resource>(),
 
         apply(callback: any): any {
-            return mockOutput(isKnown, value.then(async (v: any) => {
-                if (!isKnown) {
-                    return undefined;
-                }
-                return callback(v);
-            }));
-        }
-    }
+            return mockOutput(
+                isKnown,
+                value.then(async (v: any) => {
+                    if (!isKnown) {
+                        return undefined;
+                    }
+                    return callback(v);
+                }),
+            );
+        },
+    };
 }
 
 describe("output", () => {
     it("propagates true isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set())));
+        const output1 = new Output(
+            new Set(),
+            Promise.resolve("outer"),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve(new Set()),
+        );
+        const output2 = output1.apply(
+            (v) =>
+                new Output(
+                    new Set(),
+                    Promise.resolve("inner"),
+                    Promise.resolve(true),
+                    Promise.resolve(false),
+                    Promise.resolve(new Set()),
+                ),
+        );
 
         const isKnown = await output2.isKnown;
         assert.strictEqual(isKnown, true);
@@ -79,8 +109,23 @@ describe("output", () => {
     it("propagates false isKnown bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set())));
+        const output1 = new Output(
+            new Set(),
+            Promise.resolve("outer"),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve(new Set()),
+        );
+        const output2 = output1.apply(
+            (v) =>
+                new Output(
+                    new Set(),
+                    Promise.resolve("inner"),
+                    Promise.resolve(false),
+                    Promise.resolve(false),
+                    Promise.resolve(new Set()),
+                ),
+        );
 
         const isKnown = await output2.isKnown;
         assert.strictEqual(isKnown, false);
@@ -92,29 +137,55 @@ describe("output", () => {
     it("can not await if isKnown is a rejected promise.", async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.reject(new Error("foo")), Promise.resolve(false), Promise.resolve(new Set())));
+        const output1 = new Output(
+            new Set(),
+            Promise.resolve("outer"),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve(new Set()),
+        );
+        const output2 = output1.apply(
+            (v) =>
+                new Output(
+                    new Set(),
+                    Promise.resolve("inner"),
+                    Promise.reject(new Error("foo")),
+                    Promise.resolve(false),
+                    Promise.resolve(new Set()),
+                ),
+        );
 
         try {
             const isKnown = await output2.isKnown;
             assert.fail("Should not reach here");
-        }
-        catch (err) {
-        }
+        } catch (err) {}
 
         try {
             const value = await output2.promise();
             assert.fail("Should not reach here");
-        }
-        catch (err) {
-        }
+        } catch (err) {}
     });
 
     it("propagates true isSecret bit from inner Output", async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())));
+        const output1 = new Output(
+            new Set(),
+            Promise.resolve("outer"),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve(new Set()),
+        );
+        const output2 = output1.apply(
+            (v) =>
+                new Output(
+                    new Set(),
+                    Promise.resolve("inner"),
+                    Promise.resolve(true),
+                    Promise.resolve(true),
+                    Promise.resolve(new Set()),
+                ),
+        );
 
         const isSecret = await output2.isSecret;
         assert.strictEqual(isSecret, true);
@@ -123,11 +194,26 @@ describe("output", () => {
         assert.strictEqual(value, "inner");
     });
 
-     it("retains true isSecret bit from outer Output", async () => {
+    it("retains true isSecret bit from outer Output", async () => {
         runtime._setIsDryRun(true);
 
-        const output1 = new Output(new Set(), Promise.resolve("outer"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
-        const output2 = output1.apply(v => new Output(new Set(), Promise.resolve("inner"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set())));
+        const output1 = new Output(
+            new Set(),
+            Promise.resolve("outer"),
+            Promise.resolve(true),
+            Promise.resolve(true),
+            Promise.resolve(new Set()),
+        );
+        const output2 = output1.apply(
+            (v) =>
+                new Output(
+                    new Set(),
+                    Promise.resolve("inner"),
+                    Promise.resolve(true),
+                    Promise.resolve(false),
+                    Promise.resolve(new Set()),
+                ),
+        );
 
         const isSecret = await output2.isSecret;
         assert.strictEqual(isSecret, true);
@@ -138,14 +224,20 @@ describe("output", () => {
 
     describe("apply", () => {
         function createOutput<T>(val: T, isKnown: boolean, isSecret: boolean = false): Output<T> {
-            return new Output<T>(new Set(), Promise.resolve(val), Promise.resolve(isKnown), Promise.resolve(isSecret), Promise.resolve(new Set()));
+            return new Output<T>(
+                new Set(),
+                Promise.resolve(val),
+                Promise.resolve(isKnown),
+                Promise.resolve(isSecret),
+                Promise.resolve(new Set()),
+            );
         }
 
         it("can run on known value during preview", async () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
@@ -155,7 +247,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -165,7 +257,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -175,7 +267,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
@@ -185,7 +277,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
@@ -195,7 +287,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
@@ -205,7 +297,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
@@ -215,7 +307,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), undefined);
@@ -225,7 +317,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -236,7 +328,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -247,7 +339,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -258,7 +350,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -269,7 +361,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -280,7 +372,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -291,7 +383,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -302,7 +394,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -313,7 +405,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", true, true));
+            const r = out.apply((v) => createOutput("inner", true, true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -324,7 +416,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", false, true));
+            const r = out.apply((v) => createOutput("inner", false, true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -335,7 +427,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", true, true));
+            const r = out.apply((v) => createOutput("inner", true, true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, false);
@@ -346,7 +438,7 @@ describe("output", () => {
             runtime._setIsDryRun(true);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", false, true));
+            const r = out.apply((v) => createOutput("inner", false, true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, false);
@@ -357,7 +449,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
@@ -367,7 +459,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -377,7 +469,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -387,7 +479,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
@@ -397,7 +489,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), 1);
@@ -407,7 +499,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -417,7 +509,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.promise(), "inner");
@@ -427,7 +519,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.promise(), "inner");
@@ -437,7 +529,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -448,7 +540,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -459,7 +551,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -470,7 +562,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -481,7 +573,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => v + 1);
+            const r = out.apply((v) => v + 1);
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -492,7 +584,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => Promise.resolve("inner"));
+            const r = out.apply((v) => Promise.resolve("inner"));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -503,7 +595,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => createOutput("inner", true));
+            const r = out.apply((v) => createOutput("inner", true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -514,7 +606,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false, true);
-            const r = out.apply(v => createOutput("inner", false));
+            const r = out.apply((v) => createOutput("inner", false));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -525,7 +617,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", true, true));
+            const r = out.apply((v) => createOutput("inner", true, true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -536,7 +628,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, true);
-            const r = out.apply(v => createOutput("inner", false, true));
+            const r = out.apply((v) => createOutput("inner", false, true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -547,7 +639,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", true, true));
+            const r = out.apply((v) => createOutput("inner", true, true));
 
             assert.strictEqual(await r.isKnown, true);
             assert.strictEqual(await r.isSecret, true);
@@ -558,7 +650,7 @@ describe("output", () => {
             runtime._setIsDryRun(false);
 
             const out = createOutput(0, false);
-            const r = out.apply(v => createOutput("inner", false, true));
+            const r = out.apply((v) => createOutput("inner", false, true));
 
             assert.strictEqual(await r.isKnown, false);
             assert.strictEqual(await r.isSecret, true);
@@ -572,21 +664,36 @@ describe("output", () => {
             const val2 = output2.promise();
             return new Output<T>(
                 new Set([...output1.resources(), ...output2.resources()]),
-                Promise.all([val1, val2])
-                       .then(([val1, val2]) => val1 || val2),
-                Promise.all([val1, output1.isKnown, output2.isKnown])
-                       .then(([val1, isKnown1, isKnown2]) => val1 ? isKnown1 : isKnown2),
-                Promise.all([val1, output1.isSecret, output2.isSecret])
-                       .then(([val1, isSecret1, isSecret2]) => val1 ? isSecret1 : isSecret2),
-                Promise.all([output1.allResources!(), output2.allResources!()])
-                       .then(([r1, r2]) => new Set([...r1, ...r2])));
+                Promise.all([val1, val2]).then(([val1, val2]) => val1 || val2),
+                Promise.all([val1, output1.isKnown, output2.isKnown]).then(([val1, isKnown1, isKnown2]) =>
+                    val1 ? isKnown1 : isKnown2,
+                ),
+                Promise.all([val1, output1.isSecret, output2.isSecret]).then(([val1, isSecret1, isSecret2]) =>
+                    val1 ? isSecret1 : isSecret2,
+                ),
+                Promise.all([output1.allResources!(), output2.allResources!()]).then(
+                    ([r1, r2]) => new Set([...r1, ...r2]),
+                ),
+            );
         }
 
         it("choose between known and known output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve("foo"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve("bar"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -603,8 +710,20 @@ describe("output", () => {
         it("choose between known and known output, secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve("foo"),
+                Promise.resolve(true),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve("bar"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -621,8 +740,20 @@ describe("output", () => {
         it("choose between known and unknown output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve("foo"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -639,8 +770,20 @@ describe("output", () => {
         it("choose between known and unknown output, secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve("foo"),
+                Promise.resolve(true),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -657,8 +800,20 @@ describe("output", () => {
         it("choose between unknown and known output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve("bar"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -675,8 +830,20 @@ describe("output", () => {
         it("choose between unknown and known output, secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve("bar"), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve("bar"),
+                Promise.resolve(true),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -693,8 +860,20 @@ describe("output", () => {
         it("choose between unknown and unknown output, non-secret", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -711,8 +890,20 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret1", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -729,8 +920,20 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret2", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -747,8 +950,20 @@ describe("output", () => {
         it("choose between unknown and unknown output, secret3", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(true), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(undefined),
+                Promise.resolve(false),
+                Promise.resolve(true),
+                Promise.resolve(new Set()),
+            );
 
             const result = or(o1, o2);
 
@@ -765,9 +980,27 @@ describe("output", () => {
         it("is unknown if the value is or contains unknowns", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve(unknown), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-            const o2 = new Output(new Set(), Promise.resolve(["foo", unknown]), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-            const o3 = new Output(new Set(), Promise.resolve({"foo": "foo", unknown}), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve(unknown),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o2 = new Output(
+                new Set(),
+                Promise.resolve(["foo", unknown]),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const o3 = new Output(
+                new Set(),
+                Promise.resolve({ foo: "foo", unknown }),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
 
             assert.strictEqual(await o1.isKnown, false);
             assert.strictEqual(await o2.isKnown, false);
@@ -777,13 +1010,19 @@ describe("output", () => {
         it("is unknown if the result after apply is unknown or contains unknowns", async () => {
             runtime._setIsDryRun(true);
 
-            const o1 = new Output(new Set(), Promise.resolve("foo"), Promise.resolve(true), Promise.resolve(false), Promise.resolve(new Set()));
-            const r1 = o1.apply(v => unknown);
-            const r2 = o1.apply(v => [v, unknown]);
-            const r3 = o1.apply(v => <any>{v, unknown});
-            const r4 = (<any>o1.apply(v => unknown)).apply((v: any) => v, true);
-            const r5 = (<any>o1.apply(v => [v, unknown])).apply((v: any) => v, true);
-            const r6 = (<any>o1.apply(v => <any>{v, unknown})).apply((v: any) => v, true);
+            const o1 = new Output(
+                new Set(),
+                Promise.resolve("foo"),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(new Set()),
+            );
+            const r1 = o1.apply((v) => unknown);
+            const r2 = o1.apply((v) => [v, unknown]);
+            const r3 = o1.apply((v) => <any>{ v, unknown });
+            const r4 = (<any>o1.apply((v) => unknown)).apply((v: any) => v, true);
+            const r5 = (<any>o1.apply((v) => [v, unknown])).apply((v: any) => v, true);
+            const r6 = (<any>o1.apply((v) => <any>{ v, unknown })).apply((v: any) => v, true);
 
             assert.strictEqual(await r1.isKnown, false);
             assert.strictEqual(await r2.isKnown, false);
@@ -795,172 +1034,193 @@ describe("output", () => {
     });
 
     describe("concat", () => {
-        it ("handles no args", async () => {
+        it("handles no args", async () => {
             const result = concat();
             assert.strictEqual(await result.promise(), "");
         });
 
-        it ("handles empty string arg", async () => {
+        it("handles empty string arg", async () => {
             const result = concat("");
             assert.strictEqual(await result.promise(), "");
         });
 
-        it ("handles non-empty string arg", async () => {
+        it("handles non-empty string arg", async () => {
             const result = concat("a");
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles promise string arg", async () => {
+        it("handles promise string arg", async () => {
             const result = concat(Promise.resolve("a"));
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles output string arg", async () => {
+        it("handles output string arg", async () => {
             const result = concat(output("a"));
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles multiple args", async () => {
+        it("handles multiple args", async () => {
             const result = concat("http://", output("a"), ":", 80);
             assert.strictEqual(await result.promise(), "http://a:80");
         });
     });
 
     describe("interpolate", () => {
-        it ("handles empty interpolation", async () => {
-            const result = interpolate ``;
+        it("handles empty interpolation", async () => {
+            const result = interpolate``;
             assert.strictEqual(await result.promise(), "");
         });
 
-        it ("handles no placeholders arg", async () => {
-            const result = interpolate `a`;
+        it("handles no placeholders arg", async () => {
+            const result = interpolate`a`;
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles string placeholders arg", async () => {
-            const result = interpolate `${"a"}`;
+        it("handles string placeholders arg", async () => {
+            const result = interpolate`${"a"}`;
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles promise placeholders arg", async () => {
-            const result = interpolate `${Promise.resolve("a")}`;
+        it("handles promise placeholders arg", async () => {
+            const result = interpolate`${Promise.resolve("a")}`;
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles output placeholders arg", async () => {
-            const result = interpolate `${output("a")}`;
+        it("handles output placeholders arg", async () => {
+            const result = interpolate`${output("a")}`;
             assert.strictEqual(await result.promise(), "a");
         });
 
-        it ("handles multiple args", async () => {
-            const result = interpolate `http://${output("a")}:${80}/`;
+        it("handles multiple args", async () => {
+            const result = interpolate`http://${output("a")}:${80}/`;
             assert.strictEqual(await result.promise(), "http://a:80/");
         });
     });
 
     describe("jsonStringify", () => {
-        it ("basic", async () => {
-            const x = output([0, 1])
-            const result = jsonStringify(x)
+        it("basic", async () => {
+            const x = output([0, 1]);
+            const result = jsonStringify(x);
             assert.strictEqual(await result.promise(), "[0,1]");
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, false);
         });
 
-        it ("nested", async () => {
-            const x = output([output(0), output(1)])
-            const result = jsonStringify(x)
+        it("nested", async () => {
+            const x = output([output(0), output(1)]);
+            const result = jsonStringify(x);
             assert.strictEqual(await result.promise(), "[0,1]");
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, false);
         });
 
-        it ("nested unknowns", async () => {
+        it("nested unknowns", async () => {
             const x = output([
-                new Output(new Set(), Promise.resolve(undefined), Promise.resolve(false), Promise.resolve(false), Promise.resolve(new Set())),
-                output(1)])
-            const result = jsonStringify(x)
+                new Output(
+                    new Set(),
+                    Promise.resolve(undefined),
+                    Promise.resolve(false),
+                    Promise.resolve(false),
+                    Promise.resolve(new Set()),
+                ),
+                output(1),
+            ]);
+            const result = jsonStringify(x);
             assert.strictEqual(await result.isKnown, false);
             assert.strictEqual(await result.isSecret, false);
         });
 
-        it ("nested secret", async () => {
+        it("nested secret", async () => {
             const x = output([
-                new Output(new Set(), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
-                output(1)])
-            const result = jsonStringify(x)
+                new Output(
+                    new Set(),
+                    Promise.resolve(0),
+                    Promise.resolve(true),
+                    Promise.resolve(true),
+                    Promise.resolve(new Set()),
+                ),
+                output(1),
+            ]);
+            const result = jsonStringify(x);
             assert.strictEqual(await result.promise(), "[0,1]");
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, true);
         });
 
-        it ("with options", async () => {
-            const x = output([0, 1])
-            const result = jsonStringify(x, undefined, " ")
+        it("with options", async () => {
+            const x = output([0, 1]);
+            const result = jsonStringify(x, undefined, " ");
             assert.strictEqual(await result.promise(), "[\n 0,\n 1\n]");
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, false);
         });
 
-        it ("nested dependencies", async () => {
+        it("nested dependencies", async () => {
             // Output's don't actually _look_ at the resources, they just need to keep a collection of them
-            const mockResource : Resource = {} as any
-            const mockResources : Resource[] = [mockResource]
+            const mockResource: Resource = {} as any;
+            const mockResources: Resource[] = [mockResource];
 
             const x = output([
-                new Output(new Set(mockResources), Promise.resolve(0), Promise.resolve(true), Promise.resolve(true), Promise.resolve(new Set())),
-                output(1)])
-            const result = jsonStringify(x)
+                new Output(
+                    new Set(mockResources),
+                    Promise.resolve(0),
+                    Promise.resolve(true),
+                    Promise.resolve(true),
+                    Promise.resolve(new Set()),
+                ),
+                output(1),
+            ]);
+            const result = jsonStringify(x);
             assert.strictEqual(await result.promise(), "[0,1]");
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, true);
             if (result.allResources === undefined) {
-                assert.fail("Output.allResources was undefined")
+                assert.fail("Output.allResources was undefined");
             }
             const allResources = await result.allResources();
             // We should have just the one mockResource in this set
-            assert.strictEqual(allResources.size, 1)
-            assert.ok(allResources.has(mockResource))
+            assert.strictEqual(allResources.size, 1);
+            assert.ok(allResources.has(mockResource));
         });
     });
 
     describe("jsonParse", () => {
-        it ("basic", async () => {
-            const x = output("[0, 1]")
-            const result = jsonParse(x)
+        it("basic", async () => {
+            const x = output("[0, 1]");
+            const result = jsonParse(x);
             assert.deepStrictEqual(await result.promise(), [0, 1]);
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, false);
         });
 
-        it ("with reviver", async () => {
-            const reviver = (key: string, value: any ): any => {
+        it("with reviver", async () => {
+            const reviver = (key: string, value: any): any => {
                 if (key === "bob") {
                     return "goodbye";
                 }
                 return value;
-            }
-            const x = output("{\"bob\": \"hello\"}")
-            const result = jsonParse(x, reviver)
-            assert.deepStrictEqual(await result.promise(), { bob: "goodbye" })
+            };
+            const x = output('{"bob": "hello"}');
+            const result = jsonParse(x, reviver);
+            assert.deepStrictEqual(await result.promise(), { bob: "goodbye" });
             assert.strictEqual(await result.isKnown, true);
             assert.strictEqual(await result.isSecret, false);
         });
     });
 
     describe("secret operations", () => {
-       it("ensure secret", async () => {
-           const sec = secret("foo");
-           assert.strictEqual(await sec.isSecret, true)
-       });
-       it("ensure that a secret can be unwrapped", async () => {
-           const sec = secret("foo");
-           assert.strictEqual(await isSecret(sec), true)
+        it("ensure secret", async () => {
+            const sec = secret("foo");
+            assert.strictEqual(await sec.isSecret, true);
+        });
+        it("ensure that a secret can be unwrapped", async () => {
+            const sec = secret("foo");
+            assert.strictEqual(await isSecret(sec), true);
 
-           const unsec = unsecret(sec);
-           assert.strictEqual(await isSecret(unsec), false)
-           assert.strictEqual(await unsec.promise(), "foo")
-       });
+            const unsec = unsecret(sec);
+            assert.strictEqual(await isSecret(unsec), false);
+            assert.strictEqual(await unsec.promise(), "foo");
+        });
     });
 
     describe("lifted operations", () => {
@@ -1034,7 +1294,7 @@ describe("output", () => {
             assert.strictEqual(await result5.isKnown, false);
             assert.strictEqual(await (<any>result5).promise(/*withUnknowns*/ true), unknown);
 
-            const output2 = output([ "foo", unknown, mockOutput(false, undefined) ]);
+            const output2 = output(["foo", unknown, mockOutput(false, undefined)]);
             assert.strictEqual(await output2.isKnown, false);
 
             const result6 = output2[0];
@@ -1049,7 +1309,7 @@ describe("output", () => {
             assert.strictEqual(await result8.isKnown, false);
             assert.strictEqual(await (<any>result8).promise(/*withUnknowns*/ true), unknown);
 
-            const output3 = all([ unknown, mockOutput(false, undefined), output([ "foo", unknown ])]);
+            const output3 = all([unknown, mockOutput(false, undefined), output(["foo", unknown])]);
             assert.strictEqual(await output3.isKnown, false);
 
             const result9 = output3[0];

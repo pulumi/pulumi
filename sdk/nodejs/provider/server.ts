@@ -81,17 +81,23 @@ class Server implements grpc.UntypedServiceImplementation {
     // Config methods
 
     public checkConfig(call: any, callback: any): void {
-        callback({
-            code: grpc.status.UNIMPLEMENTED,
-            details: "Not yet implemented: CheckConfig",
-        }, undefined);
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "Not yet implemented: CheckConfig",
+            },
+            undefined,
+        );
     }
 
     public diffConfig(call: any, callback: any): void {
-        callback({
-            code: grpc.status.UNIMPLEMENTED,
-            details: "Not yet implemented: DiffConfig",
-        }, undefined);
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "Not yet implemented: DiffConfig",
+            },
+            undefined,
+        );
     }
 
     public configure(call: any, callback: any): void {
@@ -235,7 +241,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             let result: any = {};
             if (this.provider.update) {
-                result = await this.provider.update(req.getId(), req.getUrn(), olds, news) || {};
+                result = (await this.provider.update(req.getId(), req.getUrn(), olds, news)) || {};
             }
 
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
@@ -329,11 +335,14 @@ class Server implements grpc.UntypedServiceImplementation {
 
             resp.setUrn(await output(result.urn).promise());
 
-            const [state, stateDependencies] = await rpc.serializeResourceProperties(`construct(${type}, ${name})`, result.state);
+            const [state, stateDependencies] = await rpc.serializeResourceProperties(
+                `construct(${type}, ${name})`,
+                result.state,
+            );
             const stateDependenciesMap = resp.getStatedependenciesMap();
             for (const [key, resources] of stateDependencies) {
                 const deps = new provproto.ConstructResponse.PropertyDependencies();
-                deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
+                deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
                 stateDependenciesMap.set(key, deps);
             }
             resp.setState(structproto.Struct.fromJavaScript(state));
@@ -396,12 +405,14 @@ class Server implements grpc.UntypedServiceImplementation {
             const resp = new provproto.CallResponse();
 
             if (result.outputs) {
-                const [ret, retDependencies] =
-                    await rpc.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+                const [ret, retDependencies] = await rpc.serializeResourceProperties(
+                    `call(${req.getTok()})`,
+                    result.outputs,
+                );
                 const returnDependenciesMap = resp.getReturndependenciesMap();
                 for (const [key, resources] of retDependencies) {
                     const deps = new provproto.CallResponse.ReturnDependencies();
-                    deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
+                    deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
                     returnDependenciesMap.set(key, deps);
                 }
                 resp.setReturn(structproto.Struct.fromJavaScript(ret));
@@ -440,7 +451,6 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-
             const args: any = req.getArgs().toJavaScript();
             const result = await this.provider.invoke(req.getTok(), args);
 
@@ -466,10 +476,13 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public async streamInvoke(call: any, callback: any): Promise<void> {
-        callback({
-            code: grpc.status.UNIMPLEMENTED,
-            details: "Not yet implemented: StreamInvoke",
-        }, undefined);
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "Not yet implemented: StreamInvoke",
+            },
+            undefined,
+        );
     }
 }
 
@@ -480,10 +493,17 @@ function configureRuntime(req: any, engineAddr: string | undefined) {
         throw new Error("fatal: Missing <engine> address");
     }
 
-    settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-        req.getMonitorendpoint(), req.getDryrun(), req.getOrganization());
+    settings.resetOptions(
+        req.getProject(),
+        req.getStack(),
+        req.getParallel(),
+        engineAddr,
+        req.getMonitorendpoint(),
+        req.getDryrun(),
+        req.getOrganization(),
+    );
 
-    const pulumiConfig: {[key: string]: string} = {};
+    const pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();
     if (rpcConfig) {
         for (const [k, v] of rpcConfig.entries()) {
@@ -506,7 +526,10 @@ export async function deserializeInputs(inputsStruct: any, inputDependencies: an
         const isSecret = rpc.isRpcSecret(input);
         const depsUrns: resource.URN[] = inputDependencies.get(k)?.getUrnsList() ?? [];
 
-        if (!isSecret && (depsUrns.length === 0 || containsOutputs(input) || await isResourceReference(input, depsUrns))) {
+        if (
+            !isSecret &&
+            (depsUrns.length === 0 || containsOutputs(input) || (await isResourceReference(input, depsUrns)))
+        ) {
             // If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
             // deserialized output values), or is a resource reference, then we can return it directly without
             // wrapping it as an output.
@@ -515,9 +538,14 @@ export async function deserializeInputs(inputsStruct: any, inputDependencies: an
             // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
             // Note: If the value is or contains an unknown value, the Output will mark its value as
             // unknown automatically, so we just pass true for isKnown here.
-            const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
-            result[k] = new Output(deps, Promise.resolve(rpc.unwrapRpcSecret(input)), Promise.resolve(true),
-                Promise.resolve(isSecret), Promise.resolve([]));
+            const deps = depsUrns.map((depUrn) => new resource.DependencyResource(depUrn));
+            result[k] = new Output(
+                deps,
+                Promise.resolve(rpc.unwrapRpcSecret(input)),
+                Promise.resolve(true),
+                Promise.resolve(isSecret),
+                Promise.resolve([]),
+            );
         }
     }
 
@@ -528,9 +556,7 @@ export async function deserializeInputs(inputsStruct: any, inputDependencies: an
  * Returns true if the input is a resource reference.
  */
 async function isResourceReference(input: any, deps: string[]): Promise<boolean> {
-    return resource.Resource.isInstance(input)
-        && deps.length === 1
-        && deps[0] === await input.urn.promise();
+    return resource.Resource.isInstance(input) && deps.length === 1 && deps[0] === (await input.urn.promise());
 }
 
 /**
@@ -544,12 +570,10 @@ export function containsOutputs(input: any): boolean {
                 return true;
             }
         }
-    }
-    else if (typeof input === "object") {
+    } else if (typeof input === "object") {
         if (Output.isInstance(input)) {
             return true;
-        }
-        else if (resource.Resource.isInstance(input)) {
+        } else if (resource.Resource.isInstance(input)) {
             // Do not drill into instances of Resource because they will have properties that are
             // instances of Output (e.g. urn, id, etc.) and we're only looking for instances of
             // Output that aren't associated with a Resource.
@@ -570,7 +594,7 @@ export function containsOutputs(input: any): boolean {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
+function grpcResponseFromError(e: { id: string; properties: any; message: string; reasons?: string[] }) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);
@@ -613,7 +637,7 @@ export async function main(provider: Provider, args: string[]) {
             uncaughtErrors.add(err);
             // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
             // stop processing subsequent resource operations.
-            log.error(err.stack || err.message || ("" + err));
+            log.error(err.stack || err.message || "" + err);
         }
     };
 

@@ -28,15 +28,15 @@ class TestMocks implements pulumi.runtime.Mocks {
 
     newResource(args: pulumi.runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
         switch (args.type) {
-        case "pulumi:pulumi:StackReference":
-            return {
-                id: `${args.name}_id`,
-                state: {
-                    outputs: this.outputs,
-                },
-            };
-        default:
-            throw new Error(`unknown type ${args.type}`);
+            case "pulumi:pulumi:StackReference":
+                return {
+                    id: `${args.name}_id`,
+                    state: {
+                        outputs: this.outputs,
+                    },
+                };
+            default:
+                throw new Error(`unknown type ${args.type}`);
         }
     }
 }
@@ -46,9 +46,11 @@ describe("StackReference.getOutputDetails", () => {
     // if a map item is a secret, the entire map gets promoted to secret.
 
     it("supports plain text", async () => {
-        pulumi.runtime.setMocks(new TestMocks({
-            bucket: "mybucket-1234",
-        }));
+        pulumi.runtime.setMocks(
+            new TestMocks({
+                bucket: "mybucket-1234",
+            }),
+        );
         const ref = new pulumi.StackReference("foo");
 
         assert.deepStrictEqual(await ref.getOutputDetails("bucket"), {
@@ -57,9 +59,11 @@ describe("StackReference.getOutputDetails", () => {
     });
 
     it("supports secrets", async () => {
-        pulumi.runtime.setMocks(new TestMocks({
-            password: pulumi.secret("supersecretpassword"),
-        }));
+        pulumi.runtime.setMocks(
+            new TestMocks({
+                password: pulumi.secret("supersecretpassword"),
+            }),
+        );
         const ref = new pulumi.StackReference("foo");
 
         assert.deepStrictEqual(await ref.getOutputDetails("password"), {

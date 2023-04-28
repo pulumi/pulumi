@@ -72,10 +72,17 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 const args = req.getArgsList();
                 const engineAddr = args && args.length > 0 ? args[0] : "";
 
-                settings.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                    req.getMonitorAddress(), req.getDryrun(), req.getOrganization());
+                settings.resetOptions(
+                    req.getProject(),
+                    req.getStack(),
+                    req.getParallel(),
+                    engineAddr,
+                    req.getMonitorAddress(),
+                    req.getDryrun(),
+                    req.getOrganization(),
+                );
 
-                const config: {[key: string]: string} = {};
+                const config: { [key: string]: string } = {};
                 for (const [k, v] of req.getConfigMap()?.entries() || []) {
                     config[<string>k] = <string>v;
                 }
@@ -106,7 +113,6 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 if (errorSet.size !== 0 || log.hasErrors()) {
                     throw new Error("One or more errors occurred");
                 }
-
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(`unknown error ${e}`);
                 resp.setError(err.message);
@@ -143,20 +149,18 @@ function newUncaughtHandler(errorSet: Set<Error>): (err: Error) => void {
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
         let defaultMessage = "";
         if (!!err) {
-            defaultMessage = err.stack || err.message || ("" + err);
+            defaultMessage = err.stack || err.message || "" + err;
         }
 
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        }
-        else if (ResourceError.isInstance(err)) {
+        } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
             log.error(message, err.resource);
-        }
-        else if (!isGrpcError(err)) {
+        } else if (!isGrpcError(err)) {
             log.error(`Unhandled exception: ${defaultMessage}`);
         }
     };

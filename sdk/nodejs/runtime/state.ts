@@ -98,7 +98,7 @@ export class LocalStore implements Store {
 
     /**
      * leakCandidates tracks the list of potential leak candidates.
-    */
+     */
     leakCandidates = new Set<Promise<any>>();
 }
 
@@ -115,7 +115,7 @@ export function setStackResource(newStackResource?: Stack) {
     const localStore = getStore();
     globalThis.stackResource = newStackResource;
     localStore.stackResource = newStackResource;
-};
+}
 
 declare global {
     /* eslint-disable no-var */
@@ -126,7 +126,7 @@ declare global {
 /** @internal */
 export function getLocalStore(): Store | undefined {
     return asyncLocalStorage.getStore();
-};
+}
 
 (<any>getLocalStore).captureReplacement = () => {
     const returnFunc = () => {

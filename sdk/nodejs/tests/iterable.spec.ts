@@ -28,7 +28,7 @@ describe("iterable", () => {
             { id: Output.create("i-5678"), privateIp: Output.create("192.168.1.5") },
         ];
 
-        const result = iterable.toObject(instances, i => [i.id, i.privateIp]);
+        const result = iterable.toObject(instances, (i) => [i.id, i.privateIp]);
         const isKnown = await result.isKnown;
         assert.strictEqual(isKnown, true);
         const value = await result.promise();
@@ -46,7 +46,7 @@ describe("iterable", () => {
             { id: Output.create("i-5678"), availabilityZone: Output.create("us-east-1a") },
         ];
 
-        const result = iterable.groupBy(instances, i => [i.availabilityZone, i.id]);
+        const result = iterable.groupBy(instances, (i) => [i.availabilityZone, i.id]);
         const isKnown = await result.isKnown;
         assert.strictEqual(isKnown, true);
         const value = await result.promise();

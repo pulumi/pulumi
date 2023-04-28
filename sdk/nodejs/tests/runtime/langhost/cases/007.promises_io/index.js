@@ -6,7 +6,7 @@ let fs = require("fs");
 class FileResource extends pulumi.CustomResource {
     constructor(name, data) {
         super("test:index:FileResource", name, {
-            "data": data,
+            data: data,
         });
     }
 }
@@ -21,6 +21,5 @@ new FileResource(
                 resolve(data.toString("utf-8"));
             }
         });
-    })
+    }),
 );
-

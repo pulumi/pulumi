@@ -91,4 +91,3 @@ export class RemoteAsset extends Asset {
         this.uri = Promise.resolve(uri);
     }
 }
-

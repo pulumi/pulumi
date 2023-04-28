@@ -42,8 +42,7 @@ export function debug(msg: string, resource?: resourceTypes.Resource, streamId?:
     const engine: Object | undefined = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.DEBUG, msg, resource, streamId, ephemeral);
-    }
-    else {
+    } else {
         return Promise.resolve();
     }
 }
@@ -55,8 +54,7 @@ export function info(msg: string, resource?: resourceTypes.Resource, streamId?: 
     const engine: Object | undefined = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.INFO, msg, resource, streamId, ephemeral);
-    }
-    else {
+    } else {
         console.log(`info: [runtime] ${msg}`);
         return Promise.resolve();
     }
@@ -69,8 +67,7 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
     const engine: Object | undefined = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.WARNING, msg, resource, streamId, ephemeral);
-    }
-    else {
+    } else {
         console.warn(`warning: [runtime] ${msg}`);
         return Promise.resolve();
     }
@@ -85,25 +82,24 @@ export function error(msg: string, resource?: resourceTypes.Resource, streamId?:
     const engine: Object | undefined = getEngine();
     if (engine) {
         return log(engine, engproto.LogSeverity.ERROR, msg, resource, streamId, ephemeral);
-    }
-    else {
+    } else {
         console.error(`error: [runtime] ${msg}`);
         return Promise.resolve();
     }
 }
 
 function log(
-    engine: any, sev: any, msg: string,
+    engine: any,
+    sev: any,
+    msg: string,
     resource: resourceTypes.Resource | undefined,
     streamId: number | undefined,
-    ephemeral: boolean | undefined): Promise<void> {
-
+    ephemeral: boolean | undefined,
+): Promise<void> {
     // Ensure we log everything in serial order.
     const keepAlive: () => void = rpcKeepAlive();
 
-    const urnPromise = resource
-        ? resource.urn.promise()
-        : Promise.resolve("");
+    const urnPromise = resource ? resource.urn.promise() : Promise.resolve("");
 
     lastLog = Promise.all([lastLog, urnPromise]).then(([_, urn]) => {
         return new Promise((resolve, reject) => {
@@ -118,8 +114,7 @@ function log(
                     resolve(); // let the next log through
                     keepAlive(); // permit RPC channel tear-downs
                 });
-            }
-            catch (err) {
+            } catch (err) {
                 reject(err);
             }
         });
@@ -129,7 +124,9 @@ function log(
         // debug messages never go to stdout/err
         if (sev !== engproto.LogSeverity.DEBUG) {
             // if we're unable to deliver the log message, deliver to stderr instead
-            console.error(`failed to deliver log message. \nerror: ${err} \noriginal message: ${msg}\n message severity: ${messageLevels[sev]}`);
+            console.error(
+                `failed to deliver log message. \nerror: ${err} \noriginal message: ${msg}\n message severity: ${messageLevels[sev]}`,
+            );
         }
         // we still need to free up the outstanding promise chain, whether or not delivery succeeded.
         keepAlive();

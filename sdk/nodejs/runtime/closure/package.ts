@@ -14,8 +14,8 @@
 
 import * as upath from "upath";
 
-type Exports = string | {[key: string]: SubExports};
-type SubExports = string | {[key: string]: SubExports} | null;
+type Exports = string | { [key: string]: SubExports };
+type SubExports = string | { [key: string]: SubExports } | null;
 
 type PackageDefinition = {
     name: string;
@@ -30,10 +30,10 @@ type PackageDefinition = {
 
 function getPackageDefinition(path: string): PackageDefinition | undefined {
     try {
-        const directories =  path.split(upath.sep);
+        const directories = path.split(upath.sep);
         let last: string | undefined = undefined;
         let lastFullPath: string | undefined = undefined;
-        while(directories.length > 0) {
+        while (directories.length > 0) {
             const curPath = directories.join(upath.sep);
             try {
                 lastFullPath = require.resolve(curPath);
@@ -110,11 +110,14 @@ function patternKeyCompare(a: string, b: string) {
 }
 
 type SrcPrefix = string;
-type Rule = [SrcPrefix, {
-    modPrefix: string;
-    modSuffix: string;
-    srcSuffix: string;
-}];
+type Rule = [
+    SrcPrefix,
+    {
+        modPrefix: string;
+        modSuffix: string;
+        srcSuffix: string;
+    },
+];
 
 function makeRule(srcPattern: string, modPattern: string): Rule {
     const srcSplit = srcPattern.split("*"); // NodeJS doesn't error out when provided multiple '*'.
@@ -126,15 +129,18 @@ function makeRule(srcPattern: string, modPattern: string): Rule {
     }
     const [srcPrefix, srcSuffix] = srcSplit;
     const [modPrefix, modSuffix] = modSplit;
-    return [srcPrefix, {
-        modPrefix,
-        modSuffix: (modSuffix || ""),
-        srcSuffix: (srcSuffix || ""),
-    }];
+    return [
+        srcPrefix,
+        {
+            modPrefix,
+            modSuffix: modSuffix || "",
+            srcSuffix: srcSuffix || "",
+        },
+    ];
 }
 
 class WildcardMap {
-    private map: {[srcPrefix: string]: string};
+    private map: { [srcPrefix: string]: string };
     private rules: Rule[];
     constructor(matches: [string, string[]][]) {
         this.map = {};
@@ -160,7 +166,7 @@ class WildcardMap {
                 continue;
             }
 
-            const srcSubpath = srcName.slice(srcPrefix.length, srcName.length-srcRule.srcSuffix.length);
+            const srcSubpath = srcName.slice(srcPrefix.length, srcName.length - srcRule.srcSuffix.length);
             const result = srcRule.modPrefix + srcSubpath + srcRule.modSuffix;
             return result;
         }
@@ -177,8 +183,8 @@ function isConditionalSugar(exports: Exports, name: string) {
         if (isSugar && key.startsWith(".")) {
             throw new Error(
                 `${name}:package.json "exports" cannot contain some keys starting with "." and some not.` +
-                " The exports object must either be an object of package subpath keys" +
-                " or an object of main entry condition name keys only."
+                    " The exports object must either be an object of package subpath keys" +
+                    " or an object of main entry condition name keys only.",
             );
         }
         if (!key.startsWith(".")) {
@@ -192,7 +198,7 @@ function isConditionalSugar(exports: Exports, name: string) {
 class ModuleMap {
     readonly name: string;
     private wildcardMap: WildcardMap;
-    constructor(name: string, exports: Exports, opts?: RequireOpts){
+    constructor(name: string, exports: Exports, opts?: RequireOpts) {
         this.name = name;
 
         if (isConditionalSugar(exports, name)) {
@@ -204,12 +210,12 @@ class ModuleMap {
         for (const [modPath, objectOrPath] of Object.entries(exports)) {
             const modName: string = name + modPath.slice(1);
             const leaves = getAllLeafStrings(objectOrPath, opts);
-            rules.push([modName, leaves.map(leaf => name + leaf.slice(1))]);
+            rules.push([modName, leaves.map((leaf) => name + leaf.slice(1))]);
         }
         this.wildcardMap = new WildcardMap(rules);
     }
     get(srcName: string) {
-        const modPath =  this.wildcardMap.get(srcName);
+        const modPath = this.wildcardMap.get(srcName);
         if (modPath === undefined) {
             throw new Error(`package.json export path for "${srcName}" not found`);
         }
@@ -247,7 +253,11 @@ type RequireOpts = {
     For more details https://nodejs.org/api/esm.html#resolution-algorithm
 */
 
-export function getModuleFromPath(path: string, packageDefinition?: PackageDefinition, opts: RequireOpts={isRequire: true}) {
+export function getModuleFromPath(
+    path: string,
+    packageDefinition?: PackageDefinition,
+    opts: RequireOpts = { isRequire: true },
+) {
     packageDefinition = packageDefinition || getPackageDefinition(path);
     if (packageDefinition === undefined) {
         return path;

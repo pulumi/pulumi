@@ -2,9 +2,9 @@ let assert = require("assert");
 let pulumi = require("../../../../../");
 
 class MyResource extends pulumi.CustomResource {
-	constructor(name, args, opts) {
-		super("test:index:MyResource", name, args, opts);
-	}
+    constructor(name, args, opts) {
+        super("test:index:MyResource", name, args, opts);
+    }
 }
 
 //            cust1

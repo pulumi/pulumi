@@ -5,8 +5,7 @@
     },
     "files": {
         "ignore": [
-            "bin/", "proto/", "dist/", "node_modules", ".nyc_output/",
-            ".direnv/", "tests/runtime/jsClosureCases_*.js",
+            "bin/", "proto/", "dist/", "node_modules", ".nyc_output/", ".direnv/", "tests/runtime/jsClosureCases_*.js",
             "tests/runtime/tsClosureCases.ts"
         ]
     },

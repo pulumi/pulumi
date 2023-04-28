@@ -14,15 +14,7 @@
 
 import { EngineEvent } from "./events";
 import { LocalWorkspace } from "./localWorkspace";
-import {
-    DestroyResult,
-    OutputMap,
-    PreviewResult,
-    RefreshResult,
-    Stack,
-    UpdateSummary,
-    UpResult,
-} from "./stack";
+import { DestroyResult, OutputMap, PreviewResult, RefreshResult, Stack, UpdateSummary, UpResult } from "./stack";
 import { Deployment } from "./workspace";
 
 /**

@@ -26,7 +26,6 @@ import { setStackResource, getStackResource as stateGetStackResource } from "./s
  */
 export const rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
-
 /**
  * runInPulumiStack creates a new Pulumi stack resource and executes the callback inside of it.  Any outputs
  * returned by the callback will be stored as output properties on this resulting Stack object.
@@ -89,12 +88,13 @@ export class Stack extends ComponentResource<Inputs> {
 }
 
 async function massage(prop: any, objectStack: any[]): Promise<any> {
-    if (prop === undefined ||
+    if (
+        prop === undefined ||
         prop === null ||
         typeof prop === "boolean" ||
         typeof prop === "number" ||
-        typeof prop === "string") {
-
+        typeof prop === "string"
+    ) {
         return prop;
     }
 
@@ -103,7 +103,7 @@ async function massage(prop: any, objectStack: any[]): Promise<any> {
     }
 
     if (Output.isInstance(prop)) {
-        const result = prop.apply(v => massage(v, objectStack));
+        const result = prop.apply((v) => massage(v, objectStack));
         // explicitly await the underlying promise of the output here.  This is necessary to get a
         // deterministic walk of the object graph.  We need that deterministic walk, otherwise our
         // actual cycle detection logic (using 'objectStack') doesn't work.  i.e. if we don't do
@@ -132,8 +132,7 @@ async function massage(prop: any, objectStack: any[]): Promise<any> {
         // recursion.
         objectStack.push(prop);
         return await massageComplex(prop, objectStack);
-    }
-    finally {
+    } finally {
         const popped = objectStack.pop();
         if (popped !== prop) {
             throw new Error("Invariant broken when processing stack outputs");
@@ -145,11 +144,9 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (asset.Asset.isInstance(prop)) {
         if ((<asset.FileAsset>prop).path !== undefined) {
             return { path: (<asset.FileAsset>prop).path };
-        }
-        else if ((<asset.RemoteAsset>prop).uri !== undefined) {
+        } else if ((<asset.RemoteAsset>prop).uri !== undefined) {
             return { uri: (<asset.RemoteAsset>prop).uri };
-        }
-        else if ((<asset.StringAsset>prop).text !== undefined) {
+        } else if ((<asset.StringAsset>prop).text !== undefined) {
             return { text: "..." };
         }
 
@@ -159,11 +156,9 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
     if (asset.Archive.isInstance(prop)) {
         if ((<asset.AssetArchive>prop).assets) {
             return { assets: await massage((<asset.AssetArchive>prop).assets, objectStack) };
-        }
-        else if ((<asset.FileArchive>prop).path !== undefined) {
+        } else if ((<asset.FileArchive>prop).path !== undefined) {
             return { path: (<asset.FileArchive>prop).path };
-        }
-        else if ((<asset.RemoteArchive>prop).uri !== undefined) {
+        } else if ((<asset.RemoteArchive>prop).uri !== undefined) {
             return { uri: (<asset.RemoteArchive>prop).uri };
         }
 
@@ -178,7 +173,7 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
         // from a resource. This allows the engine to perform resource-specific filtering of unknowns
         // from output diffs during a preview. This filtering is not necessary during an update because
         // all property values are known.
-        const pojo = await serializeAllKeys(n => !n.startsWith("__"));
+        const pojo = await serializeAllKeys((n) => !n.startsWith("__"));
         return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
     }
 
@@ -191,7 +186,7 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
         return result;
     }
 
-    return await serializeAllKeys(n => true);
+    return await serializeAllKeys((n) => true);
 
     async function serializeAllKeys(include: (name: string) => boolean) {
         const obj: Record<string, any> = {};

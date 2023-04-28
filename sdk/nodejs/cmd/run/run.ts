@@ -66,7 +66,7 @@ function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> 
 
 // Reads and parses the contents of .npmrc file if it exists under the project root
 // This assumes that .npmrc is a sibling to package.json
-function npmRcFromProjectRoot(projectRoot: string): Record<string, any>  {
+function npmRcFromProjectRoot(projectRoot: string): Record<string, any> {
     const rcSpan = tracing.newSpan("language-runtime.reading-npm-rc");
     const emptyConfig = {};
     try {
@@ -142,8 +142,10 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     if ("build" in scripts) {
         const command = scripts["build"];
         console.error(`  * Your program looks like it has a build script associated with it ('${command}').\n`);
-        console.error("Pulumi does not run build scripts before running your program. " +
-            `Please run '${command}', 'yarn build', or 'npm run build' and try again.`);
+        console.error(
+            "Pulumi does not run build scripts before running your program. " +
+                `Please run '${command}', 'yarn build', or 'npm run build' and try again.`,
+        );
         return;
     }
 
@@ -169,7 +171,7 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 }
 
 function tracingIsEnabled(tracingUrl: string | boolean): boolean {
-    if(typeof tracingUrl !== "string") {
+    if (typeof tracingUrl !== "string") {
         return false;
     }
     const experimental = process.env["PULUMI_EXPERIMENTAL"] ?? "";
@@ -183,11 +185,12 @@ export function run(
     argv: minimist.ParsedArgs,
     programStarted: () => void,
     reportLoggedError: (err: Error) => void,
-    isErrorReported: (err: Error) => boolean): Promise<Inputs | undefined> {
+    isErrorReported: (err: Error) => boolean,
+): Promise<Inputs | undefined> {
     const tracingUrl: string | boolean = argv["tracing"];
     // Start tracing. Before exiting, gracefully shutdown tracing, exporting
     // all remaining spans in the batch.
-    if(tracingIsEnabled(tracingUrl)) {
+    if (tracingIsEnabled(tracingUrl)) {
         tracing.start(tracingUrl as string); // safe cast, since tracingIsEnable confirmed the type
         process.on("exit", tracing.stop);
     }
@@ -254,25 +257,21 @@ export function run(
             return;
         }
 
-
         // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, {colors: true});
+        const stackMessage = err.stack && util.inspect(err, { colors: true });
 
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || ("" + err);
+        const defaultMessage = stackMessage || err.message || "" + err;
 
         // First, log the error.
         if (RunError.isInstance(err)) {
             // Always hide the stack for RunErrors.
             log.error(err.message);
-        } else if (
-            err.name === tsnode.TSError.name
-            || err.name === SyntaxError.name) {
-
+        } else if (err.name === tsnode.TSError.name || err.name === SyntaxError.name) {
             // Hide stack frames as TSError/SyntaxError have messages containing
             // where the error is located
             const errOut = err.stack?.toString() || "";
@@ -280,12 +279,13 @@ export function run(
 
             const errParts = errOut.split(err.message);
             if (errParts.length === 2) {
-                errMsg = errParts[0]+err.message;
+                errMsg = errParts[0] + err.message;
             }
 
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
-${errMsg}`);
+${errMsg}`,
+            );
         } else if (ResourceError.isInstance(err)) {
             // Hide the stack if requested to by the ResourceError creator.
             const message = err.hideStack ? err.message : defaultMessage;
@@ -293,7 +293,8 @@ ${errMsg}`);
         } else {
             log.error(
                 `Running program '${program}' failed with an unhandled exception:
-${defaultMessage}`);
+${defaultMessage}`,
+            );
         }
 
         span.addEvent(`uncaughtError: ${err}`);
@@ -350,7 +351,8 @@ ${defaultMessage}`);
             if (packageObject["type"] === "module") {
                 // Use the same behavior for loading the main entrypoint as `node <program>`.
                 // See https://github.com/nodejs/node/blob/master/lib/internal/modules/run_main.js#L74.
-                const mainPath: string = require("module").Module._findPath(path.resolve(program), null, true) || program;
+                const mainPath: string =
+                    require("module").Module._findPath(path.resolve(program), null, true) || program;
                 const main = path.isAbsolute(mainPath) ? url.pathToFileURL(mainPath).href : mainPath;
                 // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
                 // Follow this issue for progress on when we can remove this:
@@ -367,7 +369,9 @@ ${defaultMessage}`);
                 // If there is a default export, use that instead of the named exports (and error if there are both).
                 if (Object.getOwnPropertyDescriptor(programExport, "default") !== undefined) {
                     if (Object.keys(programExport).length !== 1) {
-                        throw new Error("expected entrypoint module to have either a default export or named exports but not both");
+                        throw new Error(
+                            "expected entrypoint module to have either a default export or named exports but not both",
+                        );
                     }
                     programExport = programExport.default;
                 }
@@ -383,8 +387,10 @@ ${defaultMessage}`);
             }
 
             if (await containsTSAndJSModules(program)) {
-                log.warn("Found a TypeScript project containing an index.js file and no explicit entrypoint in Pulumi.yaml - Pulumi will use index.js");
-            };
+                log.warn(
+                    "Found a TypeScript project containing an index.js file and no explicit entrypoint in Pulumi.yaml - Pulumi will use index.js",
+                );
+            }
 
             // Check compatible engines before running the program:
             const npmRc = npmRcFromProjectRoot(projectRoot);
@@ -413,9 +419,7 @@ ${defaultMessage}`);
             // exported top level async functions that pulumi programs can live in.  Finally, await
             // the value we get back.  That way, if it is async and throws an exception, we properly
             // capture it here and handle it.
-            const invokeResult = programExport instanceof Function
-                ? programExport()
-                : programExport;
+            const invokeResult = programExport instanceof Function ? programExport() : programExport;
             runProgramSpan.end();
             return await invokeResult;
         } catch (e) {
@@ -433,8 +437,7 @@ ${defaultMessage}`);
             }
 
             throw e;
-        }
-        finally {
+        } finally {
             runProgramSpan.end();
         }
     };

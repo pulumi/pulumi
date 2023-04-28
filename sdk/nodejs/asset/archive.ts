@@ -38,7 +38,7 @@ export abstract class Archive {
 /**
  * AssetMap is a map of assets.
  */
-export type AssetMap = {[name: string]: Asset | Archive};
+export type AssetMap = { [name: string]: Asset | Archive };
 
 /**
  * An AssetArchive is an archive created from an in-memory collection of named assets or other archives.
@@ -87,4 +87,3 @@ export class RemoteArchive extends Archive {
         this.uri = Promise.resolve(uri);
     }
 }
-

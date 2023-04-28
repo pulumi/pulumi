@@ -91,12 +91,9 @@ export interface SerializedFunction {
  * @param func The JavaScript function to serialize.
  * @param args Arguments to use to control the serialization of the JavaScript function.
  */
-export async function serializeFunction(
-    func: Function,
-    args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
-
+export async function serializeFunction(func: Function, args: SerializeFunctionArgs = {}): Promise<SerializedFunction> {
     const exportName = args.exportName || "handler";
-    const serialize = args.serialize || (_ => true);
+    const serialize = args.serialize || ((_) => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
     const closureInfo = await closure.createClosureInfoAsync(func, serialize, args.logResource);
@@ -109,12 +106,10 @@ export async function serializeFunction(
 /**
  * @deprecated Please use 'serializeFunction' instead.
  */
-export async function serializeFunctionAsync(
-    func: Function,
-    serialize?: (o: any) => boolean): Promise<string> {
+export async function serializeFunctionAsync(func: Function, serialize?: (o: any) => boolean): Promise<string> {
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
 
-    serialize = serialize || (_ => true);
+    serialize = serialize || ((_) => true);
     const closureInfo = await closure.createClosureInfoAsync(func, serialize, /*logResource:*/ undefined);
     if (closureInfo.containsSecrets) {
         throw new Error("Secret outputs cannot be captured by a closure.");
@@ -131,8 +126,8 @@ export async function serializeFunctionAsync(
 function serializeJavaScriptText(
     outerClosure: closure.ClosureInfo,
     exportName: string,
-    isFactoryFunction: boolean): SerializedFunction {
-
+    isFactoryFunction: boolean,
+): SerializedFunction {
     // Now produce a textual representation of the closure and its serialized captured environment.
 
     // State used to build up the environment variables for all the funcs we generate.
@@ -168,8 +163,7 @@ function serializeJavaScriptText(
         // for a factory function, we need to call the function at the end.  That way all the logic
         // to set up the environment has run.
         text = environmentText + functionText + "\n" + exportText;
-    }
-    else {
+    } else {
         text = exportText + "\n" + environmentText + functionText;
     }
 
@@ -205,7 +199,7 @@ function serializeJavaScriptText(
 
         for (const [keyEntry, { entry: valEntry }] of functionInfo.capturedValues) {
             if (valEntry.module !== undefined) {
-                if(!emittedRequires.has(keyEntry.json)) {
+                if (!emittedRequires.has(keyEntry.json)) {
                     emittedRequires.add(keyEntry.json);
                     functionText += `const ${keyEntry.json} = require("${valEntry.module}");\n`;
                 }
@@ -213,13 +207,26 @@ function serializeJavaScriptText(
             }
         }
 
-        functionText += "\n" +
-            "function " + varName + "(" + parameters + ") {\n" +
+        functionText +=
+            "\n" +
+            "function " +
+            varName +
+            "(" +
+            parameters +
+            ") {\n" +
             "  return (function() {\n" +
-            "    with(" + envObjToString(capturedValues) + ") {\n\n" +
-            "return " + functionInfo.code + ";\n\n" +
+            "    with(" +
+            envObjToString(capturedValues) +
+            ") {\n\n" +
+            "return " +
+            functionInfo.code +
+            ";\n\n" +
             "    }\n" +
-            "  }).apply(" + thisCapture + ", " + argumentsCapture + ").apply(this, arguments);\n" +
+            "  }).apply(" +
+            thisCapture +
+            ", " +
+            argumentsCapture +
+            ").apply(this, arguments);\n" +
             "}\n";
 
         // If this function is complex (i.e. non-default __proto__, or has properties, etc.)
@@ -260,43 +267,33 @@ function serializeJavaScriptText(
         // there is no way to observe that you are getting a different copy.
         if (isObjOrArrayOrRegExp(envEntry)) {
             return complexEnvEntryToString(envEntry, varName);
-        }
-        else {
+        } else {
             // Other values (like strings, bools, etc.) can just be emitted inline.
             return simpleEnvEntryToString(envEntry, varName);
         }
     }
 
-    function simpleEnvEntryToString(
-        envEntry: closure.Entry, varName: string): string {
-
+    function simpleEnvEntryToString(envEntry: closure.Entry, varName: string): string {
         if (envEntry.hasOwnProperty("json")) {
             return JSON.stringify(envEntry.json);
-        }
-        else if (envEntry.function !== undefined) {
+        } else if (envEntry.function !== undefined) {
             return emitFunctionAndGetName(envEntry.function);
-        }
-        else if (envEntry.module !== undefined) {
+        } else if (envEntry.module !== undefined) {
             return `require("${envEntry.module}")`;
-        }
-        else if (envEntry.output !== undefined) {
+        } else if (envEntry.output !== undefined) {
             return envEntryToString(envEntry.output, varName);
-        }
-        else if (envEntry.expr) {
+        } else if (envEntry.expr) {
             // Entry specifies exactly how it should be emitted.  So just use whatever
             // it wanted.
             return envEntry.expr;
-        }
-        else if (envEntry.promise) {
+        } else if (envEntry.promise) {
             return `Promise.resolve(${envEntryToString(envEntry.promise, varName)})`;
-        }
-        else {
+        } else {
             throw new Error("Malformed: " + JSON.stringify(envEntry));
         }
     }
 
-    function complexEnvEntryToString(
-        envEntry: closure.Entry, varName: string): string {
+    function complexEnvEntryToString(envEntry: closure.Entry, varName: string): string {
         // Call all environment variables __e<num> to make them unique.  But suffix
         // them with the original name of the property to help provide context when
         // looking at the source.
@@ -305,11 +302,9 @@ function serializeJavaScriptText(
 
         if (envEntry.object) {
             emitObject(envVar, envEntry.object, varName);
-        }
-        else if (envEntry.array) {
+        } else if (envEntry.array) {
             emitArray(envVar, envEntry.array, varName);
-        }
-        else if (envEntry.regexp) {
+        } else if (envEntry.regexp) {
             const { source, flags } = envEntry.regexp;
             const regexVal = `new RegExp(${JSON.stringify(source)}, ${JSON.stringify(flags)})`;
             const entryString = `var ${envVar} = ${regexVal};\n`;
@@ -325,13 +320,9 @@ function serializeJavaScriptText(
         const legalName = makeLegalJSName(baseName).replace(trimLeadingUnderscoreRegex, "");
         let index = 0;
 
-        let currentName = addIndexAtEnd
-            ? "__" + legalName + index
-            : "__" + legalName;
+        let currentName = addIndexAtEnd ? "__" + legalName + index : "__" + legalName;
         while (envVarNames.has(currentName)) {
-            currentName = addIndexAtEnd
-                ? "__" + legalName + index
-                : "__" + index + "_" + legalName;
+            currentName = addIndexAtEnd ? "__" + legalName + index : "__" + index + "_" + legalName;
             index++;
         }
 
@@ -351,14 +342,12 @@ function serializeJavaScriptText(
             if (obj.proto) {
                 const protoVar = envEntryToString(obj.proto, `${varName}_proto`);
                 environmentText += `var ${envVar} = Object.create(${protoVar});\n`;
-            }
-            else {
+            } else {
                 environmentText += `var ${envVar} = {};\n`;
             }
 
             emitComplexObjectProperties(envVar, varName, obj);
-        }
-        else {
+        } else {
             // All values inside this obj are simple.  We can just emit the object
             // directly as an object literal with all children embedded in the literal.
             const props: string[] = [];
@@ -370,8 +359,7 @@ function serializeJavaScriptText(
 
                 if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     props.push(`${keyEntry.json}: ${propVal}`);
-                }
-                else {
+                } else {
                     props.push(`[${propName}]: ${propVal}`);
                 }
             }
@@ -405,15 +393,12 @@ function serializeJavaScriptText(
             return true;
         }
 
-        return info.enumerable === true &&
-               info.writable === true &&
-               info.configurable === true &&
-               !info.get && !info.set;
+        return (
+            info.enumerable === true && info.writable === true && info.configurable === true && !info.get && !info.set
+        );
     }
 
-    function emitComplexObjectProperties(
-        envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
-
+    function emitComplexObjectProperties(envVar: string, varName: string, objEntry: closure.ObjectInfo): void {
         for (const [keyEntry, { info, entry: valEntry }] of objEntry.env) {
             const subName = typeof keyEntry.json === "string" ? keyEntry.json : "sym";
             const keyString = envEntryToString(keyEntry, varName + "_" + subName);
@@ -423,20 +408,16 @@ function serializeJavaScriptText(
                 // normal property.  Just emit simply as a direct assignment.
                 if (typeof keyEntry.json === "string" && utils.isLegalMemberName(keyEntry.json)) {
                     environmentText += `${envVar}.${keyEntry.json} = ${valString};\n`;
-                }
-                else {
+                } else {
                     environmentText += `${envVar}${`[${keyString}]`} = ${valString};\n`;
                 }
-            }
-            else {
+            } else {
                 // complex property.  emit as Object.defineProperty
                 emitDefineProperty(info!, valString, keyString);
             }
         }
 
-        function emitDefineProperty(
-            desc: closure.PropertyInfo, entryValue: string, propName: string) {
-
+        function emitDefineProperty(desc: closure.PropertyInfo, entryValue: string, propName: string) {
             const copy: any = {};
             if (desc.configurable) {
                 copy.configurable = desc.configurable;
@@ -456,13 +437,12 @@ function serializeJavaScriptText(
             if (desc.hasValue) {
                 copy.value = entryValue;
             }
-            const line = `Object.defineProperty(${envVar}, ${propName}, ${ envObjToString(copy) });\n`;
+            const line = `Object.defineProperty(${envVar}, ${propName}, ${envObjToString(copy)});\n`;
             environmentText += line;
         }
     }
 
-    function emitArray(
-        envVar: string, arr: closure.Entry[], varName: string): void {
+    function emitArray(envVar: string, arr: closure.Entry[], varName: string): void {
         if (arr.some(deepContainsObjOrArrayOrRegExp) || isSparse(arr) || hasNonNumericIndices(arr)) {
             // we have a complex child.  Because of the possibility of recursion in the object
             // graph, we have to spit out this variable initialized (but empty) first. Then we can
@@ -475,12 +455,10 @@ function serializeJavaScriptText(
             for (const key of Object.getOwnPropertyNames(arr)) {
                 if (key !== "length") {
                     const entryString = envEntryToString(arr[<any>key], `${varName}_${key}`);
-                    environmentText += `${envVar}${
-                        isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
+                    environmentText += `${envVar}${isNumeric(key) ? `[${key}]` : `.${key}`} = ${entryString};\n`;
                 }
             }
-        }
-        else {
+        } else {
             // All values inside this array are simple.  We can just emit the array elements in
             // place.  i.e. we can emit as ``var arr = [1, 2, 3]`` as that's far more preferred than
             // having four individual statements to do the same.
@@ -498,18 +476,18 @@ function serializeJavaScriptText(
 
 const makeLegalRegex = /[^0-9a-zA-Z_]/g;
 function makeLegalJSName(n: string) {
-    return n.replace(makeLegalRegex, x => "");
+    return n.replace(makeLegalRegex, (x) => "");
 }
 
 function isSparse<T>(arr: Array<T>) {
     // getOwnPropertyNames for an array returns all the indices as well as 'length'.
     // so we subtract one to get all the real indices.  If that's not the same as
     // the array length, then we must have missing properties and are thus sparse.
-    return arr.length !== (Object.getOwnPropertyNames(arr).length - 1);
+    return arr.length !== Object.getOwnPropertyNames(arr).length - 1;
 }
 
 function hasNonNumericIndices<T>(arr: Array<T>) {
-    return Object.keys(arr).some(k => k !== "length" && !isNumeric(k));
+    return Object.keys(arr).some((k) => k !== "length" && !isNumeric(k));
 }
 
 function isNumeric(n: string) {
@@ -521,9 +499,11 @@ function isObjOrArrayOrRegExp(env: closure.Entry): boolean {
 }
 
 function deepContainsObjOrArrayOrRegExp(env: closure.Entry): boolean {
-    return isObjOrArrayOrRegExp(env) ||
+    return (
+        isObjOrArrayOrRegExp(env) ||
         (env.output !== undefined && deepContainsObjOrArrayOrRegExp(env.output)) ||
-        (env.promise !== undefined && deepContainsObjOrArrayOrRegExp(env.promise));
+        (env.promise !== undefined && deepContainsObjOrArrayOrRegExp(env.promise))
+    );
 }
 
 /**
@@ -535,5 +515,7 @@ function deepContainsObjOrArrayOrRegExp(env: closure.Entry): boolean {
  * @param envObj The environment object to convert to a string.
  */
 function envObjToString(envObj: Record<string, string>): string {
-    return `{ ${Object.keys(envObj).map(k => `${k}: ${envObj[k]}`).join(", ")} }`;
+    return `{ ${Object.keys(envObj)
+        .map((k) => `${k}: ${envObj[k]}`)
+        .join(", ")} }`;
 }

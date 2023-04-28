@@ -18,8 +18,7 @@ import * as utils from "./utils";
 /** @internal */
 export function rewriteSuperReferences(code: string, isStatic: boolean): string {
     const ts: typeof typescript = require("typescript");
-    const sourceFile = ts.createSourceFile(
-        "", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const sourceFile = ts.createSourceFile("", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 
     // Transform any usages of "super(...)" into "__super.call(this, ...)", any
     // instance usages of "super.xxx" into "__super.prototype.xxx" and any static
@@ -48,8 +47,7 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                 firstFunctionDeclaration = false;
                 const funcDecl = ts.visitEachChild(node, visitor, transformationContext);
 
-                const text = utils.isLegalMemberName(funcDecl.name!.text)
-                    ? "/*" + funcDecl.name!.text + "*/" : "";
+                const text = utils.isLegalMemberName(funcDecl.name!.text) ? "/*" + funcDecl.name!.text + "*/" : "";
                 return ts.updateFunctionDeclaration(
                     funcDecl,
                     funcDecl.decorators,
@@ -59,34 +57,31 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                     funcDecl.typeParameters,
                     funcDecl.parameters,
                     funcDecl.type,
-                    funcDecl.body);
+                    funcDecl.body,
+                );
             }
 
             if (node.kind === ts.SyntaxKind.SuperKeyword) {
                 const newNode = ts.createIdentifier("__super");
                 newNodes.add(newNode);
                 return newNode;
-            }
-            else if (ts.isPropertyAccessExpression(node) &&
-                        node.expression.kind === ts.SyntaxKind.SuperKeyword) {
-
+            } else if (ts.isPropertyAccessExpression(node) && node.expression.kind === ts.SyntaxKind.SuperKeyword) {
                 const expr = isStatic
                     ? ts.createIdentifier("__super")
                     : ts.createPropertyAccess(ts.createIdentifier("__super"), "prototype");
                 const newNode = ts.updatePropertyAccess(node, expr, node.name);
                 newNodes.add(newNode);
                 return newNode;
-            }
-            else if (ts.isElementAccessExpression(node) &&
-                        node.argumentExpression &&
-                        node.expression.kind === ts.SyntaxKind.SuperKeyword) {
-
+            } else if (
+                ts.isElementAccessExpression(node) &&
+                node.argumentExpression &&
+                node.expression.kind === ts.SyntaxKind.SuperKeyword
+            ) {
                 const expr = isStatic
                     ? ts.createIdentifier("__super")
                     : ts.createPropertyAccess(ts.createIdentifier("__super"), "prototype");
 
-                const newNode = ts.updateElementAccess(
-                    node, expr, node.argumentExpression);
+                const newNode = ts.updateElementAccess(node, expr, node.argumentExpression);
                 newNodes.add(newNode);
                 return newNode;
             }
@@ -95,9 +90,7 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
             // below them
             const rewritten = ts.visitEachChild(node, visitor, transformationContext);
 
-            if (ts.isCallExpression(rewritten) &&
-                newNodes.has(rewritten.expression)) {
-
+            if (ts.isCallExpression(rewritten) && newNodes.has(rewritten.expression)) {
                 // this was a call to super() or super.x() or super["x"]();
                 // the super will already have been transformed to __super or
                 // __super.prototype.x or __super.prototype["x"].
@@ -111,7 +104,8 @@ export function rewriteSuperReferences(code: string, isStatic: boolean): string 
                     rewritten,
                     ts.createPropertyAccess(rewritten.expression, "call"),
                     rewritten.typeArguments,
-                    argumentsCopy);
+                    argumentsCopy,
+                );
             }
 
             return rewritten;

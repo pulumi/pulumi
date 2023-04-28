@@ -11,4 +11,3 @@ class MyResource extends pulumi.CustomResource {
 for (let i = 0; i < 10; i++) {
     new MyResource("testResource" + i);
 }
-

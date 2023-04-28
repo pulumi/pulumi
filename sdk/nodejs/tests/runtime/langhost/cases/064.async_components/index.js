@@ -5,33 +5,33 @@ let pulumi = require("../../../../../");
 
 class CustResource extends pulumi.CustomResource {
     constructor(name, opts) {
-        super("test:index:CustResource", name, {}, opts)
+        super("test:index:CustResource", name, {}, opts);
     }
 }
 
 class CompResource extends pulumi.ComponentResource {
     constructor(name, opts) {
-        super("test:index:CompResource", name, {}, opts)
+        super("test:index:CompResource", name, {}, opts);
         const data = this.getData();
-        this.a = pulumi.output(data.then(d => d.a));
-        this.b = pulumi.output(data.then(d => d.b));
-        this.cust1 = pulumi.output(data.then(d => d.cust1));
-        this.cust2 = pulumi.output(data.then(d => d.cust2));
+        this.a = pulumi.output(data.then((d) => d.a));
+        this.b = pulumi.output(data.then((d) => d.b));
+        this.cust1 = pulumi.output(data.then((d) => d.cust1));
+        this.cust2 = pulumi.output(data.then((d) => d.cust2));
     }
 
     /** @override */
     async initialize() {
         const cust1 = new CustResource("a", { parent: this });
         const cust2 = new CustResource("b", { parent: this });
-        return { a: 1, b: 2, cust1, cust2 }
+        return { a: 1, b: 2, cust1, cust2 };
     }
 }
 
 const comp = new CompResource("comp", {});
-comp.a.apply(v => {
+comp.a.apply((v) => {
     assert.strictEqual(v, 1);
 });
-comp.b.apply(v => {
+comp.b.apply((v) => {
     assert.strictEqual(v, 2);
 });
 

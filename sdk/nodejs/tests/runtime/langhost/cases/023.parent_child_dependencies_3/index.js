@@ -2,15 +2,15 @@ let assert = require("assert");
 let pulumi = require("../../../../../");
 
 class MyCustomResource extends pulumi.CustomResource {
-	constructor(name, args, opts) {
-		super("test:index:MyCustomResource", name, args, opts);
-	}
+    constructor(name, args, opts) {
+        super("test:index:MyCustomResource", name, args, opts);
+    }
 }
 
 class MyComponentResource extends pulumi.ComponentResource {
-	constructor(name, args, opts) {
-		super("test:index:MyComponentResource", name, args, opts);
-	}
+    constructor(name, args, opts) {
+        super("test:index:MyComponentResource", name, args, opts);
+    }
 }
 
 //            comp1
