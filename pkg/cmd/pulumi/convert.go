@@ -132,7 +132,7 @@ func pclGenerateProject(sourceDirectory, targetDirectory string, loader schema.R
 		return writeProgram(targetDirectory, nil, program)
 	}
 	// We couldn't bind the program so print that for the user to see but then just copy the filetree across
-	fmt.Printf("Could not bind program: %v", err)
+	fmt.Printf("Could not bind program: %v\n", err)
 
 	// Copy the source directory to the target directory
 	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
