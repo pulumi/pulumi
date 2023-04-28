@@ -690,13 +690,13 @@ func (sg *stepGenerator) generateStepsInner(
 				// now have the information needed to fill in Seed and Goal.
 				plan.Seed = randomSeed
 				plan.Goal = NewGoalPlan(inputDiff, goal)
-			} else {
-				newResourcePlan := &ResourcePlan{
-					Seed: randomSeed,
-					Goal: NewGoalPlan(inputDiff, goal),
-				}
-				sg.deployment.newPlans.set(urn, newResourcePlan)
+				return nil
 			}
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(inputDiff, goal),
+			}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
 			return nil
 		}
 		if err := addToPlan(inputDiff); err != nil {
@@ -716,13 +716,15 @@ func (sg *stepGenerator) generateStepsInner(
 				} else if err := checkMissingPlan(old, inputs, goal); err != nil {
 					return fmt.Errorf("resource %s violates plan: %w", urn, err)
 				}
-			} else {
-				if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-					return fmt.Errorf("resource %s violates plan: %w", urn, err)
-				}
+				return nil
+			}
+
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+				return fmt.Errorf("resource %s violates plan: %w", urn, err)
 			}
 			return nil
 		}
+
 		if err := checkPlan(); err != nil {
 			return nil, result.FromError(err)
 		}
