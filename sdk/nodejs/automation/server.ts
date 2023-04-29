@@ -148,7 +148,7 @@ function newUncaughtHandler(errorSet: Set<Error>): (err: Error) => void {
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
         let defaultMessage = "";
-        if (!!err) {
+        if (err) {
             defaultMessage = err.stack || err.message || "" + err;
         }
 

@@ -202,7 +202,7 @@ function allFoldersForPackages(
                 // .devDependencies or or .peerDependencies.  These are not what are considered part
                 // of the final runtime configuration of the app and should not be uploaded.
                 const referencedPackages = new Set<string>(includedPackages);
-                if (root.package && root.package.dependencies) {
+                if (root?.package.dependencies) {
                     for (const depName of Object.keys(root.package.dependencies)) {
                         referencedPackages.add(depName);
                     }

@@ -228,7 +228,7 @@ export class LocalWorkspace implements Workspace {
         }
 
         if (!wsOpts.projectSettings) {
-            if (!!wsOpts.workDir) {
+            if (wsOpts.workDir) {
                 try {
                     // Try to load the project settings.
                     loadProjectSettings(wsOpts.workDir);
@@ -289,10 +289,10 @@ export class LocalWorkspace implements Workspace {
 
         const readinessPromises: Promise<any>[] = [this.getPulumiVersion(minimumVersion)];
 
-        if (opts && opts.projectSettings) {
+        if (opts?.projectSettings) {
             readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
         }
-        if (opts && opts.stackSettings) {
+        if (opts?.stackSettings) {
             for (const [name, value] of Object.entries(opts.stackSettings)) {
                 readinessPromises.push(this.saveStackSettings(name, value));
             }

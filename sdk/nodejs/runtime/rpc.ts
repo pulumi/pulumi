@@ -69,7 +69,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         let rejectDeps: (err: Error) => void;
 
         resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
-            if (!!err) {
+            if (err) {
                 rejectValue(err);
                 rejectIsKnown(err);
                 rejectIsSecret(err);

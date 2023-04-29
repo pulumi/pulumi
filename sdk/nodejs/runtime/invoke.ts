@@ -222,7 +222,7 @@ function getProvider(tok: string, opts: InvokeOptions) {
 
 function deserializeResponse(tok: string, resp: any): any {
     const failures: any = resp.getFailuresList();
-    if (failures && failures.length) {
+    if (failures?.length) {
         let reasons = "";
         for (let i = 0; i < failures.length; i++) {
             if (reasons !== "") {
@@ -365,7 +365,7 @@ function createOutput<T>(
     let rejectDeps: (err: Error) => void;
 
     const resolver = (v: T, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
-        if (!!err) {
+        if (err) {
             rejectValue(err);
             rejectIsKnown(err);
             rejectIsSecret(err);

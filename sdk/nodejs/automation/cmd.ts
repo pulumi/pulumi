@@ -60,7 +60,7 @@ export async function runPulumiCmd(
 
         if (onOutput && proc.stdout) {
             proc.stdout!.on("data", (data: any) => {
-                if (data && data.toString) {
+                if (data?.toString) {
                     data = data.toString();
                 }
                 onOutput(data);
