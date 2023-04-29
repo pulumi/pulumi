@@ -17,7 +17,7 @@ export {
     serializeFunction,
     SerializedFunction,
     SerializeFunctionArgs,
-}  from "./closure/serializeClosure";
+} from "./closure/serializeClosure";
 
 export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
 export { Mocks, setMocks, MockResourceArgs, MockCallArgs } from "./mocks";

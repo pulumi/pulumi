@@ -4920,7 +4920,9 @@ function __f0() {
   return (function() {
     with({ message: "Function 'b' cannot be called at runtime. It can only be used at deployment time.\\n\\nFunction code:\\n  () => console.log(\\"the actual function\\")\\n" }) {
 
-return () => { throw new Error(message); };
+return () => {
+                throw new Error(message);
+            };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);

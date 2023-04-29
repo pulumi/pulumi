@@ -9,4 +9,3 @@ class MyResource extends pulumi.CustomResource {
 }
 
 new MyResource("testResource1");
-

@@ -4,15 +4,15 @@
 import pulumi from "../../../../../index.js";
 
 class Provider extends pulumi.ProviderResource {
-  constructor(name, opts) {
-    super("test", name, {}, opts);
-  }
+    constructor(name, opts) {
+        super("test", name, {}, opts);
+    }
 }
 
 class RemoteComponent extends pulumi.ComponentResource {
-  constructor(name, opts) {
-    super("test:index:Component", name, {}, opts, true /*remote*/);
-  }
+    constructor(name, opts) {
+        super("test:index:Component", name, {}, opts, true /*remote*/);
+    }
 }
 
 const myprovider = new Provider("myprovider");

@@ -20,14 +20,17 @@ import { allConfig, getConfig as runtimeGetConfig } from "./runtime/config";
 function makeSecret<T>(value: T): Output<T> {
     const output = require("./output");
     return new output.Output(
-        [], Promise.resolve(value),
-        /*isKnown:*/ Promise.resolve(true), /*isSecret:*/ Promise.resolve(true),
-        Promise.resolve([]));
+        [],
+        Promise.resolve(value),
+        /*isKnown:*/ Promise.resolve(true),
+        /*isSecret:*/ Promise.resolve(true),
+        Promise.resolve([]),
+    );
 }
 
 function getProject(): string {
     return metadataGetProject();
-};
+}
 
 // This is used to capture and serialize the results of
 // getProject for use in non-pulumi engine contexts
@@ -39,7 +42,7 @@ function getProject(): string {
 
 function getConfig(k: string): string | undefined {
     return runtimeGetConfig(k);
-};
+}
 
 // This is used to capture and serialize the results of
 // getConfig for use in non-pulumi engine contexts
@@ -82,10 +85,12 @@ export class Config {
      * @param key The key to lookup.
      * @param opts An options bag to constrain legal values.
      */
-    private getImpl<K extends string = string>(key: string,
-                                               opts?: StringConfigOptions<K>,
-                                               use?: (...args: any[]) => any,
-                                               insteadOf?: (...args: any[]) => any): K | undefined {
+    private getImpl<K extends string = string>(
+        key: string,
+        opts?: StringConfigOptions<K>,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): K | undefined {
         const fullKey = this.fullKey(key);
         const v: string | undefined = getConfig(fullKey);
         if (v === undefined) {
@@ -147,9 +152,11 @@ export class Config {
         return makeSecret(v);
     }
 
-    private getBooleanImpl(key: string,
-                           use?: (...args: any[]) => any,
-                           insteadOf?: (...args: any[]) => any): boolean | undefined {
+    private getBooleanImpl(
+        key: string,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): boolean | undefined {
         const v: string | undefined = this.getImpl(key, undefined, use, insteadOf);
         if (v === undefined) {
             return undefined;
@@ -187,10 +194,12 @@ export class Config {
         return makeSecret(v);
     }
 
-    private getNumberImpl(key: string,
-                          opts?: NumberConfigOptions,
-                          use?: (...args: any[]) => any,
-                          insteadOf?: (...args: any[]) => any): number | undefined {
+    private getNumberImpl(
+        key: string,
+        opts?: NumberConfigOptions,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): number | undefined {
         const v: string | undefined = this.getImpl(key, undefined, use, insteadOf);
         if (v === undefined) {
             return undefined;
@@ -237,17 +246,18 @@ export class Config {
         return makeSecret(v);
     }
 
-    private getObjectImpl<T>(key: string,
-                             use?: (...args: any[]) => any,
-                             insteadOf?: (...args: any[]) => any): T | undefined {
+    private getObjectImpl<T>(
+        key: string,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): T | undefined {
         const v: string | undefined = this.getImpl(key, undefined, use, insteadOf);
         if (v === undefined) {
             return undefined;
         }
         try {
             return <T>JSON.parse(v);
-        }
-        catch (err) {
+        } catch (err) {
             throw new ConfigTypeError(this.fullKey(key), v, "JSON object");
         }
     }
@@ -279,10 +289,12 @@ export class Config {
         return makeSecret<T>(v);
     }
 
-    private requireImpl<K extends string = string>(key: string,
-                                                   opts?: StringConfigOptions<K>,
-                                                   use?: (...args: any[]) => any,
-                                                   insteadOf?: (...args: any[]) => any): K {
+    private requireImpl<K extends string = string>(
+        key: string,
+        opts?: StringConfigOptions<K>,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): K {
         const v: K | undefined = this.getImpl(key, opts, use, insteadOf);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
@@ -311,9 +323,11 @@ export class Config {
         return makeSecret(this.requireImpl(key, opts));
     }
 
-    private requireBooleanImpl(key: string,
-                               use?: (...args: any[]) => any,
-                               insteadOf?: (...args: any[]) => any): boolean {
+    private requireBooleanImpl(
+        key: string,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): boolean {
         const v: boolean | undefined = this.getBooleanImpl(key, use, insteadOf);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
@@ -341,10 +355,12 @@ export class Config {
         return makeSecret(this.requireBooleanImpl(key));
     }
 
-    private requireNumberImpl(key: string,
-                              opts?: NumberConfigOptions,
-                              use?: (...args: any[]) => any,
-                              insteadOf?: (...args: any[]) => any): number {
+    private requireNumberImpl(
+        key: string,
+        opts?: NumberConfigOptions,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): number {
         const v: number | undefined = this.getNumberImpl(key, opts, use, insteadOf);
         if (v === undefined) {
             throw new ConfigMissingError(this.fullKey(key));
@@ -503,7 +519,7 @@ class ConfigMissingError extends RunError {
     constructor(public key: string) {
         super(
             `Missing required configuration variable '${key}'\n` +
-            `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
+                `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
         );
     }
 }

@@ -20,13 +20,14 @@ import { InvokeOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
 import { debuggablePromise } from "./debuggable";
-import { deserializeProperties, isRpcSecret, serializeProperties, serializePropertiesReturnDeps, unwrapRpcSecret } from "./rpc";
 import {
-    excessiveDebugOutput,
-    getMonitor,
-    rpcKeepAlive,
-    terminateRpcs,
-} from "./settings";
+    deserializeProperties,
+    isRpcSecret,
+    serializeProperties,
+    serializePropertiesReturnDeps,
+    unwrapRpcSecret,
+} from "./rpc";
+import { excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
 
 import { DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
@@ -79,7 +80,7 @@ export function invoke(tok: string, props: Inputs, opts: InvokeOptions = {}): Pr
  * Similar to `invoke`, but returns a single value instead of an object with a single key.
  */
 export function invokeSingle(tok: string, props: Inputs, opts: InvokeOptions = {}): Promise<any> {
-    return invokeAsync(tok, props, opts).then(outputs => {
+    return invokeAsync(tok, props, opts).then((outputs) => {
         // assume outputs have a single key
         const keys = Object.keys(outputs);
         // return the first key's value from the outputs
@@ -100,9 +101,7 @@ export async function streamInvoke(
     try {
         const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
         log.debug(
-            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput
-                ? `, obj=${JSON.stringify(serialized)}`
-                : ``,
+            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
         );
 
         // Fetch the monitor and make an RPC request.
@@ -115,7 +114,7 @@ export async function streamInvoke(
         const result = monitor.streamInvoke(req, {});
 
         const queue = new PushableAsyncIterable();
-        result.on("data", function(thing: any) {
+        result.on("data", function (thing: any) {
             const live = deserializeResponse(tok, thing);
             queue.push(live);
         });
@@ -130,9 +129,7 @@ export async function streamInvoke(
         });
 
         // Return a cancellable handle to the stream.
-        return new StreamInvokeResponse(
-            queue,
-            () => result.cancel());
+        return new StreamInvokeResponse(queue, () => result.cancel());
     } finally {
         done();
     }
@@ -146,7 +143,9 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
     const done = rpcKeepAlive();
     try {
         const serialized = await serializeProperties(`invoke:${tok}`, props);
-        log.debug(`Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
+        log.debug(
+            `Invoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+        );
 
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
@@ -154,32 +153,34 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         const provider = await ProviderResource.register(getProvider(tok, opts));
         const req = createInvokeRequest(tok, serialized, provider, opts);
 
-        const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
-            monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
-                log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
-                if (err) {
-                    // If the monitor is unavailable, it is in the process of shutting down or has already
-                    // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                    if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
-                        terminateRpcs();
-                        err.message = "Resource monitor is terminating";
-                        innerReject(err);
-                        return;
-                    }
+        const resp: any = await debuggablePromise(
+            new Promise((innerResolve, innerReject) =>
+                monitor.invoke(req, (err: grpc.ServiceError, innerResponse: any) => {
+                    log.debug(`Invoke RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                    if (err) {
+                        // If the monitor is unavailable, it is in the process of shutting down or has already
+                        // shut down. Don't emit an error and don't do any more RPCs, just exit.
+                        if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
+                            terminateRpcs();
+                            err.message = "Resource monitor is terminating";
+                            innerReject(err);
+                            return;
+                        }
 
-                    // If the RPC failed, rethrow the error with a native exception and the message that
-                    // the engine provided - it's suitable for user presentation.
-                    innerReject(new Error(err.details));
-                }
-                else {
-                    innerResolve(innerResponse);
-                }
-            })), label);
+                        // If the RPC failed, rethrow the error with a native exception and the message that
+                        // the engine provided - it's suitable for user presentation.
+                        innerReject(new Error(err.details));
+                    } else {
+                        innerResolve(innerResponse);
+                    }
+                }),
+            ),
+            label,
+        );
 
         // Finally propagate any other properties that were given to us as outputs.
         return deserializeResponse(tok, resp);
-    }
-    finally {
+    } finally {
         done();
     }
 }
@@ -187,10 +188,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
 // StreamInvokeResponse represents a (potentially infinite) streaming response to `streamInvoke`,
 // with facilities to gracefully cancel and clean up the stream.
 export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(
-        private source: AsyncIterable<T>,
-        private cancelSource: () => void,
-    ) {}
+    constructor(private source: AsyncIterable<T>, private cancelSource: () => void) {}
 
     // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
     public cancel() {
@@ -219,8 +217,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
 }
 
 function getProvider(tok: string, opts: InvokeOptions) {
-    return opts.provider ? opts.provider :
-        opts.parent ? opts.parent.getProvider(tok) : undefined;
+    return opts.provider ? opts.provider : opts.parent ? opts.parent.getProvider(tok) : undefined;
 }
 
 function deserializeResponse(tok: string, resp: any): any {
@@ -239,9 +236,7 @@ function deserializeResponse(tok: string, resp: any): any {
     }
 
     const ret = resp.getReturn();
-    return ret === undefined
-        ? ret
-        : deserializeProperties(ret);
+    return ret === undefined ? ret : deserializeProperties(ret);
 }
 
 /**
@@ -253,99 +248,113 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
 
     const [out, resolver] = createOutput<T>(`call(${tok})`);
 
-    debuggablePromise(Promise.resolve().then(async () => {
-        const done = rpcKeepAlive();
-        try {
-            // Construct a provider reference from the given provider, if one is available on the resource.
-            let provider: string | undefined = undefined;
-            let version: string | undefined = undefined;
-            let pluginDownloadURL: string | undefined = undefined;
-            if (res) {
-                if (res.__prov) {
-                    provider = await ProviderResource.register(res.__prov);
+    debuggablePromise(
+        Promise.resolve().then(async () => {
+            const done = rpcKeepAlive();
+            try {
+                // Construct a provider reference from the given provider, if one is available on the resource.
+                let provider: string | undefined = undefined;
+                let version: string | undefined = undefined;
+                let pluginDownloadURL: string | undefined = undefined;
+                if (res) {
+                    if (res.__prov) {
+                        provider = await ProviderResource.register(res.__prov);
+                    }
+                    version = res.__version;
+                    pluginDownloadURL = res.__pluginDownloadURL;
                 }
-                version = res.__version;
-                pluginDownloadURL = res.__pluginDownloadURL;
-            }
 
-            // We keep output values when serializing inputs for call.
-            const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
-                keepOutputValues: true,
-            });
-            log.debug(`Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
+                // We keep output values when serializing inputs for call.
+                const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                    keepOutputValues: true,
+                });
+                log.debug(
+                    `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
+                );
 
-            const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version, pluginDownloadURL);
+                const req = await createCallRequest(
+                    tok,
+                    serialized,
+                    propertyDepsResources,
+                    provider,
+                    version,
+                    pluginDownloadURL,
+                );
 
-            const monitor: any = getMonitor();
-            const resp: any = await debuggablePromise(new Promise((innerResolve, innerReject) =>
-                monitor.call(req, (err: grpc.ServiceError, innerResponse: any) => {
-                    log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
-                    if (err) {
-                        // If the monitor is unavailable, it is in the process of shutting down or has already
-                        // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                        if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
-                            terminateRpcs();
-                            err.message = "Resource monitor is terminating";
-                            innerReject(err);
-                            return;
+                const monitor: any = getMonitor();
+                const resp: any = await debuggablePromise(
+                    new Promise((innerResolve, innerReject) =>
+                        monitor.call(req, (err: grpc.ServiceError, innerResponse: any) => {
+                            log.debug(`Call RPC finished: tok=${tok}; err: ${err}, resp: ${innerResponse}`);
+                            if (err) {
+                                // If the monitor is unavailable, it is in the process of shutting down or has already
+                                // shut down. Don't emit an error and don't do any more RPCs, just exit.
+                                if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
+                                    terminateRpcs();
+                                    err.message = "Resource monitor is terminating";
+                                    innerReject(err);
+                                    return;
+                                }
+
+                                // If the RPC failed, rethrow the error with a native exception and the message that
+                                // the engine provided - it's suitable for user presentation.
+                                innerReject(new Error(err.details));
+                            } else {
+                                innerResolve(innerResponse);
+                            }
+                        }),
+                    ),
+                    label,
+                );
+
+                // Deserialize the response and resolve the output.
+                const deserialized = deserializeResponse(tok, resp);
+                let isSecret = false;
+                const deps: Resource[] = [];
+
+                // Keep track of whether we need to mark the resulting output a secret.
+                // and unwrap each individual value.
+                for (const k of Object.keys(deserialized)) {
+                    const v = deserialized[k];
+                    if (isRpcSecret(v)) {
+                        isSecret = true;
+                        deserialized[k] = unwrapRpcSecret(v);
+                    }
+                }
+
+                // Combine the individual dependencies into a single set of dependency resources.
+                const rpcDeps = resp.getReturndependenciesMap();
+                if (rpcDeps) {
+                    const urns = new Set<string>();
+                    for (const [, returnDeps] of rpcDeps.entries()) {
+                        for (const urn of returnDeps.getUrnsList()) {
+                            urns.add(urn);
                         }
-
-                        // If the RPC failed, rethrow the error with a native exception and the message that
-                        // the engine provided - it's suitable for user presentation.
-                        innerReject(new Error(err.details));
                     }
-                    else {
-                        innerResolve(innerResponse);
+                    for (const urn of urns) {
+                        deps.push(new DependencyResource(urn));
                     }
-                })), label);
-
-            // Deserialize the response and resolve the output.
-            const deserialized = deserializeResponse(tok, resp);
-            let isSecret = false;
-            const deps: Resource[] = [];
-
-            // Keep track of whether we need to mark the resulting output a secret.
-            // and unwrap each individual value.
-            for (const k of Object.keys(deserialized)) {
-                const v = deserialized[k];
-                if (isRpcSecret(v)) {
-                    isSecret = true;
-                    deserialized[k] = unwrapRpcSecret(v);
                 }
+
+                // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+                // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+                // present during previews (i.e. isDryRun() will be true).
+                resolver(deserialized, true, isSecret, deps);
+            } catch (e) {
+                resolver(<any>undefined, true, false, undefined, e);
+            } finally {
+                done();
             }
-
-            // Combine the individual dependencies into a single set of dependency resources.
-            const rpcDeps = resp.getReturndependenciesMap();
-            if (rpcDeps) {
-                const urns = new Set<string>();
-                for (const [, returnDeps] of rpcDeps.entries()) {
-                    for (const urn of returnDeps.getUrnsList()) {
-                        urns.add(urn);
-                    }
-                }
-                for (const urn of urns) {
-                    deps.push(new DependencyResource(urn));
-                }
-            }
-
-            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
-            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
-            // present during previews (i.e. isDryRun() will be true).
-            resolver(deserialized, true, isSecret, deps);
-        }
-        catch (e) {
-            resolver(<any>undefined, true, false, undefined, e);
-        }
-        finally {
-            done();
-        }
-    }), label);
+        }),
+        label,
+    );
 
     return out;
 }
 
-function createOutput<T>(label: string):
-[Output<T>, (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void] {
+function createOutput<T>(
+    label: string,
+): [Output<T>, (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void] {
     let resolveValue: (v: T) => void;
     let rejectValue: (err: Error) => void;
     let resolveIsKnown: (v: boolean) => void;
@@ -376,32 +385,42 @@ function createOutput<T>(label: string):
                 resolveValue = resolve;
                 rejectValue = reject;
             }),
-            `${label}Value`),
+            `${label}Value`,
+        ),
         debuggablePromise(
             new Promise<boolean>((resolve, reject) => {
                 resolveIsKnown = resolve;
                 rejectIsKnown = reject;
             }),
-            `${label}IsKnown`),
+            `${label}IsKnown`,
+        ),
         debuggablePromise(
             new Promise<boolean>((resolve, reject) => {
                 resolveIsSecret = resolve;
                 rejectIsSecret = reject;
             }),
-            `${label}IsSecret`),
+            `${label}IsSecret`,
+        ),
         debuggablePromise(
             new Promise<Resource[]>((resolve, reject) => {
                 resolveDeps = resolve;
                 rejectDeps = reject;
             }),
-            `${label}Deps`));
+            `${label}Deps`,
+        ),
+    );
 
     return [out, resolver];
 }
 
-async function createCallRequest(tok: string, serialized: Record<string, any>,
-                                 serializedDeps: Map<string, Set<Resource>>, provider?: string,
-                                 version?: string, pluginDownloadURL?: string) {
+async function createCallRequest(
+    tok: string,
+    serialized: Record<string, any>,
+    serializedDeps: Map<string, Set<Resource>>,
+    provider?: string,
+    version?: string,
+    pluginDownloadURL?: string,
+) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
     }

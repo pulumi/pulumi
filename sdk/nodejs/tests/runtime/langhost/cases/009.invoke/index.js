@@ -20,6 +20,6 @@ for (const key in args) {
 
 // When invoking asynchronously: Ensure the properties are available asynchronously through normal
 // Promise semantics.
-result2.then(v => {
+result2.then((v) => {
     assert.deepStrictEqual(v, args);
 });

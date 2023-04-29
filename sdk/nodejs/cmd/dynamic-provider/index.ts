@@ -38,7 +38,7 @@ const uncaughtErrors = new Set<Error>();
 const uncaughtHandler = (err: Error) => {
     if (!uncaughtErrors.has(err)) {
         uncaughtErrors.add(err);
-        console.error(err.stack || err.message || ("" + err));
+        console.error(err.stack || err.message || "" + err);
     }
 };
 
@@ -148,10 +148,13 @@ async function checkRPC(call: any, callback: any): Promise<void> {
 }
 
 function checkConfigRPC(call: any, callback: any): void {
-    callback({
-        code: grpc.status.UNIMPLEMENTED,
-        details: "CheckConfig is not implemented by the dynamic provider",
-    }, undefined);
+    callback(
+        {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "CheckConfig is not implemented by the dynamic provider",
+        },
+        undefined,
+    );
 }
 
 async function diffRPC(call: any, callback: any): Promise<void> {
@@ -197,10 +200,13 @@ async function diffRPC(call: any, callback: any): Promise<void> {
 }
 
 function diffConfigRPC(call: any, callback: any): void {
-    callback({
-        code: grpc.status.UNIMPLEMENTED,
-        details: "DiffConfig is not implemented by the dynamic provider",
-    }, undefined);
+    callback(
+        {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "DiffConfig is not implemented by the dynamic provider",
+        },
+        undefined,
+    );
 }
 
 async function createRPC(call: any, callback: any): Promise<void> {
@@ -261,7 +267,7 @@ async function updateRPC(call: any, callback: any): Promise<void> {
         let result: any = {};
         const provider = getProvider(news);
         if (provider.update) {
-            result = await provider.update(req.getId(), olds, news) || {};
+            result = (await provider.update(req.getId(), olds, news)) || {};
         }
 
         const resultProps = resultIncludingProvider(result.outs, news);
@@ -296,17 +302,23 @@ async function getPluginInfoRPC(call: any, callback: any): Promise<void> {
 }
 
 function getSchemaRPC(call: any, callback: any): void {
-    callback({
-        code: grpc.status.UNIMPLEMENTED,
-        details: "GetSchema is not implemented by the dynamic provider",
-    }, undefined);
+    callback(
+        {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "GetSchema is not implemented by the dynamic provider",
+        },
+        undefined,
+    );
 }
 
 function constructRPC(call: any, callback: any): void {
-    callback({
-        code: grpc.status.UNIMPLEMENTED,
-        details: "Construct is not implemented by the dynamic provider",
-    }, undefined);
+    callback(
+        {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "Construct is not implemented by the dynamic provider",
+        },
+        undefined,
+    );
 }
 
 function resultIncludingProvider(result: any, props: any): any {
@@ -320,7 +332,7 @@ function resultIncludingProvider(result: any, props: any): any {
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
+function grpcResponseFromError(e: { id: string; properties: any; message: string; reasons?: string[] }) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);

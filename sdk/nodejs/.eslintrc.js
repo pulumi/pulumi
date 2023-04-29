@@ -1,84 +1,63 @@
 module.exports = {
-    "env": {
-        "es6": true,
-        "node": true
+    env: {
+        es6: true,
+        node: true,
     },
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-        "project": "tsconfig.json",
-        "tsconfigRootDir": __dirname,
-        "sourceType": "module"
+    parser: "@typescript-eslint/parser",
+    parserOptions: {
+        project: "tsconfig.json",
+        tsconfigRootDir: __dirname,
+        sourceType: "module",
     },
-    "plugins": [
-        "eslint-plugin-import",
-        "@typescript-eslint",
-        "header"
-    ],
-    "ignorePatterns": [
+    plugins: ["eslint-plugin-import", "@typescript-eslint", "header"],
+    ignorePatterns: [
         "**/bin/**/*.ts",
         "tests/automation/data/tcfg/*.ts",
         "tests/sxs_ts_test/*.ts",
         "tests/mockpackage/**/*.ts",
     ],
-    "rules": {
+    rules: {
         "header/header": [
             2,
             "line",
             [
                 {
-                    "pattern": "Copyright \\d{4}-\\d{4}, Pulumi Corporation."
-                }
-            ]
+                    pattern: "Copyright \\d{4}-\\d{4}, Pulumi Corporation.",
+                },
+            ],
         ],
         "@typescript-eslint/dot-notation": "off",
         "@typescript-eslint/explicit-member-accessibility": [
             "off",
             {
-                "accessibility": "explicit"
-            }
-        ],
-        "@typescript-eslint/indent": [
-            "error",
-            4,
-            {
-                "FunctionDeclaration": {
-                    "parameters": "first"
-                },
-                "FunctionExpression": {
-                    "parameters": "first"
-                }
-            }
+                accessibility: "explicit",
+            },
         ],
         "@typescript-eslint/member-delimiter-style": [
             "error",
             {
-                "multiline": {
-                    "delimiter": "semi",
-                    "requireLast": true
+                multiline: {
+                    delimiter: "semi",
+                    requireLast: true,
                 },
-                "singleline": {
-                    "delimiter": "semi",
-                    "requireLast": false
-                }
-            }
+                singleline: {
+                    delimiter: "semi",
+                    requireLast: false,
+                },
+            },
         ],
         "@typescript-eslint/member-ordering": [
             "error",
             {
-                "default": [
-                   "static-field",
-                   "instance-field",
-                   "static-method",
-                   "instance-method"
-                ]
-            }
+                default: ["static-field", "instance-field", "static-method", "instance-method"],
+            },
         ],
         "@typescript-eslint/naming-convention": [
             "error",
             {
-                "selector": "default",
-                "format": null
-            }
+                selector: "default",
+                format: null,
+            },
         ],
         "@typescript-eslint/no-empty-function": "error",
         "@typescript-eslint/no-explicit-any": "off",
@@ -88,8 +67,8 @@ module.exports = {
         "@typescript-eslint/no-shadow": [
             "error",
             {
-                "hoist": "all"
-            }
+                hoist: "all",
+            },
         ],
         "@typescript-eslint/no-unused-expressions": "error",
         "@typescript-eslint/no-use-before-define": "off",
@@ -99,27 +78,19 @@ module.exports = {
             "error",
             "double",
             {
-                "avoidEscape": true,
-                "allowTemplateLiterals": true
-            }
+                avoidEscape: true,
+                allowTemplateLiterals: true,
+            },
         ],
-        "@typescript-eslint/semi": [
-            "error"
-        ],
+        "@typescript-eslint/semi": ["error"],
         "@typescript-eslint/type-annotation-spacing": "error",
         "brace-style": "off",
-        "comma-dangle": [
-            "error",
-            "always-multiline"
-        ],
-        "curly": "error",
+        "comma-dangle": ["error", "always-multiline"],
+        curly: "error",
         "default-case": "error",
         "dot-notation": "off",
         "eol-last": "error",
-        "eqeqeq": [
-            "error",
-            "smart"
-        ],
+        eqeqeq: ["error", "smart"],
         "guard-for-in": "error",
         "id-blacklist": [
             "error",
@@ -131,18 +102,18 @@ module.exports = {
             "Boolean",
             "boolean",
             "Undefined",
-            "undefined"
+            "undefined",
         ],
         "id-match": "error",
         "import/order": "off",
-        "indent": "off",
+        indent: "off",
         "no-bitwise": "off",
         "no-caller": "error",
         "no-cond-assign": "off",
         "no-console": [
             "error",
             {
-                "allow": [
+                allow: [
                     "log",
                     "warn",
                     "dir",
@@ -161,9 +132,9 @@ module.exports = {
                     "profile",
                     "profileEnd",
                     "timeStamp",
-                    "context"
-                ]
-            }
+                    "context",
+                ],
+            },
         ],
         "no-debugger": "error",
         "no-empty": "error",
@@ -181,12 +152,10 @@ module.exports = {
         "no-use-before-define": "off",
         "no-var": "error",
         "prefer-const": "error",
-        "quotes": "off",
-        "radix": "error",
-        "semi": "off",
+        quotes: "off",
+        radix: "error",
+        semi: "off",
         "spaced-comment": "off",
-        "@typescript-eslint/no-redeclare": [
-            "error"
-        ]
-    }
+        "@typescript-eslint/no-redeclare": ["error"],
+    },
 };

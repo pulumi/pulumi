@@ -13,8 +13,17 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { ComponentResource, CustomResource, DependencyResource, Inputs, Output, Resource, ResourceOptions, runtime,
-    secret } from "../../index";
+import {
+    ComponentResource,
+    CustomResource,
+    DependencyResource,
+    Inputs,
+    Output,
+    Resource,
+    ResourceOptions,
+    runtime,
+    secret,
+} from "../../index";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -41,12 +50,12 @@ class TestErrorResource extends CustomResource {
 class TestResourceModule implements runtime.ResourceModule {
     construct(name: string, type: string, urn: string): Resource {
         switch (type) {
-        case "test:index:component":
-            return new TestComponentResource(name, {urn});
-        case "test:index:custom":
-            return new TestCustomResource(name, type, {urn});
-        default:
-            throw new Error(`unknown resource type ${type}`);
+            case "test:index:component":
+                return new TestComponentResource(name, { urn });
+            case "test:index:custom":
+                return new TestCustomResource(name, type, { urn });
+            default:
+                throw new Error(`unknown resource type ${type}`);
         }
     }
 }
@@ -58,18 +67,18 @@ class TestMocks implements runtime.Mocks {
 
     newResource(args: runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
         switch (args.type) {
-        case "test:index:component":
-            return {id: undefined, state: {}};
-        case "test:index:custom":
-        case "test2:index:custom":
-            return {
-                id: runtime.isDryRun() ? undefined : "test-id",
-                state: {},
-            };
-        case "error":
-            throw new Error("this is an intentional error");
-        default:
-            throw new Error(`unknown resource type ${args.type}`);
+            case "test:index:component":
+                return { id: undefined, state: {} };
+            case "test:index:custom":
+            case "test2:index:custom":
+                return {
+                    id: runtime.isDryRun() ? undefined : "test-id",
+                    state: {},
+                };
+            case "error":
+                throw new Error("this is an intentional error");
+            default:
+                throw new Error(`unknown resource type ${args.type}`);
         }
     }
 }
@@ -81,7 +90,7 @@ const TestStrEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
+type TestStrEnum = typeof TestStrEnum[keyof typeof TestStrEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
@@ -90,7 +99,7 @@ const TestIntEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
+type TestIntEnum = typeof TestIntEnum[keyof typeof TestIntEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
@@ -99,7 +108,7 @@ const TestNumEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
+type TestNumEnum = typeof TestNumEnum[keyof typeof TestNumEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
@@ -108,7 +117,7 @@ const TestBoolEnum = {
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
+type TestBoolEnum = typeof TestBoolEnum[keyof typeof TestBoolEnum];
 
 interface TestInputs {
     aNum: number;
@@ -135,34 +144,43 @@ describe("runtime", () => {
             function* generateTests() {
                 const testValues = [
                     { value: undefined, expected: null },
-                    { value: null,      expected: null },
-                    { value: 0,         expected: 0 },
-                    { value: 1,         expected: 1 },
-                    { value: "",        expected: "" },
-                    { value: "hi",      expected: "hi" },
-                    { value: {},        expected: {} },
-                    { value: [],        expected: [] },
+                    { value: null, expected: null },
+                    { value: 0, expected: 0 },
+                    { value: 1, expected: 1 },
+                    { value: "", expected: "" },
+                    { value: "hi", expected: "hi" },
+                    { value: {}, expected: {} },
+                    { value: [], expected: [] },
                 ];
                 for (const tv of testValues) {
                     for (const deps of [[], ["fakeURN1", "fakeURN2"]]) {
                         for (const isKnown of [true, false]) {
-                            for (const isSecret of [true, false])
-                            {
-                                const resources = deps.map(dep => new DependencyResource(dep));
+                            for (const isSecret of [true, false]) {
+                                const resources = deps.map((dep) => new DependencyResource(dep));
                                 yield {
-                                    name: `Output(${JSON.stringify(deps)}, ${JSON.stringify(tv.value)}, ` +
+                                    name:
+                                        `Output(${JSON.stringify(deps)}, ${JSON.stringify(tv.value)}, ` +
                                         `isKnown=${isKnown}, isSecret=${isSecret})`,
-                                    input: new Output(resources, Promise.resolve(tv.value), Promise.resolve(isKnown),
-                                        Promise.resolve(isSecret), Promise.resolve([])),
+                                    input: new Output(
+                                        resources,
+                                        Promise.resolve(tv.value),
+                                        Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret),
+                                        Promise.resolve([]),
+                                    ),
                                     expected: {
                                         [runtime.specialSigKey]: runtime.specialOutputValueSig,
-                                        ...isKnown && { value: tv.expected },
-                                        ...isSecret && { secret: isSecret },
-                                        ...(deps.length > 0) && { dependencies: deps },
+                                        ...(isKnown && { value: tv.expected }),
+                                        ...(isSecret && { secret: isSecret }),
+                                        ...(deps.length > 0 && { dependencies: deps }),
                                     },
-                                    expectedRoundTrip: new Output(resources,
-                                        Promise.resolve(isKnown ? tv.expected : undefined), Promise.resolve(isKnown),
-                                        Promise.resolve(isSecret), Promise.resolve([])),
+                                    expectedRoundTrip: new Output(
+                                        resources,
+                                        Promise.resolve(isKnown ? tv.expected : undefined),
+                                        Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret),
+                                        Promise.resolve([]),
+                                    ),
                                 };
                             }
                         }
@@ -205,25 +223,24 @@ describe("runtime", () => {
 
         it("marshals basic properties correctly", async () => {
             const inputs: TestInputs = {
-                "aNum": 42,
-                "bStr": "a string",
-                "cUnd": undefined,
-                "dArr": Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
-                "id": "foo",
-                "urn": "bar",
-                "strEnum": TestStrEnum.Foo,
-                "intEnum": TestIntEnum.One,
-                "numEnum": TestNumEnum.One,
-                "boolEnum": TestBoolEnum.One,
+                aNum: 42,
+                bStr: "a string",
+                cUnd: undefined,
+                dArr: Promise.resolve(["x", 42, Promise.resolve(true), Promise.resolve(undefined)]),
+                id: "foo",
+                urn: "bar",
+                strEnum: TestStrEnum.Foo,
+                intEnum: TestIntEnum.One,
+                numEnum: TestNumEnum.One,
+                boolEnum: TestBoolEnum.One,
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            const transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
+            const transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             const result = runtime.deserializeProperties(transfer);
             assert.strictEqual(result.aNum, 42);
             assert.strictEqual(result.bStr, "a string");
             assert.strictEqual(result.cUnd, undefined);
-            assert.deepStrictEqual(result.dArr, [ "x", 42, true, null ]);
+            assert.deepStrictEqual(result.dArr, ["x", 42, true, null]);
             assert.strictEqual(result.id, "foo");
             assert.strictEqual(result.urn, "bar");
             assert.strictEqual(result.strEnum, TestStrEnum.Foo);
@@ -233,14 +250,13 @@ describe("runtime", () => {
         });
         it("marshals secrets correctly", async () => {
             const inputs: Inputs = {
-                "secret1": secret(1),
-                "secret2": secret(undefined),
+                secret1: secret(1),
+                secret2: secret(undefined),
             };
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             runtime._setFeatureSupport("secrets", true);
-            let transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
+            let transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             let result = runtime.deserializeProperties(transfer);
             assert.ok(runtime.isRpcSecret(result.secret1));
             assert.ok(runtime.isRpcSecret(result.secret2));
@@ -249,8 +265,7 @@ describe("runtime", () => {
 
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             runtime._setFeatureSupport("secrets", false);
-            transfer = gstruct.Struct.fromJavaScript(
-                await runtime.serializeProperties("test", inputs));
+            transfer = gstruct.Struct.fromJavaScript(await runtime.serializeProperties("test", inputs));
             result = runtime.deserializeProperties(transfer);
             assert.ok(!runtime.isRpcSecret(result.secret1));
             assert.ok(!runtime.isRpcSecret(result.secret2));
@@ -269,30 +284,30 @@ describe("runtime", () => {
             const customID = await custom.id.promise();
 
             const inputs: Inputs = {
-                "component": component,
-                "custom": custom,
+                component: component,
+                custom: custom,
             };
 
             runtime._setFeatureSupport("resourceReferences", true);
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
-                "component": {
+                component: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": componentURN,
+                    urn: componentURN,
                 },
-                "custom": {
+                custom: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": customURN,
-                    "id": customID,
+                    urn: customURN,
+                    id: customID,
                 },
             });
 
             runtime._setFeatureSupport("resourceReferences", false);
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
-                "component": componentURN,
-                "custom": customID ? customID : runtime.unknownValue,
+                component: componentURN,
+                custom: customID ? customID : runtime.unknownValue,
             });
         });
 
@@ -307,63 +322,69 @@ describe("runtime", () => {
             const customID = await custom.id.promise();
 
             const inputs: Inputs = {
-                "component": component,
-                "custom": custom,
+                component: component,
+                custom: custom,
             };
 
             runtime._setFeatureSupport("resourceReferences", true);
 
             let serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
-                "component": {
+                component: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": componentURN,
+                    urn: componentURN,
                 },
-                "custom": {
+                custom: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": customURN,
-                    "id": customID,
+                    urn: customURN,
+                    id: customID,
                 },
             });
 
             runtime._setFeatureSupport("resourceReferences", false);
             serialized = await runtime.serializeProperties("test", inputs);
             assert.deepEqual(serialized, {
-                "component": componentURN,
-                "custom": customID,
+                component: componentURN,
+                custom: customID,
             });
         });
     });
 
     describe("deserializeProperty", () => {
         it("fails on unsupported secret values", () => {
-            assert.throws(() => runtime.deserializeProperty({
-                [runtime.specialSigKey]: runtime.specialSecretSig,
-            }));
+            assert.throws(() =>
+                runtime.deserializeProperty({
+                    [runtime.specialSigKey]: runtime.specialSecretSig,
+                }),
+            );
         });
         it("fails on unknown signature keys", () => {
-            assert.throws(() => runtime.deserializeProperty({
-                [runtime.specialSigKey]: "foobar",
-            }));
+            assert.throws(() =>
+                runtime.deserializeProperty({
+                    [runtime.specialSigKey]: "foobar",
+                }),
+            );
         });
         it("pushed secretness up correctly", () => {
             const secretValue = {
                 [runtime.specialSigKey]: runtime.specialSecretSig,
-                "value": "a secret value",
+                value: "a secret value",
             };
 
             const props = gstruct.Struct.fromJavaScript({
-                "regular": "a normal value",
-                "list": [ "a normal value", "another value", secretValue ],
-                "map":  { "regular": "a normal value", "secret": secretValue },
-                "mapWithList": {
-                    "regular": "a normal value",
-                    "list": [ "a normal value", secretValue ],
+                regular: "a normal value",
+                list: ["a normal value", "another value", secretValue],
+                map: { regular: "a normal value", secret: secretValue },
+                mapWithList: {
+                    regular: "a normal value",
+                    list: ["a normal value", secretValue],
                 },
-                "listWithMap": [{
-                    "regular": "a normal value",
-                    "secret": secretValue,
-                }],
+                listWithMap: [
+                    {
+                        regular: "a normal value",
+                        secret: secretValue,
+                    },
+                ],
             });
 
             const result = runtime.deserializeProperties(props);
@@ -409,19 +430,19 @@ describe("runtime", () => {
             const unregisteredID = await unregistered.id.promise();
 
             const outputs = {
-                "component": {
+                component: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": componentURN,
+                    urn: componentURN,
                 },
-                "custom": {
+                custom: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": customURN,
-                    "id": customID,
+                    urn: customURN,
+                    id: customID,
                 },
-                "unregistered": {
+                unregistered: {
                     [runtime.specialSigKey]: runtime.specialResourceSig,
-                    "urn": unregisteredURN,
-                    "id": unregisteredID,
+                    urn: unregisteredURN,
+                    id: unregisteredID,
                 },
             };
 
@@ -436,15 +457,18 @@ describe("runtime", () => {
         it("registerResource errors propagate appropriately", async () => {
             runtime.setMocks(new TestMocks());
 
-            await assert.rejects(async () => {
-                const errResource = new TestErrorResource("test");
-                const customURN = await errResource.urn.promise();
-                const customID = await errResource.id.promise();
-            }, (err: Error) => {
-                const containsMessage = err.stack!.indexOf("this is an intentional error") >= 0;
-                const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
-                return containsMessage && containsRegisterResource;
-            });
+            await assert.rejects(
+                async () => {
+                    const errResource = new TestErrorResource("test");
+                    const customURN = await errResource.urn.promise();
+                    const customID = await errResource.id.promise();
+                },
+                (err: Error) => {
+                    const containsMessage = err.stack!.indexOf("this is an intentional error") >= 0;
+                    const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
+                    return containsMessage && containsRegisterResource;
+                },
+            );
         });
     });
 });

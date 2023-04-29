@@ -67,11 +67,13 @@ const localBackendConflictText = "the stack is currently locked by";
 /** @internal */
 export function createCommandError(result: CommandResult): CommandError {
     const stderr = result.stderr;
-    return (
-        notFoundRegex.test(stderr) ? new StackNotFoundError(result)
-            : alreadyExistsRegex.test(stderr) ? new StackAlreadyExistsError(result)
-                : stderr.indexOf(conflictText) >= 0 ? new ConcurrentUpdateError(result)
-                    : stderr.indexOf(localBackendConflictText) >= 0 ? new ConcurrentUpdateError(result)
-                        : new CommandError(result)
-    );
+    return notFoundRegex.test(stderr)
+        ? new StackNotFoundError(result)
+        : alreadyExistsRegex.test(stderr)
+        ? new StackAlreadyExistsError(result)
+        : stderr.indexOf(conflictText) >= 0
+        ? new ConcurrentUpdateError(result)
+        : stderr.indexOf(localBackendConflictText) >= 0
+        ? new ConcurrentUpdateError(result)
+        : new CommandError(result);
 }

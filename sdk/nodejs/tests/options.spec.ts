@@ -25,7 +25,7 @@ describe("options", () => {
                 assert.strictEqual(result.id, "a");
             });
             it("keeps value from opts2 if not provided in opts1", async () => {
-                const result = mergeOptions({ }, { id: "a" });
+                const result = mergeOptions({}, { id: "a" });
                 assert.strictEqual(result.id, "a");
             });
             it("overwrites value from opts1 if given null in opts2", async () => {
@@ -60,7 +60,7 @@ describe("options", () => {
                 assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             });
             it("keeps value from opts2 if not provided in opts1", async () => {
-                const result = mergeOptions({ }, { ignoreChanges: ["a"] });
+                const result = mergeOptions({}, { ignoreChanges: ["a"] });
                 assert.deepStrictEqual(result.ignoreChanges, ["a"]);
             });
             it("does nothing to value from opts1 if given null in opts2", async () => {
@@ -110,7 +110,7 @@ describe("options", () => {
                 assert.deepStrictEqual(result.transformations, [a]);
             });
             it("keeps value from opts2 if not provided in opts1", async () => {
-                const result = mergeOptions({ }, { transformations: [a] });
+                const result = mergeOptions({}, { transformations: [a] });
                 assert.deepStrictEqual(result.transformations, [a]);
             });
             it("does nothing to value from opts1 if given null in opts2", async () => {
@@ -134,15 +134,20 @@ describe("options", () => {
 
             it("merges singleton into map", () => {
                 const result = mergeOptions({ providers: { aws: awsProvider } }, { provider: azureProvider });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider}, provider: azureProvider  });
+                assert.deepStrictEqual(result, { providers: { aws: awsProvider }, provider: azureProvider });
             });
             it("merges singleton-array into map", () => {
                 const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: [azureProvider] });
                 assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
             });
             it("merges array into map", () => {
-                const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: [azureProvider, gcpProvider] });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider } });
+                const result = mergeOptions(
+                    { providers: { aws: awsProvider } },
+                    { providers: [azureProvider, gcpProvider] },
+                );
+                assert.deepStrictEqual(result, {
+                    providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider },
+                });
             });
 
             it("merges map into singleton", () => {
@@ -154,12 +159,20 @@ describe("options", () => {
                 assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
             });
             it("merges map into array", () => {
-                const result = mergeOptions({ providers: [awsProvider, azureProvider] }, { providers: { gcp: gcpProvider } });
-                assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider } });
+                const result = mergeOptions(
+                    { providers: [awsProvider, azureProvider] },
+                    { providers: { gcp: gcpProvider } },
+                );
+                assert.deepStrictEqual(result, {
+                    providers: { aws: awsProvider, azure: azureProvider, gcp: gcpProvider },
+                });
             });
 
             it("merges map into map", () => {
-                const result = mergeOptions({ providers: { aws: awsProvider } }, { providers: { azure: azureProvider } });
+                const result = mergeOptions(
+                    { providers: { aws: awsProvider } },
+                    { providers: { azure: azureProvider } },
+                );
                 assert.deepStrictEqual(result, { providers: { aws: awsProvider, azure: azureProvider } });
             });
 
@@ -169,7 +182,9 @@ describe("options", () => {
             });
 
             it("merges singleton into singleton", () => {
-                const result = mergeOptions(<ComponentResourceOptions>{ provider: awsProvider }, { provider: azureProvider });
+                const result = mergeOptions(<ComponentResourceOptions>{ provider: awsProvider }, {
+                    provider: azureProvider,
+                });
                 assert.deepStrictEqual(result, { provider: azureProvider });
             });
         });

@@ -91,8 +91,7 @@ export interface PropertyInfoAndValue {
 // A mapping between the name of a property (symbolic or string) to information about the
 // value for that property.
 /** @internal */
-export interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {
-}
+export interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {}
 
 /**
  * Entry is the environment slot for a named lexically captured variable.
@@ -210,12 +209,12 @@ interface ClosurePropertyDescriptor {
  * dependency on the actual shape (including the names of properties like 'value').
  */
 class SerializedOutput<T> {
-    public constructor(private readonly value: T) {
-    }
+    public constructor(private readonly value: T) {}
 
     public apply<U>(func: (t: T) => Input<U>): Output<U> {
         throw new Error(
-            "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
+            "'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.",
+        );
     }
 
     public get(): T {
@@ -237,8 +236,10 @@ export interface ClosureInfo {
  * @internal
  */
 export async function createClosureInfoAsync(
-    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<ClosureInfo> {
-
+    func: Function,
+    serialize: (o: any) => boolean,
+    logResource: resource.Resource | undefined,
+): Promise<ClosureInfo> {
     // Initialize our Context object.  It is effectively used to keep track of the work we're doing
     // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
     const context: Context = {
@@ -342,15 +343,14 @@ export async function createClosureInfoAsync(
         // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
         async function addGeneratorEntriesAsync() {
             // eslint-disable-next-line no-empty,no-empty-function,@typescript-eslint/no-empty-function
-            const emptyGenerator = function* (): any { };
+            const emptyGenerator = function* (): any {};
 
-            await addEntriesAsync(
-                Object.getPrototypeOf(emptyGenerator),
-                "Object.getPrototypeOf(function*(){})");
+            await addEntriesAsync(Object.getPrototypeOf(emptyGenerator), "Object.getPrototypeOf(function*(){})");
 
             await addEntriesAsync(
                 Object.getPrototypeOf(emptyGenerator.prototype),
-                "Object.getPrototypeOf((function*(){}).prototype)");
+                "Object.getPrototypeOf((function*(){}).prototype)",
+            );
         }
     }
 }
@@ -364,9 +364,11 @@ export async function createClosureInfoAsync(
  * final FunctionInfo.
  */
 async function analyzeFunctionInfoAsync(
-    func: Function, context: Context,
-    serialize: (o: any) => boolean, logInfo?: boolean): Promise<FunctionInfo> {
-
+    func: Function,
+    context: Context,
+    serialize: (o: any) => boolean,
+    logInfo?: boolean,
+): Promise<FunctionInfo> {
     // logInfo = logInfo || func.name === "addHandler";
 
     const { file, line, column } = await v8.getFunctionLocationAsync(func);
@@ -444,10 +446,7 @@ async function analyzeFunctionInfoAsync(
         // this for functions with a custom prototype (like a derived class constructor, or a function
         // that a user has explicit set the prototype for). Normal functions will pick up
         // Function.prototype by default, so we don't need to do anything for them.
-        if (proto !== Function.prototype &&
-            !isAsyncFunction &&
-            !isDerivedNoCaptureConstructor(func)) {
-
+        if (proto !== Function.prototype && !isAsyncFunction && !isDerivedNoCaptureConstructor(func)) {
             const protoEntry = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             functionInfo.proto = protoEntry;
 
@@ -484,30 +483,36 @@ async function analyzeFunctionInfoAsync(
             // In other words, in general, we will not emit the prototype for a normal
             // 'function foo() {}' declaration.  but we will emit the prototype for the
             // constructor function of a class.
-            if (descriptor.name === "prototype" &&
-                await isDefaultFunctionPrototypeAsync(func, funcProp)) {
-
+            if (descriptor.name === "prototype" && (await isDefaultFunctionPrototypeAsync(func, funcProp))) {
                 continue;
             }
 
-            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateEntryAsync(
+                getNameOrSymbol(descriptor),
+                undefined,
+                context,
+                serialize,
+                logInfo,
+            );
             const valEntry = await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo);
             const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
 
             functionInfo.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
-        const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
-                           context.classStaticMemberToSuperEntry.get(func);
+        const superEntry =
+            context.classInstanceMemberToSuperEntry.get(func) || context.classStaticMemberToSuperEntry.get(func);
         if (superEntry) {
             // this was a class constructor or method.  We need to put a special __super
             // entry into scope, and then rewrite any calls to super() to refer to it.
-            capturedValues.set(
-                await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo),
-                { entry: superEntry });
+            capturedValues.set(await getOrCreateNameEntryAsync("__super", undefined, context, serialize, logInfo), {
+                entry: superEntry,
+            });
 
             functionInfo.code = rewriteSuperReferences(
-                funcExprWithName!, context.classStaticMemberToSuperEntry.has(func));
+                funcExprWithName!,
+                context.classStaticMemberToSuperEntry.has(func),
+            );
         }
 
         // If this was a named function (literally, only a named function-expr or function-decl), then
@@ -524,20 +529,21 @@ async function analyzeFunctionInfoAsync(
         if (functionDeclarationName !== undefined) {
             capturedValues.set(
                 await getOrCreateNameEntryAsync(functionDeclarationName, undefined, context, serialize, logInfo),
-                { entry: funcEntry });
+                { entry: funcEntry },
+            );
         }
 
         return functionInfo;
 
         async function processCapturedVariablesAsync(
-            capturedVariables: CapturedVariableMap, throwOnFailure: boolean): Promise<void> {
-
+            capturedVariables: CapturedVariableMap,
+            throwOnFailure: boolean,
+        ): Promise<void> {
             for (const name of capturedVariables.keys()) {
                 let value: any;
                 try {
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
-                }
-                catch (err) {
+                } catch (err) {
                     throwSerializationError(func, context, err.message);
                 }
 
@@ -545,8 +551,7 @@ async function analyzeFunctionInfoAsync(
                 const frameLength = context.frames.length;
                 if (moduleName) {
                     context.frames.push({ capturedModule: { name: moduleName, value: value } });
-                }
-                else if (value instanceof Function) {
+                } else if (value instanceof Function) {
                     // Only bother pushing on context frame if the name of the variable
                     // we captured is different from the name of the function.  If the
                     // names are the same, this is a direct reference, and we don't have
@@ -556,8 +561,7 @@ async function analyzeFunctionInfoAsync(
                     if (name !== value.name) {
                         context.frames.push({ capturedFunctionName: name });
                     }
-                }
-                else {
+                } else {
                     context.frames.push({ capturedVariableName: name });
                 }
 
@@ -570,9 +574,7 @@ async function analyzeFunctionInfoAsync(
             }
         }
 
-        async function processCapturedVariableAsync(
-            capturedVariables: CapturedVariableMap, name: string, value: any) {
-
+        async function processCapturedVariableAsync(capturedVariables: CapturedVariableMap, name: string, value: any) {
             const properties = capturedVariables.get(name);
             const serializedName = await getOrCreateNameEntryAsync(name, undefined, context, serialize, logInfo);
 
@@ -595,10 +597,7 @@ async function analyzeFunctionInfoAsync(
         // Also, make sure our methods can also find this entry so they too can refer to
         // 'super'.
         for (const descriptor of await getOwnPropertyDescriptors(func)) {
-            if (descriptor.name !== "length" &&
-                descriptor.name !== "name" &&
-                descriptor.name !== "prototype") {
-
+            if (descriptor.name !== "length" && descriptor.name !== "name" && descriptor.name !== "prototype") {
                 // static method.
                 const classProp = await getOwnPropertyAsync(func, descriptor);
                 addIfFunction(classProp, /*isStatic*/ true);
@@ -615,9 +614,7 @@ async function analyzeFunctionInfoAsync(
 
         function addIfFunction(prop: any, isStatic: boolean) {
             if (prop instanceof Function) {
-                const set = isStatic
-                    ? context.classStaticMemberToSuperEntry
-                    : context.classInstanceMemberToSuperEntry;
+                const set = isStatic ? context.classStaticMemberToSuperEntry : context.classInstanceMemberToSuperEntry;
                 set.set(prop, protoEntry);
             }
         }
@@ -631,9 +628,7 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     return func.constructor && func.constructor.name === "AsyncFunction";
 }
 
-function throwSerializationError(
-    func: Function, context: Context, info: string) {
-
+function throwSerializationError(func: Function, context: Context, info: string) {
     let message = "";
 
     const initialFuncLocation = getFunctionLocation(context.frames[0].functionLocation!);
@@ -654,35 +649,27 @@ function throwSerializationError(
             if (nextFrameIsFunction) {
                 if (i === 0) {
                     message += `${funcLocation}: referenced\n`;
-                }
-                else {
+                } else {
                     message += `${funcLocation}: which referenced\n`;
                 }
-            }
-            else {
+            } else {
                 if (i === n - 1) {
                     message += `${funcLocation}: which could not be serialized because\n`;
-                }
-                else if (i === 0) {
+                } else if (i === 0) {
                     message += `${funcLocation}: captured\n`;
-                }
-                else {
+                } else {
                     message += `${funcLocation}: which captured\n`;
                 }
             }
-        }
-        else if (frame.capturedFunctionName) {
+        } else if (frame.capturedFunctionName) {
             message += `'${frame.capturedFunctionName}', a function defined at\n`;
-        }
-        else if (frame.capturedModule) {
+        } else if (frame.capturedModule) {
             if (i === n - 1) {
                 message += `module '${frame.capturedModule.name}'\n`;
-            }
-            else {
+            } else {
                 message += `module '${frame.capturedModule.name}' which indirectly referenced\n`;
             }
-        }
-        else if (frame.capturedVariableName) {
+        } else if (frame.capturedVariableName) {
             message += `variable '${frame.capturedVariableName}' which indirectly referenced\n`;
         }
     }
@@ -690,8 +677,7 @@ function throwSerializationError(
     message += "  ".repeat(i) + info + "\n\n";
     message += getTrimmedFunctionCode(func);
 
-    const moduleIndex = context.frames.findIndex(
-        f => f.capturedModule !== undefined);
+    const moduleIndex = context.frames.findIndex((f) => f.capturedModule !== undefined);
 
     if (moduleIndex >= 0) {
         const module = context.frames[moduleIndex].capturedModule!;
@@ -700,8 +686,7 @@ function throwSerializationError(
 
         if (hasTrueBooleanMember(module.value, "deploymentOnlyModule")) {
             message += `Module '${moduleName}' is a 'deployment only' module. In general these cannot be captured inside a 'run time' function.`;
-        }
-        else {
+        } else {
             const functionLocation = context.frames[moduleIndex - 1].functionLocation!;
             const location = getFunctionLocation(functionLocation);
             message += `Capturing modules can sometimes cause problems.
@@ -713,7 +698,7 @@ Consider using import('${moduleName}') or require('${moduleName}') inside ${loca
     // closure serialization object stack *and* the function execution stack.  Furthermore, there
     // is enough information about the Function printed (both line/col, and a few lines of its
     // text) to give the user the appropriate info for fixing.
-    throw new ResourceError(message, context.logResource, /*hideStack:*/true);
+    throw new ResourceError(message, context.logResource, /*hideStack:*/ true);
 }
 
 function getTrimmedFunctionCode(func: Function): string {
@@ -789,30 +774,29 @@ async function createPropertyInfoAsync(
     descriptor: ClosurePropertyDescriptor,
     context: Context,
     serialize: (o: any) => boolean,
-    logInfo: boolean | undefined): Promise<PropertyInfo> {
-
+    logInfo: boolean | undefined,
+): Promise<PropertyInfo> {
     const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
     propertyInfo.configurable = descriptor.configurable;
     propertyInfo.enumerable = descriptor.enumerable;
     propertyInfo.writable = descriptor.writable;
     if (descriptor.get) {
-        propertyInfo.get = await getOrCreateEntryAsync(
-            descriptor.get, undefined, context, serialize, logInfo);
+        propertyInfo.get = await getOrCreateEntryAsync(descriptor.get, undefined, context, serialize, logInfo);
     }
     if (descriptor.set) {
-        propertyInfo.set = await getOrCreateEntryAsync(
-            descriptor.set, undefined, context, serialize, logInfo);
+        propertyInfo.set = await getOrCreateEntryAsync(descriptor.set, undefined, context, serialize, logInfo);
     }
 
     return propertyInfo;
 }
 
 function getOrCreateNameEntryAsync(
-    name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    name: string,
+    capturedObjectProperties: CapturedPropertyChain[] | undefined,
     context: Context,
     serialize: (o: any) => boolean,
-    logInfo: boolean | undefined): Promise<Entry> {
-
+    logInfo: boolean | undefined,
+): Promise<Entry> {
     return getOrCreateEntryAsync(name, capturedObjectProperties, context, serialize, logInfo);
 }
 
@@ -822,21 +806,30 @@ function getOrCreateNameEntryAsync(
  * specific properties.  If propNames is not provided, or is empty, serialize out all properties.
  */
 async function getOrCreateEntryAsync(
-    obj: any, capturedObjectProperties: CapturedPropertyChain[] | undefined,
+    obj: any,
+    capturedObjectProperties: CapturedPropertyChain[] | undefined,
     context: Context,
     serialize: (o: any) => boolean,
-    logInfo: boolean | undefined): Promise<Entry> {
-
+    logInfo: boolean | undefined,
+): Promise<Entry> {
     // Check if this is a special number that we cannot json serialize.  Instead, we'll just inject
     // the code necessary to represent the number on the other side.  Note: we have to do this
     // before we do *anything* else.  This is because these special numbers don't even work in maps
     // properly.  So, if we lookup the value in a map, we may get the cached value for something
     // else *entirely*.  For example, 0 and -0 will map to the same entry.
     if (typeof obj === "number") {
-        if (Object.is(obj, -0)) { return { expr: "-0" }; }
-        if (Object.is(obj, NaN)) { return { expr: "NaN" }; }
-        if (Object.is(obj, Infinity)) { return { expr: "Infinity"}; }
-        if (Object.is(obj, -Infinity)) { return { expr: "-Infinity"}; }
+        if (Object.is(obj, -0)) {
+            return { expr: "-0" };
+        }
+        if (Object.is(obj, NaN)) {
+            return { expr: "NaN" };
+        }
+        if (Object.is(obj, Infinity)) {
+            return { expr: "Infinity" };
+        }
+        if (Object.is(obj, -Infinity)) {
+            return { expr: "-Infinity" };
+        }
 
         // Not special, just use normal json serialization.
         return { json: obj };
@@ -866,7 +859,9 @@ async function getOrCreateEntryAsync(
         const message =
             `Function '${funcName}' cannot be called at runtime. ` +
             `It can only be used at deployment time.\n\n${funcCode}`;
-        const errorFunc = () => { throw new Error(message); };
+        const errorFunc = () => {
+            throw new Error(message);
+        };
 
         obj = errorFunc;
     }
@@ -904,9 +899,7 @@ async function getOrCreateEntryAsync(
             return true;
         }
 
-        if (obj instanceof Function &&
-            isDerivedNoCaptureConstructor(obj)) {
-
+        if (obj instanceof Function && isDerivedNoCaptureConstructor(obj)) {
             // this was a constructor that derived from something that should not be captured.
             return true;
         }
@@ -925,20 +918,14 @@ async function getOrCreateEntryAsync(
             return;
         }
 
-        if (obj === undefined ||
-            obj === null ||
-            typeofObj === "boolean" ||
-            typeofObj === "string") {
-
+        if (obj === undefined || obj === null || typeofObj === "boolean" || typeofObj === "string") {
             // Serialize primitives as-is.
             entry.json = obj;
             return;
-        }
-        else if (typeofObj === "bigint") {
+        } else if (typeofObj === "bigint") {
             entry.expr = `${obj}n`;
             return;
-        }
-        else if (obj instanceof RegExp) {
+        } else if (obj instanceof RegExp) {
             entry.regexp = obj;
             return;
         }
@@ -946,46 +933,43 @@ async function getOrCreateEntryAsync(
         const normalizedModuleName = await findNormalizedModuleNameAsync(obj);
         if (normalizedModuleName) {
             await captureModuleAsync(normalizedModuleName);
-        }
-        else if (obj instanceof Function) {
+        } else if (obj instanceof Function) {
             // Serialize functions recursively, and store them in a closure property.
             entry.function = await analyzeFunctionInfoAsync(obj, context, serialize, logInfo);
-        }
-        else if (Output.isInstance(obj)) {
+        } else if (Output.isInstance(obj)) {
             if (await isSecretOutput(obj)) {
                 context.containsSecrets = true;
             }
             entry.output = await createOutputEntryAsync(obj);
-        }
-        else if (obj instanceof Promise) {
+        } else if (obj instanceof Promise) {
             const val = await obj;
             entry.promise = await getOrCreateEntryAsync(val, undefined, context, serialize, logInfo);
-        }
-        else if (obj instanceof Array) {
+        } else if (obj instanceof Array) {
             // Recursively serialize elements of an array. Note: we use getOwnPropertyNames as the
             // array may be sparse and we want to properly respect that when serializing.
             entry.array = [];
             for (const descriptor of await getOwnPropertyDescriptors(obj)) {
-                if (descriptor.name !== undefined &&
-                    descriptor.name !== "length") {
-
+                if (descriptor.name !== undefined && descriptor.name !== "length") {
                     entry.array[<any>descriptor.name] = await getOrCreateEntryAsync(
-                        await getOwnPropertyAsync(obj, descriptor), undefined, context, serialize, logInfo);
+                        await getOwnPropertyAsync(obj, descriptor),
+                        undefined,
+                        context,
+                        serialize,
+                        logInfo,
+                    );
                 }
             }
 
             // TODO(cyrusn): It feels weird that we're not examining any other descriptors of an
             // array.  For example, if someone put on a property with a symbolic name, we'd lose
             // that here. Unlikely, but something we may need to handle in the future.
-        }
-        else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
+        } else if (Object.prototype.toString.call(obj) === "[object Arguments]") {
             // From: https://stackoverflow.com/questions/7656280/how-do-i-check-whether-an-object-is-an-arguments-object-in-javascript
             entry.array = [];
             for (const elem of obj) {
                 entry.array.push(await getOrCreateEntryAsync(elem, undefined, context, serialize, logInfo));
             }
-        }
-        else {
+        } else {
             // For all other objects, serialize out the properties we've been asked to serialize
             // out.
             await serializeObjectAsync();
@@ -1021,7 +1005,13 @@ async function getOrCreateEntryAsync(
         const descriptors = await getOwnPropertyDescriptors(obj);
 
         for (const descriptor of descriptors) {
-            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
+            const keyEntry = await getOrCreateEntryAsync(
+                getNameOrSymbol(descriptor),
+                undefined,
+                context,
+                serialize,
+                logInfo,
+            );
 
             // We're about to recurse inside this object.  In order to prevent infinite loops, put a
             // dummy entry in the environment map.  That way, if we hit this object again while
@@ -1040,8 +1030,7 @@ async function getOrCreateEntryAsync(
 
             const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
             const prop = await getOwnPropertyAsync(obj, descriptor);
-            const valEntry = await getOrCreateEntryAsync(
-                prop, undefined, context, serialize, logInfo);
+            const valEntry = await getOrCreateEntryAsync(prop, undefined, context, serialize, logInfo);
 
             // Now, replace the dummy entry with the actual one we want.
             object.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
@@ -1055,8 +1044,7 @@ async function getOrCreateEntryAsync(
         if (!object.proto) {
             const proto = Object.getPrototypeOf(obj);
             if (proto !== Object.prototype) {
-                object.proto = await getOrCreateEntryAsync(
-                    proto, undefined, context, serialize, logInfo);
+                object.proto = await getOrCreateEntryAsync(proto, undefined, context, serialize, logInfo);
             }
         }
     }
@@ -1064,8 +1052,9 @@ async function getOrCreateEntryAsync(
     // Serializes out only the subset of properties of this object that we have seen used
     // and have recorded in localCapturedPropertyChains
     async function serializeSomeObjectPropertiesAsync(
-        object: ObjectInfo, localCapturedPropertyChains: CapturedPropertyChain[]): Promise<boolean> {
-
+        object: ObjectInfo,
+        localCapturedPropertyChains: CapturedPropertyChain[],
+    ): Promise<boolean> {
         // validate our invariants.
         for (const chain of localCapturedPropertyChains) {
             if (chain.infos.length === 0) {
@@ -1081,8 +1070,7 @@ async function getOrCreateEntryAsync(
         // and this is implicitly invoked just by access it.
 
         // Find the list of property names *directly* accessed off this object.
-        const propChainFirstNames = new Set(localCapturedPropertyChains.map(
-            chain => chain.infos[0].name));
+        const propChainFirstNames = new Set(localCapturedPropertyChains.map((chain) => chain.infos[0].name));
 
         // Now process each top level property name accessed off of this object in turn. For
         // example, if we say "foo.bar.baz", "foo.bar.quux", "foo.ztesch", this would "bar" and
@@ -1090,7 +1078,7 @@ async function getOrCreateEntryAsync(
         for (const propName of propChainFirstNames) {
             // Get the named chains starting with this prop name.  In the above example, if
             // this was "bar", then we would get "[bar, baz]" and [bar, quux].
-            const propChains = localCapturedPropertyChains.filter(chain => chain.infos[0].name === propName);
+            const propChains = localCapturedPropertyChains.filter((chain) => chain.infos[0].name === propName);
 
             // Now, make an entry just for this name.
             const keyEntry = await getOrCreateNameEntryAsync(propName, undefined, context, serialize, logInfo);
@@ -1129,8 +1117,8 @@ async function getOrCreateEntryAsync(
                 // i.e.: if we started with a.b.c.d, and we've finally gotten to the point where
                 // we're serializing out the 'd' property, then we need to serialize it out fully
                 // since there are no more accesses off of it.
-                let nestedPropChains = propChains.map(chain => ({ infos: chain.infos.slice(1) }));
-                if (nestedPropChains.some(chain => chain.infos.length === 0)) {
+                let nestedPropChains = propChains.map((chain) => ({ infos: chain.infos.slice(1) }));
+                if (nestedPropChains.some((chain) => chain.infos.length === 0)) {
                     nestedPropChains = [];
                 }
 
@@ -1138,9 +1126,14 @@ async function getOrCreateEntryAsync(
                 // object does have the property, but the property is just set to the
                 // undefined value.
                 const valEntry = await getOrCreateEntryAsync(
-                    objPropValue, nestedPropChains, context, serialize, logInfo);
+                    objPropValue,
+                    nestedPropChains,
+                    context,
+                    serialize,
+                    logInfo,
+                );
 
-                const infos = propChains.map(chain => chain.infos[0]);
+                const infos = propChains.map((chain) => chain.infos[0]);
                 if (propInfoUsesNonLexicalThis(infos, propertyInfo, valEntry)) {
                     // the referenced function captured 'this'.  Have to serialize out
                     // this entire object.  Undo the work we did to just serialize out a
@@ -1160,8 +1153,11 @@ async function getOrCreateEntryAsync(
     }
 
     function propInfoUsesNonLexicalThis(
-        capturedInfos: CapturedPropertyInfo[], propertyInfo: PropertyInfo | undefined, valEntry: Entry) {
-        if (capturedInfos.some(info => info.invoked)) {
+        capturedInfos: CapturedPropertyInfo[],
+        propertyInfo: PropertyInfo | undefined,
+        valEntry: Entry,
+    ) {
+        if (capturedInfos.some((info) => info.invoked)) {
             // If the property was invoked, then we have to check if that property ends
             // up using this/super.  if so, then we actually have to serialize out this
             // object entirely.
@@ -1173,9 +1169,10 @@ async function getOrCreateEntryAsync(
         // if we're accessing a getter/setter, and that getter/setter uses
         // 'this', then we need to serialize out this object entirely.
 
-        if (usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
-            usesNonLexicalThis(propertyInfo ? propertyInfo.set : undefined)) {
-
+        if (
+            usesNonLexicalThis(propertyInfo ? propertyInfo.get : undefined) ||
+            usesNonLexicalThis(propertyInfo ? propertyInfo.set : undefined)
+        ) {
             return true;
         }
 
@@ -1204,7 +1201,7 @@ async function getOrCreateEntryAsync(
         const moduleParts = normalizedModuleName.split("/");
 
         const nodeModulesSegment = "node_modules";
-        const nodeModulesSegmentIndex = moduleParts.findIndex(v => v === nodeModulesSegment);
+        const nodeModulesSegmentIndex = moduleParts.findIndex((v) => v === nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
@@ -1231,8 +1228,7 @@ async function getOrCreateEntryAsync(
             //    actually generate the serialized code for the functions or values in that module.
             //    This will also lead to code that simply will not work at run-time.
             await serializeObjectAsync();
-        }
-        else  {
+        } else {
             // If the path goes into node_modules, strip off the node_modules part. This will help
             // ensure that lookup of those modules will work on the cloud-side even if the module
             // isn't in a relative node_modules directory.  For example, this happens with aws-sdk.
@@ -1284,7 +1280,13 @@ async function getOrCreateEntryAsync(
         // Now, create an empty-serialized output and create an environment entry for it.  It
         // will have a property 'value' that points to an Entry for 'undefined'.
         const initializedEmptyOutput = new SerializedOutput(undefined);
-        const emptyOutputEntry = await getOrCreateEntryAsync(initializedEmptyOutput, undefined, context, serialize, logInfo);
+        const emptyOutputEntry = await getOrCreateEntryAsync(
+            initializedEmptyOutput,
+            undefined,
+            context,
+            serialize,
+            logInfo,
+        );
 
         // validate that we created the right sort of entry.  It should be an Object-Entry with
         // a single property called 'value' in it.
@@ -1304,7 +1306,7 @@ async function getOrCreateEntryAsync(
 
         // Everything looked good.  Replace the `"value" -> undefined-Entry` mapping in this entry
         // with `"value" -> V-Entry`
-        emptyOutputEntry.object.env.set(envEntry,  {entry: valEntry});
+        emptyOutputEntry.object.env.set(envEntry, { entry: valEntry });
         return emptyOutputEntry;
     }
 }
@@ -1336,10 +1338,39 @@ function getBuiltInModules(): Promise<Map<any, string>> {
         // available at the unqualified names listed below. _Note_: This list is derived
         // based on Node.js 6.x tree at: https://github.com/nodejs/node/tree/v6.x/lib
         const builtInModuleNames = [
-            "assert", "buffer", "child_process", "cluster", "console", "constants", "crypto",
-            "dgram", "dns", "domain", "events", "fs", "http", "https", "module", "net", "os",
-            "path", "process", "punycode", "querystring", "readline", "repl", "stream", "string_decoder",
-            /* "sys" deprecated ,*/ "timers", "tls", "tty", "url", "util", "v8", "vm", "zlib",
+            "assert",
+            "buffer",
+            "child_process",
+            "cluster",
+            "console",
+            "constants",
+            "crypto",
+            "dgram",
+            "dns",
+            "domain",
+            "events",
+            "fs",
+            "http",
+            "https",
+            "module",
+            "net",
+            "os",
+            "path",
+            "process",
+            "punycode",
+            "querystring",
+            "readline",
+            "repl",
+            "stream",
+            "string_decoder",
+            /* "sys" deprecated ,*/ "timers",
+            "tls",
+            "tty",
+            "url",
+            "util",
+            "v8",
+            "vm",
+            "zlib",
         ];
 
         const map = new Map<any, string>();
@@ -1386,8 +1417,9 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
 }
 
 function createClosurePropertyDescriptor(
-    nameOrSymbol: string | symbol, descriptor: PropertyDescriptor): ClosurePropertyDescriptor {
-
+    nameOrSymbol: string | symbol,
+    descriptor: PropertyDescriptor,
+): ClosurePropertyDescriptor {
     if (nameOrSymbol === undefined) {
         throw new Error("Was not given a name or symbol");
     }
@@ -1395,8 +1427,7 @@ function createClosurePropertyDescriptor(
     const copy: ClosurePropertyDescriptor = { ...descriptor };
     if (typeof nameOrSymbol === "string") {
         copy.name = nameOrSymbol;
-    }
-    else {
+    } else {
         copy.symbol = nameOrSymbol;
     }
 
@@ -1436,9 +1467,7 @@ async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescr
 }
 
 async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
-    return (descriptor.get || descriptor.set) ?
-        undefined :
-        obj[getNameOrSymbol(descriptor)];
+    return descriptor.get || descriptor.set ? undefined : obj[getNameOrSymbol(descriptor)];
 }
 
 async function getPropertyAsync(obj: any, name: string): Promise<any> {

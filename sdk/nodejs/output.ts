@@ -154,7 +154,7 @@ class OutputImpl<T> implements OutputInstance<T> {
         // preserves compatibility with earlier versions of the Pulumi SDK.
         const val = await promise;
         if (!withUnknowns && containsUnknowns(val)) {
-            return <T><any>undefined;
+            return <T>(<any>undefined);
         }
         return val;
     }
@@ -165,33 +165,38 @@ class OutputImpl<T> implements OutputInstance<T> {
         promise: Promise<T>,
         isKnown: Promise<boolean>,
         isSecret: Promise<boolean>,
-        allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined) {
-
+        allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined,
+    ) {
         // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesCopy = copyResources(resources);
 
         // Create a copy of the async resources.  Populate this with the sync-resources if that's
         // all we have.  That way this is always ensured to be a superset of the list of sync resources.
         allResources = allResources || Promise.resolve([]);
-        const allResourcesCopy = allResources.then(r => utils.union(copyResources(r), resourcesCopy));
+        const allResourcesCopy = allResources.then((r) => utils.union(copyResources(r), resourcesCopy));
 
         // We are only known if we are not explicitly unknown and the resolved value of the output
         // contains no distinguished unknown values.
         isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
 
-        const lifted = Promise.all([allResourcesCopy, promise, isKnown, isSecret])
-            .then(([liftedResources, value, liftedIsKnown, liftedIsSecret]) => liftInnerOutput(liftedResources, value, liftedIsKnown, liftedIsSecret));
+        const lifted = Promise.all([allResourcesCopy, promise, isKnown, isSecret]).then(
+            ([liftedResources, value, liftedIsKnown, liftedIsSecret]) =>
+                liftInnerOutput(liftedResources, value, liftedIsKnown, liftedIsSecret),
+        );
 
         this.resources = () => resourcesCopy;
-        this.allResources = () => lifted.then(l => l.allResources);
+        this.allResources = () => lifted.then((l) => l.allResources);
 
-        this.isKnown = lifted.then(l => l.isKnown);
-        this.isSecret = lifted.then(l => l.isSecret);
-        this.promise = (withUnknowns?: boolean) => OutputImpl.getPromisedValue(lifted.then(l => l.value), withUnknowns);
+        this.isKnown = lifted.then((l) => l.isKnown);
+        this.isSecret = lifted.then((l) => l.isSecret);
+        this.promise = (withUnknowns?: boolean) =>
+            OutputImpl.getPromisedValue(
+                lifted.then((l) => l.value),
+                withUnknowns,
+            );
 
         this.toString = () => {
-            const message =
-`Calling [toString] on an [Output<T>] is not supported.
+            const message = `Calling [toString] on an [Output<T>] is not supported.
 
 To get the value of an Output<T> as an Output<string> consider either:
 1: o.apply(v => \`prefix\${v}suffix\`)
@@ -203,8 +208,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
         };
 
         this.toJSON = () => {
-            const message =
-`Calling [toJSON] on an [Output<T>] is not supported.
+            const message = `Calling [toJSON] on an [Output<T>] is not supported.
 
 To get the value of an Output as a JSON value or JSON string consider either:
     1: o.apply(v => v.toJSON())
@@ -272,8 +276,7 @@ This function may throw in a future version of @pulumi/pulumi.`;
                 return (<any>obj.apply)((ob: any) => {
                     if (ob === undefined || ob === null) {
                         return undefined;
-                    }
-                    else if (isUnknown(ob)) {
+                    } else if (isUnknown(ob)) {
                         // If the value of this output is unknown, the result of the access should also be unknown.
                         // This is conceptually consistent, and also prevents us from returning a "known undefined"
                         // value from the `ob[prop]` expression below.
@@ -298,30 +301,37 @@ To manipulate the value of this Output, use '.apply' instead.`);
     public apply<U>(func: (t: T) => Input<U>, runWithUnknowns?: boolean): Output<U> {
         // we're inside the modern `output` code, so it's safe to call `.allResources!` here.
 
-        const applied = Promise.all([this.allResources!(), this.promise(/*withUnknowns*/ true), this.isKnown, this.isSecret])
-            .then(([allResources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(allResources, value, isKnown, isSecret, func, !!runWithUnknowns));
+        const applied = Promise.all([
+            this.allResources!(),
+            this.promise(/*withUnknowns*/ true),
+            this.isKnown,
+            this.isSecret,
+        ]).then(([allResources, value, isKnown, isSecret]) =>
+            applyHelperAsync<T, U>(allResources, value, isKnown, isSecret, func, !!runWithUnknowns),
+        );
 
         const result = new OutputImpl<U>(
             this.resources(),
-            applied.then(a => a.value),
-            applied.then(a => a.isKnown),
-            applied.then(a => a.isSecret),
-            applied.then(a => a.allResources));
-        return <Output<U>><any>result;
+            applied.then((a) => a.value),
+            applied.then((a) => a.isKnown),
+            applied.then((a) => a.isSecret),
+            applied.then((a) => a.allResources),
+        );
+        return <Output<U>>(<any>result);
     }
 }
 
 /** @internal */
 export function getAllResources<T>(op: OutputInstance<T>): Promise<Set<Resource>> {
-    return op.allResources instanceof Function
-        ? op.allResources()
-        : Promise.resolve(op.resources());
+    return op.allResources instanceof Function ? op.allResources() : Promise.resolve(op.resources());
 }
 
 function copyResources(resources: Set<Resource> | Resource[] | Resource) {
-    const copy = Array.isArray(resources) ? new Set(resources) :
-        resources instanceof Set ? new Set(resources) :
-            new Set([resources]);
+    const copy = Array.isArray(resources)
+        ? new Set(resources)
+        : resources instanceof Set
+        ? new Set(resources)
+        : new Set([resources]);
     return copy;
 }
 
@@ -355,8 +365,13 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
 
 /* eslint-disable max-len */
 async function applyHelperAsync<T, U>(
-    allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
-    func: (t: T) => Input<U>, runWithUnknowns: boolean) {
+    allResources: Set<Resource>,
+    value: T,
+    isKnown: boolean,
+    isSecret: boolean,
+    func: (t: T) => Input<U>,
+    runWithUnknowns: boolean,
+) {
     if (settings.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
@@ -366,7 +381,7 @@ async function applyHelperAsync<T, U>(
             // We didn't actually run the function, our new Output is definitely **not** known.
             return {
                 allResources,
-                value: <U><any>undefined,
+                value: <U>(<any>undefined),
                 isKnown: false,
                 isSecret,
             };
@@ -376,7 +391,7 @@ async function applyHelperAsync<T, U>(
         // contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
         // that expect to see unknowns during preview in outputs that are not known will always do so.
         if (!isKnown && runWithUnknowns && !containsUnknowns(value)) {
-            value = <T><any>unknown;
+            value = <T>(<any>unknown);
         }
     }
 
@@ -416,23 +431,19 @@ function outputRec(val: any): any {
         // themselves.  They are always 'known' (i.e. we can safely 'apply' off of them even during
         // preview).
         return val;
-    }
-    else if (Resource.isInstance(val)) {
+    } else if (Resource.isInstance(val)) {
         // Don't unwrap Resources, there are existing codepaths that return Resources through
         // Outputs and we want to preserve them as is when flattening.
         return val;
-    }
-    else if (isUnknown(val)) {
+    } else if (isUnknown(val)) {
         return val;
-    }
-    else if (val instanceof Promise) {
+    } else if (val instanceof Promise) {
         // Recurse into the value the Promise points to.  This may end up producing a
         // Promise<Output>. Wrap this in another Output as the final result.  This Output's
         // construction will be able to merge the inner Output's data with its own.  See
         // liftInnerOutput for more details.
-        return createSimpleOutput(val.then(v => outputRec(v)));
-    }
-    else if (Output.isInstance(val)) {
+        return createSimpleOutput(val.then((v) => outputRec(v)));
+    } else if (Output.isInstance(val)) {
         // We create a new output here from the raw pieces of the original output in order to
         // accommodate outputs from downlevel SxS SDKs.  This ensures that within this package it is
         // safe to assume the implementation of any Output returned by the `output` function.
@@ -445,10 +456,14 @@ function outputRec(val: any): any {
         // 3. That the `.allResources` is available.
         const allResources = getAllResources(val);
         const newOutput = new OutputImpl(
-            val.resources(), val.promise(/*withUnknowns*/ true), val.isKnown, val.isSecret, allResources);
+            val.resources(),
+            val.promise(/*withUnknowns*/ true),
+            val.isKnown,
+            val.isSecret,
+            allResources,
+        );
         return newOutput.apply(outputRec, /*runWithUnknowns*/ true);
-    }
-    else if (val instanceof Array) {
+    } else if (val instanceof Array) {
         const allValues = [];
         let hasOutputs = false;
         for (const v of val) {
@@ -470,11 +485,10 @@ function outputRec(val: any): any {
         }
 
         // Otherwise, combine the data from all the outputs/non-outputs to one final output.
-        const promisedArray = Promise.all(allValues.map(v => getAwaitableValue(v)));
+        const promisedArray = Promise.all(allValues.map((v) => getAwaitableValue(v)));
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allValues);
         return new Output(syncResources, promisedArray, isKnown, isSecret, allResources);
-    }
-    else {
+    } else {
         const promisedValues: { key: string; value: any }[] = [];
         let hasOutputs = false;
         for (const k of Object.keys(val)) {
@@ -490,11 +504,16 @@ function outputRec(val: any): any {
             // Note: we intentionally return a new value here and not 'val'.  This ensures we get a
             // copy.  This has been behavior we've had since the beginning and there may be subtle
             // logic out there that depends on this that we would not want ot break.
-            return promisedValues.reduce((o, kvp) => { o[kvp.key] = kvp.value; return o; }, <any>{});
+            return promisedValues.reduce((o, kvp) => {
+                o[kvp.key] = kvp.value;
+                return o;
+            }, <any>{});
         }
 
         const promisedObject = getPromisedObject(promisedValues);
-        const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(promisedValues.map(kvp => kvp.value));
+        const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(
+            promisedValues.map((kvp) => kvp.value),
+        );
         return new Output(syncResources, promisedObject, isKnown, isSecret, allResources);
     }
 }
@@ -533,8 +552,12 @@ export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 
     // we called `output` right above this, so it's safe to call `.allResources` on the result.
     return new Output(
-        o.resources(), o.promise(/*withUnknowns*/ true),
-        o.isKnown, Promise.resolve(true), o.allResources!());
+        o.resources(),
+        o.promise(/*withUnknowns*/ true),
+        o.isKnown,
+        Promise.resolve(true),
+        o.allResources!(),
+    );
 }
 
 /**
@@ -542,8 +565,12 @@ export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
  */
 export function unsecret<T>(val: Output<T>): Output<T> {
     return new Output(
-        val.resources(), val.promise(/*withUnknowns*/ true),
-        val.isKnown, Promise.resolve(false), val.allResources!());
+        val.resources(),
+        val.promise(/*withUnknowns*/ true),
+        val.isKnown,
+        Promise.resolve(false),
+        val.allResources!(),
+    );
 }
 
 export function isSecret<T>(val: Output<T>): Promise<boolean> {
@@ -556,7 +583,8 @@ function createSimpleOutput(val: any) {
         val instanceof Promise ? val : Promise.resolve(val),
         /*isKnown*/ Promise.resolve(true),
         /*isSecret */ Promise.resolve(false),
-        Promise.resolve(new Set()));
+        Promise.resolve(new Set()),
+    );
 }
 
 /**
@@ -577,14 +605,26 @@ function createSimpleOutput(val: any) {
  */
 /* eslint-disable max-len */
 export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
-export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>, Input<T8>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
-export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
-export function all<T1, T2, T3, T4, T5, T6>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
-export function all<T1, T2, T3, T4, T5>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
-export function all<T1, T2, T3, T4>(values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
-export function all<T1, T2, T3>(values: [Input<T1>, Input<T2>, Input<T3>]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7, T8>(
+    values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>, Input<T8>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
+export function all<T1, T2, T3, T4, T5, T6, T7>(
+    values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>, Input<T7>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
+export function all<T1, T2, T3, T4, T5, T6>(
+    values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>, Input<T6>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>]>;
+export function all<T1, T2, T3, T4, T5>(
+    values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>, Input<T5>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>]>;
+export function all<T1, T2, T3, T4>(
+    values: [Input<T1>, Input<T2>, Input<T3>, Input<T4>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>]>;
+export function all<T1, T2, T3>(
+    values: [Input<T1>, Input<T2>, Input<T3>],
+): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>]>;
 export function all<T1, T2>(values: [Input<T1>, Input<T2>]): Output<[Unwrap<T1>, Unwrap<T2>]>;
-export function all<T>(ds: (Input<T>)[]): Output<Unwrap<T>[]>;
+export function all<T>(ds: Input<T>[]): Output<Unwrap<T>[]>;
 export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> {
     // Our recursive `output` helper already does exactly what `all` needs to do in terms of the
     // implementation. Why have both `output` and `all` then?  Currently, to the best of our
@@ -601,14 +641,12 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
 function getAwaitableValue(v: any): any {
     if (Output.isInstance(v)) {
         return v.promise(/* withUnknowns */ true);
-    }
-    else {
+    } else {
         return v;
     }
 }
 
-async function getPromisedObject<T>(
-    keysAndOutputs: { key: string; value: any }[]): Promise<Record<string, Unwrap<T>>> {
+async function getPromisedObject<T>(keysAndOutputs: { key: string; value: any }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await getAwaitableValue(kvp.value);
@@ -617,7 +655,9 @@ async function getPromisedObject<T>(
     return result;
 }
 
-function getResourcesAndDetails(allValues: any[]): [Set<Resource>, Promise<boolean>, Promise<boolean>, Promise<Set<Resource>>] {
+function getResourcesAndDetails(
+    allValues: any[],
+): [Set<Resource>, Promise<boolean>, Promise<boolean>, Promise<Set<Resource>>] {
     const syncResources = new Set<Resource>();
     const allOutputs = [];
     for (const v of allValues) {
@@ -631,7 +671,7 @@ function getResourcesAndDetails(allValues: any[]): [Set<Resource>, Promise<boole
 
     // All the outputs were generated in `function all` using `output(v)`.  So it's safe
     // to call `.allResources!` here.
-    const allResources = Promise.all(allOutputs.map(o => o.allResources!())).then(arr => {
+    const allResources = Promise.all(allOutputs.map((o) => o.allResources!())).then((arr) => {
         const result = new Set<Resource>();
 
         for (const set of arr) {
@@ -644,10 +684,10 @@ function getResourcesAndDetails(allValues: any[]): [Set<Resource>, Promise<boole
     });
 
     // A merged output is known if all of its inputs are known.
-    const isKnown = Promise.all(allOutputs.map(o => o.isKnown)).then(ps => ps.every(b => b));
+    const isKnown = Promise.all(allOutputs.map((o) => o.isKnown)).then((ps) => ps.every((b) => b));
 
     // A merged output is secret if any of its inputs are secret.
-    const isSecret = Promise.all(allOutputs.map(o => isSecretOutput(o))).then(ps => ps.some(b => b));
+    const isSecret = Promise.all(allOutputs.map((o) => isSecretOutput(o))).then((ps) => ps.some((b) => b));
 
     return [syncResources, isKnown, isSecret, allResources];
 }
@@ -701,20 +741,17 @@ export function containsUnknowns(value: any): boolean {
     function impl(val: any, seen: Set<any>): boolean {
         if (val === null || typeof val !== "object") {
             return false;
-        }
-        else if (isUnknown(val)) {
+        } else if (isUnknown(val)) {
             return true;
-        }
-        else if (seen.has(val)) {
+        } else if (seen.has(val)) {
             return false;
         }
 
         seen.add(val);
         if (val instanceof Array) {
-            return val.some(e => impl(e, seen));
-        }
-        else {
-            return Object.keys(val).some(k => impl(val[k], seen));
+            return val.some((e) => impl(e, seen));
+        } else {
+            return Object.keys(val).some((k) => impl(val[k], seen));
         }
     }
 }
@@ -760,9 +797,11 @@ export type Unwrap<T> =
     // 1. If we have a promise, just get the type it itself is wrapping and recursively unwrap that.
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
-    T extends Promise<infer U1> ? UnwrapSimple<U1> :
-        T extends OutputInstance<infer U2> ? UnwrapSimple<U2> :
-            UnwrapSimple<T>;
+    T extends Promise<infer U1>
+        ? UnwrapSimple<U1>
+        : T extends OutputInstance<infer U2>
+        ? UnwrapSimple<U2>
+        : UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
 
@@ -778,11 +817,15 @@ export type UnwrapSimple<T> =
     // 3. An object unwraps to an object with properties of the same name, but where the property
     //    types have been unwrapped.
     // 4. return 'never' at the end so that if we've missed something we'll discover it.
-    T extends primitive ? T :
-        T extends Resource ? T :
-            T extends Array<infer U> ? UnwrappedArray<U> :
-                T extends object ? UnwrappedObject<T> :
-                    never;
+    T extends primitive
+        ? T
+        : T extends Resource
+        ? T
+        : T extends Array<infer U>
+        ? UnwrappedArray<U>
+        : T extends object
+        ? UnwrappedObject<T>
+        : never;
 
 export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 
@@ -853,12 +896,13 @@ export interface OutputConstructor {
 
     isInstance<T>(obj: any): obj is Output<T>;
 
-    /** @internal */ new<T>(
+    /** @internal */ new <T>(
         resources: Set<Resource> | Resource[] | Resource,
         promise: Promise<T>,
         isKnown: Promise<boolean>,
         isSecret: Promise<boolean>,
-        allResources: Promise<Set<Resource> | Resource[] | Resource>): Output<T>;
+        allResources: Promise<Set<Resource> | Resource[] | Resource>,
+    ): Output<T>;
 }
 
 /**
@@ -942,14 +986,17 @@ export const Output: OutputConstructor = <any>OutputImpl;
  */
 export type Lifted<T> =
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
-    T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
-        T extends Array<infer U> ? LiftedArray<U> :
-            T extends object ? LiftedObject<T, NonFunctionPropertyNames<T>> :
-            // fallback to lifting no properties.  Note that `Lifted` is used in
-            //    Output<T> = OutputInstance<T> & Lifted<T>
-            // so returning an empty object just means that we're adding nothing to Output<T>.
-            // This is needed for cases like `Output<any>`.
-                {};
+    T extends string
+        ? LiftedObject<String, NonFunctionPropertyNames<String>>
+        : T extends Array<infer U>
+        ? LiftedArray<U>
+        : T extends object
+        ? LiftedObject<T, NonFunctionPropertyNames<T>>
+        : // fallback to lifting no properties.  Note that `Lifted` is used in
+          //    Output<T> = OutputInstance<T> & Lifted<T>
+          // so returning an empty object just means that we're adding nothing to Output<T>.
+          // This is needed for cases like `Output<any>`.
+          {};
 
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
@@ -957,15 +1004,18 @@ type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? nev
 // Lift up all the non-function properties.  If it was optional before, keep it optional after.
 // If it's require before, keep it required afterwards.
 export type LiftedObject<T, K extends keyof T> = {
-    [P in K]: T[P] extends OutputInstance<infer T1> ? Output<T1> :
-        T[P] extends Promise<infer T2> ? Output<T2> : Output<T[P]>
+    [P in K]: T[P] extends OutputInstance<infer T1>
+        ? Output<T1>
+        : T[P] extends Promise<infer T2>
+        ? Output<T2>
+        : Output<T[P]>;
 };
 
 export type LiftedArray<T> = {
     /**
-      * Gets the length of the array. This is a number one higher than the highest element defined
-      * in an array.
-      */
+     * Gets the length of the array. This is a number one higher than the highest element defined
+     * in an array.
+     */
     readonly length: Output<number>;
 
     readonly [n: number]: Output<T>;
@@ -983,7 +1033,7 @@ export type LiftedArray<T> = {
  *
  */
 export function concat(...params: Input<any>[]): Output<string> {
-    return output(params).apply(array => array.join(""));
+    return output(params).apply((array) => array.join(""));
 }
 
 /**
@@ -999,7 +1049,7 @@ export function concat(...params: Input<any>[]): Output<string> {
  * [Promise]s, [Output]s, or just plain JavaScript values.
  */
 export function interpolate(literals: TemplateStringsArray, ...placeholders: Input<any>[]): Output<string> {
-    return output(placeholders).apply(unwrapped => {
+    return output(placeholders).apply((unwrapped) => {
         let result = "";
 
         // interleave the literals with the placeholders
@@ -1017,8 +1067,12 @@ export function interpolate(literals: TemplateStringsArray, ...placeholders: Inp
 /**
  * [jsonStringify] Uses JSON.stringify to serialize the given Input value into a JSON string.
  */
-export function jsonStringify(obj: Input<any>, replacer?: (this: any, key: string, value: any) => any | (number | string)[], space?: string | number): Output<string> {
-    return output(obj).apply(o => {
+export function jsonStringify(
+    obj: Input<any>,
+    replacer?: (this: any, key: string, value: any) => any | (number | string)[],
+    space?: string | number,
+): Output<string> {
+    return output(obj).apply((o) => {
         return JSON.stringify(o, replacer, space);
     });
 }
@@ -1027,7 +1081,7 @@ export function jsonStringify(obj: Input<any>, replacer?: (this: any, key: strin
  * [jsonParse] Uses JSON.parse to deserialize the given Input JSON string into a value.
  */
 export function jsonParse(text: Input<string>, reviver?: (this: any, key: string, value: any) => any): Output<any> {
-    return output(text).apply(t => {
+    return output(text).apply((t) => {
         return JSON.parse(t, reviver);
     });
 }

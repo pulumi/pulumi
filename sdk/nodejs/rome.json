@@ -1,0 +1,20 @@
+{
+    "$schema": "./node_modules/rome/configuration_schema.json",
+    "organizeImports": {
+        "enabled": false
+    },
+    "files": {
+        "ignore": [
+            "bin/", "proto/", "dist/", "node_modules", ".nyc_output/", ".direnv/", "tests/runtime/jsClosureCases_*.js",
+            "tests/runtime/tsClosureCases.ts"
+        ]
+    },
+    "formatter": {
+        "indentSize": 4,
+        "indentStyle": "space",
+        "lineWidth": 120
+    },
+    "linter": {
+        "enabled": false
+    }
+}

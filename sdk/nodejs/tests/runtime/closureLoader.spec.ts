@@ -20,7 +20,7 @@ import * as v8Hooks from "../../runtime/closure/v8Hooks";
 
 // only start running these tests once we've initialized the code in v8Hooks.
 describe("after hooks", () => {
-    it("invoke", done => {
+    it("invoke", (done) => {
         v8Hooks.isInitializedAsync().then(() => {
             require("./tsClosureCases");
             done();

@@ -21,14 +21,20 @@ import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
 import * as log from "./log";
 
-export type ID = string;  // a provider-assigned ID.
+export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
 
 /**
  * createUrn computes a URN from the combination of a resource name, resource type, optional parent,
  * optional project and optional stack.
  */
-export function createUrn(name: Input<string>, type: Input<string>, parent?: Resource | Input<URN>, project?: string, stack?: string): Output<string> {
+export function createUrn(
+    name: Input<string>,
+    type: Input<string>,
+    parent?: Resource | Input<URN>,
+    project?: string,
+    stack?: string,
+): Output<string> {
     let parentPrefix: Output<string>;
     if (parent) {
         let parentUrn: Output<string>;
@@ -37,7 +43,7 @@ export function createUrn(name: Input<string>, type: Input<string>, parent?: Res
         } else {
             parentUrn = output(parent);
         }
-        parentPrefix = parentUrn.apply(parentUrnString =>  {
+        parentPrefix = parentUrn.apply((parentUrnString) => {
             const prefix = parentUrnString.substring(0, parentUrnString.lastIndexOf("::")) + "$";
             if (prefix.endsWith("::pulumi:pulumi:Stack$")) {
                 // Don't prefix the stack type as a parent type
@@ -54,7 +60,12 @@ export function createUrn(name: Input<string>, type: Input<string>, parent?: Res
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
 // This may involve changing the name of the resource in cases where the resource has a named derived from the name of
 // the parent, and the parent name changed.
-function inheritedChildAlias(childName: string, parentName: string, parentAlias: Input<string>, childType: string): Output<string> {
+function inheritedChildAlias(
+    childName: string,
+    parentName: string,
+    parentAlias: Input<string>,
+    childType: string,
+): Output<string> {
     // If the child name has the parent name as a prefix, then we make the assumption that it was
     // constructed from the convention of using `{name}-details` as the name of the child resource.  To
     // ensure this is aliased correctly, we must then also replace the parent aliases name in the prefix of
@@ -69,7 +80,7 @@ function inheritedChildAlias(childName: string, parentName: string, parentAlias:
     // * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
     let aliasName = output(childName);
     if (childName.startsWith(parentName)) {
-        aliasName = output(parentAlias).apply(parentAliasUrn => {
+        aliasName = output(parentAlias).apply((parentAliasUrn) => {
             const parentAliasName = parentAliasUrn.substring(parentAliasUrn.lastIndexOf("::") + 2);
             return parentAliasName + childName.substring(parentName.length);
         });
@@ -83,27 +94,35 @@ function urnTypeAndName(urn: URN) {
     const typeParts = parts[2].split("$");
     return {
         name: parts[3],
-        type: typeParts[typeParts.length-1],
+        type: typeParts[typeParts.length - 1],
     };
 }
 
 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent.
 // If there are N child aliases, and M parent aliases, there will be (M+1)*(N+1)-1 total aliases,
 // or, as calculated in the logic below, N+(M*(1+N)).
-export function allAliases(childAliases: Input<URN | Alias>[], childName: string, childType: string, parent: Resource, parentName: string): Output<URN>[] {
+export function allAliases(
+    childAliases: Input<URN | Alias>[],
+    childName: string,
+    childType: string,
+    parent: Resource,
+    parentName: string,
+): Output<URN>[] {
     const aliases: Output<URN>[] = [];
     for (const childAlias of childAliases) {
         aliases.push(collapseAliasToUrn(childAlias, childName, childType, parent));
     }
-    for (const parentAlias of (parent.__aliases || [])) {
+    for (const parentAlias of parent.__aliases || []) {
         // For each parent alias, add an alias that uses that base child name and the parent alias
         aliases.push(inheritedChildAlias(childName, parentName, parentAlias, childType));
         // Also add an alias for each child alias and the parent alias
         for (const childAlias of childAliases) {
-            const inheritedAlias = collapseAliasToUrn(childAlias, childName, childType, parent).apply(childAliasURN => {
-                const {name: aliasedChildName, type: aliasedChildType} = urnTypeAndName(childAliasURN);
-                return inheritedChildAlias(aliasedChildName, parentName, parentAlias, aliasedChildType);
-            });
+            const inheritedAlias = collapseAliasToUrn(childAlias, childName, childType, parent).apply(
+                (childAliasURN) => {
+                    const { name: aliasedChildName, type: aliasedChildType } = urnTypeAndName(childAliasURN);
+                    return inheritedChildAlias(aliasedChildName, parentName, parentAlias, aliasedChildType);
+                },
+            );
             aliases.push(inheritedAlias);
         }
     }
@@ -275,9 +294,15 @@ export abstract class Resource {
      * @param remote True if this is a remote component resource.
      * @param dependency True if this is a synthetic resource used internally for dependency tracking.
      */
-    constructor(t: string, name: string, custom: boolean, props: Inputs = {}, opts: ResourceOptions = {},
-                remote: boolean = false, dependency: boolean = false) {
-
+    constructor(
+        t: string,
+        name: string,
+        custom: boolean,
+        props: Inputs = {},
+        opts: ResourceOptions = {},
+        remote: boolean = false,
+        dependency: boolean = false,
+    ) {
         if (dependency) {
             this.__protect = false;
             this.__providers = {};
@@ -298,7 +323,7 @@ export abstract class Resource {
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
         // options assigned to this resource.
         const parent = opts.parent || getStackResource();
-        this.__transformations = [ ...(opts.transformations || []), ...(parent?.__transformations || []) ];
+        this.__transformations = [...(opts.transformations || []), ...(parent?.__transformations || [])];
         for (const transformation of this.__transformations) {
             const tres = transformation({ resource: this, type: t, name, props, opts });
             if (tres) {
@@ -359,8 +384,7 @@ export abstract class Resource {
 
             if (pkg && pkg in this.__providers) {
                 opts.provider = this.__providers[pkg];
-            }
-            else if (parentProvider) {
+            } else if (parentProvider) {
                 opts.provider = parentProvider;
             }
         }
@@ -382,12 +406,13 @@ export abstract class Resource {
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
             getResource(this, parent, props, custom, opts.urn);
-        }
-        else if (opts.id) {
+        } else if (opts.id) {
             // If this is a custom resource that already exists, read its state from the provider.
             if (!custom) {
                 throw new ResourceError(
-                    "Cannot read an existing resource unless it has a custom provider", opts.parent);
+                    "Cannot read an existing resource unless it has a custom provider",
+                    opts.parent,
+                );
             }
             readResource(this, parent, t, name, props, opts);
         } else {
@@ -395,7 +420,7 @@ export abstract class Resource {
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, parent, t, name, custom, remote, urn => new DependencyResource(urn), props, opts);
+            registerResource(this, parent, t, name, custom, remote, (urn) => new DependencyResource(urn), props, opts);
         }
     }
 }
@@ -495,9 +520,9 @@ function collapseAliasToUrn(
     alias: Input<Alias | string>,
     defaultName: string,
     defaultType: string,
-    defaultParent: Resource | undefined): Output<URN> {
-
-    return output(alias).apply(a => {
+    defaultParent: Resource | undefined,
+): Output<URN> {
+    return output(alias).apply((a) => {
         if (typeof a === "string") {
             return output(a);
         }
@@ -776,7 +801,10 @@ export abstract class CustomResource extends Resource {
      */
     constructor(t: string, name: string, props?: Inputs, opts: CustomResourceOptions = {}, dependency = false) {
         if ((<ComponentResourceOptions>opts).providers) {
-            throw new ResourceError("Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?", opts.parent);
+            throw new ResourceError(
+                "Do not supply 'providers' option to a CustomResource. Did you mean 'provider' instead?",
+                opts.parent,
+            );
         }
 
         super(t, name, true, props, opts, false, dependency);
@@ -806,7 +834,7 @@ export abstract class ProviderResource extends CustomResource {
 
         if (!provider.__registrationId) {
             const providerURN = await provider.urn.promise();
-            const providerID = await provider.id.promise() || unknownValue;
+            const providerID = (await provider.id.promise()) || unknownValue;
             provider.__registrationId = `${providerURN}::${providerID}`;
         }
 
@@ -879,7 +907,13 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts A bag of options that control this resource's behavior.
      * @param remote True if this is a remote component resource.
      */
-    constructor(type: string, name: string, args: Inputs = {}, opts: ComponentResourceOptions = {}, remote: boolean = false) {
+    constructor(
+        type: string,
+        name: string,
+        args: Inputs = {},
+        opts: ComponentResourceOptions = {},
+        remote: boolean = false,
+    ) {
         // Explicitly ignore the props passed in.  We allow them for back compat reasons.  However,
         // we explicitly do not want to pass them along to the engine.  The ComponentResource acts
         // only as a container for other resources.  Another way to think about this is that a normal
@@ -961,8 +995,14 @@ export const testingOptions = {
  *  4. For the purposes of merging `dependsOn`, `provider` and `providers` are always treated as
  *     collections, even if only a single value was provided.
  */
-export function mergeOptions(opts1: CustomResourceOptions | undefined, opts2: CustomResourceOptions | undefined): CustomResourceOptions;
-export function mergeOptions(opts1: ComponentResourceOptions | undefined, opts2: ComponentResourceOptions | undefined): ComponentResourceOptions;
+export function mergeOptions(
+    opts1: CustomResourceOptions | undefined,
+    opts2: CustomResourceOptions | undefined,
+): CustomResourceOptions;
+export function mergeOptions(
+    opts1: ComponentResourceOptions | undefined,
+    opts2: ComponentResourceOptions | undefined,
+): ComponentResourceOptions;
 export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions;
 export function mergeOptions(opts1: ResourceOptions | undefined, opts2: ResourceOptions | undefined): ResourceOptions {
     const dest = <any>{ ...opts1 };
@@ -1023,8 +1063,7 @@ function normalizeProviders(opts: ComponentResourceOptions) {
     if (providers) {
         if (providers.length === 0) {
             delete opts.providers;
-        }
-        else {
+        } else {
             opts.providers = {};
             for (const res of providers) {
                 opts.providers[res.getPackage()] = res;
@@ -1037,11 +1076,11 @@ function normalizeProviders(opts: ComponentResourceOptions) {
 export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
     // unwind any top level promise/outputs.
     if (isPromiseOrOutput(dest)) {
-        return output(dest).apply(d => merge(d, source, alwaysCreateArray));
+        return output(dest).apply((d) => merge(d, source, alwaysCreateArray));
     }
 
     if (isPromiseOrOutput(source)) {
-        return output(source).apply(s => merge(dest, s, alwaysCreateArray));
+        return output(source).apply((s) => merge(dest, s, alwaysCreateArray));
     }
 
     // If either are an array, make a new array and merge the values into it.
@@ -1059,8 +1098,7 @@ export function merge(dest: any, source: any, alwaysCreateArray: boolean): any {
 function addToArray(resultArray: any[], value: any) {
     if (Array.isArray(value)) {
         resultArray.push(...value);
-    }
-    else if (value !== undefined && value !== null) {
+    } else if (value !== undefined && value !== null) {
         resultArray.push(value);
     }
 }
@@ -1073,8 +1111,13 @@ export class DependencyResource extends CustomResource {
     constructor(urn: URN) {
         super("", "", {}, {}, true);
 
-        (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false),
-            Promise.resolve([]));
+        (<any>this).urn = new Output(
+            <any>this,
+            Promise.resolve(urn),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve([]),
+        );
     }
 }
 
@@ -1094,8 +1137,20 @@ export class DependencyProviderResource extends ProviderResource {
 
         super(pkg, "", {}, {}, true);
 
-        (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
-        (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
+        (<any>this).urn = new Output(
+            <any>this,
+            Promise.resolve(urn),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve([]),
+        );
+        (<any>this).id = new Output(
+            <any>this,
+            Promise.resolve(id),
+            Promise.resolve(true),
+            Promise.resolve(false),
+            Promise.resolve([]),
+        );
     }
 }
 
@@ -1109,6 +1164,6 @@ export function parseResourceReference(ref: string): [string, string] {
         throw new Error(`expected '::' in provider reference ${ref}`);
     }
     const urn = ref.slice(0, lastSep);
-    const id = ref.slice(lastSep+2);
+    const id = ref.slice(lastSep + 2);
     return [urn, id];
 }

@@ -80,23 +80,28 @@ export async function computeCodePaths(options?: CodePathOptions): Promise<Map<s
 /**
  * @deprecated Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.
  */
-export async function computeCodePaths(extraIncludePaths?: string[], extraIncludePackages?: string[], extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>>;
+export async function computeCodePaths(
+    extraIncludePaths?: string[],
+    extraIncludePackages?: string[],
+    extraExcludePackages?: string[],
+): Promise<Map<string, asset.Asset | asset.Archive>>;
 
 export async function computeCodePaths(
     optionsOrExtraIncludePaths?: string[] | CodePathOptions,
     extraIncludePackages?: string[],
-    extraExcludePackages?: string[]): Promise<Map<string, asset.Asset | asset.Archive>> {
-
+    extraExcludePackages?: string[],
+): Promise<Map<string, asset.Asset | asset.Archive>> {
     let options: CodePathOptions;
     if (Array.isArray(optionsOrExtraIncludePaths)) {
-        log.warn("'function computeCodePaths(string[])' is deprecated. Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.");
+        log.warn(
+            "'function computeCodePaths(string[])' is deprecated. Use the [computeCodePaths] overload that takes a [CodePathOptions] instead.",
+        );
         options = {
             extraIncludePaths: optionsOrExtraIncludePaths,
             extraIncludePackages,
             extraExcludePackages,
         };
-    }
-    else {
+    } else {
         options = optionsOrExtraIncludePaths || {};
     }
 
@@ -111,7 +116,8 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
     const normalizedPathSet = await allFoldersForPackages(
         new Set<string>(options.extraIncludePackages || []),
         new Set<string>(options.extraExcludePackages || []),
-        options.logResource);
+        options.logResource,
+    );
 
     // Add all paths explicitly requested by the user
     const extraIncludePaths = options.extraIncludePaths || [];
@@ -135,8 +141,7 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
         const stats = fs.statSync(normalizedPath);
         if (stats.isDirectory()) {
             codePaths.set(normalizedPath, new asset.FileArchive(normalizedPath));
-        }
-        else {
+        } else {
             codePaths.set(normalizedPath, new asset.FileAsset(normalizedPath));
         }
     }
@@ -146,9 +151,7 @@ async function computeCodePathsWorker(options: CodePathOptions): Promise<Map<str
 
 function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<string>): boolean {
     for (const otherNormalizedPath of normalizedPathSet) {
-        if (normalizedPath.length > otherNormalizedPath.length &&
-            normalizedPath.startsWith(otherNormalizedPath)) {
-
+        if (normalizedPath.length > otherNormalizedPath.length && normalizedPath.startsWith(otherNormalizedPath)) {
             // Have to make sure we're actually a sub-directory of that other path.  For example,
             // if we have:  node_modules/mime-types, that's not subsumed by node_modules/mime
             const nextChar = normalizedPath.charAt(otherNormalizedPath.length);
@@ -164,7 +167,8 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
 function allFoldersForPackages(
     includedPackages: Set<string>,
     excludedPackages: Set<string>,
-    logResource: Resource | undefined): Promise<Set<string>> {
+    logResource: Resource | undefined,
+): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
             try {
@@ -180,12 +184,16 @@ function allFoldersForPackages(
                 if (root.error) {
                     if (!root.realpath) {
                         throw new ResourceError(
-                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(), logResource);
+                            "Failed to parse package.json. Underlying issue:\n  " + root.error.toString(),
+                            logResource,
+                        );
                     }
 
                     // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
                     root.package = computeDependenciesDirectlyFromPackageFile(
-                        upath.join(root.realpath, "package.json"), logResource);
+                        upath.join(root.realpath, "package.json"),
+                        logResource,
+                    );
                 }
 
                 // This is the core starting point of the algorithm.  We use readPackageTree to get
@@ -210,13 +218,11 @@ function allFoldersForPackages(
 
                 const normalizedPackagePaths = new Set<string>();
                 for (const pkg of referencedPackages) {
-                    addPackageAndDependenciesToSet(
-                        root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
+                    addPackageAndDependenciesToSet(root, pkg, seenPaths, normalizedPackagePaths, excludedPackages);
                 }
 
                 return resolve(normalizedPackagePaths);
-            }
-            catch (error) {
+            } catch (error) {
                 return reject(error);
             }
         });
@@ -247,7 +253,10 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
         try {
             return fs.readFileSync(path);
         } catch (err) {
-            throw new ResourceError(`Error reading file '${path}' when computing package dependencies. ${err}`, logResource);
+            throw new ResourceError(
+                `Error reading file '${path}' when computing package dependencies. ${err}`,
+                logResource,
+            );
         }
     }
 
@@ -255,7 +264,10 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
         try {
             return JSON.parse(contents.toString());
         } catch (err) {
-            throw new ResourceError(`Error parsing file '${path}' when computing package dependencies. ${err}`, logResource);
+            throw new ResourceError(
+                `Error parsing file '${path}' when computing package dependencies. ${err}`,
+                logResource,
+            );
         }
     }
 }
@@ -263,9 +275,12 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
 // addPackageAndDependenciesToSet adds all required dependencies for the requested pkg name from the given root package
 // into the set.  It will recurse into all dependencies of the package.
 function addPackageAndDependenciesToSet(
-    root: readPackageTree.Node, pkg: string, seenPaths: Set<string>,
-    normalizedPackagePaths: Set<string>, excludedPackages: Set<string>) {
-
+    root: readPackageTree.Node,
+    pkg: string,
+    seenPaths: Set<string>,
+    normalizedPackagePaths: Set<string>,
+    excludedPackages: Set<string>,
+) {
     // Don't process this packages if it was in the set the user wants to exclude.
     if (excludedPackages.has(pkg)) {
         return;
@@ -292,14 +307,12 @@ function addPackageAndDependenciesToSet(
         // section.  In this case, we don't want to add this specific package, but we do want to
         // include all the runtime dependencies it says are necessary.
         recurse(child.package.pulumi.runtimeDependencies);
-    }
-    else if (pkg.startsWith("@pulumi")) {
+    } else if (pkg.startsWith("@pulumi")) {
         // exclude it if it's an @pulumi package.  These packages are intended for deployment
         // time only and will only bloat up the serialized lambda package.  Note: this code can
         // be removed once all pulumi packages add a "pulumi" section to their package.json.
         return;
-    }
-    else {
+    } else {
         // Normal package.  Add the normalized path to it, and all transitively add all of its
         // dependencies.
         normalizedPackagePaths.add(normalizedPath);
@@ -311,8 +324,7 @@ function addPackageAndDependenciesToSet(
     function recurse(dependencies: any) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                addPackageAndDependenciesToSet(
-                    child!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
+                addPackageAndDependenciesToSet(child!, dep, seenPaths, normalizedPackagePaths, excludedPackages);
             }
         }
     }

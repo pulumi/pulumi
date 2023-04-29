@@ -15,13 +15,12 @@
 import * as assert from "assert";
 import * as runtime from "../../runtime";
 
-
 describe("settings", () => {
     beforeEach(() => {
         runtime._reset();
         runtime.setAllConfig({});
     });
-    after(()=> {
+    after(() => {
         runtime._reset();
         runtime.setAllConfig({});
     });

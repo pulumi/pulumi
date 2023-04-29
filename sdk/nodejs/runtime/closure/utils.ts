@@ -27,11 +27,9 @@ export function isLegalFunctionName(n: string) {
         return false;
     }
     const ts: typeof typescript = require("typescript");
-    const scanner = ts.createScanner(
-        ts.ScriptTarget.Latest, /*skipTrivia:*/false, ts.LanguageVariant.Standard, n);
+    const scanner = ts.createScanner(ts.ScriptTarget.Latest, /*skipTrivia:*/ false, ts.LanguageVariant.Standard, n);
     const tokenKind = scanner.scan();
-    if (tokenKind !== ts.SyntaxKind.Identifier &&
-        tokenKind !== ts.SyntaxKind.ConstructorKeyword) {
+    if (tokenKind !== ts.SyntaxKind.Identifier && tokenKind !== ts.SyntaxKind.ConstructorKeyword) {
         return false;
     }
 

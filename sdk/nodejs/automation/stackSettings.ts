@@ -19,7 +19,7 @@ export interface StackSettings {
     secretsProvider?: string;
     encryptedKey?: string;
     encryptionSalt?: string;
-    config?: {[key: string]: StackSettingsConfigValue};
+    config?: { [key: string]: StackSettingsConfigValue };
 }
 
 /**

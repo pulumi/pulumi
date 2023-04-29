@@ -41,7 +41,7 @@ export async function getFunctionLocationAsync(func: Function) {
 
     // There should normally be an internal property called [[FunctionLocation]]:
     // https://chromium.googlesource.com/v8/v8.git/+/3f99afc93c9ba1ba5df19f123b93cc3079893c9b/src/inspector/v8-debugger.cc#793
-    const functionLocation = internalProperties.find(p => p.name === "[[FunctionLocation]]");
+    const functionLocation = internalProperties.find((p) => p.name === "[[FunctionLocation]]");
     if (!functionLocation || !functionLocation.value || !functionLocation.value.value) {
         return { file: "", line: 0, column: 0 };
     }
@@ -68,8 +68,10 @@ export async function getFunctionLocationAsync(func: Function) {
  * @internal
  */
 export async function lookupCapturedVariableValueAsync(
-    func: Function, freeVariable: string, throwOnFailure: boolean): Promise<any> {
-
+    func: Function,
+    freeVariable: string,
+    throwOnFailure: boolean,
+): Promise<any> {
     // First, find the runtime's internal id for this function.
     const functionId = await getRuntimeIdForFunctionAsync(func);
 
@@ -78,7 +80,7 @@ export async function lookupCapturedVariableValueAsync(
 
     // There should normally be an internal property called [[Scopes]]:
     // https://chromium.googlesource.com/v8/v8.git/+/3f99afc93c9ba1ba5df19f123b93cc3079893c9b/src/inspector/v8-debugger.cc#820
-    const scopes = internalProperties.find(p => p.name === "[[Scopes]]");
+    const scopes = internalProperties.find((p) => p.name === "[[Scopes]]");
     if (!scopes) {
         throw new Error("Could not find [[Scopes]] property");
     }
@@ -125,12 +127,29 @@ type PostSession<TMethod, TParams, TReturn> = {
     post(method: TMethod, params?: TParams, callback?: (err: Error | null, params: TReturn) => void): void;
 };
 
-type EvaluationSession = PostSession<"Runtime.evaluate", inspector.Runtime.EvaluateParameterType, inspector.Runtime.EvaluateReturnType>;
-type GetPropertiesSession = PostSession<"Runtime.getProperties", inspector.Runtime.GetPropertiesParameterType, inspector.Runtime.GetPropertiesReturnType>;
-type CallFunctionSession = PostSession<"Runtime.callFunctionOn", inspector.Runtime.CallFunctionOnParameterType, inspector.Runtime.CallFunctionOnReturnType>;
+type EvaluationSession = PostSession<
+    "Runtime.evaluate",
+    inspector.Runtime.EvaluateParameterType,
+    inspector.Runtime.EvaluateReturnType
+>;
+type GetPropertiesSession = PostSession<
+    "Runtime.getProperties",
+    inspector.Runtime.GetPropertiesParameterType,
+    inspector.Runtime.GetPropertiesReturnType
+>;
+type CallFunctionSession = PostSession<
+    "Runtime.callFunctionOn",
+    inspector.Runtime.CallFunctionOnParameterType,
+    inspector.Runtime.CallFunctionOnReturnType
+>;
 type ContextSession = {
     post(method: "Runtime.disable" | "Runtime.enable", callback?: (err: Error | null) => void): void;
-    once(event: "Runtime.executionContextCreated", listener: (message: inspector.InspectorNotification<inspector.Runtime.ExecutionContextCreatedEventDataType>) => void): void;
+    once(
+        event: "Runtime.executionContextCreated",
+        listener: (
+            message: inspector.InspectorNotification<inspector.Runtime.ExecutionContextCreatedEventDataType>,
+        ) => void,
+    ): void;
 };
 
 type InflightContext = {
@@ -163,8 +182,8 @@ async function createContext(): Promise<InflightContext> {
 
     // Create own context with known context id and functionsContext as `global`
     await post.call(session, "Runtime.enable");
-    const contextIdAsync = new Promise<number>(resolve => {
-        session.once("Runtime.executionContextCreated", event => {
+    const contextIdAsync = new Promise<number>((resolve) => {
+        session.once("Runtime.executionContextCreated", (event) => {
             resolve(event.params.context.id);
         });
     });
@@ -202,7 +221,10 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
         const retType = await post.call(session, "Runtime.evaluate", { contextId, expression });
 
         if (retType.exceptionDetails) {
-            throw new Error(`Error calling "Runtime.evaluate(${expression})" on context ${contextId}: ` + retType.exceptionDetails.text);
+            throw new Error(
+                `Error calling "Runtime.evaluate(${expression})" on context ${contextId}: ` +
+                    retType.exceptionDetails.text,
+            );
         }
 
         const remoteObject = retType.result;
@@ -215,26 +237,28 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
         }
 
         return remoteObject.objectId;
-    }
-    finally {
+    } finally {
         delete context.functions[currentFunctionName];
     }
 }
 
 async function runtimeGetPropertiesAsync(
     objectId: inspector.Runtime.RemoteObjectId,
-    ownProperties: boolean | undefined) {
+    ownProperties: boolean | undefined,
+) {
     const session = <GetPropertiesSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
 
     // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
     // support typesafe '.call' calls.
-    const retType = <inspector.Runtime.GetPropertiesReturnType>await post.call(
-        session, "Runtime.getProperties", { objectId, ownProperties });
+    const retType = <inspector.Runtime.GetPropertiesReturnType>(
+        await post.call(session, "Runtime.getProperties", { objectId, ownProperties })
+    );
 
     if (retType.exceptionDetails) {
-        throw new Error(`Error calling "Runtime.getProperties(${objectId}, ${ownProperties})": `
-            + retType.exceptionDetails.text);
+        throw new Error(
+            `Error calling "Runtime.getProperties(${objectId}, ${ownProperties})": ` + retType.exceptionDetails.text,
+        );
     }
 
     return { internalProperties: retType.internalProperties || [], properties: retType.result };
@@ -262,17 +286,15 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
 
     // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
     // support typesafe '.call' calls.
-    const retType = <inspector.Runtime.CallFunctionOnReturnType>await post.call(
-        session, "Runtime.callFunctionOn", {
-            objectId,
-            functionDeclaration: `function () {
+    const retType = <inspector.Runtime.CallFunctionOnReturnType>await post.call(session, "Runtime.callFunctionOn", {
+        objectId,
+        functionDeclaration: `function () {
                 calls["${tableId}"] = this;
             }`,
-        });
+    });
 
     if (retType.exceptionDetails) {
-        throw new Error(`Error calling "Runtime.callFunction(${objectId})": `
-            + retType.exceptionDetails.text);
+        throw new Error(`Error calling "Runtime.callFunction(${objectId})": ` + retType.exceptionDetails.text);
     }
 
     if (!context.calls.hasOwnProperty(tableId)) {

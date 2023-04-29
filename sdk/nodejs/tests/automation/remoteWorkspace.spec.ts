@@ -151,9 +151,13 @@ describe("RemoteWorkspace", () => {
                     },
                 },
                 expected: [
-                    "--remote", "foo",
-                    "--remote-git-auth-password", "mypass",
-                    "--remote-git-auth-username", "myuser"],
+                    "--remote",
+                    "foo",
+                    "--remote-git-auth-password",
+                    "mypass",
+                    "--remote-git-auth-username",
+                    "myuser",
+                ],
             },
             {
                 name: "env",
@@ -208,7 +212,7 @@ describe("RemoteWorkspace", () => {
                 expected: ["--remote", "foo", "--remote-skip-install-dependencies"],
             },
         ];
-        tests.forEach(test => {
+        tests.forEach((test) => {
             it(`${test.name}`, async () => {
                 const ws = await LocalWorkspace.create(test.opts);
                 const actual = ws.remoteArgs();
@@ -348,32 +352,38 @@ function testErrors(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptio
         },
     ];
 
-    tests.forEach(test => {
+    tests.forEach((test) => {
         it(`${test.name}`, async () => {
             const { stackName, url, branch, commitHash, auth } = test;
-            await assert.rejects(async () => {
-                await fn({ stackName, url, branch, commitHash, auth });
-            }, {
-                message: test.error,
-            });
+            await assert.rejects(
+                async () => {
+                    await fn({ stackName, url, branch, commitHash, auth });
+                },
+                {
+                    message: test.error,
+                },
+            );
         });
     });
 }
 
 async function testLifecycle(fn: (args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions) => Promise<RemoteStack>) {
     const stackName = fullyQualifiedStackName(getTestOrg(), "go_remote_proj", `int_test${getTestSuffix()}`);
-    const stack = await fn({
-        stackName,
-        url: testRepo,
-        branch: "refs/heads/master",
-        projectPath: "goproj",
-    },{
-        preRunCommands: [
-            `pulumi config set bar abc --stack ${stackName}`,
-            `pulumi config set --secret buzz secret --stack ${stackName}`,
-        ],
-        skipInstallDependencies: true,
-    });
+    const stack = await fn(
+        {
+            stackName,
+            url: testRepo,
+            branch: "refs/heads/master",
+            projectPath: "goproj",
+        },
+        {
+            preRunCommands: [
+                `pulumi config set bar abc --stack ${stackName}`,
+                `pulumi config set --secret buzz secret --stack ${stackName}`,
+            ],
+            skipInstallDependencies: true,
+        },
+    );
 
     // pulumi up
     const upRes = await stack.up();
@@ -458,7 +468,7 @@ describe("isFullyQualifiedStackName", () => {
         },
     ];
 
-    tests.forEach(test => {
+    tests.forEach((test) => {
         it(`${test.name}`, () => {
             const actual = isFullyQualifiedStackName(test.input!);
             assert.strictEqual(actual, test.expected);

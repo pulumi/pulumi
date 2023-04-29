@@ -32,7 +32,7 @@ export const configSecretKeysEnvKey = "PULUMI_CONFIG_SECRET_KEYS";
 /**
  * allConfig returns a copy of the full config map.
  */
-export function allConfig(): {[key: string]: string} {
+export function allConfig(): { [key: string]: string } {
     const config = parseConfig();
     return Object.assign({}, config);
 }
@@ -40,8 +40,8 @@ export function allConfig(): {[key: string]: string} {
 /**
  * setAllConfig overwrites the config map.
  */
-export function setAllConfig(c: {[key: string]: string}, secretKeys?: string[]) {
-    const obj: {[key: string]: string} = {};
+export function setAllConfig(c: { [key: string]: string }, secretKeys?: string[]) {
+    const obj: { [key: string]: string } = {};
     for (const k of Object.keys(c)) {
         obj[cleanKey(k)] = c[k];
     }
@@ -88,10 +88,10 @@ export function isConfigSecret(k: string): boolean {
  */
 function parseConfig() {
     const { config } = getStore();
-    const parsedConfig: {[key: string]: string} = {};
+    const parsedConfig: { [key: string]: string } = {};
     const envConfig = config[configEnvKey];
     if (envConfig) {
-        const envObject: {[key: string]: string} = JSON.parse(envConfig);
+        const envObject: { [key: string]: string } = JSON.parse(envConfig);
         for (const k of Object.keys(envObject)) {
             parsedConfig[cleanKey(k)] = envObject[k];
         }
@@ -105,7 +105,7 @@ function parseConfig() {
  * config changes must always be persisted to the environment because automation api introduces
  * new program lifetime semantics where program lifetime != module lifetime.
  */
-function persistConfig(config: {[key: string]: string}, secretKeys?: string[]) {
+function persistConfig(config: { [key: string]: string }, secretKeys?: string[]) {
     const store = getStore();
     const serializedConfig = JSON.stringify(config);
     const serializedSecretKeys = Array.isArray(secretKeys) ? JSON.stringify(secretKeys) : "[]";

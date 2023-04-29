@@ -57,7 +57,7 @@ export class PushableAsyncIterable<T> implements AsyncIterable<T | undefined> {
     }
 
     private shift(): Promise<T | CloseValue> {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             if (this.bufferedData.length === 0) {
                 if (this.completed === true) {
                     resolve(closeValue);

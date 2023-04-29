@@ -28,7 +28,7 @@ export class StackReference extends CustomResource {
     /**
      * The outputs of the referenced stack.
      */
-    public readonly outputs!: Output<{[name: string]: any}>;
+    public readonly outputs!: Output<{ [name: string]: any }>;
 
     /**
      * The names of any stack outputs which contain secrets.
@@ -49,11 +49,16 @@ export class StackReference extends CustomResource {
 
         const stackReferenceName = args.name || name;
 
-        super("pulumi:pulumi:StackReference", name, {
-            name: stackReferenceName,
-            outputs: undefined,
-            secretOutputNames: undefined,
-        }, { ...opts, id: stackReferenceName });
+        super(
+            "pulumi:pulumi:StackReference",
+            name,
+            {
+                name: stackReferenceName,
+                outputs: undefined,
+                secretOutputNames: undefined,
+            },
+            { ...opts, id: stackReferenceName },
+        );
     }
 
     /**
@@ -70,9 +75,12 @@ export class StackReference extends CustomResource {
         // 'value' is an Output produced by our own `.apply` implementation.  So it's safe to
         // `.allResources!` on it.
         return new Output(
-            value.resources(), value.promise(),
-            value.isKnown, isSecretOutputName(this, output(name)),
-            value.allResources!());
+            value.resources(),
+            value.promise(),
+            value.isKnown,
+            isSecretOutputName(this, output(name)),
+            value.allResources!(),
+        );
     }
 
     /**
@@ -88,9 +96,12 @@ export class StackReference extends CustomResource {
             return os[n];
         });
         return new Output(
-            value.resources(), value.promise(),
-            value.isKnown, isSecretOutputName(this, output(name)),
-            value.allResources!());
+            value.resources(),
+            value.promise(),
+            value.isKnown,
+            isSecretOutputName(this, output(name)),
+            value.allResources!(),
+        );
     }
 
     /**
@@ -106,9 +117,9 @@ export class StackReference extends CustomResource {
     public async getOutputDetails(name: string): Promise<StackReferenceOutputDetails> {
         const [out, isSecret] = await this.readOutputValue("getOutputValueDetails", name, false /*required*/);
         if (isSecret) {
-            return {secretValue: out};
+            return { secretValue: out };
         } else {
-            return {value: out};
+            return { value: out };
         }
     }
 
@@ -123,7 +134,9 @@ export class StackReference extends CustomResource {
     public async getOutputValue(name: string): Promise<any> {
         const [out, isSecret] = await this.readOutputValue("getOutputValue", name, false /*required*/);
         if (isSecret) {
-            throw new Error("Cannot call 'getOutputValue' if the referenced stack output is a secret. Use 'getOutput' instead.");
+            throw new Error(
+                "Cannot call 'getOutputValue' if the referenced stack output is a secret. Use 'getOutput' instead.",
+            );
         }
         return out;
     }
@@ -139,7 +152,9 @@ export class StackReference extends CustomResource {
     public async requireOutputValue(name: string): Promise<any> {
         const [out, isSecret] = await this.readOutputValue("requireOutputSync", name, true /*required*/);
         if (isSecret) {
-            throw new Error("Cannot call 'requireOutputValue' if the referenced stack output is a secret. Use 'requireOutput' instead.");
+            throw new Error(
+                "Cannot call 'requireOutputValue' if the referenced stack output is a secret. Use 'requireOutput' instead.",
+            );
         }
         return out;
     }

@@ -132,6 +132,9 @@ jobs:
       - name: Ensure
         run: |
           make ensure
+      # Ensure that the Node SDK adheres to the Autoformatter's guidelines.
+      - name: Format Node
+        run: cd sdk/nodejs && make format_ci
       - name: Lint Node
         run: |
           cd sdk/nodejs && make lint

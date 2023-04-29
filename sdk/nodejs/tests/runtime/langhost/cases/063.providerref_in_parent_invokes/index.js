@@ -12,14 +12,14 @@ let pulumi = require("../../../../../");
 
     class Resource extends pulumi.CustomResource {
         constructor(name, opts) {
-            super("test:index:Resource", name, {}, opts)
+            super("test:index:Resource", name, {}, opts);
         }
     }
 
     const provider = new Provider("p");
     await pulumi.ProviderResource.register(provider);
 
-    const parent = new Resource("r", { provider })
+    const parent = new Resource("r", { provider });
 
     let args = {
         a: "hello",

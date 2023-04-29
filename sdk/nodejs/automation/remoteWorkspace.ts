@@ -152,7 +152,10 @@ export interface RemoteWorkspaceOptions {
     skipInstallDependencies?: boolean;
 }
 
-async function createLocalWorkspace(args: RemoteGitProgramArgs, opts?: RemoteWorkspaceOptions): Promise<LocalWorkspace> {
+async function createLocalWorkspace(
+    args: RemoteGitProgramArgs,
+    opts?: RemoteWorkspaceOptions,
+): Promise<LocalWorkspace> {
     if (!isFullyQualifiedStackName(args.stackName)) {
         throw new Error(`stack name "${args.stackName}" must be fully qualified.`);
     }

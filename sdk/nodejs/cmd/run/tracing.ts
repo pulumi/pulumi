@@ -41,7 +41,9 @@ function validateUrl(destination: string): boolean {
         // AppDash server when the user specifies a file endpoint.
         // In this case, we send a warning that we can't support this URI
         // and refuse to enable tracing.
-        log.warn("Detected an incompatible tracing URI. Refusing to enable tracing for the NodeJS runtime. If you provided a file target with the --tracing flag, understand that the NodeJS runtime does not support sending trace information to files.");
+        log.warn(
+            "Detected an incompatible tracing URI. Refusing to enable tracing for the NodeJS runtime. If you provided a file target with the --tracing flag, understand that the NodeJS runtime does not support sending trace information to files.",
+        );
         return false;
     }
     return true;
@@ -49,7 +51,7 @@ function validateUrl(destination: string): boolean {
 
 /** @internal */
 export function start(destinationUrl: string) {
-    if(!validateUrl(destinationUrl)) {
+    if (!validateUrl(destinationUrl)) {
         return;
     }
     // Set up gRPC auto-instrumentation.
@@ -62,7 +64,7 @@ export function start(destinationUrl: string) {
         new Resource({
             [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
             [SemanticResourceAttributes.SERVICE_VERSION]: packageJson.version,
-        })
+        }),
     );
 
     /**
@@ -97,7 +99,7 @@ export function start(destinationUrl: string) {
 export function stop() {
     // If rootSpan is null, the URI provided was invalid,
     // so tracing was never enabled.
-    if(rootSpan != null) {
+    if (rootSpan != null) {
         log.debug("Shutting down tracer.");
         // Always close the root span.
         rootSpan.end();
