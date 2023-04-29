@@ -1062,7 +1062,7 @@ function normalizeProviders(opts: ComponentResourceOptions) {
     const providers = <ProviderResource[]>opts.providers;
     if (providers) {
         if (providers.length === 0) {
-            delete opts.providers;
+            opts.providers = undefined;
         } else {
             opts.providers = {};
             for (const res of providers) {

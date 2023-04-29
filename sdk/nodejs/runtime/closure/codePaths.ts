@@ -238,12 +238,12 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
     // 'normalize-package-data' can throw if 'version' isn't a valid string.  We don't care about
     // 'version' so just delete it.
     // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L191
-    delete data.version;
+    data.version = undefined;
 
     // 'normalize-package-data' can throw if 'name' isn't a valid string.  We don't care about
     // 'name' so just delete it.
     // https://github.com/npm/normalize-package-data/blob/df8ea05b8cd38531e8b70ac7906f420344f55bab/lib/fixer.js#L211
-    delete data.name;
+    data.name = undefined;
 
     normalize(data);
 
