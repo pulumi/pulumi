@@ -232,6 +232,22 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 	return projects, nil
 }
 
+func (p *projectReferenceStore) ProjectExists(ctx context.Context, projectName string) (bool, error) {
+	if projectName == "" {
+		return false, fmt.Errorf("empty project name")
+	}
+
+	path := filepath.Join(StacksDir, projectName)
+
+	files, err := listBucket(ctx, p.bucket, path)
+	if err != nil {
+		return false, fmt.Errorf("error listing stacks: %w", err)
+	}
+
+	// If files is empty, it means that project is not found in bucket
+	return len(files) > 0, nil
+}
+
 func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {
 	// The first level of the bucket is the project name.
 	// The second level of the bucket is the stack name.

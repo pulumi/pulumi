@@ -16,6 +16,7 @@ package filestate
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -392,6 +393,93 @@ func TestProjectReferenceStore_List(t *testing.T) {
 
 				assert.Equal(t, tt.stacks, got)
 			})
+		})
+	}
+}
+
+func TestProjectReferenceStore_ProjectExists(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+
+		// List of file paths relative to the storage root
+		// that should exist before ListReferences is called.
+		files []string
+
+		// Project name that should exist before ProjectExists is called.
+		projectName string
+
+		// Result that should be returned by ProjectExists.
+		exist bool
+
+		// Err that should be returned by ProjectExists.
+		err error
+	}{
+		{
+			desc:        "empty string project name",
+			files:       []string{},
+			projectName: "",
+			exist:       false,
+			err:         fmt.Errorf("empty project name"),
+		},
+		{
+			desc: "project exists",
+			files: []string{
+				".pulumi/stacks/a/foo.json",
+			},
+			projectName: "a",
+			exist:       true,
+			err:         nil,
+		},
+		{
+			desc: "project exists as empty directory",
+			files: []string{
+				".pulumi/stacks/a",
+			},
+			projectName: "a",
+			exist:       false,
+			err:         nil,
+		},
+		{
+			desc: "project does not exist",
+			files: []string{
+				".pulumi/stacks/a",
+			},
+			projectName: "b",
+			exist:       false,
+			err:         nil,
+		},
+		{
+			desc: "subproject exist",
+			files: []string{
+				".pulumi/stacks/b/a", // Project name exist, but as a subproject
+			},
+			projectName: "a",
+			exist:       false,
+			err:         nil,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			bucket := memblob.OpenBucket(nil)
+			store := newProjectReferenceStore(bucket, func() *workspace.Project {
+				return &workspace.Project{Name: "test"}
+			})
+
+			ctx := context.Background()
+			for _, f := range tt.files {
+				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
+			}
+
+			exist, err := store.ProjectExists(ctx, tt.projectName)
+			assert.Equal(t, tt.err, err)
+
+			assert.Equal(t, tt.exist, exist)
 		})
 	}
 }
