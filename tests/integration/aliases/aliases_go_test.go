@@ -21,6 +21,7 @@ func TestGoAliases(t *testing.T) {
 		"rename_component",
 		"retype_parents",
 		"adopt_component_child",
+		"extract_component_child",
 	}
 
 	for _, dir := range dirs {
