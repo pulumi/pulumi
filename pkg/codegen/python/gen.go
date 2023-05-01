@@ -2990,14 +2990,35 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
-	// Finally emit the package metadata (setup.py).
+	// Next, emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}
 	files.Add("setup.py", []byte(setup))
 
+	// Finally, if pyproject.toml generation is enabled, generate
+	// this file and emit it as well.
+	if info.PyProject.Enabled {
+		project, err := genPyprojectTOML(
+			tool, pkg, pkgName, info.Requires, info.PythonRequires,
+		)
+		if err != nil {
+			return nil, err
+		}
+		files.Add("pyproject.toml", []byte(project))
+	}
+
 	return files, nil
+}
+
+func genPyprojectTOML(tool string,
+	pkg *schema.Package,
+	pyPkgName string,
+	requires map[string]string,
+	pythonRequires string,
+) (string, error) {
+	panic("Not implemented yet.")
 }
 
 const utilitiesFile = `
