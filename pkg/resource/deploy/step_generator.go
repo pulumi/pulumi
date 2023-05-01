@@ -421,24 +421,7 @@ func (sg *stepGenerator) inheritedChildAlias(
 		aliasName)
 }
 
-func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
-	var invalid bool // will be set to true if this object fails validation.
-
-	goal := event.Goal()
-
-	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, res := sg.checkParent(goal.Parent, goal.Type)
-	if res != nil {
-		return nil, res
-	}
-	goal.Parent = parent
-
-	urn, res := sg.generateURN(goal.Parent, goal.Type, goal.Name)
-	if res != nil {
-		return nil, res
-	}
-
-	// Generate the aliases for this resource
+func (sg *stepGenerator) generateAliases(goal *resource.Goal) map[resource.URN]struct{} {
 	aliases := make(map[resource.URN]struct{}, 0)
 	for _, alias := range goal.Aliases {
 		urn := sg.collapseAliasToUrn(goal, alias)
@@ -457,6 +440,28 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			}
 		}
 	}
+	return aliases
+}
+
+func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, result.Result) {
+	var invalid bool // will be set to true if this object fails validation.
+
+	goal := event.Goal()
+
+	// Some goal settings are based on the parent settings so make sure our parent is correct.
+	parent, res := sg.checkParent(goal.Parent, goal.Type)
+	if res != nil {
+		return nil, res
+	}
+	goal.Parent = parent
+
+	urn, res := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	if res != nil {
+		return nil, res
+	}
+
+	// Generate the aliases for this resource.
+	aliases := sg.generateAliases(goal)
 
 	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
 		// This resource is claiming to be X but we've already seen another resource claim that via aliases
