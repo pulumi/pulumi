@@ -1093,11 +1093,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		var alias resource.Alias
 		if aliasSpec != nil {
 			alias = resource.Alias{
-				Name:    aliasSpec.Name,
-				Type:    aliasSpec.Type,
-				Stack:   aliasSpec.Stack,
-				Project: aliasSpec.Project,
-				Parent:  resource.URN(aliasSpec.GetParentUrn()),
+				Name:     aliasSpec.Name,
+				Type:     aliasSpec.Type,
+				Stack:    aliasSpec.Stack,
+				Project:  aliasSpec.Project,
+				Parent:   resource.URN(aliasSpec.GetParentUrn()),
+				NoParent: aliasSpec.GetNoParent(),
 			}
 		} else {
 			alias = resource.Alias{

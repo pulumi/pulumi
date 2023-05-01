@@ -360,18 +360,13 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 		t = string(goal.Type)
 	}
 
-	var parentType tokens.Type
-	// If alias.NoParent is true then parentType is blank, else we need to look if a parent URN is given
-	if !alias.NoParent() {
-		parentURN := alias.Parent
-		if parentURN == "" {
-			parentURN = goal.Parent
-		}
-
-		if parentURN != "" && parentURN.Type() != resource.RootStackType {
-			// Skip empty parents and don't use the root stack type; otherwise, use the full qualified type.
-			parentType = parentURN.QualifiedType()
-		}
+	parent := alias.Parent
+	if parent == "" {
+		parent = goal.Parent
+	}
+	parentIsRootStack := parent != "" && parent.Type() == resource.RootStackType
+	if alias.NoParent || parentIsRootStack {
+		parent = ""
 	}
 
 	project := alias.Project
@@ -383,7 +378,7 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 		stack = sg.deployment.Target().Name.String()
 	}
 
-	return resource.NewURN(tokens.QName(stack), tokens.PackageName(project), parentType, tokens.Type(t), tokens.QName(n))
+	return resource.CreateURN(n, t, parent, project, stack)
 }
 
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's

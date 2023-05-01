@@ -156,8 +156,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 				Project: a.Project,
 				Stack:   a.Stack,
 			}
-			if a.NoParent() {
-				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent()}
+			if a.NoParent {
+				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
 			} else if a.Parent != "" {
 				alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
 			}
