@@ -16,7 +16,6 @@ package filestate
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -412,17 +411,7 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 
 		// Result that should be returned by ProjectExists.
 		exist bool
-
-		// Err that should be returned by ProjectExists.
-		err error
 	}{
-		{
-			desc:        "empty string project name",
-			files:       []string{},
-			projectName: "",
-			exist:       false,
-			err:         fmt.Errorf("empty project name"),
-		},
 		{
 			desc: "project exists",
 			files: []string{
@@ -430,7 +419,6 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			},
 			projectName: "a",
 			exist:       true,
-			err:         nil,
 		},
 		{
 			desc: "project exists as empty directory",
@@ -439,7 +427,6 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			},
 			projectName: "a",
 			exist:       false,
-			err:         nil,
 		},
 		{
 			desc: "project does not exist",
@@ -448,7 +435,6 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			},
 			projectName: "b",
 			exist:       false,
-			err:         nil,
 		},
 		{
 			desc: "subproject exist",
@@ -457,7 +443,6 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			},
 			projectName: "a",
 			exist:       false,
-			err:         nil,
 		},
 	}
 
@@ -477,8 +462,7 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 			}
 
 			exist, err := store.ProjectExists(ctx, tt.projectName)
-			assert.Equal(t, tt.err, err)
-
+			assert.NoError(t, err)
 			assert.Equal(t, tt.exist, exist)
 		})
 	}
