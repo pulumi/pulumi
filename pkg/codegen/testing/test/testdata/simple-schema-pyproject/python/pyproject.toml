@@ -1,4 +1,7 @@
 [project]
+  name = "pulumi_example"
+  dependencies = ["parver>=0.2.1", "pulumi", "semver>=2.8.1"]
+  version = "0.0.0"
 
   [[project.authors]]
     name = "The Pulumi Team"
