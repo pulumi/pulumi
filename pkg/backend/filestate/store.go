@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	pkgPath "path"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -236,7 +236,7 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 func (p *projectReferenceStore) ProjectExists(ctx context.Context, projectName string) (bool, error) {
 	contract.Requiref(projectName != "", "projectName", "must not be empty")
 
-	path := pkgPath.Join(StacksDir, projectName)
+	path := path.Join(StacksDir, projectName)
 
 	files, err := listBucket(ctx, p.bucket, path)
 	if err != nil {
