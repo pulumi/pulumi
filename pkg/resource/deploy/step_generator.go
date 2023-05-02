@@ -80,6 +80,11 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
+	// Default providers are marked always targeted. Default providers are under Pulumi's control
+	// and changes or creations should be invisible to the user.
+	if providers.IsDefaultProvider(res.URN) {
+		return true
+	}
 	if sg.updateTargetsOpt.Contains(res.URN) {
 		return true
 	} else if !sg.opts.TargetDependents {
@@ -298,11 +303,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			if !isAliased {
 				urn = s.URN()
 			}
-			resourcePlan, ok := sg.deployment.newPlans.get(urn)
-			if !ok {
-				return nil, result.Errorf("Expected a new resource plan for %v", urn)
+			if resourcePlan, ok := sg.deployment.newPlans.get(urn); ok {
+				// If the resource is in the plan, add the operation to the plan.
+				resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 			}
-			resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 		}
 	}
 
@@ -611,9 +615,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
+	isTargeted := sg.isTargetedForUpdate(new)
+
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error
-	if prov != nil {
+	if isTargeted && prov != nil {
 		var failures []plugin.CheckFailure
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
@@ -635,7 +641,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	// If the resource is valid and we're generating plans then generate a plan
-	if !invalid && sg.opts.GeneratePlan {
+	if !invalid && sg.opts.GeneratePlan && isTargeted {
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
 			oldInputs = nil
 		}
@@ -775,7 +781,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}, nil
 	}
 
-	isTargeted := sg.isTargetedForUpdate(new)
 	if isTargeted {
 		sg.updateTargetsOpt.addLiteral(urn)
 	}
@@ -849,7 +854,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// We will also not record this non-created resource into the checkpoint as it doesn't actually
 	// exist.
 
-	if !isTargeted && !providers.IsProviderType(goal.Type) {
+	if !isTargeted {
 		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, nil

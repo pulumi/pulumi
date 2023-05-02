@@ -1640,3 +1640,77 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	assert.NotNil(t, snap)
 	assert.Nil(t, res)
 }
+
+// TestResourcesTargeted checks that a plan created with targets specified captures only those targets and
+// default providers. It checks that trying to construct a new resource that was not targeted in the plan
+// fails and that the update with the same --targets specified is compatible with the plan (roundtripped).
+func TestResoucesTargeted(t *testing.T) {
+	t.Parallel()
+
+	host := func() plugin.Host {
+		loaders := []*deploytest.ProviderLoader{
+			deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+				return &deploytest.Provider{}, nil
+			}),
+		}
+
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+			})
+			assert.NoError(t, err)
+
+			_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty("bar"),
+				},
+			})
+			assert.NoError(t, err)
+
+			return nil
+		})
+
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		return host
+	}()
+
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Create the update plan with only targeted resources.
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:         host,
+		Experimental: true,
+		GeneratePlan: true,
+		UpdateTargets: deploy.NewUrnTargets([]string{
+			"urn:pulumi:test::test::pkgA:m:typA::resB",
+		}),
+	}, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, plan)
+
+	// Check that running an update with everything targeted fails due to our plan being constrained
+	// to the resource.
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		// Clone the plan as the plan will be mutated by the engine and useless in future runs.
+		Plan:         plan.Clone(),
+		Host:         host,
+		Experimental: true,
+	}, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	// Check that running an update with the same UpdateTargets as the Plan succeeds.
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		// Clone the plan as the plan will be mutated by the engine and useless in future runs.
+		Plan:         plan.Clone(),
+		Host:         host,
+		Experimental: true,
+		UpdateTargets: deploy.NewUrnTargets([]string{
+			"urn:pulumi:test::test::pkgA:m:typA::resB",
+		}),
+	}, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+}
