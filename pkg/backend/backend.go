@@ -74,6 +74,10 @@ type StackReference interface {
 	// but that information is not part of the StackName() we pass to the engine.
 	Name() tokens.Name
 
+	// Project is the project name that this stack belongs to.
+	// For old filestate backends this will return false.
+	Project() (tokens.Name, bool)
+
 	// Fully qualified name of the stack, including any organization, project, or other information.
 	FullyQualifiedName() tokens.QName
 }

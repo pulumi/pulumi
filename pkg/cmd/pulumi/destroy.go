@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -170,7 +171,15 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil && errors.Is(err, workspace.ErrProjectNotFound) {
 				logging.Warningf("failed to find current Pulumi project, continuing with an empty project"+
 					"using stack %v from backend %v", s.Ref().Name(), s.Backend().Name())
-				proj = &workspace.Project{}
+				projectName, has := s.Ref().Project()
+				if !has {
+					// If the stack doesn't have a project name (legacy filestate) then leave this blank, as
+					// we used to.
+					projectName = ""
+				}
+				proj = &workspace.Project{
+					Name: tokens.PackageName(projectName),
+				}
 				root = ""
 			} else if err != nil {
 				return result.FromError(err)
