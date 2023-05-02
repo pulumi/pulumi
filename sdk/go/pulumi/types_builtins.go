@@ -3650,8 +3650,15 @@ func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 // IntOutput is an Output that returns int values.
 type IntOutput struct{ *OutputState }
 
+var _ Sampler[int] = IntOutput{}
+
 func (IntOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
+}
+
+func (IntOutput) Sample() *int {
+	var i int
+	return &i
 }
 
 // ElementType returns the element type of this Output (int).
