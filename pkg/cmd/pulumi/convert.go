@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -269,8 +268,6 @@ func runConvert(
 	switch language {
 	case "dotnet":
 		projectGenerator = wrapper(dotnet.GenerateProject)
-	case "nodejs":
-		projectGenerator = wrapper(nodejs.GenerateProject)
 	case "python":
 		projectGenerator = wrapper(python.GenerateProject)
 	case "java":
@@ -326,7 +323,7 @@ func runConvert(
 			// means we get binding errors this side of the grpc boundary, and we're likely to do something
 			// fancier here at some point (like passing an annotated syntax tree via protobuf rather than just
 			// PCL text).
-			err = languagePlugin.GenerateProject(targetDirectory, projectJSON, program.Source())
+			err = languagePlugin.GenerateProject(targetDirectory, projectJSON, program.Source(), nil)
 			if err != nil {
 				return err
 			}

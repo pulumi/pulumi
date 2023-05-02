@@ -473,9 +473,26 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
 
+    @typing_extensions.final
+    class LocalDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     DIRECTORY_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
     SOURCE_FIELD_NUMBER: builtins.int
+    LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the project in."""
     project: builtins.str
@@ -483,14 +500,18 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """the PCL source of the project."""
+    @property
+    def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """local dependencies to use instead of using the package system"""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
         project: builtins.str = ...,
         source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "project", b"project", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "local_dependencies", b"local_dependencies", "project", b"project", "source", b"source"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 

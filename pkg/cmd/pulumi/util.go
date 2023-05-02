@@ -23,7 +23,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -43,12 +42,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -858,68 +855,6 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 // addUpdatePlanMetadataToEnvironment populates the environment metadata bag with update plan related values.
 func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) {
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
-}
-
-type cancellationScope struct {
-	context *cancel.Context
-	sigint  chan os.Signal
-	done    chan bool
-}
-
-func (s *cancellationScope) Context() *cancel.Context {
-	return s.context
-}
-
-func (s *cancellationScope) Close() {
-	signal.Stop(s.sigint)
-	close(s.sigint)
-	<-s.done
-}
-
-type cancellationScopeSource int
-
-var cancellationScopes = backend.CancellationScopeSource(cancellationScopeSource(0))
-
-func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bool) backend.CancellationScope {
-	cancelContext, cancelSource := cancel.NewContext(context.Background())
-
-	c := &cancellationScope{
-		context: cancelContext,
-		sigint:  make(chan os.Signal),
-		done:    make(chan bool),
-	}
-
-	go func() {
-		for range c.sigint {
-			// If we haven't yet received a SIGINT, call the cancellation func. Otherwise call the termination
-			// func.
-			if cancelContext.CancelErr() == nil {
-				message := "^C received; cancelling. If you would like to terminate immediately, press ^C again.\n"
-				if !isPreview {
-					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
-						"and other inconsistencies.\n" + colors.Reset
-				}
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
-				})
-
-				cancelSource.Cancel()
-			} else {
-				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
-					Message: message,
-					Color:   colors.Always,
-				})
-
-				cancelSource.Terminate()
-			}
-		}
-		close(c.done)
-	}()
-	signal.Notify(c.sigint, os.Interrupt)
-
-	return c
 }
 
 func makeJSONString(v interface{}) (string, error) {

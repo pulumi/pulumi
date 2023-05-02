@@ -3481,7 +3481,8 @@ proto.pulumirpc.GenerateProjectRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     project: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : []
+    sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : [],
+    localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -3532,6 +3533,12 @@ proto.pulumirpc.GenerateProjectRequest.deserializeBinaryFromReader = function(ms
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
       break;
+    case 4:
+      var value = msg.getLocalDependenciesMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
+      break;
     default:
       reader.skipField();
       break;
@@ -3578,6 +3585,10 @@ proto.pulumirpc.GenerateProjectRequest.serializeBinaryToWriter = function(messag
   f = message.getSourceMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getLocalDependenciesMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(4, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -3637,6 +3648,28 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getSourceMap = function(opt_noL
  */
 proto.pulumirpc.GenerateProjectRequest.prototype.clearSourceMap = function() {
   this.getSourceMap().clear();
+  return this;};
+
+
+/**
+ * map<string, string> local_dependencies = 4;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.getLocalDependenciesMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 4, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.clearLocalDependenciesMap = function() {
+  this.getLocalDependenciesMap().clear();
   return this;};
 
 

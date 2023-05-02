@@ -422,13 +422,14 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	directory string, project string, source map[string]string,
+	directory string, project string, source map[string]string, localDependencies map[string]string,
 ) error {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	_, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		Directory: directory,
-		Project:   project,
-		Source:    source,
+		Directory:         directory,
+		Project:           project,
+		Source:            source,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

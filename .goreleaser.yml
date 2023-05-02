@@ -27,8 +27,9 @@ builds:
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
-  dir: sdk
-  main: ./nodejs/cmd/pulumi-language-nodejs
+  dir: sdk/nodejs/cmd/pulumi-language-nodejs
+  main: ./
+  gobinary: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python

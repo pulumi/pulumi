@@ -67,7 +67,7 @@ func newPolicyEnableCmd() *cobra.Command {
 			return policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
 					VersionTag: version,
-					Scopes:     cancellationScopes,
+					Scopes:     backend.CancellationScopes,
 					Config:     config,
 				})
 		}),

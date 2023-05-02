@@ -156,7 +156,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program, localDependencies map[string]string) error {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	}
 	files["Pulumi.yaml"] = projectBytes
 
-	// Build the pacakge.json
+	// Build the package.json
 	var packageJSON bytes.Buffer
 	fmt.Fprintf(&packageJSON, `{
 		"name": "%s",
@@ -193,6 +193,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		if p.Name == PulumiToken {
 			continue
 		}
+
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
 			return err
 		}
@@ -208,11 +209,17 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = nodeInfo.PackageName
 			}
 		}
+
 		dependencyTemplate := ",\n			\"%s\": \"%s\""
-		if p.Version != nil {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+		if path, has := localDependencies[p.Name]; has {
+			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "file:"+path)
+			continue
 		} else {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			if p.Version != nil {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
+			} else {
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, "*")
+			}
 		}
 	}
 	packageJSON.WriteString(`

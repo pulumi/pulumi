@@ -44,7 +44,7 @@ func newPolicyDisableCmd() *cobra.Command {
 
 			// Attempt to disable the Policy Pack.
 			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
-				VersionTag: &args.version, Scopes: cancellationScopes,
+				VersionTag: &args.version, Scopes: backend.CancellationScopes,
 			})
 		}),
 	}

@@ -158,6 +158,8 @@ message GenerateProjectRequest {
     string project = 2;
     // the PCL source of the project.
     map<string, string> source = 3;
+    // local dependencies to use instead of using the package system
+    map<string, string> local_dependencies = 4;
 }
 
 message GenerateProjectResponse {

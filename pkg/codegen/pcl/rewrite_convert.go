@@ -254,7 +254,7 @@ func convertPrimitiveValues(from model.Expression, to model.Type) (model.Express
 	case from == nil || to == nil:
 		return from, false
 	case to.AssignableFrom(from.Type()) || to.AssignableFrom(model.DynamicType):
-		return nil, false
+		return NewConvertCall(from, to), true
 	case to.AssignableFrom(model.BoolType):
 		if stringLiteral, ok := extractStringValue(from); ok {
 			if value, err := convert.Convert(cty.StringVal(stringLiteral), cty.Bool); err == nil {
