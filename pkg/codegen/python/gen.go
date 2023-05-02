@@ -36,7 +36,6 @@ import (
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python/pyproject"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2144,12 +2143,14 @@ func genPackageMetadata(
 		}
 		fmt.Fprintf(w, "',\n")
 	}
-	if pkg.Homepage != "" {
-		fmt.Fprintf(w, "      url='%s',\n", pkg.Homepage)
+	urls := mapURLs(pkg)
+
+	if homepage, ok := urls["Homepage"]; ok {
+		fmt.Fprintf(w, "      url='%s',\n", homepage)
 	}
-	if pkg.Repository != "" {
+	if repo, ok := urls["Repository"]; ok {
 		fmt.Fprintf(w, "      project_urls={\n")
-		fmt.Fprintf(w, "          'Repository': '%s'\n", pkg.Repository)
+		fmt.Fprintf(w, "          'Repository': '%s'\n", repo)
 		fmt.Fprintf(w, "      },\n")
 	}
 	if pkg.License != "" {
@@ -2979,7 +2980,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// this file and emit it as well.
 	if info.PyProject.Enabled {
 		project, err := genPyprojectTOML(
-			tool, pkg, pkgName, info.Requires, info.PythonRequires,
+			tool, pkg, pkgName,
 		)
 		if err != nil {
 			return nil, err
@@ -2993,100 +2994,105 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 func genPyprojectTOML(tool string,
 	pkg *schema.Package,
 	pyPkgName string,
-	requires map[string]string,
-	pythonRequires string,
 ) (string, error) {
 	// First, create a Writer for everything in pyproject.toml
 	w := &bytes.Buffer{}
 	// Create an empty toml manifest.
-	schema := new(pyproject.Schema)
-	schema.Project = new(pyproject.Project)
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
 	// Populate the fields.
 	schema.Project.Name = &pyPkgName
+	schema.Project.Keywords = pkg.Keywords
 
-	// These values are hardcoded to Pulumi's contact information.
-	// TODO(@Robbie): Third-party provider users can override this field.
-	// Set "Authors" and "Maintainers" fields.
-	setContacts(schema)
+	// Setting dependencies fails if the deps we provide specify
+	// an invalid Pulumi package version as a dep.
+	err := setDependencies(schema, pkg)
+	if err != nil {
+		return "", err
+	}
 
-	// These values are set the same way as in setup.py.
-	setLicense(schema, pkg)
-	setVersion(schema, pkg)
+	// • Set "Authors" and "Maintainers" fields.
+	//   These values are hardcoded to Pulumi's contact information.
+	//   We hardcore this value for now. Later, it will be overridden
+	//   for third-party providers.
+	//   TODO(@Robbie): Third-party provider users can override this field.
+	contacts := []Contact{{
+		Name:  "The Pulumi Team",
+		Email: "security@pulumi.com",
+	}}
+	schema.Project.Authors = contacts
+	schema.Project.Maintainers = contacts
 
-	setDependencies(schema, requires)
+	// This sets the minimum version of Python.
+	setPythonRequires(schema, pkg)
 
-	// Marshal the data into TOML format.
-	err := toml.NewEncoder(w).Encode(schema)
-	return w.String(), err
+	// Set the project's URLs
+	schema.Project.URLs = mapURLs(pkg)
 
-	/*
-		schema := pyproject.Schema{
-			Project: pyproject.Project{
-				Classifiers: []string{}, // TODO(@Robbie): How do we fill this in?
-				// TODO(@Robbie):
-				Dynamic:      nil, // Not used at this time.
-				// TODO(@Robbie):
-				EntryPoints: pyproject.Entrypoints{},
-				// TODO(@Robbie):
-				GUIScripts: pyproject.Entrypoints{},
-				// TODO(@Robbie):
-				Keywords: []string{},
-				// TODO(@Robbie):
-				OptionalDependencies: nil,
-				// TODO(@Robbie):
-				README: "README.md",
-				// TODO(@Robbie):
-				RequiresPython: nil,
-				// TODO(@Robbie):
-				Scripts: pyproject.Entrypoints{},
-				// TODO(@Robbie):
-				URLs: map[string]string{},
-			},
-		}
-	*/
-}
+	// • Description and License: These fields are populated the same
+	//   way as in setup.py.
+	description := sanitizePackageDescription(pkg.Description)
+	schema.Project.Description = &description
+	schema.Project.License = &License{
+		Text: pkg.License,
+	}
 
-// setVersion mutates the Pyproject schema to use the version found
-// in the provider schema, or defaulting to 0.0.0 which will be replaced
-// later.
-func setVersion(schema *pyproject.Schema, pkg *schema.Package) {
-	// A Version of 0.0.0 is typically overriden elsewhere with sed
-	// or a similar tool.
+	// • Next, we set the version field.
+	//   A Version of 0.0.0 is typically overridden elsewhere with sed
+	//   or a similar tool.
 	version := "0.0.0"
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = pypiVersion(*pkg.Version)
 	}
 	schema.Project.Version = &version
+
+	// • Set the path to the README.
+	readme := "README.md"
+	schema.Project.README = &readme
+
+	// • Marshal the data into TOML format.
+	err = toml.NewEncoder(w).Encode(schema)
+	return w.String(), err
 }
 
-// setContacts mutates the provided schema to set the default contact information.
-func setContacts(schema *pyproject.Schema) {
-	// We hardcore this value for now. Later, it will be overriden
-	// for third-party providers.
-	contacts := []pyproject.Contact{{
-		Name:  "The Pulumi Team",
-		Email: "security@pulumi.com",
-	}}
-	schema.Project.Authors = contacts
-	schema.Project.Maintainers = contacts
-}
-
-// setLicense mutates the schema to set the package description and
-// licensing information using the schema.
-func setLicense(schema *pyproject.Schema, pkg *schema.Package) {
-	// Description and License: These fields are populated the same
-	// way as in setup.py.
-	description := sanitizePackageDescription(pkg.Description)
-	schema.Project.Description = &description
-	schema.Project.License = &pyproject.License{
-		Text: pkg.License,
+// mapURLs creates a map between the name of the URL and the URL itself.
+// Currently, only two URLs are supported: the project "Homepage" and the
+// project "Repository", which are the corresponding map keys.
+func mapURLs(pkg *schema.Package) map[string]string {
+	urls := map[string]string{}
+	if homepage := pkg.Homepage; homepage != "" {
+		urls["Homepage"] = homepage
 	}
+	if repo := pkg.Repository; repo != "" {
+		urls["Repository"] = repo
+	}
+	return urls
+}
+
+// setPythonRequires adds a minimum version of Python required to run this package.
+// It falls back to the default version supported by Pulumi if the user hasn't provided
+// one in the schema.
+func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
+	info := pkg.Language["python"].(PackageInfo)
+
+	// Start with the default, and replace it if the user provided
+	// a specific version.
+	minPython := defaultMinPythonVersion
+	if userPythonVersion, err := minimumPythonVersion(info); err == nil {
+		minPython = userPythonVersion
+	}
+
+	schema.Project.RequiresPython = &minPython
 }
 
 // setDependencies mutates the pyproject schema adding the dependencies to the
 // list in lexical order.
-func setDependencies(schema *pyproject.Schema, requires map[string]string) error {
+func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
+	requires := map[string]string{}
+	if info, ok := pkg.Language["python"].(PackageInfo); ok {
+		requires = info.Requires
+	}
 	deps, err := calculateDeps(requires)
 	if err != nil {
 		return err
@@ -3102,7 +3108,7 @@ func setDependencies(schema *pyproject.Schema, requires map[string]string) error
 }
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
-// It accepts a list of dependenices
+// It accepts a list of dependencies
 // as provided in the package schema, and validates whether
 // this list correctly includes the Pulumi Python package.
 // It returns a map that correctly specifies the dependency.
@@ -3152,7 +3158,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 // dep fails to validate.
 func calculateDeps(requires map[string]string) ([][2]string, error) {
 	var err error
-	var result [][2]string
+	result := make([][2]string, 0, len(requires))
 	if requires, err = ensureValidPulumiVersion(requires); err != nil {
 		return nil, err
 	}

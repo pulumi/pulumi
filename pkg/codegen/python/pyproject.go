@@ -1,13 +1,8 @@
-package pyproject
-
-import (
-	// We will be using this shortly.
-	_ "github.com/BurntSushi/toml"
-)
+package python
 
 // The specification for the pyproject.toml file can be found here.
 // https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
-type Schema struct {
+type PyprojectSchema struct {
 	Project *Project `toml:"project,omitempty" json:"project,omitempty"`
 }
 
@@ -51,7 +46,10 @@ type Contact struct {
 	Email string `toml:"email,omitempty" json:"email,omitempty"`
 }
 
-// An Entrypoint is…
+// An Entrypoint is an object reference for an executable Python script. These
+// scripts can be applications, plugins, or build-time metadata. Since Pulumi
+// distributes libraries, we largely don't use this field, though we include it
+// for completeness and consistency with the spec.
 type Entrypoints map[string]string
 
 // The license instance must populate either

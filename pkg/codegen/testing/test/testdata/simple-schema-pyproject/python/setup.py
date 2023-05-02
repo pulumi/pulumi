@@ -40,11 +40,18 @@ def readme():
 setup(name='pulumi_example',
       python_requires='>=3.7',
       version=VERSION,
+      description="This is a test package for pyproject.toml",
       long_description=readme(),
       long_description_content_type='text/markdown',
       cmdclass={
           'install': InstallPluginCommand,
       },
+      keywords='Testing Pulumipus',
+      url='https://pulumi.com',
+      project_urls={
+          'Repository': 'https://github.com/pulumi/pulumi'
+      },
+      license='MIT',
       packages=find_packages(),
       package_data={
           'pulumi_example': [

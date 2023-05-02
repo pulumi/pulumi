@@ -268,3 +268,43 @@ Here \\\\N slashes should be escaped but not N
 	printComment(w, source, "")
 	assert.Equal(t, expected, w.String())
 }
+
+// This function tests that setPythonRequires correctly sets the minimum
+// Python version when generating pyproject metadata.
+func TestPythonRequiresSuccessful(t *testing.T) {
+	t.Parallel()
+	expected := "3.1"
+	pkg := schema.Package{
+		Language: map[string]interface{}{
+			"python": PackageInfo{
+				PythonRequires: expected,
+			},
+		},
+	}
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
+
+	setPythonRequires(schema, &pkg)
+	observed := schema.Project.RequiresPython
+	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
+}
+
+// This function tests that setPythonRequires correctly selects the default
+// Python version when generating pyproject metadata.
+func TestPythonRequiresNotProvided(t *testing.T) {
+	t.Parallel()
+	expected := defaultMinPythonVersion
+	pkg := schema.Package{
+		Language: map[string]interface{}{
+			"python": PackageInfo{
+				// Don't set PythonRequires
+			},
+		},
+	}
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
+
+	setPythonRequires(schema, &pkg)
+	observed := schema.Project.RequiresPython
+	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
+}
