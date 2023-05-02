@@ -16,7 +16,7 @@ import (
 
 func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expression,
 	parts []model.Traversable,
-) (model.Expression, hcl.Diagnostics) {
+) model.Expression {
 	// TODO(pdg): transfer trivia
 
 	var rootName string
@@ -31,7 +31,6 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		}
 	}
 
-	var diagnostics hcl.Diagnostics
 	for i, traverser := range traversal {
 		var key cty.Value
 		switch traverser := traverser.(type) {
@@ -79,8 +78,6 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 				Traversal: currentTraversal,
 				Parts:     currentParts,
 			}
-			checkDiags := currentExpression.Typecheck(false)
-			diagnostics = append(diagnostics, checkDiags...)
 
 			currentTraversal, currentParts = nil, nil
 		} else if len(currentTraversal) > 0 {
@@ -89,9 +86,6 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 				Traversal: currentTraversal,
 				Parts:     currentParts,
 			}
-			checkDiags := currentExpression.Typecheck(false)
-			diagnostics = append(diagnostics, checkDiags...)
-
 			currentTraversal, currentParts = nil, []model.Traversable{currentExpression.Type()}
 		}
 
@@ -101,15 +95,13 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 				Value: cty.StringVal(keyVal),
 			},
 		}
-		checkDiags := currentExpression.Typecheck(false)
-		diagnostics = append(diagnostics, checkDiags...)
 	}
 
 	if currentExpression == source {
-		return nil, nil
+		return nil
 	}
 
-	return currentExpression, diagnostics
+	return currentExpression
 }
 
 type quoteTemp struct {
@@ -271,14 +263,14 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 	x, rewriteDiags := model.VisitExpression(x, nil, func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		switch x := x.(type) {
 		case *model.RelativeTraversalExpression:
-			idx, diags := g.rewriteTraversal(x.Traversal, x.Source, x.Parts)
+			idx := g.rewriteTraversal(x.Traversal, x.Source, x.Parts)
 			if idx != nil {
-				return idx, diags
+				return idx, nil
 			}
 		case *model.ScopeTraversalExpression:
-			idx, diags := g.rewriteTraversal(x.Traversal, nil, x.Parts)
+			idx := g.rewriteTraversal(x.Traversal, nil, x.Parts)
 			if idx != nil {
-				return idx, diags
+				return idx, nil
 			}
 		}
 		return x, nil

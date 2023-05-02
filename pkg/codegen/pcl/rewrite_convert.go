@@ -45,8 +45,8 @@ func sameSchemaTypes(xt, yt model.Type) bool {
 // rewriteConversions implements the core of RewriteConversions. It returns the rewritten expression and true if the
 // type of the expression may have changed.
 func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostics) (model.Expression, bool) {
-	if x == nil {
-		return nil, false
+	if x == nil || to == nil {
+		return x, false
 	}
 	// If rewriting an operand changed its type and the type of the expression depends on the type of that operand, the
 	// expression must be typechecked in order to update its type.
@@ -251,6 +251,8 @@ func RewriteConversions(x model.Expression, to model.Type) (model.Expression, hc
 func convertPrimitiveValues(from model.Expression, to model.Type) (model.Expression, bool) {
 	var expression model.Expression
 	switch {
+	case from == nil || to == nil:
+		return from, false
 	case to.AssignableFrom(from.Type()) || to.AssignableFrom(model.DynamicType):
 		return nil, false
 	case to.AssignableFrom(model.BoolType):
