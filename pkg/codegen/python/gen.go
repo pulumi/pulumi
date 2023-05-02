@@ -32,9 +32,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python/pyproject"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -3018,7 +3020,91 @@ func genPyprojectTOML(tool string,
 	requires map[string]string,
 	pythonRequires string,
 ) (string, error) {
-	panic("Not implemented yet.")
+	// First, create a Writer for everything in pyproject.toml
+	w := &bytes.Buffer{}
+	// Create an empty toml manifest.
+	schema := new(pyproject.Schema)
+	schema.Project = new(pyproject.Project)
+	// Populate the fields.
+	schema.Project.Name = &pyPkgName
+
+	// These values are hardcoded to Pulumi's contact information.
+	// TODO(@Robbie): Third-party provider users can override this field.
+	// Set "Authors" and "Maintainers" fields.
+	setContacts(schema)
+
+	// These values are set the same way as in setup.py.
+	setLicense(schema, pkg)
+	setVersion(schema, pkg)
+
+	// Marshal the data into TOML format.
+	err := toml.NewEncoder(w).Encode(schema)
+	return w.String(), err
+
+	/*
+		schema := pyproject.Schema{
+			Project: pyproject.Project{
+				Classifiers: []string{}, // TODO(@Robbie): How do we fill this in?
+				// TODO(@Robbie):
+				Dependencies: []string{},
+				Dynamic:      nil, // Not used at this time.
+				// TODO(@Robbie):
+				EntryPoints: pyproject.Entrypoints{},
+				// TODO(@Robbie):
+				GUIScripts: pyproject.Entrypoints{},
+				// TODO(@Robbie):
+				Keywords: []string{},
+				// TODO(@Robbie):
+				OptionalDependencies: nil,
+				// TODO(@Robbie):
+				README: "README.md",
+				// TODO(@Robbie):
+				RequiresPython: nil,
+				// TODO(@Robbie):
+				Scripts: pyproject.Entrypoints{},
+				// TODO(@Robbie):
+				URLs: map[string]string{},
+			},
+		}
+	*/
+}
+
+// setVersion mutates the Pyproject schema to use the version found
+// in the provider schema, or defaulting to 0.0.0 which will be replaced
+// later.
+func setVersion(schema *pyproject.Schema, pkg *schema.Package) {
+	// A Version of 0.0.0 is typically overriden elsewhere with sed
+	// or a similar tool.
+	version := "0.0.0"
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = pypiVersion(*pkg.Version)
+	}
+	schema.Project.Version = &version
+}
+
+// setContacts mutates the provided schema to set the default contact information.
+func setContacts(schema *pyproject.Schema) {
+	// We hardcore this value for now. Later, it will be overriden
+	// for third-party providers.
+	contacts := []pyproject.Contact{{
+		Name:  "The Pulumi Team",
+		Email: "security@pulumi.com",
+	}}
+	schema.Project.Authors = contacts
+	schema.Project.Maintainers = contacts
+}
+
+// setLicense mutates the schema to set the package description and
+// licensing information using the schema.
+func setLicense(schema *pyproject.Schema, pkg *schema.Package) {
+	// Description and License: These fields are populated the same
+	// way as in setup.py.
+	description := sanitizePackageDescription(pkg.Description)
+	schema.Project.Description = &description
+	schema.Project.License = &pyproject.License{
+		Text: pkg.License,
+	}
 }
 
 const utilitiesFile = `

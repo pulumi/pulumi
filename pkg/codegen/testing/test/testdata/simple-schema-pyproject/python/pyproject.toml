@@ -1,0 +1,9 @@
+[project]
+
+  [[project.authors]]
+    name = "The Pulumi Team"
+    email = "security@pulumi.com"
+
+  [[project.maintainers]]
+    name = "The Pulumi Team"
+    email = "security@pulumi.com"
