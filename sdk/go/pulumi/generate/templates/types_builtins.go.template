@@ -94,6 +94,12 @@ func (in {{.InputType}}) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{
 // {{.Name}}Output is an Output that returns {{.ElementType}} values.
 type {{.Name}}Output struct { *OutputState }
 
+var _ InputT[{{.ElementType}}] = {{.Name}}Output{}
+
+func ({{.Name}}Output) Sample() *{{.ElementType}} {
+	return zeroPtr[{{.ElementType}}]()
+}
+
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }

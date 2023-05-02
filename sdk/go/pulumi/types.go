@@ -100,20 +100,16 @@ const (
 
 // OutputState holds the internal details of an Output and implements the Apply and ApplyWithContext methods.
 type OutputState struct {
-	outputState[any]
-}
-
-type outputState[T any] struct {
 	cond *sync.Cond
 
 	join *workGroup // the wait group associated with this output, if any.
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
-	value  T     // the value of this output if it is resolved.
-	err    error // the error associated with this output if it is rejected.
-	known  bool  // true if this output's value is known.
-	secret bool  // true if this output's value is secret
+	value  interface{} // the value of this output if it is resolved.
+	err    error       // the error associated with this output if it is rejected.
+	known  bool        // true if this output's value is known.
+	secret bool        // true if this output's value is secret
 
 	element reflect.Type // the element type of this output.
 	deps    []Resource   // the dependencies associated with this output property.
@@ -130,21 +126,7 @@ func getOutputState(v reflect.Value) (*OutputState, bool) {
 	return out.getState(), true
 }
 
-func (o *outputState[T]) toAny() *outputState[any] {
-	return &outputState[any]{
-		cond:    o.cond,
-		join:    o.join,
-		state:   o.state,
-		value:   o.value,
-		err:     o.err,
-		known:   o.known,
-		secret:  o.secret,
-		element: anyType,
-		deps:    o.deps,
-	}
-}
-
-func (o *outputState[T]) elementType() reflect.Type {
+func (o *OutputState) elementType() reflect.Type {
 	if o == nil {
 		return anyType
 	}
@@ -153,7 +135,7 @@ func (o *outputState[T]) elementType() reflect.Type {
 
 // Fetch the dependencies of an OutputState. It is not thread-safe to mutate values inside
 // returned slice.
-func (o *outputState[T]) dependencies() []Resource {
+func (o *OutputState) dependencies() []Resource {
 	if o == nil {
 		return nil
 	}
@@ -162,11 +144,11 @@ func (o *outputState[T]) dependencies() []Resource {
 	return o.deps
 }
 
-func (o *outputState[T]) fulfill(value interface{}, known, secret bool, deps []Resource, err error) {
+func (o *OutputState) fulfill(value interface{}, known, secret bool, deps []Resource, err error) {
 	o.fulfillValue(reflect.ValueOf(value), known, secret, deps, err)
 }
 
-func (o *outputState[T]) fulfillValue(value reflect.Value, known, secret bool, deps []Resource, err error) {
+func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps []Resource, err error) {
 	if o == nil {
 		return
 	}
@@ -247,21 +229,21 @@ func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
 	return mergedDeps
 }
 
-func (o *outputState[T]) resolve(value interface{}, known, secret bool, deps []Resource) {
+func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Resource) {
 	o.fulfill(value, known, secret, deps, nil)
 }
 
-func (o *outputState[T]) resolveValue(value reflect.Value, known, secret bool, deps []Resource) {
+func (o *OutputState) resolveValue(value reflect.Value, known, secret bool, deps []Resource) {
 	o.fulfillValue(value, known, secret, deps, nil)
 }
 
-func (o *outputState[T]) reject(err error) {
+func (o *OutputState) reject(err error) {
 	o.fulfill(nil, true, false, nil, err)
 }
 
 // awaitOnce is a single iteration of the "await" loop, using the condition variable as a lock to
 // guard accessing the fields to avoid tearing reads and writes.
-func (o *outputState[T]) awaitOnce(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
 	if o == nil {
 		// If the state is nil, treat its value as resolved and unknown.
 		return nil, false, false, nil, nil
@@ -279,7 +261,7 @@ func (o *outputState[T]) awaitOnce(ctx context.Context) (interface{}, bool, bool
 	return o.value, o.known, o.secret, o.deps, o.err
 }
 
-func (o *outputState[T]) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
@@ -306,8 +288,8 @@ func (o *outputState[T]) await(ctx context.Context) (interface{}, bool, bool, []
 	}
 }
 
-func (o *outputState[T]) getState() *OutputState {
-	return &OutputState{*o.toAny()}
+func (o *OutputState) getState() *OutputState {
+	return o
 }
 
 func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
@@ -321,16 +303,14 @@ func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource)
 
 	var m sync.Mutex
 	out := &OutputState{
-		outputState: outputState[any]{
-			join:    join,
-			element: elementType,
-			deps:    deps,
-			// Note: Calling registerResource or readResource with the same resource state can report a
-			// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
-			//
-			// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
-			cond: sync.NewCond(&m),
-		},
+		join:    join,
+		element: elementType,
+		deps:    deps,
+		// Note: Calling registerResource or readResource with the same resource state can report a
+		// spurious data race here. See note in https://github.com/pulumi/pulumi/pull/10081.
+		//
+		// To reproduce, revert changes in PR to file pkg/engine/lifecycletest/golang_sdk_test.go.
+		cond: sync.NewCond(&m),
 	}
 	return out
 }
@@ -1223,6 +1203,8 @@ func (AnyOutput) MarshalJSON() ([]byte, error) {
 func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
+
+func (AnyOutput) Sample() *any { return zeroPtr[any]() }
 
 func (in ID) ToStringPtrOutput() StringPtrOutput {
 	return in.ToStringPtrOutputWithContext(context.Background())

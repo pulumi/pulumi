@@ -57,6 +57,12 @@ func (in *archive) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetO
 // ArchiveOutput is an Output that returns Archive values.
 type ArchiveOutput struct{ *OutputState }
 
+var _ InputT[Archive] = ArchiveOutput{}
+
+func (ArchiveOutput) Sample() *Archive {
+	return zeroPtr[Archive]()
+}
+
 func (ArchiveOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -112,6 +118,12 @@ func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) Arch
 
 // ArchiveArrayOutput is an Output that returns []Archive values.
 type ArchiveArrayOutput struct{ *OutputState }
+
+var _ InputT[[]Archive] = ArchiveArrayOutput{}
+
+func (ArchiveArrayOutput) Sample() *[]Archive {
+	return zeroPtr[[]Archive]()
+}
 
 func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -189,6 +201,12 @@ func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveM
 // ArchiveMapOutput is an Output that returns map[string]Archive values.
 type ArchiveMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]Archive] = ArchiveMapOutput{}
+
+func (ArchiveMapOutput) Sample() *map[string]Archive {
+	return zeroPtr[map[string]Archive]()
+}
+
 func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -258,6 +276,12 @@ func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context
 // ArchiveArrayMapOutput is an Output that returns map[string][]Archive values.
 type ArchiveArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]Archive] = ArchiveArrayMapOutput{}
+
+func (ArchiveArrayMapOutput) Sample() *map[string][]Archive {
+	return zeroPtr[map[string][]Archive]()
+}
+
 func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -326,6 +350,12 @@ func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context
 
 // ArchiveMapArrayOutput is an Output that returns []map[string]Archive values.
 type ArchiveMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]Archive] = ArchiveMapArrayOutput{}
+
+func (ArchiveMapArrayOutput) Sample() *[]map[string]Archive {
+	return zeroPtr[[]map[string]Archive]()
+}
 
 func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -403,6 +433,12 @@ func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) Ar
 // ArchiveMapMapOutput is an Output that returns map[string]map[string]Archive values.
 type ArchiveMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]Archive] = ArchiveMapMapOutput{}
+
+func (ArchiveMapMapOutput) Sample() *map[string]map[string]Archive {
+	return zeroPtr[map[string]map[string]Archive]()
+}
+
 func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -471,6 +507,12 @@ func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Con
 
 // ArchiveArrayArrayOutput is an Output that returns [][]Archive values.
 type ArchiveArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]Archive] = ArchiveArrayArrayOutput{}
+
+func (ArchiveArrayArrayOutput) Sample() *[][]Archive {
+	return zeroPtr[[][]Archive]()
+}
 
 func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -553,6 +595,12 @@ func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrA
 // AssetOutput is an Output that returns Asset values.
 type AssetOutput struct{ *OutputState }
 
+var _ InputT[Asset] = AssetOutput{}
+
+func (AssetOutput) Sample() *Asset {
+	return zeroPtr[Asset]()
+}
+
 func (AssetOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -608,6 +656,12 @@ func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArr
 
 // AssetArrayOutput is an Output that returns []Asset values.
 type AssetArrayOutput struct{ *OutputState }
+
+var _ InputT[[]Asset] = AssetArrayOutput{}
+
+func (AssetArrayOutput) Sample() *[]Asset {
+	return zeroPtr[[]Asset]()
+}
 
 func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -685,6 +739,12 @@ func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutp
 // AssetMapOutput is an Output that returns map[string]Asset values.
 type AssetMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]Asset] = AssetMapOutput{}
+
+func (AssetMapOutput) Sample() *map[string]Asset {
+	return zeroPtr[map[string]Asset]()
+}
+
 func (AssetMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -754,6 +814,12 @@ func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) As
 // AssetArrayMapOutput is an Output that returns map[string][]Asset values.
 type AssetArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]Asset] = AssetArrayMapOutput{}
+
+func (AssetArrayMapOutput) Sample() *map[string][]Asset {
+	return zeroPtr[map[string][]Asset]()
+}
+
 func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -822,6 +888,12 @@ func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) As
 
 // AssetMapArrayOutput is an Output that returns []map[string]Asset values.
 type AssetMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]Asset] = AssetMapArrayOutput{}
+
+func (AssetMapArrayOutput) Sample() *[]map[string]Asset {
+	return zeroPtr[[]map[string]Asset]()
+}
 
 func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -899,6 +971,12 @@ func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetM
 // AssetMapMapOutput is an Output that returns map[string]map[string]Asset values.
 type AssetMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]Asset] = AssetMapMapOutput{}
+
+func (AssetMapMapOutput) Sample() *map[string]map[string]Asset {
+	return zeroPtr[map[string]map[string]Asset]()
+}
+
 func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -968,6 +1046,12 @@ func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context
 // AssetArrayArrayOutput is an Output that returns [][]Asset values.
 type AssetArrayArrayOutput struct{ *OutputState }
 
+var _ InputT[[][]Asset] = AssetArrayArrayOutput{}
+
+func (AssetArrayArrayOutput) Sample() *[][]Asset {
+	return zeroPtr[[][]Asset]()
+}
+
 func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1028,6 +1112,12 @@ type AssetOrArchiveInput interface {
 // AssetOrArchiveOutput is an Output that returns AssetOrArchive values.
 type AssetOrArchiveOutput struct{ *OutputState }
 
+var _ InputT[AssetOrArchive] = AssetOrArchiveOutput{}
+
+func (AssetOrArchiveOutput) Sample() *AssetOrArchive {
+	return zeroPtr[AssetOrArchive]()
+}
+
 func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1073,6 +1163,12 @@ func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context
 
 // AssetOrArchiveArrayOutput is an Output that returns []AssetOrArchive values.
 type AssetOrArchiveArrayOutput struct{ *OutputState }
+
+var _ InputT[[]AssetOrArchive] = AssetOrArchiveArrayOutput{}
+
+func (AssetOrArchiveArrayOutput) Sample() *[]AssetOrArchive {
+	return zeroPtr[[]AssetOrArchive]()
+}
 
 func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1134,6 +1230,12 @@ func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Con
 // AssetOrArchiveMapOutput is an Output that returns map[string]AssetOrArchive values.
 type AssetOrArchiveMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]AssetOrArchive] = AssetOrArchiveMapOutput{}
+
+func (AssetOrArchiveMapOutput) Sample() *map[string]AssetOrArchive {
+	return zeroPtr[map[string]AssetOrArchive]()
+}
+
 func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1187,6 +1289,12 @@ func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx c
 // AssetOrArchiveArrayMapOutput is an Output that returns map[string][]AssetOrArchive values.
 type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]AssetOrArchive] = AssetOrArchiveArrayMapOutput{}
+
+func (AssetOrArchiveArrayMapOutput) Sample() *map[string][]AssetOrArchive {
+	return zeroPtr[map[string][]AssetOrArchive]()
+}
+
 func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1239,6 +1347,12 @@ func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx c
 
 // AssetOrArchiveMapArrayOutput is an Output that returns []map[string]AssetOrArchive values.
 type AssetOrArchiveMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]AssetOrArchive] = AssetOrArchiveMapArrayOutput{}
+
+func (AssetOrArchiveMapArrayOutput) Sample() *[]map[string]AssetOrArchive {
+	return zeroPtr[[]map[string]AssetOrArchive]()
+}
 
 func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1300,6 +1414,12 @@ func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx conte
 // AssetOrArchiveMapMapOutput is an Output that returns map[string]map[string]AssetOrArchive values.
 type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]AssetOrArchive] = AssetOrArchiveMapMapOutput{}
+
+func (AssetOrArchiveMapMapOutput) Sample() *map[string]map[string]AssetOrArchive {
+	return zeroPtr[map[string]map[string]AssetOrArchive]()
+}
+
 func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1352,6 +1472,12 @@ func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(c
 
 // AssetOrArchiveArrayArrayOutput is an Output that returns [][]AssetOrArchive values.
 type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]AssetOrArchive] = AssetOrArchiveArrayArrayOutput{}
+
+func (AssetOrArchiveArrayArrayOutput) Sample() *[][]AssetOrArchive {
+	return zeroPtr[[][]AssetOrArchive]()
+}
 
 func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1424,6 +1550,12 @@ func (in Bool) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
 // BoolOutput is an Output that returns bool values.
 type BoolOutput struct{ *OutputState }
 
+var _ InputT[bool] = BoolOutput{}
+
+func (BoolOutput) Sample() *bool {
+	return zeroPtr[bool]()
+}
+
 func (BoolOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1490,6 +1622,12 @@ func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 // BoolPtrOutput is an Output that returns *bool values.
 type BoolPtrOutput struct{ *OutputState }
 
+var _ InputT[*bool] = BoolPtrOutput{}
+
+func (BoolPtrOutput) Sample() **bool {
+	return zeroPtr[*bool]()
+}
+
 func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1546,6 +1684,12 @@ func (in BoolArray) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayO
 
 // BoolArrayOutput is an Output that returns []bool values.
 type BoolArrayOutput struct{ *OutputState }
+
+var _ InputT[[]bool] = BoolArrayOutput{}
+
+func (BoolArrayOutput) Sample() *[]bool {
+	return zeroPtr[[]bool]()
+}
 
 func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1623,6 +1767,12 @@ func (in BoolMap) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput 
 // BoolMapOutput is an Output that returns map[string]bool values.
 type BoolMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]bool] = BoolMapOutput{}
+
+func (BoolMapOutput) Sample() *map[string]bool {
+	return zeroPtr[map[string]bool]()
+}
+
 func (BoolMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1692,6 +1842,12 @@ func (in BoolArrayMap) ToBoolArrayMapOutputWithContext(ctx context.Context) Bool
 // BoolArrayMapOutput is an Output that returns map[string][]bool values.
 type BoolArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]bool] = BoolArrayMapOutput{}
+
+func (BoolArrayMapOutput) Sample() *map[string][]bool {
+	return zeroPtr[map[string][]bool]()
+}
+
 func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1760,6 +1916,12 @@ func (in BoolMapArray) ToBoolMapArrayOutputWithContext(ctx context.Context) Bool
 
 // BoolMapArrayOutput is an Output that returns []map[string]bool values.
 type BoolMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]bool] = BoolMapArrayOutput{}
+
+func (BoolMapArrayOutput) Sample() *[]map[string]bool {
+	return zeroPtr[[]map[string]bool]()
+}
 
 func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1837,6 +1999,12 @@ func (in BoolMapMap) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapM
 // BoolMapMapOutput is an Output that returns map[string]map[string]bool values.
 type BoolMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]bool] = BoolMapMapOutput{}
+
+func (BoolMapMapOutput) Sample() *map[string]map[string]bool {
+	return zeroPtr[map[string]map[string]bool]()
+}
+
 func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -1905,6 +2073,12 @@ func (in BoolArrayArray) ToBoolArrayArrayOutputWithContext(ctx context.Context) 
 
 // BoolArrayArrayOutput is an Output that returns [][]bool values.
 type BoolArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]bool] = BoolArrayArrayOutput{}
+
+func (BoolArrayArrayOutput) Sample() *[][]bool {
+	return zeroPtr[[][]bool]()
+}
 
 func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -1993,6 +2167,12 @@ func (in Float64) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrO
 // Float64Output is an Output that returns float64 values.
 type Float64Output struct{ *OutputState }
 
+var _ InputT[float64] = Float64Output{}
+
+func (Float64Output) Sample() *float64 {
+	return zeroPtr[float64]()
+}
+
 func (Float64Output) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2059,6 +2239,12 @@ func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64
 // Float64PtrOutput is an Output that returns *float64 values.
 type Float64PtrOutput struct{ *OutputState }
 
+var _ InputT[*float64] = Float64PtrOutput{}
+
+func (Float64PtrOutput) Sample() **float64 {
+	return zeroPtr[*float64]()
+}
+
 func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2115,6 +2301,12 @@ func (in Float64Array) ToFloat64ArrayOutputWithContext(ctx context.Context) Floa
 
 // Float64ArrayOutput is an Output that returns []float64 values.
 type Float64ArrayOutput struct{ *OutputState }
+
+var _ InputT[[]float64] = Float64ArrayOutput{}
+
+func (Float64ArrayOutput) Sample() *[]float64 {
+	return zeroPtr[[]float64]()
+}
 
 func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -2192,6 +2384,12 @@ func (in Float64Map) ToFloat64MapOutputWithContext(ctx context.Context) Float64M
 // Float64MapOutput is an Output that returns map[string]float64 values.
 type Float64MapOutput struct{ *OutputState }
 
+var _ InputT[map[string]float64] = Float64MapOutput{}
+
+func (Float64MapOutput) Sample() *map[string]float64 {
+	return zeroPtr[map[string]float64]()
+}
+
 func (Float64MapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2261,6 +2459,12 @@ func (in Float64ArrayMap) ToFloat64ArrayMapOutputWithContext(ctx context.Context
 // Float64ArrayMapOutput is an Output that returns map[string][]float64 values.
 type Float64ArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]float64] = Float64ArrayMapOutput{}
+
+func (Float64ArrayMapOutput) Sample() *map[string][]float64 {
+	return zeroPtr[map[string][]float64]()
+}
+
 func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2329,6 +2533,12 @@ func (in Float64MapArray) ToFloat64MapArrayOutputWithContext(ctx context.Context
 
 // Float64MapArrayOutput is an Output that returns []map[string]float64 values.
 type Float64MapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]float64] = Float64MapArrayOutput{}
+
+func (Float64MapArrayOutput) Sample() *[]map[string]float64 {
+	return zeroPtr[[]map[string]float64]()
+}
 
 func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -2406,6 +2616,12 @@ func (in Float64MapMap) ToFloat64MapMapOutputWithContext(ctx context.Context) Fl
 // Float64MapMapOutput is an Output that returns map[string]map[string]float64 values.
 type Float64MapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]float64] = Float64MapMapOutput{}
+
+func (Float64MapMapOutput) Sample() *map[string]map[string]float64 {
+	return zeroPtr[map[string]map[string]float64]()
+}
+
 func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2474,6 +2690,12 @@ func (in Float64ArrayArray) ToFloat64ArrayArrayOutputWithContext(ctx context.Con
 
 // Float64ArrayArrayOutput is an Output that returns [][]float64 values.
 type Float64ArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]float64] = Float64ArrayArrayOutput{}
+
+func (Float64ArrayArrayOutput) Sample() *[][]float64 {
+	return zeroPtr[[][]float64]()
+}
 
 func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -2567,6 +2789,12 @@ func (in ID) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 // IDOutput is an Output that returns ID values.
 type IDOutput struct{ *OutputState }
 
+var _ InputT[ID] = IDOutput{}
+
+func (IDOutput) Sample() *ID {
+	return zeroPtr[ID]()
+}
+
 func (IDOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2643,6 +2871,12 @@ func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 // IDPtrOutput is an Output that returns *ID values.
 type IDPtrOutput struct{ *OutputState }
 
+var _ InputT[*ID] = IDPtrOutput{}
+
+func (IDPtrOutput) Sample() **ID {
+	return zeroPtr[*ID]()
+}
+
 func (IDPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2699,6 +2933,12 @@ func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput 
 
 // IDArrayOutput is an Output that returns []ID values.
 type IDArrayOutput struct{ *OutputState }
+
+var _ InputT[[]ID] = IDArrayOutput{}
+
+func (IDArrayOutput) Sample() *[]ID {
+	return zeroPtr[[]ID]()
+}
 
 func (IDArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -2776,6 +3016,12 @@ func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 // IDMapOutput is an Output that returns map[string]ID values.
 type IDMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]ID] = IDMapOutput{}
+
+func (IDMapOutput) Sample() *map[string]ID {
+	return zeroPtr[map[string]ID]()
+}
+
 func (IDMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2845,6 +3091,12 @@ func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayM
 // IDArrayMapOutput is an Output that returns map[string][]ID values.
 type IDArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]ID] = IDArrayMapOutput{}
+
+func (IDArrayMapOutput) Sample() *map[string][]ID {
+	return zeroPtr[map[string][]ID]()
+}
+
 func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -2913,6 +3165,12 @@ func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArr
 
 // IDMapArrayOutput is an Output that returns []map[string]ID values.
 type IDMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]ID] = IDMapArrayOutput{}
+
+func (IDMapArrayOutput) Sample() *[]map[string]ID {
+	return zeroPtr[[]map[string]ID]()
+}
 
 func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -2990,6 +3248,12 @@ func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutp
 // IDMapMapOutput is an Output that returns map[string]map[string]ID values.
 type IDMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]ID] = IDMapMapOutput{}
+
+func (IDMapMapOutput) Sample() *map[string]map[string]ID {
+	return zeroPtr[map[string]map[string]ID]()
+}
+
 func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3058,6 +3322,12 @@ func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDAr
 
 // IDArrayArrayOutput is an Output that returns [][]ID values.
 type IDArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]ID] = IDArrayArrayOutput{}
+
+func (IDArrayArrayOutput) Sample() *[][]ID {
+	return zeroPtr[[][]ID]()
+}
 
 func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -3135,6 +3405,12 @@ func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 // ArrayOutput is an Output that returns []interface{} values.
 type ArrayOutput struct{ *OutputState }
 
+var _ InputT[[]interface{}] = ArrayOutput{}
+
+func (ArrayOutput) Sample() *[]interface{} {
+	return zeroPtr[[]interface{}]()
+}
+
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3211,6 +3487,12 @@ func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
 // MapOutput is an Output that returns map[string]interface{} values.
 type MapOutput struct{ *OutputState }
 
+var _ InputT[map[string]interface{}] = MapOutput{}
+
+func (MapOutput) Sample() *map[string]interface{} {
+	return zeroPtr[map[string]interface{}]()
+}
+
 func (MapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3280,6 +3562,12 @@ func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutp
 // ArrayMapOutput is an Output that returns map[string][]interface{} values.
 type ArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]interface{}] = ArrayMapOutput{}
+
+func (ArrayMapOutput) Sample() *map[string][]interface{} {
+	return zeroPtr[map[string][]interface{}]()
+}
+
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3348,6 +3636,12 @@ func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutp
 
 // MapArrayOutput is an Output that returns []map[string]interface{} values.
 type MapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]interface{}] = MapArrayOutput{}
+
+func (MapArrayOutput) Sample() *[]map[string]interface{} {
+	return zeroPtr[[]map[string]interface{}]()
+}
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -3425,6 +3719,12 @@ func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
 // MapMapOutput is an Output that returns map[string]map[string]interface{} values.
 type MapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]interface{}] = MapMapOutput{}
+
+func (MapMapOutput) Sample() *map[string]map[string]interface{} {
+	return zeroPtr[map[string]map[string]interface{}]()
+}
+
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3493,6 +3793,12 @@ func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArr
 
 // ArrayArrayOutput is an Output that returns [][]interface{} values.
 type ArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]interface{}] = ArrayArrayOutput{}
+
+func (ArrayArrayOutput) Sample() *[][]interface{} {
+	return zeroPtr[[][]interface{}]()
+}
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -3569,6 +3875,12 @@ func (in ArrayArrayMap) ToArrayArrayMapOutputWithContext(ctx context.Context) Ar
 
 // ArrayArrayMapOutput is an Output that returns map[string][][]interface{} values.
 type ArrayArrayMapOutput struct{ *OutputState }
+
+var _ InputT[map[string][][]interface{}] = ArrayArrayMapOutput{}
+
+func (ArrayArrayMapOutput) Sample() *map[string][][]interface{} {
+	return zeroPtr[map[string][][]interface{}]()
+}
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -3650,15 +3962,14 @@ func (in Int) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 // IntOutput is an Output that returns int values.
 type IntOutput struct{ *OutputState }
 
-var _ Sampler[int] = IntOutput{}
+var _ InputT[int] = IntOutput{}
+
+func (IntOutput) Sample() *int {
+	return zeroPtr[int]()
+}
 
 func (IntOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
-}
-
-func (IntOutput) Sample() *int {
-	var i int
-	return &i
 }
 
 // ElementType returns the element type of this Output (int).
@@ -3723,6 +4034,12 @@ func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 // IntPtrOutput is an Output that returns *int values.
 type IntPtrOutput struct{ *OutputState }
 
+var _ InputT[*int] = IntPtrOutput{}
+
+func (IntPtrOutput) Sample() **int {
+	return zeroPtr[*int]()
+}
+
 func (IntPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3779,6 +4096,12 @@ func (in IntArray) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutp
 
 // IntArrayOutput is an Output that returns []int values.
 type IntArrayOutput struct{ *OutputState }
+
+var _ InputT[[]int] = IntArrayOutput{}
+
+func (IntArrayOutput) Sample() *[]int {
+	return zeroPtr[[]int]()
+}
 
 func (IntArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -3856,6 +4179,12 @@ func (in IntMap) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
 // IntMapOutput is an Output that returns map[string]int values.
 type IntMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]int] = IntMapOutput{}
+
+func (IntMapOutput) Sample() *map[string]int {
+	return zeroPtr[map[string]int]()
+}
+
 func (IntMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3925,6 +4254,12 @@ func (in IntArrayMap) ToIntArrayMapOutputWithContext(ctx context.Context) IntArr
 // IntArrayMapOutput is an Output that returns map[string][]int values.
 type IntArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]int] = IntArrayMapOutput{}
+
+func (IntArrayMapOutput) Sample() *map[string][]int {
+	return zeroPtr[map[string][]int]()
+}
+
 func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -3993,6 +4328,12 @@ func (in IntMapArray) ToIntMapArrayOutputWithContext(ctx context.Context) IntMap
 
 // IntMapArrayOutput is an Output that returns []map[string]int values.
 type IntMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]int] = IntMapArrayOutput{}
+
+func (IntMapArrayOutput) Sample() *[]map[string]int {
+	return zeroPtr[[]map[string]int]()
+}
 
 func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -4070,6 +4411,12 @@ func (in IntMapMap) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapO
 // IntMapMapOutput is an Output that returns map[string]map[string]int values.
 type IntMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]int] = IntMapMapOutput{}
+
+func (IntMapMapOutput) Sample() *map[string]map[string]int {
+	return zeroPtr[map[string]map[string]int]()
+}
+
 func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4138,6 +4485,12 @@ func (in IntArrayArray) ToIntArrayArrayOutputWithContext(ctx context.Context) In
 
 // IntArrayArrayOutput is an Output that returns [][]int values.
 type IntArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]int] = IntArrayArrayOutput{}
+
+func (IntArrayArrayOutput) Sample() *[][]int {
+	return zeroPtr[[][]int]()
+}
 
 func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -4226,6 +4579,12 @@ func (in String) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutp
 // StringOutput is an Output that returns string values.
 type StringOutput struct{ *OutputState }
 
+var _ InputT[string] = StringOutput{}
+
+func (StringOutput) Sample() *string {
+	return zeroPtr[string]()
+}
+
 func (StringOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4292,6 +4651,12 @@ func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtr
 // StringPtrOutput is an Output that returns *string values.
 type StringPtrOutput struct{ *OutputState }
 
+var _ InputT[*string] = StringPtrOutput{}
+
+func (StringPtrOutput) Sample() **string {
+	return zeroPtr[*string]()
+}
+
 func (StringPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4348,6 +4713,12 @@ func (in StringArray) ToStringArrayOutputWithContext(ctx context.Context) String
 
 // StringArrayOutput is an Output that returns []string values.
 type StringArrayOutput struct{ *OutputState }
+
+var _ InputT[[]string] = StringArrayOutput{}
+
+func (StringArrayOutput) Sample() *[]string {
+	return zeroPtr[[]string]()
+}
 
 func (StringArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -4425,6 +4796,12 @@ func (in StringMap) ToStringMapOutputWithContext(ctx context.Context) StringMapO
 // StringMapOutput is an Output that returns map[string]string values.
 type StringMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]string] = StringMapOutput{}
+
+func (StringMapOutput) Sample() *map[string]string {
+	return zeroPtr[map[string]string]()
+}
+
 func (StringMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4494,6 +4871,12 @@ func (in StringArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) 
 // StringArrayMapOutput is an Output that returns map[string][]string values.
 type StringArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]string] = StringArrayMapOutput{}
+
+func (StringArrayMapOutput) Sample() *map[string][]string {
+	return zeroPtr[map[string][]string]()
+}
+
 func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4562,6 +4945,12 @@ func (in StringMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) 
 
 // StringMapArrayOutput is an Output that returns []map[string]string values.
 type StringMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]string] = StringMapArrayOutput{}
+
+func (StringMapArrayOutput) Sample() *[]map[string]string {
+	return zeroPtr[[]map[string]string]()
+}
 
 func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -4639,6 +5028,12 @@ func (in StringMapMap) ToStringMapMapOutputWithContext(ctx context.Context) Stri
 // StringMapMapOutput is an Output that returns map[string]map[string]string values.
 type StringMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]string] = StringMapMapOutput{}
+
+func (StringMapMapOutput) Sample() *map[string]map[string]string {
+	return zeroPtr[map[string]map[string]string]()
+}
+
 func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4707,6 +5102,12 @@ func (in StringArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Conte
 
 // StringArrayArrayOutput is an Output that returns [][]string values.
 type StringArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]string] = StringArrayArrayOutput{}
+
+func (StringArrayArrayOutput) Sample() *[][]string {
+	return zeroPtr[[][]string]()
+}
 
 func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -4800,6 +5201,12 @@ func (in URN) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 // URNOutput is an Output that returns URN values.
 type URNOutput struct{ *OutputState }
 
+var _ InputT[URN] = URNOutput{}
+
+func (URNOutput) Sample() *URN {
+	return zeroPtr[URN]()
+}
+
 func (URNOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4876,6 +5283,12 @@ func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 // URNPtrOutput is an Output that returns *URN values.
 type URNPtrOutput struct{ *OutputState }
 
+var _ InputT[*URN] = URNPtrOutput{}
+
+func (URNPtrOutput) Sample() **URN {
+	return zeroPtr[*URN]()
+}
+
 func (URNPtrOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -4932,6 +5345,12 @@ func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutp
 
 // URNArrayOutput is an Output that returns []URN values.
 type URNArrayOutput struct{ *OutputState }
+
+var _ InputT[[]URN] = URNArrayOutput{}
+
+func (URNArrayOutput) Sample() *[]URN {
+	return zeroPtr[[]URN]()
+}
 
 func (URNArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -5009,6 +5428,12 @@ func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 // URNMapOutput is an Output that returns map[string]URN values.
 type URNMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]URN] = URNMapOutput{}
+
+func (URNMapOutput) Sample() *map[string]URN {
+	return zeroPtr[map[string]URN]()
+}
+
 func (URNMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -5078,6 +5503,12 @@ func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArr
 // URNArrayMapOutput is an Output that returns map[string][]URN values.
 type URNArrayMapOutput struct{ *OutputState }
 
+var _ InputT[map[string][]URN] = URNArrayMapOutput{}
+
+func (URNArrayMapOutput) Sample() *map[string][]URN {
+	return zeroPtr[map[string][]URN]()
+}
+
 func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -5146,6 +5577,12 @@ func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMap
 
 // URNMapArrayOutput is an Output that returns []map[string]URN values.
 type URNMapArrayOutput struct{ *OutputState }
+
+var _ InputT[[]map[string]URN] = URNMapArrayOutput{}
+
+func (URNMapArrayOutput) Sample() *[]map[string]URN {
+	return zeroPtr[[]map[string]URN]()
+}
 
 func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
@@ -5223,6 +5660,12 @@ func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapO
 // URNMapMapOutput is an Output that returns map[string]map[string]URN values.
 type URNMapMapOutput struct{ *OutputState }
 
+var _ InputT[map[string]map[string]URN] = URNMapMapOutput{}
+
+func (URNMapMapOutput) Sample() *map[string]map[string]URN {
+	return zeroPtr[map[string]map[string]URN]()
+}
+
 func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -5291,6 +5734,12 @@ func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) UR
 
 // URNArrayArrayOutput is an Output that returns [][]URN values.
 type URNArrayArrayOutput struct{ *OutputState }
+
+var _ InputT[[][]URN] = URNArrayArrayOutput{}
+
+func (URNArrayArrayOutput) Sample() *[][]URN {
+	return zeroPtr[[][]URN]()
+}
 
 func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")

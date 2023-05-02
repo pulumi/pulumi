@@ -20,15 +20,26 @@ func typeOf[T any]() reflect.Type {
 	return reflect.TypeOf((*T)(nil)).Elem()
 }
 
-type Sampler[T any] interface {
-	Sample() *T
-}
-
 type InputT[T any] interface {
-	ElementType() reflect.Type
+	Input
+
+	// TODO: Probably rename to something else.
+	// Maybe make it accept the value instead of returning it.
+	Sample() *T
+	// MUST be assignable to Input.ElementType.
 }
 
-var _ Input = InputT[any](nil)
+type produces[T any] struct{}
+
+func (produces[T]) Sample() *T {
+	var t T
+	return &t
+}
+
+func zeroPtr[T any]() *T {
+	var t T
+	return &t
+}
 
 type OutputT[T any] struct {
 	*OutputState
@@ -48,10 +59,9 @@ func Cast[T any](o Output) OutputT[T] {
 }
 
 var (
-	_ Output       = (*OutputT[any])(nil)
-	_ Input        = (*OutputT[any])(nil)
-	_ InputT[int]  = (*OutputT[int])(nil)
-	_ Sampler[int] = (*OutputT[int])(nil)
+	_ Output      = (*OutputT[any])(nil)
+	_ Input       = (*OutputT[any])(nil)
+	_ InputT[int] = (*OutputT[int])(nil)
 )
 
 func (OutputT[T]) ElementType() reflect.Type {
@@ -66,10 +76,9 @@ func (OutputT[T]) Sample() *T {
 type ArrayOutputT[T any] struct{ *OutputState }
 
 var (
-	_ Output         = (*ArrayOutputT[Output])(nil)
-	_ Input          = (*ArrayOutputT[Output])(nil)
-	_ InputT[[]int]  = (*ArrayOutputT[int])(nil)
-	_ Sampler[[]int] = (*ArrayOutputT[int])(nil)
+	_ Output        = (*ArrayOutputT[Output])(nil)
+	_ Input         = (*ArrayOutputT[Output])(nil)
+	_ InputT[[]int] = (*ArrayOutputT[int])(nil)
 )
 
 func (ArrayOutputT[T]) ElementType() reflect.Type {
@@ -97,7 +106,7 @@ func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
 
 type PtrOutputT[T any] struct{ *OutputState }
 
-func ApplyT[O Sampler[T], T, U any](o O, f func(T) U) OutputT[U] {
+func ApplyT[O InputT[T], T, U any](o O, f func(T) U) OutputT[U] {
 	panic("TODO")
 }
 
