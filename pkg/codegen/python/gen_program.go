@@ -16,13 +16,14 @@ package python
 import (
 	"bytes"
 	"fmt"
-	"github.com/zclconf/go-cty/cty"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
