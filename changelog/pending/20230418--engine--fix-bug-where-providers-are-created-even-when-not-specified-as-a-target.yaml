@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix bug where providers are created even when not specified as a target.
+  description: Fix bug where non-default providers are created even when not specified as a target.

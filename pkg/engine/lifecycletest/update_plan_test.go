@@ -1641,9 +1641,9 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-// TestResourcesTargeted checks that a plan created with targets specified captures only those targets.
-// It checks that trying to construct a new resource that was not targeted in the plan fails and that the
-// update with the same --targets specified is compatible with the plan (roundtripped).
+// TestResourcesTargeted checks that a plan created with targets specified captures only those targets and
+// default providers. It checks that trying to construct a new resource that was not targeted in the plan
+// fails and that the update with the same --targets specified is compatible with the plan (roundtripped).
 func TestResoucesTargeted(t *testing.T) {
 	t.Parallel()
 
@@ -1687,14 +1687,13 @@ func TestResoucesTargeted(t *testing.T) {
 		GeneratePlan: true,
 		UpdateTargets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resB",
-			"urn:pulumi:test::test::pulumi:providers:pkgA::default",
 		}),
 	}, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.NotNil(t, plan)
 
 	// Check that running an update with everything targeted fails due to our plan being constrained
-	// to the resource and default provider.
+	// to the resource.
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
 		// Clone the plan as the plan will be mutated by the engine and useless in future runs.
 		Plan:         plan.Clone(),
@@ -1711,7 +1710,6 @@ func TestResoucesTargeted(t *testing.T) {
 		Experimental: true,
 		UpdateTargets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resB",
-			"urn:pulumi:test::test::pulumi:providers:pkgA::default",
 		}),
 	}, false, p.BackendClient, nil)
 	assert.Nil(t, res)

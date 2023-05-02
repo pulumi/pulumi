@@ -80,6 +80,11 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
+	// Default providers are marked always targeted. Default providers are under Pulumi's control
+	// and changes or creations should be invisible to the user.
+	if providers.IsDefaultProvider(res.URN) {
+		return true
+	}
 	if sg.updateTargetsOpt.Contains(res.URN) {
 		return true
 	} else if !sg.opts.TargetDependents {

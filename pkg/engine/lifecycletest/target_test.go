@@ -971,9 +971,9 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 	}
 }
 
-// TestTargetedDoesNotCreateProvider checks that an update that targets a resource does not create the default
+// TestTargetedCreateDefaultProvider checks that an update that targets a resource still creates the default
 // provider if not targeted.
-func TestTargetedDoesNotCreateProvider(t *testing.T) {
+func TestTargetedCreateDefaultProvider(t *testing.T) {
 	t.Parallel()
 
 	host := func() plugin.Host {
@@ -998,22 +998,21 @@ func TestTargetedDoesNotCreateProvider(t *testing.T) {
 
 	project := p.GetProject()
 
-	// Check that update fails because the default provider is not created (as it is not targeted).
-	_, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+	// Check that update succeeds despite the default provider not being targeted.
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
 		Host: host,
 		UpdateTargets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resA",
-		}),
-	}, false, p.BackendClient, nil)
-	assert.NotNil(t, res)
-
-	// Check that update succeeds when the default provider is also targeted.
-	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
-		Host: host,
-		UpdateTargets: deploy.NewUrnTargets([]string{
-			"urn:pulumi:test::test::pkgA:m:typA::resA",
-			"urn:pulumi:test::test::pulumi:providers:pkgA::default",
 		}),
 	}, false, p.BackendClient, nil)
 	assert.Nil(t, res)
+
+	// Check that the default provider was created.
+	var foundDefaultProvider bool
+	for _, res := range snap.Resources {
+		if res.URN == "urn:pulumi:test::test::pulumi:providers:pkgA::default" {
+			foundDefaultProvider = true
+		}
+	}
+	assert.True(t, foundDefaultProvider)
 }
