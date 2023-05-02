@@ -311,7 +311,10 @@ func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, erro
 	return pkg, nil
 }
 
-func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
+// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
+// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
+// contents of a package are not needed (e.g. for referenced packages).
+func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language, loader Loader) (*PartialPackage, error) {
 	pkg := &PartialPackage{
 		spec:      &spec,
 		languages: languages,
@@ -325,13 +328,6 @@ func importPartialSpec(spec PartialPackageSpec, languages map[string]Language, l
 	}
 	pkg.types = types
 	return pkg, nil
-}
-
-// ImportPartialSpec converts a serializable PartialPackageSpec into a PartialPackage. Unlike a typical Package, a
-// PartialPackage loads and binds its members on-demand rather than at import time. This is useful when the entire
-// contents of a package are not needed (e.g. for referenced packages).
-func ImportPartialSpec(spec PartialPackageSpec, languages map[string]Language) (*PartialPackage, error) {
-	return importPartialSpec(spec, languages, nil)
 }
 
 type specSource interface {

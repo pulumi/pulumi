@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -82,6 +83,18 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, config map[config.Key]string,
 ) (*Context, error) {
+	return NewContextWithContext(
+		context.Background(), d, statusD, host, pwd, root,
+		runtimeOptions, disableProviderPreview, parentSpan, plugins, config)
+}
+
+// NewContextWithContext is a variation of NewContextWithRoot that also sets the base context.
+func NewContextWithContext(
+	ctx context.Context,
+	d, statusD diag.Sink, host Host,
+	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+	parentSpan opentracing.Span, plugins *workspace.Plugins, config map[config.Key]string,
+) (*Context, error) {
 	if d == nil {
 		d = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
@@ -89,7 +102,7 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 		statusD = diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	}
 
-	ctx := &Context{
+	pctx := &Context{
 		Diag:            d,
 		StatusDiag:      statusD,
 		Host:            host,
@@ -97,23 +110,22 @@ func NewContextWithRoot(d, statusD diag.Sink, host Host,
 		tracingSpan:     parentSpan,
 		DebugTraceMutex: &sync.Mutex{},
 		cancelLock:      &sync.Mutex{},
+		baseContext:     ctx,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, runtimeOptions, disableProviderPreview, plugins, config)
+		h, err := NewDefaultHost(pctx, runtimeOptions, disableProviderPreview, plugins, config)
 		if err != nil {
 			return nil, err
 		}
-		ctx.Host = h
+		pctx.Host = h
 	}
-	return ctx, nil
+	return pctx, nil
 }
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
 	c := ctx.baseContext
-	if c == nil {
-		c = context.Background()
-	}
+	contract.Assertf(c != nil, "Context must have a base context")
 	c = opentracing.ContextWithSpan(c, ctx.tracingSpan)
 	c, cancel := context.WithCancel(c)
 	ctx.cancelLock.Lock()

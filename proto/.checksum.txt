@@ -14,6 +14,7 @@
 3592920431 1785 proto/pulumi/codegen/mapper.proto
 264855818 2507 proto/pulumi/converter.proto
 2889436496 3240 proto/pulumi/engine.proto
+3548877776 2206 proto/pulumi/engine/engine.proto
 3421371250 793 proto/pulumi/errors.proto
 10996825 8394 proto/pulumi/language.proto
 2700626499 1743 proto/pulumi/plugin.proto

@@ -528,25 +528,6 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	// Channel producing the final response we want to issue to our caller. Will get the result of
-	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
-	responseChannel := make(chan *pulumirpc.RunResponse)
-	defer close(responseChannel)
-
-	// Forward any rpc server or pipe errors to our output channel.
-	go func() {
-		err := <-handle.Done
-		if err != nil {
-			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
-		}
-	}()
-	go func() {
-		err := <-pipesDone
-		if err != nil {
-			responseChannel <- &pulumirpc.RunResponse{Error: err.Error()}
-		}
-	}()
-
 	nodeBin, err := exec.LookPath("node")
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not find node on the $PATH: %w", err))
@@ -563,115 +544,130 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
 	}
 
+	// Channel producing the final response we want to issue to our caller. Will get the result of
+	// the actual nodejs process we launch, or any results caused by errors in our server/pipes.
+	responseChannel := make(chan *pulumirpc.RunResponse)
+	defer close(responseChannel)
 	// now, launch the nodejs process and actually run the user code in it.
-	go host.execNodejs(ctx, responseChannel, req, nodeBin, runPath,
-		fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
+	go func() {
+		responseChannel <- host.execNodejs(
+			ctx, req, nodeBin, runPath,
+			fmt.Sprintf("127.0.0.1:%d", handle.Port), pipes.directory())
+	}()
 
 	// Wait for one of our launched goroutines to signal that we're done.  This might be our proxy
 	// (in the case of errors), or the launched nodejs completing (either successfully, or with
 	// errors).
-	return <-responseChannel, nil
+	for {
+		select {
+		case err := <-handle.Done:
+			if err != nil {
+				return &pulumirpc.RunResponse{Error: err.Error()}, nil
+			}
+		case err := <-pipesDone:
+			if err != nil {
+				return &pulumirpc.RunResponse{Error: err.Error()}, nil
+			}
+		case response := <-responseChannel:
+			return response, nil
+		}
+	}
 }
 
 // Launch the nodejs process and wait for it to complete.  Report success or any errors using the
 // `responseChannel` arg.
-func (host *nodeLanguageHost) execNodejs(ctx context.Context,
-	responseChannel chan<- *pulumirpc.RunResponse, req *pulumirpc.RunRequest,
+func (host *nodeLanguageHost) execNodejs(ctx context.Context, req *pulumirpc.RunRequest,
 	nodeBin, runPath, address, pipesDirectory string,
-) {
+) *pulumirpc.RunResponse {
 	// Actually launch nodejs and process the result of it into an appropriate response object.
-	response := func() *pulumirpc.RunResponse {
-		args := host.constructArguments(req, runPath, address, pipesDirectory)
-		config, err := host.constructConfig(req)
-		if err != nil {
-			err = fmt.Errorf("failed to serialize configuration: %w", err)
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
-		configSecretKeys, err := host.constructConfigSecretKeys(req)
-		if err != nil {
-			err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
+	args := host.constructArguments(req, runPath, address, pipesDirectory)
+	config, err := host.constructConfig(req)
+	if err != nil {
+		err = fmt.Errorf("failed to serialize configuration: %w", err)
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = fmt.Errorf("failed to serialize configuration secret keys: %w", err)
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
 
-		env := os.Environ()
-		env = append(env, pulumiConfigVar+"="+config)
-		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
+	env := os.Environ()
+	env = append(env, pulumiConfigVar+"="+config)
+	env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
-		if host.typescript {
-			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
-		}
-		if host.tsconfigpath != "" {
-			env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
-		}
+	if host.typescript {
+		env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
+	}
+	if host.tsconfigpath != "" {
+		env = append(env, "PULUMI_NODEJS_TSCONFIG_PATH="+host.tsconfigpath)
+	}
 
-		nodeargs, err := shlex.Split(host.nodeargs)
-		if err != nil {
-			return &pulumirpc.RunResponse{Error: err.Error()}
-		}
-		nodeargs = append(nodeargs, args...)
+	nodeargs, err := shlex.Split(host.nodeargs)
+	if err != nil {
+		return &pulumirpc.RunResponse{Error: err.Error()}
+	}
+	nodeargs = append(nodeargs, args...)
 
-		if logging.V(5) {
-			commandStr := strings.Join(nodeargs, " ")
-			logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
-		}
+	if logging.V(5) {
+		commandStr := strings.Join(nodeargs, " ")
+		logging.V(5).Infoln("Language host launching process: ", nodeBin, commandStr)
+	}
 
-		// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-		var errResult string
-		// #nosec G204
-		cmd := exec.Command(nodeBin, nodeargs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = env
+	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
+	var errResult string
+	// #nosec G204
+	cmd := exec.Command(nodeBin, nodeargs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env
 
-		tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
-			"execNodejs",
-			opentracing.Tag{Key: "component", Value: "exec.Command"},
-			opentracing.Tag{Key: "command", Value: nodeBin},
-			opentracing.Tag{Key: "args", Value: nodeargs})
-		defer tracingSpan.Finish()
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		"execNodejs",
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: nodeBin},
+		opentracing.Tag{Key: "args", Value: nodeargs})
+	defer tracingSpan.Finish()
 
-		if err := cmd.Run(); err != nil {
-			// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
-			// process writes using console.out and console.err synchronously, but it does not process writes using
-			// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
-			// writes on those file descriptors at the time that the Node process exits.
-			//
-			// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
-			// error messages in the engine.
-			contract.IgnoreError(os.Stdout.Sync())
-			contract.IgnoreError(os.Stderr.Sync())
-			if exiterr, ok := err.(*exec.ExitError); ok {
-				// If the program ran, but exited with a non-zero error code.  This will happen often,
-				// since user errors will trigger this.  So, the error message should look as nice as
-				// possible.
-				switch code := exiterr.ExitCode(); code {
-				case 0:
-					// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
-					err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
-				case nodeJSProcessExitedAfterShowingUserActionableMessage:
-					// Check if we got special exit code that means "we already gave the user an
-					// actionable message". In that case, we can simply bail out and terminate `pulumi`
-					// without showing any more messages.
-					return &pulumirpc.RunResponse{Error: "", Bail: true}
-				default:
-					err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
-				}
-			} else {
-				// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
-				// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
-				err = fmt.Errorf("Problem executing program (could not run language executor): %w", err)
+	if err := cmd.Run(); err != nil {
+		// NodeJS stdout is complicated enough that we should explicitly flush stdout and stderr here. NodeJS does
+		// process writes using console.out and console.err synchronously, but it does not process writes using
+		// `process.stdout.write` or `process.stderr.write` synchronously, and it is possible that there exist unflushed
+		// writes on those file descriptors at the time that the Node process exits.
+		//
+		// Because of this, we explicitly flush stdout and stderr so that we are absolutely sure that we capture any
+		// error messages in the engine.
+		contract.IgnoreError(os.Stdout.Sync())
+		contract.IgnoreError(os.Stderr.Sync())
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// If the program ran, but exited with a non-zero error code.  This will happen often,
+			// since user errors will trigger this.  So, the error message should look as nice as
+			// possible.
+			switch code := exiterr.ExitCode(); code {
+			case 0:
+				// This really shouldn't happen, but if it does, we don't want to render "non-zero exit code"
+				err = fmt.Errorf("Program exited unexpectedly: %w", exiterr)
+			case nodeJSProcessExitedAfterShowingUserActionableMessage:
+				// Check if we got special exit code that means "we already gave the user an
+				// actionable message". In that case, we can simply bail out and terminate `pulumi`
+				// without showing any more messages.
+				return &pulumirpc.RunResponse{Error: "", Bail: true}
+			default:
+				err = fmt.Errorf("Program exited with non-zero exit code: %d", code)
 			}
-
-			errResult = err.Error()
+		} else {
+			// Otherwise, we didn't even get to run the program.  This ought to never happen unless there's
+			// a bug or system condition that prevented us from running the language exec.  Issue a scarier error.
+			err = fmt.Errorf("Problem executing program (could not run language executor): %w", err)
 		}
 
-		return &pulumirpc.RunResponse{Error: errResult}
-	}()
+		errResult = err.Error()
+	}
 
 	// notify our caller of the response we got from the nodejs process.  Note: this is done
 	// unilaterally. this is how we signal to nodeLanguageHost.Run that we are done and it can
 	// return to its caller.
-	responseChannel <- response
+	return &pulumirpc.RunResponse{Error: errResult}
 }
 
 // constructArguments constructs a command-line for `pulumi-language-nodejs`
