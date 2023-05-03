@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/python
+  description: Support range expressions that are of type output
