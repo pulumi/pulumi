@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -230,6 +231,20 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 	}
 
 	return projects, nil
+}
+
+func (p *projectReferenceStore) ProjectExists(ctx context.Context, projectName string) (bool, error) {
+	contract.Requiref(projectName != "", "projectName", "must not be empty")
+
+	path := path.Join(StacksDir, projectName)
+
+	files, err := listBucket(ctx, p.bucket, path)
+	if err != nil {
+		return false, fmt.Errorf("list stacks at %q: %w", path, err)
+	}
+
+	// If files is empty, it means that project is not found in bucket
+	return len(files) > 0, nil
 }
 
 func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*localBackendReference, error) {

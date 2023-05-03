@@ -590,20 +590,7 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 		return false, nil
 	}
 
-	// TODO[pulumi/pulumi#12547]:
-	// This could be faster if we list "$project/" instead of all projects.
-	projects, err := projStore.ListProjects(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	for _, project := range projects {
-		if string(project) == projectName {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return projStore.ProjectExists(ctx, projectName)
 }
 
 // Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
