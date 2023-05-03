@@ -195,6 +195,22 @@ func TestConfigNodeTypedString(t *testing.T) {
 	assert.Equal(t, config.Type(), model.StringType, "the type is a string")
 }
 
+func TestConfigNodeTypedOptionalString(t *testing.T) {
+	t.Parallel()
+	source := "config cidrBlock string { default = null }"
+	program, diags := parseAndBindProgram(t, source, "config.pp")
+	contract.Ignore(diags)
+	assert.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, len(program.Nodes), 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, config.Name(), "cidrBlock")
+	assert.True(t, model.IsOptionalType(config.Type()), "the type is optional")
+	elementType := pcl.UnwrapOption(config.Type())
+	assert.Equal(t, elementType, model.StringType, "element type is a string")
+	assert.True(t, config.Nullable, "The config variable is nullable")
+}
+
 func TestConfigNodeTypedInt(t *testing.T) {
 	t.Parallel()
 	source := "config count int { }"
