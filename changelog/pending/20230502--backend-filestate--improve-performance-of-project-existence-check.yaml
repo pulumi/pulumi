@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: backend/filestate
-  description: Improve performance of project-existence check.

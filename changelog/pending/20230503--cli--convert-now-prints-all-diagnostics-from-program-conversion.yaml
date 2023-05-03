@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: `convert` now prints all diagnostics from program conversion
