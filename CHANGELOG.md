@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.66.0 (2023-05-03)
+
+
+### Features
+
+- [cli] `convert` now prints all diagnostics from program conversion
+  [#12808](https://github.com/pulumi/pulumi/pull/12808)
+
+- [programgen/nodejs] Support range expressions that are of type output
+  [#12749](https://github.com/pulumi/pulumi/pull/12749)
+
+- [programgen/python] Support range expressions that are of type output
+  [#12804](https://github.com/pulumi/pulumi/pull/12804)
+
+
+### Bug Fixes
+
+- [cli] Fix destroy without project file.
+  [#12766](https://github.com/pulumi/pulumi/pull/12766)
+
+- [engine] Fix bug where non-default providers are created even when not specified as a target.
+  [#12628](https://github.com/pulumi/pulumi/pull/12628)
+
+
+### Miscellaneous
+
+- [backend/filestate] Improve performance of project-existence check.
+  [#12798](https://github.com/pulumi/pulumi/pull/12798)
+
 ## 3.65.1 (2023-04-27)
 
 
