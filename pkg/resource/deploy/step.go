@@ -132,8 +132,7 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	s.new.Outputs = s.old.Outputs
 
 	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
-	// We can only do this if the provider is actually a same, not a skipped create.
-	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
+	if providers.IsProviderType(s.new.Type) {
 		ref, err := providers.NewReference(s.new.URN, s.new.ID)
 		if err != nil {
 			return resource.StatusOK, nil,
