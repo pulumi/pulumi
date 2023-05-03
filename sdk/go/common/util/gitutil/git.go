@@ -15,11 +15,13 @@
 package gitutil
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -30,7 +32,10 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -42,6 +47,9 @@ type VCSKind = string
 // Constants related to detecting the right type of source control provider for git.
 const (
 	defaultGitCloudRepositorySuffix = ".git"
+
+	// gitSSHPrefix is the start of any SSH-based Git URL.
+	gitSSHPrefix = "git@"
 
 	// GitLabHostName The host name for GitLab.
 	GitLabHostName VCSKind = "gitlab.com"
@@ -140,7 +148,7 @@ func TryGetVCSInfo(remoteURL string) (*VCSInfo, error) {
 
 	// If the remote is using git SSH, then we extract the named groups by matching
 	// with the pre-compiled regex pattern.
-	if strings.HasPrefix(remoteURL, "git@") {
+	if strings.HasPrefix(remoteURL, gitSSHPrefix) {
 		// Most cloud-hosted VCS have the ssh URL of the format git@somehostname.com:owner/repo
 		if cloudSourceControlSSHRegex.MatchString(remoteURL) {
 			groups := getMatchedGroupsFromRegex(cloudSourceControlSSHRegex, remoteURL)
@@ -237,7 +245,104 @@ func getMatchedGroupsFromRegex(regex *regexp.Regexp, remoteURL string) map[strin
 	return groups
 }
 
-func parseAuthURL(remoteURL string) (string, *http.BasicAuth, error) {
+// sshKeys memorizes keys we've loaded for given host URLs, to avoid needing to
+// reauthenticate multiple times.
+var sshKeys = map[string]transport.AuthMethod{}
+
+func parseAuthURL(remoteURL string) (string, transport.AuthMethod, error) {
+	if strings.HasPrefix(remoteURL, gitSSHPrefix) {
+		// For SSH URLs, we'll need to load an SSH key. Most of the time, this will be something
+		// like `~/.ssh/id_rsa`, however, an end user can choose anything. We read the `~/.ssh/config`
+		// file to determine how the user has configured this setting.
+
+		// Parse the host so we know what to look for.
+		parts, _ := parseGitRepoURLParts(remoteURL)
+
+		// See if we've encountered this host before; if yes, use the existing key.
+		if existing, ok := sshKeys[parts.Hostname]; ok {
+			return remoteURL, existing, nil
+		}
+
+		var keyLocation string
+
+		// Read the config file.
+		usr, _ := user.Current()
+		sshConfigPath := filepath.Join(usr.HomeDir, ".ssh", "config")
+		if sshConfigFile, err := os.Open(sshConfigPath); err == nil {
+			defer sshConfigFile.Close()
+
+			// Search the config file for the IdentityFile for a matching host.
+			sshConfig := bufio.NewScanner(sshConfigFile)
+			for sshConfig.Scan() {
+				line := strings.TrimSpace(sshConfig.Text())
+				if strings.HasPrefix(line, "Host") &&
+					(strings.Contains(line, "*") || strings.Contains(line, parts.Hostname)) {
+					for sshConfig.Scan() {
+						line = strings.TrimSpace(sshConfig.Text())
+						if strings.HasPrefix(line, "  IdentityFile") {
+							keyLocation = strings.TrimSpace(line[len("  IdentityFile"):])
+							break
+						}
+					}
+					if keyLocation != "" {
+						break
+					}
+				}
+			}
+			if err = sshConfig.Err(); err != nil {
+				return "", nil, err
+			}
+		}
+
+		// If there was no file, try some common names.
+		if keyLocation == "" {
+			for _, keyName := range []string{
+				"id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
+				"github_rsa", "github_dsa", "github_ecdsa", "github_ed25519",
+			} {
+				keyPath := filepath.Join(usr.HomeDir, ".ssh", keyName)
+				if _, err := os.Stat(keyPath); err == nil {
+					keyLocation = keyPath
+					break
+				}
+			}
+
+			// If we still haven't found a valid SSH key file, we cannot proceed.
+			if keyLocation == "" {
+				return "", nil, fmt.Errorf("no valid SSH key file found for Git URL %s", remoteURL)
+			}
+		}
+
+		// After loading the file, we need to check that it isn't password protected. If it is,
+		// we will prompt the user to enter a password.
+		logging.V(10).Infof("Inferred SSH key '%s' for Git URL %s", keyLocation, remoteURL)
+		auth, err := ssh.NewPublicKeysFromFile("git", keyLocation, "")
+		if err != nil {
+			// See if the error is due to a missing password; if so, we will prompt for it.
+			if err.Error() == "bcrypt_pbkdf: empty password" {
+				// Check the OS envvar. If that's empty, and we're interactive, prompt.
+				password := os.Getenv("PULUMI_GITSSH_PASSPHRASE")
+				if password == "" && cmdutil.Interactive() {
+					if password, err = cmdutil.ReadConsoleNoEcho(
+						fmt.Sprintf("Enter SSH key '%s' passphrase", keyLocation)); err != nil {
+						return "", nil, err
+					}
+				}
+				auth, err = ssh.NewPublicKeysFromFile("git", keyLocation, password)
+				if err != nil {
+					return "", nil, err
+				}
+			} else {
+				return "", nil, err
+			}
+		}
+
+		// Memoize and return the key.
+		sshKeys[parts.Hostname] = auth
+		return remoteURL, auth, nil
+	}
+
+	// For non-SSH URLs, see if there is basic auth info.
 	u, err := url.Parse(remoteURL)
 	if err != nil {
 		return "", nil, err
@@ -257,6 +362,8 @@ func parseAuthURL(remoteURL string) (string, *http.BasicAuth, error) {
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) error {
+	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
+
 	u, auth, err := parseAuthURL(url)
 	if err != nil {
 		return err
@@ -282,7 +389,8 @@ func GitCloneAndCheckoutCommit(url string, commit plumbing.Hash, path string) er
 
 func GitCloneOrPull(rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool) error {
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
-	if u, err := url.Parse(rawurl); err == nil && u.Hostname() == AzureDevOpsHostName {
+
+	if u, err := parseGitRepoURLParts(rawurl); err == nil && u.Hostname == AzureDevOpsHostName {
 		// system-installed git is used to clone Azure DevOps repositories
 		// due to https://github.com/go-git/go-git/issues/64
 		return gitCloneOrPullSystemGit(rawurl, referenceName, path, shallow)
@@ -453,6 +561,134 @@ func parseHostAuth(u *url.URL) string {
 	return user + ":" + p + "@" + u.Host
 }
 
+type gitRepoURLParts struct {
+	// URL is the base URL, without a path.
+	URL string
+	// Hostname is the actual hostname for the URL.
+	Hostname string
+	// Path is the path part of the URL, if any.
+	Path string
+}
+
+func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
+	if strings.HasPrefix(rawurl, gitSSHPrefix) {
+		// Parse an SSH style URL: git@github.com:<owner>/<repo>/<path>
+		colonIndex := strings.Index(rawurl, ":")
+		if colonIndex == -1 {
+			return gitRepoURLParts{}, errors.New("invalid SSH URL: missing colon")
+		}
+		url := rawurl[:colonIndex]
+		hostname := url[len(gitSSHPrefix):]
+
+		rawurl = rawurl[colonIndex+1:]
+		firstSlash := strings.Index(rawurl, "/")
+		if firstSlash == -1 {
+			return gitRepoURLParts{}, errors.New("invalid SSH URL: missing Git owner")
+		}
+
+		owner := rawurl[:firstSlash]
+		if owner == "" {
+			return gitRepoURLParts{}, errors.New("invalid SSH URL: missing Git owner")
+		}
+
+		var repo string
+		rawurl = rawurl[firstSlash+1:]
+		secondSlash := strings.Index(rawurl, "/")
+		if secondSlash == -1 {
+			repo = rawurl
+			rawurl = ""
+		} else {
+			repo = rawurl[:secondSlash]
+			rawurl = rawurl[secondSlash+1:]
+		}
+		if repo == "" {
+			return gitRepoURLParts{}, errors.New("invalid SSH URL: missing Git repo")
+		}
+
+		resultPath := strings.TrimSuffix(rawurl, "/")
+		return gitRepoURLParts{
+			URL:      fmt.Sprintf("%s:%s/%s", url, owner, repo),
+			Hostname: hostname,
+			Path:     resultPath,
+		}, nil
+	} else {
+		u, err := url.Parse(rawurl)
+		if err != nil {
+			return gitRepoURLParts{}, err
+		}
+
+		if u.Scheme != "https" {
+			return gitRepoURLParts{}, errors.New("invalid URL scheme")
+		}
+
+		hostname := u.Hostname()
+
+		// Special case Gists.
+		if u.Hostname() == "gist.github.com" {
+			repo, err := parseGistURL(u)
+			if err != nil {
+				return gitRepoURLParts{}, err
+			}
+			return gitRepoURLParts{
+				URL:      repo,
+				Hostname: hostname,
+			}, nil
+		}
+
+		// Special case Azure DevOps.
+		if u.Hostname() == AzureDevOpsHostName {
+			// Specifying branch/ref and subpath is currently unsupported.
+			return gitRepoURLParts{
+				URL:      rawurl,
+				Hostname: hostname,
+			}, nil
+		}
+
+		path := strings.TrimPrefix(u.Path, "/")
+		paths := strings.Split(path, "/")
+		if len(paths) < 2 {
+			return gitRepoURLParts{}, errors.New("invalid Git URL")
+		}
+
+		// Shortcut for general case: URI Path contains '.git'
+		// Cleave URI into what comes before and what comes after.
+		if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
+			extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
+			resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + path[:extensionOffset]
+			gitRepoPath := path[extensionOffset:]
+			resultPath := strings.Trim(gitRepoPath, "/")
+			return gitRepoURLParts{
+				URL:      resultURL,
+				Hostname: hostname,
+				Path:     resultPath,
+			}, nil
+		}
+
+		owner := paths[0]
+		if owner == "" {
+			return gitRepoURLParts{}, errors.New("invalid Git URL; no owner")
+		}
+
+		repo := paths[1]
+		if repo == "" {
+			return gitRepoURLParts{}, errors.New("invalid Git URL; no repository")
+		}
+
+		if !strings.HasSuffix(repo, ".git") {
+			repo = repo + ".git"
+		}
+
+		resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
+		resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
+
+		return gitRepoURLParts{
+			URL:      resultURL,
+			Hostname: hostname,
+			Path:     resultPath,
+		}, nil
+	}
+}
+
 // ParseGitRepoURL returns the URL to the Git repository and path from a raw URL.
 // For example, an input of "https://github.com/pulumi/templates/templates/javascript" returns
 // "https://github.com/pulumi/templates.git" and "templates/javascript".
@@ -463,64 +699,11 @@ func parseHostAuth(u *url.URL) string {
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {
-	u, err := url.Parse(rawurl)
+	parts, err := parseGitRepoURLParts(rawurl)
 	if err != nil {
 		return "", "", err
 	}
-
-	if u.Scheme != "https" {
-		return "", "", errors.New("invalid URL scheme")
-	}
-
-	// Special case Gists.
-	if u.Hostname() == "gist.github.com" {
-		repo, err := parseGistURL(u)
-		if err != nil {
-			return "", "", err
-		}
-		return repo, "", nil
-	}
-
-	// Special case Azure DevOps.
-	if u.Hostname() == AzureDevOpsHostName {
-		// Specifying branch/ref and subpath is currently unsupported.
-		return rawurl, "", nil
-	}
-
-	path := strings.TrimPrefix(u.Path, "/")
-	paths := strings.Split(path, "/")
-	if len(paths) < 2 {
-		return "", "", errors.New("invalid Git URL")
-	}
-
-	// Shortcut for general case: URI Path contains '.git'
-	// Cleave URI into what comes before and what comes after.
-	if loc := strings.LastIndex(path, defaultGitCloudRepositorySuffix); loc != -1 {
-		extensionOffset := loc + len(defaultGitCloudRepositorySuffix)
-		resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + path[:extensionOffset]
-		gitRepoPath := path[extensionOffset:]
-		resultPath := strings.Trim(gitRepoPath, "/")
-		return resultURL, resultPath, nil
-	}
-
-	owner := paths[0]
-	if owner == "" {
-		return "", "", errors.New("invalid Git URL; no owner")
-	}
-
-	repo := paths[1]
-	if repo == "" {
-		return "", "", errors.New("invalid Git URL; no repository")
-	}
-
-	if !strings.HasSuffix(repo, ".git") {
-		repo = repo + ".git"
-	}
-
-	resultURL := u.Scheme + "://" + parseHostAuth(u) + "/" + owner + "/" + repo
-	resultPath := strings.TrimSuffix(strings.Join(paths[2:], "/"), "/")
-
-	return resultURL, resultPath, nil
+	return parts.URL, parts.Path, err
 }
 
 var gitSHARegex = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
@@ -601,7 +784,14 @@ func GitListBranchesAndTags(url string) ([]plumbing.ReferenceName, error) {
 		return nil, err
 	}
 
-	refs, err := remote.List(&git.ListOptions{})
+	_, auth, err := parseAuthURL(url)
+	if err != nil {
+		return nil, err
+	}
+
+	refs, err := remote.List(&git.ListOptions{
+		Auth: auth,
+	})
 	if err != nil {
 		return nil, err
 	}

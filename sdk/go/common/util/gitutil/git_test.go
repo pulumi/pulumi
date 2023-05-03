@@ -107,13 +107,31 @@ func TestParseGitRepoURL(t *testing.T) {
 	test(exp, "", pre)
 	test(exp, "foobar", pre+"/foobar")
 
+	// SSH URLs.
+	pre = "git@github.com:acmecorp/templates"
+	exp = "git@github.com:acmecorp/templates"
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
+	pre = "git@github.com:acmecorp/templates/website"
+	exp = "git@github.com:acmecorp/templates"
+	test(exp, "website", pre)
+	test(exp, "website", pre+"/")
+	pre = "git@github.com:acmecorp/templates/somewhere/in/there/is/a/website"
+	exp = "git@github.com:acmecorp/templates"
+	test(exp, "somewhere/in/there/is/a/website", pre)
+	test(exp, "somewhere/in/there/is/a/website", pre+"/")
+
 	// No owner.
 	testError("https://github.com")
 	testError("https://github.com/")
+	testError("git@github.com")
+	testError("git@github.com/")
 
 	// No repo.
 	testError("https://github.com/pulumi")
 	testError("https://github.com/pulumi/")
+	testError("git@github.com:pulumi")
+	testError("git@github.com:pulumi/")
 
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git")
