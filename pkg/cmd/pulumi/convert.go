@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -99,6 +101,17 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
+// prints the diagnostics to the diagnostic sink
+func printDiagnostics(sink diag.Sink, diagnostics hcl.Diagnostics) {
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity == hcl.DiagError {
+			sink.Errorf(diag.Message("", "%s"), diagnostic)
+		} else {
+			sink.Warningf(diag.Message("", "%s"), diagnostic)
+		}
+	}
+}
+
 // writeProgram writes a project and pcl program to the given directory
 func writeProgram(directory string, proj *workspace.Project, program *pcl.Program) error {
 	fs := afero.NewOsFs()
@@ -124,25 +137,36 @@ func writeProgram(directory string, proj *workspace.Project, program *pcl.Progra
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
-func pclGenerateProject(sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-	program, err := pclBindProgram(sourceDirectory, loader)
-	if err == nil {
+func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
+	program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
+	printDiagnostics(sink, diagnostics)
+	if program != nil {
 		// If we successfully bound the program, write out the .pp files from it
 		// We don't write out a Pulumi.yaml for PCL, just the .pp files.
 		return writeProgram(targetDirectory, nil, program)
 	}
 	// We couldn't bind the program so print that for the user to see but then just copy the filetree across
-	fmt.Printf("Could not bind program: %v\n", err)
+	if err != nil {
+		logging.Warningf("failed to bind program: %v", err)
+	} else {
+		// We've already printed the diagnostics above
+		logging.Warningf("failed to bind program")
+	}
 
 	// Copy the source directory to the target directory
 	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
 }
 
 // pclBindProgram binds a PCL in the given directory.
-func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Program, error) {
+func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Program, hcl.Diagnostics, error) {
 	parser := hclsyntax.NewParser()
 	// Load all .pp files in the directory
 	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	parseDiagnostics := make(hcl.Diagnostics, 0)
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -153,36 +177,32 @@ func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Progr
 		if filepath.Ext(path) == ".pp" {
 			file, err := os.Open(path)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			err = parser.ParseFile(file, filepath.Base(path))
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			diags := parser.Diagnostics
-			if diags.HasErrors() {
-				return nil, diags
-			}
+			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
 		}
 	}
 
-	if err != nil {
-		return nil, err
+	if parseDiagnostics.HasErrors() {
+		return nil, nil, parseDiagnostics
 	}
 
-	program, pdiags, err := pcl.BindProgram(parser.Files,
+	program, bindDiagnostics, err := pcl.BindProgram(parser.Files,
 		pcl.Loader(loader),
 		pcl.DirPath(directory),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
 	if err != nil {
-		return nil, err
-	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+		return nil, allDiagnostics, err
 	}
 
-	return program, nil
+	return program, allDiagnostics, nil
 }
 
 func runConvert(
@@ -190,12 +210,13 @@ func runConvert(
 	cwd string, mappings []string, from string, language string,
 	outDir string, generateOnly bool,
 ) result.Result {
-	wrapper := func(generator projectGeneratorFunc) func(string, string, schema.ReferenceLoader) error {
-		return func(sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-			program, err := pclBindProgram(sourceDirectory, loader)
+	wrapper := func(generator projectGeneratorFunc) func(diag.Sink, string, string, schema.ReferenceLoader) error {
+		return func(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
+			program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
 			if err != nil {
 				return fmt.Errorf("load pcl program: %w", err)
 			}
+			printDiagnostics(sink, diagnostics)
 
 			// Load the project from the target directory if there is one. We default to a project with just
 			// the name of the original directory.
@@ -212,7 +233,7 @@ func runConvert(
 		}
 	}
 
-	var projectGenerator func(string, string, schema.ReferenceLoader) error
+	var projectGenerator func(diag.Sink, string, string, schema.ReferenceLoader) error
 	switch language {
 	case "csharp", "c#":
 		projectGenerator = wrapper(dotnet.GenerateProject)
@@ -315,7 +336,7 @@ func runConvert(
 		}
 	}
 
-	err = projectGenerator(pclDirectory, outDir, loader)
+	err = projectGenerator(pCtx.Diag, pclDirectory, outDir, loader)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 	}
