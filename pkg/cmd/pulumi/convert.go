@@ -189,7 +189,7 @@ func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Progr
 	}
 
 	if parseDiagnostics.HasErrors() {
-		return nil, nil, parseDiagnostics
+		return nil, parseDiagnostics, nil
 	}
 
 	program, bindDiagnostics, err := pcl.BindProgram(parser.Files,
@@ -197,12 +197,14 @@ func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Progr
 		pcl.DirPath(directory),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
-	if err != nil {
-		return nil, allDiagnostics, err
+	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
+	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.
+	if bindDiagnostics != nil {
+		err = nil
 	}
 
-	return program, allDiagnostics, nil
+	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
+	return program, allDiagnostics, err
 }
 
 func runConvert(
@@ -213,10 +215,13 @@ func runConvert(
 	wrapper := func(generator projectGeneratorFunc) func(diag.Sink, string, string, schema.ReferenceLoader) error {
 		return func(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
 			program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
-			if err != nil {
-				return fmt.Errorf("load pcl program: %w", err)
-			}
 			printDiagnostics(sink, diagnostics)
+			if err != nil {
+				return fmt.Errorf("failed to bind program: %w", err)
+			} else if program == nil {
+				// We've already printed the diagnostics above
+				return fmt.Errorf("failed to bind program")
+			}
 
 			// Load the project from the target directory if there is one. We default to a project with just
 			// the name of the original directory.
