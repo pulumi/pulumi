@@ -19,24 +19,46 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/dustin/go-humanize"
 	"github.com/hexops/gotextdiff"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
+	var edits []gotextdiff.TextEdit
+	if err := json.Unmarshal(deltas, &edits); err != nil {
+		return nil, err
+	}
+	return json.RawMessage(gotextdiff.ApplyEdits(string(before), edits)), nil
+}
 
 // Check that cloudSnapshotPersister can talk the diff-based
 // "checkpointverbatim" and "checkpointdelta" protocol when saving
@@ -242,4 +264,269 @@ var _ tokenSourceCapability = tokenSourceFn(nil)
 
 func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 	return tsf()
+}
+
+func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
+	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+			Project:     info.Project,
+			Stack:       info.Stack,
+			Parallel:    info.Parallel,
+			DryRun:      info.DryRun,
+			MonitorAddr: info.MonitorAddress,
+		})
+		assert.NoError(t, err)
+
+		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
+			type Dummy struct {
+				pulumi.ResourceState
+			}
+
+			for i := 0; i < resourceCount; i++ {
+				var dummy Dummy
+				err := ctx.RegisterComponentResource("examples:dummy:Dummy", fmt.Sprintf("dummy-%d", i), &dummy)
+				if err != nil {
+					return err
+				}
+				err = ctx.RegisterResourceOutputs(&dummy, pulumi.Map{
+					"deadweight": pulumi.String(pseudoRandomString(r, resourcePayloadBytes)),
+				})
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	})
+	host := deploytest.NewPluginHost(nil, nil, program)
+
+	var journalEntries engine.JournalEntries
+	p := &lifecycletest.TestPlan{
+		Options: engine.UpdateOptions{Host: host},
+		Steps: []lifecycletest.TestStep{
+			{
+				Op:          engine.Update,
+				SkipPreview: true,
+				Validate: func(
+					_ workspace.Project,
+					_ deploy.Target,
+					entries engine.JournalEntries,
+					_ []engine.Event,
+					_ result.Result,
+				) result.Result {
+					journalEntries = entries
+					return nil
+				},
+			},
+		},
+	}
+	p.Run(t, nil)
+
+	snaps := make([]*apitype.DeploymentV3, len(journalEntries))
+	for i := range journalEntries {
+		snap, err := journalEntries[:i].Snap(nil)
+		require.NoError(t, err)
+		deployment, err := stack.SerializeDeployment(snap, nil, true)
+		require.NoError(t, err)
+		snaps[i] = deployment
+	}
+	return snaps
+}
+
+func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	dds := newDeploymentDiffState(0)
+	for _, s := range snaps {
+		json, err := client.MarshalUntypedDeployment(s)
+		require.NoError(t, err)
+		if dds.ShouldDiff(json) {
+			d, err := dds.Diff(ctx, json)
+			require.NoError(t, err)
+			actual, err := applyEdits(dds.lastSavedDeployment, d.deploymentDelta)
+			require.NoError(t, err)
+			assert.Equal(t, json, actual)
+		}
+		err = dds.Saved(ctx, json)
+		require.NoError(t, err)
+	}
+}
+
+func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
+	ctx := context.Background()
+	for i := 0; i < b.N; i++ {
+		wireSize, verbatimSize, diffs, verbatims := 0, 0, 0, 0
+		dds := newDeploymentDiffState(0)
+
+		for _, s := range snaps {
+			json, err := client.MarshalUntypedDeployment(s)
+			require.NoError(b, err)
+			verbatimSize += len(json)
+			if dds.ShouldDiff(json) {
+				diffs++
+				d, err := dds.Diff(ctx, json)
+				require.NoError(b, err)
+				wireSize += len(d.deploymentDelta)
+			} else {
+				verbatims++
+				wireSize += len(json)
+			}
+			err = dds.Saved(ctx, json)
+			require.NoError(b, err)
+		}
+		b.ReportMetric(float64(diffs), "diffs")
+		b.ReportMetric(float64(verbatims), "verbatims")
+		b.ReportMetric(float64(wireSize), "wire_bytes")
+		b.ReportMetric(float64(verbatimSize), "checkpoint_bytes")
+		b.ReportMetric(float64(verbatimSize)/float64(wireSize), "ratio")
+	}
+}
+
+func pseudoRandomString(r *rand.Rand, desiredLength int) string {
+	buf := make([]byte, desiredLength)
+	r.Read(buf)
+	text := base64.StdEncoding.EncodeToString(buf)
+	return text[0:desiredLength]
+}
+
+type testingTB[TB any] interface {
+	testing.TB
+
+	Run(name string, inner func(tb TB)) bool
+}
+
+type diffStackTestFunc[TB testingTB[TB]] func(tb TB, snaps []*apitype.DeploymentV3)
+
+type diffStackCase interface {
+	getName() string
+	getSnaps(t testing.TB) []*apitype.DeploymentV3
+}
+
+func testOrBenchmarkDiffStack[TB testingTB[TB]](
+	tb TB,
+	inner diffStackTestFunc[TB],
+	cases []diffStackCase,
+) {
+	for _, c := range cases {
+		name, snaps := c.getName(), c.getSnaps(tb)
+		tb.Run(name, func(tb TB) {
+			inner(tb, snaps)
+		})
+	}
+}
+
+type dynamicStackCase struct {
+	seed                 int
+	resourceCount        int
+	resourcePayloadBytes int
+}
+
+func (c dynamicStackCase) getName() string {
+	return fmt.Sprintf("%v_x_%v", c.resourceCount, humanize.Bytes(uint64(c.resourcePayloadBytes)))
+}
+
+//nolint:gosec
+func (c dynamicStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
+	r := rand.New(rand.NewSource(int64(c.seed)))
+	return generateSnapshots(tb, r, c.resourceCount, c.resourcePayloadBytes)
+}
+
+var dynamicCases = []diffStackCase{
+	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 2},
+	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 8192},
+	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 32768},
+	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 32, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 48, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 64, resourcePayloadBytes: 131072},
+	dynamicStackCase{seed: 0, resourceCount: 1, resourcePayloadBytes: 524288},
+	dynamicStackCase{seed: 0, resourceCount: 2, resourcePayloadBytes: 524288},
+	dynamicStackCase{seed: 0, resourceCount: 4, resourcePayloadBytes: 524288},
+	dynamicStackCase{seed: 0, resourceCount: 8, resourcePayloadBytes: 524288},
+	dynamicStackCase{seed: 0, resourceCount: 16, resourcePayloadBytes: 524288},
+}
+
+func BenchmarkDiffStack(b *testing.B) {
+	testOrBenchmarkDiffStack(b, benchmarkDiffStack, dynamicCases)
+}
+
+func TestDiffStack(t *testing.T) {
+	t.Parallel()
+
+	testOrBenchmarkDiffStack(t, testDiffStack, dynamicCases)
+}
+
+type recordedStackCase string
+
+func (c recordedStackCase) getName() string {
+	return string(c)
+}
+
+func (c recordedStackCase) getSnaps(tb testing.TB) []*apitype.DeploymentV3 {
+	f, err := os.Open(filepath.Join("testdata", string(c)))
+	require.NoError(tb, err)
+	defer contract.IgnoreClose(f)
+
+	var deployments []*apitype.DeploymentV3
+	dec := json.NewDecoder(f)
+	for {
+		var d struct {
+			Version    int
+			Deployment *apitype.DeploymentV3
+		}
+		err := dec.Decode(&d)
+		if err == io.EOF {
+			break
+		}
+		require.NoError(tb, err)
+		deployments = append(deployments, d.Deployment)
+	}
+	return deployments
+}
+
+var recordedCases = []diffStackCase{
+	recordedStackCase("two-large-checkpoints.json"),
+}
+
+func init() {
+	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
+		if c != "" {
+			recordedCases = append(recordedCases, recordedStackCase(c))
+		}
+	}
+}
+
+func BenchmarkDiffStackRecorded(b *testing.B) {
+	testOrBenchmarkDiffStack(b, benchmarkDiffStack, recordedCases)
+}
+
+func TestDiffStackRecorded(t *testing.T) {
+	t.Parallel()
+	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
 }
