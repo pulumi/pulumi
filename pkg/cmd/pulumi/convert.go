@@ -136,9 +136,23 @@ func writeProgram(directory string, proj *workspace.Project, program *pcl.Progra
 	return nil
 }
 
+// Same pclBindProgram but recovers from panics
+func safePclBindProgram(sourceDirectory string, loader schema.ReferenceLoader,
+) (program *pcl.Program, diagnostics hcl.Diagnostics, err error) {
+	// PCL binding can be quite panic'y but even it panics we want to write out the intermediate PCL generated
+	// from the converter, so we use a recover statement here.
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic binding program: %v", r)
+		}
+	}()
+	program, diagnostics, err = pclBindProgram(sourceDirectory, loader)
+	return
+}
+
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-	program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
+	program, diagnostics, err := safePclBindProgram(sourceDirectory, loader)
 	printDiagnostics(sink, diagnostics)
 	if program != nil {
 		// If we successfully bound the program, write out the .pp files from it
