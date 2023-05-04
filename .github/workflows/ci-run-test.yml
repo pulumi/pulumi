@@ -165,6 +165,15 @@ jobs:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: yarn
           cache-dependency-path: sdk/nodejs/yarn.lock
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
