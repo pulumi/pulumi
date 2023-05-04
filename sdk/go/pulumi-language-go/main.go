@@ -645,25 +645,21 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 	}, nil
 }
 
-func (host *goLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
-	if err != nil {
-		return err
-	}
-	// best effort close, but we try an explicit close and error check at the end as well
-	defer closer.Close()
+func (host *goLanguageHost) InstallDependencies(ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	stdout := os.NewFile(uintptr(req.StdoutHandle), "<stdout>")
+	stderr := os.NewFile(uintptr(req.StderrHandle), "<stderr>")
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
-		return err
+		return nil, err
 	}
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
@@ -672,12 +668,12 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
+		return nil, fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {

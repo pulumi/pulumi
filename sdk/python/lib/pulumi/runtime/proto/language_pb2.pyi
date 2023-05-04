@@ -291,18 +291,22 @@ class InstallDependenciesRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     DIRECTORY_FIELD_NUMBER: builtins.int
-    IS_TERMINAL_FIELD_NUMBER: builtins.int
+    STDOUT_HANDLE_FIELD_NUMBER: builtins.int
+    STDERR_HANDLE_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the program's working directory."""
-    is_terminal: builtins.bool
-    """if we are running in a terminal and should use ANSI codes"""
+    stdout_handle: builtins.int
+    """A file handle to write stdout to."""
+    stderr_handle: builtins.int
+    """A file handle to write stderr to."""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
-        is_terminal: builtins.bool = ...,
+        stdout_handle: builtins.int = ...,
+        stderr_handle: builtins.int = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "is_terminal", b"is_terminal"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "stderr_handle", b"stderr_handle", "stdout_handle", b"stdout_handle"]) -> None: ...
 
 global___InstallDependenciesRequest = InstallDependenciesRequest
 
@@ -310,19 +314,9 @@ global___InstallDependenciesRequest = InstallDependenciesRequest
 class InstallDependenciesResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    STDOUT_FIELD_NUMBER: builtins.int
-    STDERR_FIELD_NUMBER: builtins.int
-    stdout: builtins.bytes
-    """a line of stdout text."""
-    stderr: builtins.bytes
-    """a line of stderr text."""
     def __init__(
         self,
-        *,
-        stdout: builtins.bytes = ...,
-        stderr: builtins.bytes = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["stderr", b"stderr", "stdout", b"stdout"]) -> None: ...
 
 global___InstallDependenciesResponse = InstallDependenciesResponse
 

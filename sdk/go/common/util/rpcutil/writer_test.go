@@ -47,12 +47,16 @@ func (m *streamMock) Context() context.Context {
 	return m.ctx
 }
 
-func (m *streamMock) Send(resp *pulumirpc.InstallDependenciesResponse) error {
-	if _, err := m.stdout.Write(resp.Stdout); err != nil {
-		return err
-	}
-	if _, err := m.stderr.Write(resp.Stderr); err != nil {
-		return err
+func (m *streamMock) Send(resp *pulumirpc.RunPluginResponse) error {
+	switch r := resp.Output.(type) {
+	case *pulumirpc.RunPluginResponse_Stdout:
+		if _, err := m.stdout.Write(r.Stdout); err != nil {
+			return err
+		}
+	case *pulumirpc.RunPluginResponse_Stderr:
+		if _, err := m.stderr.Write(r.Stderr); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -62,7 +66,7 @@ func TestWriter_NoTerminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, false)
+	closer, stdout, stderr, err := MakeRunPluginStreams(server, false)
 	assert.NoError(t, err)
 
 	// stdout and stderr should just write to server
@@ -91,7 +95,7 @@ func TestWriter_Terminal(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
+	closer, stdout, stderr, err := MakeRunPluginStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
@@ -169,7 +173,7 @@ func TestWriter_IsPTY(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
+	closer, stdout, stderr, err := MakeRunPluginStreams(server, true)
 	assert.NoError(t, err)
 
 	// We _may_ have made a pty, check IsTerminal returns true
@@ -189,7 +193,7 @@ func TestWriter_SafeToCloseTwice(t *testing.T) {
 
 	server := makeStreamMock()
 
-	closer, _, _, err := MakeInstallDependenciesStreams(server, true)
+	closer, _, _, err := MakeRunPluginStreams(server, true)
 	assert.NoError(t, err)
 
 	err = closer.Close()

@@ -753,29 +753,25 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 	}, nil
 }
 
-func (host *nodeLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
-	if err != nil {
-		return err
-	}
-	// best effort close, but we try an explicit close and error check at the end as well
-	defer closer.Close()
+func (host *nodeLanguageHost) InstallDependencies(ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	stdout := os.NewFile(uintptr(req.StdoutHandle), "<stdout>")
+	stderr := os.NewFile(uintptr(req.StderrHandle), "<stderr>")
 
-	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
+	tracingSpan, ctx := opentracing.StartSpanFromContext(ctx, "npm-install")
 	defer tracingSpan.Finish()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
+	_, err := npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
 	if err != nil {
-		return fmt.Errorf("npm install failed: %w", err)
+		return nil, fmt.Errorf("npm install failed: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {

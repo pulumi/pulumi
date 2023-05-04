@@ -30,9 +30,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -267,43 +265,16 @@ func (h *langhost) Close() error {
 func (h *langhost) InstallDependencies(directory string) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) executing",
 		h.runtime, directory)
-	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:  directory,
-		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
+	_, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
+		Directory:    directory,
+		StdoutHandle: int64(os.Stdout.Fd()),
+		StderrHandle: int64(os.Stderr.Fd()),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
 			h.runtime, directory, rpcError)
-
-		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
-		// method.  In such cases, we will silently error (with the above log left behind).
-		if rpcError.Code() == codes.Unimplemented {
-			return nil
-		}
-
 		return rpcError
-	}
-
-	for {
-		output, err := resp.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
-				h.runtime, directory, rpcError)
-			return rpcError
-		}
-
-		if len(output.Stdout) != 0 {
-			os.Stdout.Write(output.Stdout)
-		}
-
-		if len(output.Stderr) != 0 {
-			os.Stderr.Write(output.Stderr)
-		}
 	}
 
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",

@@ -45,7 +45,7 @@ class LanguageRuntimeStub:
         pulumi.plugin_pb2.PluginInfo,
     ]
     """GetPluginInfo returns generic information about this plugin, like its version."""
-    InstallDependencies: grpc.UnaryStreamMultiCallable[
+    InstallDependencies: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.InstallDependenciesRequest,
         pulumi.language_pb2.InstallDependenciesResponse,
     ]
@@ -112,7 +112,7 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.language_pb2.InstallDependenciesRequest,
         context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.language_pb2.InstallDependenciesResponse]:
+    ) -> pulumi.language_pb2.InstallDependenciesResponse:
         """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
     
     def About(

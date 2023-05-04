@@ -275,7 +275,7 @@ getPluginInfo: {
 installDependencies: {
     path: '/pulumirpc.LanguageRuntime/InstallDependencies',
     requestStream: false,
-    responseStream: true,
+    responseStream: false,
     requestType: pulumi_language_pb.InstallDependenciesRequest,
     responseType: pulumi_language_pb.InstallDependenciesResponse,
     requestSerialize: serialize_pulumirpc_InstallDependenciesRequest,

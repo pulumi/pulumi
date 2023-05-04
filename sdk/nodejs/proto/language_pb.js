@@ -2202,7 +2202,8 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.toObject = function(opt_inc
 proto.pulumirpc.InstallDependenciesRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    isTerminal: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+    stdoutHandle: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    stderrHandle: jspb.Message.getFieldWithDefault(msg, 3, 0)
   };
 
   if (includeInstance) {
@@ -2244,8 +2245,12 @@ proto.pulumirpc.InstallDependenciesRequest.deserializeBinaryFromReader = functio
       msg.setDirectory(value);
       break;
     case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setIsTerminal(value);
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setStdoutHandle(value);
+      break;
+    case 3:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setStderrHandle(value);
       break;
     default:
       reader.skipField();
@@ -2283,10 +2288,17 @@ proto.pulumirpc.InstallDependenciesRequest.serializeBinaryToWriter = function(me
       f
     );
   }
-  f = message.getIsTerminal();
-  if (f) {
-    writer.writeBool(
+  f = message.getStdoutHandle();
+  if (f !== 0) {
+    writer.writeInt64(
       2,
+      f
+    );
+  }
+  f = message.getStderrHandle();
+  if (f !== 0) {
+    writer.writeInt64(
+      3,
       f
     );
   }
@@ -2312,20 +2324,38 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.setDirectory = function(val
 
 
 /**
- * optional bool is_terminal = 2;
- * @return {boolean}
+ * optional int64 stdout_handle = 2;
+ * @return {number}
  */
-proto.pulumirpc.InstallDependenciesRequest.prototype.getIsTerminal = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+proto.pulumirpc.InstallDependenciesRequest.prototype.getStdoutHandle = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {number} value
  * @return {!proto.pulumirpc.InstallDependenciesRequest} returns this
  */
-proto.pulumirpc.InstallDependenciesRequest.prototype.setIsTerminal = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+proto.pulumirpc.InstallDependenciesRequest.prototype.setStdoutHandle = function(value) {
+  return jspb.Message.setProto3IntField(this, 2, value);
+};
+
+
+/**
+ * optional int64 stderr_handle = 3;
+ * @return {number}
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.getStderrHandle = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.pulumirpc.InstallDependenciesRequest} returns this
+ */
+proto.pulumirpc.InstallDependenciesRequest.prototype.setStderrHandle = function(value) {
+  return jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
@@ -2361,8 +2391,7 @@ proto.pulumirpc.InstallDependenciesResponse.prototype.toObject = function(opt_in
  */
 proto.pulumirpc.InstallDependenciesResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    stdout: msg.getStdout_asB64(),
-    stderr: msg.getStderr_asB64()
+
   };
 
   if (includeInstance) {
@@ -2399,14 +2428,6 @@ proto.pulumirpc.InstallDependenciesResponse.deserializeBinaryFromReader = functi
     }
     var field = reader.getFieldNumber();
     switch (field) {
-    case 1:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStdout(value);
-      break;
-    case 2:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStderr(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -2436,104 +2457,6 @@ proto.pulumirpc.InstallDependenciesResponse.prototype.serializeBinary = function
  */
 proto.pulumirpc.InstallDependenciesResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getStdout_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      1,
-      f
-    );
-  }
-  f = message.getStderr_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bytes stdout = 1;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * This is a type-conversion wrapper around `getStdout()`
- * @return {string}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStdout()));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStdout()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStdout()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.InstallDependenciesResponse} returns this
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.setStdout = function(value) {
-  return jspb.Message.setProto3BytesField(this, 1, value);
-};
-
-
-/**
- * optional bytes stderr = 2;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * This is a type-conversion wrapper around `getStderr()`
- * @return {string}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStderr()));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStderr()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStderr()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.InstallDependenciesResponse} returns this
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.setStderr = function(value) {
-  return jspb.Message.setProto3BytesField(this, 2, value);
 };
 
 

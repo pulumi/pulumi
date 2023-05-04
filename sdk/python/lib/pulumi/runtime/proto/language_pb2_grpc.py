@@ -33,7 +33,7 @@ class LanguageRuntimeStub(object):
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
                 response_deserializer=pulumi_dot_plugin__pb2.PluginInfo.FromString,
                 )
-        self.InstallDependencies = channel.unary_stream(
+        self.InstallDependencies = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/InstallDependencies',
                 request_serializer=pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
@@ -163,7 +163,7 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                     response_serializer=pulumi_dot_plugin__pb2.PluginInfo.SerializeToString,
             ),
-            'InstallDependencies': grpc.unary_stream_rpc_method_handler(
+            'InstallDependencies': grpc.unary_unary_rpc_method_handler(
                     servicer.InstallDependencies,
                     request_deserializer=pulumi_dot_language__pb2.InstallDependenciesRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.InstallDependenciesResponse.SerializeToString,
@@ -272,7 +272,7 @@ class LanguageRuntime(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/pulumirpc.LanguageRuntime/InstallDependencies',
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/InstallDependencies',
             pulumi_dot_language__pb2.InstallDependenciesRequest.SerializeToString,
             pulumi_dot_language__pb2.InstallDependenciesResponse.FromString,
             options, channel_credentials,

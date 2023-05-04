@@ -1215,11 +1215,10 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func (s *languageRuntimeServer) InstallDependencies(
+func (s *languageRuntimeServer) InstallDependencies(ctx context.Context,
 	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	return nil
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 type fileWatcher struct {

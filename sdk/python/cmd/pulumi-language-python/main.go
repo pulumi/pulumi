@@ -841,26 +841,22 @@ func validateVersion(ctx context.Context, virtualEnvPath string) {
 	}
 }
 
-func (host *pythonLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
-	if err != nil {
-		return err
-	}
-	// best effort close, but we try an explicit close and error check at the end as well
-	defer closer.Close()
+func (host *pythonLanguageHost) InstallDependencies(ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	stdout := os.NewFile(uintptr(req.StdoutHandle), "<stdout>")
+	stderr := os.NewFile(uintptr(req.StderrHandle), "<stderr>")
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	if err := python.InstallDependenciesWithWriters(server.Context(),
+	if err := python.InstallDependenciesWithWriters(ctx,
 		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
-		return err
+		return nil, err
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {

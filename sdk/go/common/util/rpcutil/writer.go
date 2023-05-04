@@ -118,21 +118,6 @@ func makeStreams(
 	return &nullCloser{}, stdout, stderr, nil
 }
 
-// Returns a pair of streams for use with the language runtimes InstallDependencies method
-func MakeInstallDependenciesStreams(
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-	isTerminal bool,
-) (io.Closer, io.Writer, io.Writer, error) {
-	return makeStreams(
-		func(b []byte) error {
-			return server.Send(&pulumirpc.InstallDependenciesResponse{Stdout: b})
-		},
-		func(b []byte) error {
-			return server.Send(&pulumirpc.InstallDependenciesResponse{Stderr: b})
-		},
-		isTerminal)
-}
-
 // Returns a pair of streams for use with the language runtimes RunPlugin method
 func MakeRunPluginStreams(
 	server pulumirpc.LanguageRuntime_RunPluginServer,

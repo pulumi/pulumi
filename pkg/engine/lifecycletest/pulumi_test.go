@@ -2986,11 +2986,10 @@ func (ctx *updateContext) GetPluginInfo(_ context.Context, req *pbempty.Empty) (
 	}, nil
 }
 
-func (ctx *updateContext) InstallDependencies(
+func (ctx *updateContext) InstallDependencies(_ context.Context,
 	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	return nil
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func TestLanguageClient(t *testing.T) {

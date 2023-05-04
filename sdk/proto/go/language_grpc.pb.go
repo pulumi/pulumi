@@ -30,7 +30,7 @@ type LanguageRuntimeClient interface {
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error)
+	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (*InstallDependenciesResponse, error)
 	// About returns information about the runtime for this language.
 	About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
@@ -80,36 +80,13 @@ func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *emptypb.E
 	return out, nil
 }
 
-func (c *languageRuntimeClient) InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[0], "/pulumirpc.LanguageRuntime/InstallDependencies", opts...)
+func (c *languageRuntimeClient) InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (*InstallDependenciesResponse, error) {
+	out := new(InstallDependenciesResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/InstallDependencies", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &languageRuntimeInstallDependenciesClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type LanguageRuntime_InstallDependenciesClient interface {
-	Recv() (*InstallDependenciesResponse, error)
-	grpc.ClientStream
-}
-
-type languageRuntimeInstallDependenciesClient struct {
-	grpc.ClientStream
-}
-
-func (x *languageRuntimeInstallDependenciesClient) Recv() (*InstallDependenciesResponse, error) {
-	m := new(InstallDependenciesResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *languageRuntimeClient) About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error) {
@@ -131,7 +108,7 @@ func (c *languageRuntimeClient) GetProgramDependencies(ctx context.Context, in *
 }
 
 func (c *languageRuntimeClient) RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error) {
-	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[1], "/pulumirpc.LanguageRuntime/RunPlugin", opts...)
+	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[0], "/pulumirpc.LanguageRuntime/RunPlugin", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +177,7 @@ type LanguageRuntimeServer interface {
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error
+	InstallDependencies(context.Context, *InstallDependenciesRequest) (*InstallDependenciesResponse, error)
 	// About returns information about the runtime for this language.
 	About(context.Context, *emptypb.Empty) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
@@ -229,8 +206,8 @@ func (UnimplementedLanguageRuntimeServer) Run(context.Context, *RunRequest) (*Ru
 func (UnimplementedLanguageRuntimeServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error {
-	return status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
+func (UnimplementedLanguageRuntimeServer) InstallDependencies(context.Context, *InstallDependenciesRequest) (*InstallDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) About(context.Context, *emptypb.Empty) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
@@ -317,25 +294,22 @@ func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LanguageRuntime_InstallDependencies_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(InstallDependenciesRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _LanguageRuntime_InstallDependencies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallDependenciesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(LanguageRuntimeServer).InstallDependencies(m, &languageRuntimeInstallDependenciesServer{stream})
-}
-
-type LanguageRuntime_InstallDependenciesServer interface {
-	Send(*InstallDependenciesResponse) error
-	grpc.ServerStream
-}
-
-type languageRuntimeInstallDependenciesServer struct {
-	grpc.ServerStream
-}
-
-func (x *languageRuntimeInstallDependenciesServer) Send(m *InstallDependenciesResponse) error {
-	return x.ServerStream.SendMsg(m)
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).InstallDependencies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/InstallDependencies",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).InstallDependencies(ctx, req.(*InstallDependenciesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -469,6 +443,10 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LanguageRuntime_GetPluginInfo_Handler,
 		},
 		{
+			MethodName: "InstallDependencies",
+			Handler:    _LanguageRuntime_InstallDependencies_Handler,
+		},
+		{
 			MethodName: "About",
 			Handler:    _LanguageRuntime_About_Handler,
 		},
@@ -490,11 +468,6 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "InstallDependencies",
-			Handler:       _LanguageRuntime_InstallDependencies_Handler,
-			ServerStreams: true,
-		},
 		{
 			StreamName:    "RunPlugin",
 			Handler:       _LanguageRuntime_RunPlugin_Handler,
