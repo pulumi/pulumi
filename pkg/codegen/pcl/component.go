@@ -82,6 +82,10 @@ func (c *Component) Type() model.Type {
 }
 
 func (c *Component) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	if c == nil || c.VariableType == nil {
+		return model.DynamicType.Traverse(traverser)
+	}
+
 	return c.VariableType.Traverse(traverser)
 }
 
