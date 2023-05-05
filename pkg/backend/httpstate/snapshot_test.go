@@ -340,14 +340,14 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
-		json, err := client.MarshalUntypedDeployment(s)
+		json, err := dds.MarshalDeployment(s)
 		require.NoError(t, err)
 		if dds.ShouldDiff(json) {
 			d, err := dds.Diff(ctx, json)
 			require.NoError(t, err)
-			actual, err := applyEdits(dds.lastSavedDeployment, d.deploymentDelta)
+			actual, err := applyEdits(dds.lastSavedDeployment.raw, d.deploymentDelta)
 			require.NoError(t, err)
-			assert.Equal(t, json, actual)
+			assert.Equal(t, json.raw, actual)
 		}
 		err = dds.Saved(ctx, json)
 		require.NoError(t, err)
@@ -361,9 +361,9 @@ func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
 		dds := newDeploymentDiffState(0)
 
 		for _, s := range snaps {
-			json, err := client.MarshalUntypedDeployment(s)
+			json, err := dds.MarshalDeployment(s)
 			require.NoError(b, err)
-			verbatimSize += len(json)
+			verbatimSize += len(json.raw)
 			if dds.ShouldDiff(json) {
 				diffs++
 				d, err := dds.Diff(ctx, json)
@@ -371,7 +371,7 @@ func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
 				wireSize += len(d.deploymentDelta)
 			} else {
 				verbatims++
-				wireSize += len(json)
+				wireSize += len(json.raw)
 			}
 			err = dds.Saved(ctx, json)
 			require.NoError(b, err)
