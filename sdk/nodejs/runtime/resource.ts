@@ -341,17 +341,27 @@ function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: 
                 newAlias.setUrn(a);
             } else {
                 const newAliasSpec = new aliasproto.Alias.Spec();
-                const noParent = !a.hasOwnProperty("parent") && !parentURN;
                 newAliasSpec.setName(a.name);
                 newAliasSpec.setType(a.type);
                 newAliasSpec.setStack(a.stack);
                 newAliasSpec.setProject(a.project);
-                if (noParent) {
-                    newAliasSpec.setNoparent(noParent);
-                } else {
-                    const aliasParentUrn = a.hasOwnProperty("parent") ? getParentURN(a.parent) : output(parentURN);
-                    const urn = await aliasParentUrn.promise();
-                    newAliasSpec.setParenturn(urn);
+                if (a.hasOwnProperty("parent")) {
+                    if (a.parent === undefined) {
+                        newAliasSpec.setNoparent(true);
+                    } else {
+                        const aliasParentUrn = getParentURN(a.parent);
+                        const urn = await aliasParentUrn.promise();
+                        newAliasSpec.setParenturn(urn);
+                    }
+                } else if (parentURN) {
+                    // If a parent isn't specified for the alias and the resource has a parent,
+                    // pass along the resource's parent in the alias spec.
+                    // It shouldn't be necessary to do this because the engine should fill-in the
+                    // resource's parent if one wasn't specified for the alias.
+                    // However, some older versions of the CLI don't do this correctly, and this
+                    // SDK has always passed along the parent in this way, so we continue doing it
+                    // to maintain compatibility with these versions of the CLI.
+                    newAliasSpec.setParenturn(parentURN);
                 }
                 newAlias.setSpec(newAliasSpec);
             }
