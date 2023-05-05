@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -178,11 +177,8 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	sequenceNumber := 1
 
-	indented, err := MarshalUntypedDeployment(&deployment)
-	assert.NoError(t, err)
-
 	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
-		UpdateIdentifier{}, sequenceNumber, indented, updateTokenStaticSource("token"))
+		UpdateIdentifier{}, sequenceNumber, json.RawMessage(untypedDeployment), updateTokenStaticSource("token"))
 	assert.NoError(t, err)
 
 	compacted := func(raw json.RawMessage) string {
@@ -191,9 +187,6 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 		assert.NoError(t, err)
 		return buf.String()
 	}
-
-	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, 4, len(strings.Split(string(request.UntypedDeployment), "\n")))
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))

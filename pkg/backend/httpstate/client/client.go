@@ -977,14 +977,9 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 		SequenceNumber:    sequenceNumber,
 	}
 
-	reqPayload, err := marshalVerbatimCheckpointRequest(req)
-	if err != nil {
-		return err
-	}
-
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
-	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
+	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 
