@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"unsafe"
 
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
@@ -30,6 +31,10 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 )
+
+func asString(raw json.RawMessage) string {
+	return unsafe.String(unsafe.SliceData([]byte(raw)), len(raw))
+}
 
 type deployment struct {
 	raw json.RawMessage
@@ -113,7 +118,7 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 		checkpointHash = dds.computeHash(childCtx, after)
 	}()
 
-	delta, err := dds.computeEdits(childCtx, string(before), string(after))
+	delta, err := dds.computeEdits(childCtx, asString(before), asString(after))
 	if err != nil {
 		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
 	}
