@@ -56,16 +56,16 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 			persister.context, persister.update, deploymentV3, persister.tokenSource)
 	}
 
-	deployment, err := client.MarshalUntypedDeployment(deploymentV3)
+	differ := persister.deploymentDiffState
+
+	deployment, err := differ.MarshalDeployment(deploymentV3)
 	if err != nil {
 		return err
 	}
 
-	differ := persister.deploymentDiffState
-
 	// If there is no baseline to diff against, or diff is predicted to be inefficient, use saveFull.
 	if !differ.ShouldDiff(deployment) {
-		if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
+		if err := persister.saveFullVerbatim(ctx, differ, deployment.raw, persister.tokenSource); err != nil {
 			return err
 		}
 	} else { // Otherwise can use saveDiff.
@@ -79,7 +79,7 @@ func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)
 			}
-			if err := persister.saveFullVerbatim(ctx, differ, deployment, persister.tokenSource); err != nil {
+			if err := persister.saveFullVerbatim(ctx, differ, deployment.raw, persister.tokenSource); err != nil {
 				return err
 			}
 		}
