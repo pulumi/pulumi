@@ -178,10 +178,10 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	sequenceNumber := 1
 
-	var b bytes.Buffer
-	err = MarshalUntypedDeployment(&b, &deployment)
-	assert.NoError(t, err)
-	indented := b.Bytes()
+	indented, err := marshalDeployment(&deployment)
+	require.NoError(t, err)
+
+	newlines := bytes.Count(indented, []byte{'\n'})
 
 	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
 		UpdateIdentifier{}, sequenceNumber, indented, updateTokenStaticSource("token"))
@@ -195,7 +195,7 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 	}
 
 	// It should have more than one line as json.Marshal would produce.
-	assert.Equal(t, 4, len(strings.Split(string(request.UntypedDeployment), "\n")))
+	assert.Equal(t, newlines+1, len(strings.Split(string(request.UntypedDeployment), "\n")))
 
 	// Compacting should recover the same form as json.Marshal would produce.
 	assert.Equal(t, string(untypedDeployment), compacted(request.UntypedDeployment))

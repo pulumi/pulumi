@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/pkg/v3
 
-go 1.18
+go 1.20
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
@@ -73,6 +73,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
+	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pulumi/pulumi-java/pkg v0.9.2
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.43.0
@@ -211,6 +212,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
+	github.com/pgavlin/text v0.0.0-20230428184845-84c285f11d2f // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: backend/service
+  description: Improve memory consumption and decrease CPU time required when using snapshot patching
