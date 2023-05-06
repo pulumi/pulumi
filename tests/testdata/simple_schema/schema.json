@@ -1,0 +1,22 @@
+{
+    "version": "0.0.1",
+    "name": "simple",
+    "resources": {
+        "simple:index:SomeResource": {
+            "properties": {
+                "a": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "a"
+            ],
+            "inputProperties": {
+                "a": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        }
+    }
+}
