@@ -21,8 +21,9 @@ builds:
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go
-  dir: sdk
-  main: ./go/pulumi-language-go
+  dir: sdk/go/pulumi-language-go
+  main: ./
+  gobinary: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs

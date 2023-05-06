@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "pulumi/codegen/hcl.proto";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 
@@ -32,7 +33,7 @@ service LanguageRuntime {
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 
     // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-    rpc  InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
+    rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
 
     // About returns information about the runtime for this language.
     rpc About(google.protobuf.Empty) returns (AboutResponse) {}
@@ -42,6 +43,15 @@ service LanguageRuntime {
 
     // RunPlugin executes a plugin program and returns its result asynchronously.
     rpc RunPlugin(RunPluginRequest) returns (stream RunPluginResponse) {}
+
+    // GenerateProgram generates a given PCL program into a program for this language.
+    rpc GenerateProgram(GenerateProgramRequest) returns (GenerateProgramResponse) {}
+
+    // GenerateProject generates a given PCL program into a project for this language.
+    rpc GenerateProject(GenerateProjectRequest) returns (GenerateProjectResponse) {}
+
+    // GeneratePackage generates a given pulumi package into a package for this language.
+    rpc GeneratePackage(GeneratePackageRequest) returns (GeneratePackageResponse) {}
 }
 
 // AboutResponse returns runtime information about the language.
@@ -127,4 +137,40 @@ message RunPluginResponse {
         bytes stderr = 2; // a line of stderr text.
         int32 exitcode = 3; // the exit code of the provider.
     }
+}
+
+message GenerateProgramRequest {
+    // the PCL source of the project.
+    map<string, string> source = 1;
+}
+
+message GenerateProgramResponse {
+    // any diagnostics from code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+    // the generated program source code.
+    map<string, bytes> source = 2;
+}
+
+message GenerateProjectRequest {
+    // the directory to generate the project in.
+    string directory = 1;
+    // the JSON-encoded pulumi project file.
+    string project = 2;
+    // the PCL source of the project.
+    map<string, string> source = 3;
+}
+
+message GenerateProjectResponse {
+}
+
+message GeneratePackageRequest {
+    // the directory to generate the package in.
+    string directory = 1;
+    // the JSON-encoded schema.
+    string schema = 2;
+    // extra files to copy to the package output.
+    map<string, bytes> extraFiles = 3;
+}
+
+message GeneratePackageResponse {
 }

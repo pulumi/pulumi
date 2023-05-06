@@ -52,7 +52,6 @@ import (
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
@@ -610,8 +609,6 @@ func newImportCmd() *cobra.Command {
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				programGenerator = dotnet.GenerateProgram
-			case "go":
-				programGenerator = gogen.GenerateProgram
 			case "nodejs":
 				programGenerator = nodejs.GenerateProgram
 			case "python":
@@ -621,7 +618,31 @@ func newImportCmd() *cobra.Command {
 			case "yaml":
 				programGenerator = yamlgen.GenerateProgram
 			default:
-				return result.Errorf("cannot generate resource definitions for %v", proj.Runtime.Name())
+				programGenerator = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+					cwd, err := os.Getwd()
+					if err != nil {
+						return nil, nil, err
+					}
+					sink := cmdutil.Diag()
+
+					ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+					if err != nil {
+						return nil, nil, err
+					}
+					defer contract.IgnoreClose(pCtx.Host)
+
+					languagePlugin, err := ctx.Host.LanguageRuntime(cwd, cwd, proj.Runtime.Name(), nil)
+					if err != nil {
+						return nil, nil, err
+					}
+
+					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source())
+					if err != nil {
+						return nil, nil, err
+					}
+
+					return files, diagnostics, nil
+				}
 			}
 
 			// Fetch the current stack.
