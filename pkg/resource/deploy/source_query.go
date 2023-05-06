@@ -168,7 +168,7 @@ func runLangPlugin(src *querySource) result.Result {
 	}
 
 	// Now run the actual program.
-	progerr, bail, err := langhost.Run(plugin.RunInfo{
+	progerr, bail, err := langhost.Run(src.plugctx.Request(), plugin.RunInfo{
 		MonitorAddress: src.mon.Address(),
 		Stack:          name,
 		Project:        string(src.runinfo.Proj.Name),

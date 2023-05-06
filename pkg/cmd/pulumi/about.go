@@ -144,7 +144,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 			if err != nil {
 				addError(err, fmt.Sprintf("Failed to load language plugin %s", proj.Runtime.Name()))
 			} else {
-				aboutResponse, err := lang.About()
+				aboutResponse, err := lang.About(pluginContext.Request())
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
 				} else {
@@ -157,7 +157,7 @@ func getSummaryAbout(ctx context.Context, transitiveDependencies bool, selectedS
 				}
 
 				progInfo := plugin.ProgInfo{Proj: proj, Pwd: pwd, Program: program}
-				deps, err := lang.GetProgramDependencies(progInfo, transitiveDependencies)
+				deps, err := lang.GetProgramDependencies(pluginContext.Request(), progInfo, transitiveDependencies)
 				if err != nil {
 					addError(err, "Failed to get information about the Pulumi program's dependencies")
 				} else {

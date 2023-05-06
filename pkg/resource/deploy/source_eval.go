@@ -213,7 +213,7 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 			defer contract.IgnoreClose(langhost)
 
 			// Now run the actual program.
-			progerr, bail, err := langhost.Run(plugin.RunInfo{
+			progerr, bail, err := langhost.Run(iter.src.plugctx.Request(), plugin.RunInfo{
 				MonitorAddress:   iter.mon.Address(),
 				Stack:            string(iter.src.runinfo.Target.Name),
 				Project:          string(iter.src.runinfo.Proj.Name),

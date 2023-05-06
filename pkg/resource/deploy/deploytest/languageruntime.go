@@ -42,12 +42,14 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPlugins(info plugin.ProgInfo) ([]workspace.PluginSpec, error) {
+func (p *languageRuntime) GetRequiredPlugins(ctx context.Context,
+	info plugin.ProgInfo,
+) ([]workspace.PluginSpec, error) {
 	return p.requiredPlugins, nil
 }
 
-func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+func (p *languageRuntime) Run(ctx context.Context, info plugin.RunInfo) (string, bool, error) {
+	monitor, err := dialMonitor(ctx, info.MonitorAddress)
 	if err != nil {
 		return "", false, err
 	}
@@ -64,24 +66,27 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	return "", false, nil
 }
 
-func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *languageRuntime) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{Name: "TestLanguage"}, nil
 }
 
-func (p *languageRuntime) InstallDependencies(directory string) error {
+func (p *languageRuntime) InstallDependencies(ctx context.Context, directory string) error {
 	return nil
 }
 
-func (p *languageRuntime) About() (plugin.AboutInfo, error) {
+func (p *languageRuntime) About(ctx context.Context) (plugin.AboutInfo, error) {
 	return plugin.AboutInfo{}, nil
 }
 
 func (p *languageRuntime) GetProgramDependencies(
+	ctx context.Context,
 	info plugin.ProgInfo, transitiveDependencies bool,
 ) ([]plugin.DependencyInfo, error) {
 	return nil, nil
 }
 
-func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
+func (p *languageRuntime) RunPlugin(ctx context.Context,
+	info plugin.RunPluginInfo,
+) (io.Reader, io.Reader, error) {
+	return nil, nil, fmt.Errorf("inline plugins are not currently supported")
 }

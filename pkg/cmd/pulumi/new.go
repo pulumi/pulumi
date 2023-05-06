@@ -686,7 +686,7 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("failed to load language plugin %s: %w", runtime.Name(), err)
 	}
 
-	if err = lang.InstallDependencies(directory); err != nil {
+	if err = lang.InstallDependencies(ctx.Request(), directory); err != nil {
 		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
 			"then run `pulumi up` to perform an initial deployment: %w", err)
 	}

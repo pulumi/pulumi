@@ -41,7 +41,7 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 	client := pulumirpc.NewLanguageRuntimeClient(conn)
 	return &clientLanguageRuntimeHost{
 		Host:            ctx.Host,
-		languageRuntime: plugin.NewLanguageRuntimeClient(ctx, clientRuntimeName, client),
+		languageRuntime: plugin.NewLanguageRuntimeClient(clientRuntimeName, client),
 	}, nil
 }
 

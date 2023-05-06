@@ -468,7 +468,7 @@ func (host *pluginHost) ResolvePlugin(
 func (host *pluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 	kinds plugin.Flags,
 ) ([]workspace.PluginSpec, error) {
-	return host.languageRuntime.GetRequiredPlugins(info)
+	return host.languageRuntime.GetRequiredPlugins(context.TODO(), info)
 }
 
 func (host *pluginHost) GetProjectPlugins() []workspace.ProjectPlugin {

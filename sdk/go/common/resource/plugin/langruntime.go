@@ -29,7 +29,7 @@ type LanguageRuntime interface {
 	// Closer closes any underlying OS resources associated with this plugin (like processes, RPC channels, etc).
 	io.Closer
 	// GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-	GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error)
+	GetRequiredPlugins(ctx context.Context, info ProgInfo) ([]workspace.PluginSpec, error)
 	// Run executes a program in the language runtime for planning or deployment purposes.  If
 	// info.DryRun is true, the code must not assume that side-effects or final values resulting
 	// from resource deployments are actually available.  If it is false, on the other hand, a real
@@ -37,21 +37,21 @@ type LanguageRuntime interface {
 	//
 	// Returns a triple of "error message", "bail", or real "error".  If "bail", the caller should
 	// return result.Bail immediately and not print any further messages to the user.
-	Run(info RunInfo) (string, bool, error)
+	Run(ctx context.Context, info RunInfo) (string, bool, error)
 	// GetPluginInfo returns this plugin's information.
-	GetPluginInfo() (workspace.PluginInfo, error)
+	GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error)
 
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(directory string) error
+	InstallDependencies(ctx context.Context, directory string) error
 
 	// About returns information about the language runtime.
-	About() (AboutInfo, error)
+	About(ctx context.Context) (AboutInfo, error)
 
 	// GetProgramDependencies returns information about the dependencies for the given program.
-	GetProgramDependencies(info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error)
+	GetProgramDependencies(ctx context.Context, info ProgInfo, transitiveDependencies bool) ([]DependencyInfo, error)
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error)
+	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, error)
 }
 
 type DependencyInfo struct {

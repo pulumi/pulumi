@@ -337,7 +337,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 			return nil, errors.Wrap(err, "loading runtime")
 		}
 
-		stdout, stderr, kill, err := runtime.RunPlugin(RunPluginInfo{
+		ctx, kill := context.WithCancel(ctx.Request())
+
+		stdout, stderr, err := runtime.RunPlugin(ctx, RunPluginInfo{
 			Pwd:     pwd,
 			Program: pluginDir,
 			Args:    pluginArgs,

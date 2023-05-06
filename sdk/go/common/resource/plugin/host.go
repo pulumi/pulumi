@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -425,7 +426,7 @@ func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
 		// If not, allocate a new one.
 		plug, err := NewLanguageRuntime(host, host.ctx, root, pwd, runtime, options)
 		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
+			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
 				return nil, infoerr
 			}
@@ -612,7 +613,7 @@ func GetRequiredPlugins(host Host, root string, info ProgInfo, kinds Flags) ([]w
 			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 			//     later than we do (right now, we do it up front, but at that point we don't know the version).
-			deps, err := lang.GetRequiredPlugins(info)
+			deps, err := lang.GetRequiredPlugins(context.TODO(), info)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
 			}
