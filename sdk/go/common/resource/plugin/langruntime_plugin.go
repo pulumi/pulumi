@@ -131,8 +131,6 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 	}
 }
 
-func (h *langhost) Runtime() string { return h.runtime }
-
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, error) {
 	proj := string(info.Proj.Name)
