@@ -82,10 +82,10 @@ func TestCollectImports(t *testing.T) {
 	t.Parallel()
 
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
-	pulumiImports := codegen.NewStringSet()
-	stdImports := codegen.NewStringSet()
-	preambleHelperMethods := codegen.NewStringSet()
-	g.collectImports(g.program, stdImports, pulumiImports, preambleHelperMethods)
+
+	programImports := g.collectImports(g.program)
+	pulumiImports := programImports.pulumiImports
+	stdImports := programImports.stdImports
 	stdVals := stdImports.SortedValues()
 	pulumiVals := pulumiImports.SortedValues()
 	assert.Equal(t, 0, len(stdVals))
