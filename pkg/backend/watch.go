@@ -28,7 +28,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,7 +38,7 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, secretsProvider secrets.Provider, b Backend, stack Stack, op UpdateOperation,
+func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 	apply Applier, paths []string,
 ) result.Result {
 	opts := ApplierOptions{
@@ -52,7 +51,7 @@ func Watch(ctx context.Context, secretsProvider secrets.Provider, b Backend, sta
 	go func() {
 		shown := map[operations.LogEntry]bool{}
 		for {
-			logs, err := b.GetLogs(ctx, secretsProvider, stack, op.StackConfiguration, operations.LogQuery{
+			logs, err := b.GetLogs(ctx, op.SecretsProvider, stack, op.StackConfiguration, operations.LogQuery{
 				StartTime: &startTime,
 			})
 			if err != nil {

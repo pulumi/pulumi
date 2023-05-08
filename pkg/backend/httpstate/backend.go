@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -998,7 +997,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) result.Result {
-	return backend.Watch(ctx, stack.DefaultSecretsProvider, b, stk, op, b.apply, paths)
+	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
