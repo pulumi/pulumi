@@ -17,6 +17,7 @@ package httpstate
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -94,8 +95,9 @@ type cloudStack struct {
 	orgName string
 	// currentOperation contains information about any current operation being performed on the stack, as applicable.
 	currentOperation *apitype.OperationStatus
-	// snapshot contains the latest deployment state, allocated on first use.
-	snapshot **deploy.Snapshot
+	// snapshot contains the latest deployment state, allocated on first use. It's valid for the snapshot
+	// itself to be nil.
+	snapshot atomic.Pointer[*deploy.Snapshot]
 	// b is a pointer to the backend that this stack belongs to.
 	b *cloudBackend
 	// tags contains metadata tags describing additional, extensible properties about this stack.
@@ -113,9 +115,9 @@ func newStack(apistack apitype.Stack, b *cloudBackend) Stack {
 		},
 		orgName:          apistack.OrgName,
 		currentOperation: apistack.CurrentOperation,
-		snapshot:         nil, // We explicitly allocate the snapshot on first use, since it is expensive to compute.
 		tags:             apistack.Tags,
 		b:                b,
+		// We explicitly allocate the snapshot on first use, since it is expensive to compute.
 	}
 }
 func (s *cloudStack) Ref() backend.StackReference                { return s.ref }
@@ -132,8 +134,8 @@ func (s *cloudStack) StackIdentifier() client.StackIdentifier {
 }
 
 func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
-	if s.snapshot != nil {
-		return *s.snapshot, nil
+	if v := s.snapshot.Load(); v != nil {
+		return *v, nil
 	}
 
 	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref)
@@ -141,8 +143,8 @@ func (s *cloudStack) Snapshot(ctx context.Context, secretsProvider secrets.Provi
 		return nil, err
 	}
 
-	s.snapshot = &snap
-	return *s.snapshot, nil
+	s.snapshot.Store(&snap)
+	return snap, nil
 }
 
 func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {

@@ -93,13 +93,14 @@ func (b *localBackend) newQuery(
 
 func (b *localBackend) newUpdate(
 	ctx context.Context,
+	secretsProvider secrets.Provider,
 	ref *localBackendReference,
 	op backend.UpdateOperation,
 ) (*update, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Construct the deployment target.
-	target, err := b.getTarget(ctx, ref,
+	target, err := b.getTarget(ctx, secretsProvider, ref,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
@@ -116,17 +117,22 @@ func (b *localBackend) newUpdate(
 
 func (b *localBackend) getTarget(
 	ctx context.Context,
-	stack *localBackendReference,
+	secretsProvider secrets.Provider,
+	ref *localBackendReference,
 	cfg config.Map,
 	dec config.Decrypter,
 ) (*deploy.Target, error) {
-	contract.Requiref(stack != nil, "stack", "must not be nil")
-	snapshot, _, err := b.getStack(ctx, stack)
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+	stack, err := b.GetStack(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := stack.Snapshot(ctx, secretsProvider)
 	if err != nil {
 		return nil, err
 	}
 	return &deploy.Target{
-		Name:         stack.Name(),
+		Name:         ref.Name(),
 		Organization: "organization", // filestate has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
@@ -134,33 +140,51 @@ func (b *localBackend) getTarget(
 	}, nil
 }
 
-func (b *localBackend) getStack(
+var errCheckpointNotFound = errors.New("checkpoint does not exist")
+
+// stackExists simply does a check that the checkpoint file we expect for this stack exists.
+func (b *localBackend) stackExists(
 	ctx context.Context,
 	ref *localBackendReference,
-) (*deploy.Snapshot, string, error) {
+) (string, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	file := b.stackPath(ctx, ref)
-
-	chk, err := b.getCheckpoint(ctx, ref)
+	chkpath := b.stackPath(ctx, ref)
+	exists, err := b.bucket.Exists(ctx, chkpath)
 	if err != nil {
-		return nil, file, fmt.Errorf("failed to load checkpoint: %w", err)
+		return chkpath, fmt.Errorf("failed to load checkpoint: %w", err)
+	}
+	if !exists {
+		return chkpath, errCheckpointNotFound
+	}
+
+	return chkpath, nil
+}
+
+func (b *localBackend) getSnapshot(ctx context.Context,
+	secretsProvider secrets.Provider, ref *localBackendReference,
+) (*deploy.Snapshot, error) {
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+
+	checkpoint, err := b.getCheckpoint(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, stack.DefaultSecretsProvider, chk)
+	snapshot, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !DisableIntegrityChecking {
 		if verifyerr := snapshot.VerifyIntegrity(); verifyerr != nil {
-			return nil, file, fmt.Errorf("%s: snapshot integrity failure; refusing to use it: %w", file, verifyerr)
+			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", verifyerr)
 		}
 	}
 
-	return snapshot, file, nil
+	return snapshot, nil
 }
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.

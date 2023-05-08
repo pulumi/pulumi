@@ -647,7 +647,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, errors.New("invalid empty stack name")
 	}
 
-	if _, _, err := b.getStack(ctx, localStackRef); err == nil {
+	if _, err := b.stackExists(ctx, localStackRef); err == nil {
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
@@ -657,12 +657,12 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
-	file, err := b.saveStack(ctx, localStackRef, nil, nil)
+	_, err = b.saveStack(ctx, localStackRef, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	stack := newStack(localStackRef, file, nil, b)
+	stack := newStack(localStackRef, b)
 	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
 
 	return stack, nil
@@ -674,16 +674,15 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 		return nil, err
 	}
 
-	snapshot, path, err := b.getStack(ctx, localStackRef)
-
-	switch {
-	case gcerrors.Code(err) == gcerrors.NotFound:
-		return nil, nil
-	case err != nil:
+	_, err = b.stackExists(ctx, localStackRef)
+	if err != nil {
+		if errors.Is(err, errCheckpointNotFound) {
+			return nil, nil
+		}
 		return nil, err
-	default:
-		return newStack(localStackRef, path, snapshot, b), nil
 	}
+
+	return newStack(localStackRef, b), nil
 }
 
 func (b *localBackend) ListStacks(
@@ -727,13 +726,13 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	}
 	defer b.Unlock(ctx, localStackRef)
 
-	snapshot, _, err := b.getStack(ctx, localStackRef)
+	checkpoint, err := b.getCheckpoint(ctx, localStackRef)
 	if err != nil {
 		return false, err
 	}
 
 	// Don't remove stacks that still have resources.
-	if !force && snapshot != nil && len(snapshot.Resources) > 0 {
+	if !force && checkpoint != nil && checkpoint.Latest != nil && len(checkpoint.Latest.Resources) > 0 {
 		return true, errors.New("refusing to remove stack because it still contains resources")
 	}
 
@@ -771,12 +770,6 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 	defer b.Unlock(ctx, oldRef)
 
-	// Get the current state from the stack to be renamed.
-	snap, _, err := b.getStack(ctx, oldRef)
-	if err != nil {
-		return err
-	}
-
 	// Ensure the destination stack does not already exist.
 	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(ctx, newRef))
 	if err != nil {
@@ -784,6 +777,19 @@ func (b *localBackend) renameStack(ctx context.Context, oldRef *localBackendRefe
 	}
 	if hasExisting {
 		return fmt.Errorf("a stack named %s already exists", newRef.String())
+	}
+
+	// Get the current state from the stack to be renamed.
+	stk, err := b.GetStack(ctx, oldRef)
+	if err != nil {
+		return err
+	}
+
+	// TODO: This should work on the Checkpoint data directly, there's no need to deserialize to a snapshot
+	// really but that's currently how RenameStack is written.
+	snap, err := stk.Snapshot(ctx, stack.DefaultSecretsProvider)
+	if err != nil {
+		return err
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
@@ -927,7 +933,7 @@ func (b *localBackend) apply(
 	}
 
 	// Start the update.
-	update, err := b.newUpdate(ctx, localStackRef, op)
+	update, err := b.newUpdate(ctx, op.SecretsProvider, localStackRef, op)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -1108,7 +1114,7 @@ func (b *localBackend) GetLogs(ctx context.Context,
 		return nil, err
 	}
 
-	target, err := b.getTarget(ctx, localStackRef, cfg.Config, cfg.Decrypter)
+	target, err := b.getTarget(ctx, secretsProvider, localStackRef, cfg.Config, cfg.Decrypter)
 	if err != nil {
 		return nil, err
 	}

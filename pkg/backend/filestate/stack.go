@@ -16,6 +16,7 @@ package filestate
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -32,39 +33,41 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// Stack is a local stack.  This simply adds some local-specific properties atop the standard backend stack interface.
-type Stack interface {
-	backend.Stack
-	Path() string // a path to the stack's checkpoint file on disk.
-}
-
 // localStack is a local stack descriptor.
 type localStack struct {
-	ref      *localBackendReference // the stack's reference (qualified name).
-	path     string                 // a path to the stack's checkpoint file on disk.
-	snapshot *deploy.Snapshot       // a snapshot representing the latest deployment state.
-	b        *localBackend          // a pointer to the backend this stack belongs to.
+	// the stack's reference (qualified name).
+	ref *localBackendReference
+	// a snapshot representing the latest deployment state, allocated on first use. It's valid for the
+	// snapshot itself to be nil.
+	snapshot atomic.Pointer[*deploy.Snapshot]
+	// a pointer to the backend this stack belongs to.
+	b *localBackend
 }
 
-func newStack(ref *localBackendReference, path string, snapshot *deploy.Snapshot, b *localBackend) Stack {
+func newStack(ref *localBackendReference, b *localBackend) backend.Stack {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
 
 	return &localStack{
-		ref:      ref,
-		path:     path,
-		snapshot: snapshot,
-		b:        b,
+		ref: ref,
+		b:   b,
 	}
 }
 
 func (s *localStack) Ref() backend.StackReference { return s.ref }
 func (s *localStack) Snapshot(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
-	// TODO: We should delay snapshot reading till here like we do for httpstate, which _also_ means we can
-	// use the secretsProvider passed in rather than assuming DefaultSecretsProvider.
-	return s.snapshot, nil
+	if v := s.snapshot.Load(); v != nil {
+		return *v, nil
+	}
+
+	snap, err := s.b.getSnapshot(ctx, secretsProvider, s.ref)
+	if err != nil {
+		return nil, err
+	}
+
+	s.snapshot.Store(&snap)
+	return snap, nil
 }
 func (s *localStack) Backend() backend.Backend              { return s.b }
-func (s *localStack) Path() string                          { return s.path }
 func (s *localStack) Tags() map[apitype.StackTagName]string { return nil }
 
 func (s *localStack) Remove(ctx context.Context, force bool) (bool, error) {
