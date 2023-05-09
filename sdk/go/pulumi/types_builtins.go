@@ -38,6 +38,10 @@ func (*archive) ElementType() reflect.Type {
 	return archiveType
 }
 
+func (*archive) TypeInfo() TypeInfo[Archive] {
+	return NewTypeInfo[Archive]()
+}
+
 func (in *archive) ToArchiveOutput() ArchiveOutput {
 	return ToOutput(in).(ArchiveOutput)
 }
@@ -106,6 +110,10 @@ type ArchiveArray []ArchiveInput
 // ElementType returns the element type of this Input ([]Archive).
 func (ArchiveArray) ElementType() reflect.Type {
 	return archiveArrayType
+}
+
+func (ArchiveArray) TypeInfo() TypeInfo[[]Archive] {
+	return NewTypeInfo[[]Archive]()
 }
 
 func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
@@ -190,6 +198,10 @@ func (ArchiveMap) ElementType() reflect.Type {
 	return archiveMapType
 }
 
+func (ArchiveMap) TypeInfo() TypeInfo[map[string]Archive] {
+	return NewTypeInfo[map[string]Archive]()
+}
+
 func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
 	return ToOutput(in).(ArchiveMapOutput)
 }
@@ -265,6 +277,10 @@ func (ArchiveArrayMap) ElementType() reflect.Type {
 	return archiveArrayMapType
 }
 
+func (ArchiveArrayMap) TypeInfo() TypeInfo[map[string][]Archive] {
+	return NewTypeInfo[map[string][]Archive]()
+}
+
 func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
 	return ToOutput(in).(ArchiveArrayMapOutput)
 }
@@ -338,6 +354,10 @@ type ArchiveMapArray []ArchiveMapInput
 // ElementType returns the element type of this Input ([]map[string]Archive).
 func (ArchiveMapArray) ElementType() reflect.Type {
 	return archiveMapArrayType
+}
+
+func (ArchiveMapArray) TypeInfo() TypeInfo[[]map[string]Archive] {
+	return NewTypeInfo[[]map[string]Archive]()
 }
 
 func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
@@ -422,6 +442,10 @@ func (ArchiveMapMap) ElementType() reflect.Type {
 	return archiveMapMapType
 }
 
+func (ArchiveMapMap) TypeInfo() TypeInfo[map[string]map[string]Archive] {
+	return NewTypeInfo[map[string]map[string]Archive]()
+}
+
 func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
 	return ToOutput(in).(ArchiveMapMapOutput)
 }
@@ -495,6 +519,10 @@ type ArchiveArrayArray []ArchiveArrayInput
 // ElementType returns the element type of this Input ([][]Archive).
 func (ArchiveArrayArray) ElementType() reflect.Type {
 	return archiveArrayArrayType
+}
+
+func (ArchiveArrayArray) TypeInfo() TypeInfo[[][]Archive] {
+	return NewTypeInfo[[][]Archive]()
 }
 
 func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
@@ -576,6 +604,10 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
+func (*asset) TypeInfo() TypeInfo[Asset] {
+	return NewTypeInfo[Asset]()
+}
+
 func (in *asset) ToAssetOutput() AssetOutput {
 	return ToOutput(in).(AssetOutput)
 }
@@ -644,6 +676,10 @@ type AssetArray []AssetInput
 // ElementType returns the element type of this Input ([]Asset).
 func (AssetArray) ElementType() reflect.Type {
 	return assetArrayType
+}
+
+func (AssetArray) TypeInfo() TypeInfo[[]Asset] {
+	return NewTypeInfo[[]Asset]()
 }
 
 func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
@@ -728,6 +764,10 @@ func (AssetMap) ElementType() reflect.Type {
 	return assetMapType
 }
 
+func (AssetMap) TypeInfo() TypeInfo[map[string]Asset] {
+	return NewTypeInfo[map[string]Asset]()
+}
+
 func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
 	return ToOutput(in).(AssetMapOutput)
 }
@@ -803,6 +843,10 @@ func (AssetArrayMap) ElementType() reflect.Type {
 	return assetArrayMapType
 }
 
+func (AssetArrayMap) TypeInfo() TypeInfo[map[string][]Asset] {
+	return NewTypeInfo[map[string][]Asset]()
+}
+
 func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
 	return ToOutput(in).(AssetArrayMapOutput)
 }
@@ -876,6 +920,10 @@ type AssetMapArray []AssetMapInput
 // ElementType returns the element type of this Input ([]map[string]Asset).
 func (AssetMapArray) ElementType() reflect.Type {
 	return assetMapArrayType
+}
+
+func (AssetMapArray) TypeInfo() TypeInfo[[]map[string]Asset] {
+	return NewTypeInfo[[]map[string]Asset]()
 }
 
 func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
@@ -960,6 +1008,10 @@ func (AssetMapMap) ElementType() reflect.Type {
 	return assetMapMapType
 }
 
+func (AssetMapMap) TypeInfo() TypeInfo[map[string]map[string]Asset] {
+	return NewTypeInfo[map[string]map[string]Asset]()
+}
+
 func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
 	return ToOutput(in).(AssetMapMapOutput)
 }
@@ -1033,6 +1085,10 @@ type AssetArrayArray []AssetArrayInput
 // ElementType returns the element type of this Input ([][]Asset).
 func (AssetArrayArray) ElementType() reflect.Type {
 	return assetArrayArrayType
+}
+
+func (AssetArrayArray) TypeInfo() TypeInfo[[][]Asset] {
+	return NewTypeInfo[[][]Asset]()
 }
 
 func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
@@ -1153,6 +1209,10 @@ func (AssetOrArchiveArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
 }
 
+func (AssetOrArchiveArray) TypeInfo() TypeInfo[[]AssetOrArchive] {
+	return NewTypeInfo[[]AssetOrArchive]()
+}
+
 func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
 	return ToOutput(in).(AssetOrArchiveArrayOutput)
 }
@@ -1219,6 +1279,10 @@ func (AssetOrArchiveMap) ElementType() reflect.Type {
 	return assetOrArchiveMapType
 }
 
+func (AssetOrArchiveMap) TypeInfo() TypeInfo[map[string]AssetOrArchive] {
+	return NewTypeInfo[map[string]AssetOrArchive]()
+}
+
 func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
 	return ToOutput(in).(AssetOrArchiveMapOutput)
 }
@@ -1278,6 +1342,10 @@ func (AssetOrArchiveArrayMap) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
 }
 
+func (AssetOrArchiveArrayMap) TypeInfo() TypeInfo[map[string][]AssetOrArchive] {
+	return NewTypeInfo[map[string][]AssetOrArchive]()
+}
+
 func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
 	return ToOutput(in).(AssetOrArchiveArrayMapOutput)
 }
@@ -1335,6 +1403,10 @@ type AssetOrArchiveMapArray []AssetOrArchiveMapInput
 // ElementType returns the element type of this Input ([]map[string]AssetOrArchive).
 func (AssetOrArchiveMapArray) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
+}
+
+func (AssetOrArchiveMapArray) TypeInfo() TypeInfo[[]map[string]AssetOrArchive] {
+	return NewTypeInfo[[]map[string]AssetOrArchive]()
 }
 
 func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
@@ -1403,6 +1475,10 @@ func (AssetOrArchiveMapMap) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
 }
 
+func (AssetOrArchiveMapMap) TypeInfo() TypeInfo[map[string]map[string]AssetOrArchive] {
+	return NewTypeInfo[map[string]map[string]AssetOrArchive]()
+}
+
 func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
 	return ToOutput(in).(AssetOrArchiveMapMapOutput)
 }
@@ -1460,6 +1536,10 @@ type AssetOrArchiveArrayArray []AssetOrArchiveArrayInput
 // ElementType returns the element type of this Input ([][]AssetOrArchive).
 func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
+}
+
+func (AssetOrArchiveArrayArray) TypeInfo() TypeInfo[[][]AssetOrArchive] {
+	return NewTypeInfo[[][]AssetOrArchive]()
 }
 
 func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
@@ -1529,6 +1609,10 @@ type Bool bool
 // ElementType returns the element type of this Input (bool).
 func (Bool) ElementType() reflect.Type {
 	return boolType
+}
+
+func (Bool) TypeInfo() TypeInfo[bool] {
+	return NewTypeInfo[bool]()
 }
 
 func (in Bool) ToBoolOutput() BoolOutput {
@@ -1611,6 +1695,10 @@ func (*boolPtr) ElementType() reflect.Type {
 	return boolPtrType
 }
 
+func (*boolPtr) TypeInfo() TypeInfo[*bool] {
+	return NewTypeInfo[*bool]()
+}
+
 func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
 	return ToOutput(in).(BoolPtrOutput)
 }
@@ -1672,6 +1760,10 @@ type BoolArray []BoolInput
 // ElementType returns the element type of this Input ([]bool).
 func (BoolArray) ElementType() reflect.Type {
 	return boolArrayType
+}
+
+func (BoolArray) TypeInfo() TypeInfo[[]bool] {
+	return NewTypeInfo[[]bool]()
 }
 
 func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
@@ -1756,6 +1848,10 @@ func (BoolMap) ElementType() reflect.Type {
 	return boolMapType
 }
 
+func (BoolMap) TypeInfo() TypeInfo[map[string]bool] {
+	return NewTypeInfo[map[string]bool]()
+}
+
 func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
 	return ToOutput(in).(BoolMapOutput)
 }
@@ -1831,6 +1927,10 @@ func (BoolArrayMap) ElementType() reflect.Type {
 	return boolArrayMapType
 }
 
+func (BoolArrayMap) TypeInfo() TypeInfo[map[string][]bool] {
+	return NewTypeInfo[map[string][]bool]()
+}
+
 func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
 	return ToOutput(in).(BoolArrayMapOutput)
 }
@@ -1904,6 +2004,10 @@ type BoolMapArray []BoolMapInput
 // ElementType returns the element type of this Input ([]map[string]bool).
 func (BoolMapArray) ElementType() reflect.Type {
 	return boolMapArrayType
+}
+
+func (BoolMapArray) TypeInfo() TypeInfo[[]map[string]bool] {
+	return NewTypeInfo[[]map[string]bool]()
 }
 
 func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
@@ -1988,6 +2092,10 @@ func (BoolMapMap) ElementType() reflect.Type {
 	return boolMapMapType
 }
 
+func (BoolMapMap) TypeInfo() TypeInfo[map[string]map[string]bool] {
+	return NewTypeInfo[map[string]map[string]bool]()
+}
+
 func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
 	return ToOutput(in).(BoolMapMapOutput)
 }
@@ -2061,6 +2169,10 @@ type BoolArrayArray []BoolArrayInput
 // ElementType returns the element type of this Input ([][]bool).
 func (BoolArrayArray) ElementType() reflect.Type {
 	return boolArrayArrayType
+}
+
+func (BoolArrayArray) TypeInfo() TypeInfo[[][]bool] {
+	return NewTypeInfo[[][]bool]()
 }
 
 func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
@@ -2148,6 +2260,10 @@ func (Float64) ElementType() reflect.Type {
 	return float64Type
 }
 
+func (Float64) TypeInfo() TypeInfo[float64] {
+	return NewTypeInfo[float64]()
+}
+
 func (in Float64) ToFloat64Output() Float64Output {
 	return ToOutput(in).(Float64Output)
 }
@@ -2228,6 +2344,10 @@ func (*float64Ptr) ElementType() reflect.Type {
 	return float64PtrType
 }
 
+func (*float64Ptr) TypeInfo() TypeInfo[*float64] {
+	return NewTypeInfo[*float64]()
+}
+
 func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
 	return ToOutput(in).(Float64PtrOutput)
 }
@@ -2289,6 +2409,10 @@ type Float64Array []Float64Input
 // ElementType returns the element type of this Input ([]float64).
 func (Float64Array) ElementType() reflect.Type {
 	return float64ArrayType
+}
+
+func (Float64Array) TypeInfo() TypeInfo[[]float64] {
+	return NewTypeInfo[[]float64]()
 }
 
 func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
@@ -2373,6 +2497,10 @@ func (Float64Map) ElementType() reflect.Type {
 	return float64MapType
 }
 
+func (Float64Map) TypeInfo() TypeInfo[map[string]float64] {
+	return NewTypeInfo[map[string]float64]()
+}
+
 func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
 	return ToOutput(in).(Float64MapOutput)
 }
@@ -2448,6 +2576,10 @@ func (Float64ArrayMap) ElementType() reflect.Type {
 	return float64ArrayMapType
 }
 
+func (Float64ArrayMap) TypeInfo() TypeInfo[map[string][]float64] {
+	return NewTypeInfo[map[string][]float64]()
+}
+
 func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
 	return ToOutput(in).(Float64ArrayMapOutput)
 }
@@ -2521,6 +2653,10 @@ type Float64MapArray []Float64MapInput
 // ElementType returns the element type of this Input ([]map[string]float64).
 func (Float64MapArray) ElementType() reflect.Type {
 	return float64MapArrayType
+}
+
+func (Float64MapArray) TypeInfo() TypeInfo[[]map[string]float64] {
+	return NewTypeInfo[[]map[string]float64]()
 }
 
 func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
@@ -2605,6 +2741,10 @@ func (Float64MapMap) ElementType() reflect.Type {
 	return float64MapMapType
 }
 
+func (Float64MapMap) TypeInfo() TypeInfo[map[string]map[string]float64] {
+	return NewTypeInfo[map[string]map[string]float64]()
+}
+
 func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
 	return ToOutput(in).(Float64MapMapOutput)
 }
@@ -2678,6 +2818,10 @@ type Float64ArrayArray []Float64ArrayInput
 // ElementType returns the element type of this Input ([][]float64).
 func (Float64ArrayArray) ElementType() reflect.Type {
 	return float64ArrayArrayType
+}
+
+func (Float64ArrayArray) TypeInfo() TypeInfo[[][]float64] {
+	return NewTypeInfo[[][]float64]()
 }
 
 func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
@@ -2760,6 +2904,10 @@ type IDInput interface {
 // ElementType returns the element type of this Input (ID).
 func (ID) ElementType() reflect.Type {
 	return idType
+}
+
+func (ID) TypeInfo() TypeInfo[ID] {
+	return NewTypeInfo[ID]()
 }
 
 func (in ID) ToIDOutput() IDOutput {
@@ -2860,6 +3008,10 @@ func (*idPtr) ElementType() reflect.Type {
 	return iDPtrType
 }
 
+func (*idPtr) TypeInfo() TypeInfo[*ID] {
+	return NewTypeInfo[*ID]()
+}
+
 func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
 	return ToOutput(in).(IDPtrOutput)
 }
@@ -2921,6 +3073,10 @@ type IDArray []IDInput
 // ElementType returns the element type of this Input ([]ID).
 func (IDArray) ElementType() reflect.Type {
 	return iDArrayType
+}
+
+func (IDArray) TypeInfo() TypeInfo[[]ID] {
+	return NewTypeInfo[[]ID]()
 }
 
 func (in IDArray) ToIDArrayOutput() IDArrayOutput {
@@ -3005,6 +3161,10 @@ func (IDMap) ElementType() reflect.Type {
 	return iDMapType
 }
 
+func (IDMap) TypeInfo() TypeInfo[map[string]ID] {
+	return NewTypeInfo[map[string]ID]()
+}
+
 func (in IDMap) ToIDMapOutput() IDMapOutput {
 	return ToOutput(in).(IDMapOutput)
 }
@@ -3080,6 +3240,10 @@ func (IDArrayMap) ElementType() reflect.Type {
 	return iDArrayMapType
 }
 
+func (IDArrayMap) TypeInfo() TypeInfo[map[string][]ID] {
+	return NewTypeInfo[map[string][]ID]()
+}
+
 func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
 	return ToOutput(in).(IDArrayMapOutput)
 }
@@ -3153,6 +3317,10 @@ type IDMapArray []IDMapInput
 // ElementType returns the element type of this Input ([]map[string]ID).
 func (IDMapArray) ElementType() reflect.Type {
 	return iDMapArrayType
+}
+
+func (IDMapArray) TypeInfo() TypeInfo[[]map[string]ID] {
+	return NewTypeInfo[[]map[string]ID]()
 }
 
 func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
@@ -3237,6 +3405,10 @@ func (IDMapMap) ElementType() reflect.Type {
 	return iDMapMapType
 }
 
+func (IDMapMap) TypeInfo() TypeInfo[map[string]map[string]ID] {
+	return NewTypeInfo[map[string]map[string]ID]()
+}
+
 func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
 	return ToOutput(in).(IDMapMapOutput)
 }
@@ -3310,6 +3482,10 @@ type IDArrayArray []IDArrayInput
 // ElementType returns the element type of this Input ([][]ID).
 func (IDArrayArray) ElementType() reflect.Type {
 	return iDArrayArrayType
+}
+
+func (IDArrayArray) TypeInfo() TypeInfo[[][]ID] {
+	return NewTypeInfo[[][]ID]()
 }
 
 func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
@@ -3394,6 +3570,10 @@ func (Array) ElementType() reflect.Type {
 	return arrayType
 }
 
+func (Array) TypeInfo() TypeInfo[[]interface{}] {
+	return NewTypeInfo[[]interface{}]()
+}
+
 func (in Array) ToArrayOutput() ArrayOutput {
 	return ToOutput(in).(ArrayOutput)
 }
@@ -3476,6 +3656,10 @@ func (Map) ElementType() reflect.Type {
 	return mapType
 }
 
+func (Map) TypeInfo() TypeInfo[map[string]interface{}] {
+	return NewTypeInfo[map[string]interface{}]()
+}
+
 func (in Map) ToMapOutput() MapOutput {
 	return ToOutput(in).(MapOutput)
 }
@@ -3551,6 +3735,10 @@ func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
 }
 
+func (ArrayMap) TypeInfo() TypeInfo[map[string][]interface{}] {
+	return NewTypeInfo[map[string][]interface{}]()
+}
+
 func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
 	return ToOutput(in).(ArrayMapOutput)
 }
@@ -3624,6 +3812,10 @@ type MapArray []MapInput
 // ElementType returns the element type of this Input ([]map[string]interface{}).
 func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
+}
+
+func (MapArray) TypeInfo() TypeInfo[[]map[string]interface{}] {
+	return NewTypeInfo[[]map[string]interface{}]()
 }
 
 func (in MapArray) ToMapArrayOutput() MapArrayOutput {
@@ -3708,6 +3900,10 @@ func (MapMap) ElementType() reflect.Type {
 	return mapMapType
 }
 
+func (MapMap) TypeInfo() TypeInfo[map[string]map[string]interface{}] {
+	return NewTypeInfo[map[string]map[string]interface{}]()
+}
+
 func (in MapMap) ToMapMapOutput() MapMapOutput {
 	return ToOutput(in).(MapMapOutput)
 }
@@ -3781,6 +3977,10 @@ type ArrayArray []ArrayInput
 // ElementType returns the element type of this Input ([][]interface{}).
 func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
+}
+
+func (ArrayArray) TypeInfo() TypeInfo[[][]interface{}] {
+	return NewTypeInfo[[][]interface{}]()
 }
 
 func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
@@ -3865,6 +4065,10 @@ func (ArrayArrayMap) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
 
+func (ArrayArrayMap) TypeInfo() TypeInfo[map[string][][]interface{}] {
+	return NewTypeInfo[map[string][][]interface{}]()
+}
+
 func (in ArrayArrayMap) ToArrayArrayMapOutput() ArrayArrayMapOutput {
 	return ToOutput(in).(ArrayArrayMapOutput)
 }
@@ -3941,6 +4145,10 @@ type Int int
 // ElementType returns the element type of this Input (int).
 func (Int) ElementType() reflect.Type {
 	return intType
+}
+
+func (Int) TypeInfo() TypeInfo[int] {
+	return NewTypeInfo[int]()
 }
 
 func (in Int) ToIntOutput() IntOutput {
@@ -4023,6 +4231,10 @@ func (*intPtr) ElementType() reflect.Type {
 	return intPtrType
 }
 
+func (*intPtr) TypeInfo() TypeInfo[*int] {
+	return NewTypeInfo[*int]()
+}
+
 func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
 	return ToOutput(in).(IntPtrOutput)
 }
@@ -4084,6 +4296,10 @@ type IntArray []IntInput
 // ElementType returns the element type of this Input ([]int).
 func (IntArray) ElementType() reflect.Type {
 	return intArrayType
+}
+
+func (IntArray) TypeInfo() TypeInfo[[]int] {
+	return NewTypeInfo[[]int]()
 }
 
 func (in IntArray) ToIntArrayOutput() IntArrayOutput {
@@ -4168,6 +4384,10 @@ func (IntMap) ElementType() reflect.Type {
 	return intMapType
 }
 
+func (IntMap) TypeInfo() TypeInfo[map[string]int] {
+	return NewTypeInfo[map[string]int]()
+}
+
 func (in IntMap) ToIntMapOutput() IntMapOutput {
 	return ToOutput(in).(IntMapOutput)
 }
@@ -4243,6 +4463,10 @@ func (IntArrayMap) ElementType() reflect.Type {
 	return intArrayMapType
 }
 
+func (IntArrayMap) TypeInfo() TypeInfo[map[string][]int] {
+	return NewTypeInfo[map[string][]int]()
+}
+
 func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
 	return ToOutput(in).(IntArrayMapOutput)
 }
@@ -4316,6 +4540,10 @@ type IntMapArray []IntMapInput
 // ElementType returns the element type of this Input ([]map[string]int).
 func (IntMapArray) ElementType() reflect.Type {
 	return intMapArrayType
+}
+
+func (IntMapArray) TypeInfo() TypeInfo[[]map[string]int] {
+	return NewTypeInfo[[]map[string]int]()
 }
 
 func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
@@ -4400,6 +4628,10 @@ func (IntMapMap) ElementType() reflect.Type {
 	return intMapMapType
 }
 
+func (IntMapMap) TypeInfo() TypeInfo[map[string]map[string]int] {
+	return NewTypeInfo[map[string]map[string]int]()
+}
+
 func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
 	return ToOutput(in).(IntMapMapOutput)
 }
@@ -4473,6 +4705,10 @@ type IntArrayArray []IntArrayInput
 // ElementType returns the element type of this Input ([][]int).
 func (IntArrayArray) ElementType() reflect.Type {
 	return intArrayArrayType
+}
+
+func (IntArrayArray) TypeInfo() TypeInfo[[][]int] {
+	return NewTypeInfo[[][]int]()
 }
 
 func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
@@ -4560,6 +4796,10 @@ func (String) ElementType() reflect.Type {
 	return stringType
 }
 
+func (String) TypeInfo() TypeInfo[string] {
+	return NewTypeInfo[string]()
+}
+
 func (in String) ToStringOutput() StringOutput {
 	return ToOutput(in).(StringOutput)
 }
@@ -4640,6 +4880,10 @@ func (*stringPtr) ElementType() reflect.Type {
 	return stringPtrType
 }
 
+func (*stringPtr) TypeInfo() TypeInfo[*string] {
+	return NewTypeInfo[*string]()
+}
+
 func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
 	return ToOutput(in).(StringPtrOutput)
 }
@@ -4701,6 +4945,10 @@ type StringArray []StringInput
 // ElementType returns the element type of this Input ([]string).
 func (StringArray) ElementType() reflect.Type {
 	return stringArrayType
+}
+
+func (StringArray) TypeInfo() TypeInfo[[]string] {
+	return NewTypeInfo[[]string]()
 }
 
 func (in StringArray) ToStringArrayOutput() StringArrayOutput {
@@ -4785,6 +5033,10 @@ func (StringMap) ElementType() reflect.Type {
 	return stringMapType
 }
 
+func (StringMap) TypeInfo() TypeInfo[map[string]string] {
+	return NewTypeInfo[map[string]string]()
+}
+
 func (in StringMap) ToStringMapOutput() StringMapOutput {
 	return ToOutput(in).(StringMapOutput)
 }
@@ -4860,6 +5112,10 @@ func (StringArrayMap) ElementType() reflect.Type {
 	return stringArrayMapType
 }
 
+func (StringArrayMap) TypeInfo() TypeInfo[map[string][]string] {
+	return NewTypeInfo[map[string][]string]()
+}
+
 func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
 	return ToOutput(in).(StringArrayMapOutput)
 }
@@ -4933,6 +5189,10 @@ type StringMapArray []StringMapInput
 // ElementType returns the element type of this Input ([]map[string]string).
 func (StringMapArray) ElementType() reflect.Type {
 	return stringMapArrayType
+}
+
+func (StringMapArray) TypeInfo() TypeInfo[[]map[string]string] {
+	return NewTypeInfo[[]map[string]string]()
 }
 
 func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
@@ -5017,6 +5277,10 @@ func (StringMapMap) ElementType() reflect.Type {
 	return stringMapMapType
 }
 
+func (StringMapMap) TypeInfo() TypeInfo[map[string]map[string]string] {
+	return NewTypeInfo[map[string]map[string]string]()
+}
+
 func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
 	return ToOutput(in).(StringMapMapOutput)
 }
@@ -5090,6 +5354,10 @@ type StringArrayArray []StringArrayInput
 // ElementType returns the element type of this Input ([][]string).
 func (StringArrayArray) ElementType() reflect.Type {
 	return stringArrayArrayType
+}
+
+func (StringArrayArray) TypeInfo() TypeInfo[[][]string] {
+	return NewTypeInfo[[][]string]()
 }
 
 func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
@@ -5172,6 +5440,10 @@ type URNInput interface {
 // ElementType returns the element type of this Input (URN).
 func (URN) ElementType() reflect.Type {
 	return urnType
+}
+
+func (URN) TypeInfo() TypeInfo[URN] {
+	return NewTypeInfo[URN]()
 }
 
 func (in URN) ToURNOutput() URNOutput {
@@ -5272,6 +5544,10 @@ func (*urnPtr) ElementType() reflect.Type {
 	return uRNPtrType
 }
 
+func (*urnPtr) TypeInfo() TypeInfo[*URN] {
+	return NewTypeInfo[*URN]()
+}
+
 func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
 	return ToOutput(in).(URNPtrOutput)
 }
@@ -5333,6 +5609,10 @@ type URNArray []URNInput
 // ElementType returns the element type of this Input ([]URN).
 func (URNArray) ElementType() reflect.Type {
 	return uRNArrayType
+}
+
+func (URNArray) TypeInfo() TypeInfo[[]URN] {
+	return NewTypeInfo[[]URN]()
 }
 
 func (in URNArray) ToURNArrayOutput() URNArrayOutput {
@@ -5417,6 +5697,10 @@ func (URNMap) ElementType() reflect.Type {
 	return uRNMapType
 }
 
+func (URNMap) TypeInfo() TypeInfo[map[string]URN] {
+	return NewTypeInfo[map[string]URN]()
+}
+
 func (in URNMap) ToURNMapOutput() URNMapOutput {
 	return ToOutput(in).(URNMapOutput)
 }
@@ -5492,6 +5776,10 @@ func (URNArrayMap) ElementType() reflect.Type {
 	return uRNArrayMapType
 }
 
+func (URNArrayMap) TypeInfo() TypeInfo[map[string][]URN] {
+	return NewTypeInfo[map[string][]URN]()
+}
+
 func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
 	return ToOutput(in).(URNArrayMapOutput)
 }
@@ -5565,6 +5853,10 @@ type URNMapArray []URNMapInput
 // ElementType returns the element type of this Input ([]map[string]URN).
 func (URNMapArray) ElementType() reflect.Type {
 	return uRNMapArrayType
+}
+
+func (URNMapArray) TypeInfo() TypeInfo[[]map[string]URN] {
+	return NewTypeInfo[[]map[string]URN]()
 }
 
 func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
@@ -5649,6 +5941,10 @@ func (URNMapMap) ElementType() reflect.Type {
 	return uRNMapMapType
 }
 
+func (URNMapMap) TypeInfo() TypeInfo[map[string]map[string]URN] {
+	return NewTypeInfo[map[string]map[string]URN]()
+}
+
 func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
 	return ToOutput(in).(URNMapMapOutput)
 }
@@ -5722,6 +6018,10 @@ type URNArrayArray []URNArrayInput
 // ElementType returns the element type of this Input ([][]URN).
 func (URNArrayArray) ElementType() reflect.Type {
 	return uRNArrayArrayType
+}
+
+func (URNArrayArray) TypeInfo() TypeInfo[[][]URN] {
+	return NewTypeInfo[[][]URN]()
 }
 
 func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {

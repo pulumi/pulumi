@@ -34,10 +34,8 @@ func typeOf[T any]() reflect.Type {
 	return reflect.TypeOf((*T)(nil)).Elem()
 }
 
-// TODO: this isn't an Input. Name it something else.
-// Or figure out how to turn InputT[T] into an Output.
 type InputT[T any] interface {
-	Output
+	Input
 
 	TypeInfo() TypeInfo[T]
 	// TODO: Can we enforce that T is assignable to ElementType?
@@ -75,14 +73,14 @@ func (OutputT[T]) TypeInfo() TypeInfo[T] {
 }
 
 func (o OutputT[T]) ToAnyOutput() AnyOutput {
-	return AnyOutput{o.OutputState}
+	return AnyOutput(o)
 }
 
 // awaitT is a type-safe variant of OutputState.await.
 func awaitT[I InputT[T], T any](ctx context.Context, o InputT[T]) (v T, known, secret bool, deps []Resource, err error) {
 	var value any
 	// TODO: make OutputState type-safe internally.
-	value, known, secret, deps, err = o.getState().await(ctx)
+	value, known, secret, deps, err = ToOutput(o).getState().await(ctx)
 	if err == nil {
 		v = value.(T)
 		// TODO: should this turn into an error?
@@ -204,10 +202,13 @@ func (o MapOutputT[K, V]) MapIndex(i InputT[K]) OutputT[V] {
 	})
 }
 
-// TODO: Should we parameterize the applier?
+// TODO: Should we parameterize the applier so context, etc. can be optionally
+// passed in?
 func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 	// TODO: make this type safe
-	return OutputT[O]{o.getState().ApplyT(f).getState()}
+	return OutputT[O]{
+		ToOutput(o).getState().ApplyT(f).getState(),
+	}
 }
 
 func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f func(T1, T2) O) OutputT[O] {
@@ -243,5 +244,5 @@ Apply3(a, b, c, f) -> Output[U]
 Apply8(a, b, c, d, e, f, g, h, f) -> Output[U]
 */
 
-// Make a typed outputState[T].
-// Make the embeds above private.
+// TODO Make a typed outputState[T].
+// TODO Make the embeds above private.

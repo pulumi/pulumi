@@ -62,6 +62,10 @@ func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
+func ({{.InputType}}) TypeInfo() TypeInfo[{{.ElementType}}] {
+	return NewTypeInfo[{{.ElementType}}]()
+}
+
 func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
 	return ToOutput(in).({{.Name}}Output)
 }

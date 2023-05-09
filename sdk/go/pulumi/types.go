@@ -1305,7 +1305,7 @@ func NewResourceInput(resource Resource) ResourceInput {
 }
 
 func NewResourceOutput(resource Resource) ResourceOutput {
-	o := ApplyT(Int(0).ToIntOutput(), func(_ int) Resource {
+	o := ApplyT(Int(0), func(_ int) Resource {
 		return resource
 	})
 	return ResourceOutput(o)
