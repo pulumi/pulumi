@@ -10,7 +10,7 @@ cases.push({
 
 function __f0(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return async function (a) { await a; };
 
@@ -28,7 +28,7 @@ cases.push({
 
 function __f0(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return async function (a) { await a; };
 
@@ -46,7 +46,7 @@ cases.push({
 
 function __foo(__0) {
   return (function() {
-    with({ foo: __foo }) {
+    with({ foo: __foo, this: undefined, arguments: undefined }) {
 
 return async function /*foo*/(a) { await a; };
 
@@ -64,7 +64,7 @@ cases.push({
 
 function __f0(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return async (a) => { await a; };
 

@@ -51,7 +51,7 @@ describe("closure", () => {
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { };
 
@@ -68,7 +68,7 @@ return function () { };
 
 function __f() {
   return (function() {
-    with({ f: __f }) {
+    with({ f: __f, this: undefined, arguments: undefined }) {
 
 return function /*f*/() { };
 
@@ -85,7 +85,7 @@ return function /*f*/() { };
 
 function __f() {
   return (function() {
-    with({ f: __f }) {
+    with({ f: __f, this: undefined, arguments: undefined }) {
 
 return function /*f*/() { f(); };
 
@@ -102,7 +102,7 @@ return function /*f*/() { f(); };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { console.log(this); };
 
@@ -120,7 +120,7 @@ return function () { console.log(this); };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { console.log(this + arguments); };
 
@@ -137,7 +137,7 @@ return function () { console.log(this + arguments); };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { };
 
@@ -167,7 +167,7 @@ Function code:
 `
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -191,7 +191,7 @@ return function (thisArg, _arguments, P, generator) {
 ${awaiterCode}
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return () => __awaiter(void 0, void 0, void 0, function* () { });
 
@@ -209,7 +209,7 @@ return () => __awaiter(void 0, void 0, void 0, function* () { });
 ${awaiterCode}
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return () => __awaiter(void 0, void 0, void 0, function* () { console.log(this); });
 
@@ -226,7 +226,7 @@ return () => __awaiter(void 0, void 0, void 0, function* () { console.log(this);
 ${awaiterCode}
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return function () {
             return __awaiter(this, void 0, void 0, function* () { });
@@ -245,7 +245,7 @@ return function () {
 ${awaiterCode}
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return function () {
             return __awaiter(this, void 0, void 0, function* () { console.log(this); });
@@ -279,7 +279,7 @@ Function code:
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { () => { console.log(this); }; };
 
@@ -297,7 +297,7 @@ return function () { () => { console.log(this); }; };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { () => { console.log(this + arguments); }; };
 
@@ -326,7 +326,7 @@ var __task = {run: __f2};
 
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -344,7 +344,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f2() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return function () {
                     return __awaiter(this, void 0, void 0, function* () { });
@@ -356,7 +356,7 @@ return function () {
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __task }) {
+    with({ __awaiter: __f1, task: __task, this: undefined, arguments: undefined }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -391,7 +391,7 @@ __task.run = __f3;
 
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -409,7 +409,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f2() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.run = function () {
@@ -423,7 +423,7 @@ return function /*constructor*/() {
 
 function __f3() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return function () {
                     return __awaiter(this, void 0, void 0, function* () { console.log(this); });
@@ -435,7 +435,7 @@ return function () {
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __task }) {
+    with({ __awaiter: __f1, task: __task, this: undefined, arguments: undefined }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -467,7 +467,7 @@ var __task = {run: __f2};
 
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -485,7 +485,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f2() {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return () => __awaiter(this, void 0, void 0, function* () { });
 
@@ -495,7 +495,7 @@ return () => __awaiter(this, void 0, void 0, function* () { });
 
 function __f0() {
   return (function() {
-    with({ __awaiter: __f1, task: __task }) {
+    with({ __awaiter: __f1, task: __task, this: undefined, arguments: undefined }) {
 
 return function () {
                 return __awaiter(this, void 0, void 0, function* () { yield task.run(); });
@@ -542,7 +542,7 @@ Function code:
 
 function __f0(__0, __1, __2) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (x, y, z) { };
 
@@ -559,7 +559,7 @@ return function (x, y, z) { };
 
 function __f0(__0, __1, __2) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return (x, y, z) => { };
 
@@ -577,7 +577,7 @@ return (x, y, z) => { };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { console.log("Just a global object reference"); };
 
@@ -604,7 +604,7 @@ return () => { console.log("Just a global object reference"); };
 
 function __f0() {
   return (function() {
-    with({ a: -0, b: -0, c: Infinity, d: -Infinity, e: NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324 }) {
+    with({ a: -0, b: -0, c: Infinity, d: -Infinity, e: NaN, f: 9007199254740991, g: 1.7976931348623157e+308, h: -9007199254740991, i: 5e-324, this: undefined, arguments: undefined }) {
 
 return () => { const x = [a, b, c, d, e, f, g, h, i]; };
 
@@ -637,7 +637,7 @@ __zcap.c = __zcap_c;
 
 function __f0() {
   return (function() {
-    with({ wcap: "foo", xcap: 97, ycap: __ycap, zcap: __zcap }) {
+    with({ wcap: "foo", xcap: 97, ycap: __ycap, zcap: __zcap, this: undefined, arguments: undefined }) {
 
 return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zcap.b + zcap.c)); };
 
@@ -696,7 +696,7 @@ return () => { console.log(wcap + \`\${xcap}\` + ycap.length + eval(zcap.a + zca
 
 function __f0(__0, __1) {
   return (function() {
-    with({ cap1: 100, cap2: 200, cap3: 300, cap4: 400, cap5: 500, cap6: 600, cap7: 700, cap8: 800 }) {
+    with({ cap1: 100, cap2: 200, cap3: 300, cap4: 400, cap5: 500, cap6: 600, cap7: 700, cap8: 800, this: undefined, arguments: undefined }) {
 
 return (nocap1, nocap2) => {
     let zz = nocap1 + nocap2; // not a capture: args
@@ -757,7 +757,7 @@ return (nocap1, nocap2) => {
 
 function __f0() {
   return (function() {
-    with({ cap1: 100 }) {
+    with({ cap1: 100, this: undefined, arguments: undefined }) {
 
 return () => {
                 // cap1 is captured here.
@@ -788,7 +788,7 @@ return () => {
 
 function __f0() {
   return (function() {
-    with({ cap1: 100 }) {
+    with({ cap1: 100, this: undefined, arguments: undefined }) {
 
 return () => {
                 // cap1 is captured here.
@@ -819,7 +819,7 @@ return () => {
 
 function __f0() {
   return (function() {
-    with({ cap1: 100 }) {
+    with({ cap1: 100, this: undefined, arguments: undefined }) {
 
 return () => {
                 // cap1 is captured here.
@@ -842,7 +842,7 @@ return () => {
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { let x = eval("undefined + null + NaN + Infinity + __filename"); require("os"); };
 
@@ -863,7 +863,7 @@ const os = require("os");
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => os;
 
@@ -891,7 +891,7 @@ const os = require("os");
 
 function __f0(__0, __1, __2) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return (a, b, c) => {
                 const v = os;
@@ -921,7 +921,7 @@ const os = require("os");
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => os;
 
@@ -931,7 +931,7 @@ return () => os;
 
 function __f0() {
   return (function() {
-    with({ handler: __f1 }) {
+    with({ handler: __f1, this: undefined, arguments: undefined }) {
 
 return () => handler;
 
@@ -957,7 +957,7 @@ __util.assertAsyncThrows = __assertAsyncThrows;
 
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -975,7 +975,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __asyncTest(__0) {
   return (function() {
-    with({ __awaiter: __f1, asyncTest: __asyncTest }) {
+    with({ __awaiter: __f1, asyncTest: __asyncTest, this: undefined, arguments: undefined }) {
 
 return function /*asyncTest*/(test) {
     return (done) => {
@@ -1001,7 +1001,7 @@ return function /*asyncTest*/(test) {
 
 function __assertAsyncThrows(__0) {
   return (function() {
-    with({ __awaiter: __f1, assert_1: __assert_1, assertAsyncThrows: __assertAsyncThrows }) {
+    with({ __awaiter: __f1, assert_1: __assert_1, assertAsyncThrows: __assertAsyncThrows, this: undefined, arguments: undefined }) {
 
 return function /*assertAsyncThrows*/(test) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -1022,7 +1022,7 @@ return function /*assertAsyncThrows*/(test) {
 
 function __f0() {
   return (function() {
-    with({ util: __util }) {
+    with({ util: __util, this: undefined, arguments: undefined }) {
 
 return () => util;
 
@@ -1040,7 +1040,7 @@ return () => util;
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { try { }
         catch (err) {
@@ -1063,7 +1063,7 @@ return () => { try { }
 
 function __f0() {
   return (function() {
-    with({ defaultValue: 1 }) {
+    with({ defaultValue: 1, this: undefined, arguments: undefined }) {
 
 return (arg = defaultValue) => { };
 
@@ -1106,7 +1106,7 @@ __xcap.zzz = __xcap_zzz;
 
 function __f1() {
   return (function() {
-    with({ fff: "fff!" }) {
+    with({ fff: "fff!", this: undefined, arguments: undefined }) {
 
 return function () { console.log(fff); };
 
@@ -1116,7 +1116,7 @@ return function () { console.log(fff); };
 
 function __f2() {
   return (function() {
-    with({ ggg: "ggg!" }) {
+    with({ ggg: "ggg!", this: undefined, arguments: undefined }) {
 
 return () => { console.log(ggg); };
 
@@ -1126,7 +1126,7 @@ return () => { console.log(ggg); };
 
 function __f3(__0, __1) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return (a1, a2) => { console.log(a1 + a2); };
 
@@ -1136,7 +1136,7 @@ return (a1, a2) => { console.log(a1 + a2); };
 
 function __f0() {
   return (function() {
-    with({ xcap: __xcap }) {
+    with({ xcap: __xcap, this: undefined, arguments: undefined }) {
 
 return () => {
             xcap.fff();
@@ -1183,7 +1183,7 @@ Function code:
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { return this; };
 
@@ -1204,7 +1204,7 @@ var __mutable = {};
 
 function __f0() {
   return (function() {
-    with({ mutable: __mutable }) {
+    with({ mutable: __mutable, this: undefined, arguments: undefined }) {
 
 return function () { return mutable; };
 
@@ -1222,7 +1222,7 @@ var __mutable = {timesTheyAreAChangin: true};
 
 function __f0() {
   return (function() {
-    with({ mutable: __mutable }) {
+    with({ mutable: __mutable, this: undefined, arguments: undefined }) {
 
 return function () { return mutable; };
 
@@ -1253,7 +1253,7 @@ __v.d = __v_d;
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(value) {
         this.value = value;
@@ -1265,7 +1265,7 @@ return function /*constructor*/(value) {
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*apply*/(func) {
         throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
@@ -1277,7 +1277,7 @@ return function /*apply*/(func) {
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*get*/() {
         return this.value;
@@ -1289,7 +1289,7 @@ return function /*get*/() {
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return function () { console.log(v); };
 
@@ -1334,7 +1334,7 @@ __v.d4 = __v_d4;
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(value) {
         this.value = value;
@@ -1346,7 +1346,7 @@ return function /*constructor*/(value) {
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*apply*/(func) {
         throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
@@ -1358,7 +1358,7 @@ return function /*apply*/(func) {
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*get*/() {
         return this.value;
@@ -1370,7 +1370,7 @@ return function /*get*/() {
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return function () { console.log(v); };
 
@@ -1413,7 +1413,7 @@ __v.d2 = __v_d2;
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(value) {
         this.value = value;
@@ -1425,7 +1425,7 @@ return function /*constructor*/(value) {
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*apply*/(func) {
         throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
@@ -1437,7 +1437,7 @@ return function /*apply*/(func) {
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*get*/() {
         return this.value;
@@ -1449,7 +1449,7 @@ return function /*get*/() {
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return function () { console.log(v); };
 
@@ -1631,7 +1631,7 @@ __v.o6 = __v_o6;
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(value) {
         this.value = value;
@@ -1643,7 +1643,7 @@ return function /*constructor*/(value) {
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*apply*/(func) {
         throw new Error("'apply' is not allowed from inside a cloud-callback. Use 'get' to retrieve the value of this Output directly.");
@@ -1655,7 +1655,7 @@ return function /*apply*/(func) {
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*get*/() {
         return this.value;
@@ -1667,7 +1667,7 @@ return function /*get*/() {
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return function () { console.log(v); };
 
@@ -1690,7 +1690,7 @@ var __obj = {method1: __f1, method2: __f2};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*method1*/() { return this.method2(); };
 
@@ -1700,7 +1700,7 @@ return function /*method1*/() { return this.method2(); };
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { return; };
 
@@ -1710,7 +1710,7 @@ return () => { return; };
 
 function __f0() {
   return (function() {
-    with({ obj: __obj }) {
+    with({ obj: __obj, this: undefined, arguments: undefined }) {
 
 return function () { console.log(obj); };
 
@@ -1730,7 +1730,7 @@ return function () { console.log(obj); };
 
 function __f0() {
   return (function() {
-    with({ a: undefined }) {
+    with({ a: undefined, this: undefined, arguments: undefined }) {
 
 return function () { const x = typeof a; };
 
@@ -1751,7 +1751,7 @@ return function () { const x = typeof a; };
 
 function __f0() {
   return (function() {
-    with({ a: 0 }) {
+    with({ a: 0, this: undefined, arguments: undefined }) {
 
 return function () { const x = typeof a; };
 
@@ -1780,7 +1780,7 @@ __array[0] = __array_0;
 
 function __f0() {
   return (function() {
-    with({ array: __array }) {
+    with({ array: __array, this: undefined, arguments: undefined }) {
 
 return function () { return array; };
 
@@ -1822,7 +1822,7 @@ __C.m = __f3;
 
 function __C() {
   return (function() {
-    with({ C: __C }) {
+    with({ C: __C, this: undefined, arguments: undefined }) {
 
 return function /*C*/() { };
 
@@ -1832,7 +1832,7 @@ return function /*C*/() { };
 
 function __f1() {
   return (function() {
-    with({ outer: __outer }) {
+    with({ outer: __outer, this: undefined, arguments: undefined }) {
 
 return function () { return this.n() + outer; };
 
@@ -1842,7 +1842,7 @@ return function () { return this.n() + outer; };
 
 function __f2() {
   return (function() {
-    with({ array: __outer_b }) {
+    with({ array: __outer_b, this: undefined, arguments: undefined }) {
 
 return function () { return array; };
 
@@ -1852,7 +1852,7 @@ return function () { return array; };
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { return this.n(); };
 
@@ -1862,7 +1862,7 @@ return function () { return this.n(); };
 
 function __f0() {
   return (function() {
-    with({ C: __C }) {
+    with({ C: __C, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -1901,7 +1901,7 @@ Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() { };
 
@@ -1911,7 +1911,7 @@ return function /*constructor*/() { };
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { return this.n(); };
 
@@ -1921,7 +1921,7 @@ return function /*m*/() { return this.n(); };
 
 function __f3() {
   return (function() {
-    with({ outer: __outer }) {
+    with({ outer: __outer, this: undefined, arguments: undefined }) {
 
 return function /*n*/() { return outer; };
 
@@ -1931,7 +1931,7 @@ return function /*n*/() { return outer; };
 
 function __f4() {
   return (function() {
-    with({ array: __outer_b }) {
+    with({ array: __outer_b, this: undefined, arguments: undefined }) {
 
 return function /*s*/() { return array; };
 
@@ -1941,7 +1941,7 @@ return function /*s*/() { return array; };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -1976,7 +1976,7 @@ Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.x = 1;
@@ -1988,7 +1988,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { return this.n(); };
 
@@ -1998,7 +1998,7 @@ return function /*m*/() { return this.n(); };
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*n*/() { return 1; };
 
@@ -2008,7 +2008,7 @@ return function /*n*/() { return 1; };
 
 function __f4() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*s*/() { return 0; };
 
@@ -2018,7 +2018,7 @@ return function /*s*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -2053,7 +2053,7 @@ Object.defineProperty(__f1, "s", { configurable: true, writable: true, value: __
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.x = 1;
@@ -2065,7 +2065,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { return this.n(); };
 
@@ -2075,7 +2075,7 @@ return function /*m*/() { return this.n(); };
 
 function __f3() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*n*/() { return 1; };
 
@@ -2085,7 +2085,7 @@ return function /*n*/() { return 1; };
 
 function __f4() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*s*/() { return 0; };
 
@@ -2095,7 +2095,7 @@ return function /*s*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => new C();
 
@@ -2118,7 +2118,7 @@ return () => new C();
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { return this.n(); };
 
@@ -2140,7 +2140,7 @@ return function /*m*/() { return this.n(); };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*delete*/() { return 0; };
 
@@ -2164,7 +2164,7 @@ return function /*delete*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { return this.n(); };
 
@@ -2191,7 +2191,7 @@ return function /*m*/() { return this.n(); };
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { return this.n(); };
 
@@ -2217,7 +2217,7 @@ __array[1] = __array;
 
 function __f0() {
   return (function() {
-    with({ array: __array }) {
+    with({ array: __array, this: undefined, arguments: undefined }) {
 
 return () => array;
 
@@ -2243,7 +2243,7 @@ __obj.b = __obj;
 
 function __f0() {
   return (function() {
-    with({ obj: __obj }) {
+    with({ obj: __obj, this: undefined, arguments: undefined }) {
 
 return () => obj;
 
@@ -2272,7 +2272,7 @@ __obj.b = __obj_a;
 
 function __f0() {
   return (function() {
-    with({ obj: __obj }) {
+    with({ obj: __obj, this: undefined, arguments: undefined }) {
 
 return () => obj;
 
@@ -2305,7 +2305,7 @@ __obj2[1] = __obj2_0;
 
 function __f0() {
   return (function() {
-    with({ obj2: __obj2 }) {
+    with({ obj2: __obj2, this: undefined, arguments: undefined }) {
 
 return () => obj2;
 
@@ -2331,7 +2331,7 @@ var __obj = {a: 1};
 
 function __f1() {
   return (function() {
-    with({ obj: __obj, f1: __f1 }) {
+    with({ obj: __obj, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() { return obj; };
 
@@ -2341,7 +2341,7 @@ return function /*f1*/() { return obj; };
 
 function __f2() {
   return (function() {
-    with({ obj: __obj, f2: __f2 }) {
+    with({ obj: __obj, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() { console.log(obj); };
 
@@ -2351,7 +2351,7 @@ return function /*f2*/() { console.log(obj); };
 
 function __f0() {
   return (function() {
-    with({ f1: __f1, obj: __obj, f2: __f2 }) {
+    with({ f1: __f1, obj: __obj, f2: __f2, this: undefined, arguments: undefined }) {
 
 return () => { f1(); obj.a = 2; f2(); };
 
@@ -2378,7 +2378,7 @@ Object.defineProperty(__v, "key", { configurable: true, value: 1 });
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return () => v;
 
@@ -2406,7 +2406,7 @@ Object.defineProperty(__v, "key", { enumerable: true, writable: true, value: 1 }
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return () => v;
 
@@ -2432,7 +2432,7 @@ __v[2] = 3;
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return () => v;
 
@@ -2460,7 +2460,7 @@ __v.foo = "";
 
 function __f0() {
   return (function() {
-    with({ v: __v }) {
+    with({ v: __v, this: undefined, arguments: undefined }) {
 
 return () => v;
 
@@ -2484,7 +2484,7 @@ __f0.foo = "bar";
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { return 1; };
 
@@ -2508,7 +2508,7 @@ var __x = Object.create(null);
 
 function __f0() {
   return (function() {
-    with({ x: __x }) {
+    with({ x: __x, this: undefined, arguments: undefined }) {
 
 return () => { return x; };
 
@@ -2532,7 +2532,7 @@ var __x = Object.create(global.Number.prototype);
 
 function __f0() {
   return (function() {
-    with({ x: __x }) {
+    with({ x: __x, this: undefined, arguments: undefined }) {
 
 return () => { return x; };
 
@@ -2557,7 +2557,7 @@ var __x = Object.create(__x_proto);
 
 function __f1() {
   return (function() {
-    with({ v: __f0 }) {
+    with({ v: __f0, this: undefined, arguments: undefined }) {
 
 return function /*x*/() { return v; };
 
@@ -2567,7 +2567,7 @@ return function /*x*/() { return v; };
 
 function __f0() {
   return (function() {
-    with({ x: __x }) {
+    with({ x: __x, this: undefined, arguments: undefined }) {
 
 return () => { return x; };
 
@@ -2591,7 +2591,7 @@ Object.setPrototypeOf(__f0, __f1);
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { return 0; };
 
@@ -2601,7 +2601,7 @@ return () => { return 0; };
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { return 1; };
 
@@ -2626,7 +2626,7 @@ Object.setPrototypeOf(__f, Object.getPrototypeOf(function*(){}));
 
 function __f() {
   return (function() {
-    with({ f: __f }) {
+    with({ f: __f, this: undefined, arguments: undefined }) {
 
 return function* /*f*/() { yield 1; };
 
@@ -2651,7 +2651,7 @@ Object.setPrototypeOf(__f0, Object.getPrototypeOf(function*(){}));
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function* () { yield 1; };
 
@@ -2691,7 +2691,7 @@ Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this._x = 0;
@@ -2703,7 +2703,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
                 return this._x;
@@ -2715,7 +2715,7 @@ return function /*foo*/() {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*foo*/(v) {
                 this._x = v;
@@ -2727,7 +2727,7 @@ return function /*foo*/(v) {
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -2758,7 +2758,7 @@ Object.defineProperty(__f1, "foo", { configurable: true, get: __f2, set: __f3 })
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() { };
 
@@ -2768,7 +2768,7 @@ return function /*constructor*/() { };
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
                 throw new Error("This getter function should not be evaluated while closure serialization.");
@@ -2780,7 +2780,7 @@ return function /*foo*/() {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*foo*/(v) {
                 throw new Error("This setter function should not be evaluated while closure serialization.");
@@ -2792,7 +2792,7 @@ return function /*foo*/(v) {
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -2823,7 +2823,7 @@ Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() { };
 
@@ -2833,7 +2833,7 @@ return function /*constructor*/() { };
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (a) {
                 return a;
@@ -2845,7 +2845,7 @@ return function (a) {
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -2880,7 +2880,7 @@ Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() { };
 
@@ -2890,7 +2890,7 @@ return function /*constructor*/() { };
 
 function __f2() {
   return (function() {
-    with({ sym: __sym }) {
+    with({ sym: __sym, this: undefined, arguments: undefined }) {
 
 return function /*getSym*/() { return sym; };
 
@@ -2900,7 +2900,7 @@ return function /*getSym*/() { return sym; };
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (a) {
                 return a;
@@ -2912,7 +2912,7 @@ return function (a) {
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -2942,7 +2942,7 @@ Object.defineProperty(__f1, "prototype", { value: __f1_prototype });
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() { };
 
@@ -2952,7 +2952,7 @@ return function /*constructor*/() { };
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (a) {
                 return a;
@@ -2964,7 +2964,7 @@ return function (a) {
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -3018,7 +3018,7 @@ Object.setPrototypeOf(__f1, __f2);
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
                 this.n = n;
@@ -3031,7 +3031,7 @@ return function /*constructor*/(n) {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*dMethod*/(x) { return x; };
 
@@ -3041,7 +3041,7 @@ return function /*dMethod*/(x) { return x; };
 
 function __f4() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*dVirtual*/() { return 1; };
 
@@ -3051,7 +3051,7 @@ return function /*dVirtual*/() { return 1; };
 
 function __f1(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n + 1);
@@ -3064,7 +3064,7 @@ return function /*constructor*/(n) {
 
 function __f5() {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*cMethod*/() {
     return "" +
@@ -3079,7 +3079,7 @@ return function /*cMethod*/() {
 
 function __f6() {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*dVirtual*/() { return 3; };
 
@@ -3089,7 +3089,7 @@ return function /*dVirtual*/() { return 3; };
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -3146,7 +3146,7 @@ Object.setPrototypeOf(__f1, __f2);
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
                 this.n = n;
@@ -3159,7 +3159,7 @@ return function /*constructor*/(n) {
 
 function __f4(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*method*/(x) { return x; };
 
@@ -3169,7 +3169,7 @@ return function /*method*/(x) { return x; };
 
 function __f2(__0) {
   return (function() {
-    with({ __super: __f3 }) {
+    with({ __super: __f3, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n + 1);
@@ -3182,7 +3182,7 @@ return function /*constructor*/(n) {
 
 function __f5(__0) {
   return (function() {
-    with({ __super: __f3 }) {
+    with({ __super: __f3, this: undefined, arguments: undefined }) {
 
 return function /*method*/(n) { return 1 + __super.prototype.method.call(this, n + 1); };
 
@@ -3192,7 +3192,7 @@ return function /*method*/(n) { return 1 + __super.prototype.method.call(this, n
 
 function __f1(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n * 2);
@@ -3205,7 +3205,7 @@ return function /*constructor*/(n) {
 
 function __f6(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*method*/(n) { return 2 * __super.prototype.method.call(this, n * 2); };
 
@@ -3215,7 +3215,7 @@ return function /*method*/(n) { return 2 * __super.prototype.method.call(this, n
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -3276,7 +3276,7 @@ Object.setPrototypeOf(__f1, __f2);
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
                 this.n = n;
@@ -3289,7 +3289,7 @@ return function /*constructor*/(n) {
 
 function __f4(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (x) { return x; };
 
@@ -3299,7 +3299,7 @@ return function (x) { return x; };
 
 function __f2(__0) {
   return (function() {
-    with({ __super: __f3 }) {
+    with({ __super: __f3, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n + 1);
@@ -3312,7 +3312,7 @@ return function /*constructor*/(n) {
 
 function __f5(__0) {
   return (function() {
-    with({ sym: __f3_prototype_sym, __super: __f3 }) {
+    with({ sym: __f3_prototype_sym, __super: __f3, this: undefined, arguments: undefined }) {
 
 return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this, n + 1); };
 
@@ -3322,7 +3322,7 @@ return function /*__computed*/(n) { return 1 + __super.prototype[sym].call(this,
 
 function __f1(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n * 2);
@@ -3335,7 +3335,7 @@ return function /*constructor*/(n) {
 
 function __f6(__0) {
   return (function() {
-    with({ sym: __f3_prototype_sym, __super: __f2 }) {
+    with({ sym: __f3_prototype_sym, __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*__computed*/(n) { return 2 * __super.prototype[sym].call(this, n * 2); };
 
@@ -3345,7 +3345,7 @@ return function /*__computed*/(n) { return 2 * __super.prototype[sym].call(this,
 
 function __f0() {
   return (function() {
-    with({ C: __f1 }) {
+    with({ C: __f1, this: undefined, arguments: undefined }) {
 
 return () => C;
 
@@ -3391,7 +3391,7 @@ Object.setPrototypeOf(__f1, __f2);
 
 function __f2(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
                 this.n = n;
@@ -3404,7 +3404,7 @@ return function /*constructor*/(n) {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*method*/(x) { return x; };
 
@@ -3414,7 +3414,7 @@ return function /*method*/(x) { return x; };
 
 function __f4(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (x) { return x * x; };
 
@@ -3424,7 +3424,7 @@ return function (x) { return x * x; };
 
 function __f1(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(n) {
     __super.call(this, n + 1);
@@ -3437,7 +3437,7 @@ return function /*constructor*/(n) {
 
 function __f5(__0) {
   return (function() {
-    with({ __super: __f2 }) {
+    with({ __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*method*/(n) { return 1 + __super.method.call(this, n + 1); };
 
@@ -3447,7 +3447,7 @@ return function /*method*/(n) { return 1 + __super.method.call(this, n + 1); };
 
 function __f6(__0) {
   return (function() {
-    with({ sym: __f2_sym, __super: __f2 }) {
+    with({ sym: __f2_sym, __super: __f2, this: undefined, arguments: undefined }) {
 
 return function /*__computed*/(x) { return x * __super[sym].call(this, x + 1); };
 
@@ -3457,7 +3457,7 @@ return function /*__computed*/(x) { return x * __super[sym].call(this, x + 1); }
 
 function __f0() {
   return (function() {
-    with({ B: __f1 }) {
+    with({ B: __f1, this: undefined, arguments: undefined }) {
 
 return () => B;
 
@@ -3479,7 +3479,7 @@ var __o = {a: 1};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.a); };
 
@@ -3502,7 +3502,7 @@ var __o = {a: 1};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["a"]); };
 
@@ -3525,7 +3525,7 @@ var __o = {b: 2, c: 3};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b + o.c); };
 
@@ -3548,7 +3548,7 @@ var __o = {b: 2, c: 3};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["b"] + o["c"]); };
 
@@ -3571,7 +3571,7 @@ var __o = {a: 1, b: 2, c: 3};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o); };
 
@@ -3594,7 +3594,7 @@ var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3604,7 +3604,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.c()); };
 
@@ -3627,7 +3627,7 @@ var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3637,7 +3637,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["c"]()); };
 
@@ -3660,7 +3660,7 @@ var __o = {a: 1, b: 2, c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { const v = () => this; };
 
@@ -3670,7 +3670,7 @@ return function /*c*/() { const v = () => this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.c()); };
 
@@ -3694,7 +3694,7 @@ var __o = {c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { const v = function () { return this; }; };
 
@@ -3704,7 +3704,7 @@ return function /*c*/() { const v = function () { return this; }; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.c()); };
 
@@ -3727,7 +3727,7 @@ var __o = {c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3737,7 +3737,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.c); };
 
@@ -3760,7 +3760,7 @@ var __o = {c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3770,7 +3770,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["c"]); };
 
@@ -3793,7 +3793,7 @@ var __o = {c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return 0; };
 
@@ -3803,7 +3803,7 @@ return function /*c*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.c()); };
 
@@ -3826,7 +3826,7 @@ var __o = {c: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return 0; };
 
@@ -3836,7 +3836,7 @@ return function /*c*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["c"]()); };
 
@@ -3861,7 +3861,7 @@ __o.b = __o_b;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3871,7 +3871,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c()); };
 
@@ -3896,7 +3896,7 @@ __o.b = __o_b;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*c*/() { return this; };
 
@@ -3906,7 +3906,7 @@ return function /*c*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["b"]["c"]()); };
 
@@ -3931,7 +3931,7 @@ Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*b*/() { return this; };
 
@@ -3941,7 +3941,7 @@ return function /*b*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b); };
 
@@ -3966,7 +3966,7 @@ Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*b*/() { return this; };
 
@@ -3976,7 +3976,7 @@ return function /*b*/() { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["b"]); };
 
@@ -4000,7 +4000,7 @@ Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*b*/() { return 0; };
 
@@ -4010,7 +4010,7 @@ return function /*b*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b); };
 
@@ -4034,7 +4034,7 @@ Object.defineProperty(__o, "b", { configurable: true, enumerable: true, get: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*b*/() { return 0; };
 
@@ -4044,7 +4044,7 @@ return function /*b*/() { return 0; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o["b"]); };
 
@@ -4075,7 +4075,7 @@ var __o = {a: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o.c);
@@ -4087,7 +4087,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -4121,7 +4121,7 @@ var __o = {a: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o["c"]);
@@ -4133,7 +4133,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o["a"]);
@@ -4163,7 +4163,7 @@ var __o = {};
 
 function __f1() {
   return (function() {
-    with({ o: __o, f1: __f1 }) {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             // @ts-ignore
@@ -4193,7 +4193,7 @@ var __o = {};
 
 function __f1() {
   return (function() {
-    with({ o: __o, f1: __f1 }) {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             // @ts-ignore
@@ -4227,7 +4227,7 @@ var __o = {a: 1, b: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o);
@@ -4239,7 +4239,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o.a);
@@ -4273,7 +4273,7 @@ var __o = {a: 1, b: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o);
@@ -4285,7 +4285,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o["a"]);
@@ -4319,7 +4319,7 @@ var __o = {a: 1, b: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o.a);
@@ -4331,7 +4331,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -4365,7 +4365,7 @@ var __o = {a: 1, b: 1, c: 2};
 
 function __f2() {
   return (function() {
-    with({ o: __o, f2: __f2 }) {
+    with({ o: __o, f2: __f2, this: undefined, arguments: undefined }) {
 
 return function /*f2*/() {
             console.log(o["a"]);
@@ -4377,7 +4377,7 @@ return function /*f2*/() {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f2: __f2, f1: __f1 }) {
+    with({ o: __o, f2: __f2, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -4420,7 +4420,7 @@ __o.b = 2;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.a = 1;
@@ -4433,7 +4433,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { console.log(this); };
 
@@ -4443,7 +4443,7 @@ return function /*m*/() { console.log(this); };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o.m(); };
 
@@ -4483,7 +4483,7 @@ __o.b = 2;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.a = 1;
@@ -4496,7 +4496,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { console.log(this); };
 
@@ -4506,7 +4506,7 @@ return function /*m*/() { console.log(this); };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o["m"](); };
 
@@ -4541,7 +4541,7 @@ Object.defineProperty(__o, "m", { configurable: true, writable: true, value: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { };
 
@@ -4551,7 +4551,7 @@ return function /*m*/() { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o.m(); };
 
@@ -4586,7 +4586,7 @@ Object.defineProperty(__o, "m", { configurable: true, writable: true, value: __f
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { };
 
@@ -4596,7 +4596,7 @@ return function /*m*/() { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o["m"](); };
 
@@ -4648,7 +4648,7 @@ __o.b = 2;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.a = 1;
@@ -4660,7 +4660,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { this.n(); };
 
@@ -4670,7 +4670,7 @@ return function /*m*/() { this.n(); };
 
 function __f3() {
   return (function() {
-    with({ __super: __f1 }) {
+    with({ __super: __f1, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
     __super.call(this);
@@ -4683,7 +4683,7 @@ return function /*constructor*/() {
 
 function __f4() {
   return (function() {
-    with({ __super: __f1 }) {
+    with({ __super: __f1, this: undefined, arguments: undefined }) {
 
 return function /*n*/() { };
 
@@ -4693,7 +4693,7 @@ return function /*n*/() { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o.m(); };
 
@@ -4745,7 +4745,7 @@ __o.b = 2;
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
                 this.a = 1;
@@ -4757,7 +4757,7 @@ return function /*constructor*/() {
 
 function __f2() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*m*/() { this.n(); };
 
@@ -4767,7 +4767,7 @@ return function /*m*/() { this.n(); };
 
 function __f3() {
   return (function() {
-    with({ __super: __f1 }) {
+    with({ __super: __f1, this: undefined, arguments: undefined }) {
 
 return function /*constructor*/() {
     __super.call(this);
@@ -4780,7 +4780,7 @@ return function /*constructor*/() {
 
 function __f4() {
   return (function() {
-    with({ __super: __f1 }) {
+    with({ __super: __f1, this: undefined, arguments: undefined }) {
 
 return function /*n*/() { };
 
@@ -4790,7 +4790,7 @@ return function /*n*/() { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { o["m"](); };
 
@@ -4824,7 +4824,7 @@ var __table1 = {insert: __f1, primaryKey: 1};
 
 function __f0(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -4842,7 +4842,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => { };
 
@@ -4852,7 +4852,7 @@ return () => { };
 
 function __testScanReturnsAllValues() {
   return (function() {
-    with({ __awaiter: __f0, table1: __table1, testScanReturnsAllValues: __testScanReturnsAllValues }) {
+    with({ __awaiter: __f0, table1: __table1, testScanReturnsAllValues: __testScanReturnsAllValues, this: undefined, arguments: undefined }) {
 
 return function /*testScanReturnsAllValues*/() {
             return __awaiter(this, void 0, void 0, function* () {
@@ -4888,7 +4888,7 @@ var __o = {a: 1, b: undefined, c: 2};
 
 function __f1() {
   return (function() {
-    with({ o: __o, f1: __f1 }) {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -4918,7 +4918,7 @@ var __o = {a: 1, b: __f0};
 
 function __f0() {
   return (function() {
-    with({ message: "Function 'b' cannot be called at runtime. It can only be used at deployment time.\\n\\nFunction code:\\n  () => console.log(\\"the actual function\\")\\n" }) {
+    with({ message: "Function 'b' cannot be called at runtime. It can only be used at deployment time.\\n\\nFunction code:\\n  () => console.log(\\"the actual function\\")\\n", this: undefined, arguments: undefined }) {
 
 return () => {
                 throw new Error(message);
@@ -4930,7 +4930,7 @@ return () => {
 
 function __f1() {
   return (function() {
-    with({ o: __o, f1: __f1 }) {
+    with({ o: __o, f1: __f1, this: undefined, arguments: undefined }) {
 
 return function /*f1*/() {
             console.log(o);
@@ -4958,7 +4958,7 @@ return function /*f1*/() {
 
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => console.log(1);
 
@@ -4968,7 +4968,7 @@ return () => console.log(1);
 
 function __f3() {
   return (function() {
-    with({ lambda1: __f0, lambda2: __f0, f3: __f3 }) {
+    with({ lambda1: __f0, lambda2: __f0, f3: __f3, this: undefined, arguments: undefined }) {
 
 return function /*f3*/() {
             return (lambda1(), lambda2());
@@ -5010,7 +5010,7 @@ return function /*f3*/() {
 
 function __f0(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
             return new (P || (P = Promise))(function (resolve, reject) {
@@ -5037,7 +5037,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f3() {
   return (function() {
-    with({ awaiter1: __f0, awaiter2: __f0, f3: __f3 }) {
+    with({ awaiter1: __f0, awaiter2: __f0, f3: __f3, this: undefined, arguments: undefined }) {
 
 return function /*f3*/() {
             const v1 = awaiter1, v2 = awaiter2;
@@ -5060,7 +5060,7 @@ var __exports = {exportedValue: 42};
 
 function __f0() {
   return (function() {
-    with({ exports: __exports }) {
+    with({ exports: __exports, this: undefined, arguments: undefined }) {
 
 return function () { console.log(exports.exportedValue); };
 
@@ -5081,7 +5081,7 @@ var __exports = {exportedValue: 42};
 
 function __f0() {
   return (function() {
-    with({ exports: __exports }) {
+    with({ exports: __exports, this: undefined, arguments: undefined }) {
 
 return function () { console.log(exports.exportedValue); };
 
@@ -5104,7 +5104,7 @@ __module.exports = __module_exports;
 
 function __f0() {
   return (function() {
-    with({ module: __module }) {
+    with({ module: __module, this: undefined, arguments: undefined }) {
 
 return function () { console.log(module.exports.exportedValue); };
 
@@ -5128,7 +5128,7 @@ return function () { console.log(module.exports.exportedValue); };
 
 function __foo() {
   return (function() {
-    with({ foo: __foo }) {
+    with({ foo: __foo, this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
             require("./util");
@@ -5140,7 +5140,7 @@ return function /*foo*/() {
 
 function __f0() {
   return (function() {
-    with({ foo: __foo }) {
+    with({ foo: __foo, this: undefined, arguments: undefined }) {
 
 return function () { require("typescript"); foo(); if (true) {
                 require("os");
@@ -5167,7 +5167,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c); };
 
@@ -5192,7 +5192,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b); console.log(o.b.c); };
 
@@ -5217,7 +5217,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b); };
 
@@ -5240,7 +5240,7 @@ var __o = {a: 1};
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.a); };
 
@@ -5267,7 +5267,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c.d); };
 
@@ -5294,7 +5294,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c.d); console.log(o.b); };
 
@@ -5321,7 +5321,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c.d); console.log(o.b.c); };
 
@@ -5348,7 +5348,7 @@ __o.b = __o_b;
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.c.d); console.log(o.b.c); console.log(o.b); };
 
@@ -5371,7 +5371,7 @@ var __o = {b: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { };
 
@@ -5381,7 +5381,7 @@ return function () { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.name); };
 
@@ -5404,7 +5404,7 @@ var __o = {b: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { };
 
@@ -5414,7 +5414,7 @@ return function () { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.name); console.log(o.b()); };
 
@@ -5437,7 +5437,7 @@ var __o = {b: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { };
 
@@ -5447,7 +5447,7 @@ return function () { };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b()); console.log(o.b.name); };
 
@@ -5470,7 +5470,7 @@ var __o = {a: 1, b: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { return this; };
 
@@ -5480,7 +5480,7 @@ return function () { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b.name); console.log(o.b()); };
 
@@ -5503,7 +5503,7 @@ var __o = {a: 1, b: __f1};
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function () { return this; };
 
@@ -5513,7 +5513,7 @@ return function () { return this; };
 
 function __f0() {
   return (function() {
-    with({ o: __o }) {
+    with({ o: __o, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o.b()); console.log(o.b.name); };
 
@@ -5539,7 +5539,7 @@ __o2.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o1: __o2_b }) {
+    with({ o2: __o2, o1: __o2_b, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b.d); console.log(o1); };
 
@@ -5565,7 +5565,7 @@ __o2.b = __o1;
 
 function __f0() {
   return (function() {
-    with({ o1: __o1, o2: __o2 }) {
+    with({ o1: __o1, o2: __o2, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o1); console.log(o2.b.d); };
 
@@ -5594,7 +5594,7 @@ __o3.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o3: __o3 }) {
+    with({ o2: __o2, o3: __o3, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b.c); console.log(o3.b.d); };
 
@@ -5623,7 +5623,7 @@ __o3.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o3: __o3 }) {
+    with({ o2: __o2, o3: __o3, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b.d); console.log(o3.b.d); };
 
@@ -5652,7 +5652,7 @@ __o3.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o3: __o3 }) {
+    with({ o2: __o2, o3: __o3, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b); console.log(o2.b.d); console.log(o3.b.d); };
 
@@ -5681,7 +5681,7 @@ __o3.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o3: __o3 }) {
+    with({ o2: __o2, o3: __o3, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o2.b); };
 
@@ -5710,7 +5710,7 @@ __o3.b = __o2_b;
 
 function __f0() {
   return (function() {
-    with({ o2: __o2, o3: __o3, o1: __o2_b }) {
+    with({ o2: __o2, o3: __o3, o1: __o2_b, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o2.b.d); console.log(o3.b.d); console.log(o1); };
 
@@ -5739,7 +5739,7 @@ __o3.b = __o1;
 
 function __f0() {
   return (function() {
-    with({ o1: __o1, o2: __o2, o3: __o3 }) {
+    with({ o1: __o1, o2: __o2, o3: __o3, this: undefined, arguments: undefined }) {
 
 return function () { console.log(o1); console.log(o2.b.d); console.log(o3.b.d); };
 
@@ -5766,7 +5766,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return defaultsForThing.config.x; };
 
@@ -5776,7 +5776,7 @@ return function /*getX*/() { return defaultsForThing.config.x; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { x, y: defaultsForThing.config.y }; };
 
@@ -5786,7 +5786,7 @@ return function /*getAll*/() { const x = getX(); return { x, y: defaultsForThing
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -5812,7 +5812,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getAll() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { return { y: defaultsForThing.config.y }; };
 
@@ -5822,7 +5822,7 @@ return function /*getAll*/() { return { y: defaultsForThing.config.y }; };
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -5847,7 +5847,7 @@ var __config = {x: "x", y: "y"};
 
 function __getX() {
   return (function() {
-    with({ config: __config, getX: __getX }) {
+    with({ config: __config, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return config.x; };
 
@@ -5857,7 +5857,7 @@ return function /*getX*/() { return config.x; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, config: __config, getAll: __getAll }) {
+    with({ getX: __getX, config: __config, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { x, y: config.y }; };
 
@@ -5867,7 +5867,7 @@ return function /*getAll*/() { const x = getX(); return { x, y: config.y }; };
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -5894,7 +5894,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return defaultsForThing; };
 
@@ -5904,7 +5904,7 @@ return function /*getX*/() { return defaultsForThing; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config.y }; };
 
@@ -5914,7 +5914,7 @@ return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.co
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -5941,7 +5941,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return defaultsForThing.config; };
 
@@ -5951,7 +5951,7 @@ return function /*getX*/() { return defaultsForThing.config; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config.y }; };
 
@@ -5961,7 +5961,7 @@ return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.co
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -5988,7 +5988,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return defaultsForThing.config.x; };
 
@@ -5998,7 +5998,7 @@ return function /*getX*/() { return defaultsForThing.config.x; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { y: defaultsForThing }; };
 
@@ -6008,7 +6008,7 @@ return function /*getAll*/() { const x = getX(); return { y: defaultsForThing };
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -6035,7 +6035,7 @@ __defaultsForThing.config = __defaultsForThing_config;
 
 function __getX() {
   return (function() {
-    with({ defaultsForThing: __defaultsForThing, getX: __getX }) {
+    with({ defaultsForThing: __defaultsForThing, getX: __getX, this: undefined, arguments: undefined }) {
 
 return function /*getX*/() { return defaultsForThing.config.x; };
 
@@ -6045,7 +6045,7 @@ return function /*getX*/() { return defaultsForThing.config.x; };
 
 function __getAll() {
   return (function() {
-    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll }) {
+    with({ getX: __getX, defaultsForThing: __defaultsForThing, getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.config }; };
 
@@ -6055,7 +6055,7 @@ return function /*getAll*/() { const x = getX(); return { y: defaultsForThing.co
 
 function __f0() {
   return (function() {
-    with({ getAll: __getAll }) {
+    with({ getAll: __getAll, this: undefined, arguments: undefined }) {
 
 return function () { console.log(getAll()); };
 
@@ -6107,7 +6107,7 @@ __testConfig.name = "test";
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(name) {
         if (name.endsWith(":config")) {
@@ -6122,7 +6122,7 @@ return function /*constructor*/(name) {
 
 function __getConfig(__0) {
   return (function() {
-    with({ config: __config, getConfig: __getConfig }) {
+    with({ config: __config, getConfig: __getConfig, this: undefined, arguments: undefined }) {
 
 return function /*getConfig*/(k) {
     return config[k];
@@ -6134,7 +6134,7 @@ return function /*getConfig*/(k) {
 
 function __f2(__0) {
   return (function() {
-    with({ runtimeConfig_1: __runtimeConfig_1 }) {
+    with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
 
 return function /*get*/(key) {
         const v = runtimeConfig_1.getConfig(this.fullKey(key));
@@ -6150,7 +6150,7 @@ return function /*get*/(key) {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*fullKey*/(key) {
         return this.name + ":" + key;
@@ -6162,7 +6162,7 @@ return function /*fullKey*/(key) {
 
 function __f0() {
   return (function() {
-    with({ testConfig: __testConfig }) {
+    with({ testConfig: __testConfig, this: undefined, arguments: undefined }) {
 
 return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
 
@@ -6192,7 +6192,7 @@ var __deploymentOnlyModule = {Config: __f1};
 
 function __f1(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*constructor*/(name) {
         if (name.endsWith(":config")) {
@@ -6207,7 +6207,7 @@ return function /*constructor*/(name) {
 
 function __getConfig(__0) {
   return (function() {
-    with({ config: __config, getConfig: __getConfig }) {
+    with({ config: __config, getConfig: __getConfig, this: undefined, arguments: undefined }) {
 
 return function /*getConfig*/(k) {
     return config[k];
@@ -6219,7 +6219,7 @@ return function /*getConfig*/(k) {
 
 function __f2(__0) {
   return (function() {
-    with({ runtimeConfig_1: __runtimeConfig_1 }) {
+    with({ runtimeConfig_1: __runtimeConfig_1, this: undefined, arguments: undefined }) {
 
 return function /*get*/(key) {
         const v = runtimeConfig_1.getConfig(this.fullKey(key));
@@ -6235,7 +6235,7 @@ return function /*get*/(key) {
 
 function __f3(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function /*fullKey*/(key) {
         return this.name + ":" + key;
@@ -6247,7 +6247,7 @@ return function /*fullKey*/(key) {
 
 function __f0() {
   return (function() {
-    with({ deploymentOnlyModule: __deploymentOnlyModule }) {
+    with({ deploymentOnlyModule: __deploymentOnlyModule, this: undefined, arguments: undefined }) {
 
 return function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); };
 
@@ -6278,7 +6278,7 @@ return function () { const v = new deploymentOnlyModule.Config("test").get("Test
             expectText: `
 function __f0() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => {
                 const serverlessExpress = require("aws-serverless-express");
@@ -6331,7 +6331,7 @@ __outerVal[0] = __outerVal_0;
 
 function __foo() {
   return (function() {
-    with({ outerVal: __outerVal, foo: __foo }) {
+    with({ outerVal: __outerVal, foo: __foo, this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
             outerVal.pop();
@@ -6343,7 +6343,7 @@ return function /*foo*/() {
 
 function __bar() {
   return (function() {
-    with({ outerVal: __outerVal, bar: __bar }) {
+    with({ outerVal: __outerVal, bar: __bar, this: undefined, arguments: undefined }) {
 
 return function /*bar*/() {
             outerVal.join();
@@ -6355,7 +6355,7 @@ return function /*bar*/() {
 
 function __f0() {
   return (function() {
-    with({ outerVal: __outerVal, foo: __foo, bar: __bar }) {
+    with({ outerVal: __outerVal, foo: __foo, bar: __bar, this: undefined, arguments: undefined }) {
 
 return () => {
                 outerVal.push({});
@@ -6381,7 +6381,7 @@ exports.handler = __f0();`,
 
 function __f(__0) {
   return (function() {
-    with({ f: __f }) {
+    with({ f: __f, this: undefined, arguments: undefined }) {
 
 return function /*f*/({ whatever }) { };
 
@@ -6399,7 +6399,7 @@ return function /*f*/({ whatever }) { };
 
 function __f0(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -6417,7 +6417,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f(__0) {
   return (function() {
-    with({ __awaiter: __f0, f: __f }) {
+    with({ __awaiter: __f0, f: __f, this: undefined, arguments: undefined }) {
 
 return function /*f*/({ whatever }) {
             return __awaiter(this, void 0, void 0, function* () { });
@@ -6437,7 +6437,7 @@ return function /*f*/({ whatever }) {
 
 function __f0(__0) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return ({ whatever }) => { };
 
@@ -6455,7 +6455,7 @@ return ({ whatever }) => { };
 
 function __f1(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -6473,7 +6473,7 @@ return function (thisArg, _arguments, P, generator) {
 
 function __f0(__0) {
   return (function() {
-    with({ __awaiter: __f1 }) {
+    with({ __awaiter: __f1, this: undefined, arguments: undefined }) {
 
 return ({ whatever }) => __awaiter(void 0, void 0, void 0, function* () { });
 
@@ -6496,7 +6496,7 @@ var __regex = new RegExp("(abc)[\\\\(123-456]\\\\\\\\a\\\\b\\\\z", "gi");
 
 function __f0() {
   return (function() {
-    with({ regex: __regex }) {
+    with({ regex: __regex, this: undefined, arguments: undefined }) {
 
 return function () { console.log(regex); };
 
@@ -6524,7 +6524,7 @@ var __regex = new RegExp("(abc)", "g");
 
 function __foo() {
   return (function() {
-    with({ regex: __regex, foo: __foo }) {
+    with({ regex: __regex, foo: __foo, this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
             console.log(regex);
@@ -6536,7 +6536,7 @@ return function /*foo*/() {
 
 function __f0() {
   return (function() {
-    with({ regex: __regex, foo: __foo }) {
+    with({ regex: __regex, foo: __foo, this: undefined, arguments: undefined }) {
 
 return function () { console.log(regex); foo(); };
 
@@ -6564,7 +6564,7 @@ var __regex = new RegExp("(abc)", "");
 
 function __foo() {
   return (function() {
-    with({ regex: __regex, foo: __foo }) {
+    with({ regex: __regex, foo: __foo, this: undefined, arguments: undefined }) {
 
 return function /*foo*/() {
             console.log(regex);
@@ -6576,7 +6576,7 @@ return function /*foo*/() {
 
 function __f0() {
   return (function() {
-    with({ regex: __regex, foo: __foo }) {
+    with({ regex: __regex, foo: __foo, this: undefined, arguments: undefined }) {
 
 return function () { console.log(regex); foo(); };
 
@@ -6635,7 +6635,7 @@ return function () { console.log(regex); foo(); };
 
 function __f0(__0, __1, __2, __3) {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -6654,7 +6654,7 @@ const mockpackage_1 = require("mockpackage");
 
 function __f1() {
   return (function() {
-    with({  }) {
+    with({ this: undefined, arguments: undefined }) {
 
 return () => mockpackage_1.z.object({
             message: mockpackage_1.z.string(),
@@ -6666,7 +6666,7 @@ return () => mockpackage_1.z.object({
 
 function __reproHandler(__0) {
   return (function() {
-    with({ __awaiter: __f0, getSchemaValidator: __f1, reproHandler: __reproHandler }) {
+    with({ __awaiter: __f0, getSchemaValidator: __f1, reproHandler: __reproHandler, this: undefined, arguments: undefined }) {
 
 return function /*reproHandler*/(input) {
             return __awaiter(this, void 0, void 0, function* () {

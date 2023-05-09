@@ -17,7 +17,7 @@ const cases = [];
 
 function __f0() {
   return (function() {
-    with({ zeroBigInt: 0n, smallBigInt: 1n, negativeBigInt: -1n, largeBigInt: 11111111111111111111111111111111111111111n, negativeLargeBigInt: -11111111111111111111111111111111111111111n }) {
+    with({ zeroBigInt: 0n, smallBigInt: 1n, negativeBigInt: -1n, largeBigInt: 11111111111111111111111111111111111111111n, negativeLargeBigInt: -11111111111111111111111111111111111111111n, this: undefined, arguments: undefined }) {
 
 return function () { console.log(zeroBigInt + smallBigInt + negativeBigInt + largeBigInt + negativeBigInt + negativeLargeBigInt); };
 
