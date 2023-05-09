@@ -192,8 +192,8 @@ function serializeJavaScriptText(
         const thisCapture = capturedValues.this;
         const argumentsCapture = capturedValues.arguments;
 
-        delete capturedValues.this;
-        delete capturedValues.arguments;
+        capturedValues.this = undefined as unknown as string;
+        capturedValues.arguments = undefined as unknown as string;
 
         const parameters = [...Array(functionInfo.paramCount)].map((_, index) => `__${index}`).join(", ");
 
