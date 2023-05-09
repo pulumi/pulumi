@@ -54,7 +54,7 @@ func newPolicyValidateCmd() *cobra.Command {
 			err = policyPack.Validate(ctx,
 				backend.PolicyPackOperation{
 					VersionTag: version,
-					Scopes:     cancellationScopes,
+					Scopes:     backend.CancellationScopes,
 					Config:     config,
 				})
 			if err != nil {

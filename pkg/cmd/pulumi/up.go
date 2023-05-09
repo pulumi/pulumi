@@ -176,7 +176,7 @@ func newUpCmd() *cobra.Command {
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
-			Scopes:             cancellationScopes,
+			Scopes:             backend.CancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -371,7 +371,7 @@ func newUpCmd() *cobra.Command {
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			SecretsProvider:    stack.DefaultSecretsProvider,
-			Scopes:             cancellationScopes,
+			Scopes:             backend.CancellationScopes,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:

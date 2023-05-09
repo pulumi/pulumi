@@ -687,7 +687,7 @@ func newImportCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             cancellationScopes,
+				Scopes:             backend.CancellationScopes,
 			}, imports)
 
 			if generateCode {

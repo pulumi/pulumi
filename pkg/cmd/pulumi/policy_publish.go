@@ -93,7 +93,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			//
 
 			res := policyPack.Publish(ctx, backend.PublishOperation{
-				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes,
+				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: backend.CancellationScopes,
 			})
 			if res != nil && res.Error() != nil {
 				return res.Error()

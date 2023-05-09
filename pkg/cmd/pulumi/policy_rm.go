@@ -60,7 +60,7 @@ func newPolicyRmCmd() *cobra.Command {
 
 			// Attempt to remove the Policy Pack.
 			err = policyPack.Remove(ctx, backend.PolicyPackOperation{
-				VersionTag: version, Scopes: cancellationScopes,
+				VersionTag: version, Scopes: backend.CancellationScopes,
 			})
 			if err != nil {
 				return result.FromError(err)
