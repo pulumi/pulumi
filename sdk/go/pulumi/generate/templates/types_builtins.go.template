@@ -96,8 +96,8 @@ type {{.Name}}Output struct { *OutputState }
 
 var _ InputT[{{.ElementType}}] = {{.Name}}Output{}
 
-func ({{.Name}}Output) Sample() *{{.ElementType}} {
-	return zeroPtr[{{.ElementType}}]()
+func ({{.Name}}Output) TypeInfo() TypeInfo[{{.ElementType}}] {
+	return NewTypeInfo[{{.ElementType}}]()
 }
 
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {

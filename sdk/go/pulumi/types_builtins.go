@@ -59,8 +59,8 @@ type ArchiveOutput struct{ *OutputState }
 
 var _ InputT[Archive] = ArchiveOutput{}
 
-func (ArchiveOutput) Sample() *Archive {
-	return zeroPtr[Archive]()
+func (ArchiveOutput) TypeInfo() TypeInfo[Archive] {
+	return NewTypeInfo[Archive]()
 }
 
 func (ArchiveOutput) MarshalJSON() ([]byte, error) {
@@ -121,8 +121,8 @@ type ArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Archive] = ArchiveArrayOutput{}
 
-func (ArchiveArrayOutput) Sample() *[]Archive {
-	return zeroPtr[[]Archive]()
+func (ArchiveArrayOutput) TypeInfo() TypeInfo[[]Archive] {
+	return NewTypeInfo[[]Archive]()
 }
 
 func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
@@ -203,8 +203,8 @@ type ArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Archive] = ArchiveMapOutput{}
 
-func (ArchiveMapOutput) Sample() *map[string]Archive {
-	return zeroPtr[map[string]Archive]()
+func (ArchiveMapOutput) TypeInfo() TypeInfo[map[string]Archive] {
+	return NewTypeInfo[map[string]Archive]()
 }
 
 func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
@@ -278,8 +278,8 @@ type ArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Archive] = ArchiveArrayMapOutput{}
 
-func (ArchiveArrayMapOutput) Sample() *map[string][]Archive {
-	return zeroPtr[map[string][]Archive]()
+func (ArchiveArrayMapOutput) TypeInfo() TypeInfo[map[string][]Archive] {
+	return NewTypeInfo[map[string][]Archive]()
 }
 
 func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -353,8 +353,8 @@ type ArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Archive] = ArchiveMapArrayOutput{}
 
-func (ArchiveMapArrayOutput) Sample() *[]map[string]Archive {
-	return zeroPtr[[]map[string]Archive]()
+func (ArchiveMapArrayOutput) TypeInfo() TypeInfo[[]map[string]Archive] {
+	return NewTypeInfo[[]map[string]Archive]()
 }
 
 func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -435,8 +435,8 @@ type ArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Archive] = ArchiveMapMapOutput{}
 
-func (ArchiveMapMapOutput) Sample() *map[string]map[string]Archive {
-	return zeroPtr[map[string]map[string]Archive]()
+func (ArchiveMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]Archive] {
+	return NewTypeInfo[map[string]map[string]Archive]()
 }
 
 func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -510,8 +510,8 @@ type ArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Archive] = ArchiveArrayArrayOutput{}
 
-func (ArchiveArrayArrayOutput) Sample() *[][]Archive {
-	return zeroPtr[[][]Archive]()
+func (ArchiveArrayArrayOutput) TypeInfo() TypeInfo[[][]Archive] {
+	return NewTypeInfo[[][]Archive]()
 }
 
 func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -597,8 +597,8 @@ type AssetOutput struct{ *OutputState }
 
 var _ InputT[Asset] = AssetOutput{}
 
-func (AssetOutput) Sample() *Asset {
-	return zeroPtr[Asset]()
+func (AssetOutput) TypeInfo() TypeInfo[Asset] {
+	return NewTypeInfo[Asset]()
 }
 
 func (AssetOutput) MarshalJSON() ([]byte, error) {
@@ -659,8 +659,8 @@ type AssetArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Asset] = AssetArrayOutput{}
 
-func (AssetArrayOutput) Sample() *[]Asset {
-	return zeroPtr[[]Asset]()
+func (AssetArrayOutput) TypeInfo() TypeInfo[[]Asset] {
+	return NewTypeInfo[[]Asset]()
 }
 
 func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
@@ -741,8 +741,8 @@ type AssetMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Asset] = AssetMapOutput{}
 
-func (AssetMapOutput) Sample() *map[string]Asset {
-	return zeroPtr[map[string]Asset]()
+func (AssetMapOutput) TypeInfo() TypeInfo[map[string]Asset] {
+	return NewTypeInfo[map[string]Asset]()
 }
 
 func (AssetMapOutput) MarshalJSON() ([]byte, error) {
@@ -816,8 +816,8 @@ type AssetArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Asset] = AssetArrayMapOutput{}
 
-func (AssetArrayMapOutput) Sample() *map[string][]Asset {
-	return zeroPtr[map[string][]Asset]()
+func (AssetArrayMapOutput) TypeInfo() TypeInfo[map[string][]Asset] {
+	return NewTypeInfo[map[string][]Asset]()
 }
 
 func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -891,8 +891,8 @@ type AssetMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Asset] = AssetMapArrayOutput{}
 
-func (AssetMapArrayOutput) Sample() *[]map[string]Asset {
-	return zeroPtr[[]map[string]Asset]()
+func (AssetMapArrayOutput) TypeInfo() TypeInfo[[]map[string]Asset] {
+	return NewTypeInfo[[]map[string]Asset]()
 }
 
 func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -973,8 +973,8 @@ type AssetMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Asset] = AssetMapMapOutput{}
 
-func (AssetMapMapOutput) Sample() *map[string]map[string]Asset {
-	return zeroPtr[map[string]map[string]Asset]()
+func (AssetMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]Asset] {
+	return NewTypeInfo[map[string]map[string]Asset]()
 }
 
 func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -1048,8 +1048,8 @@ type AssetArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Asset] = AssetArrayArrayOutput{}
 
-func (AssetArrayArrayOutput) Sample() *[][]Asset {
-	return zeroPtr[[][]Asset]()
+func (AssetArrayArrayOutput) TypeInfo() TypeInfo[[][]Asset] {
+	return NewTypeInfo[[][]Asset]()
 }
 
 func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1114,8 +1114,8 @@ type AssetOrArchiveOutput struct{ *OutputState }
 
 var _ InputT[AssetOrArchive] = AssetOrArchiveOutput{}
 
-func (AssetOrArchiveOutput) Sample() *AssetOrArchive {
-	return zeroPtr[AssetOrArchive]()
+func (AssetOrArchiveOutput) TypeInfo() TypeInfo[AssetOrArchive] {
+	return NewTypeInfo[AssetOrArchive]()
 }
 
 func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
@@ -1166,8 +1166,8 @@ type AssetOrArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]AssetOrArchive] = AssetOrArchiveArrayOutput{}
 
-func (AssetOrArchiveArrayOutput) Sample() *[]AssetOrArchive {
-	return zeroPtr[[]AssetOrArchive]()
+func (AssetOrArchiveArrayOutput) TypeInfo() TypeInfo[[]AssetOrArchive] {
+	return NewTypeInfo[[]AssetOrArchive]()
 }
 
 func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1232,8 +1232,8 @@ type AssetOrArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]AssetOrArchive] = AssetOrArchiveMapOutput{}
 
-func (AssetOrArchiveMapOutput) Sample() *map[string]AssetOrArchive {
-	return zeroPtr[map[string]AssetOrArchive]()
+func (AssetOrArchiveMapOutput) TypeInfo() TypeInfo[map[string]AssetOrArchive] {
+	return NewTypeInfo[map[string]AssetOrArchive]()
 }
 
 func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
@@ -1291,8 +1291,8 @@ type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]AssetOrArchive] = AssetOrArchiveArrayMapOutput{}
 
-func (AssetOrArchiveArrayMapOutput) Sample() *map[string][]AssetOrArchive {
-	return zeroPtr[map[string][]AssetOrArchive]()
+func (AssetOrArchiveArrayMapOutput) TypeInfo() TypeInfo[map[string][]AssetOrArchive] {
+	return NewTypeInfo[map[string][]AssetOrArchive]()
 }
 
 func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -1350,8 +1350,8 @@ type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]AssetOrArchive] = AssetOrArchiveMapArrayOutput{}
 
-func (AssetOrArchiveMapArrayOutput) Sample() *[]map[string]AssetOrArchive {
-	return zeroPtr[[]map[string]AssetOrArchive]()
+func (AssetOrArchiveMapArrayOutput) TypeInfo() TypeInfo[[]map[string]AssetOrArchive] {
+	return NewTypeInfo[[]map[string]AssetOrArchive]()
 }
 
 func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1416,8 +1416,8 @@ type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]AssetOrArchive] = AssetOrArchiveMapMapOutput{}
 
-func (AssetOrArchiveMapMapOutput) Sample() *map[string]map[string]AssetOrArchive {
-	return zeroPtr[map[string]map[string]AssetOrArchive]()
+func (AssetOrArchiveMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]AssetOrArchive] {
+	return NewTypeInfo[map[string]map[string]AssetOrArchive]()
 }
 
 func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -1475,8 +1475,8 @@ type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]AssetOrArchive] = AssetOrArchiveArrayArrayOutput{}
 
-func (AssetOrArchiveArrayArrayOutput) Sample() *[][]AssetOrArchive {
-	return zeroPtr[[][]AssetOrArchive]()
+func (AssetOrArchiveArrayArrayOutput) TypeInfo() TypeInfo[[][]AssetOrArchive] {
+	return NewTypeInfo[[][]AssetOrArchive]()
 }
 
 func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1552,8 +1552,8 @@ type BoolOutput struct{ *OutputState }
 
 var _ InputT[bool] = BoolOutput{}
 
-func (BoolOutput) Sample() *bool {
-	return zeroPtr[bool]()
+func (BoolOutput) TypeInfo() TypeInfo[bool] {
+	return NewTypeInfo[bool]()
 }
 
 func (BoolOutput) MarshalJSON() ([]byte, error) {
@@ -1624,8 +1624,8 @@ type BoolPtrOutput struct{ *OutputState }
 
 var _ InputT[*bool] = BoolPtrOutput{}
 
-func (BoolPtrOutput) Sample() **bool {
-	return zeroPtr[*bool]()
+func (BoolPtrOutput) TypeInfo() TypeInfo[*bool] {
+	return NewTypeInfo[*bool]()
 }
 
 func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
@@ -1687,8 +1687,8 @@ type BoolArrayOutput struct{ *OutputState }
 
 var _ InputT[[]bool] = BoolArrayOutput{}
 
-func (BoolArrayOutput) Sample() *[]bool {
-	return zeroPtr[[]bool]()
+func (BoolArrayOutput) TypeInfo() TypeInfo[[]bool] {
+	return NewTypeInfo[[]bool]()
 }
 
 func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1769,8 +1769,8 @@ type BoolMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]bool] = BoolMapOutput{}
 
-func (BoolMapOutput) Sample() *map[string]bool {
-	return zeroPtr[map[string]bool]()
+func (BoolMapOutput) TypeInfo() TypeInfo[map[string]bool] {
+	return NewTypeInfo[map[string]bool]()
 }
 
 func (BoolMapOutput) MarshalJSON() ([]byte, error) {
@@ -1844,8 +1844,8 @@ type BoolArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]bool] = BoolArrayMapOutput{}
 
-func (BoolArrayMapOutput) Sample() *map[string][]bool {
-	return zeroPtr[map[string][]bool]()
+func (BoolArrayMapOutput) TypeInfo() TypeInfo[map[string][]bool] {
+	return NewTypeInfo[map[string][]bool]()
 }
 
 func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -1919,8 +1919,8 @@ type BoolMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]bool] = BoolMapArrayOutput{}
 
-func (BoolMapArrayOutput) Sample() *[]map[string]bool {
-	return zeroPtr[[]map[string]bool]()
+func (BoolMapArrayOutput) TypeInfo() TypeInfo[[]map[string]bool] {
+	return NewTypeInfo[[]map[string]bool]()
 }
 
 func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2001,8 +2001,8 @@ type BoolMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]bool] = BoolMapMapOutput{}
 
-func (BoolMapMapOutput) Sample() *map[string]map[string]bool {
-	return zeroPtr[map[string]map[string]bool]()
+func (BoolMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]bool] {
+	return NewTypeInfo[map[string]map[string]bool]()
 }
 
 func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -2076,8 +2076,8 @@ type BoolArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]bool] = BoolArrayArrayOutput{}
 
-func (BoolArrayArrayOutput) Sample() *[][]bool {
-	return zeroPtr[[][]bool]()
+func (BoolArrayArrayOutput) TypeInfo() TypeInfo[[][]bool] {
+	return NewTypeInfo[[][]bool]()
 }
 
 func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2169,8 +2169,8 @@ type Float64Output struct{ *OutputState }
 
 var _ InputT[float64] = Float64Output{}
 
-func (Float64Output) Sample() *float64 {
-	return zeroPtr[float64]()
+func (Float64Output) TypeInfo() TypeInfo[float64] {
+	return NewTypeInfo[float64]()
 }
 
 func (Float64Output) MarshalJSON() ([]byte, error) {
@@ -2241,8 +2241,8 @@ type Float64PtrOutput struct{ *OutputState }
 
 var _ InputT[*float64] = Float64PtrOutput{}
 
-func (Float64PtrOutput) Sample() **float64 {
-	return zeroPtr[*float64]()
+func (Float64PtrOutput) TypeInfo() TypeInfo[*float64] {
+	return NewTypeInfo[*float64]()
 }
 
 func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
@@ -2304,8 +2304,8 @@ type Float64ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]float64] = Float64ArrayOutput{}
 
-func (Float64ArrayOutput) Sample() *[]float64 {
-	return zeroPtr[[]float64]()
+func (Float64ArrayOutput) TypeInfo() TypeInfo[[]float64] {
+	return NewTypeInfo[[]float64]()
 }
 
 func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2386,8 +2386,8 @@ type Float64MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]float64] = Float64MapOutput{}
 
-func (Float64MapOutput) Sample() *map[string]float64 {
-	return zeroPtr[map[string]float64]()
+func (Float64MapOutput) TypeInfo() TypeInfo[map[string]float64] {
+	return NewTypeInfo[map[string]float64]()
 }
 
 func (Float64MapOutput) MarshalJSON() ([]byte, error) {
@@ -2461,8 +2461,8 @@ type Float64ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]float64] = Float64ArrayMapOutput{}
 
-func (Float64ArrayMapOutput) Sample() *map[string][]float64 {
-	return zeroPtr[map[string][]float64]()
+func (Float64ArrayMapOutput) TypeInfo() TypeInfo[map[string][]float64] {
+	return NewTypeInfo[map[string][]float64]()
 }
 
 func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -2536,8 +2536,8 @@ type Float64MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]float64] = Float64MapArrayOutput{}
 
-func (Float64MapArrayOutput) Sample() *[]map[string]float64 {
-	return zeroPtr[[]map[string]float64]()
+func (Float64MapArrayOutput) TypeInfo() TypeInfo[[]map[string]float64] {
+	return NewTypeInfo[[]map[string]float64]()
 }
 
 func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2618,8 +2618,8 @@ type Float64MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]float64] = Float64MapMapOutput{}
 
-func (Float64MapMapOutput) Sample() *map[string]map[string]float64 {
-	return zeroPtr[map[string]map[string]float64]()
+func (Float64MapMapOutput) TypeInfo() TypeInfo[map[string]map[string]float64] {
+	return NewTypeInfo[map[string]map[string]float64]()
 }
 
 func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
@@ -2693,8 +2693,8 @@ type Float64ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]float64] = Float64ArrayArrayOutput{}
 
-func (Float64ArrayArrayOutput) Sample() *[][]float64 {
-	return zeroPtr[[][]float64]()
+func (Float64ArrayArrayOutput) TypeInfo() TypeInfo[[][]float64] {
+	return NewTypeInfo[[][]float64]()
 }
 
 func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2791,8 +2791,8 @@ type IDOutput struct{ *OutputState }
 
 var _ InputT[ID] = IDOutput{}
 
-func (IDOutput) Sample() *ID {
-	return zeroPtr[ID]()
+func (IDOutput) TypeInfo() TypeInfo[ID] {
+	return NewTypeInfo[ID]()
 }
 
 func (IDOutput) MarshalJSON() ([]byte, error) {
@@ -2873,8 +2873,8 @@ type IDPtrOutput struct{ *OutputState }
 
 var _ InputT[*ID] = IDPtrOutput{}
 
-func (IDPtrOutput) Sample() **ID {
-	return zeroPtr[*ID]()
+func (IDPtrOutput) TypeInfo() TypeInfo[*ID] {
+	return NewTypeInfo[*ID]()
 }
 
 func (IDPtrOutput) MarshalJSON() ([]byte, error) {
@@ -2936,8 +2936,8 @@ type IDArrayOutput struct{ *OutputState }
 
 var _ InputT[[]ID] = IDArrayOutput{}
 
-func (IDArrayOutput) Sample() *[]ID {
-	return zeroPtr[[]ID]()
+func (IDArrayOutput) TypeInfo() TypeInfo[[]ID] {
+	return NewTypeInfo[[]ID]()
 }
 
 func (IDArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3018,8 +3018,8 @@ type IDMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]ID] = IDMapOutput{}
 
-func (IDMapOutput) Sample() *map[string]ID {
-	return zeroPtr[map[string]ID]()
+func (IDMapOutput) TypeInfo() TypeInfo[map[string]ID] {
+	return NewTypeInfo[map[string]ID]()
 }
 
 func (IDMapOutput) MarshalJSON() ([]byte, error) {
@@ -3093,8 +3093,8 @@ type IDArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]ID] = IDArrayMapOutput{}
 
-func (IDArrayMapOutput) Sample() *map[string][]ID {
-	return zeroPtr[map[string][]ID]()
+func (IDArrayMapOutput) TypeInfo() TypeInfo[map[string][]ID] {
+	return NewTypeInfo[map[string][]ID]()
 }
 
 func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -3168,8 +3168,8 @@ type IDMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]ID] = IDMapArrayOutput{}
 
-func (IDMapArrayOutput) Sample() *[]map[string]ID {
-	return zeroPtr[[]map[string]ID]()
+func (IDMapArrayOutput) TypeInfo() TypeInfo[[]map[string]ID] {
+	return NewTypeInfo[[]map[string]ID]()
 }
 
 func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3250,8 +3250,8 @@ type IDMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]ID] = IDMapMapOutput{}
 
-func (IDMapMapOutput) Sample() *map[string]map[string]ID {
-	return zeroPtr[map[string]map[string]ID]()
+func (IDMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]ID] {
+	return NewTypeInfo[map[string]map[string]ID]()
 }
 
 func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -3325,8 +3325,8 @@ type IDArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]ID] = IDArrayArrayOutput{}
 
-func (IDArrayArrayOutput) Sample() *[][]ID {
-	return zeroPtr[[][]ID]()
+func (IDArrayArrayOutput) TypeInfo() TypeInfo[[][]ID] {
+	return NewTypeInfo[[][]ID]()
 }
 
 func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3407,8 +3407,8 @@ type ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]interface{}] = ArrayOutput{}
 
-func (ArrayOutput) Sample() *[]interface{} {
-	return zeroPtr[[]interface{}]()
+func (ArrayOutput) TypeInfo() TypeInfo[[]interface{}] {
+	return NewTypeInfo[[]interface{}]()
 }
 
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3489,8 +3489,8 @@ type MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]interface{}] = MapOutput{}
 
-func (MapOutput) Sample() *map[string]interface{} {
-	return zeroPtr[map[string]interface{}]()
+func (MapOutput) TypeInfo() TypeInfo[map[string]interface{}] {
+	return NewTypeInfo[map[string]interface{}]()
 }
 
 func (MapOutput) MarshalJSON() ([]byte, error) {
@@ -3564,8 +3564,8 @@ type ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]interface{}] = ArrayMapOutput{}
 
-func (ArrayMapOutput) Sample() *map[string][]interface{} {
-	return zeroPtr[map[string][]interface{}]()
+func (ArrayMapOutput) TypeInfo() TypeInfo[map[string][]interface{}] {
+	return NewTypeInfo[map[string][]interface{}]()
 }
 
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -3639,8 +3639,8 @@ type MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]interface{}] = MapArrayOutput{}
 
-func (MapArrayOutput) Sample() *[]map[string]interface{} {
-	return zeroPtr[[]map[string]interface{}]()
+func (MapArrayOutput) TypeInfo() TypeInfo[[]map[string]interface{}] {
+	return NewTypeInfo[[]map[string]interface{}]()
 }
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3721,8 +3721,8 @@ type MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]interface{}] = MapMapOutput{}
 
-func (MapMapOutput) Sample() *map[string]map[string]interface{} {
-	return zeroPtr[map[string]map[string]interface{}]()
+func (MapMapOutput) TypeInfo() TypeInfo[map[string]map[string]interface{}] {
+	return NewTypeInfo[map[string]map[string]interface{}]()
 }
 
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
@@ -3796,8 +3796,8 @@ type ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]interface{}] = ArrayArrayOutput{}
 
-func (ArrayArrayOutput) Sample() *[][]interface{} {
-	return zeroPtr[[][]interface{}]()
+func (ArrayArrayOutput) TypeInfo() TypeInfo[[][]interface{}] {
+	return NewTypeInfo[[][]interface{}]()
 }
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3878,8 +3878,8 @@ type ArrayArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][][]interface{}] = ArrayArrayMapOutput{}
 
-func (ArrayArrayMapOutput) Sample() *map[string][][]interface{} {
-	return zeroPtr[map[string][][]interface{}]()
+func (ArrayArrayMapOutput) TypeInfo() TypeInfo[map[string][][]interface{}] {
+	return NewTypeInfo[map[string][][]interface{}]()
 }
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -3964,8 +3964,8 @@ type IntOutput struct{ *OutputState }
 
 var _ InputT[int] = IntOutput{}
 
-func (IntOutput) Sample() *int {
-	return zeroPtr[int]()
+func (IntOutput) TypeInfo() TypeInfo[int] {
+	return NewTypeInfo[int]()
 }
 
 func (IntOutput) MarshalJSON() ([]byte, error) {
@@ -4036,8 +4036,8 @@ type IntPtrOutput struct{ *OutputState }
 
 var _ InputT[*int] = IntPtrOutput{}
 
-func (IntPtrOutput) Sample() **int {
-	return zeroPtr[*int]()
+func (IntPtrOutput) TypeInfo() TypeInfo[*int] {
+	return NewTypeInfo[*int]()
 }
 
 func (IntPtrOutput) MarshalJSON() ([]byte, error) {
@@ -4099,8 +4099,8 @@ type IntArrayOutput struct{ *OutputState }
 
 var _ InputT[[]int] = IntArrayOutput{}
 
-func (IntArrayOutput) Sample() *[]int {
-	return zeroPtr[[]int]()
+func (IntArrayOutput) TypeInfo() TypeInfo[[]int] {
+	return NewTypeInfo[[]int]()
 }
 
 func (IntArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4181,8 +4181,8 @@ type IntMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]int] = IntMapOutput{}
 
-func (IntMapOutput) Sample() *map[string]int {
-	return zeroPtr[map[string]int]()
+func (IntMapOutput) TypeInfo() TypeInfo[map[string]int] {
+	return NewTypeInfo[map[string]int]()
 }
 
 func (IntMapOutput) MarshalJSON() ([]byte, error) {
@@ -4256,8 +4256,8 @@ type IntArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]int] = IntArrayMapOutput{}
 
-func (IntArrayMapOutput) Sample() *map[string][]int {
-	return zeroPtr[map[string][]int]()
+func (IntArrayMapOutput) TypeInfo() TypeInfo[map[string][]int] {
+	return NewTypeInfo[map[string][]int]()
 }
 
 func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -4331,8 +4331,8 @@ type IntMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]int] = IntMapArrayOutput{}
 
-func (IntMapArrayOutput) Sample() *[]map[string]int {
-	return zeroPtr[[]map[string]int]()
+func (IntMapArrayOutput) TypeInfo() TypeInfo[[]map[string]int] {
+	return NewTypeInfo[[]map[string]int]()
 }
 
 func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4413,8 +4413,8 @@ type IntMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]int] = IntMapMapOutput{}
 
-func (IntMapMapOutput) Sample() *map[string]map[string]int {
-	return zeroPtr[map[string]map[string]int]()
+func (IntMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]int] {
+	return NewTypeInfo[map[string]map[string]int]()
 }
 
 func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -4488,8 +4488,8 @@ type IntArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]int] = IntArrayArrayOutput{}
 
-func (IntArrayArrayOutput) Sample() *[][]int {
-	return zeroPtr[[][]int]()
+func (IntArrayArrayOutput) TypeInfo() TypeInfo[[][]int] {
+	return NewTypeInfo[[][]int]()
 }
 
 func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4581,8 +4581,8 @@ type StringOutput struct{ *OutputState }
 
 var _ InputT[string] = StringOutput{}
 
-func (StringOutput) Sample() *string {
-	return zeroPtr[string]()
+func (StringOutput) TypeInfo() TypeInfo[string] {
+	return NewTypeInfo[string]()
 }
 
 func (StringOutput) MarshalJSON() ([]byte, error) {
@@ -4653,8 +4653,8 @@ type StringPtrOutput struct{ *OutputState }
 
 var _ InputT[*string] = StringPtrOutput{}
 
-func (StringPtrOutput) Sample() **string {
-	return zeroPtr[*string]()
+func (StringPtrOutput) TypeInfo() TypeInfo[*string] {
+	return NewTypeInfo[*string]()
 }
 
 func (StringPtrOutput) MarshalJSON() ([]byte, error) {
@@ -4716,8 +4716,8 @@ type StringArrayOutput struct{ *OutputState }
 
 var _ InputT[[]string] = StringArrayOutput{}
 
-func (StringArrayOutput) Sample() *[]string {
-	return zeroPtr[[]string]()
+func (StringArrayOutput) TypeInfo() TypeInfo[[]string] {
+	return NewTypeInfo[[]string]()
 }
 
 func (StringArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4798,8 +4798,8 @@ type StringMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]string] = StringMapOutput{}
 
-func (StringMapOutput) Sample() *map[string]string {
-	return zeroPtr[map[string]string]()
+func (StringMapOutput) TypeInfo() TypeInfo[map[string]string] {
+	return NewTypeInfo[map[string]string]()
 }
 
 func (StringMapOutput) MarshalJSON() ([]byte, error) {
@@ -4873,8 +4873,8 @@ type StringArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]string] = StringArrayMapOutput{}
 
-func (StringArrayMapOutput) Sample() *map[string][]string {
-	return zeroPtr[map[string][]string]()
+func (StringArrayMapOutput) TypeInfo() TypeInfo[map[string][]string] {
+	return NewTypeInfo[map[string][]string]()
 }
 
 func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -4948,8 +4948,8 @@ type StringMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]string] = StringMapArrayOutput{}
 
-func (StringMapArrayOutput) Sample() *[]map[string]string {
-	return zeroPtr[[]map[string]string]()
+func (StringMapArrayOutput) TypeInfo() TypeInfo[[]map[string]string] {
+	return NewTypeInfo[[]map[string]string]()
 }
 
 func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5030,8 +5030,8 @@ type StringMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]string] = StringMapMapOutput{}
 
-func (StringMapMapOutput) Sample() *map[string]map[string]string {
-	return zeroPtr[map[string]map[string]string]()
+func (StringMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]string] {
+	return NewTypeInfo[map[string]map[string]string]()
 }
 
 func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -5105,8 +5105,8 @@ type StringArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]string] = StringArrayArrayOutput{}
 
-func (StringArrayArrayOutput) Sample() *[][]string {
-	return zeroPtr[[][]string]()
+func (StringArrayArrayOutput) TypeInfo() TypeInfo[[][]string] {
+	return NewTypeInfo[[][]string]()
 }
 
 func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5203,8 +5203,8 @@ type URNOutput struct{ *OutputState }
 
 var _ InputT[URN] = URNOutput{}
 
-func (URNOutput) Sample() *URN {
-	return zeroPtr[URN]()
+func (URNOutput) TypeInfo() TypeInfo[URN] {
+	return NewTypeInfo[URN]()
 }
 
 func (URNOutput) MarshalJSON() ([]byte, error) {
@@ -5285,8 +5285,8 @@ type URNPtrOutput struct{ *OutputState }
 
 var _ InputT[*URN] = URNPtrOutput{}
 
-func (URNPtrOutput) Sample() **URN {
-	return zeroPtr[*URN]()
+func (URNPtrOutput) TypeInfo() TypeInfo[*URN] {
+	return NewTypeInfo[*URN]()
 }
 
 func (URNPtrOutput) MarshalJSON() ([]byte, error) {
@@ -5348,8 +5348,8 @@ type URNArrayOutput struct{ *OutputState }
 
 var _ InputT[[]URN] = URNArrayOutput{}
 
-func (URNArrayOutput) Sample() *[]URN {
-	return zeroPtr[[]URN]()
+func (URNArrayOutput) TypeInfo() TypeInfo[[]URN] {
+	return NewTypeInfo[[]URN]()
 }
 
 func (URNArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5430,8 +5430,8 @@ type URNMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]URN] = URNMapOutput{}
 
-func (URNMapOutput) Sample() *map[string]URN {
-	return zeroPtr[map[string]URN]()
+func (URNMapOutput) TypeInfo() TypeInfo[map[string]URN] {
+	return NewTypeInfo[map[string]URN]()
 }
 
 func (URNMapOutput) MarshalJSON() ([]byte, error) {
@@ -5505,8 +5505,8 @@ type URNArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]URN] = URNArrayMapOutput{}
 
-func (URNArrayMapOutput) Sample() *map[string][]URN {
-	return zeroPtr[map[string][]URN]()
+func (URNArrayMapOutput) TypeInfo() TypeInfo[map[string][]URN] {
+	return NewTypeInfo[map[string][]URN]()
 }
 
 func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -5580,8 +5580,8 @@ type URNMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]URN] = URNMapArrayOutput{}
 
-func (URNMapArrayOutput) Sample() *[]map[string]URN {
-	return zeroPtr[[]map[string]URN]()
+func (URNMapArrayOutput) TypeInfo() TypeInfo[[]map[string]URN] {
+	return NewTypeInfo[[]map[string]URN]()
 }
 
 func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5662,8 +5662,8 @@ type URNMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]URN] = URNMapMapOutput{}
 
-func (URNMapMapOutput) Sample() *map[string]map[string]URN {
-	return zeroPtr[map[string]map[string]URN]()
+func (URNMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]URN] {
+	return NewTypeInfo[map[string]map[string]URN]()
 }
 
 func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -5737,8 +5737,8 @@ type URNArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]URN] = URNArrayArrayOutput{}
 
-func (URNArrayArrayOutput) Sample() *[][]URN {
-	return zeroPtr[[][]URN]()
+func (URNArrayArrayOutput) TypeInfo() TypeInfo[[][]URN] {
+	return NewTypeInfo[[][]URN]()
 }
 
 func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {

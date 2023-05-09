@@ -6,16 +6,29 @@ import (
 	"reflect"
 )
 
-/*
 type TypeInfo[T any] struct {
-	typ reflect.Type
+	// Zero-width phantom field to prevent:
+	//
+	// - casting from TypeInfo[T] to TypeInfo[U]
+	// - comparison with == and !=
+	//
+	// Having a field of a type that incoprorates T prevents the first,
+	// and making it have a function type prevents the second.
+	// Without this, the following is allowed.
+	//
+	//	var t1 TypeInfo[int]
+	//	var t2 TypeInfo[string]
+	//	t1 == TypeInfo[int](t2) // true
+	_ [0]func() T
 }
 
 func NewTypeInfo[T any]() TypeInfo[T] {
-	var t T
-	return TypeInfo[T]{typ: reflect.TypeOf(&t).Elem()}
+	return TypeInfo[T]{}
 }
-*/
+
+func (t *TypeInfo[T]) Type() reflect.Type {
+	return typeOf[T]()
+}
 
 func typeOf[T any]() reflect.Type {
 	return reflect.TypeOf((*T)(nil)).Elem()
@@ -26,15 +39,8 @@ func typeOf[T any]() reflect.Type {
 type InputT[T any] interface {
 	Output
 
-	// TODO: Probably rename to something else.
-	// Maybe make it accept the value instead of returning it.
-	Sample() *T
-	// MUST be assignable to Input.ElementType.
-}
-
-func zeroPtr[T any]() *T {
-	var t T
-	return &t
+	TypeInfo() TypeInfo[T]
+	// TODO: Can we enforce that T is assignable to ElementType?
 }
 
 type OutputT[T any] struct {
@@ -64,8 +70,12 @@ func (o OutputT[T]) ElementType() reflect.Type {
 	return typeOf[T]()
 }
 
-func (OutputT[T]) Sample() *T {
-	return zeroPtr[T]()
+func (OutputT[T]) TypeInfo() TypeInfo[T] {
+	return NewTypeInfo[T]()
+}
+
+func (o OutputT[T]) ToAnyOutput() AnyOutput {
+	return AnyOutput{o.OutputState}
 }
 
 // awaitT is a type-safe variant of OutputState.await.
@@ -92,8 +102,8 @@ func (ArrayOutputT[T]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
 }
 
-func (ArrayOutputT[T]) Sample() *[]T {
-	return zeroPtr[[]T]()
+func (ArrayOutputT[T]) TypeInfo() TypeInfo[[]T] {
+	return NewTypeInfo[[]T]()
 }
 
 func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
@@ -148,7 +158,6 @@ func PtrOf[T any](o OutputT[T]) PtrOutputT[T] {
 	return PtrFrom(p)
 }
 
-// TODO: Output[*T] => PtrOutput[T]
 func PtrFrom[T any](o OutputT[*T]) PtrOutputT[T] {
 	// No need to check if o.ElementType() is assignable.
 	// It's already a pointer type.
@@ -159,8 +168,8 @@ func (PtrOutputT[T]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
 }
 
-func (PtrOutputT[T]) Sample() **T {
-	return zeroPtr[(*T)]()
+func (PtrOutputT[T]) TypeInfo() TypeInfo[*T] {
+	return NewTypeInfo[*T]()
 }
 
 func (o PtrOutputT[T]) Elem() OutputT[T] {
@@ -185,8 +194,8 @@ func (MapOutputT[K, V]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[K](), typeOf[V]())
 }
 
-func (MapOutputT[K, V]) Sample() *map[K]V {
-	return zeroPtr[map[K]V]()
+func (MapOutputT[K, V]) TypeInfo() TypeInfo[map[K]V] {
+	return NewTypeInfo[map[K]V]()
 }
 
 func (o MapOutputT[K, V]) MapIndex(i InputT[K]) OutputT[V] {

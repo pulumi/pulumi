@@ -1204,7 +1204,9 @@ func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
 
-func (AnyOutput) Sample() *any { return zeroPtr[any]() }
+func (AnyOutput) TypeInfo() TypeInfo[any] {
+	return NewTypeInfo[any]()
+}
 
 func (in ID) ToStringPtrOutput() StringPtrOutput {
 	return in.ToStringPtrOutputWithContext(context.Background())
@@ -1270,6 +1272,10 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
 
+func (ResourceOutput) TypeInfo() TypeInfo[Resource] {
+	return NewTypeInfo[Resource]()
+}
+
 // ElementType returns the element type of this Output (Resource).
 func (ResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Resource)(nil)).Elem()
@@ -1299,7 +1305,10 @@ func NewResourceInput(resource Resource) ResourceInput {
 }
 
 func NewResourceOutput(resource Resource) ResourceOutput {
-	return Int(0).ToIntOutput().ApplyT(func(int) Resource { return resource }).(ResourceOutput)
+	o := ApplyT(Int(0).ToIntOutput(), func(_ int) Resource {
+		return resource
+	})
+	return ResourceOutput(o)
 }
 
 var _ ResourceInput = &ResourceOutput{}
@@ -1340,6 +1349,10 @@ func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
 // ElementType returns the element type of this Output ([]Resource).
 func (ResourceArrayOutput) ElementType() reflect.Type {
 	return resourceArrayType
+}
+
+func (ResourceArrayOutput) TypeInfo() TypeInfo[[]Resource] {
+	return NewTypeInfo[[]Resource]()
 }
 
 func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {
