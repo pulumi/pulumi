@@ -98,7 +98,7 @@ type serviceSecretsManagerState struct {
 var _ secrets.Manager = &serviceSecretsManager{}
 
 type serviceSecretsManager struct {
-	state   serviceSecretsManagerState
+	state   json.RawMessage
 	crypter config.Crypter
 }
 
@@ -106,7 +106,7 @@ func (sm *serviceSecretsManager) Type() string {
 	return Type
 }
 
-func (sm *serviceSecretsManager) State() interface{} {
+func (sm *serviceSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
@@ -139,14 +139,19 @@ func NewServiceSecretsManager(
 	info.SecretsProvider = ""
 	info.EncryptedKey = ""
 
+	state, err := json.Marshal(serviceSecretsManagerState{
+		URL:      client.URL(),
+		Owner:    id.Owner,
+		Project:  id.Project,
+		Stack:    id.Stack,
+		Insecure: client.Insecure(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshalling state: %w", err)
+	}
+
 	return &serviceSecretsManager{
-		state: serviceSecretsManagerState{
-			URL:      client.URL(),
-			Owner:    id.Owner,
-			Project:  id.Project,
-			Stack:    id.Stack,
-			Insecure: client.Insecure(),
-		},
+		state:   state,
 		crypter: newServiceCrypter(client, id),
 	}, nil
 }
@@ -179,7 +184,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 	}))
 
 	return &serviceSecretsManager{
-		state:   s,
+		state:   state,
 		crypter: newServiceCrypter(c, id),
 	}, nil
 }
