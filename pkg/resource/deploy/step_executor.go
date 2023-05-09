@@ -185,7 +185,8 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
 			resourcePlan.Outputs = outs
 		} else {
-			return result.FromError(fmt.Errorf("this should already have a plan from when we called register resources"))
+			return result.FromError(
+				fmt.Errorf("resource should already have a plan from when we called register resources [urn=%v]", urn))
 		}
 	}
 

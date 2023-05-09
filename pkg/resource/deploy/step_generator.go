@@ -80,11 +80,6 @@ func (sg *stepGenerator) isTargetedUpdate() bool {
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-	// Default providers are marked always targeted. Default providers are under Pulumi's control
-	// and changes or creations should be invisible to the user.
-	if providers.IsDefaultProvider(res.URN) {
-		return true
-	}
 	if sg.updateTargetsOpt.Contains(res.URN) {
 		return true
 	} else if !sg.opts.TargetDependents {
@@ -306,6 +301,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			if resourcePlan, ok := sg.deployment.newPlans.get(urn); ok {
 				// If the resource is in the plan, add the operation to the plan.
 				resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
+			} else if !ConstrainedTo(s.Op(), OpSame) {
+				return nil, result.Errorf("Expected a new resource plan for %v", urn)
 			}
 		}
 	}
@@ -615,7 +612,25 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
-	isTargeted := sg.isTargetedForUpdate(new)
+	isUserResource := !(providers.IsDefaultProvider(urn) || urn.Type() == resource.RootStackType)
+
+	// Internally managed resources are under Pulumi's control and changes or creations should be invisible
+	// to the user.
+
+	// Resources are targeted by default
+	isTargeted := true
+	if sg.isTargetedUpdate() && isUserResource {
+		if !sg.replaceTargetsOpt.IsConstrained() {
+			// Not a replace, so check if the resource is targeted for an update.
+			isTargeted = sg.isTargetedForUpdate(new)
+		} else if !sg.updateTargetsOpt.IsConstrained() {
+			// Not an update, so check if the resource is targeted for a replace.
+			isTargeted = sg.isTargetedReplace(urn)
+		} else {
+			return nil, result.Error(
+				"update is marked constrained, but is not constrained to an update or a replace")
+		}
+	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error

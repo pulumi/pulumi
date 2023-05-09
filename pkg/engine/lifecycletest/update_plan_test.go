@@ -1714,3 +1714,148 @@ func TestResoucesTargeted(t *testing.T) {
 	}, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 }
+
+// TestReplaceSpecificTargetsPlan checks when replace targets are specified and update targets are not,
+// unspecified targets are not targeted.
+//
+// Tracks a regression where update targets was empty, which is interpreted as an unconstrained update
+// causing all resources to be targeted despite replace targets being specified.
+func TestReplaceSpecificTargetsPlan(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Initial state
+	fooVal := "bar"
+
+	// Don't try to create resB yet.
+	createResB := false
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		stackURN, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty(fooVal),
+			},
+			ReplaceOnChanges: []string{"foo"},
+		})
+		assert.NoError(t, err)
+
+		if createResB {
+			// Now try to create resB which is not targeted and should not show up in the plan.
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			assert.NoError(t, err)
+		}
+
+		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{
+			"foo": resource.NewStringProperty(fooVal),
+		})
+
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	project := p.GetProject()
+
+	old, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host: p.Options.Host,
+	}, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Configure next update.
+	fooVal = "changed-from-bar" // This triggers a replace
+
+	// Now try to create resB which is not targeted and should not show up in the plan.
+	createResB = true
+
+	urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	p.Options.ReplaceTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{
+		urn,
+	})
+
+	// Create the update plan with only targeted resources.
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), UpdateOptions{
+		Host:           p.Options.Host,
+		Experimental:   true,
+		GeneratePlan:   true,
+		ReplaceTargets: p.Options.ReplaceTargets,
+	}, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, plan)
+
+	// Ensure resB not in the plan.
+	for _, r := range plan.ResourcePlans {
+		if r.Goal != nil && r.Goal.Name == "resB" {
+			assert.Fail(t, "resB should not be in plan")
+		}
+	}
+}
+
+// This test checks that registering resource outputs does not fail for the root stack resource when it
+// is not specified by the update targets.
+func TestStackOutputsWithTargetedPlan(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		stackURN, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+
+		assert.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		})
+
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	project := p.GetProject()
+
+	// Create the update plan without targeting the root stack.
+	plan, res := TestOp(Update).Plan(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:         p.Options.Host,
+		Experimental: true,
+		GeneratePlan: true,
+		UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+			resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
+		}),
+	}, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.NotNil(t, plan)
+
+	// Check that update succeeds despite the root stack not being targeted.
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:         p.Options.Host,
+		GeneratePlan: true,
+		Experimental: true,
+		UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+			resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
+		}),
+	}, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+}
