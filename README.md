@@ -171,8 +171,8 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 |    | Language | Status | Runtime |
 | -- | -------- | ------ | ------- |
-| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 14+  |
-| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 14+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-js.png" height=38 />     | [JavaScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 16+  |
+| <img src="https://www.pulumi.com/logos/tech/logo-ts.png" height=38 />     | [TypeScript](https://www.pulumi.com/docs/intro/languages/javascript/) | Stable  | Node.js 16+  |
 | <img src="https://www.pulumi.com/logos/tech/logo-python.svg" height=38 /> | [Python](https://www.pulumi.com/docs/intro/languages/python/)     | Stable  | Python 3.7+ |
 | <img src="https://www.pulumi.com/logos/tech/logo-golang.png" height=38 /> | [Go](https://www.pulumi.com/docs/intro/languages/go/)             | Stable  | Go [supported versions](https://go.dev/doc/devel/release#policy) |
 | <img src="https://www.pulumi.com/logos/tech/dotnet.svg" height=38 />      | [.NET (C#/F#/VB.NET)](https://www.pulumi.com/docs/intro/languages/dotnet/)     | Stable  | .NET Core 3.1+  |

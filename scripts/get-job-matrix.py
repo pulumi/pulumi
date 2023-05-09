@@ -116,7 +116,7 @@ MINIMUM_SUPPORTED_VERSION_SET = {
     "name": "minimum",
     "dotnet": "6",
     "go": "1.19.x",
-    "nodejs": "14.x",
+    "nodejs": "16.x",
     "python": "3.9.x",
 }
 
