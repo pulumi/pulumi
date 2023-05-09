@@ -45,6 +45,14 @@ type OutputT[T any] struct {
 	*OutputState // TODO: hide me
 }
 
+func (OutputT[T]) isInputT() {} // TODO: hack; fix
+
+func T[T any](v T) OutputT[T] {
+	state := newOutputState(nil /* joinGroup */, typeOf[T]())
+	state.resolve(v, true, false, nil /* deps */)
+	return OutputT[T]{OutputState: state}
+}
+
 func Cast[T any](o Output) OutputT[T] {
 	typ := typeOf[T]()
 	if o.ElementType().AssignableTo(typ) {
@@ -82,19 +90,44 @@ func awaitT[I InputT[T], T any](ctx context.Context, o InputT[T]) (v T, known, s
 	// TODO: make OutputState type-safe internally.
 	value, known, secret, deps, err = ToOutput(o).getState().await(ctx)
 	if err == nil {
-		v = value.(T)
 		// TODO: should this turn into an error?
+		var ok bool
+		v, ok = value.(T)
+		if !ok && value != nil {
+			err = fmt.Errorf("awaited value of type %T but got %T", v, value)
+		}
 	}
 	return v, known, secret, deps, err
+}
+
+type ArrayInputT[T any] interface {
+	InputT[[]T]
 }
 
 type ArrayOutputT[T any] struct{ *OutputState }
 
 var (
-	_ Output        = ArrayOutputT[any]{}
-	_ Input         = ArrayOutputT[any]{}
-	_ InputT[[]int] = ArrayOutputT[int]{}
+	_ Output           = ArrayOutputT[any]{}
+	_ Input            = ArrayOutputT[any]{}
+	_ InputT[[]int]    = ArrayOutputT[int]{}
+	_ ArrayInputT[int] = ArrayOutputT[int]{}
 )
+
+func ArrayOf[T any](items ...InputT[T]) ArrayOutputT[T] {
+	return ArrayOutputT[T]{
+		// TODO: is this right?
+		OutputState: ToOutput(items).getState(),
+	}
+}
+
+func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
+	return ArrayOutputT[T]{
+		// TODO: is this right?
+		OutputState: ToOutput(items).getState(),
+	}
+}
+
+func (ArrayOutputT[T]) isInputT() {} // TODO: hack; fix
 
 func (ArrayOutputT[T]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
@@ -116,13 +149,25 @@ func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
 
 type PtrOutputT[T any] struct{ *OutputState }
 
+type PtrInputT[T any] interface {
+	InputT[*T]
+}
+
 var (
-	_ Output       = PtrOutputT[any]{}
-	_ Input        = PtrOutputT[any]{}
-	_ InputT[*int] = PtrOutputT[int]{}
+	_ Output         = PtrOutputT[any]{}
+	_ Input          = PtrOutputT[any]{}
+	_ InputT[*int]   = PtrOutputT[int]{}
+	_ PtrInputT[int] = PtrOutputT[int]{}
 )
 
-func PtrOf[T any](o OutputT[T]) PtrOutputT[T] {
+func Ptr[T any](v T) PtrOutputT[T] {
+	os := newOutputState(nil /* joinGroup */, typeOf[T]())
+	os.resolve(&v, true, false, nil /* deps */)
+	return PtrOutputT[T]{OutputState: os}
+}
+
+// TODO: Should this take an InputT
+func PtrOf[T any](o InputT[T]) PtrOutputT[T] {
 	// As of Go 1.20, Output[T] cannot refer to Output[*T] directly.
 	// This refers to the following limitation at
 	// https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#generic-types:
@@ -162,6 +207,8 @@ func PtrFrom[T any](o OutputT[*T]) PtrOutputT[T] {
 	return PtrOutputT[T]{o.getState()}
 }
 
+func (PtrOutputT[T]) isInputT() {} // TODO: hack; fix
+
 func (PtrOutputT[T]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
 }
@@ -182,11 +229,30 @@ func (o PtrOutputT[T]) Elem() OutputT[T] {
 
 type MapOutputT[K comparable, V any] struct{ *OutputState }
 
+type MapInputT[K comparable, V any] interface {
+	InputT[map[K]V]
+}
+
 var (
 	_ Output                 = MapOutputT[string, any]{}
 	_ Input                  = MapOutputT[string, any]{}
 	_ InputT[map[string]int] = MapOutputT[string, int]{}
+	_ MapInputT[string, any] = MapOutputT[string, any]{}
 )
+
+func MapOf[K comparable, V any](items map[K]InputT[V]) MapOutputT[K, V] {
+	return MapOutputT[K, V]{
+		ToOutput(items).getState(),
+	}
+}
+
+func MapFrom[K comparable, V any](items InputT[map[K]V]) MapOutputT[K, V] {
+	return MapOutputT[K, V]{
+		ToOutput(items).getState(),
+	}
+}
+
+func (MapOutputT[K, V]) isInputT() {} // TODO: hack; fix
 
 func (MapOutputT[K, V]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[K](), typeOf[V]())
@@ -205,10 +271,17 @@ func (o MapOutputT[K, V]) MapIndex(i InputT[K]) OutputT[V] {
 // TODO: Should we parameterize the applier so context, etc. can be optionally
 // passed in?
 func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
-	// TODO: make this type safe
-	return OutputT[O]{
-		ToOutput(o).getState().ApplyT(f).getState(),
-	}
+	state := newOutputState(nil, typeOf[O]())
+	go func() {
+		v, known, secret, deps, err := awaitT[I, T](context.Background(), o)
+		if err != nil || !known {
+			var zero O
+			state.fulfill(zero, known, secret, deps, err)
+			return
+		}
+		state.fulfill(f(v), known, secret, deps, err)
+	}()
+	return OutputT[O]{state}
 }
 
 func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f func(T1, T2) O) OutputT[O] {
