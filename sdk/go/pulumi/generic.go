@@ -61,10 +61,10 @@ func (o OutputT[T]) ToAnyOutput() AnyOutput {
 }
 
 // awaitT is a type-safe variant of OutputState.await.
-func awaitT[I InputT[T], T any](ctx context.Context, o InputT[T]) (v T, known, secret bool, deps []Resource, err error) {
+func awaitT[T any, I InputT[T]](ctx context.Context, o InputT[T]) (v T, known, secret bool, deps []Resource, err error) {
 	var value any
 	// TODO: make OutputState type-safe internally.
-	value, known, secret, deps, err = ToOutput(o).getState().await(ctx)
+	value, known, secret, deps, err = o.ToOutputT().getState().await(ctx)
 	if err == nil {
 		// TODO: should this turn into an error?
 		var ok bool
@@ -90,17 +90,30 @@ var (
 )
 
 func ArrayOf[T any](items ...InputT[T]) ArrayOutputT[T] {
-	return ArrayOutputT[T]{
-		// TODO: is this right?
-		OutputState: ToOutput(items).getState(),
-	}
+	state := newOutputState(nil /* joinGroup */, reflect.SliceOf(typeOf[T]()))
+	go func() {
+		var deps []Resource
+		known, secret := true, false
+		result := make([]T, len(items))
+		for i, o := range items {
+			// TODO: context
+			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](context.Background(), o)
+			known = known && vknown
+			secret = secret || vsecret
+			deps = mergeDependencies(deps, vdeps)
+			if err != nil || !known {
+				state.fulfill(result, known, secret, deps, err)
+				return
+			}
+			result[i] = v
+		}
+		state.fulfill(result, known, secret, deps, nil)
+	}()
+	return ArrayOutputT[T]{OutputState: state}
 }
 
 func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
-	return ArrayOutputT[T]{
-		// TODO: is this right?
-		OutputState: ToOutput(items).getState(),
-	}
+	return ArrayOutputT[T](items.ToOutputT())
 }
 
 func (ArrayOutputT[T]) isInputT() {} // TODO: hack; fix
@@ -203,10 +216,10 @@ func (o PtrOutputT[T]) Elem() OutputT[T] {
 	})
 }
 
-type MapOutputT[V any] struct{ *OutputState }
+type MapOutputT[T any] struct{ *OutputState }
 
-type MapInputT[V any] interface {
-	InputT[map[string]V]
+type MapInputT[T any] interface {
+	InputT[map[string]T]
 }
 
 var (
@@ -216,30 +229,45 @@ var (
 	_ MapInputT[any]         = MapOutputT[any]{}
 )
 
-func MapOf[V any](items map[string]InputT[V]) MapOutputT[V] {
-	return MapOutputT[V]{
-		ToOutput(items).getState(),
-	}
+func MapOf[T any](items map[string]InputT[T]) MapOutputT[T] {
+	state := newOutputState(nil /* joinGroup */, reflect.MapOf(typeOf[string](), typeOf[T]()))
+	go func() {
+		var deps []Resource
+		known, secret := true, false
+		result := make(map[string]T, len(items))
+		for k, o := range items {
+			// TODO: context
+			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](context.Background(), o)
+			known = known && vknown
+			secret = secret || vsecret
+			deps = mergeDependencies(deps, vdeps)
+			if err != nil || !known {
+				state.fulfill(result, known, secret, deps, err)
+				return
+			}
+			result[k] = v
+		}
+		state.fulfill(result, known, secret, deps, nil)
+	}()
+	return MapOutputT[T]{OutputState: state}
 }
 
-func MapFrom[V any](items InputT[map[string]V]) MapOutputT[V] {
-	return MapOutputT[V]{
-		ToOutput(items).getState(),
-	}
+func MapFrom[T any](items InputT[map[string]T]) MapOutputT[T] {
+	return MapOutputT[T](items.ToOutputT())
 }
 
-func (MapOutputT[V]) isInputT() {} // TODO: hack; fix
+func (MapOutputT[T]) isInputT() {} // TODO: hack; fix
 
-func (MapOutputT[V]) ElementType() reflect.Type {
-	return reflect.MapOf(typeOf[string](), typeOf[V]())
+func (MapOutputT[T]) ElementType() reflect.Type {
+	return reflect.MapOf(typeOf[string](), typeOf[T]())
 }
 
-func (o MapOutputT[V]) ToOutputT() OutputT[map[string]V] {
-	return OutputT[map[string]V](o)
+func (o MapOutputT[T]) ToOutputT() OutputT[map[string]T] {
+	return OutputT[map[string]T](o)
 }
 
-func (o MapOutputT[V]) MapIndex(i InputT[string]) OutputT[V] {
-	return ApplyT2(o, i, func(items map[string]V, idx string) V {
+func (o MapOutputT[T]) MapIndex(i InputT[string]) OutputT[T] {
+	return ApplyT2(o, i, func(items map[string]T, idx string) T {
 		return items[idx]
 	})
 }
@@ -249,7 +277,7 @@ func (o MapOutputT[V]) MapIndex(i InputT[string]) OutputT[V] {
 func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
-		v, known, secret, deps, err := awaitT[I, T](context.Background(), o)
+		v, known, secret, deps, err := awaitT[T, I](context.Background(), o)
 		if err != nil || !known {
 			var zero O
 			state.fulfill(zero, known, secret, deps, err)
@@ -264,14 +292,14 @@ func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f fu
 	// TODO: context
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
-		v1, known, secret, deps, err := awaitT[I1, T1](context.Background(), o1)
+		v1, known, secret, deps, err := awaitT[T1, I1](context.Background(), o1)
 		if err != nil || !known {
 			var zero O
 			state.fulfill(zero, known, secret, deps, err)
 			return
 		}
 
-		v2, known2, secret2, deps2, err := awaitT[I2, T2](context.Background(), o2)
+		v2, known2, secret2, deps2, err := awaitT[T2, I2](context.Background(), o2)
 		known = known && known2
 		secret = secret || secret2
 		deps = mergeDependencies(deps, deps2)
