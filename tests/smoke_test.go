@@ -26,9 +26,8 @@ var Languages = map[string]string{
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageNewSmoke(t *testing.T) {
-	for _, test := range Runtimes {
-		tt := test
-		t.Run(tt, func(t *testing.T) {
+	for _, runtime := range Runtimes {
+		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
 
 			e := ptesting.NewEnvironment(t)
@@ -43,7 +42,7 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.CWD = projectDir
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-			e.RunCommand("pulumi", "new", "random-"+Languages[tt], "--yes")
+			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
 		})
@@ -54,9 +53,9 @@ func TestLanguageNewSmoke(t *testing.T) {
 func TestLanguageConvertSmoke(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range Runtimes {
-		tt := test
-		t.Run(tt, func(t *testing.T) {
+	for _, runtime := range Runtimes {
+		runtime := runtime
+		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
 			e := ptesting.NewEnvironment(t)
@@ -74,7 +73,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			}
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-			e.RunCommand("pulumi", "convert", "--language", Languages[tt], "--from", "pcl", "--out", "out")
+			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
 			e.CWD = filepath.Join(e.RootPath, "out")
 			e.RunCommand("pulumi", "stack", "init", "test")
 
@@ -89,21 +88,21 @@ func TestLanguageConvertSmoke(t *testing.T) {
 func TestLanguageGenerateSmoke(t *testing.T) {
 	t.Parallel()
 
-	for _, test := range Runtimes {
-		if test == "yaml" {
+	for _, runtime := range Runtimes {
+		if runtime == "yaml" {
 			// yaml doesn't support sdks
 			continue
 		}
 
-		tt := test
-		t.Run(tt, func(t *testing.T) {
+		runtime := runtime
+		t.Run(runtime, func(t *testing.T) {
 			t.Parallel()
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
 			e.ImportDirectory("testdata/simple_schema")
-			e.RunCommand("pulumi", "package", "gen-sdk", "--language", tt, "schema.json")
+			e.RunCommand("pulumi", "package", "gen-sdk", "--language", runtime, "schema.json")
 		})
 	}
 }
@@ -112,9 +111,8 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 //
 //nolint:paralleltest // pulumi new is not parallel safe
 func TestLanguageImportSmoke(t *testing.T) {
-	for _, test := range Runtimes {
-		tt := test
-		t.Run(tt, func(t *testing.T) {
+	for _, runtime := range Runtimes {
+		t.Run(runtime, func(t *testing.T) {
 			//nolint:paralleltest
 
 			e := ptesting.NewEnvironment(t)
@@ -129,7 +127,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 			e.CWD = projectDir
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-			e.RunCommand("pulumi", "new", Languages[tt], "--yes")
+			e.RunCommand("pulumi", "new", Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 		})
 	}
