@@ -34,7 +34,8 @@ You'll want to install the following on your machine:
 - [Python 3.6 or later](https://www.python.org/downloads/)
 - [.NET](https://dotnet.microsoft.com/download)
 - [Golangci-lint](https://github.com/golangci/golangci-lint)
-- [gofumpt](https://github.com/mvdan/gofumpt#installation)
+- [gofumpt](https://github.com/mvdan/gofumpt):
+  see [installation](https://github.com/mvdan/gofumpt#installation) for editor setup instructions
 - [Yarn](https://yarnpkg.com/)
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)
@@ -44,7 +45,7 @@ You'll want to install the following on your machine:
 You can get all required dependencies with brew and npm
 
 ```bash
-brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint pulumi/tap/pulumictl coreutils jq
+brew install node python@3 typescript yarn go@1.19 golangci/tap/golangci-lint gofumpt pulumi/tap/pulumictl coreutils jq
 curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/339862f79e/Casks/dotnet-sdk.rb > dotnet-sdk.rb
 brew install --HEAD -s dotnet-sdk.rb
 rm dotnet-sdk.rb
@@ -103,6 +104,20 @@ is a pretty standard starting point during debugging that will show a fairly com
 ## Submitting a Pull Request
 
 For contributors we use the [standard fork based workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962): Fork this repository, create a topic branch, and when ready, open a pull request from your fork.
+
+Before you open a pull request, make sure all lint checks pass:
+
+```bash
+$ make lint
+```
+
+If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
+
+```bash
+$ gofumpt -w path/to/file.go 
+# or
+$ gofumpt -w path/to/dir
+```
 
 We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
 
