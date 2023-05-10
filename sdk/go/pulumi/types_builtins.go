@@ -38,8 +38,8 @@ func (*archive) ElementType() reflect.Type {
 	return archiveType
 }
 
-func (*archive) TypeInfo() TypeInfo[Archive] {
-	return NewTypeInfo[Archive]()
+func (in *archive) ToOutputT() OutputT[Archive] {
+	return OutputT[Archive]{ToOutput(in).getState()}
 }
 
 func (in *archive) ToArchiveOutput() ArchiveOutput {
@@ -63,8 +63,8 @@ type ArchiveOutput struct{ *OutputState }
 
 var _ InputT[Archive] = ArchiveOutput{}
 
-func (ArchiveOutput) TypeInfo() TypeInfo[Archive] {
-	return NewTypeInfo[Archive]()
+func (o ArchiveOutput) ToOutputT() OutputT[Archive] {
+	return OutputT[Archive](o)
 }
 
 func (ArchiveOutput) MarshalJSON() ([]byte, error) {
@@ -112,8 +112,8 @@ func (ArchiveArray) ElementType() reflect.Type {
 	return archiveArrayType
 }
 
-func (ArchiveArray) TypeInfo() TypeInfo[[]Archive] {
-	return NewTypeInfo[[]Archive]()
+func (in ArchiveArray) ToOutputT() OutputT[[]Archive] {
+	return OutputT[[]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
@@ -129,8 +129,8 @@ type ArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Archive] = ArchiveArrayOutput{}
 
-func (ArchiveArrayOutput) TypeInfo() TypeInfo[[]Archive] {
-	return NewTypeInfo[[]Archive]()
+func (o ArchiveArrayOutput) ToOutputT() OutputT[[]Archive] {
+	return OutputT[[]Archive](o)
 }
 
 func (ArchiveArrayOutput) MarshalJSON() ([]byte, error) {
@@ -198,8 +198,8 @@ func (ArchiveMap) ElementType() reflect.Type {
 	return archiveMapType
 }
 
-func (ArchiveMap) TypeInfo() TypeInfo[map[string]Archive] {
-	return NewTypeInfo[map[string]Archive]()
+func (in ArchiveMap) ToOutputT() OutputT[map[string]Archive] {
+	return OutputT[map[string]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
@@ -215,8 +215,8 @@ type ArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Archive] = ArchiveMapOutput{}
 
-func (ArchiveMapOutput) TypeInfo() TypeInfo[map[string]Archive] {
-	return NewTypeInfo[map[string]Archive]()
+func (o ArchiveMapOutput) ToOutputT() OutputT[map[string]Archive] {
+	return OutputT[map[string]Archive](o)
 }
 
 func (ArchiveMapOutput) MarshalJSON() ([]byte, error) {
@@ -277,8 +277,8 @@ func (ArchiveArrayMap) ElementType() reflect.Type {
 	return archiveArrayMapType
 }
 
-func (ArchiveArrayMap) TypeInfo() TypeInfo[map[string][]Archive] {
-	return NewTypeInfo[map[string][]Archive]()
+func (in ArchiveArrayMap) ToOutputT() OutputT[map[string][]Archive] {
+	return OutputT[map[string][]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
@@ -294,8 +294,8 @@ type ArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Archive] = ArchiveArrayMapOutput{}
 
-func (ArchiveArrayMapOutput) TypeInfo() TypeInfo[map[string][]Archive] {
-	return NewTypeInfo[map[string][]Archive]()
+func (o ArchiveArrayMapOutput) ToOutputT() OutputT[map[string][]Archive] {
+	return OutputT[map[string][]Archive](o)
 }
 
 func (ArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -356,8 +356,8 @@ func (ArchiveMapArray) ElementType() reflect.Type {
 	return archiveMapArrayType
 }
 
-func (ArchiveMapArray) TypeInfo() TypeInfo[[]map[string]Archive] {
-	return NewTypeInfo[[]map[string]Archive]()
+func (in ArchiveMapArray) ToOutputT() OutputT[[]map[string]Archive] {
+	return OutputT[[]map[string]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
@@ -373,8 +373,8 @@ type ArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Archive] = ArchiveMapArrayOutput{}
 
-func (ArchiveMapArrayOutput) TypeInfo() TypeInfo[[]map[string]Archive] {
-	return NewTypeInfo[[]map[string]Archive]()
+func (o ArchiveMapArrayOutput) ToOutputT() OutputT[[]map[string]Archive] {
+	return OutputT[[]map[string]Archive](o)
 }
 
 func (ArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -442,8 +442,8 @@ func (ArchiveMapMap) ElementType() reflect.Type {
 	return archiveMapMapType
 }
 
-func (ArchiveMapMap) TypeInfo() TypeInfo[map[string]map[string]Archive] {
-	return NewTypeInfo[map[string]map[string]Archive]()
+func (in ArchiveMapMap) ToOutputT() OutputT[map[string]map[string]Archive] {
+	return OutputT[map[string]map[string]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
@@ -459,8 +459,8 @@ type ArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Archive] = ArchiveMapMapOutput{}
 
-func (ArchiveMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]Archive] {
-	return NewTypeInfo[map[string]map[string]Archive]()
+func (o ArchiveMapMapOutput) ToOutputT() OutputT[map[string]map[string]Archive] {
+	return OutputT[map[string]map[string]Archive](o)
 }
 
 func (ArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -521,8 +521,8 @@ func (ArchiveArrayArray) ElementType() reflect.Type {
 	return archiveArrayArrayType
 }
 
-func (ArchiveArrayArray) TypeInfo() TypeInfo[[][]Archive] {
-	return NewTypeInfo[[][]Archive]()
+func (in ArchiveArrayArray) ToOutputT() OutputT[[][]Archive] {
+	return OutputT[[][]Archive]{ToOutput(in).getState()}
 }
 
 func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
@@ -538,8 +538,8 @@ type ArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Archive] = ArchiveArrayArrayOutput{}
 
-func (ArchiveArrayArrayOutput) TypeInfo() TypeInfo[[][]Archive] {
-	return NewTypeInfo[[][]Archive]()
+func (o ArchiveArrayArrayOutput) ToOutputT() OutputT[[][]Archive] {
+	return OutputT[[][]Archive](o)
 }
 
 func (ArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -604,8 +604,8 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
-func (*asset) TypeInfo() TypeInfo[Asset] {
-	return NewTypeInfo[Asset]()
+func (in *asset) ToOutputT() OutputT[Asset] {
+	return OutputT[Asset]{ToOutput(in).getState()}
 }
 
 func (in *asset) ToAssetOutput() AssetOutput {
@@ -629,8 +629,8 @@ type AssetOutput struct{ *OutputState }
 
 var _ InputT[Asset] = AssetOutput{}
 
-func (AssetOutput) TypeInfo() TypeInfo[Asset] {
-	return NewTypeInfo[Asset]()
+func (o AssetOutput) ToOutputT() OutputT[Asset] {
+	return OutputT[Asset](o)
 }
 
 func (AssetOutput) MarshalJSON() ([]byte, error) {
@@ -678,8 +678,8 @@ func (AssetArray) ElementType() reflect.Type {
 	return assetArrayType
 }
 
-func (AssetArray) TypeInfo() TypeInfo[[]Asset] {
-	return NewTypeInfo[[]Asset]()
+func (in AssetArray) ToOutputT() OutputT[[]Asset] {
+	return OutputT[[]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
@@ -695,8 +695,8 @@ type AssetArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Asset] = AssetArrayOutput{}
 
-func (AssetArrayOutput) TypeInfo() TypeInfo[[]Asset] {
-	return NewTypeInfo[[]Asset]()
+func (o AssetArrayOutput) ToOutputT() OutputT[[]Asset] {
+	return OutputT[[]Asset](o)
 }
 
 func (AssetArrayOutput) MarshalJSON() ([]byte, error) {
@@ -764,8 +764,8 @@ func (AssetMap) ElementType() reflect.Type {
 	return assetMapType
 }
 
-func (AssetMap) TypeInfo() TypeInfo[map[string]Asset] {
-	return NewTypeInfo[map[string]Asset]()
+func (in AssetMap) ToOutputT() OutputT[map[string]Asset] {
+	return OutputT[map[string]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
@@ -781,8 +781,8 @@ type AssetMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Asset] = AssetMapOutput{}
 
-func (AssetMapOutput) TypeInfo() TypeInfo[map[string]Asset] {
-	return NewTypeInfo[map[string]Asset]()
+func (o AssetMapOutput) ToOutputT() OutputT[map[string]Asset] {
+	return OutputT[map[string]Asset](o)
 }
 
 func (AssetMapOutput) MarshalJSON() ([]byte, error) {
@@ -843,8 +843,8 @@ func (AssetArrayMap) ElementType() reflect.Type {
 	return assetArrayMapType
 }
 
-func (AssetArrayMap) TypeInfo() TypeInfo[map[string][]Asset] {
-	return NewTypeInfo[map[string][]Asset]()
+func (in AssetArrayMap) ToOutputT() OutputT[map[string][]Asset] {
+	return OutputT[map[string][]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
@@ -860,8 +860,8 @@ type AssetArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Asset] = AssetArrayMapOutput{}
 
-func (AssetArrayMapOutput) TypeInfo() TypeInfo[map[string][]Asset] {
-	return NewTypeInfo[map[string][]Asset]()
+func (o AssetArrayMapOutput) ToOutputT() OutputT[map[string][]Asset] {
+	return OutputT[map[string][]Asset](o)
 }
 
 func (AssetArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -922,8 +922,8 @@ func (AssetMapArray) ElementType() reflect.Type {
 	return assetMapArrayType
 }
 
-func (AssetMapArray) TypeInfo() TypeInfo[[]map[string]Asset] {
-	return NewTypeInfo[[]map[string]Asset]()
+func (in AssetMapArray) ToOutputT() OutputT[[]map[string]Asset] {
+	return OutputT[[]map[string]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
@@ -939,8 +939,8 @@ type AssetMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Asset] = AssetMapArrayOutput{}
 
-func (AssetMapArrayOutput) TypeInfo() TypeInfo[[]map[string]Asset] {
-	return NewTypeInfo[[]map[string]Asset]()
+func (o AssetMapArrayOutput) ToOutputT() OutputT[[]map[string]Asset] {
+	return OutputT[[]map[string]Asset](o)
 }
 
 func (AssetMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1008,8 +1008,8 @@ func (AssetMapMap) ElementType() reflect.Type {
 	return assetMapMapType
 }
 
-func (AssetMapMap) TypeInfo() TypeInfo[map[string]map[string]Asset] {
-	return NewTypeInfo[map[string]map[string]Asset]()
+func (in AssetMapMap) ToOutputT() OutputT[map[string]map[string]Asset] {
+	return OutputT[map[string]map[string]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
@@ -1025,8 +1025,8 @@ type AssetMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Asset] = AssetMapMapOutput{}
 
-func (AssetMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]Asset] {
-	return NewTypeInfo[map[string]map[string]Asset]()
+func (o AssetMapMapOutput) ToOutputT() OutputT[map[string]map[string]Asset] {
+	return OutputT[map[string]map[string]Asset](o)
 }
 
 func (AssetMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -1087,8 +1087,8 @@ func (AssetArrayArray) ElementType() reflect.Type {
 	return assetArrayArrayType
 }
 
-func (AssetArrayArray) TypeInfo() TypeInfo[[][]Asset] {
-	return NewTypeInfo[[][]Asset]()
+func (in AssetArrayArray) ToOutputT() OutputT[[][]Asset] {
+	return OutputT[[][]Asset]{ToOutput(in).getState()}
 }
 
 func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
@@ -1104,8 +1104,8 @@ type AssetArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Asset] = AssetArrayArrayOutput{}
 
-func (AssetArrayArrayOutput) TypeInfo() TypeInfo[[][]Asset] {
-	return NewTypeInfo[[][]Asset]()
+func (o AssetArrayArrayOutput) ToOutputT() OutputT[[][]Asset] {
+	return OutputT[[][]Asset](o)
 }
 
 func (AssetArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1170,8 +1170,8 @@ type AssetOrArchiveOutput struct{ *OutputState }
 
 var _ InputT[AssetOrArchive] = AssetOrArchiveOutput{}
 
-func (AssetOrArchiveOutput) TypeInfo() TypeInfo[AssetOrArchive] {
-	return NewTypeInfo[AssetOrArchive]()
+func (o AssetOrArchiveOutput) ToOutputT() OutputT[AssetOrArchive] {
+	return OutputT[AssetOrArchive](o)
 }
 
 func (AssetOrArchiveOutput) MarshalJSON() ([]byte, error) {
@@ -1209,8 +1209,8 @@ func (AssetOrArchiveArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
 }
 
-func (AssetOrArchiveArray) TypeInfo() TypeInfo[[]AssetOrArchive] {
-	return NewTypeInfo[[]AssetOrArchive]()
+func (in AssetOrArchiveArray) ToOutputT() OutputT[[]AssetOrArchive] {
+	return OutputT[[]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
@@ -1226,8 +1226,8 @@ type AssetOrArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]AssetOrArchive] = AssetOrArchiveArrayOutput{}
 
-func (AssetOrArchiveArrayOutput) TypeInfo() TypeInfo[[]AssetOrArchive] {
-	return NewTypeInfo[[]AssetOrArchive]()
+func (o AssetOrArchiveArrayOutput) ToOutputT() OutputT[[]AssetOrArchive] {
+	return OutputT[[]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1279,8 +1279,8 @@ func (AssetOrArchiveMap) ElementType() reflect.Type {
 	return assetOrArchiveMapType
 }
 
-func (AssetOrArchiveMap) TypeInfo() TypeInfo[map[string]AssetOrArchive] {
-	return NewTypeInfo[map[string]AssetOrArchive]()
+func (in AssetOrArchiveMap) ToOutputT() OutputT[map[string]AssetOrArchive] {
+	return OutputT[map[string]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
@@ -1296,8 +1296,8 @@ type AssetOrArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]AssetOrArchive] = AssetOrArchiveMapOutput{}
 
-func (AssetOrArchiveMapOutput) TypeInfo() TypeInfo[map[string]AssetOrArchive] {
-	return NewTypeInfo[map[string]AssetOrArchive]()
+func (o AssetOrArchiveMapOutput) ToOutputT() OutputT[map[string]AssetOrArchive] {
+	return OutputT[map[string]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveMapOutput) MarshalJSON() ([]byte, error) {
@@ -1342,8 +1342,8 @@ func (AssetOrArchiveArrayMap) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
 }
 
-func (AssetOrArchiveArrayMap) TypeInfo() TypeInfo[map[string][]AssetOrArchive] {
-	return NewTypeInfo[map[string][]AssetOrArchive]()
+func (in AssetOrArchiveArrayMap) ToOutputT() OutputT[map[string][]AssetOrArchive] {
+	return OutputT[map[string][]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
@@ -1359,8 +1359,8 @@ type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]AssetOrArchive] = AssetOrArchiveArrayMapOutput{}
 
-func (AssetOrArchiveArrayMapOutput) TypeInfo() TypeInfo[map[string][]AssetOrArchive] {
-	return NewTypeInfo[map[string][]AssetOrArchive]()
+func (o AssetOrArchiveArrayMapOutput) ToOutputT() OutputT[map[string][]AssetOrArchive] {
+	return OutputT[map[string][]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -1405,8 +1405,8 @@ func (AssetOrArchiveMapArray) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
 }
 
-func (AssetOrArchiveMapArray) TypeInfo() TypeInfo[[]map[string]AssetOrArchive] {
-	return NewTypeInfo[[]map[string]AssetOrArchive]()
+func (in AssetOrArchiveMapArray) ToOutputT() OutputT[[]map[string]AssetOrArchive] {
+	return OutputT[[]map[string]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
@@ -1422,8 +1422,8 @@ type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]AssetOrArchive] = AssetOrArchiveMapArrayOutput{}
 
-func (AssetOrArchiveMapArrayOutput) TypeInfo() TypeInfo[[]map[string]AssetOrArchive] {
-	return NewTypeInfo[[]map[string]AssetOrArchive]()
+func (o AssetOrArchiveMapArrayOutput) ToOutputT() OutputT[[]map[string]AssetOrArchive] {
+	return OutputT[[]map[string]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1475,8 +1475,8 @@ func (AssetOrArchiveMapMap) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
 }
 
-func (AssetOrArchiveMapMap) TypeInfo() TypeInfo[map[string]map[string]AssetOrArchive] {
-	return NewTypeInfo[map[string]map[string]AssetOrArchive]()
+func (in AssetOrArchiveMapMap) ToOutputT() OutputT[map[string]map[string]AssetOrArchive] {
+	return OutputT[map[string]map[string]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
@@ -1492,8 +1492,8 @@ type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]AssetOrArchive] = AssetOrArchiveMapMapOutput{}
 
-func (AssetOrArchiveMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]AssetOrArchive] {
-	return NewTypeInfo[map[string]map[string]AssetOrArchive]()
+func (o AssetOrArchiveMapMapOutput) ToOutputT() OutputT[map[string]map[string]AssetOrArchive] {
+	return OutputT[map[string]map[string]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -1538,8 +1538,8 @@ func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
 }
 
-func (AssetOrArchiveArrayArray) TypeInfo() TypeInfo[[][]AssetOrArchive] {
-	return NewTypeInfo[[][]AssetOrArchive]()
+func (in AssetOrArchiveArrayArray) ToOutputT() OutputT[[][]AssetOrArchive] {
+	return OutputT[[][]AssetOrArchive]{ToOutput(in).getState()}
 }
 
 func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
@@ -1555,8 +1555,8 @@ type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]AssetOrArchive] = AssetOrArchiveArrayArrayOutput{}
 
-func (AssetOrArchiveArrayArrayOutput) TypeInfo() TypeInfo[[][]AssetOrArchive] {
-	return NewTypeInfo[[][]AssetOrArchive]()
+func (o AssetOrArchiveArrayArrayOutput) ToOutputT() OutputT[[][]AssetOrArchive] {
+	return OutputT[[][]AssetOrArchive](o)
 }
 
 func (AssetOrArchiveArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1611,8 +1611,8 @@ func (Bool) ElementType() reflect.Type {
 	return boolType
 }
 
-func (Bool) TypeInfo() TypeInfo[bool] {
-	return NewTypeInfo[bool]()
+func (in Bool) ToOutputT() OutputT[bool] {
+	return OutputT[bool]{ToOutput(in).getState()}
 }
 
 func (in Bool) ToBoolOutput() BoolOutput {
@@ -1636,8 +1636,8 @@ type BoolOutput struct{ *OutputState }
 
 var _ InputT[bool] = BoolOutput{}
 
-func (BoolOutput) TypeInfo() TypeInfo[bool] {
-	return NewTypeInfo[bool]()
+func (o BoolOutput) ToOutputT() OutputT[bool] {
+	return OutputT[bool](o)
 }
 
 func (BoolOutput) MarshalJSON() ([]byte, error) {
@@ -1695,8 +1695,8 @@ func (*boolPtr) ElementType() reflect.Type {
 	return boolPtrType
 }
 
-func (*boolPtr) TypeInfo() TypeInfo[*bool] {
-	return NewTypeInfo[*bool]()
+func (in *boolPtr) ToOutputT() OutputT[*bool] {
+	return OutputT[*bool]{ToOutput(in).getState()}
 }
 
 func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
@@ -1712,8 +1712,8 @@ type BoolPtrOutput struct{ *OutputState }
 
 var _ InputT[*bool] = BoolPtrOutput{}
 
-func (BoolPtrOutput) TypeInfo() TypeInfo[*bool] {
-	return NewTypeInfo[*bool]()
+func (o BoolPtrOutput) ToOutputT() OutputT[*bool] {
+	return OutputT[*bool](o)
 }
 
 func (BoolPtrOutput) MarshalJSON() ([]byte, error) {
@@ -1762,8 +1762,8 @@ func (BoolArray) ElementType() reflect.Type {
 	return boolArrayType
 }
 
-func (BoolArray) TypeInfo() TypeInfo[[]bool] {
-	return NewTypeInfo[[]bool]()
+func (in BoolArray) ToOutputT() OutputT[[]bool] {
+	return OutputT[[]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
@@ -1779,8 +1779,8 @@ type BoolArrayOutput struct{ *OutputState }
 
 var _ InputT[[]bool] = BoolArrayOutput{}
 
-func (BoolArrayOutput) TypeInfo() TypeInfo[[]bool] {
-	return NewTypeInfo[[]bool]()
+func (o BoolArrayOutput) ToOutputT() OutputT[[]bool] {
+	return OutputT[[]bool](o)
 }
 
 func (BoolArrayOutput) MarshalJSON() ([]byte, error) {
@@ -1848,8 +1848,8 @@ func (BoolMap) ElementType() reflect.Type {
 	return boolMapType
 }
 
-func (BoolMap) TypeInfo() TypeInfo[map[string]bool] {
-	return NewTypeInfo[map[string]bool]()
+func (in BoolMap) ToOutputT() OutputT[map[string]bool] {
+	return OutputT[map[string]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
@@ -1865,8 +1865,8 @@ type BoolMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]bool] = BoolMapOutput{}
 
-func (BoolMapOutput) TypeInfo() TypeInfo[map[string]bool] {
-	return NewTypeInfo[map[string]bool]()
+func (o BoolMapOutput) ToOutputT() OutputT[map[string]bool] {
+	return OutputT[map[string]bool](o)
 }
 
 func (BoolMapOutput) MarshalJSON() ([]byte, error) {
@@ -1927,8 +1927,8 @@ func (BoolArrayMap) ElementType() reflect.Type {
 	return boolArrayMapType
 }
 
-func (BoolArrayMap) TypeInfo() TypeInfo[map[string][]bool] {
-	return NewTypeInfo[map[string][]bool]()
+func (in BoolArrayMap) ToOutputT() OutputT[map[string][]bool] {
+	return OutputT[map[string][]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
@@ -1944,8 +1944,8 @@ type BoolArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]bool] = BoolArrayMapOutput{}
 
-func (BoolArrayMapOutput) TypeInfo() TypeInfo[map[string][]bool] {
-	return NewTypeInfo[map[string][]bool]()
+func (o BoolArrayMapOutput) ToOutputT() OutputT[map[string][]bool] {
+	return OutputT[map[string][]bool](o)
 }
 
 func (BoolArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -2006,8 +2006,8 @@ func (BoolMapArray) ElementType() reflect.Type {
 	return boolMapArrayType
 }
 
-func (BoolMapArray) TypeInfo() TypeInfo[[]map[string]bool] {
-	return NewTypeInfo[[]map[string]bool]()
+func (in BoolMapArray) ToOutputT() OutputT[[]map[string]bool] {
+	return OutputT[[]map[string]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
@@ -2023,8 +2023,8 @@ type BoolMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]bool] = BoolMapArrayOutput{}
 
-func (BoolMapArrayOutput) TypeInfo() TypeInfo[[]map[string]bool] {
-	return NewTypeInfo[[]map[string]bool]()
+func (o BoolMapArrayOutput) ToOutputT() OutputT[[]map[string]bool] {
+	return OutputT[[]map[string]bool](o)
 }
 
 func (BoolMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2092,8 +2092,8 @@ func (BoolMapMap) ElementType() reflect.Type {
 	return boolMapMapType
 }
 
-func (BoolMapMap) TypeInfo() TypeInfo[map[string]map[string]bool] {
-	return NewTypeInfo[map[string]map[string]bool]()
+func (in BoolMapMap) ToOutputT() OutputT[map[string]map[string]bool] {
+	return OutputT[map[string]map[string]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
@@ -2109,8 +2109,8 @@ type BoolMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]bool] = BoolMapMapOutput{}
 
-func (BoolMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]bool] {
-	return NewTypeInfo[map[string]map[string]bool]()
+func (o BoolMapMapOutput) ToOutputT() OutputT[map[string]map[string]bool] {
+	return OutputT[map[string]map[string]bool](o)
 }
 
 func (BoolMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -2171,8 +2171,8 @@ func (BoolArrayArray) ElementType() reflect.Type {
 	return boolArrayArrayType
 }
 
-func (BoolArrayArray) TypeInfo() TypeInfo[[][]bool] {
-	return NewTypeInfo[[][]bool]()
+func (in BoolArrayArray) ToOutputT() OutputT[[][]bool] {
+	return OutputT[[][]bool]{ToOutput(in).getState()}
 }
 
 func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
@@ -2188,8 +2188,8 @@ type BoolArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]bool] = BoolArrayArrayOutput{}
 
-func (BoolArrayArrayOutput) TypeInfo() TypeInfo[[][]bool] {
-	return NewTypeInfo[[][]bool]()
+func (o BoolArrayArrayOutput) ToOutputT() OutputT[[][]bool] {
+	return OutputT[[][]bool](o)
 }
 
 func (BoolArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2260,8 +2260,8 @@ func (Float64) ElementType() reflect.Type {
 	return float64Type
 }
 
-func (Float64) TypeInfo() TypeInfo[float64] {
-	return NewTypeInfo[float64]()
+func (in Float64) ToOutputT() OutputT[float64] {
+	return OutputT[float64]{ToOutput(in).getState()}
 }
 
 func (in Float64) ToFloat64Output() Float64Output {
@@ -2285,8 +2285,8 @@ type Float64Output struct{ *OutputState }
 
 var _ InputT[float64] = Float64Output{}
 
-func (Float64Output) TypeInfo() TypeInfo[float64] {
-	return NewTypeInfo[float64]()
+func (o Float64Output) ToOutputT() OutputT[float64] {
+	return OutputT[float64](o)
 }
 
 func (Float64Output) MarshalJSON() ([]byte, error) {
@@ -2344,8 +2344,8 @@ func (*float64Ptr) ElementType() reflect.Type {
 	return float64PtrType
 }
 
-func (*float64Ptr) TypeInfo() TypeInfo[*float64] {
-	return NewTypeInfo[*float64]()
+func (in *float64Ptr) ToOutputT() OutputT[*float64] {
+	return OutputT[*float64]{ToOutput(in).getState()}
 }
 
 func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
@@ -2361,8 +2361,8 @@ type Float64PtrOutput struct{ *OutputState }
 
 var _ InputT[*float64] = Float64PtrOutput{}
 
-func (Float64PtrOutput) TypeInfo() TypeInfo[*float64] {
-	return NewTypeInfo[*float64]()
+func (o Float64PtrOutput) ToOutputT() OutputT[*float64] {
+	return OutputT[*float64](o)
 }
 
 func (Float64PtrOutput) MarshalJSON() ([]byte, error) {
@@ -2411,8 +2411,8 @@ func (Float64Array) ElementType() reflect.Type {
 	return float64ArrayType
 }
 
-func (Float64Array) TypeInfo() TypeInfo[[]float64] {
-	return NewTypeInfo[[]float64]()
+func (in Float64Array) ToOutputT() OutputT[[]float64] {
+	return OutputT[[]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
@@ -2428,8 +2428,8 @@ type Float64ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]float64] = Float64ArrayOutput{}
 
-func (Float64ArrayOutput) TypeInfo() TypeInfo[[]float64] {
-	return NewTypeInfo[[]float64]()
+func (o Float64ArrayOutput) ToOutputT() OutputT[[]float64] {
+	return OutputT[[]float64](o)
 }
 
 func (Float64ArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2497,8 +2497,8 @@ func (Float64Map) ElementType() reflect.Type {
 	return float64MapType
 }
 
-func (Float64Map) TypeInfo() TypeInfo[map[string]float64] {
-	return NewTypeInfo[map[string]float64]()
+func (in Float64Map) ToOutputT() OutputT[map[string]float64] {
+	return OutputT[map[string]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
@@ -2514,8 +2514,8 @@ type Float64MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]float64] = Float64MapOutput{}
 
-func (Float64MapOutput) TypeInfo() TypeInfo[map[string]float64] {
-	return NewTypeInfo[map[string]float64]()
+func (o Float64MapOutput) ToOutputT() OutputT[map[string]float64] {
+	return OutputT[map[string]float64](o)
 }
 
 func (Float64MapOutput) MarshalJSON() ([]byte, error) {
@@ -2576,8 +2576,8 @@ func (Float64ArrayMap) ElementType() reflect.Type {
 	return float64ArrayMapType
 }
 
-func (Float64ArrayMap) TypeInfo() TypeInfo[map[string][]float64] {
-	return NewTypeInfo[map[string][]float64]()
+func (in Float64ArrayMap) ToOutputT() OutputT[map[string][]float64] {
+	return OutputT[map[string][]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
@@ -2593,8 +2593,8 @@ type Float64ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]float64] = Float64ArrayMapOutput{}
 
-func (Float64ArrayMapOutput) TypeInfo() TypeInfo[map[string][]float64] {
-	return NewTypeInfo[map[string][]float64]()
+func (o Float64ArrayMapOutput) ToOutputT() OutputT[map[string][]float64] {
+	return OutputT[map[string][]float64](o)
 }
 
 func (Float64ArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -2655,8 +2655,8 @@ func (Float64MapArray) ElementType() reflect.Type {
 	return float64MapArrayType
 }
 
-func (Float64MapArray) TypeInfo() TypeInfo[[]map[string]float64] {
-	return NewTypeInfo[[]map[string]float64]()
+func (in Float64MapArray) ToOutputT() OutputT[[]map[string]float64] {
+	return OutputT[[]map[string]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
@@ -2672,8 +2672,8 @@ type Float64MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]float64] = Float64MapArrayOutput{}
 
-func (Float64MapArrayOutput) TypeInfo() TypeInfo[[]map[string]float64] {
-	return NewTypeInfo[[]map[string]float64]()
+func (o Float64MapArrayOutput) ToOutputT() OutputT[[]map[string]float64] {
+	return OutputT[[]map[string]float64](o)
 }
 
 func (Float64MapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2741,8 +2741,8 @@ func (Float64MapMap) ElementType() reflect.Type {
 	return float64MapMapType
 }
 
-func (Float64MapMap) TypeInfo() TypeInfo[map[string]map[string]float64] {
-	return NewTypeInfo[map[string]map[string]float64]()
+func (in Float64MapMap) ToOutputT() OutputT[map[string]map[string]float64] {
+	return OutputT[map[string]map[string]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
@@ -2758,8 +2758,8 @@ type Float64MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]float64] = Float64MapMapOutput{}
 
-func (Float64MapMapOutput) TypeInfo() TypeInfo[map[string]map[string]float64] {
-	return NewTypeInfo[map[string]map[string]float64]()
+func (o Float64MapMapOutput) ToOutputT() OutputT[map[string]map[string]float64] {
+	return OutputT[map[string]map[string]float64](o)
 }
 
 func (Float64MapMapOutput) MarshalJSON() ([]byte, error) {
@@ -2820,8 +2820,8 @@ func (Float64ArrayArray) ElementType() reflect.Type {
 	return float64ArrayArrayType
 }
 
-func (Float64ArrayArray) TypeInfo() TypeInfo[[][]float64] {
-	return NewTypeInfo[[][]float64]()
+func (in Float64ArrayArray) ToOutputT() OutputT[[][]float64] {
+	return OutputT[[][]float64]{ToOutput(in).getState()}
 }
 
 func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
@@ -2837,8 +2837,8 @@ type Float64ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]float64] = Float64ArrayArrayOutput{}
 
-func (Float64ArrayArrayOutput) TypeInfo() TypeInfo[[][]float64] {
-	return NewTypeInfo[[][]float64]()
+func (o Float64ArrayArrayOutput) ToOutputT() OutputT[[][]float64] {
+	return OutputT[[][]float64](o)
 }
 
 func (Float64ArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -2906,8 +2906,8 @@ func (ID) ElementType() reflect.Type {
 	return idType
 }
 
-func (ID) TypeInfo() TypeInfo[ID] {
-	return NewTypeInfo[ID]()
+func (in ID) ToOutputT() OutputT[ID] {
+	return OutputT[ID]{ToOutput(in).getState()}
 }
 
 func (in ID) ToIDOutput() IDOutput {
@@ -2939,8 +2939,8 @@ type IDOutput struct{ *OutputState }
 
 var _ InputT[ID] = IDOutput{}
 
-func (IDOutput) TypeInfo() TypeInfo[ID] {
-	return NewTypeInfo[ID]()
+func (o IDOutput) ToOutputT() OutputT[ID] {
+	return OutputT[ID](o)
 }
 
 func (IDOutput) MarshalJSON() ([]byte, error) {
@@ -3008,8 +3008,8 @@ func (*idPtr) ElementType() reflect.Type {
 	return iDPtrType
 }
 
-func (*idPtr) TypeInfo() TypeInfo[*ID] {
-	return NewTypeInfo[*ID]()
+func (in *idPtr) ToOutputT() OutputT[*ID] {
+	return OutputT[*ID]{ToOutput(in).getState()}
 }
 
 func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
@@ -3025,8 +3025,8 @@ type IDPtrOutput struct{ *OutputState }
 
 var _ InputT[*ID] = IDPtrOutput{}
 
-func (IDPtrOutput) TypeInfo() TypeInfo[*ID] {
-	return NewTypeInfo[*ID]()
+func (o IDPtrOutput) ToOutputT() OutputT[*ID] {
+	return OutputT[*ID](o)
 }
 
 func (IDPtrOutput) MarshalJSON() ([]byte, error) {
@@ -3075,8 +3075,8 @@ func (IDArray) ElementType() reflect.Type {
 	return iDArrayType
 }
 
-func (IDArray) TypeInfo() TypeInfo[[]ID] {
-	return NewTypeInfo[[]ID]()
+func (in IDArray) ToOutputT() OutputT[[]ID] {
+	return OutputT[[]ID]{ToOutput(in).getState()}
 }
 
 func (in IDArray) ToIDArrayOutput() IDArrayOutput {
@@ -3092,8 +3092,8 @@ type IDArrayOutput struct{ *OutputState }
 
 var _ InputT[[]ID] = IDArrayOutput{}
 
-func (IDArrayOutput) TypeInfo() TypeInfo[[]ID] {
-	return NewTypeInfo[[]ID]()
+func (o IDArrayOutput) ToOutputT() OutputT[[]ID] {
+	return OutputT[[]ID](o)
 }
 
 func (IDArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3161,8 +3161,8 @@ func (IDMap) ElementType() reflect.Type {
 	return iDMapType
 }
 
-func (IDMap) TypeInfo() TypeInfo[map[string]ID] {
-	return NewTypeInfo[map[string]ID]()
+func (in IDMap) ToOutputT() OutputT[map[string]ID] {
+	return OutputT[map[string]ID]{ToOutput(in).getState()}
 }
 
 func (in IDMap) ToIDMapOutput() IDMapOutput {
@@ -3178,8 +3178,8 @@ type IDMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]ID] = IDMapOutput{}
 
-func (IDMapOutput) TypeInfo() TypeInfo[map[string]ID] {
-	return NewTypeInfo[map[string]ID]()
+func (o IDMapOutput) ToOutputT() OutputT[map[string]ID] {
+	return OutputT[map[string]ID](o)
 }
 
 func (IDMapOutput) MarshalJSON() ([]byte, error) {
@@ -3240,8 +3240,8 @@ func (IDArrayMap) ElementType() reflect.Type {
 	return iDArrayMapType
 }
 
-func (IDArrayMap) TypeInfo() TypeInfo[map[string][]ID] {
-	return NewTypeInfo[map[string][]ID]()
+func (in IDArrayMap) ToOutputT() OutputT[map[string][]ID] {
+	return OutputT[map[string][]ID]{ToOutput(in).getState()}
 }
 
 func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
@@ -3257,8 +3257,8 @@ type IDArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]ID] = IDArrayMapOutput{}
 
-func (IDArrayMapOutput) TypeInfo() TypeInfo[map[string][]ID] {
-	return NewTypeInfo[map[string][]ID]()
+func (o IDArrayMapOutput) ToOutputT() OutputT[map[string][]ID] {
+	return OutputT[map[string][]ID](o)
 }
 
 func (IDArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -3319,8 +3319,8 @@ func (IDMapArray) ElementType() reflect.Type {
 	return iDMapArrayType
 }
 
-func (IDMapArray) TypeInfo() TypeInfo[[]map[string]ID] {
-	return NewTypeInfo[[]map[string]ID]()
+func (in IDMapArray) ToOutputT() OutputT[[]map[string]ID] {
+	return OutputT[[]map[string]ID]{ToOutput(in).getState()}
 }
 
 func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
@@ -3336,8 +3336,8 @@ type IDMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]ID] = IDMapArrayOutput{}
 
-func (IDMapArrayOutput) TypeInfo() TypeInfo[[]map[string]ID] {
-	return NewTypeInfo[[]map[string]ID]()
+func (o IDMapArrayOutput) ToOutputT() OutputT[[]map[string]ID] {
+	return OutputT[[]map[string]ID](o)
 }
 
 func (IDMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3405,8 +3405,8 @@ func (IDMapMap) ElementType() reflect.Type {
 	return iDMapMapType
 }
 
-func (IDMapMap) TypeInfo() TypeInfo[map[string]map[string]ID] {
-	return NewTypeInfo[map[string]map[string]ID]()
+func (in IDMapMap) ToOutputT() OutputT[map[string]map[string]ID] {
+	return OutputT[map[string]map[string]ID]{ToOutput(in).getState()}
 }
 
 func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
@@ -3422,8 +3422,8 @@ type IDMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]ID] = IDMapMapOutput{}
 
-func (IDMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]ID] {
-	return NewTypeInfo[map[string]map[string]ID]()
+func (o IDMapMapOutput) ToOutputT() OutputT[map[string]map[string]ID] {
+	return OutputT[map[string]map[string]ID](o)
 }
 
 func (IDMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -3484,8 +3484,8 @@ func (IDArrayArray) ElementType() reflect.Type {
 	return iDArrayArrayType
 }
 
-func (IDArrayArray) TypeInfo() TypeInfo[[][]ID] {
-	return NewTypeInfo[[][]ID]()
+func (in IDArrayArray) ToOutputT() OutputT[[][]ID] {
+	return OutputT[[][]ID]{ToOutput(in).getState()}
 }
 
 func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
@@ -3501,8 +3501,8 @@ type IDArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]ID] = IDArrayArrayOutput{}
 
-func (IDArrayArrayOutput) TypeInfo() TypeInfo[[][]ID] {
-	return NewTypeInfo[[][]ID]()
+func (o IDArrayArrayOutput) ToOutputT() OutputT[[][]ID] {
+	return OutputT[[][]ID](o)
 }
 
 func (IDArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3570,8 +3570,8 @@ func (Array) ElementType() reflect.Type {
 	return arrayType
 }
 
-func (Array) TypeInfo() TypeInfo[[]interface{}] {
-	return NewTypeInfo[[]interface{}]()
+func (in Array) ToOutputT() OutputT[[]interface{}] {
+	return OutputT[[]interface{}]{ToOutput(in).getState()}
 }
 
 func (in Array) ToArrayOutput() ArrayOutput {
@@ -3587,8 +3587,8 @@ type ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]interface{}] = ArrayOutput{}
 
-func (ArrayOutput) TypeInfo() TypeInfo[[]interface{}] {
-	return NewTypeInfo[[]interface{}]()
+func (o ArrayOutput) ToOutputT() OutputT[[]interface{}] {
+	return OutputT[[]interface{}](o)
 }
 
 func (ArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3656,8 +3656,8 @@ func (Map) ElementType() reflect.Type {
 	return mapType
 }
 
-func (Map) TypeInfo() TypeInfo[map[string]interface{}] {
-	return NewTypeInfo[map[string]interface{}]()
+func (in Map) ToOutputT() OutputT[map[string]interface{}] {
+	return OutputT[map[string]interface{}]{ToOutput(in).getState()}
 }
 
 func (in Map) ToMapOutput() MapOutput {
@@ -3673,8 +3673,8 @@ type MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]interface{}] = MapOutput{}
 
-func (MapOutput) TypeInfo() TypeInfo[map[string]interface{}] {
-	return NewTypeInfo[map[string]interface{}]()
+func (o MapOutput) ToOutputT() OutputT[map[string]interface{}] {
+	return OutputT[map[string]interface{}](o)
 }
 
 func (MapOutput) MarshalJSON() ([]byte, error) {
@@ -3735,8 +3735,8 @@ func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
 }
 
-func (ArrayMap) TypeInfo() TypeInfo[map[string][]interface{}] {
-	return NewTypeInfo[map[string][]interface{}]()
+func (in ArrayMap) ToOutputT() OutputT[map[string][]interface{}] {
+	return OutputT[map[string][]interface{}]{ToOutput(in).getState()}
 }
 
 func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
@@ -3752,8 +3752,8 @@ type ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]interface{}] = ArrayMapOutput{}
 
-func (ArrayMapOutput) TypeInfo() TypeInfo[map[string][]interface{}] {
-	return NewTypeInfo[map[string][]interface{}]()
+func (o ArrayMapOutput) ToOutputT() OutputT[map[string][]interface{}] {
+	return OutputT[map[string][]interface{}](o)
 }
 
 func (ArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -3814,8 +3814,8 @@ func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
 }
 
-func (MapArray) TypeInfo() TypeInfo[[]map[string]interface{}] {
-	return NewTypeInfo[[]map[string]interface{}]()
+func (in MapArray) ToOutputT() OutputT[[]map[string]interface{}] {
+	return OutputT[[]map[string]interface{}]{ToOutput(in).getState()}
 }
 
 func (in MapArray) ToMapArrayOutput() MapArrayOutput {
@@ -3831,8 +3831,8 @@ type MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]interface{}] = MapArrayOutput{}
 
-func (MapArrayOutput) TypeInfo() TypeInfo[[]map[string]interface{}] {
-	return NewTypeInfo[[]map[string]interface{}]()
+func (o MapArrayOutput) ToOutputT() OutputT[[]map[string]interface{}] {
+	return OutputT[[]map[string]interface{}](o)
 }
 
 func (MapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -3900,8 +3900,8 @@ func (MapMap) ElementType() reflect.Type {
 	return mapMapType
 }
 
-func (MapMap) TypeInfo() TypeInfo[map[string]map[string]interface{}] {
-	return NewTypeInfo[map[string]map[string]interface{}]()
+func (in MapMap) ToOutputT() OutputT[map[string]map[string]interface{}] {
+	return OutputT[map[string]map[string]interface{}]{ToOutput(in).getState()}
 }
 
 func (in MapMap) ToMapMapOutput() MapMapOutput {
@@ -3917,8 +3917,8 @@ type MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]interface{}] = MapMapOutput{}
 
-func (MapMapOutput) TypeInfo() TypeInfo[map[string]map[string]interface{}] {
-	return NewTypeInfo[map[string]map[string]interface{}]()
+func (o MapMapOutput) ToOutputT() OutputT[map[string]map[string]interface{}] {
+	return OutputT[map[string]map[string]interface{}](o)
 }
 
 func (MapMapOutput) MarshalJSON() ([]byte, error) {
@@ -3979,8 +3979,8 @@ func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
 }
 
-func (ArrayArray) TypeInfo() TypeInfo[[][]interface{}] {
-	return NewTypeInfo[[][]interface{}]()
+func (in ArrayArray) ToOutputT() OutputT[[][]interface{}] {
+	return OutputT[[][]interface{}]{ToOutput(in).getState()}
 }
 
 func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
@@ -3996,8 +3996,8 @@ type ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]interface{}] = ArrayArrayOutput{}
 
-func (ArrayArrayOutput) TypeInfo() TypeInfo[[][]interface{}] {
-	return NewTypeInfo[[][]interface{}]()
+func (o ArrayArrayOutput) ToOutputT() OutputT[[][]interface{}] {
+	return OutputT[[][]interface{}](o)
 }
 
 func (ArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4065,8 +4065,8 @@ func (ArrayArrayMap) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
 
-func (ArrayArrayMap) TypeInfo() TypeInfo[map[string][][]interface{}] {
-	return NewTypeInfo[map[string][][]interface{}]()
+func (in ArrayArrayMap) ToOutputT() OutputT[map[string][][]interface{}] {
+	return OutputT[map[string][][]interface{}]{ToOutput(in).getState()}
 }
 
 func (in ArrayArrayMap) ToArrayArrayMapOutput() ArrayArrayMapOutput {
@@ -4082,8 +4082,8 @@ type ArrayArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][][]interface{}] = ArrayArrayMapOutput{}
 
-func (ArrayArrayMapOutput) TypeInfo() TypeInfo[map[string][][]interface{}] {
-	return NewTypeInfo[map[string][][]interface{}]()
+func (o ArrayArrayMapOutput) ToOutputT() OutputT[map[string][][]interface{}] {
+	return OutputT[map[string][][]interface{}](o)
 }
 
 func (ArrayArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -4147,8 +4147,8 @@ func (Int) ElementType() reflect.Type {
 	return intType
 }
 
-func (Int) TypeInfo() TypeInfo[int] {
-	return NewTypeInfo[int]()
+func (in Int) ToOutputT() OutputT[int] {
+	return OutputT[int]{ToOutput(in).getState()}
 }
 
 func (in Int) ToIntOutput() IntOutput {
@@ -4172,8 +4172,8 @@ type IntOutput struct{ *OutputState }
 
 var _ InputT[int] = IntOutput{}
 
-func (IntOutput) TypeInfo() TypeInfo[int] {
-	return NewTypeInfo[int]()
+func (o IntOutput) ToOutputT() OutputT[int] {
+	return OutputT[int](o)
 }
 
 func (IntOutput) MarshalJSON() ([]byte, error) {
@@ -4231,8 +4231,8 @@ func (*intPtr) ElementType() reflect.Type {
 	return intPtrType
 }
 
-func (*intPtr) TypeInfo() TypeInfo[*int] {
-	return NewTypeInfo[*int]()
+func (in *intPtr) ToOutputT() OutputT[*int] {
+	return OutputT[*int]{ToOutput(in).getState()}
 }
 
 func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
@@ -4248,8 +4248,8 @@ type IntPtrOutput struct{ *OutputState }
 
 var _ InputT[*int] = IntPtrOutput{}
 
-func (IntPtrOutput) TypeInfo() TypeInfo[*int] {
-	return NewTypeInfo[*int]()
+func (o IntPtrOutput) ToOutputT() OutputT[*int] {
+	return OutputT[*int](o)
 }
 
 func (IntPtrOutput) MarshalJSON() ([]byte, error) {
@@ -4298,8 +4298,8 @@ func (IntArray) ElementType() reflect.Type {
 	return intArrayType
 }
 
-func (IntArray) TypeInfo() TypeInfo[[]int] {
-	return NewTypeInfo[[]int]()
+func (in IntArray) ToOutputT() OutputT[[]int] {
+	return OutputT[[]int]{ToOutput(in).getState()}
 }
 
 func (in IntArray) ToIntArrayOutput() IntArrayOutput {
@@ -4315,8 +4315,8 @@ type IntArrayOutput struct{ *OutputState }
 
 var _ InputT[[]int] = IntArrayOutput{}
 
-func (IntArrayOutput) TypeInfo() TypeInfo[[]int] {
-	return NewTypeInfo[[]int]()
+func (o IntArrayOutput) ToOutputT() OutputT[[]int] {
+	return OutputT[[]int](o)
 }
 
 func (IntArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4384,8 +4384,8 @@ func (IntMap) ElementType() reflect.Type {
 	return intMapType
 }
 
-func (IntMap) TypeInfo() TypeInfo[map[string]int] {
-	return NewTypeInfo[map[string]int]()
+func (in IntMap) ToOutputT() OutputT[map[string]int] {
+	return OutputT[map[string]int]{ToOutput(in).getState()}
 }
 
 func (in IntMap) ToIntMapOutput() IntMapOutput {
@@ -4401,8 +4401,8 @@ type IntMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]int] = IntMapOutput{}
 
-func (IntMapOutput) TypeInfo() TypeInfo[map[string]int] {
-	return NewTypeInfo[map[string]int]()
+func (o IntMapOutput) ToOutputT() OutputT[map[string]int] {
+	return OutputT[map[string]int](o)
 }
 
 func (IntMapOutput) MarshalJSON() ([]byte, error) {
@@ -4463,8 +4463,8 @@ func (IntArrayMap) ElementType() reflect.Type {
 	return intArrayMapType
 }
 
-func (IntArrayMap) TypeInfo() TypeInfo[map[string][]int] {
-	return NewTypeInfo[map[string][]int]()
+func (in IntArrayMap) ToOutputT() OutputT[map[string][]int] {
+	return OutputT[map[string][]int]{ToOutput(in).getState()}
 }
 
 func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
@@ -4480,8 +4480,8 @@ type IntArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]int] = IntArrayMapOutput{}
 
-func (IntArrayMapOutput) TypeInfo() TypeInfo[map[string][]int] {
-	return NewTypeInfo[map[string][]int]()
+func (o IntArrayMapOutput) ToOutputT() OutputT[map[string][]int] {
+	return OutputT[map[string][]int](o)
 }
 
 func (IntArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -4542,8 +4542,8 @@ func (IntMapArray) ElementType() reflect.Type {
 	return intMapArrayType
 }
 
-func (IntMapArray) TypeInfo() TypeInfo[[]map[string]int] {
-	return NewTypeInfo[[]map[string]int]()
+func (in IntMapArray) ToOutputT() OutputT[[]map[string]int] {
+	return OutputT[[]map[string]int]{ToOutput(in).getState()}
 }
 
 func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
@@ -4559,8 +4559,8 @@ type IntMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]int] = IntMapArrayOutput{}
 
-func (IntMapArrayOutput) TypeInfo() TypeInfo[[]map[string]int] {
-	return NewTypeInfo[[]map[string]int]()
+func (o IntMapArrayOutput) ToOutputT() OutputT[[]map[string]int] {
+	return OutputT[[]map[string]int](o)
 }
 
 func (IntMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4628,8 +4628,8 @@ func (IntMapMap) ElementType() reflect.Type {
 	return intMapMapType
 }
 
-func (IntMapMap) TypeInfo() TypeInfo[map[string]map[string]int] {
-	return NewTypeInfo[map[string]map[string]int]()
+func (in IntMapMap) ToOutputT() OutputT[map[string]map[string]int] {
+	return OutputT[map[string]map[string]int]{ToOutput(in).getState()}
 }
 
 func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
@@ -4645,8 +4645,8 @@ type IntMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]int] = IntMapMapOutput{}
 
-func (IntMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]int] {
-	return NewTypeInfo[map[string]map[string]int]()
+func (o IntMapMapOutput) ToOutputT() OutputT[map[string]map[string]int] {
+	return OutputT[map[string]map[string]int](o)
 }
 
 func (IntMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -4707,8 +4707,8 @@ func (IntArrayArray) ElementType() reflect.Type {
 	return intArrayArrayType
 }
 
-func (IntArrayArray) TypeInfo() TypeInfo[[][]int] {
-	return NewTypeInfo[[][]int]()
+func (in IntArrayArray) ToOutputT() OutputT[[][]int] {
+	return OutputT[[][]int]{ToOutput(in).getState()}
 }
 
 func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
@@ -4724,8 +4724,8 @@ type IntArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]int] = IntArrayArrayOutput{}
 
-func (IntArrayArrayOutput) TypeInfo() TypeInfo[[][]int] {
-	return NewTypeInfo[[][]int]()
+func (o IntArrayArrayOutput) ToOutputT() OutputT[[][]int] {
+	return OutputT[[][]int](o)
 }
 
 func (IntArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -4796,8 +4796,8 @@ func (String) ElementType() reflect.Type {
 	return stringType
 }
 
-func (String) TypeInfo() TypeInfo[string] {
-	return NewTypeInfo[string]()
+func (in String) ToOutputT() OutputT[string] {
+	return OutputT[string]{ToOutput(in).getState()}
 }
 
 func (in String) ToStringOutput() StringOutput {
@@ -4821,8 +4821,8 @@ type StringOutput struct{ *OutputState }
 
 var _ InputT[string] = StringOutput{}
 
-func (StringOutput) TypeInfo() TypeInfo[string] {
-	return NewTypeInfo[string]()
+func (o StringOutput) ToOutputT() OutputT[string] {
+	return OutputT[string](o)
 }
 
 func (StringOutput) MarshalJSON() ([]byte, error) {
@@ -4880,8 +4880,8 @@ func (*stringPtr) ElementType() reflect.Type {
 	return stringPtrType
 }
 
-func (*stringPtr) TypeInfo() TypeInfo[*string] {
-	return NewTypeInfo[*string]()
+func (in *stringPtr) ToOutputT() OutputT[*string] {
+	return OutputT[*string]{ToOutput(in).getState()}
 }
 
 func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
@@ -4897,8 +4897,8 @@ type StringPtrOutput struct{ *OutputState }
 
 var _ InputT[*string] = StringPtrOutput{}
 
-func (StringPtrOutput) TypeInfo() TypeInfo[*string] {
-	return NewTypeInfo[*string]()
+func (o StringPtrOutput) ToOutputT() OutputT[*string] {
+	return OutputT[*string](o)
 }
 
 func (StringPtrOutput) MarshalJSON() ([]byte, error) {
@@ -4947,8 +4947,8 @@ func (StringArray) ElementType() reflect.Type {
 	return stringArrayType
 }
 
-func (StringArray) TypeInfo() TypeInfo[[]string] {
-	return NewTypeInfo[[]string]()
+func (in StringArray) ToOutputT() OutputT[[]string] {
+	return OutputT[[]string]{ToOutput(in).getState()}
 }
 
 func (in StringArray) ToStringArrayOutput() StringArrayOutput {
@@ -4964,8 +4964,8 @@ type StringArrayOutput struct{ *OutputState }
 
 var _ InputT[[]string] = StringArrayOutput{}
 
-func (StringArrayOutput) TypeInfo() TypeInfo[[]string] {
-	return NewTypeInfo[[]string]()
+func (o StringArrayOutput) ToOutputT() OutputT[[]string] {
+	return OutputT[[]string](o)
 }
 
 func (StringArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5033,8 +5033,8 @@ func (StringMap) ElementType() reflect.Type {
 	return stringMapType
 }
 
-func (StringMap) TypeInfo() TypeInfo[map[string]string] {
-	return NewTypeInfo[map[string]string]()
+func (in StringMap) ToOutputT() OutputT[map[string]string] {
+	return OutputT[map[string]string]{ToOutput(in).getState()}
 }
 
 func (in StringMap) ToStringMapOutput() StringMapOutput {
@@ -5050,8 +5050,8 @@ type StringMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]string] = StringMapOutput{}
 
-func (StringMapOutput) TypeInfo() TypeInfo[map[string]string] {
-	return NewTypeInfo[map[string]string]()
+func (o StringMapOutput) ToOutputT() OutputT[map[string]string] {
+	return OutputT[map[string]string](o)
 }
 
 func (StringMapOutput) MarshalJSON() ([]byte, error) {
@@ -5112,8 +5112,8 @@ func (StringArrayMap) ElementType() reflect.Type {
 	return stringArrayMapType
 }
 
-func (StringArrayMap) TypeInfo() TypeInfo[map[string][]string] {
-	return NewTypeInfo[map[string][]string]()
+func (in StringArrayMap) ToOutputT() OutputT[map[string][]string] {
+	return OutputT[map[string][]string]{ToOutput(in).getState()}
 }
 
 func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
@@ -5129,8 +5129,8 @@ type StringArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]string] = StringArrayMapOutput{}
 
-func (StringArrayMapOutput) TypeInfo() TypeInfo[map[string][]string] {
-	return NewTypeInfo[map[string][]string]()
+func (o StringArrayMapOutput) ToOutputT() OutputT[map[string][]string] {
+	return OutputT[map[string][]string](o)
 }
 
 func (StringArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -5191,8 +5191,8 @@ func (StringMapArray) ElementType() reflect.Type {
 	return stringMapArrayType
 }
 
-func (StringMapArray) TypeInfo() TypeInfo[[]map[string]string] {
-	return NewTypeInfo[[]map[string]string]()
+func (in StringMapArray) ToOutputT() OutputT[[]map[string]string] {
+	return OutputT[[]map[string]string]{ToOutput(in).getState()}
 }
 
 func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
@@ -5208,8 +5208,8 @@ type StringMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]string] = StringMapArrayOutput{}
 
-func (StringMapArrayOutput) TypeInfo() TypeInfo[[]map[string]string] {
-	return NewTypeInfo[[]map[string]string]()
+func (o StringMapArrayOutput) ToOutputT() OutputT[[]map[string]string] {
+	return OutputT[[]map[string]string](o)
 }
 
 func (StringMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5277,8 +5277,8 @@ func (StringMapMap) ElementType() reflect.Type {
 	return stringMapMapType
 }
 
-func (StringMapMap) TypeInfo() TypeInfo[map[string]map[string]string] {
-	return NewTypeInfo[map[string]map[string]string]()
+func (in StringMapMap) ToOutputT() OutputT[map[string]map[string]string] {
+	return OutputT[map[string]map[string]string]{ToOutput(in).getState()}
 }
 
 func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
@@ -5294,8 +5294,8 @@ type StringMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]string] = StringMapMapOutput{}
 
-func (StringMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]string] {
-	return NewTypeInfo[map[string]map[string]string]()
+func (o StringMapMapOutput) ToOutputT() OutputT[map[string]map[string]string] {
+	return OutputT[map[string]map[string]string](o)
 }
 
 func (StringMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -5356,8 +5356,8 @@ func (StringArrayArray) ElementType() reflect.Type {
 	return stringArrayArrayType
 }
 
-func (StringArrayArray) TypeInfo() TypeInfo[[][]string] {
-	return NewTypeInfo[[][]string]()
+func (in StringArrayArray) ToOutputT() OutputT[[][]string] {
+	return OutputT[[][]string]{ToOutput(in).getState()}
 }
 
 func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
@@ -5373,8 +5373,8 @@ type StringArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]string] = StringArrayArrayOutput{}
 
-func (StringArrayArrayOutput) TypeInfo() TypeInfo[[][]string] {
-	return NewTypeInfo[[][]string]()
+func (o StringArrayArrayOutput) ToOutputT() OutputT[[][]string] {
+	return OutputT[[][]string](o)
 }
 
 func (StringArrayArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5442,8 +5442,8 @@ func (URN) ElementType() reflect.Type {
 	return urnType
 }
 
-func (URN) TypeInfo() TypeInfo[URN] {
-	return NewTypeInfo[URN]()
+func (in URN) ToOutputT() OutputT[URN] {
+	return OutputT[URN]{ToOutput(in).getState()}
 }
 
 func (in URN) ToURNOutput() URNOutput {
@@ -5475,8 +5475,8 @@ type URNOutput struct{ *OutputState }
 
 var _ InputT[URN] = URNOutput{}
 
-func (URNOutput) TypeInfo() TypeInfo[URN] {
-	return NewTypeInfo[URN]()
+func (o URNOutput) ToOutputT() OutputT[URN] {
+	return OutputT[URN](o)
 }
 
 func (URNOutput) MarshalJSON() ([]byte, error) {
@@ -5544,8 +5544,8 @@ func (*urnPtr) ElementType() reflect.Type {
 	return uRNPtrType
 }
 
-func (*urnPtr) TypeInfo() TypeInfo[*URN] {
-	return NewTypeInfo[*URN]()
+func (in *urnPtr) ToOutputT() OutputT[*URN] {
+	return OutputT[*URN]{ToOutput(in).getState()}
 }
 
 func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
@@ -5561,8 +5561,8 @@ type URNPtrOutput struct{ *OutputState }
 
 var _ InputT[*URN] = URNPtrOutput{}
 
-func (URNPtrOutput) TypeInfo() TypeInfo[*URN] {
-	return NewTypeInfo[*URN]()
+func (o URNPtrOutput) ToOutputT() OutputT[*URN] {
+	return OutputT[*URN](o)
 }
 
 func (URNPtrOutput) MarshalJSON() ([]byte, error) {
@@ -5611,8 +5611,8 @@ func (URNArray) ElementType() reflect.Type {
 	return uRNArrayType
 }
 
-func (URNArray) TypeInfo() TypeInfo[[]URN] {
-	return NewTypeInfo[[]URN]()
+func (in URNArray) ToOutputT() OutputT[[]URN] {
+	return OutputT[[]URN]{ToOutput(in).getState()}
 }
 
 func (in URNArray) ToURNArrayOutput() URNArrayOutput {
@@ -5628,8 +5628,8 @@ type URNArrayOutput struct{ *OutputState }
 
 var _ InputT[[]URN] = URNArrayOutput{}
 
-func (URNArrayOutput) TypeInfo() TypeInfo[[]URN] {
-	return NewTypeInfo[[]URN]()
+func (o URNArrayOutput) ToOutputT() OutputT[[]URN] {
+	return OutputT[[]URN](o)
 }
 
 func (URNArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5697,8 +5697,8 @@ func (URNMap) ElementType() reflect.Type {
 	return uRNMapType
 }
 
-func (URNMap) TypeInfo() TypeInfo[map[string]URN] {
-	return NewTypeInfo[map[string]URN]()
+func (in URNMap) ToOutputT() OutputT[map[string]URN] {
+	return OutputT[map[string]URN]{ToOutput(in).getState()}
 }
 
 func (in URNMap) ToURNMapOutput() URNMapOutput {
@@ -5714,8 +5714,8 @@ type URNMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]URN] = URNMapOutput{}
 
-func (URNMapOutput) TypeInfo() TypeInfo[map[string]URN] {
-	return NewTypeInfo[map[string]URN]()
+func (o URNMapOutput) ToOutputT() OutputT[map[string]URN] {
+	return OutputT[map[string]URN](o)
 }
 
 func (URNMapOutput) MarshalJSON() ([]byte, error) {
@@ -5776,8 +5776,8 @@ func (URNArrayMap) ElementType() reflect.Type {
 	return uRNArrayMapType
 }
 
-func (URNArrayMap) TypeInfo() TypeInfo[map[string][]URN] {
-	return NewTypeInfo[map[string][]URN]()
+func (in URNArrayMap) ToOutputT() OutputT[map[string][]URN] {
+	return OutputT[map[string][]URN]{ToOutput(in).getState()}
 }
 
 func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
@@ -5793,8 +5793,8 @@ type URNArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]URN] = URNArrayMapOutput{}
 
-func (URNArrayMapOutput) TypeInfo() TypeInfo[map[string][]URN] {
-	return NewTypeInfo[map[string][]URN]()
+func (o URNArrayMapOutput) ToOutputT() OutputT[map[string][]URN] {
+	return OutputT[map[string][]URN](o)
 }
 
 func (URNArrayMapOutput) MarshalJSON() ([]byte, error) {
@@ -5855,8 +5855,8 @@ func (URNMapArray) ElementType() reflect.Type {
 	return uRNMapArrayType
 }
 
-func (URNMapArray) TypeInfo() TypeInfo[[]map[string]URN] {
-	return NewTypeInfo[[]map[string]URN]()
+func (in URNMapArray) ToOutputT() OutputT[[]map[string]URN] {
+	return OutputT[[]map[string]URN]{ToOutput(in).getState()}
 }
 
 func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
@@ -5872,8 +5872,8 @@ type URNMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]URN] = URNMapArrayOutput{}
 
-func (URNMapArrayOutput) TypeInfo() TypeInfo[[]map[string]URN] {
-	return NewTypeInfo[[]map[string]URN]()
+func (o URNMapArrayOutput) ToOutputT() OutputT[[]map[string]URN] {
+	return OutputT[[]map[string]URN](o)
 }
 
 func (URNMapArrayOutput) MarshalJSON() ([]byte, error) {
@@ -5941,8 +5941,8 @@ func (URNMapMap) ElementType() reflect.Type {
 	return uRNMapMapType
 }
 
-func (URNMapMap) TypeInfo() TypeInfo[map[string]map[string]URN] {
-	return NewTypeInfo[map[string]map[string]URN]()
+func (in URNMapMap) ToOutputT() OutputT[map[string]map[string]URN] {
+	return OutputT[map[string]map[string]URN]{ToOutput(in).getState()}
 }
 
 func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
@@ -5958,8 +5958,8 @@ type URNMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]URN] = URNMapMapOutput{}
 
-func (URNMapMapOutput) TypeInfo() TypeInfo[map[string]map[string]URN] {
-	return NewTypeInfo[map[string]map[string]URN]()
+func (o URNMapMapOutput) ToOutputT() OutputT[map[string]map[string]URN] {
+	return OutputT[map[string]map[string]URN](o)
 }
 
 func (URNMapMapOutput) MarshalJSON() ([]byte, error) {
@@ -6020,8 +6020,8 @@ func (URNArrayArray) ElementType() reflect.Type {
 	return uRNArrayArrayType
 }
 
-func (URNArrayArray) TypeInfo() TypeInfo[[][]URN] {
-	return NewTypeInfo[[][]URN]()
+func (in URNArrayArray) ToOutputT() OutputT[[][]URN] {
+	return OutputT[[][]URN]{ToOutput(in).getState()}
 }
 
 func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {
@@ -6037,8 +6037,8 @@ type URNArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]URN] = URNArrayArrayOutput{}
 
-func (URNArrayArrayOutput) TypeInfo() TypeInfo[[][]URN] {
-	return NewTypeInfo[[][]URN]()
+func (o URNArrayArrayOutput) ToOutputT() OutputT[[][]URN] {
+	return OutputT[[][]URN](o)
 }
 
 func (URNArrayArrayOutput) MarshalJSON() ([]byte, error) {

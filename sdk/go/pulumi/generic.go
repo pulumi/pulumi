@@ -6,30 +6,6 @@ import (
 	"reflect"
 )
 
-type TypeInfo[T any] struct {
-	// Zero-width phantom field to prevent:
-	//
-	// - casting from TypeInfo[T] to TypeInfo[U]
-	// - comparison with == and !=
-	//
-	// Having a field of a type that incoprorates T prevents the first,
-	// and making it have a function type prevents the second.
-	// Without this, the following is allowed.
-	//
-	//	var t1 TypeInfo[int]
-	//	var t2 TypeInfo[string]
-	//	t1 == TypeInfo[int](t2) // true
-	_ [0]func() T
-}
-
-func NewTypeInfo[T any]() TypeInfo[T] {
-	return TypeInfo[T]{}
-}
-
-func (t *TypeInfo[T]) Type() reflect.Type {
-	return typeOf[T]()
-}
-
 func typeOf[T any]() reflect.Type {
 	return reflect.TypeOf((*T)(nil)).Elem()
 }
@@ -37,7 +13,7 @@ func typeOf[T any]() reflect.Type {
 type InputT[T any] interface {
 	Input
 
-	TypeInfo() TypeInfo[T]
+	ToOutputT() OutputT[T]
 	// TODO: Can we enforce that T is assignable to ElementType?
 }
 
@@ -76,8 +52,8 @@ func (o OutputT[T]) ElementType() reflect.Type {
 	return typeOf[T]()
 }
 
-func (OutputT[T]) TypeInfo() TypeInfo[T] {
-	return NewTypeInfo[T]()
+func (o OutputT[T]) ToOutputT() OutputT[T] {
+	return o
 }
 
 func (o OutputT[T]) ToAnyOutput() AnyOutput {
@@ -133,8 +109,8 @@ func (ArrayOutputT[T]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
 }
 
-func (ArrayOutputT[T]) TypeInfo() TypeInfo[[]T] {
-	return NewTypeInfo[[]T]()
+func (o ArrayOutputT[T]) ToOutputT() OutputT[[]T] {
+	return OutputT[[]T](o)
 }
 
 func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
@@ -213,8 +189,8 @@ func (PtrOutputT[T]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
 }
 
-func (PtrOutputT[T]) TypeInfo() TypeInfo[*T] {
-	return NewTypeInfo[*T]()
+func (o PtrOutputT[T]) ToOutputT() OutputT[*T] {
+	return OutputT[*T](o)
 }
 
 func (o PtrOutputT[T]) Elem() OutputT[T] {
@@ -258,8 +234,8 @@ func (MapOutputT[V]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[string](), typeOf[V]())
 }
 
-func (MapOutputT[V]) TypeInfo() TypeInfo[map[string]V] {
-	return NewTypeInfo[map[string]V]()
+func (o MapOutputT[V]) ToOutputT() OutputT[map[string]V] {
+	return OutputT[map[string]V](o)
 }
 
 func (o MapOutputT[V]) MapIndex(i InputT[string]) OutputT[V] {

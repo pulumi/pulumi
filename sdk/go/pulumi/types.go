@@ -1204,8 +1204,8 @@ func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
 
-func (AnyOutput) TypeInfo() TypeInfo[any] {
-	return NewTypeInfo[any]()
+func (o AnyOutput) ToOutputT() OutputT[any] {
+	return OutputT[any](o)
 }
 
 func (in ID) ToStringPtrOutput() StringPtrOutput {
@@ -1272,8 +1272,8 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
 
-func (ResourceOutput) TypeInfo() TypeInfo[Resource] {
-	return NewTypeInfo[Resource]()
+func (o ResourceOutput) ToOutputT() OutputT[Resource] {
+	return OutputT[Resource](o)
 }
 
 // ElementType returns the element type of this Output (Resource).
@@ -1351,8 +1351,8 @@ func (ResourceArrayOutput) ElementType() reflect.Type {
 	return resourceArrayType
 }
 
-func (ResourceArrayOutput) TypeInfo() TypeInfo[[]Resource] {
-	return NewTypeInfo[[]Resource]()
+func (o ResourceArrayOutput) ToOutputT() OutputT[[]Resource] {
+	return OutputT[[]Resource](o)
 }
 
 func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {

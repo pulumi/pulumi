@@ -62,8 +62,8 @@ func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
-func ({{.InputType}}) TypeInfo() TypeInfo[{{.ElementType}}] {
-	return NewTypeInfo[{{.ElementType}}]()
+func (in {{.InputType}}) ToOutputT() OutputT[{{.ElementType}}] {
+	return OutputT[{{.ElementType}}]{ToOutput(in).getState()}
 }
 
 func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
@@ -100,8 +100,8 @@ type {{.Name}}Output struct { *OutputState }
 
 var _ InputT[{{.ElementType}}] = {{.Name}}Output{}
 
-func ({{.Name}}Output) TypeInfo() TypeInfo[{{.ElementType}}] {
-	return NewTypeInfo[{{.ElementType}}]()
+func (o {{.Name}}Output) ToOutputT() OutputT[{{.ElementType}}] {
+	return OutputT[{{.ElementType}}](o)
 }
 
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {
