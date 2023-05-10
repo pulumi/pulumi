@@ -23,14 +23,14 @@ type OutputT[T any] struct {
 
 func (OutputT[T]) isInputT() {} // TODO: hack; fix
 
-func T[T any](v T) OutputT[T] {
-	return OutputValue(v)
-}
-
-func OutputValue[T any](v T) OutputT[T] {
+func OutputFromValue[T any](v T) OutputT[T] {
 	state := newOutputState(nil /* joinGroup */, typeOf[T]())
 	state.resolve(v, true, false, nil /* deps */)
 	return OutputT[T]{OutputState: state}
+}
+
+func V[T any](v T) OutputT[T] {
+	return OutputFromValue(v)
 }
 
 func Cast[T any](o Output) OutputT[T] {
@@ -164,13 +164,14 @@ var (
 	_ PtrInputT[int] = PtrOutputT[int]{}
 )
 
-func Ptr[T any](v T) PtrOutputT[T] {
-	os := newOutputState(nil /* joinGroup */, typeOf[T]())
-	os.resolve(&v, true, false, nil /* deps */)
-	return PtrOutputT[T]{OutputState: os}
+func OutputFromPtr[T any](v T) PtrOutputT[T] {
+	return NewPtrOutput(OutputFromValue(&v))
 }
 
-// TODO: Should this take an InputT
+func P[T any](v T) PtrOutputT[T] {
+	return OutputFromPtr(v)
+}
+
 func PtrOf[T any](o InputT[T]) PtrOutputT[T] {
 	// As of Go 1.20, Output[T] cannot refer to Output[*T] directly.
 	// This refers to the following limitation at
@@ -202,10 +203,10 @@ func PtrOf[T any](o InputT[T]) PtrOutputT[T] {
 	// This restriction may be lifted in the future,
 	// but meanwhile it means that PtrOf must be a top-level function.
 	p := ApplyT(o, func(v T) *T { return &v })
-	return PtrFrom(p)
+	return NewPtrOutput(p)
 }
 
-func PtrFrom[T any](o OutputT[*T]) PtrOutputT[T] {
+func NewPtrOutput[T any](o OutputT[*T]) PtrOutputT[T] {
 	// No need to check if o.ElementType() is assignable.
 	// It's already a pointer type.
 	return PtrOutputT[T]{o.getState()}
