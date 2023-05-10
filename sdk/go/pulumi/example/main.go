@@ -44,11 +44,10 @@ func main() {
 			Bucket:  bucket.Bucket.ToAnyOutput(),
 			Key:     pulumi.Ptr(indexDocument),     // string       -> Input[*string]
 			Content: pulumi.PtrOf[string](content), // StringOutput -> Input[*string]
-			Metadata: pulumi.MapOf(map[string]pulumi.InputT[string]{
+			Metadata: pulumi.MapT[string]{
 				// Fully dynamic maps using pulumi.T to use string keys and inputty values:
 				"generics-are": pulumi.T("💜"),
-			}), // map[string]Input[string] -> Input[map[string, string]]
-			// TODO: Custom Map[K]Input[V] type?
+			}, // map[string]Input[string] -> Input[map[string, string]]
 			ContentType: pulumi.Ptr("text/html"),
 			// Acl:          pulumi.Ptr("public-read"),
 			StorageClass: pulumi.Ptr("STANDARD"),

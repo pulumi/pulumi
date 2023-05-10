@@ -24,6 +24,10 @@ type OutputT[T any] struct {
 func (OutputT[T]) isInputT() {} // TODO: hack; fix
 
 func T[T any](v T) OutputT[T] {
+	return OutputValue(v)
+}
+
+func OutputValue[T any](v T) OutputT[T] {
 	state := newOutputState(nil /* joinGroup */, typeOf[T]())
 	state.resolve(v, true, false, nil /* deps */)
 	return OutputT[T]{OutputState: state}
@@ -76,6 +80,40 @@ func awaitT[T any, I InputT[T]](ctx context.Context, o InputT[T]) (v T, known, s
 	return v, known, secret, deps, err
 }
 
+type ArrayT[T any] []InputT[T]
+
+var (
+	_ Input            = ArrayT[any](nil)
+	_ InputT[[]int]    = ArrayT[int](nil)
+	_ ArrayInputT[int] = ArrayT[int](nil)
+)
+
+func (ArrayT[T]) ElementType() reflect.Type {
+	return reflect.SliceOf(typeOf[T]())
+}
+
+func (items ArrayT[T]) ToOutputT(ctx context.Context) OutputT[[]T] {
+	state := newOutputState(nil /* joinGroup */, reflect.SliceOf(typeOf[T]()))
+	go func() {
+		var deps []Resource
+		known, secret := true, false
+		result := make([]T, len(items))
+		for i, o := range items {
+			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](ctx, o)
+			known = known && vknown
+			secret = secret || vsecret
+			deps = mergeDependencies(deps, vdeps)
+			if err != nil || !known {
+				state.fulfill(result, known, secret, deps, err)
+				return
+			}
+			result[i] = v
+		}
+		state.fulfill(result, known, secret, deps, nil)
+	}()
+	return OutputT[[]T]{OutputState: state}
+}
+
 type ArrayInputT[T any] interface {
 	InputT[[]T]
 }
@@ -88,29 +126,6 @@ var (
 	_ InputT[[]int]    = ArrayOutputT[int]{}
 	_ ArrayInputT[int] = ArrayOutputT[int]{}
 )
-
-func ArrayOf[T any](items ...InputT[T]) ArrayOutputT[T] {
-	state := newOutputState(nil /* joinGroup */, reflect.SliceOf(typeOf[T]()))
-	go func() {
-		var deps []Resource
-		known, secret := true, false
-		result := make([]T, len(items))
-		for i, o := range items {
-			// TODO: context
-			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](context.Background(), o)
-			known = known && vknown
-			secret = secret || vsecret
-			deps = mergeDependencies(deps, vdeps)
-			if err != nil || !known {
-				state.fulfill(result, known, secret, deps, err)
-				return
-			}
-			result[i] = v
-		}
-		state.fulfill(result, known, secret, deps, nil)
-	}()
-	return ArrayOutputT[T]{OutputState: state}
-}
 
 func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
 	return ArrayOutputT[T](items.ToOutputT(context.Background()))
@@ -216,6 +231,40 @@ func (o PtrOutputT[T]) Elem() OutputT[T] {
 	})
 }
 
+type MapT[T any] map[string]InputT[T]
+
+var (
+	_ Input                  = MapT[any](nil)
+	_ InputT[map[string]any] = MapT[any](nil)
+	_ MapInputT[any]         = MapT[any](nil)
+)
+
+func (MapT[T]) ElementType() reflect.Type {
+	return reflect.MapOf(typeOf[string](), typeOf[T]())
+}
+
+func (items MapT[T]) ToOutputT(ctx context.Context) OutputT[map[string]T] {
+	state := newOutputState(nil /* joinGroup */, reflect.MapOf(typeOf[string](), typeOf[T]()))
+	go func() {
+		var deps []Resource
+		known, secret := true, false
+		result := make(map[string]T, len(items))
+		for k, o := range items {
+			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](ctx, o)
+			known = known && vknown
+			secret = secret || vsecret
+			deps = mergeDependencies(deps, vdeps)
+			if err != nil || !known {
+				state.fulfill(result, known, secret, deps, err)
+				return
+			}
+			result[k] = v
+		}
+		state.fulfill(result, known, secret, deps, nil)
+	}()
+	return OutputT[map[string]T]{state}
+}
+
 type MapOutputT[T any] struct{ *OutputState }
 
 type MapInputT[T any] interface {
@@ -228,29 +277,6 @@ var (
 	_ InputT[map[string]int] = MapOutputT[int]{}
 	_ MapInputT[any]         = MapOutputT[any]{}
 )
-
-func MapOf[T any](items map[string]InputT[T]) MapOutputT[T] {
-	state := newOutputState(nil /* joinGroup */, reflect.MapOf(typeOf[string](), typeOf[T]()))
-	go func() {
-		var deps []Resource
-		known, secret := true, false
-		result := make(map[string]T, len(items))
-		for k, o := range items {
-			// TODO: context
-			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](context.Background(), o)
-			known = known && vknown
-			secret = secret || vsecret
-			deps = mergeDependencies(deps, vdeps)
-			if err != nil || !known {
-				state.fulfill(result, known, secret, deps, err)
-				return
-			}
-			result[k] = v
-		}
-		state.fulfill(result, known, secret, deps, nil)
-	}()
-	return MapOutputT[T]{OutputState: state}
-}
 
 func MapFrom[T any](items InputT[map[string]T]) MapOutputT[T] {
 	return MapOutputT[T](items.ToOutputT(context.Background()))
@@ -314,11 +340,10 @@ func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f fu
 }
 
 /*
-Apply2(a, b, f) -> Output[U]
+TODO: codegen
 Apply3(a, b, c, f) -> Output[U]
 // ...
 Apply8(a, b, c, d, e, f, g, h, f) -> Output[U]
 */
 
 // TODO Make a typed outputState[T].
-// TODO Make the embeds above private.
