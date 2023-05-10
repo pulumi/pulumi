@@ -51,9 +51,9 @@ type Bucket struct {
 	// A configuration of [server-side encryption configuration](http://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html) (documented below)
 	ServerSideEncryptionConfiguration pulumi.OutputT[BucketServerSideEncryptionConfiguration] `pulumi:"serverSideEncryptionConfiguration"`
 	// A map of tags to assign to the bucket. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
-	Tags pulumi.MapOutputT[string, string] `pulumi:"tags"`
+	Tags pulumi.MapOutputT[string] `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
-	TagsAll pulumi.MapOutputT[string, string] `pulumi:"tagsAll"`
+	TagsAll pulumi.MapOutputT[string] `pulumi:"tagsAll"`
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.OutputT[BucketVersioning] `pulumi:"versioning"`
 	// A website object (documented below).
@@ -165,7 +165,7 @@ type BucketArgs struct {
 	// A configuration of [server-side encryption configuration](http://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html) (documented below)
 	ServerSideEncryptionConfiguration pulumi.PtrInputT[BucketServerSideEncryptionConfiguration]
 	// A map of tags to assign to the bucket. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
-	Tags pulumi.MapInputT[string, string]
+	Tags pulumi.MapInputT[string]
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.PtrInputT[BucketVersioning]
 	// A website object (documented below).
@@ -239,7 +239,7 @@ type BucketLifecycleRule struct {
 	// Object key prefix identifying one or more objects to which the rule applies.
 	Prefix pulumi.InputT[string] `pulumi:"prefix"`
 	// Specifies object tags key and value.
-	Tags pulumi.MapInputT[string, string] `pulumi:"tags"`
+	Tags pulumi.MapInputT[string] `pulumi:"tags"`
 	// Specifies a period in the object's transitions (documented below).
 	Transitions []BucketLifecycleRuleTransition `pulumi:"transitions"`
 }
@@ -344,7 +344,7 @@ type BucketReplicationConfigurationRuleFilter struct {
 	Prefix pulumi.InputT[string] `pulumi:"prefix"`
 	// A map of tags that identifies subset of objects to which the rule applies.
 	// The rule applies only to objects having all the tags in its tagset.
-	Tags pulumi.MapInputT[string, string] `pulumi:"tags"`
+	Tags pulumi.MapInputT[string] `pulumi:"tags"`
 }
 
 type BucketReplicationConfigurationRuleDestination struct {

@@ -227,43 +227,43 @@ func (o PtrOutputT[T]) Elem() OutputT[T] {
 	})
 }
 
-type MapOutputT[K comparable, V any] struct{ *OutputState }
+type MapOutputT[V any] struct{ *OutputState }
 
-type MapInputT[K comparable, V any] interface {
-	InputT[map[K]V]
+type MapInputT[V any] interface {
+	InputT[map[string]V]
 }
 
 var (
-	_ Output                 = MapOutputT[string, any]{}
-	_ Input                  = MapOutputT[string, any]{}
-	_ InputT[map[string]int] = MapOutputT[string, int]{}
-	_ MapInputT[string, any] = MapOutputT[string, any]{}
+	_ Output                 = MapOutputT[any]{}
+	_ Input                  = MapOutputT[any]{}
+	_ InputT[map[string]int] = MapOutputT[int]{}
+	_ MapInputT[any]         = MapOutputT[any]{}
 )
 
-func MapOf[K comparable, V any](items map[K]InputT[V]) MapOutputT[K, V] {
-	return MapOutputT[K, V]{
+func MapOf[V any](items map[string]InputT[V]) MapOutputT[V] {
+	return MapOutputT[V]{
 		ToOutput(items).getState(),
 	}
 }
 
-func MapFrom[K comparable, V any](items InputT[map[K]V]) MapOutputT[K, V] {
-	return MapOutputT[K, V]{
+func MapFrom[V any](items InputT[map[string]V]) MapOutputT[V] {
+	return MapOutputT[V]{
 		ToOutput(items).getState(),
 	}
 }
 
-func (MapOutputT[K, V]) isInputT() {} // TODO: hack; fix
+func (MapOutputT[V]) isInputT() {} // TODO: hack; fix
 
-func (MapOutputT[K, V]) ElementType() reflect.Type {
-	return reflect.MapOf(typeOf[K](), typeOf[V]())
+func (MapOutputT[V]) ElementType() reflect.Type {
+	return reflect.MapOf(typeOf[string](), typeOf[V]())
 }
 
-func (MapOutputT[K, V]) TypeInfo() TypeInfo[map[K]V] {
-	return NewTypeInfo[map[K]V]()
+func (MapOutputT[V]) TypeInfo() TypeInfo[map[string]V] {
+	return NewTypeInfo[map[string]V]()
 }
 
-func (o MapOutputT[K, V]) MapIndex(i InputT[K]) OutputT[V] {
-	return ApplyT2(o, i, func(items map[K]V, idx K) V {
+func (o MapOutputT[V]) MapIndex(i InputT[string]) OutputT[V] {
+	return ApplyT2(o, i, func(items map[string]V, idx string) V {
 		return items[idx]
 	})
 }
