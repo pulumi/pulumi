@@ -832,7 +832,11 @@ func (b *cloudBackend) CreateStack(
 		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", stackID.Project)
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject)
+	// TODO: This should load project config and pass it as the last parameter to GetEnvironmentTagsForCurrentStack.
+	tags, err := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject, nil)
+	if err != nil {
+		return nil, fmt.Errorf("getting stack tags: %w", err)
+	}
 
 	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams)
 	if err != nil {
@@ -1053,7 +1057,11 @@ func (b *cloudBackend) createAndStartUpdate(
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
-	tags := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj)
+	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
+	if err != nil {
+		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
+	}
+
 	version, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {

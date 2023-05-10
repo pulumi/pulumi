@@ -63,16 +63,26 @@ func TestStackTagValidation(t *testing.T) {
 
 	t.Run("Error_DescriptionLength", func(t *testing.T) {
 		t.Parallel()
+
+		// This test requires the service, as only the service supports stack tags.
+		if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+			t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+		}
+		if os.Getenv("PULUMI_TEST_OWNER") == "" {
+			t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+		}
+
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
 				e.DeleteEnvironment()
 			}
 		}()
-		e.RunCommand("git", "init")
+		stackName, err := resource.NewUniqueHex("test-", 8, -1)
+		contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
+		e.RunCommand("git", "init")
 		e.ImportDirectory("stack_project_name")
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 		prefix := "lorem ipsum dolor sit amet"     // 26
 		prefix = prefix + prefix + prefix + prefix // 104
@@ -80,10 +90,10 @@ func TestStackTagValidation(t *testing.T) {
 
 		// Change the contents of the Description property of Pulumi.yaml.
 		yamlPath := filepath.Join(e.CWD, "Pulumi.yaml")
-		err := integration.ReplaceInFile("description: ", "description: "+prefix, yamlPath)
+		err = integration.ReplaceInFile("description: ", "description: "+prefix, yamlPath)
 		assert.NoError(t, err)
 
-		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", "valid-name")
+		stdout, stderr := e.RunCommandExpectError("pulumi", "stack", "init", stackName)
 		assert.Equal(t, "", stdout)
 		assert.Contains(t, stderr, "error: could not create stack:")
 		assert.Contains(t, stderr, "validating stack properties:")

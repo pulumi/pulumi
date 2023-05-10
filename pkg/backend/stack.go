@@ -151,8 +151,8 @@ func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment
 // and Pulumi.yaml file.
 func GetMergedStackTags(ctx context.Context, s Stack,
-	root string, project *workspace.Project,
-) map[apitype.StackTagName]string {
+	root string, project *workspace.Project, cfg config.Map,
+) (map[apitype.StackTagName]string, error) {
 	// Get the stack's existing tags.
 	tags := s.Tags()
 	if tags == nil {
@@ -160,7 +160,10 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 	}
 
 	// Get latest environment tags for the current stack.
-	envTags := GetEnvironmentTagsForCurrentStack(root, project)
+	envTags, err := GetEnvironmentTagsForCurrentStack(root, project, cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add each new environment tag to the existing tags, overwriting existing tags with the
 	// latest values.
@@ -168,12 +171,14 @@ func GetMergedStackTags(ctx context.Context, s Stack,
 		tags[k] = v
 	}
 
-	return tags
+	return tags, nil
 }
 
 // GetEnvironmentTagsForCurrentStack returns the set of tags for the "current" stack, based on the environment
 // and Pulumi.yaml file.
-func GetEnvironmentTagsForCurrentStack(root string, project *workspace.Project) map[apitype.StackTagName]string {
+func GetEnvironmentTagsForCurrentStack(root string,
+	project *workspace.Project, cfg config.Map,
+) (map[apitype.StackTagName]string, error) {
 	tags := make(map[apitype.StackTagName]string)
 
 	// Tags based on Pulumi.yaml.
@@ -185,13 +190,36 @@ func GetEnvironmentTagsForCurrentStack(root string, project *workspace.Project) 
 		}
 	}
 
+	// Grab any `pulumi:tag` config values and use those to update the stack's tags.
+	configTags, has, err := cfg.Get(config.MustMakeKey("pulumi", "tags"), false)
+	contract.AssertNoErrorf(err, "Config.Get(\"pulumi:tags\") failed unexpectedly")
+	if has {
+		configTagInterface, err := configTags.ToObject()
+		if err != nil {
+			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+		}
+		configTagObject, ok := configTagInterface.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("pulumi:tags must be an object of strings")
+		}
+
+		for name, value := range configTagObject {
+			stringValue, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("pulumi:tags[%s] must be a string", name)
+			}
+
+			tags[name] = stringValue
+		}
+	}
+
 	// Add the git metadata to the tags, ignoring any errors that come from it.
 	if root != "" {
 		ignoredErr := addGitMetadataToStackTags(tags, root)
 		contract.IgnoreError(ignoredErr)
 	}
 
-	return tags
+	return tags, nil
 }
 
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect

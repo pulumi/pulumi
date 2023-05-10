@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:paralleltest // mutates environment variables
@@ -705,4 +706,56 @@ func addRandomSuffix(s string) string {
 	_, err := cryptorand.Read(b)
 	contract.AssertNoErrorf(err, "error generating random suffix")
 	return s + "-" + hex.EncodeToString(b)
+}
+
+func TestStackTags(t *testing.T) {
+	t.Parallel()
+
+	// This test requires the service, as only the service supports stack tags.
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+	if os.Getenv("PULUMI_TEST_OWNER") == "" {
+		t.Skipf("Skipping: PULUMI_TEST_OWNER is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	stackName, err := resource.NewUniqueHex("test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("testdata/simple_tags")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	e.RunCommand("pulumi", "stack", "tag", "set", "tagA", "valueA")
+	e.RunCommand("pulumi", "stack", "tag", "set", "tagB", "valueB")
+
+	lsTags := func() map[string]string {
+		stdout, _ := e.RunCommand("pulumi", "stack", "tag", "ls", "--json")
+		var tags map[string]string
+		err = json.Unmarshal([]byte(stdout), &tags)
+		require.NoError(t, err, "parsing the tags json")
+		return tags
+	}
+
+	tags := lsTags()
+	assert.Equal(t, "valueA", tags["tagA"], "tagA should be set to valueA")
+	assert.Equal(t, "valueB", tags["tagB"], "tagB should be set to valueB")
+
+	e.RunCommand("pulumi", "stack", "tag", "rm", "tagA")
+	tags = lsTags()
+	assert.NotContains(t, tags, "tagA", "tagA should be removed")
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+	tags = lsTags()
+	assert.Equal(t, "projectValue", tags["projectTag"], "projectTag should be set to projectValue")
 }

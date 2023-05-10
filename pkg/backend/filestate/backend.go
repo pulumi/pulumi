@@ -651,9 +651,7 @@ func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackRe
 		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	tags := backend.GetEnvironmentTagsForCurrentStack(root, b.currentProject.Load())
-
-	if err = validation.ValidateStackProperties(stackName.Name().String(), tags); err != nil {
+	if err = validation.ValidateStackProperties(stackName.Name().String(), nil); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
 	}
 
