@@ -1204,7 +1204,7 @@ func (AnyOutput) ElementType() reflect.Type {
 	return anyType
 }
 
-func (o AnyOutput) ToOutputT() OutputT[any] {
+func (o AnyOutput) ToOutputT(context.Context) OutputT[any] {
 	return OutputT[any](o)
 }
 
@@ -1272,7 +1272,7 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
 
-func (o ResourceOutput) ToOutputT() OutputT[Resource] {
+func (o ResourceOutput) ToOutputT(context.Context) OutputT[Resource] {
 	return OutputT[Resource](o)
 }
 
@@ -1351,7 +1351,7 @@ func (ResourceArrayOutput) ElementType() reflect.Type {
 	return resourceArrayType
 }
 
-func (o ResourceArrayOutput) ToOutputT() OutputT[[]Resource] {
+func (o ResourceArrayOutput) ToOutputT(context.Context) OutputT[[]Resource] {
 	return OutputT[[]Resource](o)
 }
 

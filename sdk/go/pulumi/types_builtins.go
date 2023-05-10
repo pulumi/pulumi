@@ -38,8 +38,8 @@ func (*archive) ElementType() reflect.Type {
 	return archiveType
 }
 
-func (in *archive) ToOutputT() OutputT[Archive] {
-	return OutputT[Archive]{ToOutput(in).getState()}
+func (in *archive) ToOutputT(ctx context.Context) OutputT[Archive] {
+	return OutputT[Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *archive) ToArchiveOutput() ArchiveOutput {
@@ -63,7 +63,7 @@ type ArchiveOutput struct{ *OutputState }
 
 var _ InputT[Archive] = ArchiveOutput{}
 
-func (o ArchiveOutput) ToOutputT() OutputT[Archive] {
+func (o ArchiveOutput) ToOutputT(context.Context) OutputT[Archive] {
 	return OutputT[Archive](o)
 }
 
@@ -112,8 +112,8 @@ func (ArchiveArray) ElementType() reflect.Type {
 	return archiveArrayType
 }
 
-func (in ArchiveArray) ToOutputT() OutputT[[]Archive] {
-	return OutputT[[]Archive]{ToOutput(in).getState()}
+func (in ArchiveArray) ToOutputT(ctx context.Context) OutputT[[]Archive] {
+	return OutputT[[]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
@@ -129,7 +129,7 @@ type ArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Archive] = ArchiveArrayOutput{}
 
-func (o ArchiveArrayOutput) ToOutputT() OutputT[[]Archive] {
+func (o ArchiveArrayOutput) ToOutputT(context.Context) OutputT[[]Archive] {
 	return OutputT[[]Archive](o)
 }
 
@@ -198,8 +198,8 @@ func (ArchiveMap) ElementType() reflect.Type {
 	return archiveMapType
 }
 
-func (in ArchiveMap) ToOutputT() OutputT[map[string]Archive] {
-	return OutputT[map[string]Archive]{ToOutput(in).getState()}
+func (in ArchiveMap) ToOutputT(ctx context.Context) OutputT[map[string]Archive] {
+	return OutputT[map[string]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
@@ -215,7 +215,7 @@ type ArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Archive] = ArchiveMapOutput{}
 
-func (o ArchiveMapOutput) ToOutputT() OutputT[map[string]Archive] {
+func (o ArchiveMapOutput) ToOutputT(context.Context) OutputT[map[string]Archive] {
 	return OutputT[map[string]Archive](o)
 }
 
@@ -277,8 +277,8 @@ func (ArchiveArrayMap) ElementType() reflect.Type {
 	return archiveArrayMapType
 }
 
-func (in ArchiveArrayMap) ToOutputT() OutputT[map[string][]Archive] {
-	return OutputT[map[string][]Archive]{ToOutput(in).getState()}
+func (in ArchiveArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]Archive] {
+	return OutputT[map[string][]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
@@ -294,7 +294,7 @@ type ArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Archive] = ArchiveArrayMapOutput{}
 
-func (o ArchiveArrayMapOutput) ToOutputT() OutputT[map[string][]Archive] {
+func (o ArchiveArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]Archive] {
 	return OutputT[map[string][]Archive](o)
 }
 
@@ -356,8 +356,8 @@ func (ArchiveMapArray) ElementType() reflect.Type {
 	return archiveMapArrayType
 }
 
-func (in ArchiveMapArray) ToOutputT() OutputT[[]map[string]Archive] {
-	return OutputT[[]map[string]Archive]{ToOutput(in).getState()}
+func (in ArchiveMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]Archive] {
+	return OutputT[[]map[string]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
@@ -373,7 +373,7 @@ type ArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Archive] = ArchiveMapArrayOutput{}
 
-func (o ArchiveMapArrayOutput) ToOutputT() OutputT[[]map[string]Archive] {
+func (o ArchiveMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]Archive] {
 	return OutputT[[]map[string]Archive](o)
 }
 
@@ -442,8 +442,8 @@ func (ArchiveMapMap) ElementType() reflect.Type {
 	return archiveMapMapType
 }
 
-func (in ArchiveMapMap) ToOutputT() OutputT[map[string]map[string]Archive] {
-	return OutputT[map[string]map[string]Archive]{ToOutput(in).getState()}
+func (in ArchiveMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]Archive] {
+	return OutputT[map[string]map[string]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
@@ -459,7 +459,7 @@ type ArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Archive] = ArchiveMapMapOutput{}
 
-func (o ArchiveMapMapOutput) ToOutputT() OutputT[map[string]map[string]Archive] {
+func (o ArchiveMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]Archive] {
 	return OutputT[map[string]map[string]Archive](o)
 }
 
@@ -521,8 +521,8 @@ func (ArchiveArrayArray) ElementType() reflect.Type {
 	return archiveArrayArrayType
 }
 
-func (in ArchiveArrayArray) ToOutputT() OutputT[[][]Archive] {
-	return OutputT[[][]Archive]{ToOutput(in).getState()}
+func (in ArchiveArrayArray) ToOutputT(ctx context.Context) OutputT[[][]Archive] {
+	return OutputT[[][]Archive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
@@ -538,7 +538,7 @@ type ArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Archive] = ArchiveArrayArrayOutput{}
 
-func (o ArchiveArrayArrayOutput) ToOutputT() OutputT[[][]Archive] {
+func (o ArchiveArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]Archive] {
 	return OutputT[[][]Archive](o)
 }
 
@@ -604,8 +604,8 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
-func (in *asset) ToOutputT() OutputT[Asset] {
-	return OutputT[Asset]{ToOutput(in).getState()}
+func (in *asset) ToOutputT(ctx context.Context) OutputT[Asset] {
+	return OutputT[Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *asset) ToAssetOutput() AssetOutput {
@@ -629,7 +629,7 @@ type AssetOutput struct{ *OutputState }
 
 var _ InputT[Asset] = AssetOutput{}
 
-func (o AssetOutput) ToOutputT() OutputT[Asset] {
+func (o AssetOutput) ToOutputT(context.Context) OutputT[Asset] {
 	return OutputT[Asset](o)
 }
 
@@ -678,8 +678,8 @@ func (AssetArray) ElementType() reflect.Type {
 	return assetArrayType
 }
 
-func (in AssetArray) ToOutputT() OutputT[[]Asset] {
-	return OutputT[[]Asset]{ToOutput(in).getState()}
+func (in AssetArray) ToOutputT(ctx context.Context) OutputT[[]Asset] {
+	return OutputT[[]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
@@ -695,7 +695,7 @@ type AssetArrayOutput struct{ *OutputState }
 
 var _ InputT[[]Asset] = AssetArrayOutput{}
 
-func (o AssetArrayOutput) ToOutputT() OutputT[[]Asset] {
+func (o AssetArrayOutput) ToOutputT(context.Context) OutputT[[]Asset] {
 	return OutputT[[]Asset](o)
 }
 
@@ -764,8 +764,8 @@ func (AssetMap) ElementType() reflect.Type {
 	return assetMapType
 }
 
-func (in AssetMap) ToOutputT() OutputT[map[string]Asset] {
-	return OutputT[map[string]Asset]{ToOutput(in).getState()}
+func (in AssetMap) ToOutputT(ctx context.Context) OutputT[map[string]Asset] {
+	return OutputT[map[string]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
@@ -781,7 +781,7 @@ type AssetMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]Asset] = AssetMapOutput{}
 
-func (o AssetMapOutput) ToOutputT() OutputT[map[string]Asset] {
+func (o AssetMapOutput) ToOutputT(context.Context) OutputT[map[string]Asset] {
 	return OutputT[map[string]Asset](o)
 }
 
@@ -843,8 +843,8 @@ func (AssetArrayMap) ElementType() reflect.Type {
 	return assetArrayMapType
 }
 
-func (in AssetArrayMap) ToOutputT() OutputT[map[string][]Asset] {
-	return OutputT[map[string][]Asset]{ToOutput(in).getState()}
+func (in AssetArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]Asset] {
+	return OutputT[map[string][]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
@@ -860,7 +860,7 @@ type AssetArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]Asset] = AssetArrayMapOutput{}
 
-func (o AssetArrayMapOutput) ToOutputT() OutputT[map[string][]Asset] {
+func (o AssetArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]Asset] {
 	return OutputT[map[string][]Asset](o)
 }
 
@@ -922,8 +922,8 @@ func (AssetMapArray) ElementType() reflect.Type {
 	return assetMapArrayType
 }
 
-func (in AssetMapArray) ToOutputT() OutputT[[]map[string]Asset] {
-	return OutputT[[]map[string]Asset]{ToOutput(in).getState()}
+func (in AssetMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]Asset] {
+	return OutputT[[]map[string]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
@@ -939,7 +939,7 @@ type AssetMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]Asset] = AssetMapArrayOutput{}
 
-func (o AssetMapArrayOutput) ToOutputT() OutputT[[]map[string]Asset] {
+func (o AssetMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]Asset] {
 	return OutputT[[]map[string]Asset](o)
 }
 
@@ -1008,8 +1008,8 @@ func (AssetMapMap) ElementType() reflect.Type {
 	return assetMapMapType
 }
 
-func (in AssetMapMap) ToOutputT() OutputT[map[string]map[string]Asset] {
-	return OutputT[map[string]map[string]Asset]{ToOutput(in).getState()}
+func (in AssetMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]Asset] {
+	return OutputT[map[string]map[string]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
@@ -1025,7 +1025,7 @@ type AssetMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]Asset] = AssetMapMapOutput{}
 
-func (o AssetMapMapOutput) ToOutputT() OutputT[map[string]map[string]Asset] {
+func (o AssetMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]Asset] {
 	return OutputT[map[string]map[string]Asset](o)
 }
 
@@ -1087,8 +1087,8 @@ func (AssetArrayArray) ElementType() reflect.Type {
 	return assetArrayArrayType
 }
 
-func (in AssetArrayArray) ToOutputT() OutputT[[][]Asset] {
-	return OutputT[[][]Asset]{ToOutput(in).getState()}
+func (in AssetArrayArray) ToOutputT(ctx context.Context) OutputT[[][]Asset] {
+	return OutputT[[][]Asset]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
@@ -1104,7 +1104,7 @@ type AssetArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]Asset] = AssetArrayArrayOutput{}
 
-func (o AssetArrayArrayOutput) ToOutputT() OutputT[[][]Asset] {
+func (o AssetArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]Asset] {
 	return OutputT[[][]Asset](o)
 }
 
@@ -1170,7 +1170,7 @@ type AssetOrArchiveOutput struct{ *OutputState }
 
 var _ InputT[AssetOrArchive] = AssetOrArchiveOutput{}
 
-func (o AssetOrArchiveOutput) ToOutputT() OutputT[AssetOrArchive] {
+func (o AssetOrArchiveOutput) ToOutputT(context.Context) OutputT[AssetOrArchive] {
 	return OutputT[AssetOrArchive](o)
 }
 
@@ -1209,8 +1209,8 @@ func (AssetOrArchiveArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
 }
 
-func (in AssetOrArchiveArray) ToOutputT() OutputT[[]AssetOrArchive] {
-	return OutputT[[]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveArray) ToOutputT(ctx context.Context) OutputT[[]AssetOrArchive] {
+	return OutputT[[]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
@@ -1226,7 +1226,7 @@ type AssetOrArchiveArrayOutput struct{ *OutputState }
 
 var _ InputT[[]AssetOrArchive] = AssetOrArchiveArrayOutput{}
 
-func (o AssetOrArchiveArrayOutput) ToOutputT() OutputT[[]AssetOrArchive] {
+func (o AssetOrArchiveArrayOutput) ToOutputT(context.Context) OutputT[[]AssetOrArchive] {
 	return OutputT[[]AssetOrArchive](o)
 }
 
@@ -1279,8 +1279,8 @@ func (AssetOrArchiveMap) ElementType() reflect.Type {
 	return assetOrArchiveMapType
 }
 
-func (in AssetOrArchiveMap) ToOutputT() OutputT[map[string]AssetOrArchive] {
-	return OutputT[map[string]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveMap) ToOutputT(ctx context.Context) OutputT[map[string]AssetOrArchive] {
+	return OutputT[map[string]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
@@ -1296,7 +1296,7 @@ type AssetOrArchiveMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]AssetOrArchive] = AssetOrArchiveMapOutput{}
 
-func (o AssetOrArchiveMapOutput) ToOutputT() OutputT[map[string]AssetOrArchive] {
+func (o AssetOrArchiveMapOutput) ToOutputT(context.Context) OutputT[map[string]AssetOrArchive] {
 	return OutputT[map[string]AssetOrArchive](o)
 }
 
@@ -1342,8 +1342,8 @@ func (AssetOrArchiveArrayMap) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
 }
 
-func (in AssetOrArchiveArrayMap) ToOutputT() OutputT[map[string][]AssetOrArchive] {
-	return OutputT[map[string][]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]AssetOrArchive] {
+	return OutputT[map[string][]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
@@ -1359,7 +1359,7 @@ type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]AssetOrArchive] = AssetOrArchiveArrayMapOutput{}
 
-func (o AssetOrArchiveArrayMapOutput) ToOutputT() OutputT[map[string][]AssetOrArchive] {
+func (o AssetOrArchiveArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]AssetOrArchive] {
 	return OutputT[map[string][]AssetOrArchive](o)
 }
 
@@ -1405,8 +1405,8 @@ func (AssetOrArchiveMapArray) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
 }
 
-func (in AssetOrArchiveMapArray) ToOutputT() OutputT[[]map[string]AssetOrArchive] {
-	return OutputT[[]map[string]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]AssetOrArchive] {
+	return OutputT[[]map[string]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
@@ -1422,7 +1422,7 @@ type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]AssetOrArchive] = AssetOrArchiveMapArrayOutput{}
 
-func (o AssetOrArchiveMapArrayOutput) ToOutputT() OutputT[[]map[string]AssetOrArchive] {
+func (o AssetOrArchiveMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]AssetOrArchive] {
 	return OutputT[[]map[string]AssetOrArchive](o)
 }
 
@@ -1475,8 +1475,8 @@ func (AssetOrArchiveMapMap) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
 }
 
-func (in AssetOrArchiveMapMap) ToOutputT() OutputT[map[string]map[string]AssetOrArchive] {
-	return OutputT[map[string]map[string]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]AssetOrArchive] {
+	return OutputT[map[string]map[string]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
@@ -1492,7 +1492,7 @@ type AssetOrArchiveMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]AssetOrArchive] = AssetOrArchiveMapMapOutput{}
 
-func (o AssetOrArchiveMapMapOutput) ToOutputT() OutputT[map[string]map[string]AssetOrArchive] {
+func (o AssetOrArchiveMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]AssetOrArchive] {
 	return OutputT[map[string]map[string]AssetOrArchive](o)
 }
 
@@ -1538,8 +1538,8 @@ func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
 }
 
-func (in AssetOrArchiveArrayArray) ToOutputT() OutputT[[][]AssetOrArchive] {
-	return OutputT[[][]AssetOrArchive]{ToOutput(in).getState()}
+func (in AssetOrArchiveArrayArray) ToOutputT(ctx context.Context) OutputT[[][]AssetOrArchive] {
+	return OutputT[[][]AssetOrArchive]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
@@ -1555,7 +1555,7 @@ type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]AssetOrArchive] = AssetOrArchiveArrayArrayOutput{}
 
-func (o AssetOrArchiveArrayArrayOutput) ToOutputT() OutputT[[][]AssetOrArchive] {
+func (o AssetOrArchiveArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]AssetOrArchive] {
 	return OutputT[[][]AssetOrArchive](o)
 }
 
@@ -1611,8 +1611,8 @@ func (Bool) ElementType() reflect.Type {
 	return boolType
 }
 
-func (in Bool) ToOutputT() OutputT[bool] {
-	return OutputT[bool]{ToOutput(in).getState()}
+func (in Bool) ToOutputT(ctx context.Context) OutputT[bool] {
+	return OutputT[bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Bool) ToBoolOutput() BoolOutput {
@@ -1636,7 +1636,7 @@ type BoolOutput struct{ *OutputState }
 
 var _ InputT[bool] = BoolOutput{}
 
-func (o BoolOutput) ToOutputT() OutputT[bool] {
+func (o BoolOutput) ToOutputT(context.Context) OutputT[bool] {
 	return OutputT[bool](o)
 }
 
@@ -1695,8 +1695,8 @@ func (*boolPtr) ElementType() reflect.Type {
 	return boolPtrType
 }
 
-func (in *boolPtr) ToOutputT() OutputT[*bool] {
-	return OutputT[*bool]{ToOutput(in).getState()}
+func (in *boolPtr) ToOutputT(ctx context.Context) OutputT[*bool] {
+	return OutputT[*bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
@@ -1712,7 +1712,7 @@ type BoolPtrOutput struct{ *OutputState }
 
 var _ InputT[*bool] = BoolPtrOutput{}
 
-func (o BoolPtrOutput) ToOutputT() OutputT[*bool] {
+func (o BoolPtrOutput) ToOutputT(context.Context) OutputT[*bool] {
 	return OutputT[*bool](o)
 }
 
@@ -1762,8 +1762,8 @@ func (BoolArray) ElementType() reflect.Type {
 	return boolArrayType
 }
 
-func (in BoolArray) ToOutputT() OutputT[[]bool] {
-	return OutputT[[]bool]{ToOutput(in).getState()}
+func (in BoolArray) ToOutputT(ctx context.Context) OutputT[[]bool] {
+	return OutputT[[]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
@@ -1779,7 +1779,7 @@ type BoolArrayOutput struct{ *OutputState }
 
 var _ InputT[[]bool] = BoolArrayOutput{}
 
-func (o BoolArrayOutput) ToOutputT() OutputT[[]bool] {
+func (o BoolArrayOutput) ToOutputT(context.Context) OutputT[[]bool] {
 	return OutputT[[]bool](o)
 }
 
@@ -1848,8 +1848,8 @@ func (BoolMap) ElementType() reflect.Type {
 	return boolMapType
 }
 
-func (in BoolMap) ToOutputT() OutputT[map[string]bool] {
-	return OutputT[map[string]bool]{ToOutput(in).getState()}
+func (in BoolMap) ToOutputT(ctx context.Context) OutputT[map[string]bool] {
+	return OutputT[map[string]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
@@ -1865,7 +1865,7 @@ type BoolMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]bool] = BoolMapOutput{}
 
-func (o BoolMapOutput) ToOutputT() OutputT[map[string]bool] {
+func (o BoolMapOutput) ToOutputT(context.Context) OutputT[map[string]bool] {
 	return OutputT[map[string]bool](o)
 }
 
@@ -1927,8 +1927,8 @@ func (BoolArrayMap) ElementType() reflect.Type {
 	return boolArrayMapType
 }
 
-func (in BoolArrayMap) ToOutputT() OutputT[map[string][]bool] {
-	return OutputT[map[string][]bool]{ToOutput(in).getState()}
+func (in BoolArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]bool] {
+	return OutputT[map[string][]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
@@ -1944,7 +1944,7 @@ type BoolArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]bool] = BoolArrayMapOutput{}
 
-func (o BoolArrayMapOutput) ToOutputT() OutputT[map[string][]bool] {
+func (o BoolArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]bool] {
 	return OutputT[map[string][]bool](o)
 }
 
@@ -2006,8 +2006,8 @@ func (BoolMapArray) ElementType() reflect.Type {
 	return boolMapArrayType
 }
 
-func (in BoolMapArray) ToOutputT() OutputT[[]map[string]bool] {
-	return OutputT[[]map[string]bool]{ToOutput(in).getState()}
+func (in BoolMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]bool] {
+	return OutputT[[]map[string]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
@@ -2023,7 +2023,7 @@ type BoolMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]bool] = BoolMapArrayOutput{}
 
-func (o BoolMapArrayOutput) ToOutputT() OutputT[[]map[string]bool] {
+func (o BoolMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]bool] {
 	return OutputT[[]map[string]bool](o)
 }
 
@@ -2092,8 +2092,8 @@ func (BoolMapMap) ElementType() reflect.Type {
 	return boolMapMapType
 }
 
-func (in BoolMapMap) ToOutputT() OutputT[map[string]map[string]bool] {
-	return OutputT[map[string]map[string]bool]{ToOutput(in).getState()}
+func (in BoolMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]bool] {
+	return OutputT[map[string]map[string]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
@@ -2109,7 +2109,7 @@ type BoolMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]bool] = BoolMapMapOutput{}
 
-func (o BoolMapMapOutput) ToOutputT() OutputT[map[string]map[string]bool] {
+func (o BoolMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]bool] {
 	return OutputT[map[string]map[string]bool](o)
 }
 
@@ -2171,8 +2171,8 @@ func (BoolArrayArray) ElementType() reflect.Type {
 	return boolArrayArrayType
 }
 
-func (in BoolArrayArray) ToOutputT() OutputT[[][]bool] {
-	return OutputT[[][]bool]{ToOutput(in).getState()}
+func (in BoolArrayArray) ToOutputT(ctx context.Context) OutputT[[][]bool] {
+	return OutputT[[][]bool]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
@@ -2188,7 +2188,7 @@ type BoolArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]bool] = BoolArrayArrayOutput{}
 
-func (o BoolArrayArrayOutput) ToOutputT() OutputT[[][]bool] {
+func (o BoolArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]bool] {
 	return OutputT[[][]bool](o)
 }
 
@@ -2260,8 +2260,8 @@ func (Float64) ElementType() reflect.Type {
 	return float64Type
 }
 
-func (in Float64) ToOutputT() OutputT[float64] {
-	return OutputT[float64]{ToOutput(in).getState()}
+func (in Float64) ToOutputT(ctx context.Context) OutputT[float64] {
+	return OutputT[float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64) ToFloat64Output() Float64Output {
@@ -2285,7 +2285,7 @@ type Float64Output struct{ *OutputState }
 
 var _ InputT[float64] = Float64Output{}
 
-func (o Float64Output) ToOutputT() OutputT[float64] {
+func (o Float64Output) ToOutputT(context.Context) OutputT[float64] {
 	return OutputT[float64](o)
 }
 
@@ -2344,8 +2344,8 @@ func (*float64Ptr) ElementType() reflect.Type {
 	return float64PtrType
 }
 
-func (in *float64Ptr) ToOutputT() OutputT[*float64] {
-	return OutputT[*float64]{ToOutput(in).getState()}
+func (in *float64Ptr) ToOutputT(ctx context.Context) OutputT[*float64] {
+	return OutputT[*float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
@@ -2361,7 +2361,7 @@ type Float64PtrOutput struct{ *OutputState }
 
 var _ InputT[*float64] = Float64PtrOutput{}
 
-func (o Float64PtrOutput) ToOutputT() OutputT[*float64] {
+func (o Float64PtrOutput) ToOutputT(context.Context) OutputT[*float64] {
 	return OutputT[*float64](o)
 }
 
@@ -2411,8 +2411,8 @@ func (Float64Array) ElementType() reflect.Type {
 	return float64ArrayType
 }
 
-func (in Float64Array) ToOutputT() OutputT[[]float64] {
-	return OutputT[[]float64]{ToOutput(in).getState()}
+func (in Float64Array) ToOutputT(ctx context.Context) OutputT[[]float64] {
+	return OutputT[[]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
@@ -2428,7 +2428,7 @@ type Float64ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]float64] = Float64ArrayOutput{}
 
-func (o Float64ArrayOutput) ToOutputT() OutputT[[]float64] {
+func (o Float64ArrayOutput) ToOutputT(context.Context) OutputT[[]float64] {
 	return OutputT[[]float64](o)
 }
 
@@ -2497,8 +2497,8 @@ func (Float64Map) ElementType() reflect.Type {
 	return float64MapType
 }
 
-func (in Float64Map) ToOutputT() OutputT[map[string]float64] {
-	return OutputT[map[string]float64]{ToOutput(in).getState()}
+func (in Float64Map) ToOutputT(ctx context.Context) OutputT[map[string]float64] {
+	return OutputT[map[string]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
@@ -2514,7 +2514,7 @@ type Float64MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]float64] = Float64MapOutput{}
 
-func (o Float64MapOutput) ToOutputT() OutputT[map[string]float64] {
+func (o Float64MapOutput) ToOutputT(context.Context) OutputT[map[string]float64] {
 	return OutputT[map[string]float64](o)
 }
 
@@ -2576,8 +2576,8 @@ func (Float64ArrayMap) ElementType() reflect.Type {
 	return float64ArrayMapType
 }
 
-func (in Float64ArrayMap) ToOutputT() OutputT[map[string][]float64] {
-	return OutputT[map[string][]float64]{ToOutput(in).getState()}
+func (in Float64ArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]float64] {
+	return OutputT[map[string][]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
@@ -2593,7 +2593,7 @@ type Float64ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]float64] = Float64ArrayMapOutput{}
 
-func (o Float64ArrayMapOutput) ToOutputT() OutputT[map[string][]float64] {
+func (o Float64ArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]float64] {
 	return OutputT[map[string][]float64](o)
 }
 
@@ -2655,8 +2655,8 @@ func (Float64MapArray) ElementType() reflect.Type {
 	return float64MapArrayType
 }
 
-func (in Float64MapArray) ToOutputT() OutputT[[]map[string]float64] {
-	return OutputT[[]map[string]float64]{ToOutput(in).getState()}
+func (in Float64MapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]float64] {
+	return OutputT[[]map[string]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
@@ -2672,7 +2672,7 @@ type Float64MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]float64] = Float64MapArrayOutput{}
 
-func (o Float64MapArrayOutput) ToOutputT() OutputT[[]map[string]float64] {
+func (o Float64MapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]float64] {
 	return OutputT[[]map[string]float64](o)
 }
 
@@ -2741,8 +2741,8 @@ func (Float64MapMap) ElementType() reflect.Type {
 	return float64MapMapType
 }
 
-func (in Float64MapMap) ToOutputT() OutputT[map[string]map[string]float64] {
-	return OutputT[map[string]map[string]float64]{ToOutput(in).getState()}
+func (in Float64MapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]float64] {
+	return OutputT[map[string]map[string]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
@@ -2758,7 +2758,7 @@ type Float64MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]float64] = Float64MapMapOutput{}
 
-func (o Float64MapMapOutput) ToOutputT() OutputT[map[string]map[string]float64] {
+func (o Float64MapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]float64] {
 	return OutputT[map[string]map[string]float64](o)
 }
 
@@ -2820,8 +2820,8 @@ func (Float64ArrayArray) ElementType() reflect.Type {
 	return float64ArrayArrayType
 }
 
-func (in Float64ArrayArray) ToOutputT() OutputT[[][]float64] {
-	return OutputT[[][]float64]{ToOutput(in).getState()}
+func (in Float64ArrayArray) ToOutputT(ctx context.Context) OutputT[[][]float64] {
+	return OutputT[[][]float64]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
@@ -2837,7 +2837,7 @@ type Float64ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]float64] = Float64ArrayArrayOutput{}
 
-func (o Float64ArrayArrayOutput) ToOutputT() OutputT[[][]float64] {
+func (o Float64ArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]float64] {
 	return OutputT[[][]float64](o)
 }
 
@@ -2906,8 +2906,8 @@ func (ID) ElementType() reflect.Type {
 	return idType
 }
 
-func (in ID) ToOutputT() OutputT[ID] {
-	return OutputT[ID]{ToOutput(in).getState()}
+func (in ID) ToOutputT(ctx context.Context) OutputT[ID] {
+	return OutputT[ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ID) ToIDOutput() IDOutput {
@@ -2939,7 +2939,7 @@ type IDOutput struct{ *OutputState }
 
 var _ InputT[ID] = IDOutput{}
 
-func (o IDOutput) ToOutputT() OutputT[ID] {
+func (o IDOutput) ToOutputT(context.Context) OutputT[ID] {
 	return OutputT[ID](o)
 }
 
@@ -3008,8 +3008,8 @@ func (*idPtr) ElementType() reflect.Type {
 	return iDPtrType
 }
 
-func (in *idPtr) ToOutputT() OutputT[*ID] {
-	return OutputT[*ID]{ToOutput(in).getState()}
+func (in *idPtr) ToOutputT(ctx context.Context) OutputT[*ID] {
+	return OutputT[*ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
@@ -3025,7 +3025,7 @@ type IDPtrOutput struct{ *OutputState }
 
 var _ InputT[*ID] = IDPtrOutput{}
 
-func (o IDPtrOutput) ToOutputT() OutputT[*ID] {
+func (o IDPtrOutput) ToOutputT(context.Context) OutputT[*ID] {
 	return OutputT[*ID](o)
 }
 
@@ -3075,8 +3075,8 @@ func (IDArray) ElementType() reflect.Type {
 	return iDArrayType
 }
 
-func (in IDArray) ToOutputT() OutputT[[]ID] {
-	return OutputT[[]ID]{ToOutput(in).getState()}
+func (in IDArray) ToOutputT(ctx context.Context) OutputT[[]ID] {
+	return OutputT[[]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDArray) ToIDArrayOutput() IDArrayOutput {
@@ -3092,7 +3092,7 @@ type IDArrayOutput struct{ *OutputState }
 
 var _ InputT[[]ID] = IDArrayOutput{}
 
-func (o IDArrayOutput) ToOutputT() OutputT[[]ID] {
+func (o IDArrayOutput) ToOutputT(context.Context) OutputT[[]ID] {
 	return OutputT[[]ID](o)
 }
 
@@ -3161,8 +3161,8 @@ func (IDMap) ElementType() reflect.Type {
 	return iDMapType
 }
 
-func (in IDMap) ToOutputT() OutputT[map[string]ID] {
-	return OutputT[map[string]ID]{ToOutput(in).getState()}
+func (in IDMap) ToOutputT(ctx context.Context) OutputT[map[string]ID] {
+	return OutputT[map[string]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDMap) ToIDMapOutput() IDMapOutput {
@@ -3178,7 +3178,7 @@ type IDMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]ID] = IDMapOutput{}
 
-func (o IDMapOutput) ToOutputT() OutputT[map[string]ID] {
+func (o IDMapOutput) ToOutputT(context.Context) OutputT[map[string]ID] {
 	return OutputT[map[string]ID](o)
 }
 
@@ -3240,8 +3240,8 @@ func (IDArrayMap) ElementType() reflect.Type {
 	return iDArrayMapType
 }
 
-func (in IDArrayMap) ToOutputT() OutputT[map[string][]ID] {
-	return OutputT[map[string][]ID]{ToOutput(in).getState()}
+func (in IDArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]ID] {
+	return OutputT[map[string][]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
@@ -3257,7 +3257,7 @@ type IDArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]ID] = IDArrayMapOutput{}
 
-func (o IDArrayMapOutput) ToOutputT() OutputT[map[string][]ID] {
+func (o IDArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]ID] {
 	return OutputT[map[string][]ID](o)
 }
 
@@ -3319,8 +3319,8 @@ func (IDMapArray) ElementType() reflect.Type {
 	return iDMapArrayType
 }
 
-func (in IDMapArray) ToOutputT() OutputT[[]map[string]ID] {
-	return OutputT[[]map[string]ID]{ToOutput(in).getState()}
+func (in IDMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]ID] {
+	return OutputT[[]map[string]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
@@ -3336,7 +3336,7 @@ type IDMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]ID] = IDMapArrayOutput{}
 
-func (o IDMapArrayOutput) ToOutputT() OutputT[[]map[string]ID] {
+func (o IDMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]ID] {
 	return OutputT[[]map[string]ID](o)
 }
 
@@ -3405,8 +3405,8 @@ func (IDMapMap) ElementType() reflect.Type {
 	return iDMapMapType
 }
 
-func (in IDMapMap) ToOutputT() OutputT[map[string]map[string]ID] {
-	return OutputT[map[string]map[string]ID]{ToOutput(in).getState()}
+func (in IDMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]ID] {
+	return OutputT[map[string]map[string]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
@@ -3422,7 +3422,7 @@ type IDMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]ID] = IDMapMapOutput{}
 
-func (o IDMapMapOutput) ToOutputT() OutputT[map[string]map[string]ID] {
+func (o IDMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]ID] {
 	return OutputT[map[string]map[string]ID](o)
 }
 
@@ -3484,8 +3484,8 @@ func (IDArrayArray) ElementType() reflect.Type {
 	return iDArrayArrayType
 }
 
-func (in IDArrayArray) ToOutputT() OutputT[[][]ID] {
-	return OutputT[[][]ID]{ToOutput(in).getState()}
+func (in IDArrayArray) ToOutputT(ctx context.Context) OutputT[[][]ID] {
+	return OutputT[[][]ID]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
@@ -3501,7 +3501,7 @@ type IDArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]ID] = IDArrayArrayOutput{}
 
-func (o IDArrayArrayOutput) ToOutputT() OutputT[[][]ID] {
+func (o IDArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]ID] {
 	return OutputT[[][]ID](o)
 }
 
@@ -3570,8 +3570,8 @@ func (Array) ElementType() reflect.Type {
 	return arrayType
 }
 
-func (in Array) ToOutputT() OutputT[[]interface{}] {
-	return OutputT[[]interface{}]{ToOutput(in).getState()}
+func (in Array) ToOutputT(ctx context.Context) OutputT[[]interface{}] {
+	return OutputT[[]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Array) ToArrayOutput() ArrayOutput {
@@ -3587,7 +3587,7 @@ type ArrayOutput struct{ *OutputState }
 
 var _ InputT[[]interface{}] = ArrayOutput{}
 
-func (o ArrayOutput) ToOutputT() OutputT[[]interface{}] {
+func (o ArrayOutput) ToOutputT(context.Context) OutputT[[]interface{}] {
 	return OutputT[[]interface{}](o)
 }
 
@@ -3656,8 +3656,8 @@ func (Map) ElementType() reflect.Type {
 	return mapType
 }
 
-func (in Map) ToOutputT() OutputT[map[string]interface{}] {
-	return OutputT[map[string]interface{}]{ToOutput(in).getState()}
+func (in Map) ToOutputT(ctx context.Context) OutputT[map[string]interface{}] {
+	return OutputT[map[string]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Map) ToMapOutput() MapOutput {
@@ -3673,7 +3673,7 @@ type MapOutput struct{ *OutputState }
 
 var _ InputT[map[string]interface{}] = MapOutput{}
 
-func (o MapOutput) ToOutputT() OutputT[map[string]interface{}] {
+func (o MapOutput) ToOutputT(context.Context) OutputT[map[string]interface{}] {
 	return OutputT[map[string]interface{}](o)
 }
 
@@ -3735,8 +3735,8 @@ func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
 }
 
-func (in ArrayMap) ToOutputT() OutputT[map[string][]interface{}] {
-	return OutputT[map[string][]interface{}]{ToOutput(in).getState()}
+func (in ArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]interface{}] {
+	return OutputT[map[string][]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
@@ -3752,7 +3752,7 @@ type ArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]interface{}] = ArrayMapOutput{}
 
-func (o ArrayMapOutput) ToOutputT() OutputT[map[string][]interface{}] {
+func (o ArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]interface{}] {
 	return OutputT[map[string][]interface{}](o)
 }
 
@@ -3814,8 +3814,8 @@ func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
 }
 
-func (in MapArray) ToOutputT() OutputT[[]map[string]interface{}] {
-	return OutputT[[]map[string]interface{}]{ToOutput(in).getState()}
+func (in MapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]interface{}] {
+	return OutputT[[]map[string]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in MapArray) ToMapArrayOutput() MapArrayOutput {
@@ -3831,7 +3831,7 @@ type MapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]interface{}] = MapArrayOutput{}
 
-func (o MapArrayOutput) ToOutputT() OutputT[[]map[string]interface{}] {
+func (o MapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]interface{}] {
 	return OutputT[[]map[string]interface{}](o)
 }
 
@@ -3900,8 +3900,8 @@ func (MapMap) ElementType() reflect.Type {
 	return mapMapType
 }
 
-func (in MapMap) ToOutputT() OutputT[map[string]map[string]interface{}] {
-	return OutputT[map[string]map[string]interface{}]{ToOutput(in).getState()}
+func (in MapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]interface{}] {
+	return OutputT[map[string]map[string]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in MapMap) ToMapMapOutput() MapMapOutput {
@@ -3917,7 +3917,7 @@ type MapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]interface{}] = MapMapOutput{}
 
-func (o MapMapOutput) ToOutputT() OutputT[map[string]map[string]interface{}] {
+func (o MapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]interface{}] {
 	return OutputT[map[string]map[string]interface{}](o)
 }
 
@@ -3979,8 +3979,8 @@ func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
 }
 
-func (in ArrayArray) ToOutputT() OutputT[[][]interface{}] {
-	return OutputT[[][]interface{}]{ToOutput(in).getState()}
+func (in ArrayArray) ToOutputT(ctx context.Context) OutputT[[][]interface{}] {
+	return OutputT[[][]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
@@ -3996,7 +3996,7 @@ type ArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]interface{}] = ArrayArrayOutput{}
 
-func (o ArrayArrayOutput) ToOutputT() OutputT[[][]interface{}] {
+func (o ArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]interface{}] {
 	return OutputT[[][]interface{}](o)
 }
 
@@ -4065,8 +4065,8 @@ func (ArrayArrayMap) ElementType() reflect.Type {
 	return arrayArrayMapType
 }
 
-func (in ArrayArrayMap) ToOutputT() OutputT[map[string][][]interface{}] {
-	return OutputT[map[string][][]interface{}]{ToOutput(in).getState()}
+func (in ArrayArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][][]interface{}] {
+	return OutputT[map[string][][]interface{}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in ArrayArrayMap) ToArrayArrayMapOutput() ArrayArrayMapOutput {
@@ -4082,7 +4082,7 @@ type ArrayArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][][]interface{}] = ArrayArrayMapOutput{}
 
-func (o ArrayArrayMapOutput) ToOutputT() OutputT[map[string][][]interface{}] {
+func (o ArrayArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][][]interface{}] {
 	return OutputT[map[string][][]interface{}](o)
 }
 
@@ -4147,8 +4147,8 @@ func (Int) ElementType() reflect.Type {
 	return intType
 }
 
-func (in Int) ToOutputT() OutputT[int] {
-	return OutputT[int]{ToOutput(in).getState()}
+func (in Int) ToOutputT(ctx context.Context) OutputT[int] {
+	return OutputT[int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in Int) ToIntOutput() IntOutput {
@@ -4172,7 +4172,7 @@ type IntOutput struct{ *OutputState }
 
 var _ InputT[int] = IntOutput{}
 
-func (o IntOutput) ToOutputT() OutputT[int] {
+func (o IntOutput) ToOutputT(context.Context) OutputT[int] {
 	return OutputT[int](o)
 }
 
@@ -4231,8 +4231,8 @@ func (*intPtr) ElementType() reflect.Type {
 	return intPtrType
 }
 
-func (in *intPtr) ToOutputT() OutputT[*int] {
-	return OutputT[*int]{ToOutput(in).getState()}
+func (in *intPtr) ToOutputT(ctx context.Context) OutputT[*int] {
+	return OutputT[*int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
@@ -4248,7 +4248,7 @@ type IntPtrOutput struct{ *OutputState }
 
 var _ InputT[*int] = IntPtrOutput{}
 
-func (o IntPtrOutput) ToOutputT() OutputT[*int] {
+func (o IntPtrOutput) ToOutputT(context.Context) OutputT[*int] {
 	return OutputT[*int](o)
 }
 
@@ -4298,8 +4298,8 @@ func (IntArray) ElementType() reflect.Type {
 	return intArrayType
 }
 
-func (in IntArray) ToOutputT() OutputT[[]int] {
-	return OutputT[[]int]{ToOutput(in).getState()}
+func (in IntArray) ToOutputT(ctx context.Context) OutputT[[]int] {
+	return OutputT[[]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntArray) ToIntArrayOutput() IntArrayOutput {
@@ -4315,7 +4315,7 @@ type IntArrayOutput struct{ *OutputState }
 
 var _ InputT[[]int] = IntArrayOutput{}
 
-func (o IntArrayOutput) ToOutputT() OutputT[[]int] {
+func (o IntArrayOutput) ToOutputT(context.Context) OutputT[[]int] {
 	return OutputT[[]int](o)
 }
 
@@ -4384,8 +4384,8 @@ func (IntMap) ElementType() reflect.Type {
 	return intMapType
 }
 
-func (in IntMap) ToOutputT() OutputT[map[string]int] {
-	return OutputT[map[string]int]{ToOutput(in).getState()}
+func (in IntMap) ToOutputT(ctx context.Context) OutputT[map[string]int] {
+	return OutputT[map[string]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntMap) ToIntMapOutput() IntMapOutput {
@@ -4401,7 +4401,7 @@ type IntMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]int] = IntMapOutput{}
 
-func (o IntMapOutput) ToOutputT() OutputT[map[string]int] {
+func (o IntMapOutput) ToOutputT(context.Context) OutputT[map[string]int] {
 	return OutputT[map[string]int](o)
 }
 
@@ -4463,8 +4463,8 @@ func (IntArrayMap) ElementType() reflect.Type {
 	return intArrayMapType
 }
 
-func (in IntArrayMap) ToOutputT() OutputT[map[string][]int] {
-	return OutputT[map[string][]int]{ToOutput(in).getState()}
+func (in IntArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]int] {
+	return OutputT[map[string][]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
@@ -4480,7 +4480,7 @@ type IntArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]int] = IntArrayMapOutput{}
 
-func (o IntArrayMapOutput) ToOutputT() OutputT[map[string][]int] {
+func (o IntArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]int] {
 	return OutputT[map[string][]int](o)
 }
 
@@ -4542,8 +4542,8 @@ func (IntMapArray) ElementType() reflect.Type {
 	return intMapArrayType
 }
 
-func (in IntMapArray) ToOutputT() OutputT[[]map[string]int] {
-	return OutputT[[]map[string]int]{ToOutput(in).getState()}
+func (in IntMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]int] {
+	return OutputT[[]map[string]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
@@ -4559,7 +4559,7 @@ type IntMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]int] = IntMapArrayOutput{}
 
-func (o IntMapArrayOutput) ToOutputT() OutputT[[]map[string]int] {
+func (o IntMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]int] {
 	return OutputT[[]map[string]int](o)
 }
 
@@ -4628,8 +4628,8 @@ func (IntMapMap) ElementType() reflect.Type {
 	return intMapMapType
 }
 
-func (in IntMapMap) ToOutputT() OutputT[map[string]map[string]int] {
-	return OutputT[map[string]map[string]int]{ToOutput(in).getState()}
+func (in IntMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]int] {
+	return OutputT[map[string]map[string]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
@@ -4645,7 +4645,7 @@ type IntMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]int] = IntMapMapOutput{}
 
-func (o IntMapMapOutput) ToOutputT() OutputT[map[string]map[string]int] {
+func (o IntMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]int] {
 	return OutputT[map[string]map[string]int](o)
 }
 
@@ -4707,8 +4707,8 @@ func (IntArrayArray) ElementType() reflect.Type {
 	return intArrayArrayType
 }
 
-func (in IntArrayArray) ToOutputT() OutputT[[][]int] {
-	return OutputT[[][]int]{ToOutput(in).getState()}
+func (in IntArrayArray) ToOutputT(ctx context.Context) OutputT[[][]int] {
+	return OutputT[[][]int]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
@@ -4724,7 +4724,7 @@ type IntArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]int] = IntArrayArrayOutput{}
 
-func (o IntArrayArrayOutput) ToOutputT() OutputT[[][]int] {
+func (o IntArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]int] {
 	return OutputT[[][]int](o)
 }
 
@@ -4796,8 +4796,8 @@ func (String) ElementType() reflect.Type {
 	return stringType
 }
 
-func (in String) ToOutputT() OutputT[string] {
-	return OutputT[string]{ToOutput(in).getState()}
+func (in String) ToOutputT(ctx context.Context) OutputT[string] {
+	return OutputT[string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in String) ToStringOutput() StringOutput {
@@ -4821,7 +4821,7 @@ type StringOutput struct{ *OutputState }
 
 var _ InputT[string] = StringOutput{}
 
-func (o StringOutput) ToOutputT() OutputT[string] {
+func (o StringOutput) ToOutputT(context.Context) OutputT[string] {
 	return OutputT[string](o)
 }
 
@@ -4880,8 +4880,8 @@ func (*stringPtr) ElementType() reflect.Type {
 	return stringPtrType
 }
 
-func (in *stringPtr) ToOutputT() OutputT[*string] {
-	return OutputT[*string]{ToOutput(in).getState()}
+func (in *stringPtr) ToOutputT(ctx context.Context) OutputT[*string] {
+	return OutputT[*string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
@@ -4897,7 +4897,7 @@ type StringPtrOutput struct{ *OutputState }
 
 var _ InputT[*string] = StringPtrOutput{}
 
-func (o StringPtrOutput) ToOutputT() OutputT[*string] {
+func (o StringPtrOutput) ToOutputT(context.Context) OutputT[*string] {
 	return OutputT[*string](o)
 }
 
@@ -4947,8 +4947,8 @@ func (StringArray) ElementType() reflect.Type {
 	return stringArrayType
 }
 
-func (in StringArray) ToOutputT() OutputT[[]string] {
-	return OutputT[[]string]{ToOutput(in).getState()}
+func (in StringArray) ToOutputT(ctx context.Context) OutputT[[]string] {
+	return OutputT[[]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringArray) ToStringArrayOutput() StringArrayOutput {
@@ -4964,7 +4964,7 @@ type StringArrayOutput struct{ *OutputState }
 
 var _ InputT[[]string] = StringArrayOutput{}
 
-func (o StringArrayOutput) ToOutputT() OutputT[[]string] {
+func (o StringArrayOutput) ToOutputT(context.Context) OutputT[[]string] {
 	return OutputT[[]string](o)
 }
 
@@ -5033,8 +5033,8 @@ func (StringMap) ElementType() reflect.Type {
 	return stringMapType
 }
 
-func (in StringMap) ToOutputT() OutputT[map[string]string] {
-	return OutputT[map[string]string]{ToOutput(in).getState()}
+func (in StringMap) ToOutputT(ctx context.Context) OutputT[map[string]string] {
+	return OutputT[map[string]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringMap) ToStringMapOutput() StringMapOutput {
@@ -5050,7 +5050,7 @@ type StringMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]string] = StringMapOutput{}
 
-func (o StringMapOutput) ToOutputT() OutputT[map[string]string] {
+func (o StringMapOutput) ToOutputT(context.Context) OutputT[map[string]string] {
 	return OutputT[map[string]string](o)
 }
 
@@ -5112,8 +5112,8 @@ func (StringArrayMap) ElementType() reflect.Type {
 	return stringArrayMapType
 }
 
-func (in StringArrayMap) ToOutputT() OutputT[map[string][]string] {
-	return OutputT[map[string][]string]{ToOutput(in).getState()}
+func (in StringArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]string] {
+	return OutputT[map[string][]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
@@ -5129,7 +5129,7 @@ type StringArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]string] = StringArrayMapOutput{}
 
-func (o StringArrayMapOutput) ToOutputT() OutputT[map[string][]string] {
+func (o StringArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]string] {
 	return OutputT[map[string][]string](o)
 }
 
@@ -5191,8 +5191,8 @@ func (StringMapArray) ElementType() reflect.Type {
 	return stringMapArrayType
 }
 
-func (in StringMapArray) ToOutputT() OutputT[[]map[string]string] {
-	return OutputT[[]map[string]string]{ToOutput(in).getState()}
+func (in StringMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]string] {
+	return OutputT[[]map[string]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
@@ -5208,7 +5208,7 @@ type StringMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]string] = StringMapArrayOutput{}
 
-func (o StringMapArrayOutput) ToOutputT() OutputT[[]map[string]string] {
+func (o StringMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]string] {
 	return OutputT[[]map[string]string](o)
 }
 
@@ -5277,8 +5277,8 @@ func (StringMapMap) ElementType() reflect.Type {
 	return stringMapMapType
 }
 
-func (in StringMapMap) ToOutputT() OutputT[map[string]map[string]string] {
-	return OutputT[map[string]map[string]string]{ToOutput(in).getState()}
+func (in StringMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]string] {
+	return OutputT[map[string]map[string]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
@@ -5294,7 +5294,7 @@ type StringMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]string] = StringMapMapOutput{}
 
-func (o StringMapMapOutput) ToOutputT() OutputT[map[string]map[string]string] {
+func (o StringMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]string] {
 	return OutputT[map[string]map[string]string](o)
 }
 
@@ -5356,8 +5356,8 @@ func (StringArrayArray) ElementType() reflect.Type {
 	return stringArrayArrayType
 }
 
-func (in StringArrayArray) ToOutputT() OutputT[[][]string] {
-	return OutputT[[][]string]{ToOutput(in).getState()}
+func (in StringArrayArray) ToOutputT(ctx context.Context) OutputT[[][]string] {
+	return OutputT[[][]string]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
@@ -5373,7 +5373,7 @@ type StringArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]string] = StringArrayArrayOutput{}
 
-func (o StringArrayArrayOutput) ToOutputT() OutputT[[][]string] {
+func (o StringArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]string] {
 	return OutputT[[][]string](o)
 }
 
@@ -5442,8 +5442,8 @@ func (URN) ElementType() reflect.Type {
 	return urnType
 }
 
-func (in URN) ToOutputT() OutputT[URN] {
-	return OutputT[URN]{ToOutput(in).getState()}
+func (in URN) ToOutputT(ctx context.Context) OutputT[URN] {
+	return OutputT[URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URN) ToURNOutput() URNOutput {
@@ -5475,7 +5475,7 @@ type URNOutput struct{ *OutputState }
 
 var _ InputT[URN] = URNOutput{}
 
-func (o URNOutput) ToOutputT() OutputT[URN] {
+func (o URNOutput) ToOutputT(context.Context) OutputT[URN] {
 	return OutputT[URN](o)
 }
 
@@ -5544,8 +5544,8 @@ func (*urnPtr) ElementType() reflect.Type {
 	return uRNPtrType
 }
 
-func (in *urnPtr) ToOutputT() OutputT[*URN] {
-	return OutputT[*URN]{ToOutput(in).getState()}
+func (in *urnPtr) ToOutputT(ctx context.Context) OutputT[*URN] {
+	return OutputT[*URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
@@ -5561,7 +5561,7 @@ type URNPtrOutput struct{ *OutputState }
 
 var _ InputT[*URN] = URNPtrOutput{}
 
-func (o URNPtrOutput) ToOutputT() OutputT[*URN] {
+func (o URNPtrOutput) ToOutputT(context.Context) OutputT[*URN] {
 	return OutputT[*URN](o)
 }
 
@@ -5611,8 +5611,8 @@ func (URNArray) ElementType() reflect.Type {
 	return uRNArrayType
 }
 
-func (in URNArray) ToOutputT() OutputT[[]URN] {
-	return OutputT[[]URN]{ToOutput(in).getState()}
+func (in URNArray) ToOutputT(ctx context.Context) OutputT[[]URN] {
+	return OutputT[[]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNArray) ToURNArrayOutput() URNArrayOutput {
@@ -5628,7 +5628,7 @@ type URNArrayOutput struct{ *OutputState }
 
 var _ InputT[[]URN] = URNArrayOutput{}
 
-func (o URNArrayOutput) ToOutputT() OutputT[[]URN] {
+func (o URNArrayOutput) ToOutputT(context.Context) OutputT[[]URN] {
 	return OutputT[[]URN](o)
 }
 
@@ -5697,8 +5697,8 @@ func (URNMap) ElementType() reflect.Type {
 	return uRNMapType
 }
 
-func (in URNMap) ToOutputT() OutputT[map[string]URN] {
-	return OutputT[map[string]URN]{ToOutput(in).getState()}
+func (in URNMap) ToOutputT(ctx context.Context) OutputT[map[string]URN] {
+	return OutputT[map[string]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNMap) ToURNMapOutput() URNMapOutput {
@@ -5714,7 +5714,7 @@ type URNMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]URN] = URNMapOutput{}
 
-func (o URNMapOutput) ToOutputT() OutputT[map[string]URN] {
+func (o URNMapOutput) ToOutputT(context.Context) OutputT[map[string]URN] {
 	return OutputT[map[string]URN](o)
 }
 
@@ -5776,8 +5776,8 @@ func (URNArrayMap) ElementType() reflect.Type {
 	return uRNArrayMapType
 }
 
-func (in URNArrayMap) ToOutputT() OutputT[map[string][]URN] {
-	return OutputT[map[string][]URN]{ToOutput(in).getState()}
+func (in URNArrayMap) ToOutputT(ctx context.Context) OutputT[map[string][]URN] {
+	return OutputT[map[string][]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
@@ -5793,7 +5793,7 @@ type URNArrayMapOutput struct{ *OutputState }
 
 var _ InputT[map[string][]URN] = URNArrayMapOutput{}
 
-func (o URNArrayMapOutput) ToOutputT() OutputT[map[string][]URN] {
+func (o URNArrayMapOutput) ToOutputT(context.Context) OutputT[map[string][]URN] {
 	return OutputT[map[string][]URN](o)
 }
 
@@ -5855,8 +5855,8 @@ func (URNMapArray) ElementType() reflect.Type {
 	return uRNMapArrayType
 }
 
-func (in URNMapArray) ToOutputT() OutputT[[]map[string]URN] {
-	return OutputT[[]map[string]URN]{ToOutput(in).getState()}
+func (in URNMapArray) ToOutputT(ctx context.Context) OutputT[[]map[string]URN] {
+	return OutputT[[]map[string]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
@@ -5872,7 +5872,7 @@ type URNMapArrayOutput struct{ *OutputState }
 
 var _ InputT[[]map[string]URN] = URNMapArrayOutput{}
 
-func (o URNMapArrayOutput) ToOutputT() OutputT[[]map[string]URN] {
+func (o URNMapArrayOutput) ToOutputT(context.Context) OutputT[[]map[string]URN] {
 	return OutputT[[]map[string]URN](o)
 }
 
@@ -5941,8 +5941,8 @@ func (URNMapMap) ElementType() reflect.Type {
 	return uRNMapMapType
 }
 
-func (in URNMapMap) ToOutputT() OutputT[map[string]map[string]URN] {
-	return OutputT[map[string]map[string]URN]{ToOutput(in).getState()}
+func (in URNMapMap) ToOutputT(ctx context.Context) OutputT[map[string]map[string]URN] {
+	return OutputT[map[string]map[string]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
@@ -5958,7 +5958,7 @@ type URNMapMapOutput struct{ *OutputState }
 
 var _ InputT[map[string]map[string]URN] = URNMapMapOutput{}
 
-func (o URNMapMapOutput) ToOutputT() OutputT[map[string]map[string]URN] {
+func (o URNMapMapOutput) ToOutputT(context.Context) OutputT[map[string]map[string]URN] {
 	return OutputT[map[string]map[string]URN](o)
 }
 
@@ -6020,8 +6020,8 @@ func (URNArrayArray) ElementType() reflect.Type {
 	return uRNArrayArrayType
 }
 
-func (in URNArrayArray) ToOutputT() OutputT[[][]URN] {
-	return OutputT[[][]URN]{ToOutput(in).getState()}
+func (in URNArrayArray) ToOutputT(ctx context.Context) OutputT[[][]URN] {
+	return OutputT[[][]URN]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {
@@ -6037,7 +6037,7 @@ type URNArrayArrayOutput struct{ *OutputState }
 
 var _ InputT[[][]URN] = URNArrayArrayOutput{}
 
-func (o URNArrayArrayOutput) ToOutputT() OutputT[[][]URN] {
+func (o URNArrayArrayOutput) ToOutputT(context.Context) OutputT[[][]URN] {
 	return OutputT[[][]URN](o)
 }
 

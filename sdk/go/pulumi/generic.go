@@ -13,12 +13,12 @@ func typeOf[T any]() reflect.Type {
 type InputT[T any] interface {
 	Input
 
-	ToOutputT() OutputT[T]
+	ToOutputT(context.Context) OutputT[T]
 	// TODO: Can we enforce that T is assignable to ElementType?
 }
 
 type OutputT[T any] struct {
-	*OutputState // TODO: hide me
+	*OutputState
 }
 
 func (OutputT[T]) isInputT() {} // TODO: hack; fix
@@ -52,7 +52,7 @@ func (o OutputT[T]) ElementType() reflect.Type {
 	return typeOf[T]()
 }
 
-func (o OutputT[T]) ToOutputT() OutputT[T] {
+func (o OutputT[T]) ToOutputT(context.Context) OutputT[T] {
 	return o
 }
 
@@ -64,7 +64,7 @@ func (o OutputT[T]) ToAnyOutput() AnyOutput {
 func awaitT[T any, I InputT[T]](ctx context.Context, o InputT[T]) (v T, known, secret bool, deps []Resource, err error) {
 	var value any
 	// TODO: make OutputState type-safe internally.
-	value, known, secret, deps, err = o.ToOutputT().getState().await(ctx)
+	value, known, secret, deps, err = o.ToOutputT(ctx).getState().await(ctx)
 	if err == nil {
 		// TODO: should this turn into an error?
 		var ok bool
@@ -113,7 +113,7 @@ func ArrayOf[T any](items ...InputT[T]) ArrayOutputT[T] {
 }
 
 func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
-	return ArrayOutputT[T](items.ToOutputT())
+	return ArrayOutputT[T](items.ToOutputT(context.Background()))
 }
 
 func (ArrayOutputT[T]) isInputT() {} // TODO: hack; fix
@@ -122,7 +122,7 @@ func (ArrayOutputT[T]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
 }
 
-func (o ArrayOutputT[T]) ToOutputT() OutputT[[]T] {
+func (o ArrayOutputT[T]) ToOutputT(context.Context) OutputT[[]T] {
 	return OutputT[[]T](o)
 }
 
@@ -202,7 +202,7 @@ func (PtrOutputT[T]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
 }
 
-func (o PtrOutputT[T]) ToOutputT() OutputT[*T] {
+func (o PtrOutputT[T]) ToOutputT(context.Context) OutputT[*T] {
 	return OutputT[*T](o)
 }
 
@@ -253,7 +253,7 @@ func MapOf[T any](items map[string]InputT[T]) MapOutputT[T] {
 }
 
 func MapFrom[T any](items InputT[map[string]T]) MapOutputT[T] {
-	return MapOutputT[T](items.ToOutputT())
+	return MapOutputT[T](items.ToOutputT(context.Background()))
 }
 
 func (MapOutputT[T]) isInputT() {} // TODO: hack; fix
@@ -262,7 +262,7 @@ func (MapOutputT[T]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[string](), typeOf[T]())
 }
 
-func (o MapOutputT[T]) ToOutputT() OutputT[map[string]T] {
+func (o MapOutputT[T]) ToOutputT(context.Context) OutputT[map[string]T] {
 	return OutputT[map[string]T](o)
 }
 
@@ -272,9 +272,8 @@ func (o MapOutputT[T]) MapIndex(i InputT[string]) OutputT[T] {
 	})
 }
 
-// TODO: Should we parameterize the applier so context, etc. can be optionally
-// passed in?
 func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
+	// TODO: context variant
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
 		v, known, secret, deps, err := awaitT[T, I](context.Background(), o)
@@ -289,7 +288,7 @@ func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 }
 
 func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f func(T1, T2) O) OutputT[O] {
-	// TODO: context
+	// TODO: context variant
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
 		v1, known, secret, deps, err := awaitT[T1, I1](context.Background(), o1)

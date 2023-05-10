@@ -62,8 +62,8 @@ func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
-func (in {{.InputType}}) ToOutputT() OutputT[{{.ElementType}}] {
-	return OutputT[{{.ElementType}}]{ToOutput(in).getState()}
+func (in {{.InputType}}) ToOutputT(ctx context.Context) OutputT[{{.ElementType}}] {
+	return OutputT[{{.ElementType}}]{ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
@@ -100,7 +100,7 @@ type {{.Name}}Output struct { *OutputState }
 
 var _ InputT[{{.ElementType}}] = {{.Name}}Output{}
 
-func (o {{.Name}}Output) ToOutputT() OutputT[{{.ElementType}}] {
+func (o {{.Name}}Output) ToOutputT(context.Context) OutputT[{{.ElementType}}] {
 	return OutputT[{{.ElementType}}](o)
 }
 
