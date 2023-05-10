@@ -65,12 +65,13 @@ function projectRootFromProgramPath(program: string): string {
 }
 
 /**
-  * @internal
-  * This function searches for the nearest package.json file, scanning up from the
-  * program path until it finds one. If it does not find a package.json file, it
-  * it returns the folder enclosing the program.
-  * @param programPath the path to the Pulumi program; usually the current working directory.
-  */
+ * @internal
+ * This function searches for the nearest package.json file, scanning up from the
+ * program path until it finds one. If it does not find a package.json file, it
+ * it returns the folder enclosing the program.
+ * @param programPath the path to the Pulumi program; this is the project "main" directory,
+ * which defaults to the project "root" directory.
+ */
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
     // pkg-dir is an ESM module which we use to find the location of package.json
     // Because it's an ESM module, we cannot import it directly.
@@ -78,16 +79,21 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;
-    if (fs.existsSync(programPath)) {
+    try {
         const fileStat = await fspromises.lstat(programPath);
         isDirectory = fileStat.isDirectory();
+    } catch {
+        // Since an exception was thrown, the program path doesn't exist.
+        // Do nothing, because isDirectory is already false.
     }
     const programDirectory = isDirectory ? programPath : path.dirname(programPath);
     const pkgDir = await packageDirectory({
         cwd: programDirectory,
     });
     if (pkgDir === undefined) {
-        log.warn("Could not find a package.json file for the program. Using the Pulumi program directory as the project root.");
+        log.warn(
+            "Could not find a package.json file for the program. Using the Pulumi program directory as the project root.",
+        );
         return programDirectory;
     }
     return pkgDir;
@@ -387,9 +393,9 @@ ${defaultMessage}`,
             let programExport: any;
 
             // If the user provided an entrypoint, we use that file
-            // relative to the working dir.
+            // relative to the package directory.
             if (packageObject["main"]) {
-                program = path.join(program, packageObject["main"]);
+                program = path.join(packageRoot, packageObject["main"]);
             }
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs

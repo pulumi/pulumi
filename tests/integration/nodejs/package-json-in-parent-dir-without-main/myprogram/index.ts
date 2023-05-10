@@ -3,7 +3,6 @@
 // installed package. 
 import { version as pulumiVersion } from "@pulumi/pulumi/version";
 import { strict as assert } from 'assert';
-// const assert = require("assert");
 
 const version = pulumiVersion;
 // As long as these values are truthy, we've successfully loaded

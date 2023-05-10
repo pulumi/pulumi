@@ -1,6 +1,6 @@
 {
     "name": "esm-with-package-json-in-parent-dir",
-    "main": "main.js",
+    "main": "myprogram/main.js",
     "type": "module",
     "license": "Apache-2.0",
     "peerDependencies": {

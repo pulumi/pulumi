@@ -1133,7 +1133,6 @@ func TestESMTS(t *testing.T) {
 }
 
 func TestTSWithPackageJsonInParentDir(t *testing.T) {
-	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "ts-with-package-json-in-parent-dir"),
 		RelativeWorkDir: filepath.Join("myprogram"),
@@ -1143,9 +1142,26 @@ func TestTSWithPackageJsonInParentDir(t *testing.T) {
 }
 
 func TestESMWithPackageJsonInParentDir(t *testing.T) {
-	t.Parallel()
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:             filepath.Join("nodejs", "esm-with-package-json-in-parent-dir"),
+		RelativeWorkDir: filepath.Join("myprogram"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
+	})
+}
+
+func TestESMWithoutPackageJsonInParentDir(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "esm-package-json-in-parent-dir-without-main"),
+		RelativeWorkDir: filepath.Join("myprogram"),
+		Dependencies:    []string{"@pulumi/pulumi"},
+		Quick:           true,
+	})
+}
+
+func TestPackageJsonInParentDirWithoutMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:             filepath.Join("nodejs", "package-json-in-parent-dir-without-main"),
 		RelativeWorkDir: filepath.Join("myprogram"),
 		Dependencies:    []string{"@pulumi/pulumi"},
 		Quick:           true,
