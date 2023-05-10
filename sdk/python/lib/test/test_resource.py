@@ -262,3 +262,36 @@ def test_parent_and_depends_on_are_the_same_12032():
         "myresource",
         opts=pulumi.ResourceOptions(parent=child),
     )
+
+# Regression test for https://github.com/pulumi/pulumi/issues/12736
+@pulumi.runtime.test
+def test_complex_parent_child_dependencies():
+    mocks.set_mocks(MinimalMocks())
+
+    class A(pulumi.ComponentResource):
+        def __init__(self, name: str, opts=None):
+            super().__init__("my:modules:A", name, {}, opts)
+            self.b = B("a-b", opts=ResourceOptions(parent=self))
+            self.c = C("a-c", opts=ResourceOptions(parent=self.b, depends_on=[self.b]))
+
+    class B(pulumi.ComponentResource):
+        def __init__(self, name: str, opts=None):
+            super().__init__("my:modules:B", name, {}, opts)
+            pulumi.CustomResource("my:module:Child", "b-child", opts=ResourceOptions(parent=self))
+
+    class C(pulumi.ComponentResource):
+        def __init__(self, name: str, opts=None):
+            super().__init__("my:modules:C", name, {}, opts)
+            pulumi.CustomResource("my:module:Child", "c-child", opts=ResourceOptions(parent=self))
+
+    class D(pulumi.ComponentResource):
+        def __init__(self, name: str, opts=None):
+            super().__init__("my:modules:D", name, {}, opts)
+            pulumi.CustomResource("my:module:Child", "d-child", opts=ResourceOptions(parent=self))
+
+    a = A("a")
+
+    D("d", opts=ResourceOptions(
+        parent=a.b,
+        depends_on=[a.b]
+    ))
