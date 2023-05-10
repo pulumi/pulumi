@@ -1205,7 +1205,7 @@ func (AnyOutput) ElementType() reflect.Type {
 }
 
 func (o AnyOutput) ToOutputT(context.Context) OutputT[any] {
-	return OutputT[any](o)
+	return OutputT[any]{OutputState: o.getState()}
 }
 
 func (in ID) ToStringPtrOutput() StringPtrOutput {
@@ -1273,7 +1273,7 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 }
 
 func (o ResourceOutput) ToOutputT(context.Context) OutputT[Resource] {
-	return OutputT[Resource](o)
+	return OutputT[Resource]{OutputState: o.getState()}
 }
 
 // ElementType returns the element type of this Output (Resource).
@@ -1308,7 +1308,7 @@ func NewResourceOutput(resource Resource) ResourceOutput {
 	o := ApplyT(Int(0), func(_ int) Resource {
 		return resource
 	})
-	return ResourceOutput(o)
+	return ResourceOutput{o.OutputState}
 }
 
 var _ ResourceInput = &ResourceOutput{}
@@ -1352,7 +1352,7 @@ func (ResourceArrayOutput) ElementType() reflect.Type {
 }
 
 func (o ResourceArrayOutput) ToOutputT(context.Context) OutputT[[]Resource] {
-	return OutputT[[]Resource](o)
+	return OutputT[[]Resource]{OutputState: o.getState()}
 }
 
 func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {

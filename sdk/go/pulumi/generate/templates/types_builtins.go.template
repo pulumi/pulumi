@@ -63,7 +63,7 @@ func ({{.InputType}}) ElementType() reflect.Type {
 }
 
 func (in {{.InputType}}) ToOutputT(ctx context.Context) OutputT[{{.ElementType}}] {
-	return OutputT[{{.ElementType}}]{ToOutputWithContext(ctx, in).getState()}
+	return OutputT[{{.ElementType}}]{OutputState: ToOutputWithContext(ctx, in).getState()}
 }
 
 func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
@@ -101,7 +101,7 @@ type {{.Name}}Output struct { *OutputState }
 var _ InputT[{{.ElementType}}] = {{.Name}}Output{}
 
 func (o {{.Name}}Output) ToOutputT(context.Context) OutputT[{{.ElementType}}] {
-	return OutputT[{{.ElementType}}](o)
+	return OutputT[{{.ElementType}}]{OutputState: o.getState()}
 }
 
 func ({{.Name}}Output) MarshalJSON() ([]byte, error) {

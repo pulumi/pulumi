@@ -17,11 +17,15 @@ type InputT[T any] interface {
 	// TODO: Can we enforce that T is assignable to ElementType?
 }
 
+// TODO: can we do without this?
+type outputT struct{}
+
+func (*outputT) isOutputT() {}
+
 type OutputT[T any] struct {
 	*OutputState
+	*outputT
 }
-
-func (OutputT[T]) isInputT() {} // TODO: hack; fix
 
 func OutputFromValue[T any](v T) OutputT[T] {
 	state := newOutputState(nil /* joinGroup */, typeOf[T]())
@@ -36,14 +40,14 @@ func V[T any](v T) OutputT[T] {
 func Cast[T any](o Output) OutputT[T] {
 	typ := typeOf[T]()
 	if o.ElementType().AssignableTo(typ) {
-		return OutputT[T]{o.getState()}
+		return OutputT[T]{OutputState: o.getState()}
 	}
 
 	// TODO: should this return an error instead?
 	// With a MustCast[T] function that panics?
 	state := newOutputState(nil /* joinGroup */, typ)
 	state.reject(fmt.Errorf("cannot cast %v to %v", o.ElementType(), typ))
-	return OutputT[T]{state}
+	return OutputT[T]{OutputState: state}
 }
 
 var (
@@ -61,7 +65,7 @@ func (o OutputT[T]) ToOutputT(context.Context) OutputT[T] {
 }
 
 func (o OutputT[T]) ToAnyOutput() AnyOutput {
-	return AnyOutput(o)
+	return AnyOutput{o.OutputState}
 }
 
 // awaitT is a type-safe variant of OutputState.await.
@@ -118,7 +122,10 @@ type ArrayInputT[T any] interface {
 	InputT[[]T]
 }
 
-type ArrayOutputT[T any] struct{ *OutputState }
+type ArrayOutputT[T any] struct {
+	*OutputState
+	*outputT
+}
 
 var (
 	_ Output           = ArrayOutputT[any]{}
@@ -130,8 +137,6 @@ var (
 func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
 	return ArrayOutputT[T](items.ToOutputT(context.Background()))
 }
-
-func (ArrayOutputT[T]) isInputT() {} // TODO: hack; fix
 
 func (ArrayOutputT[T]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
@@ -151,7 +156,10 @@ func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
 	})
 }
 
-type PtrOutputT[T any] struct{ *OutputState }
+type PtrOutputT[T any] struct {
+	*OutputState
+	*outputT
+}
 
 type PtrInputT[T any] interface {
 	InputT[*T]
@@ -209,10 +217,8 @@ func PtrOf[T any](o InputT[T]) PtrOutputT[T] {
 func NewPtrOutput[T any](o OutputT[*T]) PtrOutputT[T] {
 	// No need to check if o.ElementType() is assignable.
 	// It's already a pointer type.
-	return PtrOutputT[T]{o.getState()}
+	return PtrOutputT[T]{OutputState: o.getState()}
 }
-
-func (PtrOutputT[T]) isInputT() {} // TODO: hack; fix
 
 func (PtrOutputT[T]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
@@ -263,10 +269,13 @@ func (items MapT[T]) ToOutputT(ctx context.Context) OutputT[map[string]T] {
 		}
 		state.fulfill(result, known, secret, deps, nil)
 	}()
-	return OutputT[map[string]T]{state}
+	return OutputT[map[string]T]{OutputState: state}
 }
 
-type MapOutputT[T any] struct{ *OutputState }
+type MapOutputT[T any] struct {
+	*OutputState
+	*outputT
+}
 
 type MapInputT[T any] interface {
 	InputT[map[string]T]
@@ -282,8 +291,6 @@ var (
 func MapFrom[T any](items InputT[map[string]T]) MapOutputT[T] {
 	return MapOutputT[T](items.ToOutputT(context.Background()))
 }
-
-func (MapOutputT[T]) isInputT() {} // TODO: hack; fix
 
 func (MapOutputT[T]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[string](), typeOf[T]())
@@ -311,7 +318,7 @@ func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 		}
 		state.fulfill(f(v), known, secret, deps, err)
 	}()
-	return OutputT[O]{state}
+	return OutputT[O]{OutputState: state}
 }
 
 func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f func(T1, T2) O) OutputT[O] {
@@ -337,7 +344,7 @@ func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f fu
 
 		state.fulfill(f(v1, v2), known, secret, deps, nil)
 	}()
-	return OutputT[O]{state}
+	return OutputT[O]{OutputState: state}
 }
 
 /*
