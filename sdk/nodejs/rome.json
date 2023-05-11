@@ -31,7 +31,8 @@
                 "noExplicitAny": "off",
                 "noEmptyInterface": "off",
                 "noShadowRestrictedNames": "off",
-                "noAsyncPromiseExecutor": "off"
+                "noAsyncPromiseExecutor": "off",
+                "noLabelVar": "error"
             }
         }
     }
