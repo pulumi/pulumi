@@ -1479,5 +1479,5 @@ function getNameOrSymbol(descriptor: ClosurePropertyDescriptor): symbol | string
         throw new Error("Descriptor didn't have symbol or name: " + JSON.stringify(descriptor));
     }
 
-    return descriptor.symbol || descriptor.name!!;
+    return descriptor.symbol || descriptor.name!;
 }
