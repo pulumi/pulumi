@@ -181,6 +181,11 @@ func ensurePluginsAreInstalled(ctx context.Context, plugins pluginSet, projectPl
 	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
 	var installTasks errgroup.Group
 	for _, plug := range plugins.Values() {
+		if plug.Name == "pulumi" && plug.Kind == workspace.ResourcePlugin {
+			logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): pulumi is a builtin plugin")
+			continue
+		}
+
 		path, err := workspace.GetPluginPath(plug.Kind, plug.Name, plug.Version, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
