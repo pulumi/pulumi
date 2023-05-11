@@ -244,9 +244,6 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 		}
 
 		for _, t := range t.ElementTypes {
-			if t == NoneType {
-				continue
-			}
 			ck, why := t.conversionFrom(src, unifying, seen)
 			if ck > conversionKind {
 				conversionKind = ck
