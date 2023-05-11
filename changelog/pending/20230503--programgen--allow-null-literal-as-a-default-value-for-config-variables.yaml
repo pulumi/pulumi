@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen
-  description: Allow null literal as a default value for config variables

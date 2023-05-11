@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.67.0 (2023-05-11)
+
+
+### Features
+
+- [sdk/nodejs] Support loading package.json from parent directory. If `package.json` is not found in the Pulumi main directory, Pulumi recursively searches up the directory tree until it is found. If `package.json` provides a `main` field, per the [NPM spec](https://docs.npmjs.com/cli/v6/configuring-npm/package-json#main), that field is relative to the directory containing package.json.
+  [#12759](https://github.com/pulumi/pulumi/pull/12759)
+
+
+### Bug Fixes
+
+- [build] Fixes race condition in building Go sdk.
+  [#12821](https://github.com/pulumi/pulumi/pull/12821)
+
+- [cli] Convert to PCL will recover from panics in program binding.
+  [#12827](https://github.com/pulumi/pulumi/pull/12827)
+
+- [engine] Fix bug with targeting and plans where root stack resource and target-replaces were not being marked targeted.
+  [#12834](https://github.com/pulumi/pulumi/pull/12834)
+
+- [engine] Fix the engine trying to install the pulumi-resource-pulumi plugin which is builtin.
+  [#12858](https://github.com/pulumi/pulumi/pull/12858)
+
+- [programgen] Allow null literal as a default value for config variables
+  [#12817](https://github.com/pulumi/pulumi/pull/12817)
+
+- [programgen] Fix panic on component type traversal
+  [#12828](https://github.com/pulumi/pulumi/pull/12828)
+
+- [sdk/python] Fix hang due to component children cycles
+  [#12855](https://github.com/pulumi/pulumi/pull/12855)
+
+
+### Miscellaneous
+
+- [sdk/nodejs] With Node14 sunset on April 30, the minimum version of Node is now Node 16.
+  [#12648](https://github.com/pulumi/pulumi/pull/12648)
+
 ## 3.66.0 (2023-05-03)
 
 

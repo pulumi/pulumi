@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix bug with targeting and plans where root stack resource and target-replaces were not being marked targeted.

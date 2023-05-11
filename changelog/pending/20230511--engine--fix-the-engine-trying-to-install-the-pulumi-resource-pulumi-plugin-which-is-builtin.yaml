@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix the engine trying to install the pulumi-resource-pulumi plugin which is builtin.
