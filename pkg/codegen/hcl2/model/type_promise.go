@@ -41,12 +41,24 @@ func (*PromiseType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *PromiseType) Pretty() pretty.Formatter {
+func (t *PromiseType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	var formatter pretty.Formatter
+	if seenFormatter, ok := seenFormatters[t.ElementType]; ok {
+		formatter = seenFormatter
+	} else {
+		formatter = t.ElementType.pretty(seenFormatters)
+	}
+
 	return &pretty.Wrap{
 		Prefix:  "promise(",
-		Value:   t.ElementType.Pretty(),
 		Postfix: ")",
+		Value:   formatter,
 	}
+}
+
+func (t *PromiseType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the promise type with the given traverser. The result type of traverse(promise(T))

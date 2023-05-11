@@ -162,8 +162,13 @@ func NewOpaqueType(name string) *OpaqueType {
 	return &t
 }
 
-func (t *OpaqueType) Pretty() pretty.Formatter {
+func (t *OpaqueType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
 	return pretty.FromStringer(t)
+}
+
+func (t *OpaqueType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 func (t *OpaqueType) string(_ map[Type]struct{}) string {

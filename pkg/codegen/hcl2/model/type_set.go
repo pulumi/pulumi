@@ -99,12 +99,24 @@ func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 	})
 }
 
-func (t *SetType) Pretty() pretty.Formatter {
+func (t *SetType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	var formatter pretty.Formatter
+	if seenFormatter, ok := seenFormatters[t.ElementType]; ok {
+		formatter = seenFormatter
+	} else {
+		formatter = t.ElementType.pretty(seenFormatters)
+	}
+
 	return &pretty.Wrap{
 		Prefix:  "set(",
-		Value:   t.ElementType.Pretty(),
 		Postfix: ")",
+		Value:   formatter,
 	}
+}
+
+func (t *SetType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 func (t *SetType) String() string {

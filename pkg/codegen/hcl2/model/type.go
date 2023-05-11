@@ -45,6 +45,7 @@ type Type interface {
 	Equals(other Type) bool
 	AssignableFrom(src Type) bool
 	ConversionFrom(src Type) ConversionKind
+	pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter
 	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool

@@ -40,12 +40,30 @@ func (*ListType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *ListType) Pretty() pretty.Formatter {
-	return &pretty.Wrap{
+func (t *ListType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	if existingFormatter, ok := seenFormatters[t]; ok {
+		return existingFormatter
+	}
+
+	var formatter pretty.Formatter
+	if seenFormatter, ok := seenFormatters[t.ElementType]; ok {
+		formatter = seenFormatter
+	} else {
+		formatter = t.ElementType.pretty(seenFormatters)
+	}
+
+	seenFormatters[t] = &pretty.Wrap{
 		Prefix:  "list(",
 		Postfix: ")",
-		Value:   t.ElementType.Pretty(),
+		Value:   formatter,
 	}
+
+	return seenFormatters[t]
+}
+
+func (t *ListType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of traverse(list(T))
