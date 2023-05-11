@@ -51,12 +51,11 @@ describe("PushableAsyncIterable", () => {
     it("correctly terminates outstanding operations afte complete", async () => {
         const queue = new PushableAsyncIterable<number>();
         const queueIter = queue[Symbol.asyncIterator]();
-        const terminates = new Promise(async (resolve) => {
+        const terminates = async () => {
             assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
             assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
             assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });
-            resolve();
-        });
+        };
         queue.complete();
         await terminates;
         assert.deepStrictEqual(await queueIter.next(), { value: undefined, done: true });

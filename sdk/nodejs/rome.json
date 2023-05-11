@@ -29,9 +29,9 @@
             "suspicious": {
                 "noExtraNonNullAssertion": "error",
                 "noExplicitAny": "off",
+                "noAsyncPromiseExecutor": "error",
                 "noEmptyInterface": "off",
                 "noShadowRestrictedNames": "off",
-                "noAsyncPromiseExecutor": "off",
                 "noLabelVar": "error"
             }
         }
