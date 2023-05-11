@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: With Node14 sunset on April 30, the minimum version of Node is now Node 16.

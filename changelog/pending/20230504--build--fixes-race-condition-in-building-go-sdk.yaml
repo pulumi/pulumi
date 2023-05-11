@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: build
-  description: Fixes race condition in building Go sdk.
