@@ -170,7 +170,7 @@ type BucketArgs struct {
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.PtrInputT[BucketVersioning]
 	// A website object (documented below).
-	Website pulumi.InputT[BucketWebsite]
+	Website BucketWebsiteInput
 	// The domain of the website endpoint, if the bucket is configured with a website. If not, this will be an empty string. This is used to create Route 53 alias records.
 	WebsiteDomain pulumi.PtrInputT[string]
 	// The website endpoint, if the bucket is configured with a website. If not, this will be an empty string.

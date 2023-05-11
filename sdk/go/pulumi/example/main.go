@@ -10,10 +10,12 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		indexDocument := "index.html"
 
+		website := (&s3beta.BucketWebsiteArgs{
+			IndexDocument: pulumi.V(indexDocument),
+		}).ToOutputT(ctx.Context())
+
 		bucket, err := s3beta.NewBucket(ctx, "my-bucket", &s3beta.BucketArgs{
-			Website: s3beta.BucketWebsiteArgs{
-				IndexDocument: pulumi.V(indexDocument),
-			},
+			Website: pulumi.Downgrade[s3beta.BucketWebsiteOutput](website), // TODO: generate helpers?
 			// Acl: pulumi.Ptr("public-read"),
 		})
 		if err != nil {

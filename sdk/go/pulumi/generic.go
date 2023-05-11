@@ -50,6 +50,16 @@ func Cast[T any](o Output) OutputT[T] {
 	return OutputT[T]{OutputState: state}
 }
 
+// TODO: better name
+func Downgrade[V interface {
+	Output
+	InputT[T]
+}, T any](o OutputT[T],
+) V {
+	// TODO: type-checked variant of ToOutput internals.
+	return ToOutput(o).(V)
+}
+
 var (
 	_ Output      = OutputT[any]{}
 	_ Input       = OutputT[any]{}
