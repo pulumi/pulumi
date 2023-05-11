@@ -78,14 +78,14 @@ func (*EnumType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *EnumType) Pretty() pretty.Formatter {
+func (t *EnumType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
 	types := make([]pretty.Formatter, len(t.Elements))
 	for i, c := range t.Elements {
 		types[i] = pretty.FromStringer(
 			NewConstType(ctyTypeToType(c.Type(), false), c).Pretty(),
 		)
 	}
-	return &pretty.Wrap{
+	seenFormatters[t] = &pretty.Wrap{
 		Prefix:  "enum(",
 		Postfix: ")",
 		Value: &pretty.List{
@@ -93,6 +93,13 @@ func (t *EnumType) Pretty() pretty.Formatter {
 			Elements:  types,
 		},
 	}
+
+	return seenFormatters[t]
+}
+
+func (t *EnumType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the enum type with the given traverser. This always fails.

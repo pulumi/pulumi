@@ -28,6 +28,10 @@ func (noneType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (noneType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	return pretty.FromStringer(NoneType)
+}
+
 func (noneType) Pretty() pretty.Formatter {
 	return pretty.FromStringer(NoneType)
 }

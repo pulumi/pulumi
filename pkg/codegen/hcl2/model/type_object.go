@@ -51,12 +51,29 @@ func (*ObjectType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *ObjectType) Pretty() pretty.Formatter {
-	m := make(map[string]pretty.Formatter, len(t.Properties))
-	for k, v := range t.Properties {
-		m[k] = v.Pretty()
+func (t *ObjectType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	if existingFormatter, ok := seenFormatters[t]; ok {
+		return existingFormatter
 	}
-	return &pretty.Object{Properties: m}
+
+	m := make(map[string]pretty.Formatter, len(t.Properties))
+	seenFormatters[t] = &pretty.Object{Properties: m}
+	for k, v := range t.Properties {
+		if seenFormatter, ok := seenFormatters[v]; ok {
+			m[k] = seenFormatter
+		} else {
+			formatter := v.pretty(seenFormatters)
+			seenFormatters[v] = formatter
+			m[k] = formatter
+		}
+	}
+
+	return seenFormatters[t]
+}
+
+func (t *ObjectType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of

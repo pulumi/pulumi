@@ -40,12 +40,24 @@ func (*OutputType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *OutputType) Pretty() pretty.Formatter {
+func (t *OutputType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	var formatter pretty.Formatter
+	if seenFormatter, ok := seenFormatters[t.ElementType]; ok {
+		formatter = seenFormatter
+	} else {
+		formatter = t.ElementType.pretty(seenFormatters)
+	}
+
 	return &pretty.Wrap{
 		Prefix:  "output(",
-		Value:   t.ElementType.Pretty(),
 		Postfix: ")",
+		Value:   formatter,
 	}
+}
+
+func (t *OutputType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the output type with the given traverser. The result type of traverse(output(T))

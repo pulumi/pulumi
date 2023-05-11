@@ -42,10 +42,16 @@ func NewTupleType(elementTypes ...Type) Type {
 	return &TupleType{ElementTypes: elementTypes}
 }
 
-func (t *TupleType) Pretty() pretty.Formatter {
+func (t *TupleType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
 	elements := make([]pretty.Formatter, len(t.ElementTypes))
 	for i, el := range t.ElementTypes {
-		elements[i] = el.Pretty()
+		formatter, ok := seenFormatters[el]
+		if ok {
+			elements[i] = formatter
+		} else {
+			seenFormatters[el] = el.pretty(seenFormatters)
+			elements[i] = seenFormatters[el]
+		}
 	}
 	return &pretty.Wrap{
 		Prefix: "(",
@@ -56,6 +62,11 @@ func (t *TupleType) Pretty() pretty.Formatter {
 		},
 		Postfix: ")",
 	}
+}
+
+func (t *TupleType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.

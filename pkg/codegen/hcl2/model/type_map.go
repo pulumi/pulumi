@@ -35,12 +35,24 @@ func NewMapType(elementType Type) *MapType {
 	return &MapType{ElementType: elementType}
 }
 
-func (t *MapType) Pretty() pretty.Formatter {
+func (t *MapType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
+	var formatter pretty.Formatter
+	if seenFormatter, ok := seenFormatters[t.ElementType]; ok {
+		formatter = seenFormatter
+	} else {
+		formatter = t.ElementType.pretty(seenFormatters)
+	}
+
 	return &pretty.Wrap{
 		Prefix:  "map(",
-		Value:   t.ElementType.Pretty(),
 		Postfix: ")",
+		Value:   formatter,
 	}
+}
+
+func (t *MapType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the optional type with the given traverser. The result type of traverse(map(T))

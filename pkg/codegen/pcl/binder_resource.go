@@ -424,7 +424,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 			attrNames.Add(attr.Name)
 
 			if typ, ok := objectType.Properties[attr.Name]; ok {
-				if !typ.ConversionFrom(attr.Value.Type()).Exists() {
+				conversion := typ.ConversionFrom(attr.Value.Type())
+				if !conversion.Exists() {
 					diag(model.ExprNotConvertible(typ, attr.Value))
 				}
 			} else {

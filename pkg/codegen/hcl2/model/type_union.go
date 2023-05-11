@@ -107,28 +107,44 @@ func (*UnionType) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
-func (t *UnionType) Pretty() pretty.Formatter {
+func (t *UnionType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
 	elements := make([]pretty.Formatter, 0, len(t.ElementTypes))
 	isOptional := false
+	unionFormatter := &pretty.List{
+		Separator: " | ",
+		Elements:  elements,
+	}
+
+	seenFormatters[t] = unionFormatter
+
 	for _, el := range t.ElementTypes {
 		if el == NoneType {
 			isOptional = true
 			continue
 		}
-		elements = append(elements, el.Pretty())
+		if seenFormatter, ok := seenFormatters[el]; ok {
+			unionFormatter.Elements = append(unionFormatter.Elements, seenFormatter)
+		} else {
+			formatter := el.pretty(seenFormatters)
+			seenFormatters[el] = formatter
+			unionFormatter.Elements = append(unionFormatter.Elements, formatter)
+		}
 	}
-	var v pretty.Formatter = &pretty.List{
-		Separator: " | ",
-		Elements:  elements,
-	}
+
 	if isOptional {
-		v = &pretty.Wrap{
-			Value:           v,
+		return &pretty.Wrap{
+			Value:           seenFormatters[t],
 			Postfix:         "?",
 			PostfixSameline: true,
 		}
 	}
-	return v
+
+	return seenFormatters[t]
+}
+
+func (t *UnionType) Pretty() pretty.Formatter {
+	seenFormatters := map[Type]pretty.Formatter{}
+	return t.pretty(seenFormatters)
 }
 
 // Traverse attempts to traverse the union type with the given traverser. This always fails.
