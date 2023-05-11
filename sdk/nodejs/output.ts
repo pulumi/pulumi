@@ -827,7 +827,7 @@ export type UnwrapSimple<T> =
         ? UnwrappedObject<T>
         : never;
 
-export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
+export type UnwrappedArray<T> = Array<Unwrap<T>>;
 
 export type UnwrappedObject<T> = {
     [P in keyof T]: Unwrap<T[P]>;

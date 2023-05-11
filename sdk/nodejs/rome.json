@@ -30,7 +30,7 @@
                 "noExtraNonNullAssertion": "error",
                 "noExplicitAny": "off",
                 "noAsyncPromiseExecutor": "error",
-                "noEmptyInterface": "off",
+                "noEmptyInterface": "error",
                 "noShadowRestrictedNames": "off",
                 "noLabelVar": "error"
             }
