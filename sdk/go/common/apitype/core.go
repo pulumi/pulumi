@@ -169,6 +169,8 @@ const (
 	OperationTypeDeleting OperationType = "deleting"
 	// OperationTypeReading is the state of resources that are being read.
 	OperationTypeReading OperationType = "reading"
+	// OperationTypeImporting is the state of resources that are being imported.
+	OperationTypeImporting OperationType = "importing"
 )
 
 // OperationV1 represents an operation that the engine is performing. It consists of a Resource, which is the state

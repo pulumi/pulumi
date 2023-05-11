@@ -1130,6 +1130,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
 
+		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		// Set Created to now as the resource has been created in the state.
+		s.new.Created = &now
+
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
 
 		return rst, complete, nil
@@ -1177,6 +1183,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err == nil && s.replacing {
 		s.original.Delete = true
 	}
+
+	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+	now := time.Now().UTC()
+	s.new.Modified = &now
+	// Set Created to now as the resource has been created in the state.
+	s.new.Created = &now
 
 	return rst, complete, err
 }

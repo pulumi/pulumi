@@ -1161,6 +1161,7 @@ func (b *cloudBackend) PromptAI(
 
 type updateMetadata struct {
 	version    int
+	useJournal bool
 	leaseToken string
 	messages   []apitype.Message
 }
@@ -1213,7 +1214,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, useJournal, token, err := b.client.StartUpdate(ctx, update, tags)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backend.ConflictingUpdateError{Err: err}
@@ -1223,11 +1224,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
-		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+		logging.V(7).Infof("Stack %s being updated to version %d (useJournal=%v)", stackRef, version, useJournal)
 	}
 
 	return update, updateMetadata{
 		version:    version,
+		useJournal: useJournal,
 		leaseToken: token,
 		messages:   updateDetails.Messages,
 	}, nil
@@ -1274,7 +1276,7 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta, permalink, events, opts.DryRun)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1296,11 +1298,11 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
+	op backend.UpdateOperation, update client.UpdateIdentifier, meta updateMetadata, permalink string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op, update, token)
+	contract.Assertf(meta.leaseToken != "", "persisted actions require a token")
+	u, err := b.newUpdate(ctx, stackRef, op, update, meta.leaseToken)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -1329,7 +1331,17 @@ func (b *cloudBackend) runEngineAction(
 	}()
 
 	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource)
-	snapshotManager := backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+
+	var snapshotManager engine.SnapshotManager
+	if meta.useJournal {
+		m, err := backend.NewJournal(persister, u.GetTarget().Snapshot, op.SecretsManager)
+		if err != nil {
+			return nil, nil, result.FromError(err)
+		}
+		snapshotManager = m
+	} else {
+		snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.GetTarget().Snapshot)
+	}
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.

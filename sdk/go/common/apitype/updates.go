@@ -104,6 +104,9 @@ type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
 	// set of tags associated with the stack.
 	Tags map[StackTagName]string `json:"tags,omitempty"`
+
+	// UseJournal requests that the update use the journaling protocol for state storage.
+	UseJournal bool `json:"useJournal,omitempty"`
 }
 
 // StartUpdateResponse is the result of the command to start an update.
@@ -111,6 +114,9 @@ type StartUpdateResponse struct {
 	// Version is the version of the program once the update is complete.
 	// (Will be the current, unchanged value for previews.)
 	Version int `json:"version"`
+
+	// UseJournal is true if this update should use the journaling protocol for state storage.
+	UseJournal bool `json:"useJournal,omitempty"`
 
 	// Token is the lease token (if any) to be used to authorize operations on this update.
 	Token string `json:"token,omitempty"`
@@ -265,6 +271,11 @@ type PatchUpdateCheckpointDeltaRequest struct {
 
 	// Textual diff that recovers the desired deployment JSON when applied to the previously saved deployment JSON.
 	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
+}
+
+type AppendJournalEntryRequest struct {
+	Version int          `json:"version"`
+	Entry   JournalEntry `json:"entry"`
 }
 
 // AppendUpdateLogEntryRequest defines the body of a request to the append update log entry endpoint of the service API.

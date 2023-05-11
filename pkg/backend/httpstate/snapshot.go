@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -33,6 +34,10 @@ type cloudSnapshotPersister struct {
 	tokenSource         tokenSourceCapability   // A token source for interacting with the service.
 	backend             *cloudBackend           // A backend for communicating with the service
 	deploymentDiffState *deploymentDiffState
+}
+
+func (persister *cloudSnapshotPersister) Append(entry apitype.JournalEntry) error {
+	return persister.backend.client.AppendJournalEntry(persister.context, persister.update, entry, persister.tokenSource)
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {
