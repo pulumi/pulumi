@@ -69,7 +69,7 @@ func (o OutputT[T]) ToAnyOutput() AnyOutput {
 }
 
 // awaitT is a type-safe variant of OutputState.await.
-func awaitT[T any, I InputT[T]](ctx context.Context, o InputT[T]) (v T, known, secret bool, deps []Resource, err error) {
+func awaitT[T any, I InputT[T]](ctx context.Context, o I) (v T, known, secret bool, deps []Resource, err error) {
 	var value any
 	// TODO: make OutputState type-safe internally.
 	value, known, secret, deps, err = o.ToOutputT(ctx).getState().await(ctx)
@@ -103,7 +103,7 @@ func (items ArrayT[T]) ToOutputT(ctx context.Context) OutputT[[]T] {
 		known, secret := true, false
 		result := make([]T, len(items))
 		for i, o := range items {
-			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](ctx, o)
+			v, vknown, vsecret, vdeps, err := awaitT[T](ctx, o)
 			known = known && vknown
 			secret = secret || vsecret
 			deps = mergeDependencies(deps, vdeps)
@@ -134,7 +134,7 @@ var (
 	_ ArrayInputT[int] = ArrayOutputT[int]{}
 )
 
-func ArrayFrom[T any](items InputT[[]T]) ArrayOutputT[T] {
+func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T] {
 	return ArrayOutputT[T](items.ToOutputT(context.Background()))
 }
 
@@ -180,7 +180,7 @@ func P[T any](v T) PtrOutputT[T] {
 	return OutputFromPtr(v)
 }
 
-func PtrOf[T any](o InputT[T]) PtrOutputT[T] {
+func PtrOf[T any, I InputT[T]](o I) PtrOutputT[T] {
 	// As of Go 1.20, Output[T] cannot refer to Output[*T] directly.
 	// This refers to the following limitation at
 	// https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#generic-types:
@@ -257,7 +257,7 @@ func (items MapT[T]) ToOutputT(ctx context.Context) OutputT[map[string]T] {
 		known, secret := true, false
 		result := make(map[string]T, len(items))
 		for k, o := range items {
-			v, vknown, vsecret, vdeps, err := awaitT[T, InputT[T]](ctx, o)
+			v, vknown, vsecret, vdeps, err := awaitT[T](ctx, o)
 			known = known && vknown
 			secret = secret || vsecret
 			deps = mergeDependencies(deps, vdeps)
@@ -288,7 +288,7 @@ var (
 	_ MapInputT[any]         = MapOutputT[any]{}
 )
 
-func MapFrom[T any](items InputT[map[string]T]) MapOutputT[T] {
+func MapFrom[T any, I InputT[map[string]T]](items I) MapOutputT[T] {
 	return MapOutputT[T](items.ToOutputT(context.Background()))
 }
 
@@ -310,7 +310,7 @@ func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 	// TODO: context variant
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
-		v, known, secret, deps, err := awaitT[T, I](context.Background(), o)
+		v, known, secret, deps, err := awaitT[T](context.Background(), o)
 		if err != nil || !known {
 			var zero O
 			state.fulfill(zero, known, secret, deps, err)
@@ -321,18 +321,18 @@ func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 	return OutputT[O]{OutputState: state}
 }
 
-func ApplyT2[O any, I1 InputT[T1], I2 InputT[T2], T1, T2 any](o1 I1, o2 I2, f func(T1, T2) O) OutputT[O] {
+func ApplyT2[O, T1, T2 any, I1 InputT[T1], I2 InputT[T2]](i1 I1, i2 I2, f func(T1, T2) O) OutputT[O] {
 	// TODO: context variant
 	state := newOutputState(nil, typeOf[O]())
 	go func() {
-		v1, known, secret, deps, err := awaitT[T1, I1](context.Background(), o1)
+		v1, known, secret, deps, err := awaitT[T1](context.Background(), i1)
 		if err != nil || !known {
 			var zero O
 			state.fulfill(zero, known, secret, deps, err)
 			return
 		}
 
-		v2, known2, secret2, deps2, err := awaitT[T2, I2](context.Background(), o2)
+		v2, known2, secret2, deps2, err := awaitT[T2](context.Background(), i2)
 		known = known && known2
 		secret = secret || secret2
 		deps = mergeDependencies(deps, deps2)
