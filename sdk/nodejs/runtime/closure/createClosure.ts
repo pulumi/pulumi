@@ -1193,7 +1193,7 @@ async function getOrCreateEntryAsync(
     }
 
     function usesNonLexicalThis(localEntry: Entry | undefined) {
-        return localEntry && localEntry.function && localEntry.function.usesNonLexicalThis;
+        return localEntry?.function?.usesNonLexicalThis;
     }
 
     async function captureModuleAsync(normalizedModuleName: string): Promise<void> {

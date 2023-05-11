@@ -1,0 +1,3 @@
+name: esm-with-package-json-in-parent-dir
+runtime: nodejs
+description: Run an ESM module where package.json is in a parent directory.

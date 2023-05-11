@@ -2,7 +2,7 @@
     "name": "config_basic_js",
     "version": "0.0.9",
     "license": "Apache-2.0",
-    "main": "bin/index.js",
+    "main": "index.ts",
     "scripts": {
         "build": "tsc"
     },

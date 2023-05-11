@@ -168,7 +168,7 @@ export function getResource(
 
                         // If the invoke failed, raise an error
                         const failures: any = resp.getFailuresList();
-                        if (failures && failures.length) {
+                        if (failures?.length) {
                             let reasons = "";
                             for (let i = 0; i < failures.length; i++) {
                                 if (reasons !== "") {
@@ -592,7 +592,7 @@ async function prepareResource(
             );
 
             resolveURN = (v, err) => {
-                if (!!err) {
+                if (err) {
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {
@@ -631,7 +631,7 @@ async function prepareResource(
             );
 
             resolveID = (v, isKnown, err) => {
-                if (!!err) {
+                if (err) {
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {

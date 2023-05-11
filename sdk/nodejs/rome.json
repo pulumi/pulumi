@@ -6,7 +6,7 @@
     "files": {
         "ignore": [
             "bin/", "proto/", "dist/", "node_modules", ".nyc_output/", ".direnv/", "tests/runtime/jsClosureCases_*.js",
-            "tests/runtime/tsClosureCases.ts"
+            "tests/runtime/tsClosureCases.ts", "tests/mockpackage/lib/"
         ]
     },
     "formatter": {
@@ -18,6 +18,10 @@
         "enabled": true,
         "rules": {
             "recommended": false,
+            "complexity": {
+                "noExtraBooleanCast": "error",
+                "useOptionalChain": "error"
+            },
             "performance": {
                 "noDelete": "error"
             }

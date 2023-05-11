@@ -189,9 +189,7 @@ function parseFunctionCode(funcString: string): [string, ParsedFunctionCode] {
         const constructor = <ts.ConstructorDeclaration>classDecl.members.find((m) => ts.isConstructorDeclaration(m));
         if (!constructor) {
             // class without explicit constructor.
-            const isSubClass =
-                classDecl.heritageClauses &&
-                classDecl.heritageClauses.some((c) => c.token === ts.SyntaxKind.ExtendsKeyword);
+            const isSubClass = classDecl.heritageClauses?.some((c) => c.token === ts.SyntaxKind.ExtendsKeyword);
             return isSubClass
                 ? makeFunctionDeclaration(
                       "constructor() { super(); }",
@@ -590,12 +588,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
 
         // Walk up a sequence of property-access'es, recording the names we hit, until we hit
         // something that isn't a property-access.
-        while (
-            node &&
-            node.parent &&
-            isPropertyOrElementAccessExpression(node.parent) &&
-            node.parent.expression === node
-        ) {
+        while (node?.parent && isPropertyOrElementAccessExpression(node.parent) && node.parent.expression === node) {
             if (!infos) {
                 infos = [];
             }
