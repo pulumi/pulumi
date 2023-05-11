@@ -20,6 +20,7 @@
             "recommended": false,
             "complexity": {
                 "noExtraBooleanCast": "error",
+                "useFlatMap": "error",
                 "useOptionalChain": "error"
             },
             "performance": {
