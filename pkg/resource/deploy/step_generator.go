@@ -658,15 +658,19 @@ func (sg *stepGenerator) generateStepsInner(
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
+		checkOlds := oldInputs
+		checkInputs := inputs
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
-		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, randomSeed)
+			checkOlds = nil
+			checkInputs = goal.Properties
 		}
+		inputs, failures, err = prov.Check(urn, checkOlds, checkInputs, allowUnknowns, randomSeed)
 
 		if err != nil {
 			return nil, result.FromError(err)
-		} else if issueCheckErrors(sg.deployment, new, urn, failures) {
+		}
+
+		if issueCheckErrors(sg.deployment, new, urn, failures) {
 			invalid = true
 		}
 		new.Inputs = inputs
