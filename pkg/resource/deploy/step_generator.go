@@ -649,6 +649,7 @@ func (sg *stepGenerator) generateStepsInner(
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
+	discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error
 	if prov != nil {
@@ -660,7 +661,7 @@ func (sg *stepGenerator) generateStepsInner(
 		// targeted for replacement, ignore its old state.
 		checkOlds := oldInputs
 		checkInputs := inputs
-		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
+		if discardOldInputs {
 			checkOlds = nil
 			checkInputs = goal.Properties
 		}
@@ -706,7 +707,6 @@ func (sg *stepGenerator) generateStepsInner(
 
 	// If the resource is valid and we're generating plans then generate a plan
 	if sg.opts.GeneratePlan {
-		discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
 		if discardOldInputs {
 			oldInputs = nil
 		}
