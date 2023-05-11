@@ -649,146 +649,7 @@ func (sg *stepGenerator) generateStepsInner(
 		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed)}, nil
 	}
 
-	discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
-	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
-	var err error
-	if prov != nil {
-		var failures []plugin.CheckFailure
-
-		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
-		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
-		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
-		// targeted for replacement, ignore its old state.
-		checkOlds := oldInputs
-		checkInputs := inputs
-		if discardOldInputs {
-			checkOlds = nil
-			checkInputs = goal.Properties
-		}
-		inputs, failures, err = prov.Check(urn, checkOlds, checkInputs, allowUnknowns, randomSeed)
-
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-
-		if issueCheckErrors(sg.deployment, new, urn, failures) {
-			invalid = true
-		}
-		new.Inputs = inputs
-	}
-
-	if invalid {
-		// TODO consider not running the analyzer on invalid resources. This is here to maintain
-		//      current behavior.
-		// Send the resource off to any Analyzers before being operated on.
-		r := plugin.AnalyzerResource{
-			URN:        new.URN,
-			Type:       new.Type,
-			Name:       new.URN.Name(),
-			Properties: inputs,
-			Options: plugin.AnalyzerResourceOptions{
-				Protect:                 new.Protect,
-				IgnoreChanges:           goal.IgnoreChanges,
-				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.GetAliases(),
-				CustomTimeouts:          new.CustomTimeouts,
-			},
-		}
-		providerResource := sg.getProviderResource(new.URN, new.Provider)
-		_, err := sg.runAnalyzers(r, providerResource)
-		if err != nil {
-			return nil, result.FromError(err)
-		}
-
-		// If the resource isn't valid, don't proceed any further.
-		return nil, result.Bail()
-	}
-
-	// If the resource is valid and we're generating plans then generate a plan
-	if sg.opts.GeneratePlan {
-		if discardOldInputs {
-			oldInputs = nil
-		}
-		inputDiff := oldInputs.Diff(inputs)
-		addToPlan := func(inputDiff *resource.ObjectDiff) error {
-			// Generate the output goal plan, if we're recreating this it should already exist
-			if recreating {
-				plan, ok := sg.deployment.newPlans.get(urn)
-				if !ok {
-					return fmt.Errorf("no plan for resource %v", urn)
-				}
-				// The plan will have had it's Ops already partially filled in for the delete operation, but we
-				// now have the information needed to fill in Seed and Goal.
-				plan.Seed = randomSeed
-				plan.Goal = NewGoalPlan(inputDiff, goal)
-				return nil
-			}
-			newResourcePlan := &ResourcePlan{
-				Seed: randomSeed,
-				Goal: NewGoalPlan(inputDiff, goal),
-			}
-			sg.deployment.newPlans.set(urn, newResourcePlan)
-			return nil
-		}
-		if err := addToPlan(inputDiff); err != nil {
-			return nil, result.FromError(err)
-		}
-	}
-
-	// If there is a plan for this resource, validate that the program goal conforms to the plan.
-	// If theres no plan for this resource check that nothing has been changed.
-	// We don't check plans if the resource is invalid, it's going to fail anyway.
-	if sg.deployment.plan != nil {
-		checkPlan := func() error {
-			resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
-			if !ok {
-				if old == nil {
-					// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
-				} else if err := checkMissingPlan(old, inputs, goal); err != nil {
-					return fmt.Errorf("resource %s violates plan: %w", urn, err)
-				}
-				return nil
-			}
-
-			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
-				return fmt.Errorf("resource %s violates plan: %w", urn, err)
-			}
-			return nil
-		}
-
-		if err := checkPlan(); err != nil {
-			return nil, result.FromError(err)
-		}
-	}
-
-	// Send the resource off to any Analyzers before being operated on.
-	r := plugin.AnalyzerResource{
-		URN:        new.URN,
-		Type:       new.Type,
-		Name:       new.URN.Name(),
-		Properties: inputs,
-		Options: plugin.AnalyzerResourceOptions{
-			Protect:                 new.Protect,
-			IgnoreChanges:           goal.IgnoreChanges,
-			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-			Aliases:                 new.GetAliases(),
-			CustomTimeouts:          new.CustomTimeouts,
-		},
-	}
-	providerResource := sg.getProviderResource(new.URN, new.Provider)
-	passesAnalyzer, err := sg.runAnalyzers(r, providerResource)
-	if err != nil {
-		//
-		return nil, result.FromError(err)
-	}
-	// If the resource isn't valid, don't proceed any further.
-	if !passesAnalyzer {
-		return nil, result.Bail()
-	}
-
-	return sg.generateStepsInner2(
+	result := sg.generateStepsInnerCheck(
 		event,
 		goal,
 		urn,
@@ -796,6 +657,7 @@ func (sg *stepGenerator) generateStepsInner(
 		old,
 		new,
 		inputs,
+		invalid,
 		oldInputs,
 		oldOutputs,
 		prov,
@@ -805,25 +667,10 @@ func (sg *stepGenerator) generateStepsInner(
 		randomSeed,
 		oldImportID,
 	)
-}
+	if result != nil {
+		return nil, result
+	}
 
-func (sg *stepGenerator) generateStepsInner2(
-	event RegisterResourceEvent,
-	goal *resource.Goal,
-	urn resource.URN,
-	hasOld bool,
-	old *resource.State,
-	new *resource.State,
-	inputs resource.PropertyMap,
-	oldInputs resource.PropertyMap,
-	oldOutputs resource.PropertyMap,
-	prov plugin.Provider,
-	allowUnknowns bool,
-	recreating bool,
-	wasExternal bool,
-	randomSeed []byte,
-	oldImportID resource.ID,
-) ([]Step, result.Result) {
 	// There are four cases we need to consider when figuring out what to do with this resource.
 	//
 	// Case 1: recreating
@@ -955,6 +802,166 @@ func (sg *stepGenerator) generateStepsInner2(
 	sg.creates[urn] = true
 	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
 	return []Step{NewCreateStep(sg.deployment, event, new)}, nil
+}
+
+func (sg *stepGenerator) generateStepsInnerCheck(
+	event RegisterResourceEvent,
+	goal *resource.Goal,
+	urn resource.URN,
+	hasOld bool,
+	old *resource.State,
+	new *resource.State,
+	inputs resource.PropertyMap,
+	invalid bool,
+	oldInputs resource.PropertyMap,
+	oldOutputs resource.PropertyMap,
+	prov plugin.Provider,
+	allowUnknowns bool,
+	recreating bool,
+	wasExternal bool,
+	randomSeed []byte,
+	oldImportID resource.ID,
+) result.Result {
+	discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
+	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
+	var err error
+	if prov != nil {
+		var failures []plugin.CheckFailure
+
+		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
+		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
+		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
+		// targeted for replacement, ignore its old state.
+		checkOlds := oldInputs
+		checkInputs := inputs
+		if discardOldInputs {
+			checkOlds = nil
+			checkInputs = goal.Properties
+		}
+		inputs, failures, err = prov.Check(urn, checkOlds, checkInputs, allowUnknowns, randomSeed)
+
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		if issueCheckErrors(sg.deployment, new, urn, failures) {
+			invalid = true
+		}
+		new.Inputs = inputs
+	}
+
+	if invalid {
+		// TODO consider not running the analyzer on invalid resources. This is here to maintain
+		//      current behavior.
+		// Send the resource off to any Analyzers before being operated on.
+		r := plugin.AnalyzerResource{
+			URN:        new.URN,
+			Type:       new.Type,
+			Name:       new.URN.Name(),
+			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Protect:                 new.Protect,
+				IgnoreChanges:           goal.IgnoreChanges,
+				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.GetAliases(),
+				CustomTimeouts:          new.CustomTimeouts,
+			},
+		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
+		_, err := sg.runAnalyzers(r, providerResource)
+		if err != nil {
+			return result.FromError(err)
+		}
+
+		// If the resource isn't valid, don't proceed any further.
+		return result.Bail()
+	}
+
+	// If the resource is valid and we're generating plans then generate a plan
+	if sg.opts.GeneratePlan {
+		if discardOldInputs {
+			oldInputs = nil
+		}
+		inputDiff := oldInputs.Diff(inputs)
+		addToPlan := func(inputDiff *resource.ObjectDiff) error {
+			// Generate the output goal plan, if we're recreating this it should already exist
+			if recreating {
+				plan, ok := sg.deployment.newPlans.get(urn)
+				if !ok {
+					return fmt.Errorf("no plan for resource %v", urn)
+				}
+				// The plan will have had it's Ops already partially filled in for the delete operation, but we
+				// now have the information needed to fill in Seed and Goal.
+				plan.Seed = randomSeed
+				plan.Goal = NewGoalPlan(inputDiff, goal)
+				return nil
+			}
+			newResourcePlan := &ResourcePlan{
+				Seed: randomSeed,
+				Goal: NewGoalPlan(inputDiff, goal),
+			}
+			sg.deployment.newPlans.set(urn, newResourcePlan)
+			return nil
+		}
+		if err := addToPlan(inputDiff); err != nil {
+			return result.FromError(err)
+		}
+	}
+
+	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	// If theres no plan for this resource check that nothing has been changed.
+	// We don't check plans if the resource is invalid, it's going to fail anyway.
+	if sg.deployment.plan != nil {
+		checkPlan := func() error {
+			resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
+			if !ok {
+				if old == nil {
+					// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
+				} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+					return fmt.Errorf("resource %s violates plan: %w", urn, err)
+				}
+				return nil
+			}
+
+			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+				return fmt.Errorf("resource %s violates plan: %w", urn, err)
+			}
+			return nil
+		}
+
+		if err := checkPlan(); err != nil {
+			return result.FromError(err)
+		}
+	}
+
+	// Send the resource off to any Analyzers before being operated on.
+	r := plugin.AnalyzerResource{
+		URN:        new.URN,
+		Type:       new.Type,
+		Name:       new.URN.Name(),
+		Properties: inputs,
+		Options: plugin.AnalyzerResourceOptions{
+			Protect:                 new.Protect,
+			IgnoreChanges:           goal.IgnoreChanges,
+			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+			Aliases:                 new.GetAliases(),
+			CustomTimeouts:          new.CustomTimeouts,
+		},
+	}
+	providerResource := sg.getProviderResource(new.URN, new.Provider)
+	passesAnalyzer, err := sg.runAnalyzers(r, providerResource)
+	if err != nil {
+		//
+		return result.FromError(err)
+	}
+	// If the resource isn't valid, don't proceed any further.
+	if !passesAnalyzer {
+		return result.Bail()
+	}
+
+	return nil
 }
 
 func (sg *stepGenerator) runAnalyzers(r plugin.AnalyzerResource, providerResource *resource.State) (bool, error) {
