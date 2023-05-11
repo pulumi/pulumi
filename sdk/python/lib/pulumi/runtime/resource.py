@@ -1113,17 +1113,17 @@ async def _add_dependency(
     * Comp3 and Cust5 because Comp3 is a child of a remote component resource
     """
 
+    # Exit early if there are cycles to avoid hangs.
+    no_cycles = declare_dependency(from_resource, res) if from_resource else True
+    if not no_cycles:
+        return
+
     from .. import ComponentResource  # pylint: disable=import-outside-toplevel
 
     # Local component resources act as aggregations of their descendents.
     # Rather than adding the component resource itself, each child resource
     # is added as a dependency.
     if isinstance(res, ComponentResource) and not res._remote:
-        # If `res` is the same as `from_resource`, exit early to avoid depending on
-        # children that haven't been registered yet.
-        if res is from_resource:
-            return
-
         # Copy the set before iterating so that any concurrent child additions during
         # the dependency computation (which is async, so can be interleaved with other
         # operations including child resource construction which adds children to this
@@ -1133,11 +1133,9 @@ async def _add_dependency(
             await _add_dependency(deps, child, from_resource)
         return
 
-    no_cycles = declare_dependency(from_resource, res) if from_resource else True
-    if no_cycles:
-        urn = await res.urn.future()
-        if urn:
-            deps.add(urn)
+    urn = await res.urn.future()
+    if urn:
+        deps.add(urn)
 
 
 async def _expand_dependencies(
