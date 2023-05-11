@@ -677,6 +677,8 @@ func (sg *stepGenerator) generateStepsInner(
 	}
 
 	if invalid {
+		// TODO consider not running the analyzer on invalid resources. This is here to maintain
+		//      current behavior.
 		// Send the resource off to any Analyzers before being operated on.
 		r := plugin.AnalyzerResource{
 			URN:        new.URN,
@@ -693,13 +695,9 @@ func (sg *stepGenerator) generateStepsInner(
 			},
 		}
 		providerResource := sg.getProviderResource(new.URN, new.Provider)
-		passesAnalyzer, err := sg.runAnalyzers(r, providerResource)
+		_, err := sg.runAnalyzers(r, providerResource)
 		if err != nil {
-			//
 			return nil, result.FromError(err)
-		}
-		if !passesAnalyzer {
-			invalid = true
 		}
 
 		// If the resource isn't valid, don't proceed any further.
@@ -798,7 +796,6 @@ func (sg *stepGenerator) generateStepsInner(
 		old,
 		new,
 		inputs,
-		invalid,
 		oldInputs,
 		oldOutputs,
 		prov,
@@ -818,7 +815,6 @@ func (sg *stepGenerator) generateStepsInner2(
 	old *resource.State,
 	new *resource.State,
 	inputs resource.PropertyMap,
-	invalid bool,
 	oldInputs resource.PropertyMap,
 	oldOutputs resource.PropertyMap,
 	prov plugin.Provider,
