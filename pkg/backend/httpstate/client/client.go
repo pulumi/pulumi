@@ -624,23 +624,24 @@ func (pc *Client) RenameStack(ctx context.Context, currentID, newID StackIdentif
 // StartUpdate starts the indicated update. It returns the new version of the update's target stack and the token used
 // to authenticate operations on the update if any. Replaces the stack's tags with the updated set.
 func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
-	tags map[apitype.StackTagName]string,
-) (int, string, error) {
+	tags map[apitype.StackTagName]string, useJournal bool,
+) (int, bool, string, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackProperties(update.StackIdentifier.Stack, tags); err != nil {
-		return 0, "", fmt.Errorf("validating stack properties: %w", err)
+		return 0, false, "", fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	req := apitype.StartUpdateRequest{
-		Tags: tags,
+		Tags:       tags,
+		UseJournal: true,
 	}
 
 	var resp apitype.StartUpdateResponse
 	if err := pc.restCall(ctx, "POST", getUpdatePath(update), nil, req, &resp); err != nil {
-		return 0, "", err
+		return 0, false, "", err
 	}
 
-	return resp.Version, resp.Token, nil
+	return resp.Version, resp.UseJournal, resp.Token, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
@@ -1003,6 +1004,15 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+}
+
+func (pc *Client) AppendJournalEntry(ctx context.Context, update UpdateIdentifier, entry apitype.JournalEntry, token UpdateTokenSource) error {
+	req := apitype.AppendJournalEntryRequest{
+		Version: 1,
+		Entry:   entry,
+	}
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
 		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
 }
 

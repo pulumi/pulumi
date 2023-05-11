@@ -3,6 +3,8 @@ package lifecycletest
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -11,9 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -76,6 +80,41 @@ func (op TestOp) RunWithContext(
 	return snap, res
 }
 
+func checkJournal(j *apiJournal, base, expected *deploy.Snapshot) error {
+	actual, err := j.Replay(base)
+	if err != nil {
+		return fmt.Errorf("replaying: %w", err)
+	}
+
+	actualDeployment, err := stack.SerializeDeployment(actual, nil, false)
+	if err != nil {
+		return fmt.Errorf("serializing actual: %w", err)
+	}
+
+	expectedDeployment, err := stack.SerializeDeployment(expected, nil, false)
+	if err != nil {
+		return fmt.Errorf("serializing expected: %w", err)
+	}
+
+	actualBytes, err := json.MarshalIndent(actualDeployment, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling actual: %w", err)
+	}
+
+	expectedBytes, err := json.MarshalIndent(expectedDeployment, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling expected: %w", err)
+	}
+
+	if string(actualBytes) != string(expectedBytes) {
+		//		fmt.Fprintln(os.Stderr, string(expectedBytes))
+		//		fmt.Fprintln(os.Stderr, string(actualBytes))
+		return fmt.Errorf("actual/expected mismatch")
+	}
+
+	return nil
+}
+
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
@@ -83,6 +122,17 @@ func (op TestOp) runWithContext(
 ) (*deploy.Plan, *deploy.Snapshot, result.Result) {
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}
+
+	baseSnap := target.Snapshot
+	if baseSnap == nil {
+		baseSnap = &deploy.Snapshot{}
+	}
+
+	var apiJournal apiJournal
+	backendJournal, err := backend.NewJournal(&apiJournal, baseSnap, nil)
+	if err != nil {
+		return nil, nil, result.FromError(err)
+	}
 
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
 	done := make(chan bool)
@@ -101,7 +151,7 @@ func (op TestOp) runWithContext(
 	ctx := &Context{
 		Cancel:          cancelCtx,
 		Events:          events,
-		SnapshotManager: journal,
+		SnapshotManager: multiManager{journal, backendJournal},
 		BackendClient:   backendClient,
 	}
 
@@ -135,6 +185,11 @@ func (op TestOp) runWithContext(
 	} else if res == nil && snap != nil {
 		res = result.WrapIfNonNil(snap.VerifyIntegrity())
 	}
+
+	if err = checkJournal(&apiJournal, baseSnap, snap); err != nil {
+		return nil, snap, result.FromError(err)
+	}
+
 	return nil, snap, res
 }
 

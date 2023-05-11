@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
@@ -39,6 +40,10 @@ type cloudSnapshotPersister struct {
 
 func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
 	return persister.sm
+}
+
+func (persister *cloudSnapshotPersister) Append(entry apitype.JournalEntry) error {
+	return persister.backend.client.AppendJournalEntry(persister.context, persister.update, entry, persister.tokenSource)
 }
 
 func (persister *cloudSnapshotPersister) Save(snapshot *deploy.Snapshot) error {

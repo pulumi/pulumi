@@ -272,12 +272,12 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.old.Delete = true
 	}
 
-	complete := func() {
-		// Create should set the Create and Modified timestamps as the resource state has been created.
-		now := time.Now().UTC()
-		s.new.Created = &now
-		s.new.Modified = &now
+	// Create should set the Create and Modified timestamps as the resource state has been created.
+	now := time.Now().UTC()
+	s.new.Created = &now
+	s.new.Modified = &now
 
+	complete := func() {
 		s.reg.Done(&RegisterResult{State: s.new})
 	}
 	if resourceError == nil {
@@ -997,12 +997,6 @@ func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() {
-		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
-		now := time.Now().UTC()
-		s.new.Modified = &now
-		// Set Created to now as the resource has been created in the state.
-		s.new.Created = &now
-
 		s.reg.Done(&RegisterResult{State: s.new})
 	}
 
@@ -1111,6 +1105,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, failures)
 
+		// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+		now := time.Now().UTC()
+		s.new.Modified = &now
+		// Set Created to now as the resource has been created in the state.
+		s.new.Created = &now
+
 		s.diffs, s.detailedDiff = []resource.PropertyKey{}, map[string]plugin.PropertyDiff{}
 		return rst, complete, err
 	}
@@ -1157,6 +1157,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err == nil && s.replacing {
 		s.original.Delete = true
 	}
+
+	// Import takes a resource that Pulumi did not create and imports it into pulumi state.
+	now := time.Now().UTC()
+	s.new.Modified = &now
+	// Set Created to now as the resource has been created in the state.
+	s.new.Created = &now
 
 	return rst, complete, err
 }

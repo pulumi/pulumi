@@ -1006,6 +1006,7 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 
 type updateMetadata struct {
 	version    int
+	useJournal bool
 	leaseToken string
 	messages   []apitype.Message
 }
@@ -1054,7 +1055,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
 	tags := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj)
-	version, token, err := b.client.StartUpdate(ctx, update, tags)
+	version, useJournal, token, err := b.client.StartUpdate(ctx, update, tags, true)
 	if err != nil {
 		if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 			conflict := backend.ConflictingUpdateError{Err: err}
@@ -1064,11 +1065,12 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
-		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+		logging.V(7).Infof("Stack %s being updated to version %d (useJournal=%v)", stackRef, version, useJournal)
 	}
 
 	return update, updateMetadata{
 		version:    version,
+		useJournal: useJournal,
 		leaseToken: token,
 		messages:   updateDetails.Messages,
 	}, nil
@@ -1115,7 +1117,7 @@ func (b *cloudBackend) apply(
 	}
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
-	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta.leaseToken, permalink, events, opts.DryRun)
+	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, updateMeta, permalink, events, opts.DryRun)
 }
 
 // getPermalink returns a link to the update in the Pulumi Console.
@@ -1137,13 +1139,34 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
-	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
+	op backend.UpdateOperation, update client.UpdateIdentifier, meta updateMetadata, permalink string,
 	callerEventsOpt chan<- engine.Event, dryRun bool,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, result.Result) {
-	contract.Assertf(token != "", "persisted actions require a token")
-	u, err := b.newUpdate(ctx, stackRef, op, update, token)
+	contract.Assertf(meta.leaseToken != "", "persisted actions require a token")
+	u, err := b.newUpdate(ctx, stackRef, op, update, meta.leaseToken)
 	if err != nil {
 		return nil, nil, result.FromError(err)
+	}
+
+	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
+	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
+	// to ensure that secrets are not re-encrypted on each update.
+	sm := op.SecretsManager
+	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
+		sm = u.GetTarget().Snapshot.SecretsManager
+	}
+
+	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
+
+	var snapshotManager engine.SnapshotManager
+	if meta.useJournal {
+		m, err := backend.NewJournal(persister, u.GetTarget().Snapshot, sm)
+		if err != nil {
+			return nil, nil, result.FromError(err)
+		}
+		snapshotManager = m
+	} else {
+		snapshotManager = backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -1168,16 +1191,6 @@ func (b *cloudBackend) runEngineAction(
 
 		close(eventsDone)
 	}()
-
-	// The backend.SnapshotManager and backend.SnapshotPersister will keep track of any changes to
-	// the Snapshot (checkpoint file) in the HTTP backend. We will reuse the snapshot's secrets manager when possible
-	// to ensure that secrets are not re-encrypted on each update.
-	sm := op.SecretsManager
-	if secrets.AreCompatible(sm, u.GetTarget().Snapshot.SecretsManager) {
-		sm = u.GetTarget().Snapshot.SecretsManager
-	}
-	persister := b.newSnapshotPersister(ctx, u.update, u.tokenSource, sm)
-	snapshotManager := backend.NewSnapshotManager(persister, u.GetTarget().Snapshot)
 
 	// Depending on the action, kick off the relevant engine activity.  Note that we don't immediately check and
 	// return error conditions, because we will do so below after waiting for the display channels to close.
