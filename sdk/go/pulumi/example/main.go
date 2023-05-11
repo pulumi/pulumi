@@ -11,9 +11,9 @@ func main() {
 		indexDocument := "index.html"
 
 		bucket, err := s3beta.NewBucket(ctx, "my-bucket", &s3beta.BucketArgs{
-			Website: pulumi.V(&s3beta.BucketWebsite{
+			Website: s3beta.BucketWebsiteArgs{
 				IndexDocument: pulumi.V(indexDocument),
-			}), // TODO: see if we can make T be a valid OutputT for custom types.
+			},
 			// Acl: pulumi.Ptr("public-read"),
 		})
 		if err != nil {

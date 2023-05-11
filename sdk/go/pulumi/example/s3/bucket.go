@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -57,7 +58,7 @@ type Bucket struct {
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.OutputT[BucketVersioning] `pulumi:"versioning"`
 	// A website object (documented below).
-	Website pulumi.PtrOutputT[BucketWebsite] `pulumi:"website"`
+	Website pulumi.OutputT[BucketWebsite] `pulumi:"website"`
 	// The domain of the website endpoint, if the bucket is configured with a website. If not, this will be an empty string. This is used to create Route 53 alias records.
 	WebsiteDomain pulumi.OutputT[string] `pulumi:"websiteDomain"`
 	// The website endpoint, if the bucket is configured with a website. If not, this will be an empty string.
@@ -169,7 +170,7 @@ type BucketArgs struct {
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.PtrInputT[BucketVersioning]
 	// A website object (documented below).
-	Website pulumi.PtrInputT[BucketWebsite]
+	Website pulumi.InputT[BucketWebsite]
 	// The domain of the website endpoint, if the bucket is configured with a website. If not, this will be an empty string. This is used to create Route 53 alias records.
 	WebsiteDomain pulumi.PtrInputT[string]
 	// The website endpoint, if the bucket is configured with a website. If not, this will be an empty string.
@@ -194,6 +195,43 @@ type BucketCorsRule struct {
 }
 
 type BucketWebsite struct {
+	// An absolute path to the document to return in case of a 4XX error.
+	// ErrorDocument *string `pulumi:"errorDocument"`
+	// Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.
+	IndexDocument string `pulumi:"indexDocument"`
+	// A hostname to redirect all website requests for this bucket to. Hostname can optionally be prefixed with a protocol (`http://` or `https://`) to use when redirecting requests. The default is the protocol that is used in the original request.
+	// RedirectAllRequestsTo *string `pulumi:"redirectAllRequestsTo"`
+	// A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)
+	// describing redirect behavior and when redirects are applied.
+	// RoutingRules interface{} `pulumi:"routingRules"`
+}
+
+type BucketWebsiteInput interface {
+	pulumi.Input
+
+	ToBucketWebsiteOutput() BucketWebsiteOutput
+	ToBucketWebsiteOutputWithContext(context.Context) BucketWebsiteOutput
+}
+
+type BucketWebsiteOutput struct{ *pulumi.OutputState }
+
+func (BucketWebsiteOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BucketWebsite)(nil)).Elem()
+}
+
+func (o BucketWebsiteOutput) ToOutputT(context.Context) pulumi.OutputT[BucketWebsite] {
+	return pulumi.OutputT[BucketWebsite]{OutputState: o.OutputState}
+}
+
+func (o BucketWebsiteOutput) ToBucketWebsiteOutput() BucketWebsiteOutput {
+	return o
+}
+
+func (o BucketWebsiteOutput) ToBucketWebsiteOutputWithContext(ctx context.Context) BucketWebsiteOutput {
+	return o
+}
+
+type BucketWebsiteArgs struct {
 	// // An absolute path to the document to return in case of a 4XX error.
 	// ErrorDocument pulumi.InputT[string] `pulumi:"errorDocument"`
 	// Amazon S3 returns this index document when requests are made to the root domain or any of the subfolders.
@@ -203,6 +241,22 @@ type BucketWebsite struct {
 	// // A json array containing [routing rules](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-websiteconfiguration-routingrules.html)
 	// // describing redirect behavior and when redirects are applied.
 	// RoutingRules pulumi.InputT[interface{}] `pulumi:"routingRules"`
+}
+
+func (BucketWebsiteArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BucketWebsite)(nil)).Elem()
+}
+
+func (i BucketWebsiteArgs) ToOutputT(ctx context.Context) pulumi.OutputT[BucketWebsite] {
+	return i.ToBucketWebsiteOutputWithContext(ctx).ToOutputT(ctx)
+}
+
+func (i BucketWebsiteArgs) ToBucketWebsiteOutput() BucketWebsiteOutput {
+	return i.ToBucketWebsiteOutputWithContext(context.Background())
+}
+
+func (i BucketWebsiteArgs) ToBucketWebsiteOutputWithContext(ctx context.Context) BucketWebsiteOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BucketWebsiteOutput)
 }
 
 type BucketGrant struct {
@@ -401,4 +455,9 @@ type BucketServerSideEncryptionConfigurationRuleApplyServerSideEncryptionByDefau
 	KmsMasterKeyId pulumi.InputT[string] `pulumi:"kmsMasterKeyId"`
 	// The server-side encryption algorithm to use. Valid values are `AES256` and `aws:kms`
 	SseAlgorithm pulumi.InputT[string] `pulumi:"sseAlgorithm"`
+}
+
+func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*BucketWebsiteInput)(nil)).Elem(), BucketWebsiteArgs{})
+	pulumi.RegisterOutputType(BucketWebsiteOutput{})
 }
