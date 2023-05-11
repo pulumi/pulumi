@@ -355,6 +355,14 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 	g.Fgenf(w, "}\n")
 }
 
+func mergeImports(src, dest programImports) programImports {
+	return programImports{
+		pulumiImports:         src.pulumiImports.Union(dest.pulumiImports),
+		stdImports:            src.stdImports.Union(dest.stdImports),
+		preambleHelperMethods: src.preambleHelperMethods.Union(dest.preambleHelperMethods),
+	}
+}
+
 func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOptions) (
 	map[string][]byte, hcl.Diagnostics, error,
 ) {
@@ -366,6 +374,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
+	initialImports := g.collectImports(program)
+
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
 		g.collectScopeRoots(n)
@@ -375,6 +385,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		g.genNode(&progPostamble, n)
 	}
 
+	programImports := mergeImports(initialImports, g.collectImports(program))
+
 	g.genPostamble(&progPostamble, nodes)
 
 	// We must generate the program first and the preamble second and finally cat the two together.
@@ -382,7 +394,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	// present in resource declarations or invokes alone. Expressions are lowered when the program is generated
 	// and this must happen first so we can access types via __convert intrinsics.
 	var index bytes.Buffer
-	g.genPreamble(&index, program)
+	g.genPreamble(&index, program, programImports)
 	g.Fprintf(&index, "func main() {\n")
 	g.Fprintf(&index, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 	index.Write(progPostamble.Bytes())
@@ -401,6 +413,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		componentName := filepath.Base(componentDir)
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
+		componentImports := componentGenerator.collectImports(component.Program)
 		for _, n := range component.Program.Nodes {
 			componentGenerator.collectScopeRoots(n)
 		}
@@ -408,7 +421,7 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 			return nil, nil, fmt.Errorf("could not create a new generator: %w", err)
 		}
 		var componentBuffer bytes.Buffer
-		componentGenerator.genPreamble(&componentBuffer, component.Program)
+		componentGenerator.genPreamble(&componentBuffer, component.Program, componentImports)
 
 		componentGenerator.genComponentArgs(&componentBuffer, componentName, component)
 		componentGenerator.genComponentType(&componentBuffer, componentName, component)
@@ -570,11 +583,7 @@ func (g *generator) collectScopeRoots(n pcl.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *pcl.Program) {
-	// We must collect imports once before lowering, and once after.
-	// This allows us to avoid complexity of traversing apply expressions for things like JSON
-	// but still have access to types provided by __convert intrinsics after lowering.
-	imports := g.collectImports(program)
+func (g *generator) genPreamble(w io.Writer, program *pcl.Program, imports programImports) {
 	stdImports := imports.stdImports
 	pulumiImports := imports.pulumiImports
 	preambleHelperMethods := imports.preambleHelperMethods
