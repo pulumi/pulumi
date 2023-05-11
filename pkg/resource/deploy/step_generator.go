@@ -676,8 +676,38 @@ func (sg *stepGenerator) generateStepsInner(
 		new.Inputs = inputs
 	}
 
+	if invalid {
+		// Send the resource off to any Analyzers before being operated on.
+		r := plugin.AnalyzerResource{
+			URN:        new.URN,
+			Type:       new.Type,
+			Name:       new.URN.Name(),
+			Properties: inputs,
+			Options: plugin.AnalyzerResourceOptions{
+				Protect:                 new.Protect,
+				IgnoreChanges:           goal.IgnoreChanges,
+				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+				Aliases:                 new.GetAliases(),
+				CustomTimeouts:          new.CustomTimeouts,
+			},
+		}
+		providerResource := sg.getProviderResource(new.URN, new.Provider)
+		passesAnalyzer, err := sg.runAnalyzers(r, providerResource)
+		if err != nil {
+			//
+			return nil, result.FromError(err)
+		}
+		if !passesAnalyzer {
+			invalid = true
+		}
+
+		// If the resource isn't valid, don't proceed any further.
+		return nil, result.Bail()
+	}
+
 	// If the resource is valid and we're generating plans then generate a plan
-	if !invalid && sg.opts.GeneratePlan {
+	if sg.opts.GeneratePlan {
 		discardOldInputs := recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld
 		if discardOldInputs {
 			oldInputs = nil
@@ -711,7 +741,7 @@ func (sg *stepGenerator) generateStepsInner(
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
 	// We don't check plans if the resource is invalid, it's going to fail anyway.
-	if !invalid && sg.deployment.plan != nil {
+	if sg.deployment.plan != nil {
 		checkPlan := func() error {
 			resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 			if !ok {
@@ -755,14 +785,11 @@ func (sg *stepGenerator) generateStepsInner(
 		//
 		return nil, result.FromError(err)
 	}
-	if !passesAnalyzer {
-		invalid = true
-	}
-
 	// If the resource isn't valid, don't proceed any further.
-	if invalid {
+	if !passesAnalyzer {
 		return nil, result.Bail()
 	}
+
 	return sg.generateStepsInner2(
 		event,
 		goal,
