@@ -713,7 +713,8 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 }
 
 func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
-	expr, temps := g.lowerExpression(v.Value, v.Type())
+	outputType := model.NewOutputType(v.Type())
+	expr, temps := g.lowerExpression(v.Value, outputType)
 	g.genTemps(w, temps)
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
 }

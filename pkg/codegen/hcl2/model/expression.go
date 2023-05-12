@@ -50,6 +50,10 @@ type Expression interface {
 	// Evaluate evaluates the expression.
 	Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics)
 
+	// ApplyImplicitConversion tries to change the type of the expression to the target type. If the current
+	// type of the expressions is not assignable to the target type, an error is returned.
+	ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics)
+
 	isExpression()
 }
 
@@ -280,6 +284,20 @@ func (x *AnonymousFunctionExpression) Evaluate(context *hcl.EvalContext) (cty.Va
 	return cty.NilVal, hcl.Diagnostics{cannotEvaluateAnonymousFunctionExpressions()}
 }
 
+func (x *AnonymousFunctionExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.Signature.ReturnType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+
+	signature := x.Signature
+	signature.ReturnType = other
+
+	expr := x
+	expr.Signature = signature
+	return expr, diags
+}
+
 func (x *AnonymousFunctionExpression) HasLeadingTrivia() bool {
 	return x.Body.HasLeadingTrivia()
 }
@@ -410,6 +428,16 @@ func (x *BinaryOpExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.
 	return syntax.Value(context)
 }
 
+func (x *BinaryOpExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
+}
+
 func (x *BinaryOpExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.LeftOperand)
 }
@@ -521,6 +549,16 @@ func (x *ConditionalExpression) Evaluate(context *hcl.EvalContext) (cty.Value, h
 		FalseResult: &syntaxExpr{expr: x.FalseResult},
 	}
 	return syntax.Value(context)
+}
+
+func (x *ConditionalExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *ConditionalExpression) HasLeadingTrivia() bool {
@@ -665,6 +703,16 @@ func (x *ErrorExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Dia
 		Severity: hcl.DiagError,
 		Summary:  x.Message,
 	}}
+}
+
+func (x *ErrorExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *ErrorExpression) HasLeadingTrivia() bool {
@@ -845,6 +893,16 @@ func (x *ForExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagn
 		syntax.CondExpr = &syntaxExpr{expr: x.Condition}
 	}
 	return syntax.Value(context)
+}
+
+func (x *ForExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *ForExpression) HasLeadingTrivia() bool {
@@ -1066,6 +1124,20 @@ func (x *FunctionCallExpression) Evaluate(context *hcl.EvalContext) (cty.Value, 
 	return syntax.Value(context)
 }
 
+func (x *FunctionCallExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.Signature.ReturnType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+
+	signature := x.Signature
+	signature.ReturnType = other
+
+	expr := x
+	expr.Signature = signature
+	return expr, diags
+}
+
 func (x *FunctionCallExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
@@ -1220,6 +1292,16 @@ func (x *IndexExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Dia
 		Key:        &syntaxExpr{expr: x.Key},
 	}
 	return syntax.Value(context)
+}
+
+func (x *IndexExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *IndexExpression) HasLeadingTrivia() bool {
@@ -1394,6 +1476,16 @@ func (x *LiteralValueExpression) Evaluate(context *hcl.EvalContext) (cty.Value, 
 	return syntax.Value(context)
 }
 
+func (x *LiteralValueExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
+}
+
 func (x *LiteralValueExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
@@ -1566,6 +1658,16 @@ func (x *ObjectConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hc
 		}
 	}
 	return syntax.Value(context)
+}
+
+func (x *ObjectConsExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *ObjectConsExpression) HasLeadingTrivia() bool {
@@ -1807,6 +1909,10 @@ func (x *RelativeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Va
 	return syntax.Value(context)
 }
 
+func (x *RelativeTraversalExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	return x, nil
+}
+
 func (x *RelativeTraversalExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
@@ -1938,6 +2044,10 @@ func (x *ScopeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value
 		return rootValue, diagnostics
 	}
 	return x.Traversal[1:].TraverseRel(rootValue)
+}
+
+func (x *ScopeTraversalExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	return x, nil
 }
 
 func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {
@@ -2121,6 +2231,16 @@ func (x *SplatExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Dia
 	return syntax.Value(context)
 }
 
+func (x *SplatExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
+}
+
 func (x *SplatExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Source)
 }
@@ -2236,6 +2356,16 @@ func (x *TemplateExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.
 	return syntax.Value(context)
 }
 
+func (x *TemplateExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
+}
+
 func (x *TemplateExpression) HasLeadingTrivia() bool {
 	return exprHasLeadingTrivia(x.Tokens.GetParentheses(), x.Tokens != nil)
 }
@@ -2339,6 +2469,16 @@ func (x *TemplateJoinExpression) Evaluate(context *hcl.EvalContext) (cty.Value, 
 	return syntax.Value(context)
 }
 
+func (x *TemplateJoinExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
+}
+
 func (x *TemplateJoinExpression) HasLeadingTrivia() bool {
 	return x.Tuple.HasLeadingTrivia()
 }
@@ -2429,6 +2569,16 @@ func (x *TupleConsExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl
 		syntax.Exprs[i] = &syntaxExpr{expr: x}
 	}
 	return syntax.Value(context)
+}
+
+func (x *TupleConsExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *TupleConsExpression) HasLeadingTrivia() bool {
@@ -2578,6 +2728,16 @@ func (x *UnaryOpExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.D
 		Val: &syntaxExpr{expr: x.Operand},
 	}
 	return syntax.Value(context)
+}
+
+func (x *UnaryOpExpression) ApplyImplicitConversion(other Type) (Expression, hcl.Diagnostics) {
+	diags := hcl.Diagnostics{}
+	if !other.AssignableFrom(x.exprType) {
+		diags = append(diags, ExprNotConvertible(other, x))
+	}
+	expr := x
+	expr.exprType = other
+	return expr, diags
 }
 
 func (x *UnaryOpExpression) HasLeadingTrivia() bool {

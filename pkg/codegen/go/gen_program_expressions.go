@@ -411,6 +411,9 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	if cns, ok := exprType.(*model.ConstType); ok {
 		exprType = cns.Type
 	}
+	if ot, ok := exprType.(*model.OutputType); ok {
+		exprType = ot.ElementType
+	}
 
 	if exprType == model.NoneType {
 		g.Fgen(w, "nil")
@@ -980,6 +983,9 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
+	// Go needs to recall the _target_ type of the expression, not the type of the expression itself to correctly insert typecasts.
+	expr, impDiags := expr.ApplyImplicitConversion(typ)
+
 	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
 	temps := make([]interface{}, 0, bufferSize)
 	for _, t := range tTemps {
@@ -1003,6 +1009,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	diags = append(diags, readDirDiags...)
 	diags = append(diags, splatDiags...)
 	diags = append(diags, optDiags...)
+	diags = append(diags, impDiags...)
 	g.diagnostics = g.diagnostics.Extend(diags)
 	return expr, temps
 }
