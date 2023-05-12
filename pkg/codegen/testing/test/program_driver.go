@@ -234,7 +234,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "components",
 		Description: "Components",
-		Skip:        codegen.NewStringSet("go"),
 		SkipCompile: codegen.NewStringSet("go"),
 	},
 	{

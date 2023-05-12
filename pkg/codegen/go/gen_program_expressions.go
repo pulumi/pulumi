@@ -312,8 +312,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
-		g.genNYI(w, "call %v", expr.Name)
-		// g.Fgenf(w, "%.20v.Length", expr.Args[0])
+		g.Fgenf(w, "len(%.20v)", expr.Args[0])
 	case "lookup":
 		g.genNYI(w, "Lookup")
 	case keywordRange:
@@ -459,6 +458,16 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
+	switch argType := expr.Type().(type) {
+	case *model.ObjectType:
+		if len(argType.Annotations) > 0 {
+			if configMetadata, ok := argType.Annotations[0].(*ObjectTypeFromConfigMetadata); ok {
+				g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
+				return
+			}
+		}
+	}
+
 	isInput := false
 	g.genObjectConsExpression(w, expr, expr.Type(), isInput)
 }
@@ -597,6 +606,15 @@ func (g *generator) genScopeTraversalExpression(
 	case *pcl.LocalVariable:
 		if root, ok := root.Definition.Value.(*model.FunctionCallExpression); ok && !pcl.IsOutputVersionInvokeCall(root) {
 			sourceIsPlain = true
+		}
+	case *pcl.ConfigVariable:
+		if g.isComponent {
+			// config variables of components are always of type Input<T>
+			// these shouldn't be wrapped in a pulumi.String(...), pulumi.Int(...) etc. functions
+			g.Fgenf(w, "args.%s", Title(rootName))
+			isRootResource := false
+			g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts[1:], isRootResource)
+			return
 		}
 	}
 
