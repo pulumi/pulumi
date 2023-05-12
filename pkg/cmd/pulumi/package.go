@@ -40,10 +40,10 @@ func newPackageCmd() *cobra.Command {
 Subcommands of this command are useful to package authors during development.`,
 		Args: cmdutil.NoArgs,
 	}
-
 	cmd.AddCommand(
 		newExtractSchemaCommand(),
 		newGenSdkCommand(),
+		newPackagePublishCmd(),
 	)
 	return cmd
 }
