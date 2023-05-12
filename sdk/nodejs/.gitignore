@@ -6,3 +6,19 @@
 /runtime/native/node_dev/
 .nyc_output/
 !yarn.lock
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Yarn Berry
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Direnv
+/.direnv

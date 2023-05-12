@@ -24,7 +24,8 @@ GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
-	yarn install --frozen-lockfile
+	yarn set version berry
+	yarn install --immutable
 	@touch .ensure.phony
 
 format:: ensure
@@ -42,7 +43,7 @@ build_package:: ensure
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp README.md ../../LICENSE ./dist/* bin/
 # safely remove mockpackage dependency see [pulumi/pulumi#9026]
-	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock
+	cp package.json yarn.lock bin/ && cd bin && yarn remove mockpackage && rm yarn.lock && touch yarn.lock
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	mkdir -p bin/proto
