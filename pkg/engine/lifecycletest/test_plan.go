@@ -208,7 +208,7 @@ func (p *TestPlan) GetProject() workspace.Project {
 	}
 }
 
-func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Target {
+func (p *TestPlan) GetTarget(t testing.TB, snapshot *deploy.Snapshot) deploy.Target {
 	stack, _, _ := p.getNames()
 
 	cfg := p.Config
@@ -227,12 +227,12 @@ func (p *TestPlan) GetTarget(t *testing.T, snapshot *deploy.Snapshot) deploy.Tar
 	}
 }
 
-func assertIsErrorOrBailResult(t *testing.T, res result.Result) {
+func assertIsErrorOrBailResult(t testing.TB, res result.Result) {
 	assert.NotNil(t, res)
 }
 
 // CloneSnapshot makes a deep copy of the given snapshot and returns a pointer to the clone.
-func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
+func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 	t.Helper()
 	if snap != nil {
 		copiedSnap := copystructure.Must(copystructure.Copy(*snap)).(deploy.Snapshot)
@@ -243,7 +243,7 @@ func CloneSnapshot(t *testing.T, snap *deploy.Snapshot) *deploy.Snapshot {
 	return snap
 }
 
-func (p *TestPlan) Run(t *testing.T, snapshot *deploy.Snapshot) *deploy.Snapshot {
+func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
 	for _, step := range p.Steps {
