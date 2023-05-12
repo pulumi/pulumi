@@ -17,13 +17,12 @@ package providers
 import (
 	"errors"
 	"fmt"
-	"io"
 	"sync"
-	"time"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -102,40 +101,6 @@ type Registry struct {
 
 var _ plugin.Provider = (*Registry)(nil)
 
-// InstallProviderError is returned by loadProvider if we couldn't find or install the provider
-type InstallProviderError struct {
-	// The name of the provider
-	Name string
-	// The requested version of the plugin, if any.
-	Version *semver.Version
-	// The pluginDownloadURL, if any.
-	PluginDownloadURL string
-	// The underlying error that occurred during the download or install.
-	Err error
-}
-
-func (err *InstallProviderError) Error() string {
-	var server string
-	if err.PluginDownloadURL != "" {
-		server = fmt.Sprintf(" --server %s", err.PluginDownloadURL)
-	}
-
-	if err.Version != nil {
-		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
-			" at version v%[3]s"+
-			", install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s%[4]s`: %[5]v",
-			workspace.ResourcePlugin, err.Name, err.Version, server, err.Err)
-	}
-
-	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
-		", install the plugin using `pulumi plugin install %[1]s %[2]s%[3]s`: %[4]v",
-		workspace.ResourcePlugin, err.Name, server, err.Err)
-}
-
-func (err *InstallProviderError) Unwrap() error {
-	return err.Err
-}
-
 func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	host plugin.Host, builtins plugin.Provider,
 ) (plugin.Provider, error) {
@@ -168,43 +133,13 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		Checksums:         checksums,
 	}
 
-	if pluginSpec.Version == nil {
-		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
-		if err != nil {
-			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
-		}
+	log := func(sev diag.Severity, msg string) {
+		host.Log(sev, "", msg, 0)
 	}
 
-	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
-		host.Log(diag.Info, "", fmt.Sprintf("Downloading provider: %s", pluginSpec.Name), 0)
-		return stream
-	}
-
-	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		host.Log(diag.Warning, "", fmt.Sprintf("error downloading provider: %s\n"+
-			"Will retry in %v [%d/%d]", err, delay, attempt, limit), 0)
-	}
-
-	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
-	downloadedFile, err := workspace.DownloadToFile(pluginSpec, wrapper, retry)
+	err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 	if err != nil {
-		return nil, &InstallProviderError{
-			Name:              string(pkg),
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Err:               fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
-		}
-	}
-
-	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
-	err = pluginSpec.Install(downloadedFile, false)
-	if err != nil {
-		return nil, &InstallProviderError{
-			Name:              string(pkg),
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Err:               fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
-		}
+		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
