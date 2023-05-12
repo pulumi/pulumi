@@ -91,7 +91,7 @@ export interface PropertyInfoAndValue {
 // A mapping between the name of a property (symbolic or string) to information about the
 // value for that property.
 /** @internal */
-export interface PropertyMap extends Map<Entry, PropertyInfoAndValue> {}
+export type PropertyMap = Map<Entry, PropertyInfoAndValue>;
 
 /**
  * Entry is the environment slot for a named lexically captured variable.

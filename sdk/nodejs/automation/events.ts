@@ -19,7 +19,7 @@
 // the update successfully completes.
 import { OpMap, OpType } from "./stack";
 
-export interface CancelEvent {}
+export type CancelEvent = {};
 
 // StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
 // from the pulumi CLI itself. Less common than DiagnosticEvent

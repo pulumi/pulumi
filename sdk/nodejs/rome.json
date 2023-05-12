@@ -30,9 +30,17 @@
                 "noExtraNonNullAssertion": "error",
                 "noExplicitAny": "off",
                 "noAsyncPromiseExecutor": "error",
-                "noEmptyInterface": "off",
+                "noEmptyInterface": "error",
                 "noShadowRestrictedNames": "off",
-                "noLabelVar": "error"
+                "noLabelVar": "error",
+                "noCompareNegZero": "error",
+                "noConstEnum": "error",
+                "noSparseArray": "error",
+                "useDefaultSwitchClauseLast": "error",
+                "noArrayIndexKey": "error",
+                "noDebugger": "error",
+                "noImportAssign": "error",
+                "noFunctionAssign": "error"
             }
         }
     }

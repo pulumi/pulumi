@@ -40,7 +40,7 @@ type ResolvedSimple<T> = T extends primitive
     ? ResolvedObject<T>
     : never;
 
-interface ResolvedArray<T> extends Array<Resolved<T>> {}
+type ResolvedArray<T> = Array<Resolved<T>>;
 
 type ResolvedObject<T> = ModifyOptionalProperties<{ [P in keyof T]: Resolved<T[P]> }>;
 
