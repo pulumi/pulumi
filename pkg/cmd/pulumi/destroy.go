@@ -266,7 +266,7 @@ func newDestroyCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				SecretsProvider:    stack.DefaultSecretsProvider,
-				Scopes:             cancellationScopes,
+				Scopes:             backend.CancellationScopes,
 			})
 
 			if res == nil && protectedCount > 0 && !jsonDisplay {

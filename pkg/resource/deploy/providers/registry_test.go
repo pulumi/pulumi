@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -862,69 +862,6 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Len(t, failures, 1)
 	assert.Equal(t, "version", string(failures[0].Property))
 	assert.Nil(t, inputs)
-}
-
-func TestInstallProviderErrorText(t *testing.T) {
-	t.Parallel()
-
-	v1 := semver.MustParse("0.1.0")
-	err := errors.New("some error")
-	tests := []struct {
-		Name          string
-		Err           InstallProviderError
-		ExpectedError string
-	}{
-		{
-			Name: "Just name",
-			Err: InstallProviderError{
-				Err:  err,
-				Name: "myplugin",
-			},
-			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
-				" install the plugin using `pulumi plugin install resource myplugin`: some error",
-		},
-		{
-			Name: "Name and version",
-			Err: InstallProviderError{
-				Err:     err,
-				Name:    "myplugin",
-				Version: &v1,
-			},
-			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
-				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0`: some error",
-		},
-		{
-			Name: "Name and version and URL",
-			Err: InstallProviderError{
-				Err:               err,
-				Name:              "myplugin",
-				Version:           &v1,
-				PluginDownloadURL: "github://owner/repo",
-			},
-			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'" +
-				" at version v0.1.0, install the plugin using `pulumi plugin install resource myplugin v0.1.0" +
-				" --server github://owner/repo`: some error",
-		},
-		{
-			Name: "Name and URL",
-			Err: InstallProviderError{
-				Err:               err,
-				Name:              "myplugin",
-				PluginDownloadURL: "github://owner/repo",
-			},
-			ExpectedError: "Could not automatically download and install resource plugin 'pulumi-resource-myplugin'," +
-				" install the plugin using `pulumi plugin install resource myplugin" +
-				" --server github://owner/repo`: some error",
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.Name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.ExpectedError, tt.Err.Error())
-		})
-	}
 }
 
 func TestLoadProvider_missingError(t *testing.T) {

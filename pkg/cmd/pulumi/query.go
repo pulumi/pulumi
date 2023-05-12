@@ -77,7 +77,7 @@ func newQueryCmd() *cobra.Command {
 				Proj:            project,
 				Root:            root,
 				Opts:            opts,
-				Scopes:          cancellationScopes,
+				Scopes:          backend.CancellationScopes,
 				SecretsProvider: stack.DefaultSecretsProvider,
 			})
 			switch {

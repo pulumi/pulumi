@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 type projectGeneratorFunc func(directory string, project workspace.Project, p *pcl.Program) error
@@ -384,7 +386,31 @@ func runConvert(
 		// Try and load the converter plugin for this
 		converter, err := plugin.NewConverter(pCtx, from, nil)
 		if err != nil {
-			return result.FromError(fmt.Errorf("plugin source %q: %w", from, err))
+			// If NewConverter returns a MissingError, we can try and install the plugin and try again.
+			var me *workspace.MissingError
+			if !errors.As(err, &me) {
+				// Not a MissingError, return the original error.
+				return result.FromError(fmt.Errorf("load plugin source %q: %w", from, err))
+			}
+
+			pluginSpec := workspace.PluginSpec{
+				Kind: workspace.ConverterPlugin,
+				Name: from,
+			}
+
+			log := func(sev diag.Severity, msg string) {
+				pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+			}
+
+			err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+			if err != nil {
+				return result.FromError(fmt.Errorf("install plugin source %q: %w", from, err))
+			}
+
+			converter, err = plugin.NewConverter(pCtx, from, nil)
+			if err != nil {
+				return result.FromError(fmt.Errorf("load plugin source %q: %w", from, err))
+			}
 		}
 		defer contract.IgnoreClose(converter)
 
