@@ -19,7 +19,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -27,32 +26,28 @@ import (
 
 // InstallPluginError is returned by InstallPlugin if we couldn't install the plugin
 type InstallPluginError struct {
-	// The name of the provider
-	Name string
-	// The requested version of the plugin, if any.
-	Version *semver.Version
-	// The pluginDownloadURL, if any.
-	PluginDownloadURL string
+	// The specification of the plugin to install
+	Spec workspace.PluginSpec
 	// The underlying error that occurred during the download or install.
 	Err error
 }
 
 func (err *InstallPluginError) Error() string {
 	var server string
-	if err.PluginDownloadURL != "" {
-		server = fmt.Sprintf(" --server %s", err.PluginDownloadURL)
+	if err.Spec.PluginDownloadURL != "" {
+		server = fmt.Sprintf(" --server %s", err.Spec.PluginDownloadURL)
 	}
 
-	if err.Version != nil {
+	if err.Spec.Version != nil {
 		return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
 			" at version v%[3]s"+
 			", install the plugin using `pulumi plugin install %[1]s %[2]s v%[3]s%[4]s`: %[5]v",
-			workspace.ResourcePlugin, err.Name, err.Version, server, err.Err)
+			err.Spec.Kind, err.Spec.Name, err.Spec.Version, server, err.Err)
 	}
 
 	return fmt.Sprintf("Could not automatically download and install %[1]s plugin 'pulumi-%[1]s-%[2]s'"+
 		", install the plugin using `pulumi plugin install %[1]s %[2]s%[3]s`: %[4]v",
-		workspace.ResourcePlugin, err.Name, server, err.Err)
+		err.Spec.Kind, err.Spec.Name, server, err.Err)
 }
 
 func (err *InstallPluginError) Unwrap() error {
@@ -82,10 +77,8 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	downloadedFile, err := workspace.DownloadToFile(pluginSpec, wrapper, retry)
 	if err != nil {
 		return &InstallPluginError{
-			Name:              pluginSpec.Name,
-			Version:           pluginSpec.Version,
-			PluginDownloadURL: pluginSpec.PluginDownloadURL,
-			Err:               fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
+			Spec: pluginSpec,
+			Err:  fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
 		}
 	}
 
@@ -93,10 +86,8 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	err = pluginSpec.Install(downloadedFile, false)
 	if err != nil {
 		return &InstallPluginError{
-			Name:              pluginSpec.Name,
-			Version:           pluginSpec.Version,
-			PluginDownloadURL: pluginSpec.PluginDownloadURL,
-			Err:               fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
+			Spec: pluginSpec,
+			Err:  fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
 		}
 	}
 
