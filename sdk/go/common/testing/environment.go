@@ -129,7 +129,12 @@ func (e *Environment) ImportDirectory(path string) {
 func (e *Environment) DeleteEnvironment() {
 	e.Helper()
 	err := os.RemoveAll(e.RootPath)
-	assert.NoErrorf(e, err, "cleaning up test directory %q", e.RootPath)
+	if err != nil {
+		// In CI, Windows sometimes lags behind in marking a resource
+		// as unused. This causes otherwise passing tests to fail.
+		// So ignore errors during cleanup.
+		e.Logf("error cleaning up test directory %q: %v", e.RootPath, err)
+	}
 }
 
 // DeleteEnvironment deletes the environment's RootPath, and everything

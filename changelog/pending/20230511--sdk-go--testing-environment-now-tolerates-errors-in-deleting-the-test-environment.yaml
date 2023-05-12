@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: testing.Environment now tolerates errors in deleting the test environment.
