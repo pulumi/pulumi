@@ -513,7 +513,7 @@ func getUpgradeMessage(latest semver.Version, current semver.Version) string {
 		msg += "run \n   " + cmd + "\nor "
 	}
 
-	msg += "visit https://pulumi.com/docs/reference/install/ for manual instructions and release notes."
+	msg += "visit https://pulumi.com/docs/install/ for manual instructions and release notes."
 	return msg
 }
 

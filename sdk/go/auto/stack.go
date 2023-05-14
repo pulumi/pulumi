@@ -204,7 +204,7 @@ func (s *Stack) Workspace() Workspace {
 }
 
 // Preview preforms a dry-run update to a stack, returning pending changes.
-// https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+// https://www.pulumi.com/docs/cli/commands/pulumi_preview/
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
 	var res PreviewResult
 
@@ -327,7 +327,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 }
 
 // Up creates or updates the resources in a stack by executing the program in the Workspace.
-// https://www.pulumi.com/docs/reference/cli/pulumi_up/
+// https://www.pulumi.com/docs/cli/commands/pulumi_up/
 func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
 	var res UpResult
 
