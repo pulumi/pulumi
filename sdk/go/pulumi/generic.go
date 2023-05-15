@@ -14,7 +14,6 @@ type InputT[T any] interface {
 	Input
 
 	ToOutputT(context.Context) OutputT[T]
-	// TODO: Can we enforce that T is assignable to ElementType?
 }
 
 // TODO: can we do without this?
@@ -80,7 +79,8 @@ func (o OutputT[T]) ToOutputT(context.Context) OutputT[T] {
 }
 
 func (o OutputT[T]) ToAnyOutput() AnyOutput {
-	return AnyOutput{o.OutputState}
+	ao := ApplyT(o, func(v T) any { return v })
+	return AnyOutput(ao)
 }
 
 // awaitT is a type-safe variant of OutputState.await.
