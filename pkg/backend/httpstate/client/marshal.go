@@ -20,7 +20,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -36,13 +36,9 @@ var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 // Injects newlines to allow efficient textual diffs over the JSON. Textual diffs currently use O(N^2) memory in the
 // number of newlines, so the injection needs to be conservative. Currently it limits to up to maxNewLines newlines
 // which would result in max 8MB memory use by the algorithm.
-func MarshalUntypedDeployment(deployment *apitype.DeploymentV3) (json.RawMessage, error) {
-	var buf bytes.Buffer
+func MarshalUntypedDeployment(b *bytes.Buffer, deployment *apitype.DeploymentV3) error {
 	md := &marshalUntypedDeployment{deployment}
-	if err := md.Write(&buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return md.Write(b)
 }
 
 func marshalVerbatimCheckpointRequest(req apitype.PatchUpdateVerbatimCheckpointRequest) (json.RawMessage, error) {

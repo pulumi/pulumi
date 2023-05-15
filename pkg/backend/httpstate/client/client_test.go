@@ -178,8 +178,10 @@ func TestPatchUpdateCheckpointVerbatimIndents(t *testing.T) {
 
 	sequenceNumber := 1
 
-	indented, err := MarshalUntypedDeployment(&deployment)
+	var b bytes.Buffer
+	err = MarshalUntypedDeployment(&b, &deployment)
 	assert.NoError(t, err)
+	indented := b.Bytes()
 
 	err = client.PatchUpdateCheckpointVerbatim(context.Background(),
 		UpdateIdentifier{}, sequenceNumber, indented, updateTokenStaticSource("token"))
