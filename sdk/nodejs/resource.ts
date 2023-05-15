@@ -527,11 +527,11 @@ function collapseAliasToUrn(
             return output(a);
         }
 
-        const name = a.hasOwnProperty("name") ? a.name : defaultName;
-        const type = a.hasOwnProperty("type") ? a.type : defaultType;
-        const parent = a.hasOwnProperty("parent") ? a.parent : defaultParent;
-        const project = a.hasOwnProperty("project") ? a.project : getProject();
-        const stack = a.hasOwnProperty("stack") ? a.stack : getStack();
+        const name = Object.hasOwn(a, "name") ? a.name : defaultName;
+        const type = Object.hasOwn(a, "type") ? a.type : defaultType;
+        const parent = Object.hasOwn(a, "parent") ? a.parent : defaultParent;
+        const project = Object.hasOwn(a, "project") ? a.project : getProject();
+        const stack = Object.hasOwn(a, "stack") ? a.stack : getStack();
 
         if (name === undefined) {
             throw new Error("No valid 'name' passed in for alias.");

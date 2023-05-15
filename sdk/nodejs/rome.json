@@ -36,7 +36,6 @@
             },
             "suspicious": {
                 "noExtraNonNullAssertion": "error",
-                "noExplicitAny": "off",
                 "noAsyncPromiseExecutor": "error",
                 "noEmptyInterface": "error",
                 "noShadowRestrictedNames": "off",
@@ -50,8 +49,9 @@
                 "noImportAssign": "error",
                 "noFunctionAssign": "error",
                 "noAssignInExpressions": "error",
-                "noRedeclare": "off",
-                "noPrototypeBuiltins": "off"
+                "noPrototypeBuiltins": "error",
+                "noExplicitAny": "off",
+                "noRedeclare": "off"
             }
         }
     }

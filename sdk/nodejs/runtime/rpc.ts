@@ -55,7 +55,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         }
 
         // Create a property to wrap the value and store it on the resource.
-        if (onto.hasOwnProperty(k)) {
+        if (Object.hasOwn(onto, k)) {
             throw new Error(`Property '${k}' is already initialized on target '${label}`);
         }
 
@@ -271,7 +271,7 @@ export function resolveProperties(
     // We will resolve all of these values as `undefined`, and will mark the value as known if we are not running a
     // preview.
     for (const k of Object.keys(resolvers)) {
-        if (!allProps.hasOwnProperty(k)) {
+        if (!Object.hasOwn(allProps, k)) {
             const resolve = resolvers[k];
             resolve(undefined, !isDryRun(), false);
         }

@@ -90,7 +90,7 @@ export class StackReference extends CustomResource {
      */
     public requireOutput(name: Input<string>): Output<any> {
         const value = all([output(this.name), output(name), this.outputs]).apply(([stackname, n, os]) => {
-            if (!os.hasOwnProperty(n)) {
+            if (!Object.hasOwn(os, n)) {
                 throw new Error(`Required output '${n}' does not exist on stack '${stackname}'.`);
             }
             return os[n];

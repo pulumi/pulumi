@@ -471,7 +471,7 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // Anything in the global dictionary is a built-in.  So is anything that's a global Node.js object;
         // note that these only exist in the scope of modules, and so are not truly global in the usual sense.
         // See https://nodejs.org/api/globals.html for more details.
-        return global.hasOwnProperty(ident) || nodeModuleGlobals[ident];
+        return Object.hasOwn(global, ident) || nodeModuleGlobals[ident];
     }
 
     function currentScope(): Set<string> {
