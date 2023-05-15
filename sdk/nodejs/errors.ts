@@ -38,10 +38,6 @@ export class RunError extends Error {
     public static isInstance(obj: any): obj is RunError {
         return utils.isInstance<RunError>(obj, "__pulumiRunError");
     }
-
-    constructor(message: string) {
-        super(message);
-    }
 }
 
 /**
