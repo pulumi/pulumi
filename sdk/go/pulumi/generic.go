@@ -20,11 +20,15 @@ type InputT[T any] interface {
 // TODO: can we do without this?
 type outputT struct{}
 
-func (*outputT) isOutputT() {}
+func (outputT) isOutputT() {}
+
+type isOutputT interface {
+	isOutputT()
+}
 
 type OutputT[T any] struct {
 	*OutputState
-	*outputT
+	outputT
 }
 
 func OutputFromValue[T any](v T) OutputT[T] {
@@ -64,6 +68,7 @@ var (
 	_ Output      = OutputT[any]{}
 	_ Input       = OutputT[any]{}
 	_ InputT[int] = OutputT[int]{}
+	_ isOutputT   = OutputT[any]{}
 )
 
 func (o OutputT[T]) ElementType() reflect.Type {
@@ -142,6 +147,7 @@ var (
 	_ Input            = ArrayOutputT[any]{}
 	_ InputT[[]int]    = ArrayOutputT[int]{}
 	_ ArrayInputT[int] = ArrayOutputT[int]{}
+	_ isOutputT        = ArrayOutputT[any]{}
 )
 
 func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T] {
@@ -180,6 +186,7 @@ var (
 	_ Input          = PtrOutputT[any]{}
 	_ InputT[*int]   = PtrOutputT[int]{}
 	_ PtrInputT[int] = PtrOutputT[int]{}
+	_ isOutputT      = PtrOutputT[any]{}
 )
 
 func OutputFromPtr[T any](v T) PtrOutputT[T] {
@@ -296,6 +303,7 @@ var (
 	_ Input                  = MapOutputT[any]{}
 	_ InputT[map[string]int] = MapOutputT[int]{}
 	_ MapInputT[any]         = MapOutputT[any]{}
+	_ isOutputT              = MapOutputT[any]{}
 )
 
 func MapFrom[T any, I InputT[map[string]T]](items I) MapOutputT[T] {

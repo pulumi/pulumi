@@ -237,7 +237,7 @@ func marshalInputImpl(v interface{},
 	for {
 		valueType := reflect.TypeOf(v)
 
-		if _, ok := v.(interface{ isOutputT() }); ok {
+		if _, ok := v.(isOutputT); ok {
 			if m, ok := valueType.MethodByName("ElementType"); ok {
 				destType = m.Func.Call([]reflect.Value{
 					reflect.ValueOf(v),
