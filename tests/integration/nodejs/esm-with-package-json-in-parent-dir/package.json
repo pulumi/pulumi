@@ -1,9 +1,0 @@
-{
-    "name": "esm-with-package-json-in-parent-dir",
-    "main": "myprogram/main.js",
-    "type": "module",
-    "license": "Apache-2.0",
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

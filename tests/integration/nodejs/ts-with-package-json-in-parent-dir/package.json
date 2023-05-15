@@ -1,8 +1,0 @@
-{
-    "name": "ts-with-package-json-in-parent-dir",
-    "main": "myprogram/main.ts",
-    "license": "Apache-2.0",
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}

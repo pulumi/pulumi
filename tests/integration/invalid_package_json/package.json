@@ -3,6 +3,7 @@
     "comment": "The version flag below is invalid.  But we don't want to throw on it.",
     "version": "0.1",
     "license": "Apache-2.0",
+    "main": "bin/index.js",
     "scripts": {
         "build": "tsc"
     },

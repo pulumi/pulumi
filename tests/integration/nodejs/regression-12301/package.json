@@ -1,6 +1,8 @@
 {
     "name": "regression-12301",
     "license": "Apache-2.0",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts",
     "scripts": {
         "build": "tsc"
     },
