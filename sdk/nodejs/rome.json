@@ -49,9 +49,9 @@
                 "noDebugger": "error",
                 "noImportAssign": "error",
                 "noFunctionAssign": "error",
+                "noAssignInExpressions": "error",
                 "noRedeclare": "off",
-                "noPrototypeBuiltins": "off",
-                "noAssignInExpressions": "off"
+                "noPrototypeBuiltins": "off"
             }
         }
     }

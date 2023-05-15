@@ -160,9 +160,10 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
+        programRunning = true;
         const promise: Promise<void> = require("./run").run(
             argv,
-            /*programStarted:   */ () => (programRunning = true),
+            /*programStarted:   */ () => programRunning,
             /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
             /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
         );
