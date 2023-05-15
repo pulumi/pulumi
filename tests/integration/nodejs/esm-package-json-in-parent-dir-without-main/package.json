@@ -1,8 +1,0 @@
-{
-    "name": "esm-package-json-in-parent-dir-without-main",
-    "license": "Apache-2.0",
-    "type": "module",
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    }
-}
