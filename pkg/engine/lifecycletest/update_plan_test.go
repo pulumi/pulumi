@@ -1750,8 +1750,12 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		assert.NoError(t, err)
 
 		if createResB {
-			// Now try to create resB which is not targeted and should not show up in the plan.
-			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
+			// Now try to create resB which is not targeted and should show up in the plan.
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty(fooVal),
+				},
+			})
 			assert.NoError(t, err)
 		}
 
@@ -1794,12 +1798,16 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 	assert.Nil(t, res)
 	assert.NotNil(t, plan)
 
-	// Ensure resB not in the plan.
+	// Ensure resB is in the plan.
+	foundResB := false
 	for _, r := range plan.ResourcePlans {
+		// Ensure resB's Goal's InputDiff is empty meaning that it is a same operation.
 		if r.Goal != nil && r.Goal.Name == "resB" {
-			assert.Fail(t, "resB should not be in plan")
+			foundResB = true
+			assert.Equal(t, []display.StepOp{deploy.OpSame}, r.Ops)
 		}
 	}
+	assert.True(t, foundResB, "resB should be in the plan")
 }
 
 // This test checks that registering resource outputs does not fail for the root stack resource when it
