@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.67.1 (2023-05-15)
+
+
+### Features
+
+- [programgen/go] Module support as component resources
+  [#12840](https://github.com/pulumi/pulumi/pull/12840)
+
+
+### Bug Fixes
+
+- [engine] Non-targeted resources are now added to internal update plans fixing a bug where the step_executor would error due to missing resources in the plan.
+  [#12939](https://github.com/pulumi/pulumi/pull/12939)
+
+- [programgen] Fix stack overflow panic when pretty printing recursive types
+  [#12866](https://github.com/pulumi/pulumi/pull/12866)
+
+- [sdk/nodejs] Revert recursive package.json lookup.
+  [#12944](https://github.com/pulumi/pulumi/pull/12944)
+
+
+### Miscellaneous
+
+- [sdk/go] testing.Environment now tolerates errors in deleting the test environment.
+  [#12927](https://github.com/pulumi/pulumi/pull/12927)
+
+- [sdk/nodejs] Replaces empty interfaces with type aliases. Empty interfaces are equivalent to their supertype; this change expresses these type definitions using type aliases instead of interface extention to provide better clarity. This change will not affect type-checking.
+  [#12865](https://github.com/pulumi/pulumi/pull/12865)
+
 ## 3.67.0 (2023-05-11)
 
 
