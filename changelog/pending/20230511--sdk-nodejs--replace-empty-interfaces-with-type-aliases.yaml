@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Replaces empty interfaces with type aliases. Empty interfaces are equivalent to their supertype; this change expresses these type definitions using type aliases instead of interface extention to provide better clarity. This change will not affect type-checking.

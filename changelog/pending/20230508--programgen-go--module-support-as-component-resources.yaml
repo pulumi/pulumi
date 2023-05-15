@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/go
-  description: Module support as component resources

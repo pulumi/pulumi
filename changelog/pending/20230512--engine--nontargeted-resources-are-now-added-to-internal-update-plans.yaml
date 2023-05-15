@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Non-targeted resources are now added to internal update plans fixing a bug where the step_executor would error due to missing resources in the plan.
