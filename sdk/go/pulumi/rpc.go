@@ -237,12 +237,9 @@ func marshalInputImpl(v interface{},
 	for {
 		valueType := reflect.TypeOf(v)
 
-		if _, ok := v.(isOutputT); ok {
-			if m, ok := valueType.MethodByName("ElementType"); ok {
-				destType = m.Func.Call([]reflect.Value{
-					reflect.ValueOf(v),
-				})[0].Interface().(reflect.Type)
-			}
+		if el, ok := inputTElementType(valueType); ok {
+			// If the value is an Input[T], get the element type and continue.
+			destType = el
 		}
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/

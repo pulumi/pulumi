@@ -16,19 +16,47 @@ type InputT[T any] interface {
 	ToOutputT(context.Context) OutputT[T]
 }
 
-// TODO: can we do without this?
-type outputT struct{}
+// inputTElementType returns the element type of an InputT[T]
+// or false if the type is not a InputT[T].
+//
+// This is slightly complicated because we effectively have to match
+// the InputT[T] constraint dynamically and then extract the T.
+func inputTElementType(t reflect.Type) (e reflect.Type, ok bool) {
+	// The requirements for the InputT constraint are:
+	//
+	//  1. the type must implement Input
+	//  2. it must have a ToOutputT method
+	//  3. the ToOutputT method must return an OutputT[T]
+	//
+	// Since OutputT is a generic type, we can't match the type directly.
+	// However, we can match a special outputT-only method.
+	if t == nil {
+		return nil, false
+	}
 
-func (outputT) isOutputT() {}
+	input, ok := reflect.Zero(t).Interface().(Input)
+	if !ok {
+		// Doesn't implement Input interface.
+		return nil, false
+	}
 
-type isOutputT interface {
-	isOutputT()
+	m, ok := t.MethodByName("ToOutputT")
+	if !ok {
+		return nil, false
+	}
+
+	mt := m.Type
+	ok = mt.NumIn() == 2 && // receiver + context
+		mt.In(1) == contextType &&
+		mt.NumOut() == 1 && // OutputT[T]
+		mt.Out(0).Implements(isOutputTType)
+	if ok {
+		return input.ElementType(), true
+	}
+	return nil, false
 }
 
-type OutputT[T any] struct {
-	*OutputState
-	outputT
-}
+type OutputT[T any] struct{ *OutputState }
 
 func OutputFromValue[T any](v T) OutputT[T] {
 	state := newOutputState(nil /* joinGroup */, typeOf[T]())
@@ -67,8 +95,16 @@ var (
 	_ Output      = OutputT[any]{}
 	_ Input       = OutputT[any]{}
 	_ InputT[int] = OutputT[int]{}
-	_ isOutputT   = OutputT[any]{}
 )
+
+// isOutputT is a special method implemented only by OutputT.
+// It's used to identify OutputT[T] types dynamically
+// since we can't match uninstantiated generic types directly.
+func (o OutputT[T]) isOutputT() {}
+
+// isOutputTType is a reflected interfaced type
+// that will match the isOutputT method.
+var isOutputTType = typeOf[interface{ isOutputT() }]()
 
 func (o OutputT[T]) ElementType() reflect.Type {
 	return typeOf[T]()
@@ -137,17 +173,13 @@ type ArrayInputT[T any] interface {
 	InputT[[]T]
 }
 
-type ArrayOutputT[T any] struct {
-	*OutputState
-	*outputT
-}
+type ArrayOutputT[T any] struct{ *OutputState }
 
 var (
 	_ Output           = ArrayOutputT[any]{}
 	_ Input            = ArrayOutputT[any]{}
 	_ InputT[[]int]    = ArrayOutputT[int]{}
 	_ ArrayInputT[int] = ArrayOutputT[int]{}
-	_ isOutputT        = ArrayOutputT[any]{}
 )
 
 func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T] {
@@ -172,10 +204,7 @@ func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
 	})
 }
 
-type PtrOutputT[T any] struct {
-	*OutputState
-	*outputT
-}
+type PtrOutputT[T any] struct{ *OutputState }
 
 type PtrInputT[T any] interface {
 	InputT[*T]
@@ -186,7 +215,6 @@ var (
 	_ Input          = PtrOutputT[any]{}
 	_ InputT[*int]   = PtrOutputT[int]{}
 	_ PtrInputT[int] = PtrOutputT[int]{}
-	_ isOutputT      = PtrOutputT[any]{}
 )
 
 func OutputFromPtr[T any](v T) PtrOutputT[T] {
@@ -289,10 +317,7 @@ func (items MapT[T]) ToOutputT(ctx context.Context) OutputT[map[string]T] {
 	return OutputT[map[string]T]{OutputState: state}
 }
 
-type MapOutputT[T any] struct {
-	*OutputState
-	*outputT
-}
+type MapOutputT[T any] struct{ *OutputState }
 
 type MapInputT[T any] interface {
 	InputT[map[string]T]
@@ -303,7 +328,6 @@ var (
 	_ Input                  = MapOutputT[any]{}
 	_ InputT[map[string]int] = MapOutputT[int]{}
 	_ MapInputT[any]         = MapOutputT[any]{}
-	_ isOutputT              = MapOutputT[any]{}
 )
 
 func MapFrom[T any, I InputT[map[string]T]](items I) MapOutputT[T] {
