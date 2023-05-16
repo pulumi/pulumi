@@ -274,7 +274,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except("nodejs"),
-		SkipCompile: allProgLanguages.Except("nodejs"),
+		SkipCompile: allProgLanguages,
 	},
 }
 
