@@ -270,6 +270,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests that we can return various literal values via stack outputs",
 		SkipCompile: codegen.NewStringSet("go"),
 	},
+	{
+		Directory:   "dynamic-entries",
+		Description: "Testing iteration of dynamic entries in TypeScript",
+		Skip:        allProgLanguages.Except("nodejs"),
+		SkipCompile: allProgLanguages,
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
