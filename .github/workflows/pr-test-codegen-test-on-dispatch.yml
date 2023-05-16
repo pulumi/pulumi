@@ -43,7 +43,7 @@ jobs:
   ci-downstream-test-dispatch:
     name: CI
     if: github.event_name == 'repository_dispatch'
-    uses: pulumi/pulumi./.github/workflows/ci-codegen.yml@master
+    uses: pulumi/pulumi/.github/workflows/ci-codegen.yml@master
     permissions:
       contents: read
     with:
