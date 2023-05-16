@@ -338,6 +338,10 @@ func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) 
 		g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
 	case *model.MapType, *model.ObjectType:
 		g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+	case *model.OpaqueType:
+		if entriesArgType.Equals(model.DynamicType) {
+			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+		}
 	}
 	g.Fgenf(w, " => ({key: k, value: v}))")
 }
