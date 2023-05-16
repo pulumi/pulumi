@@ -5,8 +5,15 @@
     },
     "files": {
         "ignore": [
-            "bin/", "proto/", "dist/", "node_modules", ".nyc_output/", ".direnv/", "tests/runtime/jsClosureCases_*.js",
-            "tests/runtime/tsClosureCases.ts", "tests/mockpackage/lib/"
+            "bin/",
+            "proto/",
+            "dist/",
+            "node_modules",
+            ".nyc_output/",
+            ".direnv/",
+            "tests/runtime/jsClosureCases_*.js",
+            "tests/runtime/tsClosureCases.ts",
+            "tests/mockpackage/lib/"
         ]
     },
     "formatter": {
@@ -20,7 +27,9 @@
             "recommended": false,
             "complexity": {
                 "noExtraBooleanCast": "error",
-                "useOptionalChain": "error"
+                "useFlatMap": "error",
+                "useOptionalChain": "error",
+                "noUselessConstructor": "off"
             },
             "performance": {
                 "noDelete": "error"
@@ -39,7 +48,10 @@
                 "noArrayIndexKey": "error",
                 "noDebugger": "error",
                 "noImportAssign": "error",
-                "noFunctionAssign": "error"
+                "noFunctionAssign": "error",
+                "noRedeclare": "off",
+                "noPrototypeBuiltins": "off",
+                "noAssignInExpressions": "off"
             }
         }
     }
