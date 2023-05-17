@@ -29,7 +29,7 @@
                 "noExtraBooleanCast": "error",
                 "useFlatMap": "error",
                 "useOptionalChain": "error",
-                "noUselessConstructor": "off"
+                "noUselessConstructor": "error"
             },
             "performance": {
                 "noDelete": "error"
