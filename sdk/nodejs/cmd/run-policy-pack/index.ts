@@ -104,10 +104,11 @@ function main(args: string[]): void {
 
     // Ensure that our v8 hooks have been initialized.  Then actually load and run the user program.
     v8Hooks.isInitializedAsync().then(() => {
-        programRunning = true;
         const promise: Promise<void> = require("./run").run({
             argv,
-            programStarted: () => programRunning,
+            programStarted: () => {
+                programRunning = true;
+            },
             reportLoggedError: (err: Error) => loggedErrors.add(err),
             runInStack: false,
             typeScript: true, // Should have no deleterious impact on JS codebases.
