@@ -312,6 +312,10 @@ func normalizeVersion(version string) (string, error) {
 	return version, nil
 }
 
+// getPlugin loads information about this plugin.
+//
+// moduleRoot is the root directory of the Go module that imports this plugin.
+// It must hold the go.mod file and the vendor directory (if any).
 func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, error) {
 	pulumiPlugin, err := m.readPulumiPluginJSON(moduleRoot)
 	if err != nil {
@@ -358,20 +362,50 @@ func (m *modInfo) getPlugin(moduleRoot string) (*pulumirpc.PluginDependency, err
 	return plugin, nil
 }
 
-// Reads and parses the go.mod file from the current working directory.
-func (host *goLanguageHost) loadGomod(moduleDir string) (*modfile.File, error) {
-	path := filepath.Join(moduleDir, "go.mod")
-	body, err := os.ReadFile(path)
+// Reads and parses the go.mod file for the program at the given path.
+// Returns the parsed go.mod file and the path to the module directory.
+// Relies on the 'go' command to find the go.mod file for this program.
+func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, modFile *modfile.File, err error) {
+	// Get the path to the go.mod file.
+	// This may be different from the programDir if the Pulumi program
+	// is in a subdirectory of the Go module.
+	//
+	// The '-f {{.GoMod}}' specifies that the command should print
+	// just the path to the go.mod file.
+	//
+	//	type Module struct {
+	//		Path     string // module path
+	//		...
+	//		GoMod    string // path to go.mod file
+	//	}
+	//
+	// See 'go help list' for the full definition.
+	cmd := exec.Command(gobin, "list", "-m", "-f", "{{.GoMod}}")
+	cmd.Dir = programDir
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return "", nil, fmt.Errorf("go list -m: %w", err)
+	}
+	out = bytes.TrimSpace(out)
+	if len(out) == 0 {
+		// The 'go list' command above will exit successfully
+		// and return no output if the program is not in a Go module.
+		return "", nil, fmt.Errorf("no go.mod file found: %v", programDir)
 	}
 
-	f, err := modfile.ParseLax(path, body, nil)
+	modPath := string(out)
+	body, err := os.ReadFile(modPath)
 	if err != nil {
-		return nil, fmt.Errorf("parse: %w", err)
+		return "", nil, err
 	}
 
-	return f, nil
+	f, err := modfile.ParseLax(modPath, body, nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("parse: %w", err)
+	}
+
+	return filepath.Dir(modPath), f, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
@@ -393,7 +427,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
-	gomod, err := host.loadGomod(req.Pwd)
+	moduleDir, gomod, err := host.loadGomod(gobin, req.Pwd)
 	if err != nil {
 		// Don't fail if not using Go modules.
 		logging.V(5).Infof("GetRequiredPlugins: Error reading go.mod: %v", err)
@@ -413,7 +447,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		opentracing.Tag{Key: "args", Value: args})
 
 	cmd := exec.Command(gobin, args...)
-	cmd.Dir = req.Pwd
+	cmd.Dir = moduleDir
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
@@ -438,7 +472,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 			return &pulumirpc.GetRequiredPluginsResponse{}, nil
 		}
 
-		plugin, err := m.getPlugin(req.Pwd)
+		plugin, err := m.getPlugin(moduleDir)
 		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Ignoring dependency: %s, version: %s, error: %s",
@@ -713,7 +747,12 @@ func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pul
 func (host *goLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	gomod, err := host.loadGomod(req.Pwd)
+	gobin, err := executable.FindExecutable("go")
+	if err != nil {
+		return nil, fmt.Errorf("couldn't find go binary: %w", err)
+	}
+
+	_, gomod, err := host.loadGomod(gobin, req.Pwd)
 	if err != nil {
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Fix regression disallowing placing a Pulumi program in a subdirectory of a Go module.
