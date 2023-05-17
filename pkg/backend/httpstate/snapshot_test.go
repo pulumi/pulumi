@@ -333,6 +333,28 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	return snaps
 }
 
+func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
+	t.Parallel()
+
+	dds := newDeploymentDiffState(0)
+	for _, s := range snaps {
+		expected, err := dds.MarshalDeployment(s)
+		require.NoError(t, err)
+
+		marshaled, err := json.Marshal(apitype.PatchUpdateVerbatimCheckpointRequest{
+			Version:           3,
+			UntypedDeployment: expected.raw,
+		})
+		require.NoError(t, err)
+
+		var req apitype.PatchUpdateVerbatimCheckpointRequest
+		err = json.Unmarshal(marshaled, &req)
+		require.NoError(t, err)
+
+		assert.Equal(t, expected.raw, req.UntypedDeployment)
+	}
+}
+
 func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 	t.Parallel()
 
@@ -529,4 +551,10 @@ func BenchmarkDiffStackRecorded(b *testing.B) {
 func TestDiffStackRecorded(t *testing.T) {
 	t.Parallel()
 	testOrBenchmarkDiffStack(t, testDiffStack, recordedCases)
+}
+
+func TestMarshalDeployment(t *testing.T) {
+	t.Parallel()
+	testOrBenchmarkDiffStack(t, testMarshalDeployment, dynamicCases)
+	testOrBenchmarkDiffStack(t, testMarshalDeployment, recordedCases)
 }

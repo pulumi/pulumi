@@ -23,18 +23,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-
 	opentracing "github.com/opentracing/opentracing-go"
 )
-
-type deployment struct {
-	raw json.RawMessage
-	buf *bytes.Buffer
-}
 
 type deploymentDiffState struct {
 	lastSavedDeployment deployment
@@ -62,20 +52,6 @@ func (dds *deploymentDiffState) SequenceNumber() int {
 
 func (dds *deploymentDiffState) CanDiff() bool {
 	return dds.lastSavedDeployment.raw != nil
-}
-
-func (dds *deploymentDiffState) MarshalDeployment(d *apitype.DeploymentV3) (deployment, error) {
-	var b *bytes.Buffer
-	if dds.buffer != nil {
-		b, dds.buffer = dds.buffer, nil
-	} else {
-		b = &bytes.Buffer{}
-	}
-
-	if err := client.MarshalUntypedDeployment(b, d); err != nil {
-		return deployment{}, err
-	}
-	return deployment{raw: json.RawMessage(b.Bytes()), buf: b}, nil
 }
 
 // Size-based heuristics trying to estimate if the diff method will be
@@ -113,7 +89,7 @@ func (dds *deploymentDiffState) Diff(ctx context.Context, deployment deployment)
 		checkpointHash = dds.computeHash(childCtx, after)
 	}()
 
-	delta, err := dds.computeEdits(childCtx, string(before), string(after))
+	delta, err := dds.computeEdits(childCtx, dds.lastSavedDeployment, deployment)
 	if err != nil {
 		return deploymentDiff{}, fmt.Errorf("Cannot marshal the edits: %v", err)
 	}
@@ -152,18 +128,4 @@ func (*deploymentDiffState) computeHash(ctx context.Context, deployment json.Raw
 	defer tracingSpan.Finish()
 	hash := sha256.Sum256(deployment)
 	return hex.EncodeToString(hash[:])
-}
-
-func (*deploymentDiffState) computeEdits(ctx context.Context, before, after string) (json.RawMessage, error) {
-	tracingSpan, _ := opentracing.StartSpanFromContext(ctx, "computeEdits")
-	defer tracingSpan.Finish()
-
-	edits := myers.ComputeEdits(span.URIFromURI(""), before, after)
-
-	delta, err := json.Marshal(edits)
-	if err != nil {
-		return nil, fmt.Errorf("Cannot marshal the edits: %v", err)
-	}
-
-	return delta, nil
 }

@@ -1,3 +1,5 @@
+//go:build !go1.20
+
 // Copyright 2016-2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +41,14 @@ var jsonIterConfig = jsoniter.Config{SortMapKeys: true}.Froze()
 func MarshalUntypedDeployment(b *bytes.Buffer, deployment *apitype.DeploymentV3) error {
 	md := &marshalUntypedDeployment{deployment}
 	return md.Write(b)
+}
+
+func marshalDeployment(d *apitype.DeploymentV3) (json.RawMessage, error) {
+	var b bytes.Buffer
+	if err := MarshalUntypedDeployment(&b, d); err != nil {
+		return nil, err
+	}
+	return json.RawMessage(b.Bytes()), nil
 }
 
 func marshalVerbatimCheckpointRequest(req apitype.PatchUpdateVerbatimCheckpointRequest) (json.RawMessage, error) {

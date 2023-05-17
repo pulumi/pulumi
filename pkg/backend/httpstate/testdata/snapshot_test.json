@@ -1,7 +1,7 @@
 {
-  "req1": "{\"version\":3,\"deployment\":{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"resources\":[\n{\"urn\":\"urn-1\",\"custom\":false,\"type\":\"\"}\n]}}",
-  "req2": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":2,\"column\":1,\"offset\":-1},\"end\":{\"line\":3,\"column\":1,\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":3,\"column\":1,\"offset\":-1},\"end\":{\"line\":3,\"column\":1,\"offset\":-1}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"},\\n\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":3,\"column\":1,\"offset\":-1},\"end\":{\"line\":3,\"column\":1,\"offset\":-1}},\"NewText\":\"{\\\"urn\\\":\\\"urn-2\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\\n\"}]",
-  "req2.hash": "cc4369e46842399a9c997b84ada5cbc23b05ec247c6966d1ed1b4e4b5e4a4075",
-  "req3": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":2,\"column\":1,\"offset\":-1},\"end\":{\"line\":3,\"column\":1,\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":3,\"column\":1,\"offset\":-1},\"end\":{\"line\":4,\"column\":1,\"offset\":-1}},\"NewText\":\"\"},{\"Span\":{\"uri\":\"\",\"start\":{\"line\":4,\"column\":1,\"offset\":-1},\"end\":{\"line\":4,\"column\":1,\"offset\":-1}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\\n\"}]",
-  "req3.hash": "8ac31c0d00401a0a5b8051220c2e593de7e0db7f89c7927be676558838aacd0a"
+  "req1": "{\"version\":3,\"deployment\":{\"manifest\":{\"time\":\"0001-01-01T00:00:00Z\",\"magic\":\"\",\"version\":\"\"},\"resources\":[{\"urn\":\"urn-1\",\"custom\":false,\"type\":\"\"}]}}",
+  "req2": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":1,\"column\":1,\"offset\":107},\"end\":{\"line\":1,\"column\":1,\"offset\":147}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"},{\\\"urn\\\":\\\"urn-2\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\"}]",
+  "req2.hash": "6aa1c22cdac057539b978e88ecce984f7018905e3da8a5b376d8952112a9e792",
+  "req3": "[{\"Span\":{\"uri\":\"\",\"start\":{\"line\":1,\"column\":1,\"offset\":107},\"end\":{\"line\":1,\"column\":1,\"offset\":188}},\"NewText\":\"{\\\"urn\\\":\\\"urn-1\\\",\\\"custom\\\":false,\\\"type\\\":\\\"\\\"}\"}]",
+  "req3.hash": "fbd734bd352631342b9130bc4d76173c9fe1963adac37f6a76b783f097baf5f4"
 }
