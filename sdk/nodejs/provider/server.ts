@@ -147,7 +147,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
@@ -180,7 +180,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
@@ -201,7 +201,7 @@ class Server implements grpc.UntypedServiceImplementation {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             const response = grpcResponseFromError(e);
             return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
         }
@@ -225,7 +225,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
@@ -247,7 +247,7 @@ class Server implements grpc.UntypedServiceImplementation {
             resp.setProperties(structproto.Struct.fromJavaScript(result.outs));
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             const response = grpcResponseFromError(e);
             return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
         }
@@ -261,7 +261,7 @@ class Server implements grpc.UntypedServiceImplementation {
                 await this.provider.delete(req.getId(), req.getUrn(), props);
             }
             callback(undefined, new emptyproto.Empty());
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
@@ -351,7 +351,7 @@ class Server implements grpc.UntypedServiceImplementation {
             await settings.waitForRPCs();
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         } finally {
@@ -433,7 +433,7 @@ class Server implements grpc.UntypedServiceImplementation {
             await settings.waitForRPCs();
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         } finally {
@@ -469,7 +469,7 @@ class Server implements grpc.UntypedServiceImplementation {
             }
 
             callback(undefined, resp);
-        } catch (e) {
+        } catch (e: any) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }

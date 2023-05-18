@@ -187,7 +187,7 @@ export function getResource(
                             state: m.get("state").getStructValue(),
                         };
                     }
-                } catch (e) {
+                } catch (e: any) {
                     err = e;
                     resp = {
                         urn: "",
@@ -304,7 +304,7 @@ export function readResource(
                             getProperties: () => req.getProperties(),
                         };
                     }
-                } catch (e) {
+                } catch (e: any) {
                     err = e;
                     resp = {
                         getUrn: () => "",
@@ -504,7 +504,7 @@ export function registerResource(
                             getPropertydependenciesMap: () => undefined,
                         };
                     }
-                } catch (e) {
+                } catch (e: any) {
                     err = e;
                     resp = {
                         getUrn: () => "",

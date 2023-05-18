@@ -232,9 +232,10 @@ export class LocalWorkspace implements Workspace {
                 try {
                     // Try to load the project settings.
                     loadProjectSettings(wsOpts.workDir);
-                } catch (e) {
+                } catch (e: unknown) {
                     // If it failed to find the project settings file, set a default project.
-                    if (e.toString().includes("failed to find project settings")) {
+                    const errorMessage = e?.toString() ?? "";
+                    if (errorMessage.includes("failed to find project settings")) {
                         wsOpts.projectSettings = defaultProject(args.projectName);
                     } else {
                         throw e;

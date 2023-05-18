@@ -104,8 +104,8 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                     await settings.disconnect();
                     process.off("uncaughtException", uncaughtHandler);
                     process.off("unhandledRejection", uncaughtHandler);
-
-                    if (!isGrpcError(e)) {
+                    
+                    if(e instanceof Error && !isGrpcError(e)) {
                         throw e;
                     }
                 }

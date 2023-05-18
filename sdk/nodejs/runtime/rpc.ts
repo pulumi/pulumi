@@ -260,7 +260,7 @@ export function resolveProperties(
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
             // present during previews (i.e. isDryRun() will be true).
             resolve(value, /*isKnown*/ true, isSecret, deps[k]);
-        } catch (resolveError) {
+        } catch (resolveError: any) {
             throw new Error(
                 `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(resolveError)}`,
             );

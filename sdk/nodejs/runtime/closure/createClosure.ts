@@ -543,7 +543,7 @@ async function analyzeFunctionInfoAsync(
                 let value: any;
                 try {
                     value = await v8.lookupCapturedVariableValueAsync(func, name, throwOnFailure);
-                } catch (err) {
+                } catch (err: any) {
                     throwSerializationError(func, context, err.message);
                 }
 

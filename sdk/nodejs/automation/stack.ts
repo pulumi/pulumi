@@ -129,11 +129,12 @@ export class Stack {
                 event = JSON.parse(line);
                 callback(event);
             } catch (e) {
+                const errMsg = e?.toString() ?? "";
                 log.warn(`Failed to parse engine event
 If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
 details about your environment.
 
-Event: ${line}\n${e.toString()}`);
+Event: ${line}\n${errMsg}`);
             }
         });
 

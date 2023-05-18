@@ -35,7 +35,7 @@ lint:: ensure
 	yarn rome ci .
 
 build_package:: ensure
-	yarn run tsc
+	npx --package=typescript@4.9.5  -- tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	mkdir -p bin/tests/automation/data/

@@ -141,8 +141,9 @@ async function checkRPC(call: any, callback: any): Promise<void> {
         }
 
         callback(undefined, resp);
-    } catch (e) {
-        console.error(`${e}: ${e.stack}`);
+    } catch (e: any) {
+        const stack = e?.stack;
+        console.error(`${e}: ${stack}`);
         callback(e, undefined);
     }
 }
@@ -193,7 +194,7 @@ async function diffRPC(call: any, callback: any): Promise<void> {
         }
 
         callback(undefined, resp);
-    } catch (e) {
+    } catch (e: any) {
         console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
@@ -222,7 +223,7 @@ async function createRPC(call: any, callback: any): Promise<void> {
         resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
-    } catch (e) {
+    } catch (e: any) {
         const response = grpcResponseFromError(e);
         return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
@@ -250,7 +251,7 @@ async function readRPC(call: any, callback: any): Promise<void> {
         }
 
         callback(undefined, resp);
-    } catch (e) {
+    } catch (e: any) {
         console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }
@@ -274,7 +275,7 @@ async function updateRPC(call: any, callback: any): Promise<void> {
         resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
 
         callback(undefined, resp);
-    } catch (e) {
+    } catch (e: any) {
         const response = grpcResponseFromError(e);
         return callback(/*err:*/ response, /*value:*/ null, /*metadata:*/ response.metadata);
     }
@@ -289,7 +290,7 @@ async function deleteRPC(call: any, callback: any): Promise<void> {
             await provider.delete(req.getId(), props);
         }
         callback(undefined, new emptyproto.Empty());
-    } catch (e) {
+    } catch (e: any) {
         console.error(`${e}: ${e.stack}`);
         callback(e, undefined);
     }

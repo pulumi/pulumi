@@ -340,7 +340,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
                 resolver(deserialized, true, isSecret, deps);
-            } catch (e) {
+            } catch (e: any) {
                 resolver(<any>undefined, true, false, undefined, e);
             } finally {
                 done();
