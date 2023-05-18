@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Step generation now uses old inputs for untargeted resources and does not send current inputs to `Check()` on providers.

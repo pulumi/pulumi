@@ -634,17 +634,27 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	var err error
-	if isTargeted && prov != nil {
+	if prov != nil {
 		var failures []plugin.CheckFailure
+
+		checkInputs := prov.Check
+		if !isTargeted {
+			// If not targeted, stub out the provider check and use the old inputs directly.
+			checkInputs = func(urn resource.URN, olds, news resource.PropertyMap,
+				allowUnknowns bool, randomSeed []byte,
+			) (resource.PropertyMap, []plugin.CheckFailure, error) {
+				return oldInputs, nil, nil
+			}
+		}
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
 		if recreating || wasExternal || sg.isTargetedReplace(urn) || !hasOld {
-			inputs, failures, err = prov.Check(urn, nil, goal.Properties, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(urn, nil, goal.Properties, allowUnknowns, randomSeed)
 		} else {
-			inputs, failures, err = prov.Check(urn, oldInputs, inputs, allowUnknowns, randomSeed)
+			inputs, failures, err = checkInputs(urn, oldInputs, inputs, allowUnknowns, randomSeed)
 		}
 
 		if err != nil {
