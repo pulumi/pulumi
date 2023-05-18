@@ -162,7 +162,9 @@ function main(args: string[]): void {
     v8Hooks.isInitializedAsync().then(() => {
         const promise: Promise<void> = require("./run").run(
             argv,
-            /*programStarted:   */ () => (programRunning = true),
+            /*programStarted:   */ () => {
+                programRunning = true;
+            },
             /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
             /*isErrorReported:  */ (err: Error) => loggedErrors.has(err),
         );

@@ -401,7 +401,13 @@ export function disconnectSync(): void {
 export function rpcKeepAlive(): () => void {
     const localStore = getStore();
     let done: (() => void) | undefined = undefined;
-    const donePromise = debuggablePromise(new Promise<void>((resolve) => (done = resolve)), "rpcKeepAlive");
+    const donePromise = debuggablePromise(
+        new Promise<void>((resolve) => {
+            done = resolve;
+            return done;
+        }),
+        "rpcKeepAlive",
+    );
     localStore.settings.rpcDone = localStore.settings.rpcDone.then(() => donePromise);
     return done!;
 }

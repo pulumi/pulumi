@@ -307,6 +307,8 @@ ${defaultMessage}`,
     process.on("unhandledRejection", uncaughtHandler);
     process.on("exit", settings.disconnectSync);
 
+    // Trigger callback to update a sentinel variable tracking
+    // whether the program is running.
     programStarted();
 
     // This needs to occur after `programStarted` to ensure execution of the parent process stops.

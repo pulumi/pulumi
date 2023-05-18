@@ -255,6 +255,8 @@ ${errMsg}`,
     process.on("unhandledRejection", uncaughtHandler);
     process.on("exit", settings.disconnectSync);
 
+    // Trigger callback to update a sentinel variable tracking
+    // whether the program is running.
     opts.programStarted();
 
     // Construct a `Stack` resource to represent the outputs of the program.
