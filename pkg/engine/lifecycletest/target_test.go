@@ -7,6 +7,7 @@ import (
 	"github.com/blang/semver"
 	combinations "github.com/mxschmitt/golang-combinations"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -1015,4 +1016,88 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 		}
 	}
 	assert.True(t, foundDefaultProvider)
+}
+
+// Returns the resource with the matching URN, or nil.
+func findResourceByURN(rs []*resource.State, urn resource.URN) *resource.State {
+	for _, r := range rs {
+		if r.URN == urn {
+			return r
+		}
+	}
+	return nil
+}
+
+// TestEnsureUntargetedSame checks that an untargeted resource retains the prior state after an update when the provider
+// alters the inputs. This is a regression test for pulumi/pulumi#12964.
+func TestEnsureUntargetedSame(t *testing.T) {
+	t.Parallel()
+
+	// Provider that alters inputs during Check.
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(urn resource.URN,
+					olds, news resource.PropertyMap, _ []byte,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					// Pulumi GCP provider alters inputs during Check.
+					news["__defaults"] = resource.NewStringProperty("exists")
+					return news, nil, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Program that creates 2 resources.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("foo"),
+			},
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Set up stack with initial two resources.
+	origSnap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host: host,
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+
+	// Target only `resA` and run a targeted update.
+	finalSnap, res := TestOp(Update).Run(project, p.GetTarget(t, origSnap), UpdateOptions{
+		Host: host,
+		UpdateTargets: deploy.NewUrnTargets([]string{
+			"urn:pulumi:test::test::pkgA:m:typA::resA",
+		}),
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+
+	// Check that `resB` (untargeted) is the same between the two snapshots.
+	{
+		initialState := findResourceByURN(origSnap.Resources, "urn:pulumi:test::test::pkgA:m:typA::resB")
+		assert.NotNil(t, initialState, "initial `resB` state not found")
+
+		finalState := findResourceByURN(finalSnap.Resources, "urn:pulumi:test::test::pkgA:m:typA::resB")
+		assert.NotNil(t, finalState, "final `resB` state not found")
+
+		assert.Equal(t, initialState, finalState)
+	}
 }
