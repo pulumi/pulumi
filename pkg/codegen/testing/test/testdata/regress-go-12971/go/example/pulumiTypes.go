@@ -23,16 +23,22 @@ func (val *World) Defaults() *World {
 	}
 	tmp := *val
 	if tmp.Name == nil {
-		name_ := getEnvOrDefault("", nil, "WORLD_NAME").(string)
-		tmp.Name = &name_
+		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+			name_ := d.(string)
+			tmp.Name = &name_
+		}
 	}
 	if tmp.Populated == nil {
-		populated_ := getEnvOrDefault(false, parseEnvBool, "WORLD_POPULATED").(bool)
-		tmp.Populated = &populated_
+		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+			populated_ := d.(bool)
+			tmp.Populated = &populated_
+		}
 	}
 	if tmp.RadiusKm == nil {
-		radiusKm_ := getEnvOrDefault(0.0, parseEnvFloat, "WORLD_RADIUS_KM").(float64)
-		tmp.RadiusKm = &radiusKm_
+		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+			radiusKm_ := d.(float64)
+			tmp.RadiusKm = &radiusKm_
+		}
 	}
 	return &tmp
 }
@@ -61,13 +67,19 @@ func (val *WorldArgs) Defaults() *WorldArgs {
 	}
 	tmp := *val
 	if tmp.Name == nil {
-		tmp.Name = pulumi.StringPtr(getEnvOrDefault("", nil, "WORLD_NAME").(string))
+		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+			tmp.Name = pulumi.StringPtr(d.(string))
+		}
 	}
 	if tmp.Populated == nil {
-		tmp.Populated = pulumi.BoolPtr(getEnvOrDefault(false, parseEnvBool, "WORLD_POPULATED").(bool))
+		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+			tmp.Populated = pulumi.BoolPtr(d.(bool))
+		}
 	}
 	if tmp.RadiusKm == nil {
-		tmp.RadiusKm = pulumi.Float64Ptr(getEnvOrDefault(0.0, parseEnvFloat, "WORLD_RADIUS_KM").(float64))
+		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+			tmp.RadiusKm = pulumi.Float64Ptr(d.(float64))
+		}
 	}
 	return &tmp
 }

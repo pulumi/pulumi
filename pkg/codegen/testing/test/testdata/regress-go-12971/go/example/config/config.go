@@ -13,19 +13,31 @@ func GetName(ctx *pulumi.Context) string {
 	if err == nil {
 		return v
 	}
-	return getEnvOrDefault("", nil, "WORLD_NAME").(string)
+	var value string
+	if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+		value = d.(string)
+	}
+	return value
 }
 func GetPopulated(ctx *pulumi.Context) bool {
 	v, err := config.TryBool(ctx, "world:populated")
 	if err == nil {
 		return v
 	}
-	return getEnvOrDefault(false, parseEnvBool, "WORLD_POPULATED").(bool)
+	var value bool
+	if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+		value = d.(bool)
+	}
+	return value
 }
 func GetRadiusKm(ctx *pulumi.Context) float64 {
 	v, err := config.TryFloat64(ctx, "world:radiusKm")
 	if err == nil {
 		return v
 	}
-	return getEnvOrDefault(0.0, parseEnvFloat, "WORLD_RADIUS_KM").(float64)
+	var value float64
+	if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+		value = d.(float64)
+	}
+	return value
 }

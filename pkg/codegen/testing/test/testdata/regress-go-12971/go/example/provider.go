@@ -22,13 +22,19 @@ func NewProvider(ctx *pulumi.Context,
 	}
 
 	if args.Name == nil {
-		args.Name = pulumi.StringPtr(getEnvOrDefault("", nil, "WORLD_NAME").(string))
+		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+			args.Name = pulumi.StringPtr(d.(string))
+		}
 	}
 	if args.Populated == nil {
-		args.Populated = pulumi.BoolPtr(getEnvOrDefault(false, parseEnvBool, "WORLD_POPULATED").(bool))
+		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+			args.Populated = pulumi.BoolPtr(d.(bool))
+		}
 	}
 	if args.RadiusKm == nil {
-		args.RadiusKm = pulumi.Float64Ptr(getEnvOrDefault(0.0, parseEnvFloat, "WORLD_RADIUS_KM").(float64))
+		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+			args.RadiusKm = pulumi.Float64Ptr(d.(float64))
+		}
 	}
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:world", name, args, &resource, opts...)
