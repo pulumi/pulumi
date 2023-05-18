@@ -51,9 +51,13 @@ func newGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				// Add some front matter to each file.
 				fileNameWithoutExtension := strings.TrimSuffix(filepath.Base(s), ".md")
 				title := strings.ReplaceAll(fileNameWithoutExtension, "_", " ")
+				ymlIndent := "  " // 2 spaces
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
 				fmt.Fprintf(buf, "title: %q\n", title)
+				// Add redirect aliases to the front matter.
+				fmt.Fprint(buf, "aliases:\n")
+				fmt.Fprintf(buf, "%s- /docs/reference/cli/%s/\n", ymlIndent, fileNameWithoutExtension)
 				buf.WriteString("---\n\n")
 				return buf.String()
 			}
