@@ -119,14 +119,29 @@ func TestEnvironmentDefaults(t *testing.T) {
 			want: example.World{Name: ptr("Earth")},
 		},
 		{
+			desc: "string/empty",
+			env:  map[string]string{"WORLD_NAME": ""},
+			want: example.World{Name: ptr("")},
+		},
+		{
 			desc: "bool",
 			env:  map[string]string{"WORLD_POPULATED": "true"},
 			want: example.World{Populated: ptr(true)},
 		},
 		{
+			desc: "bool/false",
+			env:  map[string]string{"WORLD_POPULATED": "false"},
+			want: example.World{Populated: ptr(false)},
+		},
+		{
 			desc: "number",
 			env:  map[string]string{"WORLD_RADIUS_KM": "6378"},
 			want: example.World{RadiusKm: ptr(6378.0)},
+		},
+		{
+			desc: "number/zero",
+			env:  map[string]string{"WORLD_RADIUS_KM": "0"},
+			want: example.World{RadiusKm: ptr(0.0)},
 		},
 		{
 			desc: "all",

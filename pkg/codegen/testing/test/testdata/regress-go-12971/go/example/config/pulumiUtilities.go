@@ -51,7 +51,7 @@ func parseEnvStringArray(v string) interface{} {
 
 func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
 	for _, v := range vars {
-		if value := os.Getenv(v); value != "" {
+		if value, ok := os.LookupEnv(v); ok {
 			if parser != nil {
 				return parser(value)
 			}

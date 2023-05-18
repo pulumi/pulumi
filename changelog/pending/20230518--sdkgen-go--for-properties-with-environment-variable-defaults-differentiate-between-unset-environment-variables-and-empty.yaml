@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/go
+  description: For properties with environment variable defaults, differentiate between unset environment variables and empty.
