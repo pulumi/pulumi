@@ -817,8 +817,8 @@ func (host *goLanguageHost) RunPlugin(
 }
 
 func (host *goLanguageHost) GenerateProject(
-	ctx context.Context, req *pulumirpc.GenerateProjectRequest) (*pulumirpc.GenerateProjectResponse, error) {
-
+	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
+) (*pulumirpc.GenerateProjectResponse, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
@@ -863,8 +863,8 @@ func (host *goLanguageHost) GenerateProject(
 }
 
 func (host *goLanguageHost) GenerateProgram(
-	ctx context.Context, req *pulumirpc.GenerateProgramRequest) (*pulumirpc.GenerateProgramResponse, error) {
-
+	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
+) (*pulumirpc.GenerateProgramResponse, error) {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
@@ -912,8 +912,8 @@ func (host *goLanguageHost) GenerateProgram(
 }
 
 func (host *goLanguageHost) GeneratePackage(
-	ctx context.Context, req *pulumirpc.GeneratePackageRequest) (*pulumirpc.GeneratePackageResponse, error) {
-
+	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
+) (*pulumirpc.GeneratePackageResponse, error) {
 	if len(req.ExtraFiles) > 0 {
 		return nil, errors.New("overlays are not supported for Go")
 	}
