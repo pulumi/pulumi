@@ -111,6 +111,10 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 	}
 }
 
+func (sm *SnapshotManager) Rebase(base *deploy.Snapshot) error {
+	return nil
+}
+
 // RegisterResourceOutputs handles the registering of outputs on a Step that has already
 // completed. This is accomplished by doing an in-place mutation of the resources currently
 // resident in the snapshot.

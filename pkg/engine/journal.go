@@ -181,6 +181,10 @@ func (j *Journal) Close() error {
 	return nil
 }
 
+func (j *Journal) Rebase(base *deploy.Snapshot) error {
+	return nil
+}
+
 func (j *Journal) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	select {
 	case j.events <- JournalEntry{Kind: JournalEntryBegin, Step: step}:
