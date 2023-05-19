@@ -127,7 +127,11 @@ func (i *DebugInterceptor) DebugClientInterceptor(opts LogOptions) grpc.UnaryCli
 		}
 		i.trackRequest(&log, req)
 		err := invoker(ctx, method, req, reply, cc, gopts...)
-		i.trackResponse(&log, reply)
+		if err != nil {
+			i.track(&log, err)
+		} else {
+			i.trackResponse(&log, reply)
+		}
 		if e := i.record(log); e != nil {
 			return e
 		}
