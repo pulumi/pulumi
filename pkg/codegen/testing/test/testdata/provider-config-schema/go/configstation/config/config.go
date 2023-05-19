@@ -21,7 +21,9 @@ func GetIsMember(ctx *pulumi.Context) bool {
 	if err == nil {
 		return v
 	}
-	return true
+	var value bool
+	value = true
+	return value
 }
 func GetKids(ctx *pulumi.Context) string {
 	return config.Get(ctx, "configstation:kids")
@@ -39,5 +41,9 @@ func GetSecretCode(ctx *pulumi.Context) string {
 	if err == nil {
 		return v
 	}
-	return getEnvOrDefault("", nil, "SECRET_CODE", "MY_SUPER_SECRET_CODE").(string)
+	var value string
+	if d := getEnvOrDefault(nil, nil, "SECRET_CODE", "MY_SUPER_SECRET_CODE"); d != nil {
+		value = d.(string)
+	}
+	return value
 }

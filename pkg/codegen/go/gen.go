@@ -1349,17 +1349,19 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 	fmt.Fprintf(w, "tmp := *val\n")
 	for _, p := range defaults {
 		if p.DefaultValue != nil {
-			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return err
-			}
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "if tmp.%s == nil {\n", pkg.fieldName(nil, p))
 			} else {
 				pkg.needsUtils = true
 				fmt.Fprintf(w, "if isZero(tmp.%s) {\n", pkg.fieldName(nil, p))
 			}
-			pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
+			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
+				pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(w, "}\n")
 		} else if funcName := pkg.provideDefaultsFuncName(p.Type); funcName != "" {
 			var member string
@@ -1588,12 +1590,33 @@ func (pkg *pkgContext) getConstValue(cv interface{}) (string, error) {
 	return val, nil
 }
 
-func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
+// setDefaultValue generates a statement that assigns the default value of a
+// property to a variable.
+//
+// The assign function is invoked with an expression that evaluates to the
+// default value.
+// It should return a statement that assigns that default value to the relevant
+// variable.
+// For example,
+//
+//	err := pkg.setDefaultValue(w, dv, t, func(w io.Writer, value string) error {
+//		_, err := fmt.Fprintf(w, "v.%s = %s", fieldName, value)
+//		return err
+//	})
+func (pkg *pkgContext) setDefaultValue(
+	w io.Writer,
+	dv *schema.DefaultValue,
+	t schema.Type,
+	assign func(io.Writer, string) error,
+) error {
+	contract.Requiref(dv.Value != nil || len(dv.Environment) > 0,
+		"dv", "must have either a value or an environment variable override")
+
 	var val string
 	if dv.Value != nil {
 		v, err := goPrimitiveValue(dv.Value)
 		if err != nil {
-			return "", err
+			return err
 		}
 		val = v
 		switch t.(type) {
@@ -1603,35 +1626,58 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		}
 	}
 
-	if len(dv.Environment) > 0 {
-		pkg.needsUtils = true
-
-		parser, typDefault, typ := "nil", "\"\"", "string"
-		switch codegen.UnwrapType(t).(type) {
-		case *schema.ArrayType:
-			parser, typDefault, typ = "parseEnvStringArray", "pulumi.StringArray{}", "pulumi.StringArray"
-		}
-		switch t {
-		case schema.BoolType:
-			parser, typDefault, typ = "parseEnvBool", "false", "bool"
-		case schema.IntType:
-			parser, typDefault, typ = "parseEnvInt", "0", "int"
-		case schema.NumberType:
-			parser, typDefault, typ = "parseEnvFloat", "0.0", "float64"
-		}
-
-		if val == "" {
-			val = typDefault
-		}
-
-		val = fmt.Sprintf("getEnvOrDefault(%s, %s", val, parser)
-		for _, e := range dv.Environment {
-			val += fmt.Sprintf(", %q", e)
-		}
-		val = fmt.Sprintf("%s).(%s)", val, typ)
+	if len(dv.Environment) == 0 {
+		// If there's no environment variable override,
+		// assign and we're done.
+		return assign(w, val)
 	}
 
-	return val, nil
+	// For environment variable override, we will assign only
+	// if the environment variable is set.
+
+	pkg.needsUtils = true
+
+	parser, typ := "nil", "string"
+	switch codegen.UnwrapType(t).(type) {
+	case *schema.ArrayType:
+		parser, typ = "parseEnvStringArray", "pulumi.StringArray"
+	}
+	switch t {
+	case schema.BoolType:
+		parser, typ = "parseEnvBool", "bool"
+	case schema.IntType:
+		parser, typ = "parseEnvInt", "int"
+	case schema.NumberType:
+		parser, typ = "parseEnvFloat", "float64"
+	}
+
+	if val == "" {
+		// If there's no explicit default value,
+		// use nil so that we can assign conditionally.
+		val = "nil"
+	}
+
+	// Roughly, we generate:
+	//
+	//	if d := getEnvOrDefault(defaultValue, parser, "ENV_VAR"); d != nil {
+	//		$assign(d.(type))
+	//	}
+	//
+	// This has the following effect:
+	//
+	//  - if an environment variable was set, read from that
+	//  - if a default value was specified, use that
+	//  - otherwise, leave the variable unset
+	fmt.Fprintf(w, "if d := getEnvOrDefault(%s, %s", val, parser)
+	for _, e := range dv.Environment {
+		fmt.Fprintf(w, ", %q", e)
+	}
+	fmt.Fprintf(w, "); d != nil {\n\t")
+	if err := assign(w, fmt.Sprintf("d.(%v)", typ)); err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "}\n")
+	return nil
 }
 
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
@@ -1699,7 +1745,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 	}
 
-	assign := func(p *schema.Property, value string) {
+	assign := func(w io.Writer, p *schema.Property, value string) {
 		pkg.assignProperty(w, p, "args", value, isNilType(p.Type))
 	}
 
@@ -1709,19 +1755,21 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if err != nil {
 				return err
 			}
-			assign(p, v)
+			assign(w, p, v)
 		} else if p.DefaultValue != nil {
-			dv, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return err
-			}
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
 			} else {
 				pkg.needsUtils = true
 				fmt.Fprintf(w, "\tif isZero(args.%s) {\n", pkg.fieldName(r, p))
 			}
-			assign(p, dv)
+			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
+				assign(w, p, dv)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
 			fmt.Fprintf(w, "\t}\n")
 		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
 			optionalDeref := ""
@@ -2946,16 +2994,21 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 		fmt.Fprintf(w, "func Get%s(ctx *pulumi.Context) %s {\n", Title(p.Name), getType)
 		if p.DefaultValue != nil {
-			defaultValue, err := pkg.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return err
-			}
-
 			fmt.Fprintf(w, "\tv, err := config.Try%s(ctx, %s)\n", funcType, configKey)
 			fmt.Fprintf(w, "\tif err == nil {\n")
 			fmt.Fprintf(w, "\t\treturn v\n")
 			fmt.Fprintf(w, "\t}\n")
-			fmt.Fprintf(w, "\treturn %s", defaultValue)
+
+			fmt.Fprintf(w, "\tvar value %s\n", getType)
+			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
+				_, err := fmt.Fprintf(w, "\tvalue = %s\n", dv)
+				return err
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(w, "\treturn value\n")
 		} else {
 			fmt.Fprintf(w, "\treturn config.%s%s(ctx, %s)\n", getfunc, funcType, configKey)
 		}
@@ -3962,7 +4015,7 @@ func parseEnvStringArray(v string) interface{} {
 
 func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
 	for _, v := range vars {
-		if value := os.Getenv(v); value != "" {
+		if value, ok := os.LookupEnv(v); ok {
 			if parser != nil {
 				return parser(value)
 			}

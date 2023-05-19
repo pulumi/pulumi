@@ -29,12 +29,16 @@ func (val *HelmReleaseSettings) Defaults() *HelmReleaseSettings {
 	}
 	tmp := *val
 	if tmp.Driver == nil {
-		driver_ := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string)
-		tmp.Driver = &driver_
+		if d := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
+			driver_ := d.(string)
+			tmp.Driver = &driver_
+		}
 	}
 	if tmp.PluginsPath == nil {
-		pluginsPath_ := getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string)
-		tmp.PluginsPath = &pluginsPath_
+		if d := getEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
+			pluginsPath_ := d.(string)
+			tmp.PluginsPath = &pluginsPath_
+		}
 	}
 	return &tmp
 }
@@ -67,10 +71,14 @@ func (val *HelmReleaseSettingsArgs) Defaults() *HelmReleaseSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Driver == nil {
-		tmp.Driver = pulumi.StringPtr(getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER").(string))
+		if d := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
+			tmp.Driver = pulumi.StringPtr(d.(string))
+		}
 	}
 	if tmp.PluginsPath == nil {
-		tmp.PluginsPath = pulumi.StringPtr(getEnvOrDefault("", nil, "PULUMI_K8S_HELM_PLUGINS_PATH").(string))
+		if d := getEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
+			tmp.PluginsPath = pulumi.StringPtr(d.(string))
+		}
 	}
 	return &tmp
 }
@@ -237,12 +245,16 @@ func (val *KubeClientSettings) Defaults() *KubeClientSettings {
 	}
 	tmp := *val
 	if tmp.Burst == nil {
-		burst_ := getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int)
-		tmp.Burst = &burst_
+		if d := getEnvOrDefault(nil, parseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
+			burst_ := d.(int)
+			tmp.Burst = &burst_
+		}
 	}
 	if tmp.Qps == nil {
-		qps_ := getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64)
-		tmp.Qps = &qps_
+		if d := getEnvOrDefault(nil, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
+			qps_ := d.(float64)
+			tmp.Qps = &qps_
+		}
 	}
 	tmp.RecTest = tmp.RecTest.Defaults()
 
@@ -276,10 +288,14 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Burst == nil {
-		tmp.Burst = pulumi.IntPtr(getEnvOrDefault(0, parseEnvInt, "PULUMI_K8S_CLIENT_BURST").(int))
+		if d := getEnvOrDefault(nil, parseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
+			tmp.Burst = pulumi.IntPtr(d.(int))
+		}
 	}
 	if tmp.Qps == nil {
-		tmp.Qps = pulumi.Float64Ptr(getEnvOrDefault(0.0, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS").(float64))
+		if d := getEnvOrDefault(nil, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
+			tmp.Qps = pulumi.Float64Ptr(d.(float64))
+		}
 	}
 
 	return &tmp
@@ -458,8 +474,10 @@ func (val *LayeredType) Defaults() *LayeredType {
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
-		question_ := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string)
-		tmp.Question = &question_
+		if d := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
+			question_ := d.(string)
+			tmp.Question = &question_
+		}
 	}
 	tmp.Recursive = tmp.Recursive.Defaults()
 
@@ -507,7 +525,9 @@ func (val *LayeredTypeArgs) Defaults() *LayeredTypeArgs {
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
-		tmp.Question = pulumi.StringPtr(getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION").(string))
+		if d := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
+			tmp.Question = pulumi.StringPtr(d.(string))
+		}
 	}
 
 	if tmp.Thinker == nil {

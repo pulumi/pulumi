@@ -246,6 +246,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "regress-go-12971",
+		Description: "Regress pulumi/pulumi#12971 affecting Go",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "docs-collision",
 		Description: "Tests that resources and functions with the same name do not clobber each other.",
 		Skip:        allLanguages.Except("docs/any"),
