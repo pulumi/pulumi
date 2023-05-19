@@ -257,6 +257,139 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_config_functions_path(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        # test backward compatibility
+        stack.set_config("key1", ConfigValue(value="value1"))
+        # test new flag without subPath
+        stack.set_config("key2", ConfigValue(value="value2"), path=False)
+        # test new flag with subPath
+        stack.set_config("key3.subKey1", ConfigValue(value="value3"), path=True)
+        # test secret
+        stack.set_config("key4", ConfigValue(value="value4", secret=True))
+        # test subPath and key as secret
+        stack.set_config("key5.subKey1", ConfigValue(value="value5", secret=True), path=True)
+        # test string with dots
+        stack.set_config("key6.subKey1", ConfigValue(value="value6", secret=True))
+        # test string with dots
+        stack.set_config("key7.subKey1", ConfigValue(value="value7", secret=True), path=False)
+        # test subPath
+        stack.set_config("key7.subKey2", ConfigValue(value="value8"), path=True)
+        # test subPath
+        stack.set_config("key7.subKey3", ConfigValue(value="value9"), path=True)
+
+        # test backward compatibility
+        cv1 = stack.get_config("key1")
+        self.assertEqual(cv1.value, "value1")
+        self.assertFalse(cv1.secret)
+
+        # test new flag without subPath
+        cv2 = stack.get_config("key2", path=False)
+        self.assertEqual(cv2.value, "value2")
+        self.assertFalse(cv2.secret)
+
+        # test new flag with subPath
+        cv3 = stack.get_config("key3.subKey1", path=True)
+        self.assertEqual(cv3.value, "value3")
+        self.assertFalse(cv3.secret)
+
+        # test secret
+        cv4 = stack.get_config("key4")
+        self.assertEqual(cv4.value, "value4")
+        self.assertTrue(cv4.secret)
+
+        # test subPath and key as secret
+        cv5 = stack.get_config("key5.subKey1", path=True)
+        self.assertEqual(cv5.value, "value5")
+        self.assertTrue(cv5.secret)
+
+        # test string with dots
+        cv6 = stack.get_config("key6.subKey1")
+        self.assertEqual(cv6.value, "value6")
+        self.assertTrue(cv6.secret)
+
+        # test string with dots
+        cv7 = stack.get_config("key7.subKey1", path=False)
+        self.assertEqual(cv7.value, "value7")
+        self.assertTrue(cv7.secret)
+
+        # test string with dots
+        cv8 = stack.get_config("key7.subKey2", path=True)
+        self.assertEqual(cv8.value, "value8")
+        self.assertFalse(cv8.secret)
+
+        # test string with dots
+        cv9 = stack.get_config("key7.subKey3", path=True)
+        self.assertEqual(cv9.value, "value9")
+        self.assertFalse(cv9.secret)
+
+        stack.remove_config("key1")
+        stack.remove_config("key2", path=False)
+        stack.remove_config("key3", path=False)
+        stack.remove_config("key4", path=False)
+        stack.remove_config("key5", path=False)
+        stack.remove_config("key6.subKey1", path=False)
+        stack.remove_config("key7.subKey1", path=False)
+
+        cfg = stack.get_all_config()
+        self.assertEqual(cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}')
+
+        ws.remove_stack(stack_name)
+
+    def test_config_all_functions_path(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer(project_name)
+        stack = Stack.create(stack_name, ws)
+
+        stack.set_all_config({
+            "key1": ConfigValue(value="value1", secret=False),
+            "key2": ConfigValue(value="value2", secret=True),
+            "key3.subKey1": ConfigValue(value="value3", secret=False),
+            "key3.subKey2": ConfigValue(value="value4", secret=False),
+            "key3.subKey3": ConfigValue(value="value5", secret=False),
+            "key4.subKey1": ConfigValue(value="value6", secret=True),
+        }, path=True)
+
+
+        # test the SetAllConfigWithOptions configured the first item
+        cv1 = stack.get_config("key1")
+        self.assertEqual(cv1.value, "value1")
+        self.assertFalse(cv1.secret)
+
+        # test the SetAllConfigWithOptions configured the second item
+        cv2 = stack.get_config("key2", path=False)
+        self.assertEqual(cv2.value, "value2")
+        self.assertTrue(cv2.secret)
+
+        # test the SetAllConfigWithOptions configured the third item
+        cv3 = stack.get_config("key3.subKey1", path=True)
+        self.assertEqual(cv3.value, "value3")
+        self.assertFalse(cv3.secret)
+
+        # test the SetAllConfigWithOptions configured the third item
+        cv4 = stack.get_config("key3.subKey2", path=True)
+        self.assertEqual(cv4.value, "value4")
+        self.assertFalse(cv4.secret)
+
+        # test the SetAllConfigWithOptions configured the fourth item
+        cv5 = stack.get_config("key4.subKey1", path=True)
+        self.assertEqual(cv5.value, "value6")
+        self.assertTrue(cv5.secret)
+
+        stack.remove_all_config(["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True)
+
+        cfg = stack.get_all_config()
+        self.assertEqual(cfg["python_test:key3"].value, '{"subKey3":"value5"}')
+
+        ws.remove_stack(stack_name)
+
     def test_bulk_config_ops(self):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")

@@ -580,14 +580,15 @@ class Stack:
             stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary
         )
 
-    def get_config(self, key: str) -> ConfigValue:
+    def get_config(self, key: str, *, path: bool = False) -> ConfigValue:
         """
         Returns the config value associated with the specified key.
 
         :param key: The key for the config item to get.
+        :param path: The key contains a path to a property in a map or list to get.
         :returns: ConfigValue
         """
-        return self.workspace.get_config(self.name, key)
+        return self.workspace.get_config(self.name, key, path=path)
 
     def get_all_config(self) -> ConfigMap:
         """
@@ -597,38 +598,42 @@ class Stack:
         """
         return self.workspace.get_all_config(self.name)
 
-    def set_config(self, key: str, value: ConfigValue) -> None:
+    def set_config(self, key: str, value: ConfigValue, *, path: bool = False) -> None:
         """
         Sets a config key-value pair on the Stack in the associated Workspace.
 
         :param key: The config key to add.
         :param value: The config value to add.
+        :param path: The key contains a path to a property in a map or list to set.
         """
-        self.workspace.set_config(self.name, key, value)
+        self.workspace.set_config(self.name, key, value, path=path)
 
-    def set_all_config(self, config: ConfigMap) -> None:
+    def set_all_config(self, config: ConfigMap, *, path: bool = False) -> None:
         """
         Sets all specified config values on the stack in the associated Workspace.
 
         :param config: A mapping of key to ConfigValue to set to config.
+        :param path: The keys contain a path to a property in a map or list to set.
         """
-        self.workspace.set_all_config(self.name, config)
+        self.workspace.set_all_config(self.name, config, path=path)
 
-    def remove_config(self, key: str) -> None:
+    def remove_config(self, key: str, *, path: bool = False) -> None:
         """
         Removes the specified config key from the Stack in the associated Workspace.
 
         :param key: The key to remove from config.
+        :param path: The key contains a path to a property in a map or list to remove.
         """
-        self.workspace.remove_config(self.name, key)
+        self.workspace.remove_config(self.name, key, path=path)
 
-    def remove_all_config(self, keys: List[str]) -> None:
+    def remove_all_config(self, keys: List[str], *, path: bool = False) -> None:
         """
         Removes the specified config keys from the Stack in the associated Workspace.
 
         :param keys: The keys to remove from config.
+        :param path: The keys contain a path to a property in a map or list to remove.
         """
-        self.workspace.remove_all_config(self.name, keys)
+        self.workspace.remove_all_config(self.name, keys, path=path)
 
     def refresh_config(self) -> None:
         """Gets and sets the config map used with the last update."""

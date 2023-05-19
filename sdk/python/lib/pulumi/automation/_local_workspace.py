@@ -216,10 +216,14 @@ class LocalWorkspace(Workspace):
         # Not used by LocalWorkspace
         return
 
-    def get_config(self, stack_name: str, key: str) -> ConfigValue:
-        result = self._run_pulumi_cmd_sync(
-            ["config", "get", key, "--json", "--stack", stack_name]
-        )
+    def get_config(
+        self, stack_name: str, key: str, *, path: bool = False
+    ) -> ConfigValue:
+        args = ["config", "get"]
+        if path:
+            args.append("--path")
+        args.extend([key, "--json", "--stack", stack_name])
+        result = self._run_pulumi_cmd_sync(args)
         val = json.loads(result.stdout)
         return ConfigValue(value=val["value"], secret=val["secret"])
 
@@ -236,12 +240,15 @@ class LocalWorkspace(Workspace):
             )
         return config_map
 
-    def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
+    def set_config(
+        self, stack_name: str, key: str, value: ConfigValue, *, path: bool = False
+    ) -> None:
+        args = ["config", "set"]
+        if path:
+            args.append("--path")
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(
+        args.extend(
             [
-                "config",
-                "set",
                 key,
                 secret_arg,
                 "--stack",
@@ -251,9 +258,14 @@ class LocalWorkspace(Workspace):
                 value.value,
             ]
         )
+        self._run_pulumi_cmd_sync(args)
 
-    def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
+    def set_all_config(
+        self, stack_name: str, config: ConfigMap, *, path: bool = False
+    ) -> None:
         args = ["config", "set-all", "--stack", stack_name]
+        if path:
+            args.append("--path")
 
         for key, value in config.items():
             secret_arg = "--secret" if value.secret else "--plaintext"
@@ -261,11 +273,18 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
-    def remove_config(self, stack_name: str, key: str) -> None:
-        self._run_pulumi_cmd_sync(["config", "rm", key, "--stack", stack_name])
+    def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
+        args = ["config", "rm", key, "--stack", stack_name]
+        if path:
+            args.append("--path")
+        self._run_pulumi_cmd_sync(args)
 
-    def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
+    def remove_all_config(
+        self, stack_name: str, keys: List[str], *, path: bool = False
+    ) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
+        if path:
+            args.append("--path")
         args.extend(keys)
         self._run_pulumi_cmd_sync(args)
 
