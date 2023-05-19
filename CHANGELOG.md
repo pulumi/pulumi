@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.68.0 (2023-05-18)
+
+
+### Features
+
+- [backend/service] Improve memory consumption and decrease CPU time required when using snapshot patching
+  [#12962](https://github.com/pulumi/pulumi/pull/12962)
+
+
+### Bug Fixes
+
+- [engine] Step generation now uses old inputs for untargeted resources and does not send current inputs to `Check()` on providers.
+  [#12973](https://github.com/pulumi/pulumi/pull/12973)
+
+- [sdk/go] Fix regression disallowing placing a Pulumi program in a subdirectory of a Go module.
+  [#12967](https://github.com/pulumi/pulumi/pull/12967)
+
+- [programgen/nodejs] Allow iterating dynamic entries in TypeScript
+  [#12961](https://github.com/pulumi/pulumi/pull/12961)
+
 ## 3.67.1 (2023-05-15)
 
 
