@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -33,10 +34,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// ISSUES:
+//
+// - default provider migration mutates the base snapshot in-place. particularly problematic because
+//   it adds new resources to the state, which affects the indexing. it does, though, add all default
+//   providers to the _front_ of the snapshot.
+// - refreshes are issued out of dependency order (and actually affect the base state)
+//
+// The solution chosen here is to add a Rebase method to the SnapshotManager and JournalPersister
+// interfaces that means "persist a new base state". This is be called after default provider migration
+// and after a refresh finishes.
+
 // JournalPersister is an interface implemented by our backends that implements journal
 // persistence.
 type JournalPersister interface {
-	// Persists the given snapshot. Returns an error if the persistence failed.
+	// Rebase persists a new base state for the journal. May only be called once and cannot be called
+	// once Append has been called.
+	Rebase(base *apitype.DeploymentV3) error
+
+	// Persists the given entry. Returns an error if the persistence failed.
 	Append(entry apitype.JournalEntry) error
 }
 
@@ -209,6 +225,7 @@ func (r *JournalReplayer) Replay(e apitype.JournalEntry) error {
 	}
 	r.latest = e.SequenceNumber
 
+	markDone := false
 	switch e.Kind {
 	case apitype.JournalEntryBegin:
 		r.pending[e.SequenceNumber] = e
@@ -218,25 +235,26 @@ func (r *JournalReplayer) Replay(e apitype.JournalEntry) error {
 		delete(r.pending, e.New)
 
 		switch e.Op {
-		case apitype.OpSame, apitype.OpUpdate, apitype.OpRefresh:
+		case apitype.OpSame:
 			r.appendNewResource(e.New, *e.State)
-			r.dones[e.Old] = true
+			markDone = e.Old != -1
+		case apitype.OpUpdate, apitype.OpRefresh:
+			r.appendNewResource(e.New, *e.State)
+			markDone = true
 		case apitype.OpCreate, apitype.OpCreateReplacement:
 			r.appendNewResource(e.New, *e.State)
-			if r.pendingReplacement[e.Old] {
-				r.dones[e.Old] = true
-			}
+			markDone = r.pendingReplacement[e.Old]
 		case apitype.OpDelete, apitype.OpDeleteReplaced, apitype.OpReadDiscard, apitype.OpDiscardReplaced:
-			if !r.pendingReplacement[e.Old] {
-				r.dones[e.Old] = true
-			}
+			markDone = !r.pendingReplacement[e.Old]
 		case apitype.OpReplace:
 			// do nothing.
-		case apitype.OpRead, apitype.OpReadReplacement:
+		case apitype.OpRead:
 			r.appendNewResource(e.New, *e.State)
-			r.dones[e.Old] = true
+		case apitype.OpReadReplacement:
+			r.appendNewResource(e.New, *e.State)
+			markDone = true
 		case apitype.OpRemovePendingReplace:
-			r.dones[e.Old] = true
+			markDone = true
 		case apitype.OpImport, apitype.OpImportReplacement:
 			r.appendNewResource(e.New, *e.State)
 		}
@@ -256,6 +274,13 @@ func (r *JournalReplayer) Replay(e apitype.JournalEntry) error {
 		}
 		r.secrets = e.Secrets
 	}
+
+	if markDone {
+		if e.Old == 0 {
+			return fmt.Errorf("missing old ID for entry %v", e.SequenceNumber)
+		}
+		r.dones[e.Old] = true
+	}
 	return nil
 }
 
@@ -265,8 +290,12 @@ func (r *JournalReplayer) Finish(base *apitype.DeploymentV3) (*apitype.Deploymen
 	for i, res := range base.Resources {
 		id := i + 1
 		if !r.dones[id] {
-			res.Delete = r.pendingDeletion[id]
-			res.PendingReplacement = r.pendingReplacement[id]
+			if r.pendingDeletion[id] {
+				res.Delete = true
+			}
+			if r.pendingReplacement[id] {
+				res.PendingReplacement = true
+			}
 
 			r.appendResource(res)
 		}
@@ -327,6 +356,14 @@ type appendRequest struct {
 }
 
 type Journal struct {
+	initOnce sync.Once
+	initErr  error
+	initDone bool
+
+	hasRebase bool
+	base      *deploy.Snapshot
+
+	secrets   secrets.Manager
 	enc       config.Encrypter
 	olds      map[*resource.State]int
 	news      sync.Map
@@ -346,6 +383,14 @@ func (j *Journal) getNew(s *resource.State) int {
 }
 
 func (j *Journal) Close() error {
+	return j.init()
+}
+
+func (j *Journal) Rebase(base *deploy.Snapshot) error {
+	if j.initDone {
+		return fmt.Errorf("Rebase may only be called before snapshot mutations begin")
+	}
+	j.base, j.hasRebase = base, true
 	return nil
 }
 
@@ -376,7 +421,53 @@ func (j *Journal) append(entry apitype.JournalEntry) (int, error) {
 	return entry.SequenceNumber, nil
 }
 
+func (j *Journal) getOld(kind apitype.JournalEntryKind, step deploy.Step) (int, error) {
+	switch step.Op() {
+	case deploy.OpImport, deploy.OpImportReplacement, deploy.OpRead:
+		// Ignore olds for these ops.
+		return 0, nil
+	case deploy.OpSame:
+		if step.(*deploy.SameStep).IsSkippedCreate() {
+			// Ignore olds for skipped creates, but use a distinguished ID to indicate the skipped create.
+			return -1, nil
+		}
+	}
+
+	o := step.Old()
+	if o == nil {
+		return 0, nil
+	}
+	old, hasOld := j.olds[o]
+	if !hasOld {
+		return 0, fmt.Errorf("missing ID for old resource %v", step.URN())
+	}
+
+	if kind == apitype.JournalEntrySuccess {
+		if o.Delete {
+			if _, err := j.append(apitype.JournalEntry{Kind: apitype.JournalEntryPendingDeletion, Old: old}); err != nil {
+				return 0, err
+			}
+		}
+		if o.PendingReplacement {
+			if _, err := j.append(apitype.JournalEntry{Kind: apitype.JournalEntryPendingReplacement, Old: old}); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	return old, nil
+}
+
 func (j *Journal) appendStep(kind apitype.JournalEntryKind, step deploy.Step) error {
+	// Refresh steps are not recorded. The outputs of these steps are expected to be captured by Rebase.
+	if step.Op() == deploy.OpRefresh {
+		return nil
+	}
+
+	if err := j.init(); err != nil {
+		return err
+	}
+
 	var state *apitype.ResourceV3
 	if r := step.Res(); r != nil {
 		s, err := stack.SerializeResource(r, j.enc, false)
@@ -386,21 +477,9 @@ func (j *Journal) appendStep(kind apitype.JournalEntryKind, step deploy.Step) er
 		state = &s
 	}
 
-	var old int
-	if o := step.Old(); o != nil {
-		old = j.olds[o]
-		if kind == apitype.JournalEntrySuccess {
-			if o.Delete {
-				if _, err := j.append(apitype.JournalEntry{Kind: apitype.JournalEntryPendingDeletion, Old: old}); err != nil {
-					return err
-				}
-			}
-			if o.PendingReplacement {
-				if _, err := j.append(apitype.JournalEntry{Kind: apitype.JournalEntryPendingReplacement, Old: old}); err != nil {
-					return err
-				}
-			}
-		}
+	old, err := j.getOld(kind, step)
+	if err != nil {
+		return err
 	}
 
 	var op apitype.OpType
@@ -425,6 +504,51 @@ func (j *Journal) appendStep(kind apitype.JournalEntryKind, step deploy.Step) er
 	return nil
 }
 
+func (j *Journal) init() error {
+	j.initOnce.Do(func() {
+		j.initDone = true
+		err := func() error {
+			if j.hasRebase {
+				base, err := stack.SerializeDeployment(j.base, nil, false)
+				if err != nil {
+					return fmt.Errorf("serializing deployment: %w", err)
+				}
+				if err = j.persister.Rebase(base); err != nil {
+					return fmt.Errorf("rebasing: %w", err)
+				}
+			}
+
+			olds := make(map[*resource.State]int, len(j.base.Resources))
+			for i, r := range j.base.Resources {
+				olds[r] = i + 1
+			}
+			j.olds = olds
+
+			if j.secrets != nil {
+				state, err := json.Marshal(j.secrets.State())
+				if err != nil {
+					return fmt.Errorf("serializing secret manager: %w", err)
+				}
+				_, err = j.append(apitype.JournalEntry{
+					Kind: apitype.JournalEntrySecrets,
+					Secrets: &apitype.SecretsProvidersV1{
+						Type:  j.secrets.Type(),
+						State: json.RawMessage(state),
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("recording secret manager: %w", err)
+				}
+			}
+			return nil
+		}()
+		if err != nil {
+			j.initErr = err
+		}
+	})
+	return j.initErr
+}
+
 func NewJournal(persister JournalPersister, base *deploy.Snapshot, sm secrets.Manager) (*Journal, error) {
 	if sm == nil {
 		sm = base.SecretsManager
@@ -441,14 +565,10 @@ func NewJournal(persister JournalPersister, base *deploy.Snapshot, sm secrets.Ma
 		enc = config.NewPanicCrypter()
 	}
 
-	olds := make(map[*resource.State]int, len(base.Resources))
-	for i, r := range base.Resources {
-		olds[r] = i + 1
-	}
-
 	return &Journal{
 		persister: persister,
+		secrets:   sm,
 		enc:       enc,
-		olds:      olds,
+		base:      base,
 	}, nil
 }

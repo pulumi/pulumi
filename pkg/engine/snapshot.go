@@ -24,6 +24,9 @@ import (
 type SnapshotManager interface {
 	io.Closer
 
+	// Rebase informs the snapshot manager that the existing base snapshot has changed.
+	Rebase(base *deploy.Snapshot) error
+
 	// BeginMutation signals to the SnapshotManager that the planner intends to mutate the global
 	// snapshot. It provides the step that it intends to execute. Based on that step, BeginMutation
 	// will record this intent in the global snapshot and return a `SnapshotMutation` that, when ended,

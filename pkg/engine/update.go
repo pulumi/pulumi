@@ -512,6 +512,11 @@ func newUpdateActions(context *Context, u UpdateInfo, opts deploymentOptions) *u
 	}
 }
 
+func (acts *updateActions) OnRebase(base *deploy.Snapshot) error {
+	// Inform the snapshot service of the rebase.
+	return acts.Context.SnapshotManager.Rebase(base)
+}
+
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
 	// Ensure we've marked this step as observed.
 	acts.MapLock.Lock()
@@ -675,6 +680,10 @@ func newPreviewActions(opts deploymentOptions) *previewActions {
 		Opts: opts,
 		Seen: make(map[resource.URN]deploy.Step),
 	}
+}
+
+func (acts *previewActions) OnRebase(base *deploy.Snapshot) error {
+	return nil
 }
 
 func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {

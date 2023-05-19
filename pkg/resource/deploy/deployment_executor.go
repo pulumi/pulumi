@@ -139,6 +139,13 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		}
 	}()
 
+	// If this deployment was rebased by migrateProviders, inform the listener (if any).
+	if ex.deployment.rebase && opts.Events != nil {
+		if err := opts.Events.OnRebase(ex.deployment.prev); err != nil {
+			return nil, result.Errorf("rebase returned an error: %w", err)
+		}
+	}
+
 	// If this deployment is an import, run the imports and exit.
 	if ex.deployment.isImport {
 		return ex.importResources(callerCtx, opts, preview)
@@ -507,6 +514,14 @@ func (ex *deploymentExecutor) refresh(callerCtx context.Context, opts Options, p
 	stepExec.WaitForCompletion()
 
 	ex.rebuildBaseState(resourceToStep, true /*refresh*/)
+
+	// Inform the client that the deployment has been rebased.
+	if opts.Events != nil {
+		if err := opts.Events.OnRebase(prev); err != nil {
+			ex.reportExecResult("failed", preview)
+			return result.Errorf("rebase returned an error: %w", err)
+		}
+	}
 
 	// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 	// cancellation from internally-initiated cancellation.

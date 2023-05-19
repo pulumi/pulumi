@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -25,10 +24,26 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type multiManager []engine.SnapshotManager
+
+type managerError struct {
+	err error
+}
+
+func newManagerError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return managerError{err: err}
+}
+
+func (e managerError) Error() string {
+	return e.err.Error()
+}
 
 func (m multiManager) Close() error {
 	var err error
@@ -37,7 +52,17 @@ func (m multiManager) Close() error {
 			err = errors.Join(err, e)
 		}
 	}
-	return err
+	return newManagerError(err)
+}
+
+func (m multiManager) Rebase(base *deploy.Snapshot) error {
+	var err error
+	for _, m := range m {
+		if e := m.Rebase(base); e != nil {
+			err = errors.Join(err, e)
+		}
+	}
+	return newManagerError(err)
 }
 
 func (m multiManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
@@ -61,7 +86,7 @@ func (m multiManager) RegisterResourceOutputs(step deploy.Step) error {
 			err = errors.Join(err, e)
 		}
 	}
-	return err
+	return newManagerError(err)
 }
 
 type multiMutation []engine.SnapshotMutation
@@ -73,26 +98,33 @@ func (m multiMutation) End(step deploy.Step, successful bool) error {
 			err = errors.Join(err, e)
 		}
 	}
-	return err
+	return newManagerError(err)
 }
 
 type apiJournal struct {
 	m       sync.Mutex
+	base    *apitype.DeploymentV3
 	entries []apitype.JournalEntry
 }
 
-func (j *apiJournal) Replay(base *deploy.Snapshot) (*deploy.Snapshot, error) {
-	var baseDeployment *apitype.DeploymentV3
-	if base == nil {
-		baseDeployment = &apitype.DeploymentV3{}
-	} else {
-		d, err := stack.SerializeDeployment(base, nil, false)
-		if err != nil {
-			return nil, fmt.Errorf("serializing base deployment: %w", err)
-		}
-		baseDeployment = d
-	}
+type deploymentError struct {
+	actual *apitype.DeploymentV3
+	err    error
+}
 
+func (e *deploymentError) Error() string {
+	return fmt.Sprintf("deserializing result: %v", e.err)
+}
+
+func newAPIJournal(base *deploy.Snapshot, sm secrets.Manager) (*apiJournal, error) {
+	baseDeployment, err := stack.SerializeDeployment(base, sm, false)
+	if err != nil {
+		return nil, fmt.Errorf("serializing base: %w", err)
+	}
+	return &apiJournal{base: baseDeployment}, nil
+}
+
+func (j *apiJournal) Replay() (*apitype.DeploymentV3, error) {
 	replayer := backend.NewJournalReplayer()
 
 	sort.Slice(j.entries, func(i, k int) bool { return j.entries[i].SequenceNumber < j.entries[k].SequenceNumber })
@@ -102,16 +134,21 @@ func (j *apiJournal) Replay(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 		}
 	}
 
-	new, err := replayer.Finish(baseDeployment)
+	new, err := replayer.Finish(j.base)
 	if err != nil {
-		return nil, fmt.Errorf("finishing replay: %w", err)
+		err = fmt.Errorf("finishing replay: %w", err)
+		if new == nil {
+			return nil, err
+		}
+		return nil, &deploymentError{actual: new, err: err}
 	}
 
-	snap, err := stack.DeserializeDeploymentV3(context.Background(), *new, stack.DefaultSecretsProvider)
-	if err != nil {
-		return nil, fmt.Errorf("deserializing result: %w", err)
-	}
-	return snap, err
+	return new, nil
+}
+
+func (j *apiJournal) Rebase(base *apitype.DeploymentV3) error {
+	j.base = base
+	return nil
 }
 
 func (j *apiJournal) Append(entry apitype.JournalEntry) error {

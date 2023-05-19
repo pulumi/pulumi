@@ -66,7 +66,8 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 
 	prev := target.Snapshot
 	source := NewErrorSource(projectName)
-	if err := migrateProviders(target, prev, source); err != nil {
+	rebase, err := migrateProviders(target, prev, source)
+	if err != nil {
 		return nil, err
 	}
 
@@ -91,6 +92,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 	return &Deployment{
 		ctx:          ctx,
 		target:       target,
+		rebase:       rebase,
 		prev:         prev,
 		olds:         olds,
 		goals:        newGoals,

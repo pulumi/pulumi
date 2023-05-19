@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -14,11 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	backend_display "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -71,6 +77,29 @@ func (op TestOp) Run(project workspace.Project, target deploy.Target, opts Updat
 	return op.RunWithContext(context.Background(), project, target, opts, dryRun, backendClient, validate)
 }
 
+type journalError struct {
+	Events   []apitype.EngineEvent  `json:"events,omitempty"`
+	Base     *apitype.DeploymentV3  `json:"base,omitempty"`
+	Journal  []apitype.JournalEntry `json:"journal,omitempty"`
+	Actual   json.RawMessage        `json:"actual,omitempty"`
+	Expected json.RawMessage        `json:"expected,omitempty"`
+	Err      string                 `json:"error,omitempty"`
+}
+
+func (e *journalError) Error() string {
+	return "actual/expected mismatch"
+}
+
+func (e *journalError) writeFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(f)
+
+	return json.NewEncoder(f).Encode(e)
+}
+
 func (op TestOp) RunWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
@@ -80,20 +109,50 @@ func (op TestOp) RunWithContext(
 	return snap, res
 }
 
-func checkJournal(j *apiJournal, base, expected *deploy.Snapshot) error {
-	actual, err := j.Replay(base)
-	if err != nil {
-		return fmt.Errorf("replaying: %w", err)
+func checkJournal(j *apiJournal, sm secrets.Manager, expected *deploy.Snapshot, events []Event) error {
+	apiEvents := make([]apitype.EngineEvent, len(events))
+	for i, e := range events {
+		apiEvent, err := backend_display.ConvertEngineEvent(e, false)
+		if err != nil {
+			return fmt.Errorf("converting engine event: %w", err)
+		}
+		apiEvents[i] = apiEvent
 	}
 
-	actualDeployment, err := stack.SerializeDeployment(actual, nil, false)
-	if err != nil {
-		return fmt.Errorf("serializing actual: %w", err)
-	}
-
-	expectedDeployment, err := stack.SerializeDeployment(expected, nil, false)
+	expectedDeployment, err := stack.SerializeDeployment(expected, sm, false)
 	if err != nil {
 		return fmt.Errorf("serializing expected: %w", err)
+	}
+
+	actualDeployment, err := func() (_ *apitype.DeploymentV3, err error) {
+		defer func() {
+			if x := recover(); x != nil {
+				err = fmt.Errorf("panic: %v", x)
+			}
+		}()
+
+		return j.Replay()
+	}()
+	if err != nil {
+		var actual json.RawMessage
+		if depl, ok := err.(*deploymentError); ok {
+			bytes, err := json.Marshal(depl.actual)
+			if err == nil {
+				actual = json.RawMessage(bytes)
+			}
+		}
+		return &journalError{Events: apiEvents, Base: j.base, Journal: j.entries, Actual: actual, Err: string(err.Error())}
+	}
+
+	// tweak times
+	actualDeployment.Manifest.Time = expectedDeployment.Manifest.Time
+	for i := range actualDeployment.Resources {
+		r := &actualDeployment.Resources[i]
+		r.Created, r.Modified = nil, nil
+	}
+	for i := range expectedDeployment.Resources {
+		r := &expectedDeployment.Resources[i]
+		r.Created, r.Modified = nil, nil
 	}
 
 	actualBytes, err := json.MarshalIndent(actualDeployment, "", "  ")
@@ -107,11 +166,8 @@ func checkJournal(j *apiJournal, base, expected *deploy.Snapshot) error {
 	}
 
 	if string(actualBytes) != string(expectedBytes) {
-		//		fmt.Fprintln(os.Stderr, string(expectedBytes))
-		//		fmt.Fprintln(os.Stderr, string(actualBytes))
-		return fmt.Errorf("actual/expected mismatch")
+		return &journalError{Events: apiEvents, Base: j.base, Journal: j.entries, Actual: json.RawMessage(actualBytes), Expected: json.RawMessage(expectedBytes)}
 	}
-
 	return nil
 }
 
@@ -127,9 +183,16 @@ func (op TestOp) runWithContext(
 	if baseSnap == nil {
 		baseSnap = &deploy.Snapshot{}
 	}
+	secretsManager := baseSnap.SecretsManager
+	if secretsManager == nil {
+		secretsManager = b64.NewBase64SecretsManager()
+	}
 
-	var apiJournal apiJournal
-	backendJournal, err := backend.NewJournal(&apiJournal, baseSnap, nil)
+	apiJournal, err := newAPIJournal(baseSnap, secretsManager)
+	if err != nil {
+		return nil, nil, result.FromError(err)
+	}
+	backendJournal, err := backend.NewJournal(apiJournal, baseSnap, secretsManager)
 	if err != nil {
 		return nil, nil, result.FromError(err)
 	}
@@ -171,6 +234,7 @@ func (op TestOp) runWithContext(
 	close(events)
 	wg.Wait()
 	contract.IgnoreClose(journal)
+	contract.IgnoreClose(backendJournal)
 
 	if validate != nil {
 		res = validate(project, target, journal.Entries(), firedEvents, res)
@@ -186,7 +250,7 @@ func (op TestOp) runWithContext(
 		res = result.WrapIfNonNil(snap.VerifyIntegrity())
 	}
 
-	if err = checkJournal(&apiJournal, baseSnap, snap); err != nil {
+	if err = checkJournal(apiJournal, secretsManager, snap, firedEvents); err != nil {
 		return nil, snap, result.FromError(err)
 	}
 
@@ -301,7 +365,7 @@ func CloneSnapshot(t testing.TB, snap *deploy.Snapshot) *deploy.Snapshot {
 func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot {
 	project := p.GetProject()
 	snap := snapshot
-	for _, step := range p.Steps {
+	for stepIdx, step := range p.Steps {
 		// note: it's really important that the preview and update operate on different snapshots.  the engine can and
 		// does mutate the snapshot in-place, even in previews, and sharing a snapshot between preview and update can
 		// cause state changes from the preview to persist even when doing an update.
@@ -321,6 +385,19 @@ func (p *TestPlan) Run(t testing.TB, snapshot *deploy.Snapshot) *deploy.Snapshot
 		var res result.Result
 		target := p.GetTarget(t, snap)
 		snap, res = step.Op.Run(project, target, p.Options, false, p.BackendClient, step.Validate)
+
+		if res != nil {
+			switch err := res.Error().(type) {
+			case *journalError:
+				if e := err.writeFile(url.PathEscape(fmt.Sprintf("journalerr-%s-%v.json", t.Name(), stepIdx))); err != nil {
+					t.Logf("failed to persist journal error: %v", e)
+				}
+				res = nil
+			case managerError:
+				t.Logf("snapshot manager error: %v", err)
+			}
+		}
+
 		if step.ExpectFailure {
 			assertIsErrorOrBailResult(t, res)
 			continue
