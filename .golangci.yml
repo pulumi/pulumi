@@ -34,7 +34,14 @@ linters-settings:
     # Don't complain about these.
     allow-unused: true
   govet:
-    enable: [nilness]
+    enable:
+      - nilness
+      # Reject comparisons of reflect.Value with DeepEqual or '=='.
+      - reflectvaluecompare
+      # Reject sort.Slice calls with a non-slice argument.
+      - sortslice
+      # Detect write to struct/arrays by-value that aren't read again.
+      - unusedwrite
 
 issues:
   exclude-rules:
