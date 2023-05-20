@@ -3741,7 +3741,7 @@ Replaced by 3.33.1 during release process.
 
 ### Breaking Changes
 
-Please note, the following 2 breaking changes were included in our [3.0 changlog](https://www.pulumi.com/docs/install/migrating-3.0/#updated-cli-behavior-in-pulumi-30)
+Please note, the following 2 breaking changes were included in our [3.0 changlog](https://www.pulumi.com/docs/get-started/install/migrating-3.0/#updated-cli-behavior-in-pulumi-30)
 Unfortunately, the initial release did not include that change. We apologize for any confusion or inconvenience this may have included the addressed behaviour.
 
 - [cli] Standardize stack select behavior to ensure that passing `--stack` does not make that the current stack.
