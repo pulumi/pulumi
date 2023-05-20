@@ -185,8 +185,6 @@ The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3,
 
 * To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/install/migrating-3.0/).
 
-* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/install/migrating-2.0/).
-
 ### Clouds
 
 Visit the [Registry](https://www.pulumi.com/registry/) for the full list of supported cloud and infrastructure providers.
