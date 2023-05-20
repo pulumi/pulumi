@@ -183,9 +183,7 @@ details of the core Pulumi CLI and [programming model concepts](https://www.pulu
 
 The Pulumi CLI v1 and v2 are no longer supported. If you are not yet running v3, please consider migrating to v3 to continue getting the latest and greatest Pulumi has to offer! :muscle:
 
-* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-3.0/).
-
-* To migrate to v2 from v1, please see our [v2 Migration Guide](https://www.pulumi.com/docs/get-started/install/migrating-2.0/).
+* To migrate from v2 to v3, please see our [v3 Migration Guide](https://www.pulumi.com/docs/install/migrating-3.0/).
 
 ### Clouds
 

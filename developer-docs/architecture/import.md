@@ -84,7 +84,7 @@ run by the [step executor](resource-registration.md#the-step-executor).
 ## `pulumi import`
 
 The second, newer method of importing resources into a stack is the [`pulumi import`
-command](https://www.pulumi.com/docs/reference/cli/pulumi_import/). This command accepts a
+command](https://www.pulumi.com/docs/cli/commands/pulumi_import/). This command accepts a
 list of import specs to import, imports the resources into the destination stack, and
 generates definitions for the resources in the language used by the stack's Pulumi program.
 Each import spec is at least a type token, name, and ID, but may also specify a parent URN,
