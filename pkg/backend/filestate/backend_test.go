@@ -1022,7 +1022,7 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
-	assert.Contains(t, buff.String(), `Skipping stack "bar": no project found`)
+	assert.Contains(t, buff.String(), `Skipping stack "bar": no project name found`)
 
 	exists, err := bucket.Exists(ctx, ".pulumi/stacks/project/foo.json")
 	require.NoError(t, err)

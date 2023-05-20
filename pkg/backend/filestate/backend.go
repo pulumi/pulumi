@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -363,6 +364,37 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
+	sort.Slice(olds, func(i, j int) bool {
+		return olds[i].Name() < olds[j].Name()
+	})
+
+	// There's no limit to the number of stacks we need to upgrade.
+	// We don't want to overload the system with too many concurrent upgrades.
+	// We'll run a fixed pool of goroutines to upgrade stacks.
+	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	defer pool.Close()
+
+	// Projects for each stack in `olds` in the same order.
+	// projects[i] is the project name for olds[i].
+	projects := make([]tokens.Name, len(olds))
+	for idx, old := range olds {
+		idx, old := idx, old
+		pool.Enqueue(func() error {
+			project, err := b.guessProject(ctx, old)
+			if err != nil {
+				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
+			}
+
+			// No lock necessary;
+			// projects is pre-allocated.
+			projects[idx] = project
+			return nil
+		})
+	}
+
+	if err := pool.Wait(); err != nil {
+		return err
+	}
 
 	// It's important that we attempt to write the new metadata file
 	// before we attempt the upgrade.
@@ -380,17 +412,17 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
 
-	// There's no limit to the number of stacks we need to upgrade.
-	// We don't want to overload the system with too many concurrent upgrades.
-	// We'll run a fixed pool of goroutines to upgrade stacks.
-	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
-	defer pool.Close()
-
 	var upgraded atomic.Int64 // number of stacks successfully upgraded
-	for _, old := range olds {
-		old := old
+	for idx, old := range olds {
+		idx, old := idx, old
 		pool.Enqueue(func() error {
-			if err := b.upgradeStack(ctx, newStore, old); err != nil {
+			project := projects[idx]
+			if project == "" {
+				b.d.Warningf(diag.Message("", "Skipping stack %q: no project name found"), old)
+				return nil
+			}
+
+			if err := b.upgradeStack(ctx, newStore, project, old); err != nil {
 				b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
 			} else {
 				upgraded.Add(1)
@@ -408,30 +440,35 @@ func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error 
 	return nil
 }
 
-// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
-func (b *localBackend) upgradeStack(
-	ctx context.Context,
-	newStore *projectReferenceStore,
-	old *localBackendReference,
-) error {
+// guessProject inspects the checkpoint for the given stack and attempts to
+// guess the project name for it.
+// Returns an empty string if the project name cannot be determined.
+func (b *localBackend) guessProject(ctx context.Context, old *localBackendReference) (tokens.Name, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
 	chk, err := b.getCheckpoint(ctx, old)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("read checkpoint: %w", err)
 	}
 
 	// Try and find the project name from _any_ resource URN
-	var project tokens.Name
 	if chk.Latest != nil {
 		for _, res := range chk.Latest.Resources {
-			project = tokens.Name(res.URN.Project())
-			break
+			return tokens.Name(res.URN.Project()), nil
 		}
 	}
-	if project == "" {
-		return errors.New("no project found")
-	}
+	return "", nil
+}
+
+// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
+func (b *localBackend) upgradeStack(
+	ctx context.Context,
+	newStore *projectReferenceStore,
+	project tokens.Name,
+	old *localBackendReference,
+) error {
+	contract.Requiref(old.project == "", "old.project", "must be empty")
+	contract.Requiref(project != "", "project", "must not be empty")
 
 	new := newStore.newReference(project, old.Name())
 	if err := b.renameStack(ctx, old, new); err != nil {
