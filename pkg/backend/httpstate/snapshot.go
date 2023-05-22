@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http/httptest"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -38,8 +39,40 @@ type cloudSnapshotPersister struct {
 	deploymentDiffState *deploymentDiffState
 }
 
+type tokenSourceFn func() (string, error)
+
+var _ tokenSourceCapability = tokenSourceFn(nil)
+
+func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
+	return tsf()
+}
+
+func NewMockPersister(server *httptest.Server) (backend.SnapshotPersister, error) {
+	newMockTokenSource := func() tokenSourceCapability {
+		return tokenSourceFn(func() (string, error) {
+			return "token", nil
+		})
+	}
+
+	backendGeneric, err := New(nil, server.URL, nil, false)
+	if err != nil {
+		return nil, err
+	}
+
+	backend := backendGeneric.(*cloudBackend)
+	return backend.newSnapshotPersister(context.Background(), client.UpdateIdentifier{
+		StackIdentifier: client.StackIdentifier{Owner: "owner", Project: "project", Stack: "stack"},
+		UpdateKind:      "update",
+		UpdateID:        "update",
+	}, newMockTokenSource(), nil), nil
+}
+
 func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
 	return persister.sm
+}
+
+func (persister *cloudSnapshotPersister) Rebase(base *apitype.DeploymentV3) error {
+	return persister.backend.client.RebaseUpdate(persister.context, persister.update, base, persister.tokenSource)
 }
 
 func (persister *cloudSnapshotPersister) Append(entry apitype.JournalEntry) error {

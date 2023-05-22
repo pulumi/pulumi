@@ -258,14 +258,6 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	}, typedPersistedState().Resources)
 }
 
-type tokenSourceFn func() (string, error)
-
-var _ tokenSourceCapability = tokenSourceFn(nil)
-
-func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
-	return tsf()
-}
-
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
 	program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
