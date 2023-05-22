@@ -27,9 +27,6 @@ func NewRandom(ctx *pulumi.Context,
 	if args == nil || args.Length == nil {
 		return nil, errors.New("missing required argument 'Length'")
 	}
-	if args == nil {
-		args = &RandomArgs{}
-	}
 	var resource Random
 	err := ctx.RegisterResource("testprovider:index:Random", name, args, &resource, opts...)
 	if err != nil {

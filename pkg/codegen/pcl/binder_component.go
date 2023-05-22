@@ -98,7 +98,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		}
 
 		if len(files) == 0 {
-			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
+			diagnostics = diagnostics.Append(errorf(nodeRange, "no files found"))
 			return nil, diagnostics, nil
 		}
 
@@ -128,11 +128,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 					return nil, diagnostics, err
 				}
 			}
-		}
-
-		if err != nil {
-			diagnostics = diagnostics.Append(errorf(nodeRange, err.Error()))
-			return nil, diagnostics, err
 		}
 
 		componentProgram, programDiags, err := BindProgram(parser.Files,
