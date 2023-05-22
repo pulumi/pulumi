@@ -99,27 +99,30 @@ func newCloudSecretsManager(url string, encryptedDataKey []byte) (*Manager, erro
 	if err != nil {
 		return nil, err
 	}
+	state, err := json.Marshal(cloudSecretsManagerState{
+		URL:          url,
+		EncryptedKey: encryptedDataKey,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshalling state: %w", err)
+	}
 	crypter := config.NewSymmetricCrypter(plaintextDataKey)
 	return &Manager{
 		crypter: crypter,
-		state: cloudSecretsManagerState{
-			URL:          url,
-			EncryptedKey: encryptedDataKey,
-		},
+		state:   state,
 	}, nil
 }
 
 // Manager is the secrets.Manager implementation for cloud key management services
 type Manager struct {
-	state   cloudSecretsManagerState
+	state   json.RawMessage
 	crypter config.Crypter
 }
 
 func (m *Manager) Type() string                         { return Type }
-func (m *Manager) State() interface{}                   { return m.state }
+func (m *Manager) State() json.RawMessage               { return m.state }
 func (m *Manager) Encrypter() (config.Encrypter, error) { return m.crypter, nil }
 func (m *Manager) Decrypter() (config.Decrypter, error) { return m.crypter, nil }
-func (m *Manager) EncryptedKey() []byte                 { return m.state.EncryptedKey }
 
 // NewCloudSecretsManagerFromState deserialize configuration from state and returns a secrets
 // manager that uses the target cloud key management service to encrypt/decrypt a data key used for

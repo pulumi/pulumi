@@ -93,7 +93,7 @@ type localSecretsManagerState struct {
 var _ secrets.Manager = &localSecretsManager{}
 
 type localSecretsManager struct {
-	state   localSecretsManagerState
+	state   json.RawMessage
 	crypter config.Crypter
 }
 
@@ -101,7 +101,7 @@ func (sm *localSecretsManager) Type() string {
 	return Type
 }
 
-func (sm *localSecretsManager) State() interface{} {
+func (sm *localSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
@@ -145,24 +145,30 @@ func setCachedSecretsManager(state string, sm secrets.Manager) {
 	cache[state] = sm
 }
 
-func NewPassphraseSecretsManager(phrase string, state string) (secrets.Manager, error) {
+func NewPassphraseSecretsManager(phrase string, salt string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
-	if cached, ok := getCachedSecretsManager(state); ok {
+	if cached, ok := getCachedSecretsManager(salt); ok {
 		return cached, nil
 	}
 
 	// Wasn't in the cache so try to construct it and add it if there's no error.
-	crypter, err := symmetricCrypterFromPhraseAndState(phrase, state)
+	crypter, err := symmetricCrypterFromPhraseAndState(phrase, salt)
 	if err != nil {
 		return nil, err
 	}
+
+	state, err := json.Marshal(localSecretsManagerState{
+		Salt: salt,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshalling state: %w", err)
+	}
+
 	sm := &localSecretsManager{
 		crypter: crypter,
-		state: localSecretsManagerState{
-			Salt: state,
-		},
+		state:   state,
 	}
-	setCachedSecretsManager(state, sm)
+	setCachedSecretsManager(salt, sm)
 	return sm, nil
 }
 
@@ -209,7 +215,7 @@ func NewPromptingPassphraseSecretsManagerFromState(state json.RawMessage) (secre
 	sm, err := newPromptingPassphraseSecretsManagerFromState(s.Salt)
 	switch {
 	case err == ErrIncorrectPassphrase:
-		return newLockedPasspharseSecretsManager(s), nil
+		return newLockedPasspharseSecretsManager(state), nil
 	case err != nil:
 		return nil, fmt.Errorf("constructing secrets manager: %w", err)
 	default:
@@ -347,7 +353,7 @@ func isInteractive() bool {
 // checkpoints and we'd like to continue to support these operations even if we don't have the correct passphrase. But
 // if we never end up having to call encrypt or decrypt, this provider will be sufficient.  Since it has the correct
 // state, we ensure that when we roundtrip, we don't lose the state stored in the deployment.
-func newLockedPasspharseSecretsManager(state localSecretsManagerState) secrets.Manager {
+func newLockedPasspharseSecretsManager(state json.RawMessage) secrets.Manager {
 	return &localSecretsManager{
 		state:   state,
 		crypter: &errorCrypter{},

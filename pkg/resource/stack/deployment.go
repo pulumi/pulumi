@@ -142,14 +142,8 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	var secretsProvider *apitype.SecretsProvidersV1
 	if sm != nil {
 		secretsProvider = &apitype.SecretsProvidersV1{
-			Type: sm.Type(),
-		}
-		if state := sm.State(); state != nil {
-			rm, err := json.Marshal(state)
-			if err != nil {
-				return nil, err
-			}
-			secretsProvider.State = rm
+			Type:  sm.Type(),
+			State: sm.State(),
 		}
 	}
 

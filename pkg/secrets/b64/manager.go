@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package b64
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -30,6 +32,6 @@ func NewBase64SecretsManager() secrets.Manager {
 type manager struct{}
 
 func (m *manager) Type() string                         { return Type }
-func (m *manager) State() interface{}                   { return map[string]string{} }
+func (m *manager) State() json.RawMessage               { return nil }
 func (m *manager) Encrypter() (config.Encrypter, error) { return config.Base64Crypter, nil }
 func (m *manager) Decrypter() (config.Decrypter, error) { return config.Base64Crypter, nil }

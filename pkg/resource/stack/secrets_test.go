@@ -24,7 +24,7 @@ type testSecretsManager struct {
 
 func (t *testSecretsManager) Type() string { return "test" }
 
-func (t *testSecretsManager) State() interface{} { return nil }
+func (t *testSecretsManager) State() json.RawMessage { return nil }
 
 func (t *testSecretsManager) Encrypter() (config.Encrypter, error) {
 	return t, nil
@@ -211,7 +211,7 @@ type mapTestSecretsManager struct {
 
 func (t *mapTestSecretsManager) Type() string { return t.sm.Type() }
 
-func (t *mapTestSecretsManager) State() interface{} { return t.sm.State() }
+func (t *mapTestSecretsManager) State() json.RawMessage { return t.sm.State() }
 
 func (t *mapTestSecretsManager) Encrypter() (config.Encrypter, error) {
 	return t.sm.Encrypter()

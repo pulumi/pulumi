@@ -84,7 +84,7 @@ func (csm *cachingSecretsManager) Type() string {
 	return csm.manager.Type()
 }
 
-func (csm *cachingSecretsManager) State() interface{} {
+func (csm *cachingSecretsManager) State() json.RawMessage {
 	return csm.manager.State()
 }
 
