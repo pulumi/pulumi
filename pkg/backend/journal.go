@@ -34,16 +34,139 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// ISSUES:
+// # Update Journal
 //
-// - default provider migration mutates the base snapshot in-place. particularly problematic because
-//   it adds new resources to the state, which affects the indexing. it does, though, add all default
-//   providers to the _front_ of the snapshot.
-// - refreshes are issued out of dependency order (and actually affect the base state)
+// This file (and the types in sdk/go/common/apitype/journal.go) define a journaling approach to recording
+// the changes to a stack's state during an update that is simple, minimally invasive with respect to
+// existing code, and hopefully complete. The journal places changes to a stack's state during an update
+// into one of three categories:
 //
-// The solution chosen here is to add a Rebase method to the SnapshotManager and JournalPersister
-// interfaces that means "persist a new base state". This is be called after default provider migration
-// and after a refresh finishes.
+// 1. changes to the stack metadata for the update
+// 2. changes to the resource states for the update
+// 3. changes to the base resource states for the update
+//
+// Changes in the first and second categories are captured via journal entries. These entries are ordered
+// by sequence numbers that are assigned by the journaler. It is always safe to replay a journal in sequence
+// order.
+//
+// Changes in the last category are captured and recorded in aggregate via a single, optional call to
+// Rebase, which includes a complete checkpoint that replaces the existing base checkpoint. This relaxes
+// certain ordering requirements on the journaler and allows the engine to add resources to the checkpoint
+// prior to the logical start of the update.
+//
+// ## Capturing changes to stack metadata
+//
+// The only change to stack metadata that may occur as part of an update is a change to the stack's secrets
+// provider. This is captured via a journal entry of type `Secrets(seq, payload)`.
+//
+// ## Capturing changes to resource states for an update
+//
+// Changes to resource states are captured via journal entries. These entries may refer to resources in the
+// base state or earlier entries in the journal. A resources in the base state is referred to by its position
+// in the base state's list of resources. An earlier entry in the journal is referred to by its sequence
+// number. Both old resource identifiers and sequence numbers must be positive and must not be 0 (i.e. the
+// base resource list is 1-indexed and the first sequence number for an update is 1). The entry types that
+// capture changes to resource states are:
+//
+// - `Begin(seq, op, state)`: records the start of a resource operation
+// - `Success(seq, op, old?, new, state)`: records the success of the operation with sequence number `new`
+// - `Failure(seq, op, new, state)`: records the failure of the operation with sequence number `new`
+// - `Outputs(seq, new, state)`: records new outputs for the resource produced by sequence number `new`
+// - `PendingDeletion(seq, old)`: marks `old` as pending deletion
+// - `PendingReplacement(seq, old)`: marks `old` as pending replacement
+//
+// In order to simplify replaying these journal entries, the `Begin` entry for a resource must have a
+// sequence number that comes after all `Success` sequence numbers for the resource's dependencies. This
+// places sequence numbers in a total order that aligns with the partial order required by stack
+// checkpoints. This allows the replay operation to simply iterate the journal entries ordered by
+// sequence number and append the results of successful operations to the new list of resources.
+//
+// With this approach, the exact dependencies of an entry are implicit. This has the upsides of demanding less
+// work from the journal and less space from the persistence layer at the cost of making the journal harder to
+// validate. Including the sequence numbers of the other entries on which a given entry depends may be worth
+// the complication, as it allows replayers to validate the journal by ensuring that the dependencies of an
+// operation exist prior to the operation itself. That work could be undertaken as an extension of this
+// approach. As it stands, it is recommended that replayers validate a journals by ensuring that its entries
+// form a consecutive sequence starting from 1.
+//
+// ## Capturing changes to the base state
+//
+// The Pulumi engine may make certain changes to the base state for an update prior to making changes
+// to the new state for an update. This is known to include two sorts of changes:
+//
+// 1. provider migration
+// 2. resource refreshes
+//
+// These sorts of changes are captured by a single, optional call to Rebase, which includes a complete
+// checkpoint that replaces the existing base checkpoint.
+//
+// The first case is rare in practice, but is covered by most/all of our tests. This case occurs when the
+// base state for an update includes implicit default providers or providers that do not reflect their
+// configuration into their output parameters. The former is more problematic than the latter, as it may
+// add additional resources to the state. Because the journal identifies each resource in the base state,
+// by its position in the base resource list, adding resources to the base state invalidates these
+// identifiers.
+//
+// The second case is orders of magnitude more frequent. In principle, resource refreshes could be
+// captured using journal entries. This is challenging in practice because journal entries must be
+// recorded such that the journal entries are recorded in a proper partial order. While the existing
+// behavior of the engine meets this condition for other resource operations, it does not meet this
+// condition for refreshes, as it issues all refreshes concurrently.
+//
+// It is the author's belief that the primary benefit to capturing refreshes as journal entries would be
+// to reduce traffic to the backend for refreshes that only target a small portion of a stack's resources.
+//
+// ## Replay
+//
+// The combination of Rebase and journal entries ordered by operation allows for a simple replay algorithm
+// that tracks in-flight operations and appends resources to the new list of states as operations complete.
+// Psuedocode is given below.
+//
+//     def replay(base, journal):
+//         in_progress, done, pending_delete, pending_replacement = set(), set(), set(), set()
+//         resources = []
+//         for entry in sort(journal, (a, b) => a.seq < b.seq):
+//             match entry:
+//                 Begin(seq, op, state):
+//                     in_progress.add(seq)
+//                 Success(_, op, old?, new, state):
+//                     in_progress.remove(new)
+//                     done.add(old?)
+//                     resources.append(state)
+//                 Failure(_, _, new, state):
+//                     in_progress.remove(new)
+//                 Outputs(_, new, state):
+//                     resources[new].state = state
+//                 PendingDeletion(_, old):
+//                     pending_delete[old] = true
+//                 PendingReplace(_, old):
+//                     pending_replacement[old] = true
+//
+//         operations = sort([in_progress...], (a, b) => a.seq < b.seq)
+//
+//         for (idx, state) in base:
+//             old = idx + 1
+//             if !done[old]:
+//                 if pending_delete[old]:
+//                     state.pending_delete = true
+//                 if pending_replacement[old]:
+//                     state.pending_replacement = true
+//                 resources.append(state)
+//
+//     return (resources, operations)
+//
+// ## Benchmark Results
+//
+// These changes also include a small suite of benchmarks intended to provide some insight into the performance
+// of this approach. These benchmarks are run with either a journal or a traditional patching snapshot manager
+// and a mock persister that discards its input. The benchmarks cover a number of trivially-parallel synthetic
+// scenarios as well as one trivially-parallel real-world scenario and one more complex real-world scenario.
+// In addition to the builtin time and allocation volume measures, the benchmarks cover the total number of
+// calls to the persister and the total number of bytes that would be persisted. As such, the benchmarks also
+// include any marshaling overhead in their time and allocation volume metrics. The results are as stark as
+// they are unsurprising. Every metric besides total number of calls to the persister drops significantly,
+// including wall clock time. In general, the journal replaces quadratic behavior with worst-case linear
+// behavior.
 
 // JournalPersister is an interface implemented by our backends that implements journal
 // persistence.
