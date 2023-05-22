@@ -13,6 +13,12 @@ INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$)
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
+# Relative paths to directories with go.mod files that should be linted.
+LINT_GOLANG_PKGS := sdk pkg tests
+
+# Additional arguments to pass to golangci-lint.
+GOLANGCI_LINT_ARGS ?=
+
 ifeq ($(DEBUG),"true")
 $(info    SHELL           = ${SHELL})
 $(info    VERSION         = ${VERSION})
@@ -97,14 +103,18 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: golangci-lint.ensure lint_pkg lint_sdk lint_tests
+lint:: golangci-lint.ensure lint_golang
 
-lint_pkg: lint_deps
-	cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_sdk: lint_deps
-	cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m
-lint_tests: lint_deps
-	cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m
+lint_golang:: lint_deps
+	$(eval GOLANGCI_LINT_CONFIG = $(shell pwd)/.golangci.yml)
+	@$(foreach pkg,$(LINT_GOLANG_PKGS),(cd $(pkg) && \
+		echo "[golangci-lint] Linting $(pkg)..." && \
+		golangci-lint run $(GOLANGCI_LINT_ARGS) \
+			--config $(GOLANGCI_LINT_CONFIG) \
+			--timeout 5m \
+			--path-prefix $(pkg)) \
+		&&) true
+
 lint_deps:
 	@echo "Check for golangci-lint"; [ -e "$(shell which golangci-lint)" ]
 lint_actions:

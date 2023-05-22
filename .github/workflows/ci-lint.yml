@@ -32,32 +32,21 @@ jobs:
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
 
-      # Only the first of the following lint actions
-      # should enable the cache.
-      # The rest should 'skip-cache: true'.
-      # They'll all still be cached,
-      # but only the first one will be responsible
-      # for downloading and uploading the cache.
-      - name: Lint pkg
+      # We leverage the golangci-lint action to install
+      # and maintain the cache,
+      # but we want to run the command ourselves.
+      # The action doesn't have an install-only mode,
+      # so we'll ask it to print its version only.
+      - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          working-directory: pkg
-          args: --config ../.golangci.yml ./...
-      - name: Lint sdk
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          working-directory: sdk
-          args: --config ../.golangci.yml ./...
-          skip-cache: true  # first lint action will handle
-      - name: Lint tests
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          working-directory: tests
-          args: --config ../.golangci.yml ./...
-          skip-cache: true  # first lint action will handle
+          args: --version
+
+      - name: Run golangci-lint
+        # Print GitHub Actions-friendly output so that errors get marked
+        # in the pull request.
+        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=github-actions
 
   tidy:
     name: go mod tidy
