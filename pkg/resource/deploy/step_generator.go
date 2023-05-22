@@ -1047,6 +1047,13 @@ func (sg *stepGenerator) generateStepsFromDiff(
 					}
 				}
 
+				// We're going to delete the old resource before creating the new one. We need to make sure
+				// that the old provider is loaded.
+				err := sg.deployment.EnsureProvider(old.Provider)
+				if err != nil {
+					return nil, result.Errorf("could not load provider for resource %v: %w", old.URN, err)
+				}
+
 				return append(steps,
 					NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true),
 					NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, false),
@@ -1135,6 +1142,14 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets) ([]Step, result.
 					dels = append(dels, NewDeleteStep(sg.deployment, sg.deletes, res))
 				} else {
 					dels = append(dels, NewRemovePendingReplaceStep(sg.deployment, res))
+				}
+			}
+
+			// We just added a Delete step, so we need to ensure the provider for this resource is available.
+			if sg.deletes[res.URN] {
+				err := sg.deployment.EnsureProvider(res.Provider)
+				if err != nil {
+					return nil, result.Errorf("could not load provider for resource %v: %w", res.URN, err)
 				}
 			}
 		}
@@ -1819,6 +1834,12 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 				return false, nil, result.FromError(err)
 			}
 			if replaceSet[ref.URN()] {
+				// We need to use the old provider configuration to delete this resource so ensure it's loaded.
+				err := sg.deployment.EnsureProvider(r.Provider)
+				if err != nil {
+					return false, nil, result.Errorf("could not load provider for resource %v: %w", r.URN, err)
+				}
+
 				return true, nil, nil
 			}
 		}
@@ -1840,6 +1861,20 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 		// may change and this resource does not need to be replaced.
 		if !hasDependencyInReplaceSet {
 			return false, nil, nil
+		}
+
+		// We're going to have to call diff on this resources provider so ensure that we have it created
+		if !providers.IsProviderType(r.Type) {
+			err := sg.deployment.EnsureProvider(r.Provider)
+			if err != nil {
+				return false, nil, result.Errorf("could not load provider for resource %v: %w", r.URN, err)
+			}
+		} else {
+			// This is a provider itself so load it so that Diff below is possible
+			err := sg.deployment.SameProvider(r)
+			if err != nil {
+				return false, nil, result.Errorf("create provider %v: %w", r.URN, err)
+			}
 		}
 
 		// Otherwise, fetch the resource's provider. Since we have filtered out component resources, this resource must

@@ -39,6 +39,7 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
@@ -1069,6 +1070,10 @@ func TestLoadFailureShutdown(t *testing.T) {
 	//
 	// As such, this test attempts to replicate the CLI architecture by using one provider that configures
 	// asynchronously and attempts to call back into the engine and a second provider that fails to load.
+	//
+	// The engine architecture has changed since this issue was discovered, and the test has been updated to
+	// reflect that. Registry creation no longer configures providers up front, so the program below tries to
+	// register two providers instead.
 
 	release, done := make(chan bool), make(chan bool)
 	sinkWriter := &channelWriter{channel: make(chan []byte)}
@@ -1092,39 +1097,21 @@ func TestLoadFailureShutdown(t *testing.T) {
 		}),
 	}
 
-	p := &TestPlan{}
-	provAURN := p.NewProviderURN("pkgA", "default", "")
-	provBURN := p.NewProviderURN("pkgB", "default", "")
-
-	old := &deploy.Snapshot{
-		Resources: []*resource.State{
-			{
-				Type:    provAURN.Type(),
-				URN:     provAURN,
-				Custom:  true,
-				ID:      "0",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
-			},
-			{
-				Type:    provBURN.Type(),
-				URN:     provBURN,
-				Custom:  true,
-				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
-			},
-		},
-	}
-
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
+		assert.NoError(t, err)
+
 		return nil
 	})
 
 	op := TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
 	options := UpdateOptions{Host: deploytest.NewPluginHost(sink, sink, program, loaders...)}
-	project, target := p.GetProject(), p.GetTarget(t, old)
+	p := &TestPlan{}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, res := op.Run(project, target, options, true, nil, nil)
 	assertIsErrorOrBailResult(t, res)

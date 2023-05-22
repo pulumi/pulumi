@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Provider plugins are now loaded as needed, not at startup based on old state information.
