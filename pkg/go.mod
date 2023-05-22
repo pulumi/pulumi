@@ -73,6 +73,8 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/muesli/cancelreader v0.2.2
 	github.com/natefinch/atomic v1.0.1
+	github.com/pgavlin/fx v0.1.6
+	github.com/pgavlin/text v0.0.0-20230428184845-84c285f11d2f
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pulumi/pulumi-java/pkg v0.9.2
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.43.0
