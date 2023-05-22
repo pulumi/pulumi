@@ -687,7 +687,7 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
+	ctx context.Context, filter backend.ListStacksFilter, _ backend.ContinuationToken) (
 	[]backend.StackSummary, backend.ContinuationToken, error,
 ) {
 	stacks, err := b.getLocalStacks(ctx)
@@ -695,10 +695,16 @@ func (b *localBackend) ListStacks(
 		return nil, nil, err
 	}
 
-	// Note that the provided stack filter is not honored, since fields like
-	// organizations and tags aren't persisted in the local backend.
+	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
+	// aren't persisted in the local backend.
 	results := make([]backend.StackSummary, 0, len(stacks))
 	for _, stackRef := range stacks {
+		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
+		stackProject, hasProject := stackRef.Project()
+		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
+			continue
+		}
+
 		chk, err := b.getCheckpoint(ctx, stackRef)
 		if err != nil {
 			return nil, nil, err

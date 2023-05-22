@@ -554,6 +554,37 @@ func TestLegacyFolderStructure(t *testing.T) {
 	assert.FileExists(t, path.Join(tmpDir, ".pulumi", "stacks", "b.json"))
 }
 
+func TestListStacksFilter(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+
+	// Create two different project stack
+	aRef, err := b.ParseStackReference("organization/proj1/a")
+	assert.NoError(t, err)
+	_, err = b.CreateStack(ctx, aRef, "", nil)
+	assert.NoError(t, err)
+
+	bRef, err := b.ParseStackReference("organization/proj2/b")
+	assert.NoError(t, err)
+	_, err = b.CreateStack(ctx, bRef, "", nil)
+	assert.NoError(t, err)
+
+	// Check that list stack with a filter only shows one stack
+	filter := "proj1"
+	stacks, token, err := b.ListStacks(ctx, backend.ListStacksFilter{
+		Project: &filter,
+	}, nil /* inContToken */)
+	assert.NoError(t, err)
+	assert.Nil(t, token)
+	assert.Len(t, stacks, 1)
+	assert.Equal(t, "organization/proj1/a", stacks[0].Name().String())
+}
+
 func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	t.Parallel()
 
