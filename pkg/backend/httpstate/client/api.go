@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -87,6 +88,9 @@ type httpCallOptions struct {
 
 	// GzipCompress compresses the request using gzip before sending it.
 	GzipCompress bool
+
+	// StreamRequest streams the request body instead of marshaling and compressing it in-memory.
+	StreamRequest bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -171,10 +175,24 @@ func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.R
 	return c.client.Do(req)
 }
 
+type nopCloseWriter struct {
+	io.Writer
+}
+
+func (w nopCloseWriter) Close() error {
+	return nil
+}
+
+var gzipPool = sync.Pool{
+	New: func() any {
+		return gzip.NewWriter(io.Discard)
+	},
+}
+
 // pulumiAPICall makes an HTTP request to the Pulumi API.
 func pulumiAPICall(ctx context.Context,
 	requestSpan opentracing.Span,
-	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
+	d diag.Sink, client httpClient, cloudAPI, method, path string, body io.WriterTo,
 	tok accessToken, opts httpCallOptions,
 ) (string, *http.Response, error) {
 	// Normalize URL components
@@ -182,32 +200,41 @@ func pulumiAPICall(ctx context.Context,
 	path = cleanPath(path)
 
 	url := fmt.Sprintf("%s%s", cloudAPI, path)
+
 	var bodyReader io.Reader
-	if opts.GzipCompress {
-		// If we're being asked to compress the payload, go ahead and do it here to an intermediate buffer.
-		//
-		// If this becomes a performance bottleneck, we may want to consider marshaling json directly to this
-		// gzip.Writer instead of marshaling to a byte array and compressing it to another buffer.
-		logging.V(apiRequestDetailLogLevel).Infoln("compressing payload using gzip")
-		var buf bytes.Buffer
-		writer := gzip.NewWriter(&buf)
-		defer contract.IgnoreClose(writer)
-		if _, err := writer.Write(body); err != nil {
-			return "", nil, fmt.Errorf("compressing payload: %w", err)
-		}
-
-		// gzip.Writer will not actually write anything unless it is flushed,
-		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
-		// Without this, the compressed bytes do not decompress properly e.g. in python.
-		if err := writer.Close(); err != nil {
-			return "", nil, fmt.Errorf("closing compressed payload: %w", err)
-		}
-
-		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
-			float64(len(body))/float64(len(buf.Bytes())), len(body))
-		bodyReader = &buf
+	var bodyWriter io.WriteCloser
+	if !opts.StreamRequest {
+		b := &bytes.Buffer{}
+		bodyReader, bodyWriter = b, nopCloseWriter{Writer: b}
 	} else {
-		bodyReader = bytes.NewReader(body)
+		bodyReader, bodyWriter = io.Pipe()
+	}
+
+	writeBody := func() error {
+		if opts.GzipCompress {
+			defer contract.IgnoreClose(bodyWriter)
+
+			gz := gzipPool.Get().(*gzip.Writer)
+			defer gzipPool.Put(gz)
+
+			gz.Reset(bodyWriter)
+			bodyWriter = gz
+		}
+
+		defer contract.IgnoreClose(bodyWriter)
+		_, err := body.WriteTo(bodyWriter)
+		return err
+	}
+
+	if opts.StreamRequest {
+		go func() {
+			err := writeBody()
+			contract.IgnoreError(err)
+		}()
+	} else {
+		if err := writeBody(); err != nil {
+			return "", nil, fmt.Errorf("writing body: %w", err)
+		}
 	}
 
 	req, err := http.NewRequest(method, url, bodyReader)
@@ -255,7 +282,7 @@ func pulumiAPICall(ctx context.Context,
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
 	if logging.V(apiRequestDetailLogLevel) {
 		logging.V(apiRequestDetailLogLevel).Infof(
-			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+			"Pulumi API call details (%s): headers=%v", url, req.Header)
 	}
 
 	resp, err := client.Do(req, opts.RetryAllMethods)
@@ -317,6 +344,31 @@ type defaultRESTClient struct {
 	client httpClient
 }
 
+type countingWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (w *countingWriter) Write(p []byte) (int, error) {
+	n, err := w.w.Write(p)
+	w.n += int64(n)
+	return n, err
+}
+
+type marshalerTo struct {
+	req any
+}
+
+func (m marshalerTo) WriteTo(w io.Writer) (int64, error) {
+	if m.req == nil {
+		return 0, nil
+	}
+
+	cw := countingWriter{w: w}
+	err := json.NewEncoder(&cw).Encode(m.req)
+	return cw.n, err
+}
+
 // Call calls the Pulumi REST API marshalling reqObj to JSON and using that as
 // the request body (use nil for GETs), and if successful, marshalling the responseObj
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
@@ -344,20 +396,14 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		}
 	}
 
-	// Compute request body from request object
-	var reqBody []byte
-	var err error
-	if reqObj != nil {
+	var reqBody io.WriterTo
+	if raw, ok := reqObj.(json.RawMessage); ok {
 		// Send verbatim if already marshalled. This is
 		// important when sending indented JSON is needed.
-		if raw, ok := reqObj.(json.RawMessage); ok {
-			reqBody = []byte(raw)
-		} else {
-			reqBody, err = json.Marshal(reqObj)
-			if err != nil {
-				return fmt.Errorf("marshalling request object as JSON: %w", err)
-			}
-		}
+		reqBody = bytes.NewReader([]byte(raw))
+	} else {
+		// Otherwise, marshal the request as JSON.
+		reqBody = marshalerTo{req: reqObj}
 	}
 
 	// Make API call
