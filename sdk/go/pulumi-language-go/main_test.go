@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -489,7 +488,7 @@ func TestGeneratePackage(t *testing.T) {
 
 	// This is just a simple test that we wrote the doc file. This will be better covered by matrix tests
 	// soon.
-	contents, err := ioutil.ReadFile(filepath.Join(root, "test/doc.go"))
+	contents, err := os.ReadFile(filepath.Join(root, "test/doc.go"))
 	require.NoError(t, err)
 
 	assert.Contains(t, string(contents), "// A test package")
@@ -541,7 +540,7 @@ output "dummyOutput" {
 
 	// This is just a simple test that we wrote a program. This will be better covered by matrix tests
 	// soon.
-	contents, err := ioutil.ReadFile(filepath.Join(root, "main.go"))
+	contents, err := os.ReadFile(filepath.Join(root, "main.go"))
 	require.NoError(t, err)
 
 	assert.Contains(t, string(contents), "dummyOutput")

@@ -14,7 +14,7 @@ TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests
 VERSION         := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
