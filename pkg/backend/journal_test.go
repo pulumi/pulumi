@@ -1,4 +1,4 @@
-package backend
+package backend_test
 
 import (
 	"context"
@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -15,6 +19,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/pgavlin/fx"
 	"github.com/pgavlin/text"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -33,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -528,6 +535,69 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 	}()
 }
 
+type benchmarkServer struct {
+	t          testing.TB
+	p          any
+	totalCalls int
+	totalBytes int64
+}
+
+func newServerPersister(t testing.TB) *benchmarkServer {
+	s := &benchmarkServer{t: t}
+	srv := httptest.NewServer(s)
+	t.Cleanup(srv.Close)
+	p, err := httpstate.NewMockPersister(srv)
+	require.NoError(t, err)
+	s.p = p
+	return s
+}
+
+func (s *benchmarkServer) reset() {
+	s.totalCalls, s.totalBytes = 0, 0
+}
+
+func (s *benchmarkServer) persist(req *http.Request) error {
+	n, err := io.Copy(io.Discard, req.Body)
+	assert.NoError(s.t, err)
+	s.totalCalls, s.totalBytes = s.totalCalls+1, s.totalBytes+n
+	return nil
+}
+
+func (s *benchmarkServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	_, base := path.Split(req.URL.Path)
+	switch base {
+	case "capabilities":
+		resp := apitype.CapabilitiesResponse{Capabilities: []apitype.APICapabilityConfig{{
+			Capability:    apitype.DeltaCheckpointUploads,
+			Configuration: json.RawMessage(`{"checkpointCutoffSizeBytes":0}`),
+		}}}
+		err := json.NewEncoder(w).Encode(resp)
+		assert.NoError(s.t, err)
+	case "checkpointverbatim", "checkpointdelta", "checkpoint", "rebase", "journal":
+		s.persist(req)
+		_, err := w.Write([]byte("{}"))
+		assert.NoError(s.t, err)
+	default:
+		s.t.Errorf("unsupported path %q", req.URL.Path)
+	}
+}
+
+func (s *benchmarkServer) Save(snapshot *deploy.Snapshot) error {
+	return s.p.(backend.SnapshotPersister).Save(snapshot)
+}
+
+func (s *benchmarkServer) SecretsManager() secrets.Manager {
+	return s.p.(backend.SnapshotPersister).SecretsManager()
+}
+
+func (s *benchmarkServer) Rebase(base *apitype.DeploymentV3) error {
+	return s.p.(backend.JournalPersister).Rebase(base)
+}
+
+func (s *benchmarkServer) Append(entry apitype.JournalEntry) error {
+	return s.p.(backend.JournalPersister).Append(entry)
+}
+
 type benchmarkPersister struct {
 	totalCalls int
 	totalBytes int
@@ -569,9 +639,10 @@ func (p *benchmarkPersister) Append(entry apitype.JournalEntry) error {
 func BenchmarkSnapshotPatcher(b *testing.B) {
 	for _, c := range dynamicCases {
 		b.Run(c.getName(), func(b *testing.B) {
-			p := &benchmarkPersister{}
+			//p := &benchmarkPersister{}
+			p := newServerPersister(b)
 			run := c.getRun(b, func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
-				return NewSnapshotManager(p, base)
+				return backend.NewSnapshotManager(p, base)
 			})
 			for i := 0; i < b.N; i++ {
 				p.reset()
@@ -583,9 +654,10 @@ func BenchmarkSnapshotPatcher(b *testing.B) {
 	}
 	for _, c := range recordedCases {
 		b.Run(c.getName(), func(b *testing.B) {
-			p := &benchmarkPersister{}
+			//p := &benchmarkPersister{}
+			p := newServerPersister(b)
 			run := c.getRun(b, func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
-				return NewSnapshotManager(p, base)
+				return backend.NewSnapshotManager(p, base)
 			})
 			for i := 0; i < b.N; i++ {
 				p.reset()
@@ -600,9 +672,10 @@ func BenchmarkSnapshotPatcher(b *testing.B) {
 func BenchmarkSnapshotJournal(b *testing.B) {
 	for _, c := range dynamicCases {
 		b.Run(c.getName(), func(b *testing.B) {
-			p := &benchmarkPersister{}
+			//p := &benchmarkPersister{}
+			p := newServerPersister(b)
 			run := c.getRun(b, func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
-				j, err := NewJournal(p, base, nil)
+				j, err := backend.NewJournal(p, base, nil)
 				require.NoError(t, err)
 				return j
 			})
@@ -616,9 +689,10 @@ func BenchmarkSnapshotJournal(b *testing.B) {
 	}
 	for _, c := range recordedCases {
 		b.Run(c.getName(), func(b *testing.B) {
-			p := &benchmarkPersister{}
+			//p := &benchmarkPersister{}
+			p := newServerPersister(b)
 			run := c.getRun(b, func(t testing.TB, base *deploy.Snapshot) engine.SnapshotManager {
-				j, err := NewJournal(p, base, nil)
+				j, err := backend.NewJournal(p, base, nil)
 				require.NoError(t, err)
 				return j
 			})

@@ -1014,7 +1014,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true, StreamRequest: true})
 }
 
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
@@ -1036,7 +1036,7 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true, StreamRequest: true})
 }
 
 // PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
@@ -1054,7 +1054,16 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true, StreamRequest: true})
+}
+
+func (pc *Client) RebaseUpdate(ctx context.Context, update UpdateIdentifier, base *apitype.DeploymentV3, token UpdateTokenSource) error {
+	req := apitype.RebaseUpdateRequest{
+		Version:    1,
+		Deployment: base,
+	}
+	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "rebase"), nil, req, nil,
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true, StreamRequest: true})
 }
 
 func (pc *Client) AppendJournalEntry(ctx context.Context, update UpdateIdentifier, entry apitype.JournalEntry, token UpdateTokenSource) error {
@@ -1063,7 +1072,7 @@ func (pc *Client) AppendJournalEntry(ctx context.Context, update UpdateIdentifie
 		Entry:   entry,
 	}
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "journal"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true, StreamRequest: true})
 }
 
 // CancelUpdate cancels the indicated update.

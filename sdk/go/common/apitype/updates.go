@@ -273,6 +273,11 @@ type PatchUpdateCheckpointDeltaRequest struct {
 	DeploymentDelta json.RawMessage `json:"deploymentDelta,omitempty"`
 }
 
+type RebaseUpdateRequest struct {
+	Version    int           `json:"version"`
+	Deployment *DeploymentV3 `json:"deployment"`
+}
+
 type AppendJournalEntryRequest struct {
 	Version int          `json:"version"`
 	Entry   JournalEntry `json:"entry"`
