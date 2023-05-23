@@ -1597,7 +1597,7 @@ func issueCheckFailures(printf func(*diag.Diag, ...interface{}), new *resource.S
 func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 	ignoreChanges []string,
 ) (resource.PropertyMap, result.Result) {
-	ignoredInputs := resource.NewObjectProperty(inputs.Copy())
+	ignoredInputs := inputs.Copy()
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
 		path, err := resource.ParsePropertyPath(ignoreChange)
@@ -1605,21 +1605,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 			continue
 		}
 
-		oldValue, hasOld := path.Get(resource.NewObjectProperty(oldInputs))
-		_, hasNew := path.Get(resource.NewObjectProperty(inputs))
-
-		var ok bool
-		switch {
-		case hasOld && hasNew:
-			ok = path.Set(ignoredInputs, oldValue)
-			contract.Assertf(ok, "path.Set cannot fail when the path already exists")
-		case hasOld && !hasNew:
-			ok = path.Set(ignoredInputs, oldValue)
-		case !hasOld && hasNew:
-			ok = path.Delete(ignoredInputs)
-		default:
-			ok = true
-		}
+		ok := path.Reset(oldInputs, ignoredInputs)
 		if !ok {
 			invalidPaths = append(invalidPaths, ignoreChange)
 		}
@@ -1628,7 +1614,7 @@ func processIgnoreChanges(inputs, oldInputs resource.PropertyMap,
 		return nil, result.Errorf("cannot ignore changes to the following properties because one or more elements of "+
 			"the path are missing: %q", strings.Join(invalidPaths, ", "))
 	}
-	return ignoredInputs.ObjectValue(), nil
+	return ignoredInputs, nil
 }
 
 func (sg *stepGenerator) loadResourceProvider(
