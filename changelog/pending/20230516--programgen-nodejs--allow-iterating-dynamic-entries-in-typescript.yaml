@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs
-  description: Allow iterating dynamic entries in TypeScript
