@@ -10,6 +10,10 @@ Fixes # (issue)
 
 ## Checklist
 
+- [ ] I have run `make tidy` to update any new dependencies
+- [ ] I have run `make lint` to verify my code passes the lint check
+  - [ ] I have formatted my code using `gofumpt`
+
 <!--- Please provide details if the checkbox below is to be left unchecked. -->
 - [ ] I have added tests that prove my fix is effective or that my feature works
 <!--- 
