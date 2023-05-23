@@ -214,7 +214,7 @@ func newPreviewCmd() *cobra.Command {
 					DisableProviderPreview:    disableProviderPreview(),
 					DisableResourceReferences: disableResourceReferences(),
 					DisableOutputValues:       disableOutputValues(),
-					UpdateTargets:             deploy.NewUrnTargets(targetURNs),
+					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.

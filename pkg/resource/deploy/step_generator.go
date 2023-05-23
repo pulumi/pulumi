@@ -39,9 +39,6 @@ type stepGenerator struct {
 	deployment *Deployment // the deployment to which this step generator belongs
 	opts       Options     // options for this step generator
 
-	updateTargetsOpt  UrnTargets // the set of resources to update; resources not in this set will be same'd
-	replaceTargetsOpt UrnTargets // the set of resoures to replace
-
 	// signals that one or more errors have been reported to the user, and the deployment should terminate
 	// in error. This primarily allows `preview` to aggregate many policy violation events and
 	// report them all at once.
@@ -76,7 +73,7 @@ type stepGenerator struct {
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
 func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
-	if sg.updateTargetsOpt.Contains(res.URN) {
+	if sg.opts.Targets.Contains(res.URN) {
 		return true
 	} else if !sg.opts.TargetDependents {
 		return false
@@ -85,17 +82,17 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 	if ref := res.Provider; ref != "" {
 		res, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		if sg.updateTargetsOpt.Contains(res.URN()) {
+		if sg.opts.Targets.Contains(res.URN()) {
 			return true
 		}
 	}
 	if res.Parent != "" {
-		if sg.updateTargetsOpt.Contains(res.Parent) {
+		if sg.opts.Targets.Contains(res.Parent) {
 			return true
 		}
 	}
 	for _, dep := range res.Dependencies {
-		if dep != "" && sg.updateTargetsOpt.Contains(dep) {
+		if dep != "" && sg.opts.Targets.Contains(dep) {
 			return true
 		}
 	}
@@ -103,7 +100,7 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN) bool {
-	return sg.replaceTargetsOpt.IsConstrained() && sg.replaceTargetsOpt.Contains(urn)
+	return sg.opts.ReplaceTargets.IsConstrained() && sg.opts.ReplaceTargets.Contains(urn)
 }
 
 func (sg *stepGenerator) Errored() bool {
@@ -306,7 +303,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	// TODO(dixler): `--replace a` currently is treated as a targeted update, but this is not correct.
 	//               Removing `|| sg.replaceTargetsOpt.IsConstrained()` would result in a behavior change
 	//               that would require some thinking to fully understand the repercussions.
-	if !(sg.updateTargetsOpt.IsConstrained() || sg.replaceTargetsOpt.IsConstrained()) {
+	if !(sg.opts.Targets.IsConstrained() || sg.opts.ReplaceTargets.IsConstrained()) {
 		return steps, nil
 	}
 
@@ -618,7 +615,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Resources are targeted by default
 	isTargeted := true
-	if sg.updateTargetsOpt.IsConstrained() && isUserResource {
+	if sg.opts.Targets.IsConstrained() && isUserResource {
 		isTargeted = sg.isTargetedForUpdate(new)
 	}
 
@@ -797,7 +794,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 
 	if isTargeted {
-		sg.updateTargetsOpt.addLiteral(urn)
+		// Transitive dependencies are not initially targeted, ensure that they are in the Targets so that the
+		// deployment_executor identifies that the URN is targeted if applicable
+		sg.opts.Targets.addLiteral(urn)
 	}
 
 	// Case 3: hasOld
@@ -1981,8 +1980,6 @@ func newStepGenerator(
 	return &stepGenerator{
 		deployment:           deployment,
 		opts:                 opts,
-		updateTargetsOpt:     updateTargetsOpt,
-		replaceTargetsOpt:    replaceTargetsOpt,
 		urns:                 make(map[resource.URN]bool),
 		reads:                make(map[resource.URN]bool),
 		creates:              make(map[resource.URN]bool),

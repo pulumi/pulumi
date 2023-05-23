@@ -1685,7 +1685,7 @@ func TestResoucesTargeted(t *testing.T) {
 		Host:         host,
 		Experimental: true,
 		GeneratePlan: true,
-		UpdateTargets: deploy.NewUrnTargets([]string{
+		Targets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resB",
 		}),
 	}, p.BackendClient, nil)
@@ -1702,13 +1702,13 @@ func TestResoucesTargeted(t *testing.T) {
 	}, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 
-	// Check that running an update with the same UpdateTargets as the Plan succeeds.
+	// Check that running an update with the same Targets as the Plan succeeds.
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
 		// Clone the plan as the plan will be mutated by the engine and useless in future runs.
 		Plan:         plan.Clone(),
 		Host:         host,
 		Experimental: true,
-		UpdateTargets: deploy.NewUrnTargets([]string{
+		Targets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resB",
 		}),
 	}, false, p.BackendClient, nil)
@@ -1754,7 +1754,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 		Host:         p.Options.Host,
 		Experimental: true,
 		GeneratePlan: true,
-		UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+		Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 			resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 		}),
 	}, p.BackendClient, nil)
@@ -1766,7 +1766,7 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 		Host:         p.Options.Host,
 		GeneratePlan: true,
 		Experimental: true,
-		UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+		Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 			resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"),
 		}),
 	}, false, p.BackendClient, nil)

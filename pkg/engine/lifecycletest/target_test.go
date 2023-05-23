@@ -122,7 +122,7 @@ func destroySpecificTargets(
 		destroyTargets = append(destroyTargets, pickURN(t, urns, complexTestDependencyGraphNames, target))
 	}
 
-	p.Options.DestroyTargets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -142,7 +142,7 @@ func destroySpecificTargets(
 				deleted[entry.Step.URN()] = true
 			}
 
-			for _, target := range p.Options.DestroyTargets.Literals() {
+			for _, target := range p.Options.Targets.Literals() {
 				assert.Contains(t, deleted, target)
 			}
 
@@ -232,7 +232,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 			string(pickURN(t, urns, complexTestDependencyGraphNames, target)))
 	}
 
-	p.Options.UpdateTargets = deploy.NewUrnTargets(updateTargets)
+	p.Options.Targets = deploy.NewUrnTargets(updateTargets)
 	t.Logf("Updating targets: %v", updateTargets)
 
 	p.Steps = []TestStep{{
@@ -256,13 +256,13 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				}
 			}
 
-			for _, target := range p.Options.UpdateTargets.Literals() {
+			for _, target := range p.Options.Targets.Literals() {
 				assert.Contains(t, updated, target)
 			}
 
 			if !targetDependents {
 				// We should only perform updates on the entries we have targeted.
-				for _, target := range p.Options.UpdateTargets.Literals() {
+				for _, target := range p.Options.Targets.Literals() {
 					assert.Contains(t, targets, target.Name().String())
 				}
 			} else {
@@ -282,7 +282,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 				assert.True(t, found, "Updates: %v", updateList)
 			}
 
-			for _, target := range p.Options.UpdateTargets.Literals() {
+			for _, target := range p.Options.Targets.Literals() {
 				assert.NotContains(t, sames, target)
 			}
 			if expectedUpdates > -1 {
@@ -334,8 +334,8 @@ func updateInvalidTarget(t *testing.T) {
 
 	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
 
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{"foo"})
-	t.Logf("Updating invalid targets: %v", p.Options.UpdateTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{"foo"})
+	t.Logf("Updating invalid targets: %v", p.Options.Targets)
 
 	p.Steps = []TestStep{{
 		Op:            Update,
@@ -383,7 +383,7 @@ func TestCreateDuringTargetedUpdate_CreateMentionedAsTarget(t *testing.T) {
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 	resB := p.NewURN("pkgA:m:typA", "resB", "")
 	p.Options.Host = host2
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA, resB})
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA, resB})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -445,7 +445,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateNotReferenced(t *testing.T) 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -509,7 +509,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByTarget(t *testin
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -564,7 +564,7 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 
 	resA := p.NewURN("pkgA:m:typA", "resA", "")
 
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -618,7 +618,7 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByUntargetedCreate
 	host2 := deploytest.NewPluginHost(nil, nil, program2, loaders...)
 
 	p.Options.Host = host2
-	p.Options.UpdateTargets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
 		Op:            Update,
 		ExpectFailure: false,
@@ -918,7 +918,7 @@ func destroySpecificTargetsWithChildren(
 		destroyTargets = append(destroyTargets, pickURN(t, urns, componentBasedTestDependencyGraphNames, target))
 	}
 
-	p.Options.DestroyTargets = deploy.NewUrnTargetsFromUrns(destroyTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(destroyTargets)
 	t.Logf("Destroying targets: %v", destroyTargets)
 
 	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
@@ -938,7 +938,7 @@ func destroySpecificTargetsWithChildren(
 				deleted[entry.Step.URN()] = true
 			}
 
-			for _, target := range p.Options.DestroyTargets.Literals() {
+			for _, target := range p.Options.Targets.Literals() {
 				assert.Contains(t, deleted, target)
 			}
 
@@ -1003,7 +1003,7 @@ func TestTargetedCreateDefaultProvider(t *testing.T) {
 	// Check that update succeeds despite the default provider not being targeted.
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
 		Host: host,
-		UpdateTargets: deploy.NewUrnTargets([]string{
+		Targets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resA",
 		}),
 	}, false, p.BackendClient, nil)
@@ -1085,7 +1085,7 @@ func TestEnsureUntargetedSame(t *testing.T) {
 	// Target only `resA` and run a targeted update.
 	finalSnap, res := TestOp(Update).Run(project, p.GetTarget(t, origSnap), UpdateOptions{
 		Host: host,
-		UpdateTargets: deploy.NewUrnTargets([]string{
+		Targets: deploy.NewUrnTargets([]string{
 			"urn:pulumi:test::test::pkgA:m:typA::resA",
 		}),
 	}, false, p.BackendClient, nil)
@@ -1180,7 +1180,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			GeneratePlan: true,
 
 			// `--target-replace a` means ReplaceTargets and UpdateTargets are both set for a.
-			UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+			Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 				urnA,
 			}),
 			ReplaceTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
@@ -1261,7 +1261,7 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 			Experimental: true,
 			GeneratePlan: true,
 
-			UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+			Targets: deploy.NewUrnTargetsFromUrns([]resource.URN{
 				urnB,
 			}),
 			ReplaceTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{

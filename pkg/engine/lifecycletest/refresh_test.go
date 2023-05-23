@@ -336,7 +336,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		refreshTargets = append(refreshTargets, pickURN(t, urns, names, target))
 	}
 
-	p.Options.RefreshTargets = deploy.NewUrnTargetsFromUrns(refreshTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
@@ -496,10 +496,10 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 	refreshTargets := []resource.URN{}
 
 	for _, target := range targets {
-		refreshTargets = append(p.Options.RefreshTargets.Literals(), pickURN(t, urns, names, target))
+		refreshTargets = append(p.Options.Targets.Literals(), pickURN(t, urns, names, target))
 	}
 
-	p.Options.RefreshTargets = deploy.NewUrnTargetsFromUrns(refreshTargets)
+	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
 	newResource := func(urn resource.URN, id resource.ID, delete bool, dependencies ...resource.URN) *resource.State {
 		return &resource.State{
