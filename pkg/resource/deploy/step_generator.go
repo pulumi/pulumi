@@ -72,10 +72,6 @@ type stepGenerator struct {
 	aliases map[resource.URN]resource.URN
 }
 
-func (sg *stepGenerator) isTargetedUpdate() bool {
-	return sg.updateTargetsOpt.IsConstrained() || sg.replaceTargetsOpt.IsConstrained()
-}
-
 // isTargetedForUpdate returns if `res` is targeted for update. The function accommodates
 // `--target-dependents`. `targetDependentsForUpdate` should probably be called if this function
 // returns true.
@@ -307,7 +303,10 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 	}
 
-	if !sg.isTargetedUpdate() {
+	// TODO(dixler): `--replace a` currently is treated as a targeted update, but this is not correct.
+	//               Removing `|| sg.replaceTargetsOpt.IsConstrained()` would result in a behavior change
+	//               that would require some thinking to fully understand the repercussions.
+	if !(sg.updateTargetsOpt.IsConstrained() || sg.replaceTargetsOpt.IsConstrained()) {
 		return steps, nil
 	}
 
@@ -619,17 +618,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Resources are targeted by default
 	isTargeted := true
-	if sg.isTargetedUpdate() && isUserResource {
-		if !sg.replaceTargetsOpt.IsConstrained() {
-			// Not a replace, so check if the resource is targeted for an update.
-			isTargeted = sg.isTargetedForUpdate(new)
-		} else if !sg.updateTargetsOpt.IsConstrained() {
-			// Not an update, so check if the resource is targeted for a replace.
-			isTargeted = sg.isTargetedReplace(urn)
-		} else {
-			return nil, result.Error(
-				"update is marked constrained, but is not constrained to an update or a replace")
-		}
+	if sg.updateTargetsOpt.IsConstrained() && isUserResource {
+		isTargeted = sg.isTargetedForUpdate(new)
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.

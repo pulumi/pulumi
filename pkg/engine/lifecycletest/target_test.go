@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1100,4 +1101,196 @@ func TestEnsureUntargetedSame(t *testing.T) {
 
 		assert.Equal(t, initialState, finalState)
 	}
+}
+
+// TestReplaceSpecificTargetsPlan checks combinations of --target and --replace for expected behavior.
+func TestReplaceSpecificTargetsPlan(t *testing.T) {
+	t.Parallel()
+
+	p := &TestPlan{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	// Initial state
+	fooVal := "bar"
+
+	// Don't try to create resB yet.
+	createResB := false
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		stackURN, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewStringProperty(fooVal),
+			},
+			ReplaceOnChanges: []string{"foo"},
+		})
+		assert.NoError(t, err)
+
+		if createResB {
+			// Now try to create resB which is not targeted and should show up in the plan.
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"foo": resource.NewStringProperty(fooVal),
+				},
+			})
+			assert.NoError(t, err)
+		}
+
+		err = monitor.RegisterResourceOutputs(stackURN, resource.PropertyMap{
+			"foo": resource.NewStringProperty(fooVal),
+		})
+
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	project := p.GetProject()
+
+	old, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host: p.Options.Host,
+	}, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Configure next update.
+	fooVal = "changed-from-bar" // This triggers a replace
+
+	// Now try to create resB.
+	createResB = true
+
+	urnA := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")
+	urnB := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resB")
+
+	// `--target-replace a`
+	t.Run("EnsureUntargetedIsSame", func(t *testing.T) {
+		t.Parallel()
+		// Create the update plan with only targeted resources.
+		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), UpdateOptions{
+			Host:         p.Options.Host,
+			Experimental: true,
+			GeneratePlan: true,
+
+			// `--target-replace a` means ReplaceTargets and UpdateTargets are both set for a.
+			UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+				urnA,
+			}),
+			ReplaceTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+				urnA,
+			}),
+		}, p.BackendClient, nil)
+		assert.Nil(t, res)
+		assert.NotNil(t, plan)
+
+		// Ensure resB is in the plan.
+		foundResB := false
+		for _, r := range plan.ResourcePlans {
+			if r.Goal == nil {
+				continue
+			}
+			switch r.Goal.Name {
+			case "resB":
+				foundResB = true
+				// Ensure resB is created in the plan.
+				assert.Equal(t, []display.StepOp{
+					deploy.OpSame,
+				}, r.Ops)
+			}
+		}
+		assert.True(t, foundResB, "resB should be in the plan")
+	})
+
+	// `--replace a`
+	t.Run("EnsureReplaceTargetIsReplacedAndNotTargeted", func(t *testing.T) {
+		t.Parallel()
+		// Create the update plan with only targeted resources.
+		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), UpdateOptions{
+			Host:         p.Options.Host,
+			Experimental: true,
+			GeneratePlan: true,
+
+			// `--replace a` means ReplaceTargets is set. It is not a targeted update.
+			// Both a and b should be changed.
+			ReplaceTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+				urnA,
+			}),
+		}, p.BackendClient, nil)
+		assert.Nil(t, res)
+		assert.NotNil(t, plan)
+
+		foundResA := false
+		foundResB := false
+		for _, r := range plan.ResourcePlans {
+			if r.Goal == nil {
+				continue
+			}
+			switch r.Goal.Name {
+			case "resA":
+				foundResA = true
+				assert.Equal(t, []display.StepOp{
+					deploy.OpCreateReplacement,
+					deploy.OpReplace,
+					deploy.OpDeleteReplaced,
+				}, r.Ops)
+			case "resB":
+				foundResB = true
+				assert.Equal(t, []display.StepOp{
+					deploy.OpCreate,
+				}, r.Ops)
+			}
+		}
+		assert.True(t, foundResA, "resA should be in the plan")
+		assert.True(t, foundResB, "resB should be in the plan")
+	})
+
+	// `--replace a --target b`
+	// This is a targeted update where the `--replace a` is irrelevant as a is not targeted.
+	t.Run("EnsureUntargetedReplaceTargetIsNotReplaced", func(t *testing.T) {
+		t.Parallel()
+		// Create the update plan with only targeted resources.
+		plan, res := TestOp(Update).Plan(project, p.GetTarget(t, old), UpdateOptions{
+			Host:         p.Options.Host,
+			Experimental: true,
+			GeneratePlan: true,
+
+			UpdateTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+				urnB,
+			}),
+			ReplaceTargets: deploy.NewUrnTargetsFromUrns([]resource.URN{
+				urnA,
+			}),
+		}, p.BackendClient, nil)
+		assert.Nil(t, res)
+		assert.NotNil(t, plan)
+
+		foundResA := false
+		foundResB := false
+		for _, r := range plan.ResourcePlans {
+			if r.Goal == nil {
+				continue
+			}
+			switch r.Goal.Name {
+			case "resA":
+				foundResA = true
+				assert.Equal(t, []display.StepOp{
+					deploy.OpSame,
+				}, r.Ops)
+			case "resB":
+				foundResB = true
+				assert.Equal(t, []display.StepOp{
+					deploy.OpCreate,
+				}, r.Ops)
+			}
+		}
+		assert.True(t, foundResA, "resA should be in the plan")
+		assert.True(t, foundResB, "resB should be in the plan")
+	})
 }
