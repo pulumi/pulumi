@@ -72,6 +72,52 @@ func TestNoEmitExitStatus(t *testing.T) {
 	})
 }
 
+func TestPanickingProgram(t *testing.T) {
+	var stderr bytes.Buffer
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "program-panic"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Stderr:        &stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		SkipRefresh:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Contains(t, stderr.String(), "panic: great sadness\n")
+		},
+	})
+}
+
+func TestPanickingComponentConfigure(t *testing.T) {
+	var (
+		testDir      = filepath.Join("go", "component-configure-panic")
+		componentDir = "testcomponent-go"
+	)
+	runComponentSetup(t, testDir)
+
+	var stderr bytes.Buffer
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("go", "component-configure-panic", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{
+				Package: "testcomponent",
+				Path:    filepath.Join(testDir, componentDir),
+			},
+		},
+		Stderr:        &stderr,
+		ExpectFailure: true,
+		Quick:         true,
+		SkipRefresh:   true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Contains(t, stderr.String(), "panic: great sadness\n")
+		},
+	})
+}
+
 // This checks that error logs are not being emitted twice
 func TestNoLogError(t *testing.T) {
 	stdout := &bytes.Buffer{}
