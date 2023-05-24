@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	uuid "github.com/gofrs/uuid"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -77,14 +77,19 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	// Since we're planning to read the name of the output from stdout, we create
 	// a substitute buffer to intercept it.
 
-	// generate a new uuid, to be used in the naming of the file.
-	// TODO: We should probably prefer a os.tmpfile instead of recreating
-	// the OS's functionality.
-	uuid, err := uuid.NewV4()
+	// Create a tmpfile to write the tarball to.
+	// It will have the form "pulumi-tarball-12345.tgz", where 12345
+	// is a random string chosen by Go.
+	tmpfile, err := os.CreateTemp("", "pulumi-tarball-*.tgz")
 	if err != nil {
 		return nil, err
 	}
-	packfile := fmt.Sprintf("%s.tgz", uuid.String())
+	packfile := tmpfile.Name()
+	// Clean up the tarball after we're done here.
+	defer func() {
+		contract.IgnoreError(tmpfile.Close())
+		contract.IgnoreError(os.Remove(packfile))
+	}()
 
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, yarn.executable, "pack", "--filename", packfile)
@@ -95,8 +100,6 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 		return nil, err
 	}
 
-	// Clean up the tarball after we've read it.
-	defer os.Remove(packfile)
 	// Read the tarball in as a byte slice.
 	tarball, err := os.ReadFile(packfile)
 	if err != nil {
