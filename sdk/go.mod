@@ -42,6 +42,7 @@ require (
 require (
 	github.com/go-git/go-git/v5 v5.6.0
 	github.com/hashicorp/hcl/v2 v2.16.1
+	github.com/petar-dambovaliev/aho-corasick v0.0.0-00010101000000-000000000000
 	github.com/pkg/term v1.1.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	golang.org/x/term v0.5.0
@@ -92,3 +93,5 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/petar-dambovaliev/aho-corasick => github.com/pgavlin/aho-corasick v0.0.0-20230524191112-b3bbf30f7b70

@@ -546,7 +546,7 @@ func newServerPersister(t testing.TB) *benchmarkServer {
 	s := &benchmarkServer{t: t}
 	srv := httptest.NewServer(s)
 	t.Cleanup(srv.Close)
-	p, err := httpstate.NewMockPersister(srv)
+	p, err := httpstate.NewMockPersister(srv, b64.NewBase64SecretsManager())
 	require.NoError(t, err)
 	s.p = p
 	return s

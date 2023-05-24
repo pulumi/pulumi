@@ -47,7 +47,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 	return tsf()
 }
 
-func NewMockPersister(server *httptest.Server) (backend.SnapshotPersister, error) {
+func NewMockPersister(server *httptest.Server, sm secrets.Manager) (backend.SnapshotPersister, error) {
 	newMockTokenSource := func() tokenSourceCapability {
 		return tokenSourceFn(func() (string, error) {
 			return "token", nil
@@ -64,7 +64,7 @@ func NewMockPersister(server *httptest.Server) (backend.SnapshotPersister, error
 		StackIdentifier: client.StackIdentifier{Owner: "owner", Project: "project", Stack: "stack"},
 		UpdateKind:      "update",
 		UpdateID:        "update",
-	}, newMockTokenSource(), nil), nil
+	}, newMockTokenSource(), sm), nil
 }
 
 func (persister *cloudSnapshotPersister) SecretsManager() secrets.Manager {
