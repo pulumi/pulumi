@@ -345,4 +345,41 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.DynamicType,
 	}),
+	// Returns either the single item in a list, none if the list is empty or errors.
+	"singleOrNone": model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diagnostics hcl.Diagnostics
+
+			valueType := model.Type(model.DynamicType)
+			if len(args) == 1 {
+				valueType = args[0].Type()
+			} else {
+				diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+					Severity: hcl.DiagError,
+					Summary:  "'singleOrNone' only expects one argument",
+				}}
+			}
+
+			switch valueType := model.ResolveOutputs(valueType).(type) {
+			case *model.ListType, *model.TupleType:
+				// OK
+			default:
+				if valueType != model.DynamicType {
+					rng := args[0].SyntaxNode().Range()
+					diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "the first argument to 'singleOrNone' must be a list or tuple",
+						Subject:  &rng,
+					}}
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{{
+					Name: "value",
+					Type: valueType,
+				}},
+				ReturnType: model.NewOptionalType(valueType),
+			}, diagnostics
+		})),
 }
