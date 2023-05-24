@@ -150,6 +150,7 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 		if diag.Subject != nil {
 			start = diag.Subject.Start
 			end = diag.Subject.End
+			componentSourceDir = filepath.Join(componentSourceDir, diag.Subject.Filename)
 		}
 
 		diag.Subject = &hcl.Range{
