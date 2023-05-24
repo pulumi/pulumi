@@ -3,7 +3,7 @@ package npm
 import (
 	"bytes"
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -11,26 +11,26 @@ import (
 )
 
 // NPM is the canonical "Node Package Manager".
-type npm struct {
+type npmManager struct {
 	executable string
 }
 
 // Assert that NPM is an instance of PackageManager.
-var _ PackageManager = &npm{}
+var _ PackageManager = &npmManager{}
 
-func newNPM() (*npm, error) {
+func newNPM() (*npmManager, error) {
 	npmPath, err := exec.LookPath("npm")
-	instance := &npm{
+	instance := &npmManager{
 		executable: npmPath,
 	}
 	return instance, err
 }
 
-func (node *npm) Name() string {
+func (node *npmManager) Name() string {
 	return "npm"
 }
 
-func (node *npm) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
+func (node *npmManager) Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error {
 	command := node.installCmd(ctx, production)
 	command.Dir = dir
 	command.Stdout = stdout
@@ -38,7 +38,7 @@ func (node *npm) Install(ctx context.Context, dir string, production bool, stdou
 	return command.Run()
 }
 
-func (node *npm) installCmd(ctx context.Context, production bool) *exec.Cmd {
+func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
 	// `description`, `repository`, and `license` fields in the package.json file.
 	args := []string{"install", "--loglevel=error"}
@@ -51,7 +51,7 @@ func (node *npm) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	return exec.CommandContext(ctx, node.executable, args...)
 }
 
-func (node *npm) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
+func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
 	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error")
 	command.Dir = dir
@@ -72,7 +72,7 @@ func (node *npm) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte
 
 	packTarball, err := os.ReadFile(packfile)
 	if err != nil {
-		newErr := errors.New("`npm pack` completed successfully but the package .tgz file was not generated")
+		newErr := fmt.Errorf("'npm pack' completed successfully but the package .tgz file was not generated: %v", err)
 		return nil, newErr
 	}
 

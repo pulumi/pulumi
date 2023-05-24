@@ -19,8 +19,7 @@ import (
 // The language host will dynamically dispatch to an instance of PackageManager
 // in response to RPC requests.
 type PackageManager interface {
-	// Install will install dependencies, and return the name of the package manager that performed
-	// the installation. This value is the name as the `Name()` method.
+	// Install will install dependencies with the given package manager.
 	Install(ctx context.Context, dir string, production bool, stdout, stderr io.Writer) error
 	Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error)
 	// Name is the name of the binary executable used to invoke this package manager.
@@ -61,10 +60,11 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	//     Yarn with Plug'n'Play enabled won't produce a node_modules directory,
 	//     either for Yarn Classic or Yarn Berry.
 	nodeModulesPath := filepath.Join(dir, "node_modules")
-	if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
-		return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
-	} else if err != nil {
-		// If the node_modules dir exists but we can't stat it, we might be able to procede
+	if _, err := os.Stat(nodeModulesPath); err != nil {
+		if os.IsNotExist(err) {
+			return name, fmt.Errorf("%s install reported success, but node_modules directory is missing", name)
+		}
+		// If the node_modules dir exists but we can't stat it, we might be able to proceed
 		// without issue, but it's bizarre enough that we should warn.
 		logging.Warningf("failed to read node_modules metadata: %v", err)
 	}

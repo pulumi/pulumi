@@ -29,7 +29,7 @@ func newYarnClassic() (*yarnClassic, error) {
 	return yarn, err
 }
 
-func (node *yarnClassic) Name() string {
+func (yarn *yarnClassic) Name() string {
 	return "yarn"
 }
 
@@ -98,7 +98,12 @@ func (yarn *yarnClassic) Pack(ctx context.Context, dir string, stderr io.Writer)
 	// Clean up the tarball after we've read it.
 	defer os.Remove(packfile)
 	// Read the tarball in as a byte slice.
-	return os.ReadFile(packfile)
+	tarball, err := os.ReadFile(packfile)
+	if err != nil {
+		return nil, fmt.Errorf("'yarn pack' completed successfully but the packed .tgz file was not generated: %v", err)
+	}
+
+	return tarball, nil
 }
 
 // checkYarnLock checks if there's a file named yarn.lock in pwd.
