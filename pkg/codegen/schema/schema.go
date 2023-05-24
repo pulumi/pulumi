@@ -1342,7 +1342,7 @@ func (pkg *Package) marshalTypeRef(container PackageReference, section, token st
 	}
 
 	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
-	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name(), container.Version(), section, token)
+	return fmt.Sprintf("/%s/v%v/schema.json#/%s/%s", container.Name(), container.Version(), section, token)
 }
 
 func marshalLanguage(lang map[string]interface{}) (map[string]RawMessage, error) {
