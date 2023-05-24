@@ -135,7 +135,29 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()))
 
+		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
+
 		return componentProgram, programDiags, err
+	}
+}
+
+// Replaces the Subject of the input diagnostics from just a file name to the full path of the component directory.
+func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceDir string) {
+	for _, diag := range diags {
+		start := hcl.Pos{}
+		end := hcl.Pos{}
+
+		if diag.Subject != nil {
+			start = diag.Subject.Start
+			end = diag.Subject.End
+			componentSourceDir = filepath.Join(componentSourceDir, diag.Subject.Filename)
+		}
+
+		diag.Subject = &hcl.Range{
+			Filename: componentSourceDir,
+			Start:    start,
+			End:      end,
+		}
 	}
 }
 
