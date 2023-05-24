@@ -84,3 +84,16 @@ func TestFilter(t *testing.T) {
 		"These are my secrets: [secret]",
 		msg6)
 }
+
+func TestGlobalFilter(t *testing.T) {
+	t.Parallel()
+
+	CreateGlobalFilter([]string{"secret1", "secret2"}, "[secret]")
+	msg1 := FilterString("These are my secrets: secret1, secret2, secret3, secret10")
+	assert.Equal(t, "These are my secrets: [secret], [secret], secret3, [secret]0", msg1)
+
+	CreateGlobalFilter([]string{"creds1", "creds2"}, "[credentials]")
+	msg2 := FilterString("These are my secrets: secret1, secret2, secret3, secret10, creds1, creds2, creds")
+	assert.Equal(t,
+		"These are my secrets: [secret], [secret], secret3, [secret]0, [credentials], [credentials], creds", msg2)
+}
