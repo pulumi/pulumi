@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/plugin
+  description: Plugin install auto-fills the download URL for some known third-party plugins.
