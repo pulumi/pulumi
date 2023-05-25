@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -103,6 +104,12 @@ func newPluginInstallCmd() *cobra.Command {
 					Version:           version,
 					PluginDownloadURL: serverURL, // If empty, will use default plugin source.
 					Checksums:         checksums,
+				}
+
+				// Try and set known plugin download URLs
+				if urlSet := util.SetKnownPluginDownloadURL(&pluginSpec); urlSet {
+					cmdutil.Diag().Infof(
+						diag.Message("", "Plugin download URL set to %s"), pluginSpec.PluginDownloadURL)
 				}
 
 				// If we don't have a version try to look one up

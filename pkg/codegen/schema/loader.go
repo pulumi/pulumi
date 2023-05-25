@@ -28,6 +28,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/segmentio/encoding/json"
 
+	"github.com/pulumi/pulumi/pkg/v3/util"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -210,11 +212,14 @@ func LoadPackageReference(loader Loader, pkg string, version *semver.Version) (P
 }
 
 func (l *pluginLoader) loadSchemaBytes(pkg string, version *semver.Version) ([]byte, *semver.Version, error) {
-	err := l.host.InstallPlugin(workspace.PluginSpec{
+	spec := workspace.PluginSpec{
 		Kind:    workspace.ResourcePlugin,
 		Name:    pkg,
 		Version: version,
-	})
+	}
+	util.SetKnownPluginDownloadURL(&spec)
+
+	err := l.host.InstallPlugin(spec)
 	if err != nil {
 		return nil, nil, err
 	}
