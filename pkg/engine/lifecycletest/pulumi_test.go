@@ -1185,7 +1185,9 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": map[string]interface{}{
 			"c": "foo",
 		},
-	}), []string{"a", "b.c"}, []display.StepOp{deploy.OpCreate})
+		"d": []interface{}{1},
+		"e": []interface{}{1},
+	}), []string{"a", "b.c", "d", "e[0]"}, []display.StepOp{deploy.OpCreate})
 
 	// Ensure that a change to an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1193,7 +1195,9 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": map[string]interface{}{
 			"c": "bar",
 		},
-	}), []string{"a", "b.c"}, []display.StepOp{deploy.OpSame})
+		"d": []interface{}{2},
+		"e": []interface{}{2},
+	}), []string{"a", "b.c", "d", "e[0]"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1201,13 +1205,19 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": map[string]interface{}{
 			"c": "qux",
 		},
+		"d": []interface{}{3},
+		"e": []interface{}{3},
 	}), nil, []display.StepOp{deploy.OpUpdate})
 
 	// Ensure that a removing an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.PropertyMap{}, []string{"a", "b"}, []display.StepOp{deploy.OpSame})
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"e": []interface{}{},
+	}), []string{"a", "b", "d", "e"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.PropertyMap{}, nil, []display.StepOp{deploy.OpUpdate})
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"e": []interface{}{},
+	}), nil, []display.StepOp{deploy.OpUpdate})
 
 	// Ensure that adding an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -1215,12 +1225,15 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		"b": map[string]interface{}{
 			"c": "zed",
 		},
-	}), []string{"a", "b"}, []display.StepOp{deploy.OpSame})
+		"d": []interface{}{4},
+		"e": []interface{}{},
+	}), []string{"a", "b", "d", "e[0]"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
-	_ = updateProgramWithProps(snap, resource.PropertyMap{
-		"c": resource.NewNumberProperty(4),
-	}, []string{"a", "b"}, []display.StepOp{deploy.OpUpdate})
+	_ = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"e": []interface{}{},
+		"f": 4,
+	}), []string{"a", "b", "d", "e"}, []display.StepOp{deploy.OpUpdate})
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {
@@ -1264,6 +1277,20 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"foo.bar"},
+		})
+		assert.Error(t, err)
+		return nil
+	}
+
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	program = func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"qux": resource.NewArrayProperty([]resource.PropertyValue{}),
+			},
+			IgnoreChanges: []string{"qux[0]"},
 		})
 		assert.Error(t, err)
 		return nil
