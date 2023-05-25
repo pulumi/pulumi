@@ -226,7 +226,7 @@ func measureText(s string) int {
 	i := iterator{s}
 	var text, directive string
 	for i.next(&text, &directive) {
-		width += uniseg.GraphemeClusterCount(text)
+		width += uniseg.StringWidth(text)
 	}
 
 	return width
@@ -236,9 +236,9 @@ func clampString(s string, maxWidth int) string {
 	width, end := 0, 0
 
 	graphemes := uniseg.NewGraphemes(s)
-	for width < maxWidth && graphemes.Next() {
+	for graphemes.Next() && graphemes.Width() <= maxWidth-width {
 		_, end = graphemes.Positions()
-		width++
+		width += graphemes.Width()
 	}
 
 	return s[:end]
