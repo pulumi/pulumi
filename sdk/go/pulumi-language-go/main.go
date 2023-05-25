@@ -887,7 +887,10 @@ func (host *goLanguageHost) GenerateProgram(
 	}
 
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, pdiags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.DirPath(req.Source),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 	if err != nil {
 		return nil, err
 	}
