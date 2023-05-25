@@ -32,17 +32,21 @@ import (
 
 	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// chdir temporarily changes the current directory of the program.
+// It restores it to the original directory when the test is done.
 func chdir(t *testing.T, dir string) {
 	cwd, err := os.Getwd()
-	assert.NoError(t, err)
-	assert.NoError(t, os.Chdir(dir)) // Set directory
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(dir)) // Set directory
 	t.Cleanup(func() {
-		assert.NoError(t, os.Chdir(cwd)) // Restore directory
+		require.NoError(t, os.Chdir(cwd)) // Restore directory
 		restoredDir, err := os.Getwd()
-		assert.NoError(t, err)
-		assert.Equal(t, cwd, restoredDir)
+		if assert.NoError(t, err) {
+			assert.Equal(t, cwd, restoredDir)
+		}
 	})
 }
 
