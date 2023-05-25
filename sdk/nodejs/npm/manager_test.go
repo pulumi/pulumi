@@ -52,15 +52,26 @@ func chdir(t *testing.T, dir string) {
 
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestNPMInstall(t *testing.T) {
-	testInstall(t, "npm", false /*production*/)
-	testInstall(t, "npm", true /*production*/)
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "npm", false /*production*/)
+	})
+
+	t.Run("production", func(t *testing.T) {
+		testInstall(t, "npm", true /*production*/)
+	})
 }
 
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestYarnInstall(t *testing.T) {
 	t.Setenv("PULUMI_PREFER_YARN", "true")
-	testInstall(t, "yarn", false /*production*/)
-	testInstall(t, "yarn", true /*production*/)
+
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "yarn", false /*production*/)
+	})
+
+	t.Run("production", func(t *testing.T) {
+		testInstall(t, "yarn", true /*production*/)
+	})
 }
 
 func testInstall(t *testing.T, expectedBin string, production bool) {
