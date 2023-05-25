@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix ignoreChanges setting ignore array indexes to zero.

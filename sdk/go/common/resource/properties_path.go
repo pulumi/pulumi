@@ -248,11 +248,7 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 	key := p[len(p)-1]
 	switch {
 	case dest.IsArray():
-		index, ok := key.(int)
-		if !ok || index < 0 || index >= len(dest.ArrayValue()) {
-			return false
-		}
-		dest.ArrayValue()[index] = PropertyValue{}
+		return false
 	case dest.IsObject():
 		k, ok := key.(string)
 		if !ok {

@@ -1310,6 +1310,23 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
+
+	program = func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"qux": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("zed"),
+					resource.NewStringProperty("zob"),
+				}),
+			},
+			IgnoreChanges: []string{"qux[1]"},
+		})
+		assert.Error(t, err)
+		return nil
+	}
+
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
 }
 
 type DiffFunc = func(urn resource.URN, id resource.ID,
