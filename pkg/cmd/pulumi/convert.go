@@ -30,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -271,8 +270,6 @@ func runConvert(
 	switch language {
 	case "dotnet":
 		projectGenerator = wrapper(dotnet.GenerateProject)
-	case "nodejs":
-		projectGenerator = wrapper(nodejs.GenerateProject)
 	case "python":
 		projectGenerator = wrapper(python.GenerateProject)
 	case "java":

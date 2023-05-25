@@ -52,7 +52,6 @@ import (
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
@@ -609,8 +608,6 @@ func newImportCmd() *cobra.Command {
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				programGenerator = dotnet.GenerateProgram
-			case "nodejs":
-				programGenerator = nodejs.GenerateProgram
 			case "python":
 				programGenerator = python.GenerateProgram
 			case "java":
