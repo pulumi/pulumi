@@ -18,6 +18,14 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 			`%sfunction notImplemented(message: string) {
 %s    throw new Error(message);
 %s}`, indent, indent, indent), true
+	case "singleOrNone":
+		return fmt.Sprintf(
+			`%sfunction singleOrNone<T>(elements: pulumi.Input<T>[]): pulumi.Input<T> | undefined {
+%s    if (elements.length == 1) {
+%s        return elements[0];
+%s    }
+%s    return undefined;
+%s}`, indent, indent, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}

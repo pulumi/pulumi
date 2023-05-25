@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -163,29 +162,13 @@ func TestWritingProgramSource(t *testing.T) {
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }
 
-func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
-	parser := syntax.NewParser()
-	err := parser.ParseFile(strings.NewReader(text), name)
-	if err != nil {
-		t.Fatalf("could not read %v: %v", name, err)
-	}
-	if parser.Diagnostics.HasErrors() {
-		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
-	}
-
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
-
-	program, diags, err := pcl.BindProgram(parser.Files, options...)
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
-	return program, diags
-}
-
 func TestConfigNodeTypedString(t *testing.T) {
 	t.Parallel()
 	source := "config cidrBlock string { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -198,7 +181,10 @@ func TestConfigNodeTypedString(t *testing.T) {
 func TestConfigNodeTypedOptionalString(t *testing.T) {
 	t.Parallel()
 	source := "config cidrBlock string { default = null }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -214,7 +200,10 @@ func TestConfigNodeTypedOptionalString(t *testing.T) {
 func TestConfigNodeTypedInt(t *testing.T) {
 	t.Parallel()
 	source := "config count int { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -227,7 +216,10 @@ func TestConfigNodeTypedInt(t *testing.T) {
 func TestConfigNodeTypedStringList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(string)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -242,7 +234,10 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -257,7 +252,10 @@ func TestConfigNodeTypedIntList(t *testing.T) {
 func TestConfigNodeTypedStringMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(string)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -272,7 +270,10 @@ func TestConfigNodeTypedStringMap(t *testing.T) {
 func TestConfigNodeTypedIntMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(int)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -287,7 +288,10 @@ func TestConfigNodeTypedIntMap(t *testing.T) {
 func TestConfigNodeTypedAnyMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(any)\" { }"
-	program, diags := parseAndBindProgram(t, source, "config.pp")
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	if err != nil {
+		t.Fatalf("could not bind program: %v", err)
+	}
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")

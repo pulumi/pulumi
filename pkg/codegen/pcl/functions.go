@@ -360,9 +360,15 @@ var pulumiBuiltins = map[string]*model.Function{
 				}}
 			}
 
+			elementType := model.Type(model.DynamicType)
+
 			switch valueType := model.ResolveOutputs(valueType).(type) {
-			case *model.ListType, *model.TupleType:
-				// OK
+			case *model.ListType:
+				elementType = valueType.ElementType
+			case *model.TupleType:
+				if len(valueType.ElementTypes) > 0 {
+					elementType = valueType.ElementTypes[0]
+				}
 			default:
 				if valueType != model.DynamicType {
 					rng := args[0].SyntaxNode().Range()
@@ -379,7 +385,7 @@ var pulumiBuiltins = map[string]*model.Function{
 					Name: "value",
 					Type: valueType,
 				}},
-				ReturnType: model.NewOptionalType(valueType),
+				ReturnType: model.NewOptionalType(elementType),
 			}, diagnostics
 		})),
 }

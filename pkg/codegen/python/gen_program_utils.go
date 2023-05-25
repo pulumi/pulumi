@@ -17,6 +17,13 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 		return fmt.Sprintf(`
 %sdef not_implemented(msg):
 %s    raise NotImplementedError(msg)`, indent, indent), true
+	case "singleOrNone":
+		return fmt.Sprintf(
+			`%sdef single_or_none(elements):
+%s    if len(elements) == 1:
+%s        return elements[0]
+%s    return None
+`, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}
