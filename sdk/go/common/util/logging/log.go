@@ -60,19 +60,25 @@ type VerboseLogger glog.Verbose
 // Info is equivalent to the global Info function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v VerboseLogger) Info(args ...interface{}) {
-	glog.Verbose(v).Info(FilterString(fmt.Sprint(args...)))
+	if v {
+		glog.Verbose(v).Info(FilterString(fmt.Sprint(args...)))
+	}
 }
 
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v VerboseLogger) Infoln(args ...interface{}) {
-	glog.Verbose(v).Infoln(FilterString(fmt.Sprint(args...)))
+	if v {
+		glog.Verbose(v).Infoln(FilterString(fmt.Sprint(args...)))
+	}
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 // See the documentation of V for usage.
 func (v VerboseLogger) Infof(format string, args ...interface{}) {
-	glog.Verbose(v).Infof("%s", FilterString(fmt.Sprintf(format, args...)))
+	if v {
+		glog.Verbose(v).Infof("%s", FilterString(fmt.Sprintf(format, args...)))
+	}
 }
 
 // V builds a logger that logs messages only if verbosity is at least at the provided level.
