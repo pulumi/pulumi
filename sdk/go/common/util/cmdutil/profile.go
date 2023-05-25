@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func InitProfiling(prefix string) error {
+func InitProfiling(prefix string, memProfileRate int) error {
 	cpu, err := os.Create(fmt.Sprintf("%s.%v.cpu", prefix, os.Getpid()))
 	if err != nil {
 		return errors.Wrap(err, "could not start CPU profile")
@@ -43,6 +43,10 @@ func InitProfiling(prefix string) error {
 		return errors.Wrap(err, "could not start execution trace")
 	}
 
+	if memProfileRate > 0 {
+		runtime.MemProfileRate = memProfileRate
+	}
+
 	return nil
 }
 
@@ -57,7 +61,7 @@ func CloseProfiling(prefix string) error {
 	defer contract.IgnoreClose(mem)
 
 	runtime.GC() // get up-to-date statistics
-	if err = pprof.WriteHeapProfile(mem); err != nil {
+	if err = pprof.Lookup("allocs").WriteTo(mem, 0); err != nil {
 		return errors.Wrap(err, "could not write memory profile")
 	}
 

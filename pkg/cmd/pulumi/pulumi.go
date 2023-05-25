@@ -152,6 +152,7 @@ func NewPulumiCmd() *cobra.Command {
 	var profiling string
 	var verbose int
 	var color string
+	var memProfileRate int
 
 	updateCheckResult := make(chan *diag.Diag)
 
@@ -220,7 +221,7 @@ func NewPulumiCmd() *cobra.Command {
 			log.SetOutput(loggingWriter)
 
 			if profiling != "" {
-				if err := cmdutil.InitProfiling(profiling); err != nil {
+				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
 					logging.Warningf("could not initialize profiling: %v", err)
 				}
 			}
@@ -277,6 +278,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
+	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
+		"Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate")
 	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
