@@ -1,18 +1,20 @@
 package pcl_test
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"strings"
-	"testing"
 )
 
 func ParseAndBindProgram(t *testing.T,
 	text string,
 	name string,
-	options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics, error) {
+	options ...pcl.BindOption,
+) (*pcl.Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
 	err := parser.ParseFile(strings.NewReader(text), name)
 	if err != nil {
