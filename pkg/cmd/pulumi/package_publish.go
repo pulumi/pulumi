@@ -141,10 +141,8 @@ func publishToNPM(path string) error {
 	infoCmd := exec.Command(npm, "info", pkgNameWithVersion)
 	infoCmd.Stderr = os.Stderr
 	logging.V(1).Infof("Running %s", infoCmd)
-	output, err := infoCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to run npm info to verify package %w", err)
-	}
+	// we actually do not care about the error here; we care whether the output is empty.
+	output, _ := infoCmd.Output()
 
 	if len(output) > 0 {
 		// the package already exists, and we no-op.
@@ -164,10 +162,8 @@ func publishToNPM(path string) error {
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)
 		infoCheckCmd.Stderr = os.Stderr
-		checkOutput, checkErr := infoCheckCmd.Output()
-		if checkErr != nil {
-			return fmt.Errorf("failed to publish; running npm info to verify failed %w", checkErr)
-		}
+		checkOutput, _ := infoCheckCmd.Output()
+
 		if len(checkOutput) > 0 {
 			// this means the package was published after all
 			fmt.Println("success! published to npm")
