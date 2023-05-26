@@ -86,8 +86,8 @@ func TestColorizer(t *testing.T) {
 			actualTrimmed := TrimColorizedString(str, len(trimmedContent))
 			assert.Equal(t, c.command+trimmedContent+Reset, actualTrimmed)
 
-			assert.Equal(t, uniseg.GraphemeClusterCount("hello\n"), measureText(str))
-			assert.Equal(t, uniseg.GraphemeClusterCount(actualNever), measureText(str))
+			assert.Equal(t, uniseg.StringWidth("hello\n"), measureText(str))
+			assert.Equal(t, uniseg.StringWidth(actualNever), measureText(str))
 		})
 	}
 }
@@ -138,6 +138,6 @@ func TestTrimColorizedString(t *testing.T) {
 	actual = TrimColorizedString(plain, len("hello"))
 	assert.Equal(t, "hello", actual)
 
-	assert.Equal(t, uniseg.GraphemeClusterCount("hello, world!!"), measureText(str))
-	assert.Equal(t, uniseg.GraphemeClusterCount(Never.Colorize(str)), measureText(str))
+	assert.Equal(t, uniseg.StringWidth("hello, world!!"), measureText(str))
+	assert.Equal(t, uniseg.StringWidth(Never.Colorize(str)), measureText(str))
 }

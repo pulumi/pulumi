@@ -158,7 +158,7 @@ func MeasureText(text string) int {
 	// Strip ansi escape sequences
 	clean := ansiEscape.ReplaceAllString(text, "")
 	// Need to count graphemes not runes or bytes
-	return uniseg.GraphemeClusterCount(clean)
+	return uniseg.StringWidth(clean)
 }
 
 // normalizedRows returns the rows of a table in normalized form.

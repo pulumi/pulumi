@@ -18,7 +18,7 @@ require (
 	github.com/nxadm/tail v1.4.8
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/rivo/uniseg v0.2.0
+	github.com/rivo/uniseg v0.4.4
 	github.com/rogpeppe/go-internal v1.9.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cast v1.4.1
