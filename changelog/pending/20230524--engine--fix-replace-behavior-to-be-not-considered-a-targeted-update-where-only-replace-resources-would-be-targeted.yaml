@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix --replace behavior to be not considered a targeted update (where only --replace resources would be targeted).
