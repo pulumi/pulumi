@@ -2,9 +2,8 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh javascript))
 
-LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
+LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 
-PROJECT_PKGS    := $(shell go list ./cmd...)
 TEST_FAST_TIMEOUT := 2m
 
 ifeq ($(DEBUG),"true")
@@ -18,9 +17,6 @@ TEST_ALL_DEPS ?= build
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
-
-GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
-GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 
 ensure:: yarn.ensure node.ensure .ensure.phony
 .ensure.phony: package.json
@@ -51,7 +47,8 @@ build_package:: ensure
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cd cmd/pulumi-language-nodejs && \
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -60,7 +57,8 @@ install_package:: build
 	cp dist/pulumi-analyzer-policy* "$(PULUMI_BIN)"
 
 install_plugin:: build
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cd cmd/pulumi-language-nodejs && \
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -96,10 +94,10 @@ test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
-	@$(GO_TEST_FAST) ${PROJECT_PKGS}
+	@cd cmd/pulumi-language-nodejs && $(GO_TEST_FAST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
 
 test_go:: $(TEST_ALL_DEPS)
-	@$(GO_TEST) ${PROJECT_PKGS}
+	@cd cmd/pulumi-language-nodejs && $(GO_TEST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
 
 test_all:: sxs_tests unit_tests test_auto test_go
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
@@ -107,13 +105,13 @@ ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
 endif
 
 dist:: build
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	cd cmd/pulumi-language-nodejs && \
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 

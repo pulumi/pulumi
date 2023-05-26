@@ -95,6 +95,8 @@ PULUMI_ROOT ?= $$HOME/.pulumi-dev
 PYTHON ?= python3
 PIP ?= pip3
 
+ROOT_DIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+
 PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 
@@ -116,6 +118,10 @@ GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-race=${GO_TEST_RACE} \
 	${GO_TEST_OPTIONS}
 GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
+
+GO_TEST      = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FLAGS)
+GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
+
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all only_build only_test lint install test_all core build
