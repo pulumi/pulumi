@@ -3011,18 +3011,6 @@ func genPyprojectTOML(tool string,
 		return "", err
 	}
 
-	// • Set "Authors" and "Maintainers" fields.
-	//   These values are hardcoded to Pulumi's contact information.
-	//   We hardcore this value for now. Later, it will be overridden
-	//   for third-party providers.
-	//   TODO(@Robbie): Third-party provider users can override this field.
-	contacts := []Contact{{
-		Name:  "The Pulumi Team",
-		Email: "security@pulumi.com",
-	}}
-	schema.Project.Authors = contacts
-	schema.Project.Maintainers = contacts
-
 	// This sets the minimum version of Python.
 	setPythonRequires(schema, pkg)
 
@@ -3119,8 +3107,18 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
 // validate.
 func ensureValidPulumiVersion(requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
+	// Special case: if the map is empty, we return just pulumi with no version constraint.
+	// This is just legacy functionality; there's no obvious reason this should be the case.
+	if len(requires) == 0 {
+		result := map[string]string{
+			"pulumi": "",
+		}
+		return result, nil
+	}
+	// If the pulumi dep is missing, we require it to fall within
+	// our major version constraint.
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = ""
+		deps["pulumi"] = ">=3.0.0,<4.0.0"
 	} else {
 		// Since a value was provided, we check to make sure it's
 		// within an acceptable version range.
@@ -3137,6 +3135,9 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 		if lowerBound.LT(oldestAllowedPulumi) {
 			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
 		}
+		// The provided Pulumi version is valid, so we're copy it into
+		// the new map.
+		deps["pulumi"] = pulumiDep
 	}
 
 	// Copy the rest of the dependencies listed into deps.

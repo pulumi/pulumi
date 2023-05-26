@@ -6,16 +6,8 @@
   readme = "README.md"
   requires-python = ">=3.7"
   version = "0.0.0"
-
-  [[project.authors]]
-    name = "The Pulumi Team"
-    email = "security@pulumi.com"
   [project.license]
     text = "MIT"
-
-  [[project.maintainers]]
-    name = "The Pulumi Team"
-    email = "security@pulumi.com"
   [project.urls]
     Homepage = "https://pulumi.com"
     Repository = "https://github.com/pulumi/pulumi"
