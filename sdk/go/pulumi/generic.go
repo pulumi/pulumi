@@ -91,6 +91,10 @@ func Downgrade[V interface {
 	return ToOutput(o).(V)
 }
 
+func (o OutputT[T]) Untyped() Output {
+	return ToOutput(o)
+}
+
 var (
 	_ Output      = OutputT[any]{}
 	_ Input       = OutputT[any]{}
