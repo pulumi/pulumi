@@ -177,35 +177,43 @@ type ArrayInputT[T any] interface {
 	InputT[[]T]
 }
 
-type ArrayOutputT[T any] struct{ *OutputState }
+type ArrayOutputT[T any, O InputT[T]] struct{ *OutputState }
 
 var (
-	_ Output           = ArrayOutputT[any]{}
-	_ Input            = ArrayOutputT[any]{}
-	_ InputT[[]int]    = ArrayOutputT[int]{}
-	_ ArrayInputT[int] = ArrayOutputT[int]{}
+	_ Output           = ArrayOutputT[any, OutputT[any]]{}
+	_ Input            = ArrayOutputT[any, OutputT[any]]{}
+	_ InputT[[]int]    = ArrayOutputT[int, IntOutput]{}
+	_ ArrayInputT[int] = ArrayOutputT[int, IntOutput]{}
 )
 
-func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T] {
-	return ArrayOutputT[T](items.ToOutputT(context.Background()))
+func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T, OutputT[T]] {
+	return ArrayOutputT[T, OutputT[T]](items.ToOutputT(context.Background()))
 }
 
-func (ArrayOutputT[T]) ElementType() reflect.Type {
+func (ArrayOutputT[T, O]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
 }
 
-func (o ArrayOutputT[T]) ToOutputT(context.Context) OutputT[[]T] {
+func (o ArrayOutputT[T, O]) ToOutputT(context.Context) OutputT[[]T] {
 	return OutputT[[]T](o)
 }
 
-func (o ArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
-	return ApplyT2(o, i, func(items []T, idx int) T {
+func (o ArrayOutputT[T, O]) Index(i InputT[int]) O {
+	result := ApplyT2(o, i, func(items []T, idx int) T {
 		if idx < 0 || idx >= len(items) {
 			var zero T
 			return zero
 		}
 		return items[idx]
 	})
+
+	var zero O
+	switch any(zero).(type) {
+	case OutputT[T]:
+		return any(result).(O)
+	default:
+		return ToOutput(result).(O)
+	}
 }
 
 type PtrOutputT[T any] struct{ *OutputState }
