@@ -39,7 +39,7 @@ func TestNPMInstallCmd(t *testing.T) {
 	}
 
 	pkgManager := &npmManager{
-		executable: "/bin/npm", // a fake path for testing.
+		executable: "false", // a fake path for testing.
 	}
 	ctx := context.Background()
 
