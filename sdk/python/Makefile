@@ -21,9 +21,6 @@ include ../../build/common.mk
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build
 
-GO_TEST      = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FLAGS)
-GO_TEST_FAST = $(PYTHON) ../../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
-
 ensure:: $(PYTHON).ensure .ensure.phony
 .ensure.phony:
 	$(PYTHON) -m venv venv

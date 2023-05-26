@@ -28,9 +28,6 @@ endif
 # `test_all` without the dependencies.
 TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 
-GO_TEST      = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FLAGS)
-GO_TEST_FAST = $(PYTHON) ../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
-
 ensure: .ensure.phony go.ensure $(SUB_PROJECTS:%=%_ensure)
 .ensure.phony: sdk/go.mod pkg/go.mod tests/go.mod
 	cd sdk && go mod download
