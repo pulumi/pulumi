@@ -827,26 +827,20 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	parser := hclsyntax.NewParser()
-	// Load all .pp files in the directory
-	for path, contents := range req.Source {
-		err = parser.ParseFile(strings.NewReader(contents), path)
-		if err != nil {
-			return nil, err
-		}
-		diags := parser.Diagnostics
-		if diags.HasErrors() {
-			return nil, diags
-		}
-	}
-
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader)
 	if err != nil {
 		return nil, err
 	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+	if diags.HasErrors() {
+		rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
+		for _, diag := range diags {
+			rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
+		}
+
+		return &pulumirpc.GenerateProjectResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
 	}
 
 	var project workspace.Project
@@ -854,12 +848,19 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.Directory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pulumirpc.GenerateProjectResponse{}, nil
+	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
+	for _, diag := range diags {
+		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
+	}
+
+	return &pulumirpc.GenerateProjectResponse{
+		Diagnostics: rpcDiagnostics,
+	}, nil
 }
 
 func (host *goLanguageHost) GenerateProgram(

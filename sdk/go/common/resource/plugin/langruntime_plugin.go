@@ -422,22 +422,28 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	directory string, project string, source map[string]string,
-) error {
+	sourceDirectory, targetDirectory, project string,
+) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
-	_, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		Directory: directory,
-		Project:   project,
-		Source:    source,
+	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
+		SourceDirectory: sourceDirectory,
+		TargetDirectory: targetDirectory,
+		Project:         project,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("langhost[%v].GenerateProject() failed: err=%v", h.runtime, rpcError)
-		return rpcError
+		return nil, rpcError
+	}
+
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
 	logging.V(7).Infof("langhost[%v].GenerateProject() success", h.runtime)
-	return nil
+	return diags, nil
 }
 
 func (h *langhost) GeneratePackage(

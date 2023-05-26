@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fix conversion of programs with components for Go.
