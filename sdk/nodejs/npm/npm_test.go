@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,14 @@ func TestNPMInstallCmd(t *testing.T) {
 			expected := tc.expectedArgs
 			observed := command.Args
 			assert.ElementsMatch(t, expected, observed)
-			assert.Equal(t, "false", filepath.Base(command.Path))
+			// Next, we check if the binary name matches our expectations.
+			// Trim the absolute path, since it's system dependent.
+			observedCommand := filepath.Base(command.Path)
+			// Trim the extension, which will appear on Windows systems.
+			if extension := filepath.Ext(observedCommand); extension != "" {
+				observedCommand = strings.TrimRight(observedCommand, extension)
+			}
+			assert.Equal(t, "false", observedCommand)
 		})
 	}
 }
