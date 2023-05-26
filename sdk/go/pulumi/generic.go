@@ -363,6 +363,31 @@ func ApplyT[O any, I InputT[T], T any](o I, f func(T) O) OutputT[O] {
 	return OutputT[O]{OutputState: state}
 }
 
+func Join[O any, A InputT[OutputT[O]]](i1 A) OutputT[O] {
+	state := newOutputState(nil, typeOf[O]())
+	go func() {
+		i2, known1, secret1, deps1, err := awaitT[OutputT[O]](context.Background(), i1)
+		if err != nil || !known1 {
+			var zero O
+			state.fulfill(zero, known1, secret1, deps1, err)
+			return
+		}
+
+		v, known2, secret2, deps2, err := awaitT[O](context.Background(), i2)
+		known := known1 && known2
+		secret := secret1 || secret2
+		deps := mergeDependencies(deps1, deps2)
+		if err != nil || !known {
+			var zero O
+			state.fulfill(zero, known, secret, deps, err)
+			return
+		}
+
+		state.fulfill(v, known, secret, deps, err)
+	}()
+	return OutputT[O]{OutputState: state}
+}
+
 func ApplyT2[O, T1, T2 any, I1 InputT[T1], I2 InputT[T2]](i1 I1, i2 I2, f func(T1, T2) O) OutputT[O] {
 	// TODO: context variant
 	state := newOutputState(nil, typeOf[O]())
@@ -397,3 +422,8 @@ Apply8(a, b, c, d, e, f, g, h, f) -> Output[U]
 */
 
 // TODO Make a typed outputState[T].
+
+// func example() {
+// 	var x OutputT[OutputT[[]int]]
+// 	Join[[]int](x)
+// }
