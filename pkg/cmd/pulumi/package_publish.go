@@ -143,11 +143,13 @@ func publishToNPM(path string) error {
 	logging.V(1).Infof("Running %s", infoCmd)
 	output, err := infoCmd.Output()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to run npm info to verify package %w", err)
 	}
 
 	if len(output) > 0 {
-		return fmt.Errorf("publish %s failed, likely because the version already exists", pkgInfo.Name)
+		// the package already exists, and we no-op.
+		fmt.Printf("did not publish %s, likely because the version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
+		return nil
 	}
 
 	logging.V(1).Infof("The version does not exist yet, and it is safe to publish")
@@ -164,7 +166,7 @@ func publishToNPM(path string) error {
 		infoCheckCmd.Stderr = os.Stderr
 		checkOutput, checkErr := infoCheckCmd.Output()
 		if checkErr != nil {
-			return fmt.Errorf("running npm info to verify failed %w", checkErr)
+			return fmt.Errorf("failed to publish; running npm info to verify failed %w", checkErr)
 		}
 		if len(checkOutput) > 0 {
 			// this means the package was published after all
@@ -172,7 +174,7 @@ func publishToNPM(path string) error {
 			return nil
 		}
 		// if we get here, this means the package was not published. We bail.
-		return err
+		return fmt.Errorf("failed to publish package %w", err)
 	}
 	fmt.Println("success! published to npm")
 	return nil
