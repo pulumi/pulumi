@@ -17,6 +17,7 @@ package npm
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,10 +32,10 @@ func TestNPMInstallCmd(t *testing.T) {
 	}{
 		{
 			production:   true,
-			expectedArgs: []string{"/bin/npm", "install", "--loglevel=error", "--production"},
+			expectedArgs: []string{"false", "install", "--loglevel=error", "--production"},
 		}, {
 			production:   false,
-			expectedArgs: []string{"/bin/npm", "install", "--loglevel=error"},
+			expectedArgs: []string{"false", "install", "--loglevel=error"},
 		},
 	}
 
@@ -53,7 +54,7 @@ func TestNPMInstallCmd(t *testing.T) {
 			expected := tc.expectedArgs
 			observed := command.Args
 			assert.ElementsMatch(t, expected, observed)
-			assert.Equal(t, "/bin/npm", command.Path)
+			assert.Equal(t, "false", filepath.Base(command.Path))
 		})
 	}
 }
