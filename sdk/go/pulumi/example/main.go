@@ -11,11 +11,11 @@ func main() {
 		indexDocument := "index.html"
 
 		website := (&s3beta.BucketWebsiteArgs{
-			IndexDocument: pulumi.V(indexDocument),
+			IndexDocument: pulumi.Val(indexDocument),
 		}).ToOutputT(ctx.Context())
 
 		bucket, err := s3beta.NewBucket(ctx, "my-bucket", &s3beta.BucketArgs{
-			Website: pulumi.Downgrade[s3beta.BucketWebsiteOutput](website), // TODO: generate helpers?
+			Website: website.Untyped().(s3beta.BucketWebsiteOutput),
 			// Acl: pulumi.Ptr("public-read"),
 		})
 		if err != nil {
@@ -44,15 +44,15 @@ func main() {
 
 		s3beta.NewBucketObject(ctx, "my-beta-bucket", &s3beta.BucketObjectArgs{
 			Bucket:  bucket.Bucket.ToAnyOutput(),
-			Key:     pulumi.P(indexDocument),       // string       -> Input[*string]
+			Key:     pulumi.Ptr(indexDocument),     // string       -> Input[*string]
 			Content: pulumi.PtrOf[string](content), // StringOutput -> Input[*string]
 			Metadata: pulumi.MapT[string]{
 				// Fully dynamic maps using pulumi.V to use string keys and inputty values:
-				"generics-are": pulumi.V("💜"),
+				"generics-are": pulumi.Val("💜"),
 			}, // map[string]Input[string] -> Input[map[string, string]]
-			ContentType: pulumi.P("text/html"),
+			ContentType: pulumi.Ptr("text/html"),
 			// Acl:          pulumi.Ptr("public-read"),
-			StorageClass: pulumi.P("STANDARD"),
+			StorageClass: pulumi.Ptr("STANDARD"),
 		})
 
 		ctx.Export("websiteUrl", bucket.WebsiteEndpoint)

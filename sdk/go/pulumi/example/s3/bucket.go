@@ -25,25 +25,25 @@ type Bucket struct {
 	// The bucket region-specific domain name. The bucket domain name including the region name, please refer [here](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region) for format. Note: The AWS CloudFront allows specifying S3 region-specific endpoint when creating S3 origin, it will prevent [redirect issues](https://forums.aws.amazon.com/thread.jspa?threadID=216814) from CloudFront to S3 Origin URL.
 	BucketRegionalDomainName pulumi.OutputT[string] `pulumi:"bucketRegionalDomainName"`
 	// A rule of [Cross-Origin Resource Sharing](https://docs.aws.amazon.com/AmazonS3/latest/dev/cors.html) (documented below).
-	CorsRules pulumi.ArrayOutputT[BucketCorsRule] `pulumi:"corsRules"`
+	CorsRules pulumi.DefaultArrayOutputT[BucketCorsRule] `pulumi:"corsRules"`
 	// A boolean that indicates all objects (including any [locked objects](https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock-overview.html)) should be deleted from the bucket so that the bucket can be destroyed without error. These objects are *not* recoverable.
-	ForceDestroy pulumi.PtrOutputT[bool] `pulumi:"forceDestroy"`
+	ForceDestroy pulumi.DefaultPtrOutputT[bool] `pulumi:"forceDestroy"`
 	// An [ACL policy grant](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#sample-acl) (documented below). Conflicts with `acl`.
-	Grants pulumi.ArrayOutputT[BucketGrant] `pulumi:"grants"`
+	Grants pulumi.DefaultArrayOutputT[BucketGrant] `pulumi:"grants"`
 	// The [Route 53 Hosted Zone ID](https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_website_region_endpoints) for this bucket's region.
 	HostedZoneId pulumi.OutputT[string] `pulumi:"hostedZoneId"`
 	// A configuration of [object lifecycle management](http://docs.aws.amazon.com/AmazonS3/latest/dev/object-lifecycle-mgmt.html) (documented below).
-	LifecycleRules pulumi.ArrayOutputT[BucketLifecycleRule] `pulumi:"lifecycleRules"`
+	LifecycleRules pulumi.DefaultArrayOutputT[BucketLifecycleRule] `pulumi:"lifecycleRules"`
 	// A settings of [bucket logging](https://docs.aws.amazon.com/AmazonS3/latest/UG/ManagingBucketLogging.html) (documented below).
-	Loggings pulumi.ArrayOutputT[BucketLogging] `pulumi:"loggings"`
+	Loggings pulumi.DefaultArrayOutputT[BucketLogging] `pulumi:"loggings"`
 	// A configuration of [S3 object locking](https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock.html) (documented below)
-	ObjectLockConfiguration pulumi.PtrOutputT[BucketObjectLockConfiguration] `pulumi:"objectLockConfiguration"`
+	ObjectLockConfiguration pulumi.DefaultPtrOutputT[BucketObjectLockConfiguration] `pulumi:"objectLockConfiguration"`
 	// A valid [bucket policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html) JSON document. Note that if the policy document is not specific enough (but still valid), this provider may view the policy as constantly changing in a `pulumi preview`. In this case, please make sure you use the verbose/specific version of the policy.
 	Policy pulumi.StringPtrOutput `pulumi:"policy"`
 	// The AWS region this bucket resides in.
 	Region pulumi.OutputT[string] `pulumi:"region"`
 	// A configuration of [replication configuration](http://docs.aws.amazon.com/AmazonS3/latest/dev/crr.html) (documented below).
-	ReplicationConfiguration pulumi.PtrOutputT[BucketReplicationConfiguration] `pulumi:"replicationConfiguration"`
+	ReplicationConfiguration pulumi.DefaultPtrOutputT[BucketReplicationConfiguration] `pulumi:"replicationConfiguration"`
 	// Specifies who should bear the cost of Amazon S3 data transfer.
 	// Can be either `BucketOwner` or `Requester`. By default, the owner of the S3 bucket would incur
 	// the costs of any data transfer. See [Requester Pays Buckets](http://docs.aws.amazon.com/AmazonS3/latest/dev/RequesterPaysBuckets.html)
@@ -52,9 +52,9 @@ type Bucket struct {
 	// A configuration of [server-side encryption configuration](http://docs.aws.amazon.com/AmazonS3/latest/dev/bucket-encryption.html) (documented below)
 	ServerSideEncryptionConfiguration pulumi.OutputT[BucketServerSideEncryptionConfiguration] `pulumi:"serverSideEncryptionConfiguration"`
 	// A map of tags to assign to the bucket. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
-	Tags pulumi.MapOutputT[string] `pulumi:"tags"`
+	Tags pulumi.DefaultMapOutputT[string] `pulumi:"tags"`
 	// A map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
-	TagsAll pulumi.MapOutputT[string] `pulumi:"tagsAll"`
+	TagsAll pulumi.DefaultMapOutputT[string] `pulumi:"tagsAll"`
 	// A state of [versioning](https://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html) (documented below)
 	Versioning pulumi.OutputT[BucketVersioning] `pulumi:"versioning"`
 	// A website object (documented below).

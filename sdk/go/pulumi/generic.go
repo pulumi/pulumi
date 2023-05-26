@@ -16,6 +16,11 @@ type InputT[T any] interface {
 	ToOutputT(context.Context) OutputT[T]
 }
 
+type OutputOf[T any] interface {
+	InputT[T]
+	Output
+}
+
 // inputTElementType returns the element type of an InputT[T]
 // or false if the type is not a InputT[T].
 //
@@ -58,14 +63,12 @@ func inputTElementType(t reflect.Type) (e reflect.Type, ok bool) {
 
 type OutputT[T any] struct{ *OutputState }
 
-func OutputFromValue[T any](v T) OutputT[T] {
+var _ OutputOf[any] = OutputT[any]{}
+
+func Val[T any](v T) OutputT[T] {
 	state := newOutputState(nil /* joinGroup */, typeOf[T]())
 	state.resolve(v, true, false, nil /* deps */)
 	return OutputT[T]{OutputState: state}
-}
-
-func V[T any](v T) OutputT[T] {
-	return OutputFromValue(v)
 }
 
 func Cast[T any](o Output) OutputT[T] {
@@ -81,14 +84,12 @@ func Cast[T any](o Output) OutputT[T] {
 	return OutputT[T]{OutputState: state}
 }
 
-// TODO: better name
-func Downgrade[V interface {
-	Output
-	InputT[T]
-}, T any](o OutputT[T],
-) V {
-	// TODO: type-checked variant of ToOutput internals.
-	return ToOutput(o).(V)
+// upgrades an Output[T] to a specialized Output implementation.
+func specializeOutputT[T any, O OutputOf[T], I InputT[T]](o I) O {
+	state := o.ToOutputT(context.Background()).getState()
+	output := reflect.New(typeOf[O]()).Elem()
+	setOutputState(output, state)
+	return output.Interface().(O)
 }
 
 func (o OutputT[T]) Untyped() Output {
@@ -177,24 +178,39 @@ type ArrayInputT[T any] interface {
 	InputT[[]T]
 }
 
-type ArrayOutputT[T any, O InputT[T]] struct{ *OutputState }
+type ArrayOutputT[T any, O OutputOf[T]] struct{ *OutputState }
+
+type DefaultArrayOutputT[T any] struct{ *OutputState }
 
 var (
 	_ Output           = ArrayOutputT[any, OutputT[any]]{}
 	_ Input            = ArrayOutputT[any, OutputT[any]]{}
 	_ InputT[[]int]    = ArrayOutputT[int, IntOutput]{}
 	_ ArrayInputT[int] = ArrayOutputT[int, IntOutput]{}
+
+	_ Output           = DefaultArrayOutputT[any]{}
+	_ Input            = DefaultArrayOutputT[any]{}
+	_ InputT[[]int]    = DefaultArrayOutputT[int]{}
+	_ ArrayInputT[int] = DefaultArrayOutputT[int]{}
 )
 
-func ArrayFrom[T any, I InputT[[]T]](items I) ArrayOutputT[T, OutputT[T]] {
-	return ArrayOutputT[T, OutputT[T]](items.ToOutputT(context.Background()))
+func NewDefaultArrayOutput[T any, I InputT[[]T]](items I) DefaultArrayOutputT[T] {
+	return DefaultArrayOutputT[T](items.ToOutputT(context.Background()))
 }
 
 func (ArrayOutputT[T, O]) ElementType() reflect.Type {
 	return reflect.SliceOf(typeOf[T]())
 }
 
+func (DefaultArrayOutputT[T]) ElementType() reflect.Type {
+	return reflect.SliceOf(typeOf[T]())
+}
+
 func (o ArrayOutputT[T, O]) ToOutputT(context.Context) OutputT[[]T] {
+	return OutputT[[]T](o)
+}
+
+func (o DefaultArrayOutputT[T]) ToOutputT(context.Context) OutputT[[]T] {
 	return OutputT[[]T](o)
 }
 
@@ -207,37 +223,44 @@ func (o ArrayOutputT[T, O]) Index(i InputT[int]) O {
 		return items[idx]
 	})
 
-	var zero O
-	switch any(zero).(type) {
-	case OutputT[T]:
-		return any(result).(O)
-	default:
-		return ToOutput(result).(O)
-	}
+	return specializeOutputT[T, O](result)
 }
 
-type PtrOutputT[T any] struct{ *OutputState }
+func (o DefaultArrayOutputT[T]) Index(i InputT[int]) OutputT[T] {
+	return ApplyT2(o, i, func(items []T, idx int) T {
+		if idx < 0 || idx >= len(items) {
+			var zero T
+			return zero
+		}
+		return items[idx]
+	})
+}
+
+type PtrOutputT[T any, O OutputOf[T]] struct{ *OutputState }
+
+type DefaultPtrOutputT[T any] struct{ *OutputState }
 
 type PtrInputT[T any] interface {
 	InputT[*T]
 }
 
 var (
-	_ Output         = PtrOutputT[any]{}
-	_ Input          = PtrOutputT[any]{}
-	_ InputT[*int]   = PtrOutputT[int]{}
-	_ PtrInputT[int] = PtrOutputT[int]{}
+	_ Output         = PtrOutputT[any, AnyOutput]{}
+	_ Input          = PtrOutputT[any, AnyOutput]{}
+	_ InputT[*int]   = PtrOutputT[int, IntOutput]{}
+	_ PtrInputT[int] = PtrOutputT[int, IntOutput]{}
+
+	_ Output         = DefaultPtrOutputT[any]{}
+	_ Input          = DefaultPtrOutputT[any]{}
+	_ InputT[*int]   = DefaultPtrOutputT[int]{}
+	_ PtrInputT[int] = DefaultPtrOutputT[int]{}
 )
 
-func OutputFromPtr[T any](v T) PtrOutputT[T] {
-	return NewPtrOutput(OutputFromValue(&v))
+func Ptr[T any](v T) DefaultPtrOutputT[T] {
+	return NewPtrOutput[T](Val(&v))
 }
 
-func P[T any](v T) PtrOutputT[T] {
-	return OutputFromPtr(v)
-}
-
-func PtrOf[T any, I InputT[T]](o I) PtrOutputT[T] {
+func PtrOf[T any, O OutputOf[T]](o O) PtrOutputT[T, O] {
 	// As of Go 1.20, Output[T] cannot refer to Output[*T] directly.
 	// This refers to the following limitation at
 	// https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#generic-types:
@@ -268,24 +291,45 @@ func PtrOf[T any, I InputT[T]](o I) PtrOutputT[T] {
 	// This restriction may be lifted in the future,
 	// but meanwhile it means that PtrOf must be a top-level function.
 	p := ApplyT(o, func(v T) *T { return &v })
-	return NewPtrOutput(p)
+	return specializeOutputT[*T, PtrOutputT[T, O]](p)
 }
 
-func NewPtrOutput[T any](o OutputT[*T]) PtrOutputT[T] {
+func NewPtrOutput[T any, I InputT[*T]](o I) DefaultPtrOutputT[T] {
 	// No need to check if o.ElementType() is assignable.
 	// It's already a pointer type.
-	return PtrOutputT[T]{OutputState: o.getState()}
+	return DefaultPtrOutputT[T]{
+		OutputState: o.ToOutputT(context.Background()).getState(),
+	}
 }
 
-func (PtrOutputT[T]) ElementType() reflect.Type {
+func (PtrOutputT[T, O]) ElementType() reflect.Type {
 	return reflect.PtrTo(typeOf[T]())
 }
 
-func (o PtrOutputT[T]) ToOutputT(context.Context) OutputT[*T] {
+func (DefaultPtrOutputT[T]) ElementType() reflect.Type {
+	return reflect.PtrTo(typeOf[T]())
+}
+
+func (o PtrOutputT[T, O]) ToOutputT(context.Context) OutputT[*T] {
 	return OutputT[*T](o)
 }
 
-func (o PtrOutputT[T]) Elem() OutputT[T] {
+func (o DefaultPtrOutputT[T]) ToOutputT(context.Context) OutputT[*T] {
+	return OutputT[*T](o)
+}
+
+func (o PtrOutputT[T, O]) Elem() O {
+	result := ApplyT(o, func(v *T) T {
+		if v == nil {
+			var zero T
+			return zero
+		}
+		return *v
+	})
+	return specializeOutputT[T, O](result)
+}
+
+func (o DefaultPtrOutputT[T]) Elem() OutputT[T] {
 	return ApplyT(o, func(v *T) T {
 		if v == nil {
 			var zero T
@@ -329,32 +373,54 @@ func (items MapT[T]) ToOutputT(ctx context.Context) OutputT[map[string]T] {
 	return OutputT[map[string]T]{OutputState: state}
 }
 
-type MapOutputT[T any] struct{ *OutputState }
+type MapOutputT[T any, O OutputOf[T]] struct{ *OutputState }
+
+type DefaultMapOutputT[T any] struct{ *OutputState }
 
 type MapInputT[T any] interface {
 	InputT[map[string]T]
 }
 
 var (
-	_ Output                 = MapOutputT[any]{}
-	_ Input                  = MapOutputT[any]{}
-	_ InputT[map[string]int] = MapOutputT[int]{}
-	_ MapInputT[any]         = MapOutputT[any]{}
+	_ Output                 = MapOutputT[any, AnyOutput]{}
+	_ Input                  = MapOutputT[any, AnyOutput]{}
+	_ InputT[map[string]int] = MapOutputT[int, IntOutput]{}
+	_ MapInputT[any]         = MapOutputT[any, AnyOutput]{}
+
+	_ Output                 = DefaultMapOutputT[any]{}
+	_ Input                  = DefaultMapOutputT[any]{}
+	_ InputT[map[string]int] = DefaultMapOutputT[int]{}
+	_ MapInputT[any]         = DefaultMapOutputT[any]{}
 )
 
-func MapFrom[T any, I InputT[map[string]T]](items I) MapOutputT[T] {
-	return MapOutputT[T](items.ToOutputT(context.Background()))
+func NewDefaultMapOutput[T any, I InputT[map[string]T]](items I) DefaultMapOutputT[T] {
+	return DefaultMapOutputT[T](items.ToOutputT(context.Background()))
 }
 
-func (MapOutputT[T]) ElementType() reflect.Type {
+func (MapOutputT[T, O]) ElementType() reflect.Type {
 	return reflect.MapOf(typeOf[string](), typeOf[T]())
 }
 
-func (o MapOutputT[T]) ToOutputT(context.Context) OutputT[map[string]T] {
+func (DefaultMapOutputT[T]) ElementType() reflect.Type {
+	return reflect.MapOf(typeOf[string](), typeOf[T]())
+}
+
+func (o MapOutputT[T, O]) ToOutputT(context.Context) OutputT[map[string]T] {
 	return OutputT[map[string]T](o)
 }
 
-func (o MapOutputT[T]) MapIndex(i InputT[string]) OutputT[T] {
+func (o DefaultMapOutputT[T]) ToOutputT(context.Context) OutputT[map[string]T] {
+	return OutputT[map[string]T](o)
+}
+
+func (o MapOutputT[T, O]) MapIndex(i InputT[string]) O {
+	result := ApplyT2(o, i, func(items map[string]T, idx string) T {
+		return items[idx]
+	})
+	return specializeOutputT[T, O](result)
+}
+
+func (o DefaultMapOutputT[T]) MapIndex(i InputT[string]) OutputT[T] {
 	return ApplyT2(o, i, func(items map[string]T, idx string) T {
 		return items[idx]
 	})

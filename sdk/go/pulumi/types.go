@@ -320,8 +320,8 @@ var (
 	outputTypeToOutputState sync.Map // map[reflect.Type]int
 )
 
-func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
-	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
+func setOutputState(output reflect.Value, state *OutputState) {
+	typ := output.Type()
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
 	// `isOutput` method. If we yet haven't recorded the index of this field for the ouptut type `typ`, find and
@@ -341,10 +341,16 @@ func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 		outputFieldV = outputField
 	}
 
+	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
+}
+
+func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
+	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
+
 	// Create the new output.
 	output := reflect.New(typ).Elem()
 	state := newOutputState(wg, output.Interface().(Output).ElementType(), deps...)
-	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
+	setOutputState(output, state)
 	return output.Interface().(Output)
 }
 

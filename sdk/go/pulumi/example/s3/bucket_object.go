@@ -39,7 +39,7 @@ type BucketObject struct {
 	// ARN of the KMS Key to use for object encryption. If the S3 Bucket has server-side encryption enabled, that value will automatically be used. If referencing the `kms.Key` resource, use the `arn` attribute. If referencing the `kms.Alias` data source or resource, use the `targetKeyArn` attribute. This provider will only perform drift detection if a configuration value is provided.
 	KmsKeyId pulumi.OutputT[string] `pulumi:"kmsKeyId"`
 	// Map of keys/values to provision metadata (will be automatically prefixed by `x-amz-meta-`, note that only lowercase label are currently supported by the AWS Go API).
-	Metadata pulumi.MapOutputT[string] `pulumi:"metadata"`
+	Metadata pulumi.DefaultMapOutputT[string] `pulumi:"metadata"`
 	// [Legal hold](https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock-overview.html#object-lock-legal-holds) status that you want to apply to the specified object. Valid values are `ON` and `OFF`.
 	ObjectLockLegalHoldStatus pulumi.OutputT[string] `pulumi:"objectLockLegalHoldStatus"`
 	// Object lock [retention mode](https://docs.aws.amazon.com/AmazonS3/latest/dev/object-lock-overview.html#object-lock-retention-modes) that you want to apply to this object. Valid values are `GOVERNANCE` and `COMPLIANCE`.
@@ -55,9 +55,9 @@ type BucketObject struct {
 	// [Storage Class](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#AmazonS3-PutObject-request-header-StorageClass) for the object. Defaults to "`STANDARD`".
 	StorageClass pulumi.OutputT[string] `pulumi:"storageClass"`
 	// Map of tags to assign to the object. If configured with a provider `defaultTags` configuration block present, tags with matching keys will overwrite those defined at the provider-level.
-	Tags pulumi.MapOutputT[string] `pulumi:"tags"`
+	Tags pulumi.DefaultMapOutputT[string] `pulumi:"tags"`
 	// Map of tags assigned to the resource, including those inherited from the provider `defaultTags` configuration block.
-	TagsAll pulumi.MapOutputT[string] `pulumi:"tagsAll"`
+	TagsAll pulumi.DefaultMapOutputT[string] `pulumi:"tagsAll"`
 	// Unique version ID value for the object, if bucket versioning is enabled.
 	VersionId pulumi.OutputT[string] `pulumi:"versionId"`
 	// Target URL for [website redirect](http://docs.aws.amazon.com/AmazonS3/latest/dev/how-to-page-redirect.html).
