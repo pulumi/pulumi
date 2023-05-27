@@ -37,7 +37,7 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 ) (*codegenrpc.GetMappingResponse, error) {
 	// TODO: GetMapping should take a context because it's async, but we need to break the tfbridge build loop
 	// first.
-	data, err := m.mapper.GetMapping(req.Provider)
+	data, err := m.mapper.GetMapping(req.Provider, req.PulumiProvider)
 	if err != nil {
 		return nil, err
 	}

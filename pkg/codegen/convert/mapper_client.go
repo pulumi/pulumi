@@ -63,12 +63,13 @@ func (m *mapperClient) Close() error {
 	return nil
 }
 
-func (m *mapperClient) GetMapping(provider string) ([]byte, error) {
+func (m *mapperClient) GetMapping(provider string, pulumiProvider string) ([]byte, error) {
 	label := "GetMapping"
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := m.clientRaw.GetMapping(context.TODO(), &codegenrpc.GetMappingRequest{
-		Provider: provider,
+		Provider:       provider,
+		PulumiProvider: pulumiProvider,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

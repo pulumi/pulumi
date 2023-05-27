@@ -19,6 +19,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -54,12 +56,12 @@ func (err *InstallPluginError) Unwrap() error {
 	return err.Err
 }
 
-func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) error {
+func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) (*semver.Version, error) {
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
 		if err != nil {
-			return fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
+			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}
 	}
 
@@ -76,7 +78,7 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(pluginSpec, wrapper, retry)
 	if err != nil {
-		return &InstallPluginError{
+		return nil, &InstallPluginError{
 			Spec: pluginSpec,
 			Err:  fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
 		}
@@ -85,11 +87,11 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
 	err = pluginSpec.Install(downloadedFile, false)
 	if err != nil {
-		return &InstallPluginError{
+		return nil, &InstallPluginError{
 			Spec: pluginSpec,
 			Err:  fmt.Errorf("error installing provider %s: %w", pluginSpec.Name, err),
 		}
 	}
 
-	return nil
+	return pluginSpec.Version, nil
 }

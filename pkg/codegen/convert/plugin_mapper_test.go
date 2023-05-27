@@ -168,16 +168,21 @@ func TestPluginMapper_InstalledPluginMatches(t *testing.T) {
 		},
 	}
 
-	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
 		return testProvider, nil
 	}
 
-	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("provider")
+	data, err := mapper.GetMapping("provider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -202,16 +207,24 @@ func TestPluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		},
 	}
 
-	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
 		return testProvider, nil
 	}
 
-	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		// GetMapping will try to install "yetAnotherProvider", but for this test were testing the case where
+		// that doesn't match and can't be installed, but we should still return the mapping because
+		// "pulumiProvider" is already installed and will return a mapping for "otherProvider".
+		assert.Equal(t, "otherProvider", string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("otherProvider")
+	data, err := mapper.GetMapping("otherProvider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -228,26 +241,68 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 			},
 		},
 	}
-	testProvider := &testProvider{
-		pkg: tokens.Package("pulumiProvider"),
-		mapping: func(key string) ([]byte, string, error) {
-			assert.Equal(t, "key", key)
-			return []byte("data"), "otherProvider", nil
-		},
-	}
 
-	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
-		return testProvider, nil
-	}
+	t.Run("Available to install", func(t *testing.T) {
+		t.Parallel()
 
-	mapper, err := NewPluginMapper(ws, provider, "key", nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+		testProvider := &testProvider{
+			pkg: tokens.Package("yetAnotherProvider"),
+			mapping: func(key string) ([]byte, string, error) {
+				assert.Equal(t, "key", key)
+				return []byte("data"), "yetAnotherProvider", nil
+			},
+		}
 
-	data, err := mapper.GetMapping("yetAnotherProvider")
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{}, data)
+		providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+			assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
+			return testProvider, nil
+		}
+
+		installPlugin := func(pkg tokens.Package) *semver.Version {
+			ver := semver.MustParse("1.0.0")
+			return &ver
+		}
+
+		mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+		assert.NoError(t, err)
+		assert.NotNil(t, mapper)
+
+		data, err := mapper.GetMapping("yetAnotherProvider", "")
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("data"), data)
+	})
+
+	t.Run("Not available to install", func(t *testing.T) {
+		t.Parallel()
+
+		testProvider := &testProvider{
+			pkg: tokens.Package("pulumiProvider"),
+			mapping: func(key string) ([]byte, string, error) {
+				assert.Equal(t, "key", key)
+				return []byte("data"), "otherProvider", nil
+			},
+		}
+
+		providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+			assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
+			return testProvider, nil
+		}
+
+		installPlugin := func(pkg tokens.Package) *semver.Version {
+			// GetMapping will try to install "yetAnotherProvider", but for this test were testing the case
+			// where that can't be installed
+			assert.Equal(t, "yetAnotherProvider", string(pkg))
+			return nil
+		}
+
+		mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+		assert.NoError(t, err)
+		assert.NotNil(t, mapper)
+
+		data, err := mapper.GetMapping("yetAnotherProvider", "")
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{}, data)
+	})
 }
 
 func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
@@ -275,16 +330,21 @@ func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
 		},
 	}
 
-	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
 		return testProvider, nil
 	}
 
-	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("provider")
+	data, err := mapper.GetMapping("provider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -321,7 +381,7 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		},
 	}
 
-	provider := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
 		if pkg == testProviderAws.pkg {
 			return testProviderAws, nil
 		} else if pkg == testProviderGcp.pkg {
@@ -331,17 +391,68 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		return nil, fmt.Errorf("unexpected package %s", pkg)
 	}
 
-	mapper, err := NewPluginMapper(ws, provider, "key", nil)
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		// This will want to install the "gcp" package, but we're calling the pulumi name "pulumiProviderGcp" for this test.
+		assert.Equal(t, "gcp", string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
 	// Get the mapping for the GCP provider.
-	data, err := mapper.GetMapping("gcp")
+	data, err := mapper.GetMapping("gcp", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Now get the mapping for the AWS provider, it should be cached.
-	data, err = mapper.GetMapping("aws")
+	data, err = mapper.GetMapping("aws", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
+}
+
+func TestPluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) {
+	t.Parallel()
+
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "pulumiProviderAws",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+			{
+				Name:    "pulumiProviderGcp",
+				Kind:    workspace.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+	testProvider := &testProvider{
+		pkg: tokens.Package("pulumiProviderGcp"),
+		mapping: func(key string) ([]byte, string, error) {
+			assert.Equal(t, "key", key)
+			return []byte("datagcp"), "gcp", nil
+		},
+	}
+
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		assert.Equal(t, pkg, testProvider.pkg, "unexpected package %s", pkg)
+		return testProvider, nil
+	}
+
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	// Get the mapping for the GCP provider, telling the mapper that it's pulumi name is "pulumiProviderGcp".
+	data, err := mapper.GetMapping("gcp", "pulumiProviderGcp")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("datagcp"), data)
 }
