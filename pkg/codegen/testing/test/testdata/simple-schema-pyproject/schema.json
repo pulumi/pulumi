@@ -15,9 +15,7 @@
   "functions": {},
   "language": {
     "python": {
-      "pyproject": {
-        "enabled": true
-      }
+      "pyproject": {}
     }
   }
 }

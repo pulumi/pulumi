@@ -2978,7 +2978,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 	// Finally, if pyproject.toml generation is enabled, generate
 	// this file and emit it as well.
-	if info.PyProject.Enabled {
+	if info.PyProject != nil {
 		project, err := genPyprojectTOML(
 			tool, pkg, pkgName,
 		)

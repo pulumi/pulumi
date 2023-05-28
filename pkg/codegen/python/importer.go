@@ -56,9 +56,7 @@ type PackageInfo struct {
 	RespectSchemaVersion bool `json:"respectSchemaVersion,omitempty"`
 
 	// If enabled, a pyproject.toml file will be generated.
-	PyProject struct {
-		Enabled bool `json:"enabled,omitempty"`
-	} `json:"pyproject,omitempty"`
+	PyProject *struct{} `json:"pyproject,omitempty"`
 }
 
 // Importer implements schema.Language for Python.
