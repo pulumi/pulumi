@@ -61,6 +61,7 @@ require (
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.0.5
+	github.com/BurntSushi/toml v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.15.15
 	github.com/aws/aws-sdk-go-v2/service/iam v1.19.0

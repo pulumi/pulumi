@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/python
+  description: Generate a pyproject.toml file. This enables Python providers to build Wheels per PEP 621

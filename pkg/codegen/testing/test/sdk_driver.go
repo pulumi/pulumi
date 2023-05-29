@@ -134,6 +134,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with root package set",
 	},
 	{
+		Directory:   "simple-schema-pyproject",
+		Description: "A simple schema that generates a pyproject.toml file",
+		Skip:        codegen.NewStringSet("go/any", "nodejs/any", "dotnet/any"),
+	},
+	{
 		Directory:   "simple-resource-schema",
 		Description: "Simple schema with local resource properties",
 	},

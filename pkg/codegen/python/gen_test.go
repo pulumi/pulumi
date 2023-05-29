@@ -268,3 +268,118 @@ Here \\\\N slashes should be escaped but not N
 	printComment(w, source, "")
 	assert.Equal(t, expected, w.String())
 }
+
+// This test evaluates the calculateDeps function, which takes a list of
+// dependencies, and generates a slice of order pairs, where the first
+// item is the name of the dep and the second item is the version constraint.
+func TestCalculateDeps(t *testing.T) {
+	t.Parallel()
+	type TestCase struct {
+		// This is the input to the calculate deps function, a list of
+		// deps provided in the schema.
+		inputDeps map[string]string
+		// This is the set of ordered pairs.
+		expected [][2]string
+		// calculateDeps can error if the Pulumi version provided is
+		// invalid. This field is used to check that condition.
+		expectedErr error
+	}
+	cases := []TestCase{{
+		// Test 1: Give no explicit deps.
+		inputDeps: map[string]string{},
+		expected: [][2]string{
+			// We expect three alphabetized deps,
+			// with semver and parver formatted differently from Pulumi.
+			// Pulumi should not have a version.
+			{"parver>=0.2.1", ""},
+			{"pulumi", ""},
+			{"semver>=2.8.1"},
+		},
+	}, {
+		// Test 2: If you only one dep, we expect Pulumi to have a narrower
+		//         constraint than if you had provided no deps.
+		inputDeps: map[string]string{
+			"foobar": "7.10.8",
+		},
+		expected: [][2]string{
+			{"foobar", "7.10.8"},
+			{"parver>=0.2.1", ""},
+			{"pulumi", ">=3.0.0,<4.0.0"},
+			{"semver>=2.8.1"},
+		},
+	}, {
+		// Test 3: If you provide pulumi, we expect the constraint to
+		// be respected.
+		inputDeps: map[string]string{
+			"pulumi": ">=3.0.0,<3.50.0",
+		},
+		expected: [][2]string{
+			// We expect three alphabetized deps,
+			// with semver and parver formatted differently from Pulumi.
+			{"parver>=0.2.1", ""},
+			{"pulumi", ">=3.0.0,<3.50.0"},
+			{"semver>=2.8.1"},
+		},
+	}, {
+		// Test 4: If you provide an illegal pulumi version, we expect an error.
+		inputDeps: map[string]string{
+			"pulumi": ">=0.16.0,<4.0.0",
+		},
+		expectedErr: fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi),
+	}}
+
+	for i, tc := range cases {
+		tc := tc
+		name := fmt.Sprintf("CalculateDeps #%d", i+1)
+		t.Run(name, func(tt *testing.T) {
+			tt.Parallel()
+			observedDeps, err := calculateDeps(tc.inputDeps)
+			assert.Equal(tt, tc.expectedErr, err)
+			for index := range observedDeps {
+				observedDep := observedDeps[index]
+				expectedDep := tc.expected[index]
+				assert.ElementsMatch(tt, expectedDep, observedDep)
+			}
+		})
+	}
+}
+
+// This function tests that setPythonRequires correctly sets the minimum
+// Python version when generating pyproject metadata.
+func TestPythonRequiresSuccessful(t *testing.T) {
+	t.Parallel()
+	expected := "3.1"
+	pkg := schema.Package{
+		Language: map[string]interface{}{
+			"python": PackageInfo{
+				PythonRequires: expected,
+			},
+		},
+	}
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
+
+	setPythonRequires(schema, &pkg)
+	observed := *schema.Project.RequiresPython
+	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
+}
+
+// This function tests that setPythonRequires correctly selects the default
+// Python version when generating pyproject metadata.
+func TestPythonRequiresNotProvided(t *testing.T) {
+	t.Parallel()
+	expected := defaultMinPythonVersion
+	pkg := schema.Package{
+		Language: map[string]interface{}{
+			"python": PackageInfo{
+				// Don't set PythonRequires
+			},
+		},
+	}
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
+
+	setPythonRequires(schema, &pkg)
+	observed := *schema.Project.RequiresPython
+	assert.Equal(t, expected, observed, "Expected version %s but observed version %s", expected, observed)
+}

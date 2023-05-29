@@ -32,6 +32,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -2142,12 +2143,14 @@ func genPackageMetadata(
 		}
 		fmt.Fprintf(w, "',\n")
 	}
-	if pkg.Homepage != "" {
-		fmt.Fprintf(w, "      url='%s',\n", pkg.Homepage)
+	urls := mapURLs(pkg)
+
+	if homepage, ok := urls["Homepage"]; ok {
+		fmt.Fprintf(w, "      url='%s',\n", homepage)
 	}
-	if pkg.Repository != "" {
+	if repo, ok := urls["Repository"]; ok {
 		fmt.Fprintf(w, "      project_urls={\n")
-		fmt.Fprintf(w, "          'Repository': '%s'\n", pkg.Repository)
+		fmt.Fprintf(w, "          'Repository': '%s'\n", repo)
 		fmt.Fprintf(w, "      },\n")
 	}
 	if pkg.License != "" {
@@ -2164,48 +2167,24 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
 
-	// Ensure that the Pulumi SDK has an entry if not specified. If the SDK _is_ specified, ensure
-	// that it specifies an acceptable version range.
-	if pulumiReq, ok := requires["pulumi"]; ok {
-		// We expect a specific pattern of ">=version,<version" here.
-		matches := requirementRegex.FindStringSubmatch(pulumiReq)
-		if len(matches) != 2 {
-			return "", fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiReq)
-		}
-
-		lowerBound, err := pep440VersionToSemver(matches[1])
-		if err != nil {
-			return "", fmt.Errorf("invalid version for lower bound: %v", err)
-		}
-		if lowerBound.LT(oldestAllowedPulumi) {
-			return "", fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
-		}
-	} else {
-		if requires == nil {
-			requires = map[string]string{}
-		}
-		requires["pulumi"] = ""
+	// Collect the deps into a tuple, where the first
+	// element is the dep name and the second element
+	// is the version constraint.
+	deps, err := calculateDeps(requires)
+	if err != nil {
+		return "", err
 	}
-
-	// Sort the entries so they are deterministic.
-	reqNames := []string{
-		"semver>=2.8.1",
-		"parver>=0.2.1",
+	fmt.Fprintf(w, "      install_requires=[\n          ")
+	// Concat the first and second element together,
+	// and break each element apart with a comman and a newline.
+	depStrings := make([]string, 0, len(deps))
+	for _, dep := range deps {
+		concat := fmt.Sprintf("'%s%s'", dep[0], dep[1])
+		depStrings = append(depStrings, concat)
 	}
-	for req := range requires {
-		reqNames = append(reqNames, req)
-	}
-	sort.Strings(reqNames)
-
-	fmt.Fprintf(w, "      install_requires=[\n")
-	for i, req := range reqNames {
-		var comma string
-		if i < len(reqNames)-1 {
-			comma = ","
-		}
-		fmt.Fprintf(w, "          '%s%s'%s\n", req, requires[req], comma)
-	}
-	fmt.Fprintf(w, "      ],\n")
+	allDeps := strings.Join(depStrings, ",\n          ")
+	// Lastly, write the deps to the buffer.
+	fmt.Fprintf(w, "%s\n      ],\n", allDeps)
 
 	fmt.Fprintf(w, "      zip_safe=False)\n")
 	return w.String(), nil
@@ -2990,14 +2969,223 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
-	// Finally emit the package metadata (setup.py).
+	// Next, emit the package metadata (setup.py).
 	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
 	if err != nil {
 		return nil, err
 	}
 	files.Add("setup.py", []byte(setup))
 
+	// Finally, if pyproject.toml generation is enabled, generate
+	// this file and emit it as well.
+	if info.PyProject.Enabled {
+		project, err := genPyprojectTOML(
+			tool, pkg, pkgName,
+		)
+		if err != nil {
+			return nil, err
+		}
+		files.Add("pyproject.toml", []byte(project))
+	}
+
 	return files, nil
+}
+
+func genPyprojectTOML(tool string,
+	pkg *schema.Package,
+	pyPkgName string,
+) (string, error) {
+	// First, create a Writer for everything in pyproject.toml
+	w := &bytes.Buffer{}
+	// Create an empty toml manifest.
+	schema := new(PyprojectSchema)
+	schema.Project = new(Project)
+	// Populate the fields.
+	schema.Project.Name = &pyPkgName
+	schema.Project.Keywords = pkg.Keywords
+
+	// Setting dependencies fails if the deps we provide specify
+	// an invalid Pulumi package version as a dep.
+	err := setDependencies(schema, pkg)
+	if err != nil {
+		return "", err
+	}
+
+	// This sets the minimum version of Python.
+	setPythonRequires(schema, pkg)
+
+	// Set the project's URLs
+	schema.Project.URLs = mapURLs(pkg)
+
+	// • Description and License: These fields are populated the same
+	//   way as in setup.py.
+	description := sanitizePackageDescription(pkg.Description)
+	schema.Project.Description = &description
+	schema.Project.License = &License{
+		Text: pkg.License,
+	}
+
+	// • Next, we set the version field.
+	//   A Version of 0.0.0 is typically overridden elsewhere with sed
+	//   or a similar tool.
+	version := "0.0.0"
+	info, ok := pkg.Language["python"].(PackageInfo)
+	if pkg.Version != nil && ok && info.RespectSchemaVersion {
+		version = pypiVersion(*pkg.Version)
+	}
+	schema.Project.Version = &version
+
+	// • Set the path to the README.
+	readme := "README.md"
+	schema.Project.README = &readme
+
+	// • Marshal the data into TOML format.
+	err = toml.NewEncoder(w).Encode(schema)
+	return w.String(), err
+}
+
+// mapURLs creates a map between the name of the URL and the URL itself.
+// Currently, only two URLs are supported: the project "Homepage" and the
+// project "Repository", which are the corresponding map keys.
+func mapURLs(pkg *schema.Package) map[string]string {
+	urls := map[string]string{}
+	if homepage := pkg.Homepage; homepage != "" {
+		urls["Homepage"] = homepage
+	}
+	if repo := pkg.Repository; repo != "" {
+		urls["Repository"] = repo
+	}
+	return urls
+}
+
+// setPythonRequires adds a minimum version of Python required to run this package.
+// It falls back to the default version supported by Pulumi if the user hasn't provided
+// one in the schema.
+func setPythonRequires(schema *PyprojectSchema, pkg *schema.Package) {
+	info := pkg.Language["python"].(PackageInfo)
+
+	// Start with the default, and replace it if the user provided
+	// a specific version.
+	minPython := defaultMinPythonVersion
+	if userPythonVersion, err := minimumPythonVersion(info); err == nil {
+		minPython = userPythonVersion
+	}
+
+	schema.Project.RequiresPython = &minPython
+}
+
+// setDependencies mutates the pyproject schema adding the dependencies to the
+// list in lexical order.
+func setDependencies(schema *PyprojectSchema, pkg *schema.Package) error {
+	requires := map[string]string{}
+	if info, ok := pkg.Language["python"].(PackageInfo); ok {
+		requires = info.Requires
+	}
+	deps, err := calculateDeps(requires)
+	if err != nil {
+		return err
+	}
+	for _, dep := range deps {
+		// Append the dep constraint to the end of the dep name.
+		// e.g. pulumi>=3.50.1
+		depConstraint := fmt.Sprintf("%s%s", dep[0], dep[1])
+		schema.Project.Dependencies = append(schema.Project.Dependencies, depConstraint)
+	}
+
+	return nil
+}
+
+// ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
+// It accepts a list of dependencies
+// as provided in the package schema, and validates whether
+// this list correctly includes the Pulumi Python package.
+// It returns a map that correctly specifies the dependency.
+// This function does not modify the argument. Instead, it returns
+// a copy of the original map, except that the `pulumi` key is guaranteed to have
+// a valid value.
+// This function returns an error if the provided Pulumi version fails to
+// validate.
+func ensureValidPulumiVersion(requires map[string]string) (map[string]string, error) {
+	deps := map[string]string{}
+	// Special case: if the map is empty, we return just pulumi with no version constraint.
+	// This is just legacy functionality; there's no obvious reason this should be the case.
+	if len(requires) == 0 {
+		result := map[string]string{
+			"pulumi": "",
+		}
+		return result, nil
+	}
+	// If the pulumi dep is missing, we require it to fall within
+	// our major version constraint.
+	if pulumiDep, ok := requires["pulumi"]; !ok {
+		deps["pulumi"] = ">=3.0.0,<4.0.0"
+	} else {
+		// Since a value was provided, we check to make sure it's
+		// within an acceptable version range.
+		// We expect a specific pattern of ">=version,<version" here.
+		matches := requirementRegex.FindStringSubmatch(pulumiDep)
+		if len(matches) != 2 {
+			return nil, fmt.Errorf("invalid requirement specifier \"%s\"; expected \">=version1,<version2\"", pulumiDep)
+		}
+
+		lowerBound, err := pep440VersionToSemver(matches[1])
+		if err != nil {
+			return nil, fmt.Errorf("invalid version for lower bound: %v", err)
+		}
+		if lowerBound.LT(oldestAllowedPulumi) {
+			return nil, fmt.Errorf("lower version bound must be at least %v", oldestAllowedPulumi)
+		}
+		// The provided Pulumi version is valid, so we're copy it into
+		// the new map.
+		deps["pulumi"] = pulumiDep
+	}
+
+	// Copy the rest of the dependencies listed into deps.
+	for k, v := range requires {
+		if k == "pulumi" {
+			continue
+		}
+		deps[k] = v
+	}
+	return deps, nil
+}
+
+// calculateDeps determines the dependencies of this project
+// and orders them lexigraphical.
+// This function returns a slice of tuples, where the first element
+// of each tuple is the name of the dependency, and the second element
+// is the dependency's version constraint.
+// This function returns an error if the version of Pulumi listed as a
+// dep fails to validate.
+func calculateDeps(requires map[string]string) ([][2]string, error) {
+	var err error
+	result := make([][2]string, 0, len(requires))
+	if requires, err = ensureValidPulumiVersion(requires); err != nil {
+		return nil, err
+	}
+	// Collect all of the names into an array, including
+	// two extras that we hardcode.
+	// NB: I have no idea why we hardcode these values here. Because we
+	// access the map later, they MUST already be in the map,
+	// or else we'd be writing nil to the file, but since we append
+	// them here, I'd expect them to show up twice in the output file.
+	deps := []string{
+		"semver>=2.8.1",
+		"parver>=0.2.1",
+	}
+	for dep := range requires {
+		deps = append(deps, dep)
+	}
+	sort.Strings(deps)
+
+	for _, dep := range deps {
+		next := [2]string{
+			dep, requires[dep],
+		}
+		result = append(result, next)
+	}
+
+	return result, nil
 }
 
 const utilitiesFile = `
