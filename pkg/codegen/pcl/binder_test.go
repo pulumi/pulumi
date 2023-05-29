@@ -182,9 +182,7 @@ func TestConfigNodeTypedOptionalString(t *testing.T) {
 	t.Parallel()
 	source := "config cidrBlock string { default = null }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -201,9 +199,7 @@ func TestConfigNodeTypedInt(t *testing.T) {
 	t.Parallel()
 	source := "config count int { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -217,9 +213,7 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(string)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -235,9 +229,7 @@ func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -253,9 +245,7 @@ func TestConfigNodeTypedStringMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(string)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -271,9 +261,7 @@ func TestConfigNodeTypedIntMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(int)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
@@ -289,9 +277,7 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	t.Parallel()
 	source := "config names \"map(any)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
-	if err != nil {
-		t.Fatalf("could not bind program: %v", err)
-	}
+	require.NoError(t, err)
 	contract.Ignore(diags)
 	assert.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
