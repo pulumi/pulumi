@@ -442,21 +442,31 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (DiffResult, error) {
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:        fmt.Sprintf("%s.olds", label),
+	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
+
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.oldInputs", label),
 		KeepUnknowns: true,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
 
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        fmt.Sprintf("%s.news", label),
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.oldOutputs", label),
+		KeepUnknowns: true,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:        fmt.Sprintf("%s.newInputs", label),
 		KeepUnknowns: true,
 	})
 	if err != nil {
@@ -465,8 +475,9 @@ func (p *provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		OldInputs:     mOldInputs,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
@@ -645,6 +656,7 @@ func (p *provider) Configure(inputs resource.PropertyMap) error {
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
 			AcceptSecrets:   true,
 			AcceptResources: true,
+			SendsOldInputs:  true,
 			Variables:       config,
 			Args:            minputs,
 		})
@@ -752,16 +764,18 @@ func (p *provider) Check(urn resource.URN,
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 	ignoreChanges []string,
 ) (DiffResult, error) {
 	contract.Assertf(urn != "", "Diff requires a URN")
 	contract.Assertf(id != "", "Diff requires an ID")
-	contract.Assertf(news != nil, "Diff requires new properties")
-	contract.Assertf(olds != nil, "Diff requires old properties")
+	contract.Assertf(oldInputs != nil, "Diff requires old input properties")
+	contract.Assertf(newInputs != nil, "Diff requires old output properties")
+	contract.Assertf(oldOutputs != nil, "Diff requires new properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), urn, id)
-	logging.V(7).Infof("%s: executing (#olds=%d,#news=%d)", label, len(olds), len(news))
+	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -780,8 +794,8 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, DiffUnavailable(message)
 	}
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:              fmt.Sprintf("%s.olds", label),
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldInputs", label),
 		ElideAssetContents: true,
 		KeepUnknowns:       allowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
@@ -790,11 +804,24 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	if err != nil {
 		return DiffResult{}, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
-		KeepUnknowns:  allowUnknowns,
-		KeepSecrets:   pcfg.acceptSecrets,
-		KeepResources: pcfg.acceptResources,
+
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldOutputs", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return DiffResult{}, err
+	}
+
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.newInputs", label),
+		ElideAssetContents: true,
+		KeepUnknowns:       allowUnknowns,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -803,8 +830,9 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(id),
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		OldInputs:     mOldInputs,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
@@ -1070,22 +1098,24 @@ func (p *provider) Read(urn resource.URN, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	contract.Assertf(urn != "", "Update requires a URN")
 	contract.Assertf(id != "", "Update requires an ID")
-	contract.Assertf(news != nil, "Update requires new properties")
-	contract.Assertf(olds != nil, "Update requires old properties")
+	contract.Assertf(oldInputs != nil, "Update requires old inputs")
+	contract.Assertf(oldOutputs != nil, "Update requires old outputs")
+	contract.Assertf(newInputs != nil, "Update requires new properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), id, urn)
-	logging.V(7).Infof("%s executing (#olds=%v,#news=%v)", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#oldInputs=%v,#oldOutputs=%v,#newInputs=%v)",
+		label, len(oldInputs), len(oldOutputs), len(newInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
 	pcfg, err := p.awaitConfig(context.Background())
 	if err != nil {
-		return news, resource.StatusOK, err
+		return newInputs, resource.StatusOK, err
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
@@ -1102,20 +1132,20 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
 		if !pcfg.known {
 			if p.legacyPreview {
-				return news, resource.StatusOK, nil
+				return newInputs, resource.StatusOK, nil
 			}
 			return resource.PropertyMap{}, resource.StatusOK, nil
 		}
 		if !pcfg.supportsPreview || p.disableProviderPreview {
-			return news, resource.StatusOK, nil
+			return newInputs, resource.StatusOK, nil
 		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
-	molds, err := MarshalProperties(olds, MarshalOptions{
-		Label:              fmt.Sprintf("%s.olds", label),
+	mOldInputs, err := MarshalProperties(oldInputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldInputs", label),
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
@@ -1123,8 +1153,17 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	if err != nil {
 		return nil, resource.StatusOK, err
 	}
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:         fmt.Sprintf("%s.news", label),
+	mOldOutputs, err := MarshalProperties(oldOutputs, MarshalOptions{
+		Label:              fmt.Sprintf("%s.oldOutputs", label),
+		ElideAssetContents: true,
+		KeepSecrets:        pcfg.acceptSecrets,
+		KeepResources:      pcfg.acceptResources,
+	})
+	if err != nil {
+		return nil, resource.StatusOK, err
+	}
+	mNewInputs, err := MarshalProperties(newInputs, MarshalOptions{
+		Label:         fmt.Sprintf("%s.newInputs", label),
 		KeepUnknowns:  preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
@@ -1139,11 +1178,12 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	resp, err := client.Update(p.requestContext(), &pulumirpc.UpdateRequest{
 		Id:            string(id),
 		Urn:           string(urn),
-		Olds:          molds,
-		News:          mnews,
+		Olds:          mOldOutputs,
+		News:          mNewInputs,
 		Timeout:       timeout,
 		IgnoreChanges: ignoreChanges,
 		Preview:       preview,
+		OldInputs:     mOldInputs,
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, resourceError = parseError(err)
@@ -1172,7 +1212,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !pcfg.acceptSecrets {
-		annotateSecrets(outs, news)
+		annotateSecrets(outs, newInputs)
 	}
 
 	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))

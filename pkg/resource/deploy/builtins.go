@@ -58,7 +58,7 @@ func (p *builtinProvider) CheckConfig(urn resource.URN, olds,
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-func (p *builtinProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (p *builtinProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
@@ -95,12 +95,12 @@ func (p *builtinProvider) Check(urn resource.URN, state, inputs resource.Propert
 	return inputs, nil, nil
 }
 
-func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap,
+func (p *builtinProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
-	if !inputs["name"].DeepEquals(state["name"]) {
+	if !newInputs["name"].DeepEquals(oldOutputs["name"]) {
 		return plugin.DiffResult{
 			Changes:     plugin.DiffSome,
 			ReplaceKeys: []resource.PropertyKey{"name"},
@@ -133,13 +133,14 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 	return id, state, resource.StatusOK, nil
 }
 
-func (p *builtinProvider) Update(urn resource.URN, id resource.ID, state, inputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
+func (p *builtinProvider) Update(urn resource.URN, id resource.ID,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap,
+	timeout float64, ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	contract.Failf("unexpected update for builtin resource %v", urn)
 	contract.Assertf(urn.Type() == stackReferenceType, "expected resource type %v, got %v", stackReferenceType, urn.Type())
 
-	return state, resource.StatusOK, errors.New("unexpected update for builtin resource")
+	return oldOutputs, resource.StatusOK, errors.New("unexpected update for builtin resource")
 }
 
 func (p *builtinProvider) Delete(urn resource.URN, id resource.ID,

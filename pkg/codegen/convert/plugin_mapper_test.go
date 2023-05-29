@@ -64,7 +64,7 @@ func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	return nil, nil, errors.New("unsupported")
 }
 
-func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (prov *testProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
@@ -93,13 +93,13 @@ func (prov *testProvider) Read(urn resource.URN, id resource.ID,
 }
 
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, _ []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")

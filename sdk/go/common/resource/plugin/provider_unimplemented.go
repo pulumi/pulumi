@@ -46,7 +46,7 @@ func (p *UnimplementedProvider) CheckConfig(urn resource.URN, olds resource.Prop
 	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
 }
 
-func (p *UnimplementedProvider) DiffConfig(urn resource.URN, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+func (p *UnimplementedProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 }
 
@@ -58,7 +58,7 @@ func (p *UnimplementedProvider) Check(urn resource.URN, olds resource.PropertyMa
 	return resource.PropertyMap{}, nil, status.Error(codes.Unimplemented, "Check is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
+func (p *UnimplementedProvider) Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (DiffResult, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "Diff is not yet implemented")
 }
 
@@ -70,7 +70,7 @@ func (p *UnimplementedProvider) Read(urn resource.URN, id resource.ID, inputs re
 	return ReadResult{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Read is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+func (p *UnimplementedProvider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	return resource.PropertyMap{}, resource.StatusUnknown, status.Error(codes.Unimplemented, "Update is not yet implemented")
 }
 

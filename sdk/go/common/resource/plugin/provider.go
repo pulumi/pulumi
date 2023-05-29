@@ -49,7 +49,7 @@ type Provider interface {
 	CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []CheckFailure, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
-	DiffConfig(urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+	DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, allowUnknowns bool,
 		ignoreChanges []string) (DiffResult, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
 	Configure(inputs resource.PropertyMap) error
@@ -59,7 +59,7 @@ type Provider interface {
 	Check(urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []CheckFailure, error)
 	// Diff checks what impacts a hypothetical update will have on the resource's properties.
-	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+	Diff(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
@@ -71,7 +71,7 @@ type Provider interface {
 		inputs, state resource.PropertyMap) (ReadResult, resource.Status, error)
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+		oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
