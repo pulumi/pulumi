@@ -60,7 +60,7 @@ func TestNPMInstallCmd(t *testing.T) {
 			observedCommand := filepath.Base(command.Path)
 			// Trim the extension, which will appear on Windows systems.
 			if extension := filepath.Ext(observedCommand); extension != "" {
-				observedCommand = strings.TrimRight(observedCommand, extension)
+				observedCommand = strings.TrimSuffix(observedCommand, extension)
 			}
 			assert.Equal(t, "false", observedCommand)
 		})
