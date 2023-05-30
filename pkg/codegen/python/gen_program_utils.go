@@ -20,9 +20,9 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 	case "singleOrNone":
 		return fmt.Sprintf(
 			`%sdef single_or_none(elements):
-%s    if len(elements) == 1:
-%s        return elements[0]
-%s    return None
+%s    if len(elements) != 1:
+%s        raise Exception("single_or_none expected input list to have a single element")
+%s    return elements[0]
 `, indent, indent, indent, indent), true
 	default:
 		return "", false

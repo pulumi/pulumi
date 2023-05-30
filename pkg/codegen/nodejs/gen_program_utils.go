@@ -20,11 +20,11 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s}`, indent, indent, indent), true
 	case "singleOrNone":
 		return fmt.Sprintf(
-			`%sfunction singleOrNone<T>(elements: pulumi.Input<T>[]): pulumi.Input<T> | undefined {
-%s    if (elements.length == 1) {
-%s        return elements[0];
+			`%sfunction singleOrNone<T>(elements: pulumi.Input<T>[]): pulumi.Input<T> {
+%s    if (elements.length != 1) {
+%s        throw new Error("singleOrNone expected input list to have a single element");
 %s    }
-%s    return undefined;
+%s    return elements[0];
 %s}`, indent, indent, indent, indent, indent, indent), true
 	default:
 		return "", false
