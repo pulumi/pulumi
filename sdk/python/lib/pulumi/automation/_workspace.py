@@ -207,13 +207,16 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def get_config(self, stack_name: str, key: str) -> ConfigValue:
+    def get_config(
+        self, stack_name: str, key: str, *, path: bool = False
+    ) -> ConfigValue:
         """
         Returns the value associated with the specified stack name and key,
         scoped to the Workspace.
 
         :param stack_name: The name of the stack.
         :param key: The key for the config item to get.
+        :param path: The key contains a path to a property in a map or list to get.
         :returns: ConfigValue
         """
 
@@ -227,40 +230,50 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
+    def set_config(
+        self, stack_name: str, key: str, value: ConfigValue, *, path: bool = False
+    ) -> None:
         """
         Sets the specified key-value pair on the provided stack name.
 
         :param stack_name: The name of the stack.
         :param key: The config key to add.
         :param value: The config value to add.
+        :param path: The key contains a path to a property in a map or list to set.
         """
 
     @abstractmethod
-    def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
+    def set_all_config(
+        self, stack_name: str, config: ConfigMap, *, path: bool = False
+    ) -> None:
         """
         Sets all values in the provided config map for the specified stack name.
 
         :param stack_name: The name of the stack.
         :param config: A mapping of key to ConfigValue to set to config.
+        :param path: The keys contain a path to a property in a map or list to set.
         """
 
     @abstractmethod
-    def remove_config(self, stack_name: str, key: str) -> None:
+    def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         """
         Removes the specified key-value pair on the provided stack name.
 
         :param stack_name: The name of the stack.
         :param key: The key to remove from config.
+        :param path: The key contains a path to a property in a map or list to remove.
         """
 
     @abstractmethod
-    def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
+    def remove_all_config(
+        self, stack_name: str, keys: List[str], *, path: bool = False
+    ) -> None:
         """
         Removes all values in the provided key list for the specified stack name.
 
         :param stack_name: The name of the stack.
         :param keys: The keys to remove from config.
+        :param path: The keys contain a path to a property in a map or list to remove.
         """
 
     @abstractmethod
