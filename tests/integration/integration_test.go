@@ -893,3 +893,55 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 		},
 	})
 }
+
+func testProjectRename(e *ptesting.Environment, organization string) {
+	e.ImportDirectory("large_resource/nodejs")
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("yarn", "install")
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+	newProjectName := "new_large_resource_js"
+	stackRef := organization + "/" + newProjectName + "/" + stackName
+
+	e.RunCommand("pulumi", "stack", "rename", stackRef)
+
+	// Rename the project name in the yaml file
+	projFilename := filepath.Join(e.CWD, "Pulumi.yaml")
+	proj, err := workspace.LoadProject(projFilename)
+	require.NoError(e, err)
+	proj.Name = tokens.PackageName(newProjectName)
+	err = proj.Save(projFilename)
+	require.NoError(e, err)
+
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes", "--expect-no-changes", "-s", stackRef)
+	e.RunCommand("pulumi", "stack", "rm", "--force", "--yes", "-s", stackRef)
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestProjectRename_LocalProject(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testProjectRename(e, "organization")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestProjectRename_Cloud(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	output, _ := e.RunCommand("pulumi", "whoami")
+	organization := strings.TrimSpace(output)
+	testProjectRename(e, organization)
+}

@@ -412,6 +412,60 @@ func TestRenameWorks(t *testing.T) {
 	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
 }
 
+func TestRenameProjectWorks(t *testing.T) {
+	t.Parallel()
+
+	// Login to a temp dir filestate backend
+	tmpDir := t.TempDir()
+	ctx := context.Background()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	assert.NoError(t, err)
+
+	// Grab the bucket interface to test with
+	lb, ok := b.(*localBackend)
+	assert.True(t, ok)
+	assert.NotNil(t, lb)
+
+	// Create a new stack
+	aStackRef, err := lb.parseStackReference("organization/project/a")
+	assert.NoError(t, err)
+	aStack, err := b.CreateStack(ctx, aStackRef, "", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, aStack)
+
+	// Check the stack file now exists
+	stackFileExists, err := lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+
+	// Fake up some history
+	err = lb.addToHistory(ctx, aStackRef, backend.UpdateInfo{Kind: apitype.DestroyUpdate})
+	assert.NoError(t, err)
+	// And pollute the history folder
+	err = lb.bucket.WriteAll(ctx, path.Join(aStackRef.HistoryDir(), "randomfile.txt"), []byte{0, 13}, nil)
+	assert.NoError(t, err)
+
+	// Rename the project and stack
+	bStackRefI, err := b.RenameStack(ctx, aStack, "organization/newProject/b")
+	assert.NoError(t, err)
+	assert.Equal(t, "organization/newProject/b", bStackRefI.String())
+	bStackRef := bStackRefI.(*localBackendReference)
+
+	// Check the new stack file now exists and the old one is gone
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, bStackRef))
+	assert.NoError(t, err)
+	assert.True(t, stackFileExists)
+	stackFileExists, err = lb.bucket.Exists(ctx, lb.stackPath(ctx, aStackRef))
+	assert.NoError(t, err)
+	assert.False(t, stackFileExists)
+
+	// Check we can still get the history
+	history, err := b.GetHistory(ctx, bStackRef, 10, 0)
+	assert.NoError(t, err)
+	assert.Len(t, history, 1)
+	assert.Equal(t, apitype.DestroyUpdate, history[0].Kind)
+}
+
 func TestLoginToNonExistingFolderFails(t *testing.T) {
 	t.Parallel()
 
