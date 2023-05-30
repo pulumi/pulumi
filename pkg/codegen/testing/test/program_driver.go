@@ -276,6 +276,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs"),
 		SkipCompile: allProgLanguages,
 	},
+	{
+		Directory:   "single-or-none",
+		Description: "Tests using the singleOrNone function",
+		// TODO: dotnet and go support
+		Skip:        allProgLanguages.Except("nodejs").Except("python"),
+		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
