@@ -78,6 +78,8 @@ func TestYarnInstall(t *testing.T) {
 //nolint:paralleltest // mutates environment variables, changes working directory
 func TestPNPMInstall(t *testing.T) {
 	t.Setenv("PULUMI_PREFER_PNPM", "true")
+	pnpmBin := t.TempDir()
+	t.Setenv("PNPM_BIN", pnpmBin)
 
 	t.Run("development", func(t *testing.T) {
 		testInstall(t, "pnpm", false /*production*/)
@@ -251,6 +253,7 @@ func writeFile(t testing.TB, path, contents string) {
 
 // This test verifies that the package management resolution algorithm
 // selects the right package manager based on environment variables.
+//
 //nolint:paralleltest // mutates environment variables
 func TestPkgManagerResolutionEnvVar(t *testing.T) {
 	type TestCase struct {
@@ -279,18 +282,15 @@ func TestPkgManagerResolutionEnvVar(t *testing.T) {
 		{
 			preferYarn:  true,
 			preferPNPM:  true,
-			expectedErr: mutuallyExclusiveEnvVars,
+			expectedErr: errMutuallyExclusiveEnvVars,
 		},
 	}
 
-	//  • Create a temp directory, which we know to be empty,
-	//    that we can use as PWD.
-	pwd, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
-	defer os.Remove(pwd)
-
-	fakePath := fakePkgManagerPaths(t)
-	defer os.RemoveAll(fakePath)
+	// • Create a temp directory, which we know to be empty,
+	//   that we can use as PWD.
+	pwd := t.TempDir()
+	// • Setup fake executables to be found within the path.
+	fakePkgManagerPaths(t)
 
 	for _, tc := range cases {
 		tc := tc
@@ -318,6 +318,7 @@ func TestPkgManagerResolutionEnvVar(t *testing.T) {
 // This test verifies that the package management resolution algorithm
 // selects the right package manager based on lockfiles. We expect
 // yarn > pnpm > default (npm)
+//
 //nolint:paralleltest // mutates environment variables
 func TestPkgManagerResolutionLockfiles(t *testing.T) {
 	type TestCase struct {
@@ -349,8 +350,7 @@ func TestPkgManagerResolutionLockfiles(t *testing.T) {
 		},
 	}
 
-	fakePath := fakePkgManagerPaths(t)
-	defer os.RemoveAll(fakePath)
+	fakePkgManagerPaths(t)
 
 	for _, tc := range cases {
 		tc := tc
@@ -358,9 +358,7 @@ func TestPkgManagerResolutionLockfiles(t *testing.T) {
 		t.Run(name, func(tt *testing.T) {
 			//  • Create a temp directory, which we know to be empty,
 			//    that we can use as PWD and write lockfiles into.
-			pwd, err := os.MkdirTemp("", "")
-			require.NoError(tt, err)
-			defer os.RemoveAll(pwd)
+			pwd := t.TempDir()
 			// • Touch the lockfiles conditionally.
 			touchFile(tt, tc.hasYarnLock, pwd, "yarn.lock")
 			touchFile(tt, tc.hasPNPMLock, pwd, "pnpm-lock.yaml")
@@ -374,6 +372,7 @@ func TestPkgManagerResolutionLockfiles(t *testing.T) {
 }
 
 func touchFile(t *testing.T, enabled bool, dir, name string) {
+	t.Helper()
 	if enabled {
 		lockfile := filepath.Join(dir, name)
 		_, err := os.Create(lockfile)
@@ -384,11 +383,11 @@ func touchFile(t *testing.T, enabled bool, dir, name string) {
 // fakePkgManagerPaths creates a directory to store fake package manager
 // executables for lookup. It returns the name of the directory, and
 // updates the PATH to point to this directory.
-func fakePkgManagerPaths(t *testing.T) string {
+func fakePkgManagerPaths(t *testing.T) {
+	t.Helper()
 	//  • Create a temp directory that we can use as the fake path.
 	//    We store our fake executables here.
-	fakePath, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
+	fakePath := t.TempDir()
 
 	// Create three fake executables in the temp dir, one for yarn, pnpm,
 	// and npm.
@@ -401,5 +400,4 @@ func fakePkgManagerPaths(t *testing.T) string {
 
 	// • Override the PATH so we can mock the location of yarn, pnpm, and npm.
 	t.Setenv("PATH", fakePath)
-	return fakePath
 }

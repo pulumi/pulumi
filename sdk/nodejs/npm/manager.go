@@ -73,7 +73,9 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 }
 
 // This error occurs when the user has selected two package managers; only one can be selected at a time.
-var mutuallyExclusiveEnvVars = fmt.Errorf("both PULUMI_PREFER_YARN and PULUMI_PREFER_PNPM are set; these env vars are mutually exclusive")
+var errMutuallyExclusiveEnvVars = fmt.Errorf(
+	"both PULUMI_PREFER_YARN and PULUMI_PREFER_PNPM are set; these env vars are mutually exclusive",
+)
 
 // ResolvePackageManager determines which package manager to use.
 // First, we check if a package manager is explicitly selected via env var.
@@ -90,7 +92,7 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 
 	// • Error if both PULUMI_PREFER_PNPM and PULUMI_PREFER_YARN are set.
 	if yarnEnvSet && pnpmEnvSet {
-		return nil, mutuallyExclusiveEnvVars
+		return nil, errMutuallyExclusiveEnvVars
 	}
 
 	// • Now, check if either of these variables are set, since they take
@@ -157,7 +159,10 @@ func ResolvePackageManager(pwd string) (PackageManager, error) {
 	if err == nil {
 		return yarn, nil
 	}
-	logging.Warningf("found lockfiles for PNPM and Yarn, but could not find yarn on the $PATH, trying pnpm instead: %v", err)
+	logging.Warningf(
+		"found lockfiles for PNPM and Yarn, but could not find yarn on the $PATH, trying pnpm instead: %v",
+		err,
+	)
 	var manager PackageManager
 	manager, err = newPNPM()
 	if err != nil {

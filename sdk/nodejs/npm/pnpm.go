@@ -1,11 +1,14 @@
 package npm
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // pnpm is an implementation of PackageManager that uses PNPM,
@@ -53,7 +56,31 @@ func (manager *pnpm) installCmd(ctx context.Context, production bool) *exec.Cmd 
 // there into a tarball an returning it as `[]byte`. `stdout` is ignored for this command,
 // as it does not produce useful data.
 func (manager *pnpm) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
-	panic("TODO")
+	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
+	command := exec.CommandContext(ctx, manager.executable, "pack")
+	command.Dir = dir
+
+	// Like NPM, stdout prints the name of the generated file.
+	var stdout bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = stderr
+	err := command.Run()
+	if err != nil {
+		return nil, err
+	}
+	// Next, we try to read the name of the file from stdout.
+	// packfile is the name of the file containing the tarball,
+	// as produced by `pnpm pack`.
+	packfile := strings.TrimSpace(stdout.String())
+	defer os.Remove(packfile)
+
+	packTarball, err := os.ReadFile(packfile)
+	if err != nil {
+		newErr := fmt.Errorf("'pnpm pack' completed successfully but the packaged .tgz file was not generated: %v", err)
+		return nil, newErr
+	}
+
+	return packTarball, nil
 }
 
 // checkPNPMLock checks if there's a file named pnpm-lock.yaml in pwd.
