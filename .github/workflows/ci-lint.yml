@@ -65,7 +65,7 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "::error go.mod not tidy"
-            echo "::error Please run ./scripts/tidy.sh"
+            echo "::error Please run 'make tidy'"
             exit 1
           fi
 
