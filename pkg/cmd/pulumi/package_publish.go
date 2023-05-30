@@ -146,7 +146,7 @@ func publishToNPM(path string) error {
 
 	if len(output) > 0 {
 		// the package already exists, and we no-op.
-		fmt.Printf("did not publish %s, likely because the version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
+		fmt.Printf("did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
 		return nil
 	}
 
@@ -170,7 +170,7 @@ func publishToNPM(path string) error {
 			return nil
 		}
 		// if we get here, this means the package was not published. We bail.
-		return fmt.Errorf("failed to publish package %w", err)
+		return fmt.Errorf("publish package: %w", err)
 	}
 	fmt.Println("success! published to npm")
 	return nil
