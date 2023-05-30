@@ -9,7 +9,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.29
 	github.com/djherbis/times v1.5.0
-	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/glog v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
