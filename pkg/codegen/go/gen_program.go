@@ -405,6 +405,14 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	if err == nil {
 		// if we were able to format the code, use prefer the formatted version
 		mainProgramContent = formattedSource
+	} else {
+		// add a warning diagnostic when there is a formatting error
+		g.diagnostics = g.diagnostics.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Subject:  &hcl.Range{Filename: "main.go"},
+			Summary:  "could not format go code",
+			Detail:   err.Error(),
+		})
 	}
 
 	files := map[string][]byte{
@@ -433,6 +441,14 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		if err == nil {
 			// if we were able to format the code, use prefer the formatted version
 			componentContent = formattedComponentSource
+		} else {
+			// add a warning diagnostic when there is a formatting error
+			componentGenerator.diagnostics = componentGenerator.diagnostics.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Subject:  &hcl.Range{Filename: componentName + ".go"},
+				Summary:  "could not format go code",
+				Detail:   err.Error(),
+			})
 		}
 		files[componentName+".go"] = componentContent
 	}
