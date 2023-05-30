@@ -141,7 +141,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}
-	sig, err := b.signatureForArgs(fn, args[1])
+	sig, err := b.invokeSignature(fn)
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
@@ -182,34 +182,14 @@ func (b *binder) zeroSignature() model.StaticFunctionSignature {
 	return b.makeSignature(model.NewOptionalType(model.DynamicType), model.DynamicType)
 }
 
-func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (model.StaticFunctionSignature, error) {
-	if args != nil && b.useOutputVersion(fn, args) {
+// invokeSignature determines the signature of a function invoke based on
+// whether it has implemented an output-versioned invoke. When that is the case, the return type T of the function
+// becomes Output<T>, otherwise Promise<T>.
+func (b *binder) invokeSignature(fn *schema.Function) (model.StaticFunctionSignature, error) {
+	if fn.NeedsOutputVersion() {
 		return b.outputVersionSignature(fn)
 	}
 	return b.regularSignature(fn), nil
-}
-
-// Heuristic to decide when to use `fnOutput` form of a function. Will
-// conservatively prefer `false`. It only decides to return `true` if
-// doing so avoids the need to introduce an `apply` form to
-// accommodate `Output` args (`Promise` args do not count).
-func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
-	if !fn.NeedsOutputVersion() {
-		// No code emitted for an `fnOutput` form, impossible.
-		return false
-	}
-
-	outputFormParamType := b.schemaTypeToType(fn.Inputs.InputShape)
-	regularFormParamType := b.schemaTypeToType(fn.Inputs)
-	argsType := args.Type()
-
-	if regularFormParamType.ConversionFrom(argsType) == model.NoConversion &&
-		outputFormParamType.ConversionFrom(argsType) == model.SafeConversion &&
-		model.ContainsOutputs(argsType) {
-		return true
-	}
-
-	return false
 }
 
 func (b *binder) regularSignature(fn *schema.Function) model.StaticFunctionSignature {

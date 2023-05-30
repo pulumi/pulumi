@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Simplify invoke signature logic based on existence of an output-versioned invoke

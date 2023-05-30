@@ -283,6 +283,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
 	},
+	{
+		Directory:   "aws-vpc-conditional-inside-range",
+		Description: "Creation of VPC where the range expression has a conditional expression containing output",
+		Skip:        allProgLanguages.Except("nodejs"),
+		SkipCompile: allProgLanguages,
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
