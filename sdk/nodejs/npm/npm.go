@@ -23,6 +23,11 @@ func newNPM() (*npmManager, error) {
 	instance := &npmManager{
 		executable: npmPath,
 	}
+	if err != nil {
+		err = fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+
+			"available at https://nodejs.org/: %w", err)
+	}
+
 	return instance, err
 }
 
