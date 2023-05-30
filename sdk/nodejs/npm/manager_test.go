@@ -75,6 +75,19 @@ func TestYarnInstall(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables, changes working directory
+func TestPNPMInstall(t *testing.T) {
+	t.Setenv("PULUMI_PREFER_PNPM", "true")
+
+	t.Run("development", func(t *testing.T) {
+		testInstall(t, "pnpm", false /*production*/)
+	})
+
+	t.Run("production", func(t *testing.T) {
+		testInstall(t, "pnpm", true /*production*/)
+	})
+}
+
 func testInstall(t *testing.T, expectedBin string, production bool) {
 	// To test this functionality without actually hitting NPM,
 	// we'll spin up a local HTTP server that implements a subset
@@ -234,4 +247,159 @@ func writeFile(t testing.TB, path, contents string) {
 
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
 	require.NoError(t, os.WriteFile(path, []byte(contents), 0o600))
+}
+
+// This test verifies that the package management resolution algorithm
+// selects the right package manager based on environment variables.
+//nolint:paralleltest // mutates environment variables
+func TestPkgManagerResolutionEnvVar(t *testing.T) {
+	type TestCase struct {
+		preferYarn, preferPNPM bool
+		expectedManager        string
+		expectedErr            error
+	}
+
+	// These cases test all combinations of environment variables.
+	cases := []TestCase{
+		{
+			preferYarn:      false,
+			preferPNPM:      false,
+			expectedManager: "npm",
+		},
+		{
+			preferYarn:      false,
+			preferPNPM:      true,
+			expectedManager: "pnpm",
+		},
+		{
+			preferYarn:      true,
+			preferPNPM:      false,
+			expectedManager: "yarn",
+		},
+		{
+			preferYarn:  true,
+			preferPNPM:  true,
+			expectedErr: mutuallyExclusiveEnvVars,
+		},
+	}
+
+	//  • Create a temp directory, which we know to be empty,
+	//    that we can use as PWD.
+	pwd, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+	defer os.Remove(pwd)
+
+	fakePath := fakePkgManagerPaths(t)
+	defer os.RemoveAll(fakePath)
+
+	for _, tc := range cases {
+		tc := tc
+		name := fmt.Sprintf("PREFER_YARN=%v,PREFER_PNPM=%v", tc.preferYarn, tc.preferPNPM)
+		t.Run(name, func(tt *testing.T) {
+			// Set the environment variables before running the resolver.
+			setYarn := fmt.Sprintf("%t", tc.preferYarn)
+			setPNPM := fmt.Sprintf("%t", tc.preferPNPM)
+			t.Setenv("PULUMI_PREFER_YARN", setYarn)
+			t.Setenv("PULUMI_PREFER_PNPM", setPNPM)
+			manager, err := ResolvePackageManager(pwd)
+			// If we expect an error, check that it occurs, the move
+			// to the next test case.
+			if tc.expectedErr != nil {
+				assert.EqualError(tt, err, tc.expectedErr.Error())
+				return
+			}
+			// Check that the manager we received matches the manager we expected.
+			require.NoError(tt, err)
+			assert.Equal(tt, tc.expectedManager, manager.Name())
+		})
+	}
+}
+
+// This test verifies that the package management resolution algorithm
+// selects the right package manager based on lockfiles. We expect
+// yarn > pnpm > default (npm)
+//nolint:paralleltest // mutates environment variables
+func TestPkgManagerResolutionLockfiles(t *testing.T) {
+	type TestCase struct {
+		hasYarnLock, hasPNPMLock bool
+		expectedManager          string
+	}
+
+	// These cases test all combinations of lockfile we care about.
+	cases := []TestCase{
+		{
+			hasYarnLock:     false,
+			hasPNPMLock:     false,
+			expectedManager: "npm",
+		},
+		{
+			hasYarnLock:     false,
+			hasPNPMLock:     true,
+			expectedManager: "pnpm",
+		},
+		{
+			hasYarnLock:     true,
+			hasPNPMLock:     false,
+			expectedManager: "yarn",
+		},
+		{
+			hasYarnLock:     true,
+			hasPNPMLock:     true,
+			expectedManager: "yarn",
+		},
+	}
+
+	fakePath := fakePkgManagerPaths(t)
+	defer os.RemoveAll(fakePath)
+
+	for _, tc := range cases {
+		tc := tc
+		name := fmt.Sprintf("has-yarn-lock=%v,has-pnpmlock-%v", tc.hasYarnLock, tc.hasPNPMLock)
+		t.Run(name, func(tt *testing.T) {
+			//  • Create a temp directory, which we know to be empty,
+			//    that we can use as PWD and write lockfiles into.
+			pwd, err := os.MkdirTemp("", "")
+			require.NoError(tt, err)
+			defer os.RemoveAll(pwd)
+			// • Touch the lockfiles conditionally.
+			touchFile(tt, tc.hasYarnLock, pwd, "yarn.lock")
+			touchFile(tt, tc.hasPNPMLock, pwd, "pnpm-lock.yaml")
+			// • Resolve the manager.
+			manager, err := ResolvePackageManager(pwd)
+			// Check that the manager we received matches the manager we expected.
+			require.NoError(tt, err)
+			assert.Equal(tt, tc.expectedManager, manager.Name())
+		})
+	}
+}
+
+func touchFile(t *testing.T, enabled bool, dir, name string) {
+	if enabled {
+		lockfile := filepath.Join(dir, name)
+		_, err := os.Create(lockfile)
+		require.NoError(t, err)
+	}
+}
+
+// fakePkgManagerPaths creates a directory to store fake package manager
+// executables for lookup. It returns the name of the directory, and
+// updates the PATH to point to this directory.
+func fakePkgManagerPaths(t *testing.T) string {
+	//  • Create a temp directory that we can use as the fake path.
+	//    We store our fake executables here.
+	fakePath, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+
+	// Create three fake executables in the temp dir, one for yarn, pnpm,
+	// and npm.
+	for _, pkgManager := range []string{"npm", "yarn", "pnpm"} {
+		fullPath := filepath.Join(fakePath, pkgManager)
+		// Create the file with permission to read, execute, and write.
+		_, err := os.OpenFile(fullPath, os.O_RDWR|os.O_CREATE, 0o755)
+		require.NoError(t, err)
+	}
+
+	// • Override the PATH so we can mock the location of yarn, pnpm, and npm.
+	t.Setenv("PATH", fakePath)
+	return fakePath
 }

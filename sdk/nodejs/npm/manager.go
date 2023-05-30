@@ -72,32 +72,128 @@ func Install(ctx context.Context, dir string, production bool, stdout, stderr io
 	return name, nil
 }
 
+// This error occurs when the user has selected two package managers; only one can be selected at a time.
+var mutuallyExclusiveEnvVars = fmt.Errorf("both PULUMI_PREFER_YARN and PULUMI_PREFER_PNPM are set; these env vars are mutually exclusive")
+
 // ResolvePackageManager determines which package manager to use.
-// It inspects the value of "PULUMI_PREFER_YARN" and checks for a yarn.lock file.
-// If neither of those values are enabled or truthy, then it uses NPM over YarnClassic.
+// First, we check if a package manager is explicitly selected via env var.
+// Next, we look for the presence of a yarn lockfile and use YarnClassic if one is found.
+// If there's no yarn lockfile, we look for a pnpm lockfile.
+// If there's no pnpm lockfile, we default to Node.
 // The argument pwd is the present working directory we're checking for the presence
 // of a lockfile.
 func ResolvePackageManager(pwd string) (PackageManager, error) {
-	// Prefer yarn if PULUMI_PREFER_YARN is truthy, or if yarn.lock exists.
-	if preferYarn() || checkYarnLock(pwd) {
+	yarnEnvSet := preferYarn()
+	pnpmEnvSet := preferPNPM()
+	hasYarnLock := checkYarnLock(pwd)
+	hasPNPMLock := checkPNPMLock(pwd)
+
+	// • Error if both PULUMI_PREFER_PNPM and PULUMI_PREFER_YARN are set.
+	if yarnEnvSet && pnpmEnvSet {
+		return nil, mutuallyExclusiveEnvVars
+	}
+
+	// • Now, check if either of these variables are set, since they take
+	//   higher precedence than lockfiles.
+	if yarnEnvSet {
+		// • Try to use Yarn. If we fail, we can still try to use PNPM or NPM.
 		yarn, err := newYarnClassic()
-		// If we can't find the Yarn executable, then we should default to NPM.
+		// If we can't find the Yarn executable, so next we'll check for a PNPM lockfile.
 		if err == nil {
 			return yarn, nil
 		}
-		logging.Warningf("could not find yarn on the $PATH, trying npm instead: %v", err)
+		logging.Warningf("could not find yarn on the $PATH, falling back to pnpm or npm: %v", err)
+		// • If the user has a pnpm lockfile, we try to load PNPM, falling back to
+		// NPM.
+		if hasPNPMLock {
+			return loadPNPMOrFallback()
+		}
+		// • …otherwise, we just use NPM.
+		return newNPM()
 	}
 
-	node, err := newNPM()
+	// This block is the same behavior as above, except we start with PNPM,
+	// then fallback to Yarn if there's a Yarn lockfile.
+	if pnpmEnvSet {
+		// • Now we try to find the PNPM executable, just like with Yarn.
+		pnpmManager, err := newPNPM()
+		if err == nil {
+			return pnpmManager, nil
+		}
+		logging.Warningf("could not find pnpm on the $PATH, falling back to yarn or npm: %v", err)
+		if hasYarnLock {
+			return loadYarnClassicOrFallback()
+		}
+		// • …otherwise, we just use NPM.
+		return newNPM()
+	}
+
+	// • By this point, we know that the user hasn't explicitly selected a package
+	//   manager with an environment variable. We use the lockfiles as hints for
+	//   which they prefer.
+	// Case 1: No lockfiles present. Default to NPM.
+	if !hasYarnLock && !hasPNPMLock {
+		return newNPM()
+	}
+
+	// Case 2: Yarnlock found, no PNPM lock.
+	if hasYarnLock && !hasPNPMLock {
+		return loadYarnClassicOrFallback()
+	}
+
+	// Case 3: pnpm lock found, no yarn lock.
+	if !hasYarnLock && hasPNPMLock {
+		return loadPNPMOrFallback()
+	}
+
+	// TODO: These warning logs are inconsistent. i.e. they're not
+	//       executed if we call `loadOrFallback`
+
+	// Case 4: both lockfiles found.
+	// Prefer Yarn, fallback to PNPM, fallback to NPM.
+	// Even if there's also an PNPM lockfile, we prefer Yarn
+	// for backward compatibility (since PNPM support was added to Pulumi later).
+	yarn, err := newYarnClassic()
+	if err == nil {
+		return yarn, nil
+	}
+	logging.Warningf("found lockfiles for PNPM and Yarn, but could not find yarn on the $PATH, trying pnpm instead: %v", err)
+	var manager PackageManager
+	manager, err = newPNPM()
 	if err != nil {
-		return nil, fmt.Errorf("could not find npm on the $PATH; npm is installed with Node.js "+
-			"available at https://nodejs.org/: %w", err)
+		logging.Warningf("could not find pnpm on the $PATH either, falling back to npm instead: %v", err)
+		manager, err = newNPM()
 	}
 
-	return node, nil
+	return manager, err
+}
+
+// loadYarnClassicOrFallback attempts to load YarnClassic, falling back to NPM
+// if yarn isn't on the $PATH.
+func loadYarnClassicOrFallback() (PackageManager, error) {
+	manager, err := newYarnClassic()
+	if err != nil {
+		return newNPM()
+	}
+	return manager, err
+}
+
+// loadPNPMOrFallback attempts to load PNPM, falling back to NPM
+// if PNPM isn't on the $PATH.
+func loadPNPMOrFallback() (PackageManager, error) {
+	manager, err := newPNPM()
+	if err != nil {
+		return newNPM()
+	}
+	return manager, err
 }
 
 // preferYarn returns true if the `PULUMI_PREFER_YARN` environment variable is set.
 func preferYarn() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_YARN"))
+}
+
+// preferYarn returns true if the `PULUMI_PREFER_PNPM` environment variable is set.
+func preferPNPM() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_PREFER_PNPM"))
 }
