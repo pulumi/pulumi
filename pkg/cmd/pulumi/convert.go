@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -341,10 +342,27 @@ func runConvert(
 		}
 	}
 
+	log := func(sev diag.Severity, msg string) {
+		pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+	}
+
+	installProvider := func(provider tokens.Package) *semver.Version {
+		pluginSpec := workspace.PluginSpec{
+			Name: string(provider),
+			Kind: workspace.ResourcePlugin,
+		}
+		version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
+		if err != nil {
+			pCtx.Diag.Warningf(diag.RawMessage("", "failed to install provider %q: %v"), provider, err)
+			return nil
+		}
+		return version
+	}
+
 	loader := schema.NewPluginLoader(pCtx.Host)
 	mapper, err := convert.NewPluginMapper(
 		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-		from, mappings)
+		from, mappings, installProvider)
 	if err != nil {
 		return result.FromError(fmt.Errorf("create provider mapper: %w", err))
 	}
@@ -395,11 +413,7 @@ func runConvert(
 				Name: from,
 			}
 
-			log := func(sev diag.Severity, msg string) {
-				pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
-			}
-
-			err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+			_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 			if err != nil {
 				return result.FromError(fmt.Errorf("install plugin source %q: %w", from, err))
 			}

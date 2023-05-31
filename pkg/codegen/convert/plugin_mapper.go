@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -98,11 +99,13 @@ type pluginMapper struct {
 	conversionKey   string
 	plugins         []mapperPluginSpec
 	entries         map[string][]byte
+	installProvider func(tokens.Package) *semver.Version
 }
 
 func NewPluginMapper(ws Workspace,
 	providerFactory ProviderFactory,
 	key string, mappings []string,
+	installProvider func(tokens.Package) *semver.Version,
 ) (Mapper, error) {
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
 	contract.Requiref(ws != nil, "ws", "must not be nil")
@@ -171,6 +174,7 @@ func NewPluginMapper(ws Workspace,
 		conversionKey:   key,
 		plugins:         plugins,
 		entries:         entries,
+		installProvider: installProvider,
 	}, nil
 }
 
@@ -220,22 +224,44 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec) ([]byte,
 	return nil, "", err
 }
 
-func (l *pluginMapper) GetMapping(provider string) ([]byte, error) {
+func (l *pluginMapper) GetMapping(provider string, pulumiProvider string) ([]byte, error) {
 	// If we already have an entry for this provider, use it
 	if entry, has := l.entries[provider]; has {
 		return entry, nil
 	}
 
+	// Converters might not set pulumiProvider so default it to the same name as the foreign provider.
+	if pulumiProvider == "" {
+		pulumiProvider = provider
+	}
+	pulumiProviderPkg := tokens.Package(pulumiProvider)
+
 	// Optimization:
-	// If there's a plugin with a name that matches the provider name,
-	// move it to the front of the list.
-	// This is a common case, so we can avoid an expensive linear search
-	// through the rest of the plugins.
+	// If there's a plugin with a name that matches the expected pulumi provider name, move it to the front of
+	// the list.
+	// This is a common case, so we can avoid an expensive linear search through the rest of the plugins.
+	foundPulumiProvider := false
 	for i := 0; i < len(l.plugins); i++ {
 		pluginSpec := l.plugins[i]
-		if pluginSpec.name == tokens.Package(provider) {
+		if pluginSpec.name == pulumiProviderPkg {
 			l.plugins[0], l.plugins[i] = l.plugins[i], l.plugins[0]
+			foundPulumiProvider = true
 			break
+		}
+	}
+
+	// If we didn't find the pulumi provider in the list of plugins, then we want to try to install it. Note
+	// that we don't want to hard fail here because it might turn out the provider hint was bad.
+	if !foundPulumiProvider {
+		version := l.installProvider(pulumiProviderPkg)
+		if version != nil {
+			// Insert at the front of the plugins list. Easiest way to do this is just append then swap.
+			i := len(l.plugins)
+			l.plugins = append(l.plugins, mapperPluginSpec{
+				name:    pulumiProviderPkg,
+				version: *version,
+			})
+			l.plugins[0], l.plugins[i] = l.plugins[i], l.plugins[0]
 		}
 	}
 

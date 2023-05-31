@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: The convert and import commands will try to install plugins needed for correct conversions.

@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -496,9 +497,26 @@ func newImportCmd() *cobra.Command {
 
 				pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
 
+				installProvider := func(provider tokens.Package) *semver.Version {
+					log := func(sev diag.Severity, msg string) {
+						pCtx.Diag.Logf(sev, diag.RawMessage("", msg))
+					}
+
+					pluginSpec := workspace.PluginSpec{
+						Name: string(provider),
+						Kind: workspace.ResourcePlugin,
+					}
+					version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
+					if err != nil {
+						pCtx.Diag.Warningf(diag.RawMessage("", "failed to install provider %q: %v"), provider, err)
+						return nil
+					}
+					return version
+				}
+
 				mapper, err := convert.NewPluginMapper(
 					convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
-					from, nil)
+					from, nil, installProvider)
 				if err != nil {
 					return result.FromError(err)
 				}

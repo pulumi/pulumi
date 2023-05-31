@@ -137,7 +137,7 @@ func loadProvider(pkg tokens.Package, version *semver.Version, downloadURL strin
 		host.Log(sev, "", msg, 0)
 	}
 
-	err = pkgWorkspace.InstallPlugin(pluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 	if err != nil {
 		return nil, err
 	}
