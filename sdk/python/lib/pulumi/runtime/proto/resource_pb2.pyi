@@ -272,6 +272,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     RETAINONDELETE_FIELD_NUMBER: builtins.int
     ALIASES_FIELD_NUMBER: builtins.int
     DELETEDWITH_FIELD_NUMBER: builtins.int
+    ALIASSPECS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -336,6 +337,15 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         """a list of additional aliases that should be considered the same."""
     deletedWith: builtins.str
     """if set the engine will not call the resource providers delete method for this resource when specified resource is deleted."""
+    aliasSpecs: builtins.bool
+    """Indicates that alias specs are specified correctly according to the spec.
+    Older versions of the Node.js SDK did not send alias specs correctly.
+    If this is not set to true and the engine detects the request is from the
+    Node.js runtime, the engine will transform incorrect alias specs into
+    correct ones.
+    Other SDKs that are correctly specifying alias specs could set this to
+    true, but it's not necessary.
+    """
     def __init__(
         self,
         *,
@@ -366,9 +376,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         retainOnDelete: builtins.bool = ...,
         aliases: collections.abc.Iterable[pulumi.alias_pb2.Alias] | None = ...,
         deletedWith: builtins.str = ...,
+        aliasSpecs: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["customTimeouts", b"customTimeouts", "object", b"object"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "retainOnDelete", b"retainOnDelete", "supportsPartialValues", b"supportsPartialValues", "type", b"type", "version", b"version"]) -> None: ...
 
 global___RegisterResourceRequest = RegisterResourceRequest
 

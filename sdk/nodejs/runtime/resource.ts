@@ -433,6 +433,7 @@ export function registerResource(
             req.setPlugindownloadurl(opts.pluginDownloadURL || "");
             req.setRetainondelete(opts.retainOnDelete || false);
             req.setDeletedwith(resop.deletedWithURN || "");
+            req.setAliasspecs(true);
 
             if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
                 throw new Error(

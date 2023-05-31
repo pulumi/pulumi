@@ -30,6 +30,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	interceptors "github.com/pulumi/pulumi/pkg/v3/util/rpcdebug"
@@ -1006,6 +1007,45 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 	return &goal
 }
 
+// requestFromNodeJS returns true if the request is coming from a Node.js language runtime
+// or SDK. This is determined by checking if the request has a "pulumi-runtime" metadata
+// header with a value of "nodejs". If no "pulumi-runtime" header is present, then it
+// checks if the request has a "user-agent" metadata header that has a value that starts
+// with "grpc-node-js/".
+func requestFromNodeJS(ctx context.Context) bool {
+	if md, hasMetadata := metadata.FromIncomingContext(ctx); hasMetadata {
+		// Check for the "pulumi-runtime" header first.
+		// We'll always respect this header value when present.
+		if runtime, ok := md["pulumi-runtime"]; ok {
+			return len(runtime) == 1 && runtime[0] == "nodejs"
+		}
+		// Otherwise, check the "user-agent" header.
+		if ua, ok := md["user-agent"]; ok {
+			return len(ua) == 1 && strings.HasPrefix(ua[0], "grpc-node-js/")
+		}
+	}
+	return false
+}
+
+// transformAliasForNodeJSCompat transforms the alias from the legacy Node.js values to properly specified values.
+func transformAliasForNodeJSCompat(alias resource.Alias) resource.Alias {
+	contract.Assertf(alias.URN == "", "alias.URN must be empty")
+	// The original implementation in the Node.js SDK did not specify aliases correctly:
+	//
+	// - It did not set NoParent when it should have, but instead set Parent to empty.
+	// - It set NoParent to true and left Parent empty when both the alias and resource had no Parent specified.
+	//
+	// To maintain compatibility with such versions of the Node.js SDK, we transform these incorrectly
+	// specified aliases into properly specified ones that work with this implementation of the engine:
+	//
+	// - { Parent: "", NoParent: false } -> { Parent: "", NoParent: true }
+	// - { Parent: "", NoParent: true }  -> { Parent: "", NoParent: false }
+	if alias.Parent == "" {
+		alias.NoParent = !alias.NoParent
+	}
+	return alias
+}
+
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
@@ -1088,6 +1128,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
 	}
 
+	// We assume aliases are properly specified. However, if a request hasn't explicitly
+	// indicated that it is using properly specified aliases and the request is coming
+	// from Node.js, transform the aliases from the incorrect Node.js values to properly
+	// specified values, to maintain backward compatibility for users of older Node.js
+	// SDKs that aren't sending properly specified aliases.
+	transformAliases := !req.GetAliasSpecs() && requestFromNodeJS(ctx)
+
 	for _, aliasObject := range req.GetAliases() {
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
@@ -1099,6 +1146,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				Project:  aliasSpec.Project,
 				Parent:   resource.URN(aliasSpec.GetParentUrn()),
 				NoParent: aliasSpec.GetNoParent(),
+			}
+			if transformAliases {
+				alias = transformAliasForNodeJSCompat(alias)
 			}
 		} else {
 			alias = resource.Alias{

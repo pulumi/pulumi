@@ -1473,6 +1473,9 @@ type Resource struct {
 	dependencies        []resource.URN
 	parent              resource.URN
 	deleteBeforeReplace bool
+
+	aliasSpecs         bool
+	grpcRequestHeaders map[string]string
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
@@ -1484,6 +1487,8 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
 			AliasURNs:           r.aliasURNs,
 			Aliases:             r.aliases,
+			AliasSpecs:          r.aliasSpecs,
+			GrpcRequestHeaders:  r.grpcRequestHeaders,
 		})
 		if err != nil {
 			return err
@@ -2000,6 +2005,94 @@ func TestAliases(t *testing.T) {
 			{Parent: "urn:pulumi:test::test::pkgA:index:t1::one"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
+}
+
+func TestAliasesNodeJSBackCompat(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
+
+	tests := []struct {
+		name               string
+		aliasSpecs         bool
+		grpcRequestHeaders map[string]string
+		noParentAlias      resource.Alias
+	}{
+		{
+			name:               "Old Node SDK",
+			grpcRequestHeaders: map[string]string{"pulumi-runtime": "nodejs"},
+			// Old Node.js SDKs set Parent to "" rather than setting NoParent to true,
+			noParentAlias: resource.Alias{Parent: ""},
+		},
+		{
+			name:               "New Node SDK",
+			grpcRequestHeaders: map[string]string{"pulumi-runtime": "nodejs"},
+			// Indicate we're sending alias specs correctly.
+			aliasSpecs: true,
+			// Properly set NoParent to true.
+			noParentAlias: resource.Alias{NoParent: true},
+		},
+		{
+			name: "Unknown SDK",
+			// Properly set NoParent to true.
+			noParentAlias: resource.Alias{NoParent: true},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := updateProgramWithResource(nil, []Resource{{
+				t:                  "pkgA:index:t1",
+				name:               "one",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}, {
+				t:                  "pkgA:index:t2",
+				name:               "two",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpCreate}, false)
+
+			// Now make "two" a child of "one" ensuring no changes.
+			snap = updateProgramWithResource(snap, []Resource{{
+				t:                  "pkgA:index:t1",
+				name:               "one",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}, {
+				t:      "pkgA:index:t2",
+				parent: "urn:pulumi:test::test::pkgA:index:t1::one",
+				name:   "two",
+				aliases: []resource.Alias{
+					tt.noParentAlias,
+				},
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpSame}, false)
+
+			// Now remove the parent relationship.
+			_ = updateProgramWithResource(snap, []Resource{{
+				t:    "pkgA:index:t1",
+				name: "one",
+			}, {
+				t:    "pkgA:index:t2",
+				name: "two",
+				aliases: []resource.Alias{
+					{Parent: "urn:pulumi:test::test::pkgA:index:t1::one"},
+				},
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpSame}, false)
+		})
+	}
 }
 
 func TestAliasURNs(t *testing.T) {
