@@ -3133,6 +3133,8 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		var pkgName string
 		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
 			pkgName = alias
+		} else if pkg.rootPackageName != "" && basePath == pkg.importBasePath {
+			pkgName = pkg.rootPackageName
 		} else {
 			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
 		}
