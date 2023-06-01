@@ -399,14 +399,24 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	g.Fprintf(&index, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 	index.Write(progPostamble.Bytes())
 
+	mainProgramContent := index.Bytes()
 	// Run Go formatter on the code before saving to disk
-	formattedSource, err := gofmt.Source(index.Bytes())
-	if err != nil {
-		return nil, g.diagnostics, fmt.Errorf("invalid Go source code:\n\n%s: %w", index.String(), err)
+	formattedSource, err := gofmt.Source(mainProgramContent)
+	if err == nil {
+		// if we were able to format the code, use prefer the formatted version
+		mainProgramContent = formattedSource
+	} else {
+		// add a warning diagnostic when there is a formatting error
+		g.diagnostics = g.diagnostics.Append(&hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Subject:  &hcl.Range{Filename: "main.go"},
+			Summary:  "could not format go code",
+			Detail:   err.Error(),
+		})
 	}
 
 	files := map[string][]byte{
-		"main.go": formattedSource,
+		"main.go": mainProgramContent,
 	}
 
 	for componentDir, component := range program.CollectComponents() {
@@ -426,12 +436,21 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 		componentGenerator.genComponentArgs(&componentBuffer, componentName, component)
 		componentGenerator.genComponentType(&componentBuffer, componentName, component)
 		componentGenerator.genComponentDefinition(&componentBuffer, componentName, component)
-		formattedComponentSource, err := gofmt.Source(componentBuffer.Bytes())
-		if err != nil {
-			return nil, g.diagnostics,
-				fmt.Errorf("invalid Go source code:\n\n%s: %w", componentBuffer.String(), err)
+		componentContent := componentBuffer.Bytes()
+		formattedComponentSource, err := gofmt.Source(componentContent)
+		if err == nil {
+			// if we were able to format the code, use prefer the formatted version
+			componentContent = formattedComponentSource
+		} else {
+			// add a warning diagnostic when there is a formatting error
+			componentGenerator.diagnostics = componentGenerator.diagnostics.Append(&hcl.Diagnostic{
+				Severity: hcl.DiagWarning,
+				Subject:  &hcl.Range{Filename: componentName + ".go"},
+				Summary:  "could not format go code",
+				Detail:   err.Error(),
+			})
 		}
-		files[componentName+".go"] = formattedComponentSource
+		files[componentName+".go"] = componentContent
 	}
 	return files, g.diagnostics, nil
 }
