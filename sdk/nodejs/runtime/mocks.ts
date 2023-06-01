@@ -20,7 +20,7 @@ const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
 
 /**
- * MockResourceArgs is used to construct a newResource Mock
+ * MockResourceArgs is used to construct a newResource Mock.
  */
 export interface MockResourceArgs {
     /**
@@ -64,7 +64,7 @@ export type MockResourceResult = {
 };
 
 /**
- * MockResourceArgs is used to construct call Mock
+ * MockResourceArgs is used to construct call Mock.
  */
 export interface MockCallArgs {
     /**
@@ -94,7 +94,18 @@ export type MockCallResult = Record<string, any>;
  * return predictable values.
  */
 export interface Mocks {
+    /**
+     * Mocks provider-implemented function calls (e.g. aws.get_availability_zones).
+     *
+     * @param args: MockCallArgs
+     */
     call(args: MockCallArgs): MockCallResult | Promise<MockCallResult>;
+    /**
+     * Mocks resource construction calls. This function should return the physical identifier and the output properties
+     * for the resource being constructed.
+     *
+     * @param args: MockResourceArgs
+     */
     newResource(args: MockResourceArgs): MockResourceResult | Promise<MockResourceResult>;
 }
 
