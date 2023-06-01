@@ -15,7 +15,7 @@
 import * as assert from "assert";
 import * as pulumi from "../index";
 import { CustomResourceOptions } from "../resource";
-import { MockCallArgs, MockCallResult, MockImplementations, MockResourceArgs, MockResourceResult } from "../runtime";
+import { MockCallArgs, MockCallResult, MockResourceArgs, MockResourceResult } from "../runtime";
 
 const callMock = (args: MockCallArgs): MockCallResult => {
     switch (args.token) {
@@ -25,6 +25,7 @@ const callMock = (args: MockCallArgs): MockCallResult => {
             return {};
     }
 };
+const asyncCallMock = (args: MockCallArgs) => Promise.resolve(callMock(args));
 
 const newResourceMock = (args: MockResourceArgs): MockResourceResult => {
     switch (args.type) {
@@ -55,6 +56,7 @@ const newResourceMock = (args: MockResourceArgs): MockResourceResult => {
             return { id: "", state: {} };
     }
 };
+const asyncNewResourceMock = (args: MockResourceArgs) => Promise.resolve(newResourceMock(args));
 
 class MyComponent extends pulumi.ComponentResource {
     outprop: pulumi.Output<string>;
@@ -91,75 +93,83 @@ async function invoke(): Promise<number> {
     return value["out_value"];
 }
 
-describe("mocks", function () {
-    let component: MyComponent;
-    let instance: Instance;
-    let custom: MyCustom;
-    let invokeResult: Promise<number>;
-    let remoteComponent: MyRemoteComponent;
+const setups: [string, boolean, boolean][] = [
+    ["mocks: newResource sync, call sync", false, false],
+    ["mocks: newResource sync, call async", false, true],
+    ["mocks: newResource async, call sync", true, false],
+    ["mocks: newResource async, call async", true, true],
+];
+setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
+    describe(test, function () {
+        let component: MyComponent;
+        let instance: Instance;
+        let custom: MyCustom;
+        let invokeResult: Promise<number>;
+        let remoteComponent: MyRemoteComponent;
 
-    before(() => {
-        pulumi.runtime.setMocks({
-            newResource: newResourceMock,
-            call: callMock,
-        });
-
-        pulumi.runtime.registerResourceModule("aws", "ec2/instance", {
-            construct: (name: string, type: string, urn: string): pulumi.Resource => {
-                switch (type) {
-                    case "aws:ec2/instance:Instance":
-                        return new Instance(name, { urn });
-                    default:
-                        throw new Error(`unknown resource type ${type}`);
-                }
-            },
-        });
-
-        component = new MyComponent("mycomponent", "hello");
-        instance = new Instance("instance");
-        custom = new MyCustom("mycustom", { instance: instance });
-        invokeResult = invoke();
-        remoteComponent = new MyRemoteComponent("myremotecomponent", pulumi.interpolate`hello: ${instance.id}`);
-    });
-
-    describe("component", function () {
-        it("has expected output value", (done) => {
-            component.outprop.apply((outprop) => {
-                assert.strictEqual(outprop, "output: hello");
-                done();
+        before(() => {
+            pulumi.runtime.setMocks({
+                call: isAsyncCall ? asyncCallMock : callMock,
+                newResource: isAsyncNewResource ? asyncNewResourceMock : newResourceMock,
             });
-        });
-    });
 
-    describe("remote component", function () {
-        it("has expected output value", (done) => {
-            remoteComponent.outprop.apply((outprop) => {
-                assert.strictEqual(outprop.startsWith("output: hello: "), true);
-                done();
+            pulumi.runtime.registerResourceModule("aws", "ec2/instance", {
+                construct: (name: string, type: string, urn: string): pulumi.Resource => {
+                    switch (type) {
+                        case "aws:ec2/instance:Instance":
+                            return new Instance(name, { urn });
+                        default:
+                            throw new Error(`unknown resource type ${type}`);
+                    }
+                },
             });
-        });
-    });
 
-    describe("custom", function () {
-        it("instance has expected output value", (done) => {
-            instance.publicIP.apply((ip) => {
-                assert.strictEqual(ip, "203.0.113.12");
-                done();
+            component = new MyComponent("mycomponent", "hello");
+            instance = new Instance("instance");
+            custom = new MyCustom("mycustom", { instance: instance });
+            invokeResult = invoke();
+            remoteComponent = new MyRemoteComponent("myremotecomponent", pulumi.interpolate`hello: ${instance.id}`);
+        });
+
+        describe("component", function () {
+            it("has expected output value", (done) => {
+                component.outprop.apply((outprop) => {
+                    assert.strictEqual(outprop, "output: hello");
+                    done();
+                });
             });
         });
 
-        it("mycustom has expected output value", (done) => {
-            custom.instance.apply((_) => {
-                done();
+        describe("remote component", function () {
+            it("has expected output value", (done) => {
+                remoteComponent.outprop.apply((outprop) => {
+                    assert.strictEqual(outprop.startsWith("output: hello: "), true);
+                    done();
+                });
             });
         });
-    });
 
-    describe("invoke", function () {
-        it("has expected result", (done) => {
-            invokeResult.then((value) => {
-                assert.strictEqual(value, 59);
-                done();
+        describe("custom", function () {
+            it("instance has expected output value", (done) => {
+                instance.publicIP.apply((ip) => {
+                    assert.strictEqual(ip, "203.0.113.12");
+                    done();
+                });
+            });
+
+            it("mycustom has expected output value", (done) => {
+                custom.instance.apply((_) => {
+                    done();
+                });
+            });
+        });
+
+        describe("invoke", function () {
+            it("has expected result", (done) => {
+                invokeResult.then((value) => {
+                    assert.strictEqual(value, 59);
+                    done();
+                });
             });
         });
     });
