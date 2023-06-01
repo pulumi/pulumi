@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.69.0 (2023-06-01)
+
+
+### Features
+
+- [auto/python] Add support for the path option for config operations
+  [#13052](https://github.com/pulumi/pulumi/pull/13052)
+
+- [cli] Replace heap profiles with allocation profiles and add a flag, --memprofilerate, to control the sampling rate. --memprofilerate behaves like the -memprofilerate flag to `go test`; set it to "1" to profile every allocation site.
+  [#13026](https://github.com/pulumi/pulumi/pull/13026)
+
+- [cli] The convert and import commands will try to install plugins needed for correct conversions.
+  [#13046](https://github.com/pulumi/pulumi/pull/13046)
+
+- [cli/plugin] Plugin install auto-fills the download URL for some known third-party plugins.
+  [#13020](https://github.com/pulumi/pulumi/pull/13020)
+
+- [engine] Provider plugins are now loaded as needed, not at startup based on old state information.
+  [#12657](https://github.com/pulumi/pulumi/pull/12657)
+
+- [programgen] Include the component source directory in diagnostics when reporting PCL errors
+  [#13017](https://github.com/pulumi/pulumi/pull/13017)
+
+- [programgen/{nodejs,python}] Implement singleOrNone intrinsic
+  [#13032](https://github.com/pulumi/pulumi/pull/13032)
+
+- [sdkgen/python] Generate a pyproject.toml file. This enables Python providers to build Wheels per PEP 621
+  [#12805](https://github.com/pulumi/pulumi/pull/12805)
+
+
+### Bug Fixes
+
+- [backend] Fixes a bug where Resource instances as stack exports got printed as if it had diff in the end steps
+  [#12261](https://github.com/pulumi/pulumi/pull/12261)
+
+- [engine] Fix --replace behavior to be not considered a targeted update (where only --replace resources would be targeted).
+  [#13011](https://github.com/pulumi/pulumi/pull/13011)
+
+- [backend/filestate] Fix the project filter when listing stacks from new stores that support per-project stack references.
+  [#12994](https://github.com/pulumi/pulumi/pull/12994)
+
+- [backend/filestate] Fix stack rename renaming projects for the self-managed backend.
+  [#13047](https://github.com/pulumi/pulumi/pull/13047)
+
+- [programgen/go] Do not error when generated Go code cannot be formatted
+  [#13053](https://github.com/pulumi/pulumi/pull/13053)
+
+- [cli/plugin] Fixes PULUMI_DEBUG_GRPC to surface provider errors
+  [#12984](https://github.com/pulumi/pulumi/pull/12984)
+
+- [sdkgen/go] For properties with environment variable defaults, differentiate between unset environment variables and empty.
+  [#12976](https://github.com/pulumi/pulumi/pull/12976)
+
+- [sdkgen/go] When a property has an environment variable default, and the environment variable is not set, sdkgen would incorrectly set it to the zero value of that property. Fixes by only setting the property if the environment variable is set.
+  [#12976](https://github.com/pulumi/pulumi/pull/12976)
+
+- [sdkgen/go] Fix versioned typerefs being marshalled across code generator RPCs.
+  [#13006](https://github.com/pulumi/pulumi/pull/13006)
+
 ## 3.68.0 (2023-05-18)
 
 

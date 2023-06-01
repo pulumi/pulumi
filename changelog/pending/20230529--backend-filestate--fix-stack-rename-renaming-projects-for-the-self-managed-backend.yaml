@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: Fix stack rename renaming projects for the self-managed backend.

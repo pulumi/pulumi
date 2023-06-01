@@ -1,7 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: >-
-    Replace heap profiles with allocation profiles and add a flag, --memprofilerate, to
-    control the sampling rate. --memprofilerate behaves like the -memprofilerate flag to
-    `go test`; set it to "1" to profile every allocation site.

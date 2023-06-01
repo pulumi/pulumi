@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: Fix the project filter when listing stacks from new stores that support per-project stack references.
