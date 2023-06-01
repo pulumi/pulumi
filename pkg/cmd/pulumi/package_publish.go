@@ -162,6 +162,7 @@ func publishToNPM(path string) error {
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)
 		infoCheckCmd.Stderr = os.Stderr
+		// Ignore error. stdout will be empty if the package was not published.
 		checkOutput, _ := infoCheckCmd.Output()
 
 		if len(checkOutput) > 0 {
