@@ -1481,7 +1481,7 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	newRes, ok := sg.providers[newRef.URN()]
 	contract.Assertf(ok, "new deployment didn't have provider, despite resource using it?")
 
-	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Inputs, newRes.Inputs, true, nil)
+	diff, err := newProv.DiffConfig(newRef.URN(), oldRes.Outputs, newRes.Inputs, true, nil)
 	if err != nil {
 		return false, err
 	}
