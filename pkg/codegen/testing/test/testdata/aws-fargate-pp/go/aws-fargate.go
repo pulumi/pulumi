@@ -12,20 +12,18 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		vpc, err := ec2.LookupVpc(ctx, &ec2.LookupVpcArgs{
-			Default: pulumi.BoolRef(true),
+		vpc := ec2.LookupVpcOutput(ctx, ec2.GetVpcOutputArgs{
+			Default: pulumi.Bool(true),
 		}, nil)
-		if err != nil {
-			return err
-		}
-		subnets, err := ec2.GetSubnetIds(ctx, &ec2.GetSubnetIdsArgs{
-			VpcId: vpc.Id,
+		subnets := ec2.GetSubnetIdsOutput(ctx, ec2.GetSubnetIdsOutputArgs{
+			VpcId: vpc.ApplyT(func(vpc ec2.GetVpcResult) (string, error) {
+				return vpc.Id, nil
+			}).(pulumi.StringOutput),
 		}, nil)
-		if err != nil {
-			return err
-		}
 		webSecurityGroup, err := ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
-			VpcId: pulumi.String(vpc.Id),
+			VpcId: vpc.ApplyT(func(vpc ec2.GetVpcResult) (string, error) {
+				return vpc.Id, nil
+			}).(pulumi.StringOutput),
 			Egress: ec2.SecurityGroupEgressArray{
 				&ec2.SecurityGroupEgressArgs{
 					Protocol: pulumi.String("-1"),
@@ -85,7 +83,9 @@ func main() {
 			return err
 		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: toPulumiStringArray(subnets.Ids),
+			Subnets: subnets.ApplyT(func(subnets ec2.GetSubnetIdsResult) ([]string, error) {
+				return subnets.Ids, nil
+			}).(pulumi.StringArrayOutput),
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -97,7 +97,9 @@ func main() {
 			Port:       pulumi.Int(80),
 			Protocol:   pulumi.String("HTTP"),
 			TargetType: pulumi.String("ip"),
-			VpcId:      pulumi.String(vpc.Id),
+			VpcId: vpc.ApplyT(func(vpc ec2.GetVpcResult) (string, error) {
+				return vpc.Id, nil
+			}).(pulumi.StringOutput),
 		})
 		if err != nil {
 			return err
@@ -153,7 +155,9 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        toPulumiStringArray(subnets.Ids),
+				Subnets: subnets.ApplyT(func(subnets ec2.GetSubnetIdsResult) ([]string, error) {
+					return subnets.Ids, nil
+				}).(pulumi.StringArrayOutput),
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},
@@ -174,11 +178,4 @@ func main() {
 		ctx.Export("url", webLoadBalancer.DnsName)
 		return nil
 	})
-}
-func toPulumiStringArray(arr []string) pulumi.StringArray {
-	var pulumiArr pulumi.StringArray
-	for _, v := range arr {
-		pulumiArr = append(pulumiArr, pulumi.String(v))
-	}
-	return pulumiArr
 }

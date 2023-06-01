@@ -23,23 +23,20 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ami, err := aws.GetAmi(ctx, &aws.GetAmiArgs{
-			Filters: []aws.GetAmiFilter{
-				{
-					Name: "name",
-					Values: []string{
-						"amzn-ami-hvm-*-x86_64-ebs",
+		ami := aws.GetAmiOutput(ctx, aws.GetAmiOutputArgs{
+			Filters: aws.GetAmiFilterArray{
+				&aws.GetAmiFilterArgs{
+					Name: pulumi.String("name"),
+					Values: pulumi.StringArray{
+						pulumi.String("amzn-ami-hvm-*-x86_64-ebs"),
 					},
 				},
 			},
-			Owners: []string{
-				"137112412989",
+			Owners: pulumi.StringArray{
+				pulumi.String("137112412989"),
 			},
-			MostRecent: pulumi.BoolRef(true),
+			MostRecent: pulumi.Bool(true),
 		}, nil)
-		if err != nil {
-			return err
-		}
 		server, err := ec2.NewInstance(ctx, "server", &ec2.InstanceArgs{
 			Tags: pulumi.StringMap{
 				"Name": pulumi.String("web-server-www"),
@@ -48,7 +45,9 @@ func main() {
 			SecurityGroups: pulumi.StringArray{
 				securityGroup.Name,
 			},
-			Ami:      pulumi.String(ami.Id),
+			Ami: ami.ApplyT(func(ami aws.GetAmiResult) (string, error) {
+				return ami.Id, nil
+			}).(pulumi.StringOutput),
 			UserData: pulumi.String("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
 		})
 		if err != nil {

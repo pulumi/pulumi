@@ -1336,6 +1336,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		if _, ok := typ.(*model.PromiseType); ok {
 			g.Fgenf(w, "%svar %s = Output.Create(config.%s%s(\"%s\"))",
 				g.Indent, name, getOrRequire, getType, v.LogicalName())
+		} else if _, ok := typ.(*model.OutputType); ok {
+			g.Fgenf(w, "%svar %s = Output.Create(config.%s%s(\"%s\"))",
+				g.Indent, name, getOrRequire, getType, v.LogicalName())
 		} else {
 			g.Fgenf(w, "%svar %s = config.%s%s(\"%s\")",
 				g.Indent, name, getOrRequire, getType, v.LogicalName())

@@ -6,10 +6,10 @@ const config = new pulumi.Config();
 const storageAccountNameParam = config.require("storageAccountNameParam");
 // The name of the resource group
 const resourceGroupNameParam = config.require("resourceGroupNameParam");
-const resourceGroupVar = azure.core.getResourceGroup({
+const resourceGroupVar = azure.core.getResourceGroupOutput({
     name: resourceGroupNameParam,
 });
-const locationParam = config.get("locationParam") || resourceGroupVar.then(resourceGroupVar => resourceGroupVar.location);
+const locationParam = config.get("locationParam") || resourceGroupVar.location;
 const storageAccountTierParam = config.get("storageAccountTierParam") || "Standard";
 const storageAccountTypeReplicationParam = config.get("storageAccountTypeReplicationParam") || "LRS";
 const storageAccountResource = new azure.storage.Account("storageAccountResource", {

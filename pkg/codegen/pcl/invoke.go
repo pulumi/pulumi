@@ -141,7 +141,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}
-	sig, err := b.invokeSignature(fn)
+	sig, err := b.invokeSignature(fn, args[1])
 	if err != nil {
 		diag := hcl.Diagnostics{errorf(tokenRange, "Invoke binding error: %v", err)}
 		return b.zeroSignature(), diag
@@ -182,11 +182,25 @@ func (b *binder) zeroSignature() model.StaticFunctionSignature {
 	return b.makeSignature(model.NewOptionalType(model.DynamicType), model.DynamicType)
 }
 
+// Returns whether the input expression is an empty object
+func emptyObject(args model.Expression) bool {
+	if args == nil {
+		return true
+	}
+
+	switch expr := args.(type) {
+	case *model.ObjectConsExpression:
+		return len(expr.Items) == 0
+	}
+
+	return false
+}
+
 // invokeSignature determines the signature of a function invoke based on
 // whether it has implemented an output-versioned invoke. When that is the case, the return type T of the function
 // becomes Output<T>, otherwise Promise<T>.
-func (b *binder) invokeSignature(fn *schema.Function) (model.StaticFunctionSignature, error) {
-	if fn.NeedsOutputVersion() {
+func (b *binder) invokeSignature(fn *schema.Function, args model.Expression) (model.StaticFunctionSignature, error) {
+	if !emptyObject(args) && fn.NeedsOutputVersion() {
 		return b.outputVersionSignature(fn)
 	}
 	return b.regularSignature(fn), nil

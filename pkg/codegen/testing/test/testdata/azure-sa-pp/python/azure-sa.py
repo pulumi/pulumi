@@ -6,7 +6,7 @@ config = pulumi.Config()
 storage_account_name_param = config.require("storageAccountNameParam")
 # The name of the resource group
 resource_group_name_param = config.require("resourceGroupNameParam")
-resource_group_var = azure.core.get_resource_group(name=resource_group_name_param)
+resource_group_var = azure.core.get_resource_group_output(name=resource_group_name_param)
 location_param = config.get("locationParam")
 if location_param is None:
     location_param = resource_group_var.location

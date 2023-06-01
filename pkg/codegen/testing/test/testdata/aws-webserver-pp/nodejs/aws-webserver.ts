@@ -8,7 +8,7 @@ const securityGroup = new aws.ec2.SecurityGroup("securityGroup", {ingress: [{
     toPort: 0,
     cidrBlocks: ["0.0.0.0/0"],
 }]});
-const ami = aws.getAmi({
+const ami = aws.getAmiOutput({
     filters: [{
         name: "name",
         values: ["amzn-ami-hvm-*-x86_64-ebs"],
@@ -23,7 +23,7 @@ const server = new aws.ec2.Instance("server", {
     },
     instanceType: "t2.micro",
     securityGroups: [securityGroup.name],
-    ami: ami.then(ami => ami.id),
+    ami: ami.id,
     userData: `#!/bin/bash
 echo "Hello, World!" > index.html
 nohup python -m SimpleHTTPServer 80 &

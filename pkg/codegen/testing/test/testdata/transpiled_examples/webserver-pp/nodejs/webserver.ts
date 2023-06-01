@@ -3,14 +3,14 @@ import * as aws from "@pulumi/aws";
 
 const config = new pulumi.Config();
 const instanceType = config.get("InstanceType") || "t3.micro";
-const ec2Ami = aws.getAmi({
+const ec2Ami = aws.getAmiOutput({
     filters: [{
         name: "name",
         values: ["amzn-ami-hvm-*-x86_64-ebs"],
     }],
     owners: ["137112412989"],
     mostRecent: true,
-}).then(invoke => invoke.id);
+}).apply(invoke => invoke.id);
 const webSecGrp = new aws.ec2.SecurityGroup("WebSecGrp", {ingress: [{
     protocol: "tcp",
     fromPort: 80,

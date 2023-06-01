@@ -5,12 +5,12 @@ config = pulumi.Config()
 instance_type = config.get("instanceType")
 if instance_type is None:
     instance_type = "t2.micro"
-ami = aws.ec2.get_ami(filters=[aws.ec2.GetAmiFilterArgs(
+ami = aws.ec2.get_ami_output(filters=[aws.ec2.GetAmiFilterArgs(
         name="name",
         values=["amzn-ami-hvm-*"],
     )],
     owners=["137112412989"],
-    most_recent=True).id
+    most_recent=True).apply(lambda invoke: invoke.id)
 user_data = """#!/bin/bash
 echo "Hello, World from Pulumi!" > index.html
 nohup python -m SimpleHTTPServer 80 &"""

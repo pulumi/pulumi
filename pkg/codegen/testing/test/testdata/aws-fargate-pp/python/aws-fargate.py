@@ -2,8 +2,8 @@ import pulumi
 import json
 import pulumi_aws as aws
 
-vpc = aws.ec2.get_vpc(default=True)
-subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
+vpc = aws.ec2.get_vpc_output(default=True)
+subnets = aws.ec2.get_subnet_ids_output(vpc_id=vpc.id)
 # Create a security group that permits HTTP ingress and unrestricted egress.
 web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
     vpc_id=vpc.id,

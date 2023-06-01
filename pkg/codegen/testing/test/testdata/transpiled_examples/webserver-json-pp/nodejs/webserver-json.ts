@@ -11,14 +11,14 @@ const webSecGrp = new aws.ec2.SecurityGroup("WebSecGrp", {ingress: [{
 }]});
 const webServer = new aws.ec2.Instance("WebServer", {
     instanceType: instanceType,
-    ami: aws.getAmi({
+    ami: aws.getAmiOutput({
         filters: [{
             name: "name",
             values: ["amzn-ami-hvm-*-x86_64-ebs"],
         }],
         owners: ["137112412989"],
         mostRecent: true,
-    }).then(invoke => invoke.id),
+    }).apply(invoke => invoke.id),
     userData: webSecGrp.arn.apply(arn => [
         "#!/bin/bash",
         `echo 'Hello, World from ${arn}!' > index.html`,

@@ -14,13 +14,9 @@ func main() {
 		storageAccountNameParam := cfg.Require("storageAccountNameParam")
 		// The name of the resource group
 		resourceGroupNameParam := cfg.Require("resourceGroupNameParam")
-		resourceGroupVar, err := core.LookupResourceGroup(ctx, &core.LookupResourceGroupArgs{
-			Name: resourceGroupNameParam,
+		resourceGroupVar := core.LookupResourceGroupOutput(ctx, core.GetResourceGroupOutputArgs{
+			Name: pulumi.String(resourceGroupNameParam),
 		}, nil)
-		if err != nil {
-			return err
-		}
-		locationParam := resourceGroupVar.Location
 		if param := cfg.Get("locationParam"); param != "" {
 			locationParam = param
 		}
