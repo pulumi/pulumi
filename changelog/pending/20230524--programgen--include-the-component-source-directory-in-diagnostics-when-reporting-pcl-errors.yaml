@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Include the component source directory in diagnostics when reporting PCL errors

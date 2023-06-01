@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fix versioned typerefs being marshalled across code generator RPCs.

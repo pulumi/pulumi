@@ -1,8 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: >-
-    When a property has an environment variable default,
-    and the environment variable is not set,
-    sdkgen would incorrectly set it to the zero value of that property.
-    Fixes by only setting the property if the environment variable is set.
