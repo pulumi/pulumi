@@ -239,9 +239,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "entries-function",
 		Description: "Using the entries function",
-		// go and dotnet do not support GenForExpression yet
+		// go and dotnet do fully not support GenForExpression yet
 		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
 	},
 	{
