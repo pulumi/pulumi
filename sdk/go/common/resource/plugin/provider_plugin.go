@@ -1630,6 +1630,7 @@ func (p *provider) GetPluginInfo() (workspace.PluginInfo, error) {
 		path = p.plug.Bin
 	}
 
+	logging.V(7).Infof("%s success (#version=%v) success", label, version)
 	return workspace.PluginInfo{
 		Name:    string(p.pkg),
 		Path:    path,
