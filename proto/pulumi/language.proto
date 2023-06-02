@@ -152,15 +152,17 @@ message GenerateProgramResponse {
 }
 
 message GenerateProjectRequest {
+    // the directory to generate the project from.
+    string source_directory = 1;
     // the directory to generate the project in.
-    string directory = 1;
+    string target_directory = 2;
     // the JSON-encoded pulumi project file.
-    string project = 2;
-    // the PCL source of the project.
-    map<string, string> source = 3;
+    string project = 3;
 }
 
 message GenerateProjectResponse {
+    // any diagnostics from code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }
 
 message GeneratePackageRequest {
@@ -169,7 +171,7 @@ message GeneratePackageRequest {
     // the JSON-encoded schema.
     string schema = 2;
     // extra files to copy to the package output.
-    map<string, bytes> extraFiles = 3;
+    map<string, bytes> extra_files = 3;
 }
 
 message GeneratePackageResponse {

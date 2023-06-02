@@ -87,8 +87,8 @@ func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Re
 	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
 }
 
-func (p *languageRuntime) GenerateProject(string, string, map[string]string) error {
-	return fmt.Errorf("GenerateProject is not supported")
+func (p *languageRuntime) GenerateProject(string, string, string) (hcl.Diagnostics, error) {
+	return nil, fmt.Errorf("GenerateProject is not supported")
 }
 
 func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte) error {

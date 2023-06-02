@@ -366,7 +366,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.GenerateProjectResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.GenerateProjectResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.GenerateProjectResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -3479,9 +3479,9 @@ proto.pulumirpc.GenerateProjectRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.GenerateProjectRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    project: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : []
+    sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    project: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -3520,17 +3520,15 @@ proto.pulumirpc.GenerateProjectRequest.deserializeBinaryFromReader = function(ms
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setDirectory(value);
+      msg.setSourceDirectory(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setProject(value);
+      msg.setTargetDirectory(value);
       break;
     case 3:
-      var value = msg.getSourceMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
-         });
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProject(value);
       break;
     default:
       reader.skipField();
@@ -3561,32 +3559,35 @@ proto.pulumirpc.GenerateProjectRequest.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.GenerateProjectRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getDirectory();
+  f = message.getSourceDirectory();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getProject();
+  f = message.getTargetDirectory();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
-  f = message.getSourceMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  f = message.getProject();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
   }
 };
 
 
 /**
- * optional string directory = 1;
+ * optional string source_directory = 1;
  * @return {string}
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.getDirectory = function() {
+proto.pulumirpc.GenerateProjectRequest.prototype.getSourceDirectory = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
@@ -3595,16 +3596,16 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getDirectory = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.setDirectory = function(value) {
+proto.pulumirpc.GenerateProjectRequest.prototype.setSourceDirectory = function(value) {
   return jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
 /**
- * optional string project = 2;
+ * optional string target_directory = 2;
  * @return {string}
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.getProject = function() {
+proto.pulumirpc.GenerateProjectRequest.prototype.getTargetDirectory = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -3613,33 +3614,36 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getProject = function() {
  * @param {string} value
  * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.setProject = function(value) {
+proto.pulumirpc.GenerateProjectRequest.prototype.setTargetDirectory = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * map<string, string> source = 3;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,string>}
+ * optional string project = 3;
+ * @return {string}
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.getSourceMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,string>} */ (
-      jspb.Message.getMapField(this, 3, opt_noLazyCreate,
-      null));
+proto.pulumirpc.GenerateProjectRequest.prototype.getProject = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /**
- * Clears values from the map. The map will be non-null.
+ * @param {string} value
  * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
  */
-proto.pulumirpc.GenerateProjectRequest.prototype.clearSourceMap = function() {
-  this.getSourceMap().clear();
-  return this;};
+proto.pulumirpc.GenerateProjectRequest.prototype.setProject = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
 
 
+
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.GenerateProjectResponse.repeatedFields_ = [1];
 
 
 
@@ -3672,7 +3676,8 @@ proto.pulumirpc.GenerateProjectResponse.prototype.toObject = function(opt_includ
  */
 proto.pulumirpc.GenerateProjectResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -3709,6 +3714,11 @@ proto.pulumirpc.GenerateProjectResponse.deserializeBinaryFromReader = function(m
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = new pulumi_codegen_hcl_pb.Diagnostic;
+      reader.readMessage(value,pulumi_codegen_hcl_pb.Diagnostic.deserializeBinaryFromReader);
+      msg.addDiagnostics(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3738,6 +3748,52 @@ proto.pulumirpc.GenerateProjectResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.GenerateProjectResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getDiagnosticsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      1,
+      f,
+      pulumi_codegen_hcl_pb.Diagnostic.serializeBinaryToWriter
+    );
+  }
+};
+
+
+/**
+ * repeated codegen.Diagnostic diagnostics = 1;
+ * @return {!Array<!proto.pulumirpc.codegen.Diagnostic>}
+ */
+proto.pulumirpc.GenerateProjectResponse.prototype.getDiagnosticsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.codegen.Diagnostic>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_codegen_hcl_pb.Diagnostic, 1));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.codegen.Diagnostic>} value
+ * @return {!proto.pulumirpc.GenerateProjectResponse} returns this
+*/
+proto.pulumirpc.GenerateProjectResponse.prototype.setDiagnosticsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 1, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.codegen.Diagnostic=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.codegen.Diagnostic}
+ */
+proto.pulumirpc.GenerateProjectResponse.prototype.addDiagnostics = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.pulumirpc.codegen.Diagnostic, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.GenerateProjectResponse} returns this
+ */
+proto.pulumirpc.GenerateProjectResponse.prototype.clearDiagnosticsList = function() {
+  return this.setDiagnosticsList([]);
 };
 
 
@@ -3775,7 +3831,7 @@ proto.pulumirpc.GeneratePackageRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     schema: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    extrafilesMap: (f = msg.getExtrafilesMap()) ? f.toObject(includeInstance, undefined) : []
+    extraFilesMap: (f = msg.getExtraFilesMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -3821,7 +3877,7 @@ proto.pulumirpc.GeneratePackageRequest.deserializeBinaryFromReader = function(ms
       msg.setSchema(value);
       break;
     case 3:
-      var value = msg.getExtrafilesMap();
+      var value = msg.getExtraFilesMap();
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
@@ -3869,7 +3925,7 @@ proto.pulumirpc.GeneratePackageRequest.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getExtrafilesMap(true);
+  f = message.getExtraFilesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
@@ -3913,12 +3969,12 @@ proto.pulumirpc.GeneratePackageRequest.prototype.setSchema = function(value) {
 
 
 /**
- * map<string, bytes> extraFiles = 3;
+ * map<string, bytes> extra_files = 3;
  * @param {boolean=} opt_noLazyCreate Do not create the map if
  * empty, instead returning `undefined`
  * @return {!jspb.Map<string,!(string|Uint8Array)>}
  */
-proto.pulumirpc.GeneratePackageRequest.prototype.getExtrafilesMap = function(opt_noLazyCreate) {
+proto.pulumirpc.GeneratePackageRequest.prototype.getExtraFilesMap = function(opt_noLazyCreate) {
   return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
       jspb.Message.getMapField(this, 3, opt_noLazyCreate,
       null));
@@ -3929,8 +3985,8 @@ proto.pulumirpc.GeneratePackageRequest.prototype.getExtrafilesMap = function(opt
  * Clears values from the map. The map will be non-null.
  * @return {!proto.pulumirpc.GeneratePackageRequest} returns this
  */
-proto.pulumirpc.GeneratePackageRequest.prototype.clearExtrafilesMap = function() {
-  this.getExtrafilesMap().clear();
+proto.pulumirpc.GeneratePackageRequest.prototype.clearExtraFilesMap = function() {
+  this.getExtraFilesMap().clear();
   return this;};
 
 

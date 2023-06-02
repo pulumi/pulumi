@@ -457,40 +457,23 @@ global___GenerateProgramResponse = GenerateProgramResponse
 class GenerateProjectRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing_extensions.final
-    class SourceEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        value: builtins.str
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: builtins.str = ...,
-        ) -> None: ...
-        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
-
-    DIRECTORY_FIELD_NUMBER: builtins.int
+    SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
+    TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
-    SOURCE_FIELD_NUMBER: builtins.int
-    directory: builtins.str
+    source_directory: builtins.str
+    """the directory to generate the project from."""
+    target_directory: builtins.str
     """the directory to generate the project in."""
     project: builtins.str
     """the JSON-encoded pulumi project file."""
-    @property
-    def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
-        """the PCL source of the project."""
     def __init__(
         self,
         *,
-        directory: builtins.str = ...,
+        source_directory: builtins.str = ...,
+        target_directory: builtins.str = ...,
         project: builtins.str = ...,
-        source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "project", b"project", "source", b"source"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["project", b"project", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 
@@ -498,9 +481,16 @@ global___GenerateProjectRequest = GenerateProjectRequest
 class GenerateProjectResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """any diagnostics from code generation."""
     def __init__(
         self,
+        *,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___GenerateProjectResponse = GenerateProjectResponse
 
@@ -526,22 +516,22 @@ class GeneratePackageRequest(google.protobuf.message.Message):
 
     DIRECTORY_FIELD_NUMBER: builtins.int
     SCHEMA_FIELD_NUMBER: builtins.int
-    EXTRAFILES_FIELD_NUMBER: builtins.int
+    EXTRA_FILES_FIELD_NUMBER: builtins.int
     directory: builtins.str
     """the directory to generate the package in."""
     schema: builtins.str
     """the JSON-encoded schema."""
     @property
-    def extraFiles(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+    def extra_files(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
         """extra files to copy to the package output."""
     def __init__(
         self,
         *,
         directory: builtins.str = ...,
         schema: builtins.str = ...,
-        extraFiles: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        extra_files: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extraFiles", b"extraFiles", "schema", b"schema"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["directory", b"directory", "extra_files", b"extra_files", "schema", b"schema"]) -> None: ...
 
 global___GeneratePackageRequest = GeneratePackageRequest
 

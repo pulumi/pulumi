@@ -30,7 +30,6 @@ import (
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -137,8 +136,8 @@ func writeProgram(directory string, proj *workspace.Project, program *pcl.Progra
 	return nil
 }
 
-// Same pclBindProgram but recovers from panics
-func safePclBindProgram(sourceDirectory string, loader schema.ReferenceLoader,
+// Same pcl.BindDirectory but recovers from panics
+func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 ) (program *pcl.Program, diagnostics hcl.Diagnostics, err error) {
 	// PCL binding can be quite panic'y but even it panics we want to write out the intermediate PCL generated
 	// from the converter, so we use a recover statement here.
@@ -147,13 +146,13 @@ func safePclBindProgram(sourceDirectory string, loader schema.ReferenceLoader,
 			err = fmt.Errorf("panic binding program: %v", r)
 		}
 	}()
-	program, diagnostics, err = pclBindProgram(sourceDirectory, loader)
+	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader)
 	return
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-	program, diagnostics, err := safePclBindProgram(sourceDirectory, loader)
+	program, diagnostics, err := safePclBindDirectory(sourceDirectory, loader)
 	printDiagnostics(sink, diagnostics)
 	if program != nil {
 		// If we successfully bound the program, write out the .pp files from it
@@ -172,56 +171,6 @@ func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string,
 	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
 }
 
-// pclBindProgram binds a PCL in the given directory.
-func pclBindProgram(directory string, loader schema.ReferenceLoader) (*pcl.Program, hcl.Diagnostics, error) {
-	parser := hclsyntax.NewParser()
-	// Load all .pp files in the directory
-	files, err := os.ReadDir(directory)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	parseDiagnostics := make(hcl.Diagnostics, 0)
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fileName := file.Name()
-		path := filepath.Join(directory, fileName)
-
-		if filepath.Ext(path) == ".pp" {
-			file, err := os.Open(path)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			err = parser.ParseFile(file, filepath.Base(path))
-			if err != nil {
-				return nil, nil, err
-			}
-			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
-		}
-	}
-
-	if parseDiagnostics.HasErrors() {
-		return nil, parseDiagnostics, nil
-	}
-
-	program, bindDiagnostics, err := pcl.BindProgram(parser.Files,
-		pcl.Loader(loader),
-		pcl.DirPath(directory),
-		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
-
-	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
-	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.
-	if bindDiagnostics != nil {
-		err = nil
-	}
-
-	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
-	return program, allDiagnostics, err
-}
-
 func runConvert(
 	e env.Env,
 	cwd string, mappings []string, from string, language string,
@@ -229,7 +178,7 @@ func runConvert(
 ) result.Result {
 	wrapper := func(generator projectGeneratorFunc) func(diag.Sink, string, string, schema.ReferenceLoader) error {
 		return func(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-			program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
+			program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader)
 			printDiagnostics(sink, diagnostics)
 			if err != nil {
 				return fmt.Errorf("failed to bind program: %w", err)
@@ -291,15 +240,6 @@ func runConvert(
 			sourceDirectory, targetDirectory string,
 			loader schema.ReferenceLoader,
 		) error {
-			program, diagnostics, err := pclBindProgram(sourceDirectory, loader)
-			printDiagnostics(sink, diagnostics)
-			if err != nil {
-				return fmt.Errorf("failed to bind program: %w", err)
-			} else if program == nil {
-				// We've already printed the diagnostics above
-				return fmt.Errorf("failed to bind program")
-			}
-
 			// Load the project from the target directory if there is one. We default to a project with just
 			// the name of the original directory.
 			proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
@@ -322,15 +262,11 @@ func runConvert(
 			}
 			projectJSON := string(projectBytes)
 
-			// It feels a bit redundant to parse and bind the program just to turn it back into text, but it
-			// means we get binding errors this side of the grpc boundary, and we're likely to do something
-			// fancier here at some point (like passing an annotated syntax tree via protobuf rather than just
-			// PCL text).
-			err = languagePlugin.GenerateProject(targetDirectory, projectJSON, program.Source())
+			diagnostics, err := languagePlugin.GenerateProject(sourceDirectory, targetDirectory, projectJSON)
 			if err != nil {
 				return err
 			}
-
+			printDiagnostics(sink, diagnostics)
 			return nil
 		}
 	}

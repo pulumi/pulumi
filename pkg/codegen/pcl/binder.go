@@ -17,6 +17,7 @@ package pcl
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2"
@@ -190,6 +191,56 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
+}
+
+// Used by language plugins to bind a PCL program in the given directory.
+func BindDirectory(directory string, loader schema.ReferenceLoader) (*Program, hcl.Diagnostics, error) {
+	parser := syntax.NewParser()
+	// Load all .pp files in the directory
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	parseDiagnostics := make(hcl.Diagnostics, 0)
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+		path := filepath.Join(directory, fileName)
+
+		if filepath.Ext(path) == ".pp" {
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			err = parser.ParseFile(file, filepath.Base(path))
+			if err != nil {
+				return nil, nil, err
+			}
+			parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
+		}
+	}
+
+	if parseDiagnostics.HasErrors() {
+		return nil, parseDiagnostics, nil
+	}
+
+	program, bindDiagnostics, err := BindProgram(parser.Files,
+		Loader(loader),
+		DirPath(directory),
+		ComponentBinder(ComponentProgramBinderFromFileSystem()))
+
+	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
+	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.
+	if bindDiagnostics != nil {
+		err = nil
+	}
+
+	allDiagnostics := append(parseDiagnostics, bindDiagnostics...)
+	return program, allDiagnostics, err
 }
 
 func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectType {
