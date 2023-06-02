@@ -289,7 +289,7 @@ func runConvert(
 		}
 		version, err := pkgWorkspace.InstallPlugin(pluginSpec, log)
 		if err != nil {
-			pCtx.Diag.Warningf(diag.RawMessage("", "failed to install provider %q: %v"), provider, err)
+			pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), provider, err)
 			return nil
 		}
 		return version
