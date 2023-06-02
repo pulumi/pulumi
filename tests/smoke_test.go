@@ -117,10 +117,9 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e.CWD = filepath.Join(e.RootPath, "out")
 			e.RunCommand("pulumi", "stack", "init", "test")
 
-			// TODO[pulumi/pulumi#13075]: Skipping `up` until we have a way to tell the language host to
-			// install dependencies.
-			// e.RunCommand("pulumi", "up", "--yes")
-			// e.RunCommand("pulumi", "destroy", "--yes")
+			e.RunCommand("pulumi", "install")
+			e.RunCommand("pulumi", "up", "--yes")
+			e.RunCommand("pulumi", "destroy", "--yes")
 		})
 	}
 }
@@ -167,7 +166,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 				t.Skip("yaml doesn't support components")
 			}
 			if runtime == "java" {
-				t.Skip("yaml doesn't support components")
+				t.Skip("java doesn't support components")
 			}
 
 			e := ptesting.NewEnvironment(t)
@@ -186,10 +185,13 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 			e.CWD = filepath.Join(e.RootPath, "out")
 			e.RunCommand("pulumi", "stack", "init", "test")
 
-			// TODO[pulumi/pulumi#13075]: Skipping `up` until we have a way to tell the language host to
-			// install dependencies.
-			// e.RunCommand("pulumi", "up", "--yes")
-			// e.RunCommand("pulumi", "destroy", "--yes")
+			// TODO(https://github.com/pulumi/pulumi/issues/14339): This doesn't work for Go yet because the
+			// source code convert emits is not valid
+			if runtime != "go" {
+				e.RunCommand("pulumi", "install")
+				e.RunCommand("pulumi", "up", "--yes")
+				e.RunCommand("pulumi", "destroy", "--yes")
+			}
 		})
 	}
 }

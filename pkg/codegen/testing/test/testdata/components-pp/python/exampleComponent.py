@@ -1,6 +1,6 @@
 import pulumi
-from .simpleComponent import SimpleComponent
 from pulumi import Input
+from simpleComponent import SimpleComponent
 from typing import Optional, Dict, TypedDict, Any
 import pulumi_random as random
 
