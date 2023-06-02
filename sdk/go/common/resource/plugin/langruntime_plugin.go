@@ -495,20 +495,30 @@ func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
 		}
 	}
 
+	var subject *codegenrpc.Range
+	if diag.Subject != nil {
+		subject = &codegenrpc.Range{
+			Filename: diag.Subject.Filename,
+			Start:    hclPosToPos(diag.Subject.Start),
+			End:      hclPosToPos(diag.Subject.End),
+		}
+	}
+
+	var context *codegenrpc.Range
+	if diag.Context != nil {
+		context = &codegenrpc.Range{
+			Filename: diag.Context.Filename,
+			Start:    hclPosToPos(diag.Context.Start),
+			End:      hclPosToPos(diag.Context.End),
+		}
+	}
+
 	return &codegenrpc.Diagnostic{
 		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
 		Summary:  diag.Summary,
 		Detail:   diag.Detail,
-		Subject: &codegenrpc.Range{
-			Filename: diag.Subject.Filename,
-			Start:    hclPosToPos(diag.Subject.Start),
-			End:      hclPosToPos(diag.Subject.End),
-		},
-		Context: &codegenrpc.Range{
-			Filename: diag.Context.Filename,
-			Start:    hclPosToPos(diag.Context.Start),
-			End:      hclPosToPos(diag.Context.End),
-		},
+		Subject:  subject,
+		Context:  context,
 	}
 }
 
@@ -521,19 +531,29 @@ func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {
 		}
 	}
 
+	var subject *hcl.Range
+	if diag.Subject != nil {
+		subject = &hcl.Range{
+			Filename: diag.Subject.Filename,
+			Start:    rpcPosToPos(diag.Subject.Start),
+			End:      rpcPosToPos(diag.Subject.End),
+		}
+	}
+
+	var context *hcl.Range
+	if diag.Context != nil {
+		context = &hcl.Range{
+			Filename: diag.Context.Filename,
+			Start:    rpcPosToPos(diag.Context.Start),
+			End:      rpcPosToPos(diag.Context.End),
+		}
+	}
+
 	return &hcl.Diagnostic{
 		Severity: hcl.DiagnosticSeverity(diag.Severity),
 		Summary:  diag.Summary,
 		Detail:   diag.Detail,
-		Subject: &hcl.Range{
-			Filename: diag.Subject.Filename,
-			Start:    rpcPosToPos(diag.Subject.Start),
-			End:      rpcPosToPos(diag.Subject.End),
-		},
-		Context: &hcl.Range{
-			Filename: diag.Context.Filename,
-			Start:    rpcPosToPos(diag.Context.Start),
-			End:      rpcPosToPos(diag.Context.End),
-		},
+		Subject:  subject,
+		Context:  context,
 	}
 }
