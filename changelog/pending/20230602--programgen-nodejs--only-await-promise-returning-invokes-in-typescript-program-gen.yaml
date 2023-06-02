@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs
+  description: Only await promise-returning invokes in typescript program-gen
