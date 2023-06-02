@@ -483,6 +483,8 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 type resmon struct {
 	pulumirpc.UnimplementedResourceMonitorServer
 
+	resGoals                  map[resource.URN]resource.Goal     // map of seen URNs and their goals.
+	resGoalsLock              sync.Mutex                         // locks the resGoals map.
 	diagostics                diag.Sink                          // logger for user-facing messages
 	providers                 ProviderSource                     // the provider source itself.
 	componentProviders        map[resource.URN]map[string]string // which providers component resources used
@@ -523,6 +525,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
+		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
 		regChan:                   regChan,
 		regOutChan:                regOutChan,
@@ -993,6 +996,16 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+// inheritFromParent returns a new goal that inherits from the given parent goal.
+// Currently only inherits DeletedWith from parent.
+func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal {
+	goal := child
+	if goal.DeletedWith == "" {
+		goal.DeletedWith = parent.DeletedWith
+	}
+	return &goal
+}
+
 // RegisterResource is invoked by a language process when a new resource has been allocated.
 func (rm *resmon) RegisterResource(ctx context.Context,
 	req *pulumirpc.RegisterResourceRequest,
@@ -1257,11 +1270,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			}
 		}
 
+		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
+			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
+			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith)
+
+		if goal.Parent != "" {
+			rm.resGoalsLock.Lock()
+			parentGoal, ok := rm.resGoals[goal.Parent]
+			if ok {
+				goal = inheritFromParent(*goal, parentGoal)
+			}
+			rm.resGoalsLock.Unlock()
+		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
-			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
-				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith),
+			goal: goal,
 			done: make(chan *RegisterResult),
 		}
 
@@ -1278,6 +1301,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		case <-rm.cancel:
 			logging.V(5).Infof("ResourceMonitor.RegisterResource operation canceled, name=%s", name)
 			return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on step's done channel")
+		}
+		if result != nil && result.State != nil && result.State.URN != "" {
+			rm.resGoalsLock.Lock()
+			rm.resGoals[result.State.URN] = *goal
+			rm.resGoalsLock.Unlock()
 		}
 	}
 
