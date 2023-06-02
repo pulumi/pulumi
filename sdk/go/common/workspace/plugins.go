@@ -1765,18 +1765,9 @@ func getPluginInfoAndPath(
 		return info, path, nil
 	}
 
-	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
-	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.
-	// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
-	isBundled := kind == LanguagePlugin ||
-		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
-		(kind == ResourcePlugin && name == "pulumi-python") ||
-		(kind == AnalyzerPlugin && name == "policy") ||
-		(kind == AnalyzerPlugin && name == "policy-python")
-
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
-	includeAmbient := !(env.IgnoreAmbientPlugins.Value()) || isBundled
+	includeAmbient := !(env.IgnoreAmbientPlugins.Value())
 	if includeAmbient {
 		filename = (&PluginSpec{Kind: kind, Name: name}).File()
 		if path, err := exec.LookPath(filename); err == nil {
@@ -1789,13 +1780,22 @@ func getPluginInfoAndPath(
 		}
 	}
 
+	// We currently bundle some plugins with "pulumi" and thus expect them to be next to the pulumi binary. We
+	// also always allow these plugins to be picked up from PATH even if PULUMI_IGNORE_AMBIENT_PLUGINS is set.
+	// Eventually we want to fix this so new plugins are true plugins in the plugin cache.
+	isBundled := kind == LanguagePlugin ||
+		(kind == ResourcePlugin && name == "pulumi-nodejs") ||
+		(kind == ResourcePlugin && name == "pulumi-python") ||
+		(kind == AnalyzerPlugin && name == "policy") ||
+		(kind == AnalyzerPlugin && name == "policy-python")
+
 	// At some point in the future, bundled plugins will be located in the plugin cache, just like regular
 	// plugins (see pulumi/pulumi#956 for some of the reasons why this isn't the case today). For now, they
 	// ship next to the `pulumi` binary. While we encourage this folder to be on the $PATH (and so the check
-	// above would have found the plugin) it's possible someone is running `pulumi` with an explicit path on
-	// the command line or has done symlink magic such that `pulumi` is on the path, but the bundled plugins
-	// are not. So, if possible, look next to the instance of `pulumi` that is running to find this bundled
-	// plugin.
+	// above would have normally found the plugin) it's possible someone is running `pulumi` with an explicit
+	// path on the command line or has done symlink magic such that `pulumi` is on the path, but the bundled
+	// plugins are not, or has simply set IGNORE_AMBIENT_PLUGINS. So, if possible, look next to the instance
+	// of `pulumi` that is running to find this bundled plugin.
 	if isBundled {
 		exePath, exeErr := os.Executable()
 		if exeErr == nil {
