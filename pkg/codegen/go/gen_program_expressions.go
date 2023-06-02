@@ -1028,7 +1028,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagError,
+		Severity: hcl.DiagWarning,
 		Summary:  message,
 		Detail:   message,
 	})

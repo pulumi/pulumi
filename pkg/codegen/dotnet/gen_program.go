@@ -1366,7 +1366,7 @@ func (g *generator) genLocalVariable(w io.Writer, localVariable *pcl.LocalVariab
 func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
 	message := fmt.Sprintf("not yet implemented: %s", fmt.Sprintf(reason, vs...))
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
-		Severity: hcl.DiagError,
+		Severity: hcl.DiagWarning,
 		Summary:  message,
 		Detail:   message,
 	})

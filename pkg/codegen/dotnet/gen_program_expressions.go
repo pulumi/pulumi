@@ -227,7 +227,39 @@ func (g *generator) GenConditionalExpression(w io.Writer, expr *model.Conditiona
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
-	g.genNYI(w, "ForExpression")
+	switch expr.Collection.Type().(type) {
+	case *model.ListType, *model.TupleType:
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "%.20v", expr.Collection)
+		} else {
+			g.Fgenf(w, "%.20v.Select((value, i) => new { Key = i.ToString(), Value = pair.Value })",
+				expr.Collection)
+		}
+	case *model.MapType:
+		if expr.KeyVariable == nil {
+			g.Fgenf(w, "(%.v).Values", expr.Collection)
+		} else {
+			g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Collection)
+		}
+	}
+
+	if expr.Condition != nil {
+		g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
+	}
+
+	g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
+	g.Fgenf(w, "%s{\n", g.Indent)
+	g.Indented(func() {
+		typeName := ""
+		switch expr.Value.(type) {
+		case *model.ObjectConsExpression:
+			// TODO: handle typed objects
+			typeName = "new Dictionary<string, object?> "
+		}
+		g.Fgenf(w, "%sreturn %s %v;", g.Indent, typeName, expr.Value)
+	})
+	g.Fgen(w, "\n")
+	g.Fgenf(w, "%s})", g.Indent)
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
@@ -351,6 +383,19 @@ func (g *generator) genIntrensic(w io.Writer, from model.Expression, to model.Ty
 	}
 }
 
+func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) {
+	switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
+	case *model.ListType, *model.TupleType:
+		if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
+			g.genRange(w, call, true)
+			return
+		}
+		g.Fgenf(w, "%.20v.Select((v, k) => new { Key = k, Value = v })", expr.Args[0])
+	case *model.MapType, *model.ObjectType:
+		g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Args[0])
+	}
+}
+
 func (g *generator) withinAwaitBlock(run func()) {
 	if g.insideAwait {
 		// already inside await block?
@@ -441,16 +486,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.20v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		switch model.ResolveOutputs(expr.Args[0].Type()).(type) {
-		case *model.ListType, *model.TupleType:
-			if call, ok := expr.Args[0].(*model.FunctionCallExpression); ok && call.Name == "range" {
-				g.genRange(w, call, true)
-				return
-			}
-			g.Fgenf(w, "%.20v.Select((v, k) => new { Key = k, Value = v })", expr.Args[0])
-		case *model.MapType, *model.ObjectType:
-			g.Fgenf(w, "%.20v.Select(pair => new { pair.Key, pair.Value })", expr.Args[0])
-		}
+		g.genEntries(w, expr)
 	case "fileArchive":
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
