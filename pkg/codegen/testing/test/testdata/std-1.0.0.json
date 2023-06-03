@@ -121,6 +121,67 @@
           "type": "number"
         }
       },
+      "std:index:cidrsubnet": {
+        "description": "Takes an IP address range in CIDR notation (like 10.0.0.0/8) and extends its prefix \nto include an additional subnet number. For example, cidrsubnet(\"10.0.0.0/8\", 8, 2) returns 10.2.0.0/16; \ncidrsubnet(\"2607:f298:6051:516c::/64\", 8, 2) returns 2607:f298:6051:516c:200::/72.",
+        "inputs": {
+          "properties": {
+            "input": {
+              "type": "string"
+            },
+            "netnum": {
+              "type": "integer"
+            },
+            "newbits": {
+              "type": "integer"
+            }
+          },
+          "type": "object",
+          "required": [
+            "input",
+            "netnum",
+            "newbits"
+          ]
+        },
+        "outputs": {
+          "properties": {
+            "result": {
+              "type": "string"
+            }
+          },
+          "type": "object",
+          "required": [
+            "result"
+          ]
+        }
+      },
+      "std:index:max": {
+        "description": "Returns the largest of the floats.",
+        "inputs": {
+          "properties": {
+            "input": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "type": "object",
+          "required": [
+            "input"
+          ]
+        },
+        "outputs": {
+          "properties": {
+            "result": {
+              "type": "number"
+            }
+          },
+          "type": "object",
+          "required": [
+            "result"
+          ]
+        }
+      },
       "std:index:AbsMultiArgsReducedOutputSwapped": {
         "description": "Returns the absolute value of a given float. \nExample: abs(1) returns 1, and abs(-1) would also return 1, whereas abs(-3.14) would return 3.14.",
         "multiArgumentInputs": ["b", "a"],

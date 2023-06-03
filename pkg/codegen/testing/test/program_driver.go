@@ -282,6 +282,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 		SkipCompile: allProgLanguages.Except("nodejs").Except("python"),
 	},
+	{
+		Directory:   "invoke-inside-conditional-range",
+		Description: "Using the result of an invoke inside a conditional range expression of a resource",
+		Skip:        allProgLanguages.Except("nodejs"),
+		SkipCompile: allProgLanguages,
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
