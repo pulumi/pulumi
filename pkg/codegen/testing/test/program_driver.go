@@ -285,7 +285,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "invoke-inside-conditional-range",
 		Description: "Using the result of an invoke inside a conditional range expression of a resource",
-		Skip:        allProgLanguages.Except("nodejs"),
+		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
 		SkipCompile: allProgLanguages,
 	},
 }

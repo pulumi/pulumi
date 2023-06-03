@@ -82,10 +82,11 @@ func (g *generator) awaitInvokes(x model.Expression) model.Expression {
 			return x, nil
 		}
 
-		_, isPromise := call.Type().(*model.PromiseType)
-		contract.Assertf(isPromise, "invoke should return a promise, got %v", call.Type())
+		if _, isPromise := call.Type().(*model.PromiseType); isPromise {
+			return newAwaitCall(call), nil
+		}
 
-		return newAwaitCall(call), nil
+		return call, nil
 	}
 	x, diags := model.VisitExpression(x, model.IdentityVisitor, rewriter)
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
