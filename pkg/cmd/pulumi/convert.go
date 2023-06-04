@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
-	tfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -208,6 +207,14 @@ func runConvert(
 	}
 	defer contract.IgnoreClose(pCtx.Host)
 
+	// Translate well known sources to plugins
+	switch from {
+	case "tf":
+		from = "terraform"
+	case "":
+		from = "yaml"
+	}
+
 	// Translate well known languages to runtimes
 	switch language {
 	case "csharp", "c#":
@@ -308,7 +315,7 @@ func runConvert(
 		return result.FromError(fmt.Errorf("create temporary directory: %w", err))
 	}
 
-	if from == "" || from == "yaml" {
+	if from == "yaml" {
 		proj, program, err := yamlgen.Eject(cwd, loader)
 		if err != nil {
 			return result.FromError(fmt.Errorf("load yaml program: %w", err))
@@ -323,15 +330,6 @@ func runConvert(
 			pclDirectory = cwd
 		} else {
 			return result.FromError(fmt.Errorf("unrecognized source %q", from))
-		}
-	} else if from == "tf" {
-		proj, program, err := tfgen.Eject(cwd, loader, mapper)
-		if err != nil {
-			return result.FromError(fmt.Errorf("load terraform program: %w", err))
-		}
-		err = writeProgram(pclDirectory, proj, program)
-		if err != nil {
-			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
 		}
 	} else {
 		// Try and load the converter plugin for this
