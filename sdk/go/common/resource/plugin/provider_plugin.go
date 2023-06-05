@@ -672,7 +672,7 @@ func (p *provider) Check(urn resource.URN,
 	allowUnknowns bool, randomSeed []byte,
 ) (resource.PropertyMap, []CheckFailure, error) {
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), urn)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d", label, len(olds), len(news))
+	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(olds), len(news))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1805,6 +1805,9 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp inter
 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
 func (p *provider) GetMapping(key string) ([]byte, string, error) {
+	label := fmt.Sprintf("%s.GetMapping", p.label())
+	logging.V(7).Infof("%s executing: key=%s", label, key)
+
 	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
 		Key: key,
 	})
@@ -1814,9 +1817,13 @@ func (p *provider) GetMapping(key string) ([]byte, string, error) {
 		if code == codes.Unimplemented {
 			// For backwards compatibility, just return nothing as if the provider didn't have a mapping for
 			// the given key
+			logging.V(7).Infof("%s unimplemented", label)
 			return nil, "", nil
 		}
+		logging.V(7).Infof("%s failed: %v", label, rpcError)
 		return nil, "", err
 	}
+
+	logging.V(7).Infof("%s success: data=#%d provider=%s", label, len(resp.Data), resp.Provider)
 	return resp.Data, resp.Provider, nil
 }
