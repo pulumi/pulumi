@@ -17,6 +17,8 @@ package plugin
 import (
 	"context"
 	"io"
+
+	"github.com/hashicorp/hcl/v2"
 )
 
 type ResourceImport struct {
@@ -42,7 +44,9 @@ type ConvertProgramRequest struct {
 	MapperAddress   string
 }
 
-type ConvertProgramResponse struct{}
+type ConvertProgramResponse struct {
+	Diagnostics hcl.Diagnostics
+}
 
 type Converter interface {
 	io.Closer

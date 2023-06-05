@@ -15,6 +15,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { pulumirpc: {} }, global = proto;
 
+var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
+goog.object.extend(proto, pulumi_codegen_hcl_pb);
 var pulumi_plugin_pb = require('./plugin_pb.js');
 goog.object.extend(proto, pulumi_plugin_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
@@ -121,7 +123,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ConvertProgramResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ConvertProgramResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ConvertProgramResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -862,6 +864,13 @@ proto.pulumirpc.ConvertProgramRequest.prototype.setMapperTarget = function(value
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ConvertProgramResponse.repeatedFields_ = [1];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -893,7 +902,8 @@ proto.pulumirpc.ConvertProgramResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.ConvertProgramResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
+    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -930,6 +940,11 @@ proto.pulumirpc.ConvertProgramResponse.deserializeBinaryFromReader = function(ms
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = new pulumi_codegen_hcl_pb.Diagnostic;
+      reader.readMessage(value,pulumi_codegen_hcl_pb.Diagnostic.deserializeBinaryFromReader);
+      msg.addDiagnostics(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -959,6 +974,52 @@ proto.pulumirpc.ConvertProgramResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.ConvertProgramResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getDiagnosticsList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      1,
+      f,
+      pulumi_codegen_hcl_pb.Diagnostic.serializeBinaryToWriter
+    );
+  }
+};
+
+
+/**
+ * repeated codegen.Diagnostic diagnostics = 1;
+ * @return {!Array<!proto.pulumirpc.codegen.Diagnostic>}
+ */
+proto.pulumirpc.ConvertProgramResponse.prototype.getDiagnosticsList = function() {
+  return /** @type{!Array<!proto.pulumirpc.codegen.Diagnostic>} */ (
+    jspb.Message.getRepeatedWrapperField(this, pulumi_codegen_hcl_pb.Diagnostic, 1));
+};
+
+
+/**
+ * @param {!Array<!proto.pulumirpc.codegen.Diagnostic>} value
+ * @return {!proto.pulumirpc.ConvertProgramResponse} returns this
+*/
+proto.pulumirpc.ConvertProgramResponse.prototype.setDiagnosticsList = function(value) {
+  return jspb.Message.setRepeatedWrapperField(this, 1, value);
+};
+
+
+/**
+ * @param {!proto.pulumirpc.codegen.Diagnostic=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.codegen.Diagnostic}
+ */
+proto.pulumirpc.ConvertProgramResponse.prototype.addDiagnostics = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 1, opt_value, proto.pulumirpc.codegen.Diagnostic, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ConvertProgramResponse} returns this
+ */
+proto.pulumirpc.ConvertProgramResponse.prototype.clearDiagnosticsList = function() {
+  return this.setDiagnosticsList([]);
 };
 
 

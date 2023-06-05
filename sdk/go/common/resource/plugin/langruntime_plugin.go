@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 // langhost reflects a language host plugin, loaded dynamically for a single language/runtime pair.
@@ -484,76 +483,4 @@ func (h *langhost) GenerateProgram(program map[string]string) (map[string][]byte
 
 	logging.V(7).Infof("langhost[%v].GenerateProgram() success", h.runtime)
 	return resp.Source, diags, nil
-}
-
-func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
-	hclPosToPos := func(pos hcl.Pos) *codegenrpc.Pos {
-		return &codegenrpc.Pos{
-			Line:   int64(pos.Line),
-			Column: int64(pos.Column),
-			Byte:   int64(pos.Byte),
-		}
-	}
-
-	var subject *codegenrpc.Range
-	if diag.Subject != nil {
-		subject = &codegenrpc.Range{
-			Filename: diag.Subject.Filename,
-			Start:    hclPosToPos(diag.Subject.Start),
-			End:      hclPosToPos(diag.Subject.End),
-		}
-	}
-
-	var context *codegenrpc.Range
-	if diag.Context != nil {
-		context = &codegenrpc.Range{
-			Filename: diag.Context.Filename,
-			Start:    hclPosToPos(diag.Context.Start),
-			End:      hclPosToPos(diag.Context.End),
-		}
-	}
-
-	return &codegenrpc.Diagnostic{
-		Severity: codegenrpc.DiagnosticSeverity(diag.Severity),
-		Summary:  diag.Summary,
-		Detail:   diag.Detail,
-		Subject:  subject,
-		Context:  context,
-	}
-}
-
-func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {
-	rpcPosToPos := func(pos *codegenrpc.Pos) hcl.Pos {
-		return hcl.Pos{
-			Line:   int(pos.Line),
-			Column: int(pos.Column),
-			Byte:   int(pos.Byte),
-		}
-	}
-
-	var subject *hcl.Range
-	if diag.Subject != nil {
-		subject = &hcl.Range{
-			Filename: diag.Subject.Filename,
-			Start:    rpcPosToPos(diag.Subject.Start),
-			End:      rpcPosToPos(diag.Subject.End),
-		}
-	}
-
-	var context *hcl.Range
-	if diag.Context != nil {
-		context = &hcl.Range{
-			Filename: diag.Context.Filename,
-			Start:    rpcPosToPos(diag.Context.Start),
-			End:      rpcPosToPos(diag.Context.End),
-		}
-	}
-
-	return &hcl.Diagnostic{
-		Severity: hcl.DiagnosticSeverity(diag.Severity),
-		Summary:  diag.Summary,
-		Detail:   diag.Detail,
-		Subject:  subject,
-		Context:  context,
-	}
 }

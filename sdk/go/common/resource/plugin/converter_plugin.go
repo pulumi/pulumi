@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/hashicorp/hcl/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -135,7 +136,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	label := fmt.Sprintf("%s.ConvertProgram", c.label())
 	logging.V(7).Infof("%s executing", label)
 
-	_, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
+	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
 		MapperTarget:    req.MapperAddress,
@@ -146,6 +147,14 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		return nil, err
 	}
 
+	// Translate the rpc diagnostics into hcl.Diagnostics.
+	diags := make(hcl.Diagnostics, len(resp.Diagnostics))
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
 	logging.V(7).Infof("%s success", label)
-	return &ConvertProgramResponse{}, nil
+	return &ConvertProgramResponse{
+		Diagnostics: diags,
+	}, nil
 }
