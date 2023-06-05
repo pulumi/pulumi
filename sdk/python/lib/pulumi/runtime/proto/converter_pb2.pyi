@@ -20,6 +20,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import pulumi.codegen.hcl_pb2
 import sys
 
 if sys.version_info >= (3, 8):
@@ -124,8 +125,15 @@ global___ConvertProgramRequest = ConvertProgramRequest
 class ConvertProgramResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """any diagnostics from code generation."""
     def __init__(
         self,
+        *,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
     ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___ConvertProgramResponse = ConvertProgramResponse

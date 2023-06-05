@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "pulumi/codegen/hcl.proto";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
@@ -67,4 +68,6 @@ message ConvertProgramRequest {
 }
 
 message ConvertProgramResponse {
+    // any diagnostics from code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }

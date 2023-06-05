@@ -11,7 +11,7 @@
 1949619858 9233 proto/pulumi/analyzer.proto
 2452746699 3822 proto/pulumi/codegen/hcl.proto
 3592920431 1785 proto/pulumi/codegen/mapper.proto
-2636371015 2370 proto/pulumi/converter.proto
+2349987281 2509 proto/pulumi/converter.proto
 2889436496 3240 proto/pulumi/engine.proto
 3421371250 793 proto/pulumi/errors.proto
 1168846144 7300 proto/pulumi/language.proto

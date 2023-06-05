@@ -368,7 +368,7 @@ func runConvert(
 			return result.FromError(err)
 		}
 
-		_, err = converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
+		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,
 			TargetDirectory: pclDirectory,
 			MapperAddress:   grpcServer.Addr(),
@@ -376,6 +376,7 @@ func runConvert(
 		if err != nil {
 			return result.FromError(err)
 		}
+		printDiagnostics(pCtx.Diag, resp.Diagnostics)
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
