@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -224,7 +225,7 @@ func (l *pluginMapper) getMappingForPlugin(pluginSpec mapperPluginSpec) ([]byte,
 	return nil, "", err
 }
 
-func (l *pluginMapper) GetMapping(provider string, pulumiProvider string) ([]byte, error) {
+func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiProvider string) ([]byte, error) {
 	// If we already have an entry for this provider, use it
 	if entry, has := l.entries[provider]; has {
 		return entry, nil

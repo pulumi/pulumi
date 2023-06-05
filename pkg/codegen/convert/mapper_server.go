@@ -39,9 +39,7 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 	label := "GetMapping"
 	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
 
-	// TODO: GetMapping should take a context because it's async, but we need to break the tfbridge build loop
-	// first.
-	data, err := m.mapper.GetMapping(req.Provider, req.PulumiProvider)
+	data, err := m.mapper.GetMapping(ctx, req.Provider, req.PulumiProvider)
 	if err != nil {
 		logging.V(7).Infof("%s failed: %v", label, err)
 		return nil, err
