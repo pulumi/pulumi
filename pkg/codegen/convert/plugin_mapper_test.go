@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -182,7 +183,9 @@ func TestPluginMapper_InstalledPluginMatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("provider", "")
+	ctx := context.Background()
+
+	data, err := mapper.GetMapping(ctx, "provider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -224,7 +227,9 @@ func TestPluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("otherProvider", "")
+	ctx := context.Background()
+
+	data, err := mapper.GetMapping(ctx, "otherProvider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -267,7 +272,9 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, mapper)
 
-		data, err := mapper.GetMapping("yetAnotherProvider", "")
+		ctx := context.Background()
+
+		data, err := mapper.GetMapping(ctx, "yetAnotherProvider", "")
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("data"), data)
 	})
@@ -299,7 +306,9 @@ func TestPluginMapper_NoPluginMatches(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, mapper)
 
-		data, err := mapper.GetMapping("yetAnotherProvider", "")
+		ctx := context.Background()
+
+		data, err := mapper.GetMapping(ctx, "yetAnotherProvider", "")
 		assert.NoError(t, err)
 		assert.Equal(t, []byte{}, data)
 	})
@@ -344,7 +353,9 @@ func TestPluginMapper_UseMatchingNameFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
-	data, err := mapper.GetMapping("provider", "")
+	ctx := context.Background()
+
+	data, err := mapper.GetMapping(ctx, "provider", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
@@ -401,13 +412,15 @@ func TestPluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
+	ctx := context.Background()
+
 	// Get the mapping for the GCP provider.
-	data, err := mapper.GetMapping("gcp", "")
+	data, err := mapper.GetMapping(ctx, "gcp", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Now get the mapping for the AWS provider, it should be cached.
-	data, err = mapper.GetMapping("aws", "")
+	data, err = mapper.GetMapping(ctx, "aws", "")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
 }
@@ -451,8 +464,10 @@ func TestPluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, mapper)
 
+	ctx := context.Background()
+
 	// Get the mapping for the GCP provider, telling the mapper that it's pulumi name is "pulumiProviderGcp".
-	data, err := mapper.GetMapping("gcp", "pulumiProviderGcp")
+	data, err := mapper.GetMapping(ctx, "gcp", "pulumiProviderGcp")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
