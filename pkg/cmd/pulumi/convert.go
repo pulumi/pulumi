@@ -315,6 +315,7 @@ func runConvert(
 		return result.FromError(fmt.Errorf("create temporary directory: %w", err))
 	}
 
+	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
 	if from == "yaml" {
 		proj, program, err := yamlgen.Eject(cwd, loader)
 		if err != nil {
@@ -377,6 +378,7 @@ func runConvert(
 		}
 	}
 
+	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
 	err = projectGenerator(pCtx.Diag, pclDirectory, outDir, loader)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
