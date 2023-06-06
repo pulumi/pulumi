@@ -274,6 +274,9 @@ func runConvert(
 				return err
 			}
 			printDiagnostics(sink, diagnostics)
+			if diagnostics.HasErrors() {
+				return fmt.Errorf("failed to bind program")
+			}
 			return nil
 		}
 	}
