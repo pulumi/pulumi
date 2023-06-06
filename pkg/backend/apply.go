@@ -249,6 +249,9 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
+		if plan != nil {
+			contract.Assertf(op.Opts.Engine.Experimental, "plans only supported in experimental mode")
+		}
 
 		// If we had an original plan use it, else if prompt said to use the plan from Preview then use the
 		// newly generated plan

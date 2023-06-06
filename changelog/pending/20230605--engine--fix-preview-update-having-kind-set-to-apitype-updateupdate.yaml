@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix preview update having kind set to apitype.UpdateUpdate.
