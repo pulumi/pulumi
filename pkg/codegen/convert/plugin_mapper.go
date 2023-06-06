@@ -274,7 +274,9 @@ func (l *pluginMapper) GetMapping(ctx context.Context, provider string, pulumiPr
 	// installed so the user can manually edit their plugin cache to be the set of plugins they want to use.
 	for {
 		if len(l.plugins) == 0 {
-			// No plugins left to look in, return that we don't have a mapping
+			// No plugins left to look in, return that we don't have a mapping but first save that we'll never
+			// find a mapping for this provider key.
+			l.entries[provider] = []byte{}
 			return []byte{}, nil
 		}
 

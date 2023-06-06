@@ -471,3 +471,39 @@ func TestPluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13105
+func TestPluginMapper_MissingProviderOnlyTriesToInstallOnce(t *testing.T) {
+	t.Parallel()
+
+	ws := &testWorkspace{}
+
+	providerFactory := func(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+		t.Fatal("should not be called")
+		return nil, nil
+	}
+
+	called := 0
+	installPlugin := func(pkg tokens.Package) *semver.Version {
+		called++
+		assert.Equal(t, "pulumiProviderGcp", string(pkg))
+		return nil
+	}
+
+	mapper, err := NewPluginMapper(ws, providerFactory, "key", nil, installPlugin)
+	assert.NoError(t, err)
+	assert.NotNil(t, mapper)
+
+	ctx := context.Background()
+
+	// Try to get the mapping for the GCP provider, telling the mapper that it's pulumi name is "pulumiProviderGcp".
+	data, err := mapper.GetMapping(ctx, "gcp", "pulumiProviderGcp")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{}, data)
+	// Try and get the mapping again
+	data, err = mapper.GetMapping(ctx, "gcp", "pulumiProviderGcp")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{}, data)
+	// Install should have only been called once
+	assert.Equal(t, 1, called)
+}
