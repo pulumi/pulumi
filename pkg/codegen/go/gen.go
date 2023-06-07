@@ -3772,6 +3772,18 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 			setFile(path.Join(mod, "doc.go"), buffer.String())
 
+			// Version
+			versionBuf := &bytes.Buffer{}
+			importsAndAliases := map[string]string{}
+
+			pkg.genHeader(versionBuf, []string{"github.com/blang/semver"}, importsAndAliases)
+			err = pkg.GenVersionFile(versionBuf)
+			if err != nil {
+				return nil, err
+			}
+
+			setFile(path.Join(mod, "pulumiVersion.go"), versionBuf.String())
+
 		case "config":
 			config, err := pkg.pkg.Config()
 			if err != nil {
@@ -3897,6 +3909,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			importsAndAliases := map[string]string{
 				"github.com/blang/semver":                   "",
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
+			}
+
+			if pkg.mod == "config" {
+				importsAndAliases[pkg.importBasePath] = ""
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
@@ -4031,6 +4047,10 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 // If a version cannot be determined, v1 will be assumed. The second return
 // value is always nil.
 func PkgVersion() (semver.Version, error) {
+    // emptyVersion defaults to v0.0.0
+	if !%s.Equals(semver.Version{}) {
+		return %s, nil
+	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
 	re := regexp.MustCompile(%q)
@@ -4052,11 +4072,27 @@ func isZero(v interface{}) bool {
 	return reflect.ValueOf(v).IsZero()
 }
 `
-	_, err := fmt.Fprintf(w, utilitiesFile, packageRegex)
+	versionPackageRef := "SdkVersion"
+	versionPkgName := pkg.pkg.Name()
+
+	if pkg.mod == "config" {
+		versionPackageRef = versionPkgName + "." + versionPackageRef
+
+	}
+
+	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, versionPackageRef, packageRegex)
 	if err != nil {
 		return err
 	}
 	return pkg.GenPkgDefaultOpts(w)
+}
+
+func (pkg *pkgContext) GenVersionFile(w io.Writer) error {
+	const versionFile = `var SdkVersion semver.Version = semver.Version{}
+var pluginDownloadURL string = "thisurldoesnotexist"
+`
+	_, err := fmt.Fprintf(w, versionFile)
+	return err
 }
 
 func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
@@ -4065,9 +4101,6 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
 		return err
 	}
 	url := p.PluginDownloadURL
-	if url == "" {
-		return nil
-	}
 	const template string = `
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
 func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
