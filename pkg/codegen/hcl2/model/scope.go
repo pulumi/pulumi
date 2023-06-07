@@ -121,8 +121,8 @@ func (c *Constant) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 //   - one that is exclusive to output variables
 //   - and one that contains config variables, local variables and resource definitions.
 //
-// When binding a reference, we check defs and outputs. When binding a function, we check inside functions
-// Definitions within a namespace such as defs, outputs or functions are expected to have a unique identifier
+// When binding a reference, we check `defs` and `outputs`. When binding a function, we check `functions`.
+// Definitions within a namespace such as `defs`, `outputs` or `functions` are expected to have a unique identifier
 // and cannot be redeclared.
 type Scope struct {
 	parent    *Scope
