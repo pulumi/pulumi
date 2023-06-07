@@ -288,6 +288,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
 		SkipCompile: allProgLanguages,
 	},
+	{
+		Directory:   "output-name-conflict",
+		Description: "Tests whether we are able to generate programs where output variables have same id as config var",
+		SkipCompile: codegen.NewStringSet("go"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
