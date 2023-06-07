@@ -234,13 +234,9 @@ func runConvert(
 	case "yaml":
 		projectGenerator = wrapper(yamlgen.GenerateProject)
 	case "pulumi", "pcl":
-		if e.GetBool(env.Dev) {
-			// No plugin for PCL to install dependencies with
-			generateOnly = true
-			projectGenerator = pclGenerateProject
-			break
-		}
-		return result.Errorf("cannot generate programs for %q language", language)
+		// No plugin for PCL to install dependencies with
+		generateOnly = true
+		projectGenerator = pclGenerateProject
 	default:
 		projectGenerator = func(
 			sink diag.Sink,
