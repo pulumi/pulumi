@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: "'convert' now defaults to be more leniant about program correctness, old behaviour can be toggled back on with --strict."

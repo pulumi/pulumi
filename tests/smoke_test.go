@@ -61,9 +61,6 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
 
-			// We need PULUMI_DEV set to use `--from pcl` in convert.
-			e.SetEnvVars("PULUMI_DEV=true")
-
 			e.ImportDirectory("testdata/random_pp")
 
 			// Make sure random is installed
@@ -73,7 +70,9 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			}
 
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-			e.RunCommand("pulumi", "convert", "--language", Languages[runtime], "--from", "pcl", "--out", "out")
+			e.RunCommand(
+				"pulumi", "convert", "--strict",
+				"--language", Languages[runtime], "--from", "pcl", "--out", "out")
 			e.CWD = filepath.Join(e.RootPath, "out")
 			e.RunCommand("pulumi", "stack", "init", "test")
 
@@ -81,6 +80,35 @@ func TestLanguageConvertSmoke(t *testing.T) {
 			// install dependencies.
 			// e.RunCommand("pulumi", "up", "--yes")
 			// e.RunCommand("pulumi", "destroy", "--yes")
+		})
+	}
+}
+
+// Quick sanity tests for each downstream language to check that non-strict convert works.
+func TestLanguageConvertLenientSmoke(t *testing.T) {
+	t.Parallel()
+
+	for _, runtime := range Runtimes {
+		runtime := runtime
+		t.Run(runtime, func(t *testing.T) {
+			t.Parallel()
+
+			e := ptesting.NewEnvironment(t)
+			defer deleteIfNotFailed(e)
+
+			e.ImportDirectory("testdata/bad_random_pp")
+
+			// Make sure random is installed
+			out, _ := e.RunCommand("pulumi", "plugin", "ls")
+			if !strings.Contains(out, "random  resource  4.13.0") {
+				e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
+			}
+
+			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+			e.RunCommand(
+				"pulumi", "convert", "--generate-only",
+				"--language", Languages[runtime], "--from", "pcl", "--out", "out")
+			// We don't want care about running this program because it _will_ be incorrect.
 		})
 	}
 }
@@ -103,9 +131,6 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 
 			e := ptesting.NewEnvironment(t)
 			defer deleteIfNotFailed(e)
-
-			// We need PULUMI_DEV set to use `--from pcl` in convert.
-			e.SetEnvVars("PULUMI_DEV=true")
 
 			e.ImportDirectory("testdata/component_pp")
 

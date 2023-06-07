@@ -56,7 +56,7 @@ type LanguageRuntime interface {
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.
-	GenerateProject(sourceDirectory, targetDirectory, project string) (hcl.Diagnostics, error)
+	GenerateProject(sourceDirectory, targetDirectory, project string, strict bool) (hcl.Diagnostics, error)
 
 	// GeneratePlugin generates an SDK package.
 	GeneratePackage(directory string, schema string, extraFiles map[string][]byte) error

@@ -460,20 +460,24 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     SOURCE_DIRECTORY_FIELD_NUMBER: builtins.int
     TARGET_DIRECTORY_FIELD_NUMBER: builtins.int
     PROJECT_FIELD_NUMBER: builtins.int
+    STRICT_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """the directory to generate the project from."""
     target_directory: builtins.str
     """the directory to generate the project in."""
     project: builtins.str
     """the JSON-encoded pulumi project file."""
+    strict: builtins.bool
+    """if PCL binding should be strict or not."""
     def __init__(
         self,
         *,
         source_directory: builtins.str = ...,
         target_directory: builtins.str = ...,
         project: builtins.str = ...,
+        strict: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["project", b"project", "source_directory", b"source_directory", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 

@@ -3481,7 +3481,8 @@ proto.pulumirpc.GenerateProjectRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    project: jspb.Message.getFieldWithDefault(msg, 3, "")
+    project: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    strict: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -3530,6 +3531,10 @@ proto.pulumirpc.GenerateProjectRequest.deserializeBinaryFromReader = function(ms
       var value = /** @type {string} */ (reader.readString());
       msg.setProject(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setStrict(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3577,6 +3582,13 @@ proto.pulumirpc.GenerateProjectRequest.serializeBinaryToWriter = function(messag
   if (f.length > 0) {
     writer.writeString(
       3,
+      f
+    );
+  }
+  f = message.getStrict();
+  if (f) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -3634,6 +3646,24 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getProject = function() {
  */
 proto.pulumirpc.GenerateProjectRequest.prototype.setProject = function(value) {
   return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional bool strict = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.getStrict = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.setStrict = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 

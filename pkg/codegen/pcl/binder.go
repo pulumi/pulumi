@@ -36,10 +36,13 @@ const (
 )
 
 type ComponentProgramBinderArgs struct {
-	BinderDirPath      string
-	BinderLoader       schema.Loader
-	ComponentSource    string
-	ComponentNodeRange hcl.Range
+	AllowMissingVariables  bool
+	AllowMissingProperties bool
+	SkipResourceTypecheck  bool
+	BinderDirPath          string
+	BinderLoader           schema.Loader
+	ComponentSource        string
+	ComponentNodeRange     hcl.Range
 }
 
 type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
@@ -194,7 +197,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 }
 
 // Used by language plugins to bind a PCL program in the given directory.
-func BindDirectory(directory string, loader schema.ReferenceLoader) (*Program, hcl.Diagnostics, error) {
+func BindDirectory(directory string, loader schema.ReferenceLoader, strict bool) (*Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
 	// Load all .pp files in the directory
 	files, err := os.ReadDir(directory)
@@ -228,10 +231,21 @@ func BindDirectory(directory string, loader schema.ReferenceLoader) (*Program, h
 		return nil, parseDiagnostics, nil
 	}
 
-	program, bindDiagnostics, err := BindProgram(parser.Files,
+	opts := []BindOption{
 		Loader(loader),
 		DirPath(directory),
-		ComponentBinder(ComponentProgramBinderFromFileSystem()))
+		ComponentBinder(ComponentProgramBinderFromFileSystem()),
+	}
+
+	if !strict {
+		opts = append(opts, []BindOption{
+			SkipResourceTypechecking,
+			AllowMissingVariables,
+			AllowMissingProperties,
+		}...)
+	}
+
+	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
 
 	// err will be the same as bindDiagnostics if there are errors, but we don't want to return that here.
 	// err _could_ also be a context setup error in which case bindDiagnotics will be nil and that we do want to return.
