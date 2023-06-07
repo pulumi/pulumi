@@ -10,8 +10,8 @@ replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0
 replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
 
 require (
-	cloud.google.com/go/logging v1.6.1
-	cloud.google.com/go/storage v1.27.0
+	cloud.google.com/go/logging v1.7.0
+	cloud.google.com/go/storage v1.28.1
 	github.com/aws/aws-sdk-go v1.44.122
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
@@ -19,7 +19,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v4.2.0+incompatible
-	github.com/golang/glog v1.0.0
+	github.com/golang/glog v1.1.0
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-querystring v1.1.0
 	github.com/google/pprof v0.0.0-20220608213341-c488b8fa1db3
@@ -41,19 +41,19 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
-	github.com/zclconf/go-cty v1.13.1
+	github.com/zclconf/go-cty v1.13.2
 	gocloud.dev v0.27.0
 	gocloud.dev/secrets/hashivault v0.27.0
 	golang.org/x/crypto v0.5.0 // indirect
 	golang.org/x/net v0.8.0
-	golang.org/x/oauth2 v0.4.0
+	golang.org/x/oauth2 v0.6.0
 	golang.org/x/sync v0.1.0
-	google.golang.org/api v0.103.0
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f
-	google.golang.org/grpc v1.54.0
+	google.golang.org/api v0.110.0
+	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4
+	google.golang.org/grpc v1.55.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.5.5
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600
@@ -76,23 +76,23 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
-	github.com/pulumi/pulumi-java/pkg v0.9.2
+	github.com/pulumi/pulumi-java/pkg v0.9.4
 	github.com/pulumi/pulumi-yaml v1.1.1
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
 	golang.org/x/mod v0.10.0
 	golang.org/x/term v0.6.0
-	google.golang.org/protobuf v1.29.1
+	google.golang.org/protobuf v1.30.0
 )
 
 require (
-	cloud.google.com/go v0.107.0 // indirect
-	cloud.google.com/go/compute v1.15.1 // indirect
+	cloud.google.com/go v0.110.0 // indirect
+	cloud.google.com/go/compute v1.18.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/iam v0.8.0 // indirect
-	cloud.google.com/go/kms v1.6.0 // indirect
-	cloud.google.com/go/longrunning v0.3.0 // indirect
+	cloud.google.com/go/iam v0.12.0 // indirect
+	cloud.google.com/go/kms v1.9.0 // indirect
+	cloud.google.com/go/longrunning v0.4.1 // indirect
 	github.com/Azure/azure-sdk-for-go v66.0.0+incompatible // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.1 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.0.0 // indirect
@@ -155,7 +155,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/google/wire v0.5.0 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
