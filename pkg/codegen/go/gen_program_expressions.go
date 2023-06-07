@@ -991,11 +991,11 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 ) {
 	expr = pcl.RewritePropertyReferences(expr)
 	expr, diags := pcl.RewriteApplies(expr, nameInfo(0), false /*TODO*/)
+	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
 	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
-	expr, sTemps, splatDiags := g.rewriteSplat(expr, g.splatSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
 	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
