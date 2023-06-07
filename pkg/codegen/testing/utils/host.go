@@ -82,5 +82,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"range", "1.0.0"},
 		SchemaProvider{"lambda", "0.1.0"},
 		SchemaProvider{"remoteref", "1.0.0"},
+		SchemaProvider{"splat", "1.0.0"},
 	)
 }
