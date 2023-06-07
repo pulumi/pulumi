@@ -76,6 +76,10 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	if err != nil {
 		return nil, nil, err
 	}
+	// used to track declared variables in the main program
+	// since outputs have identifiers which can conflict with other program nodes' identifiers
+	// we switch the entry point to async which allows for declaring arbitrary output names
+	declaredNodeIdentifiers := map[string]bool{}
 	for _, n := range nodes {
 		if g.asyncMain {
 			break
@@ -85,8 +89,20 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			if resourceRequiresAsyncMain(x) {
 				g.asyncMain = true
 			}
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.ConfigVariable:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.LocalVariable:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.Component:
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
 		case *pcl.OutputVariable:
 			if outputRequiresAsyncMain(x) {
+				g.asyncMain = true
+			}
+
+			outputIdentifier := makeValidIdentifier(x.Name())
+			if _, alreadyDeclared := declaredNodeIdentifiers[outputIdentifier]; alreadyDeclared {
 				g.asyncMain = true
 			}
 		}
@@ -111,17 +127,9 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 						result = &model.ObjectConsExpression{}
 					}
 					name := o.LogicalName()
-					nameVar := makeValidIdentifier(o.Name())
 					result.Items = append(result.Items, model.ObjectConsItem{
-						Key: &model.LiteralValueExpression{Value: cty.StringVal(name)},
-						Value: &model.ScopeTraversalExpression{
-							RootName:  nameVar,
-							Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
-							Parts: []model.Traversable{&model.Variable{
-								Name:         nameVar,
-								VariableType: o.Type(),
-							}},
-						},
+						Key:   &model.LiteralValueExpression{Value: cty.StringVal(name)},
+						Value: g.lowerExpression(o.Value, o.Type()),
 					})
 				}
 			}
@@ -1139,12 +1147,14 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
-	// TODO(pdg): trivia
-	export := "export "
 	if g.asyncMain {
-		export = ""
+		// skip generating the output variables as export constants
+		// when we are inside an async main program because we export them as a single object
+		return
 	}
-	g.Fgenf(w, "%s%sconst %s = %.3v;\n", g.Indent, export,
+
+	// TODO(pdg): trivia
+	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
 		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 

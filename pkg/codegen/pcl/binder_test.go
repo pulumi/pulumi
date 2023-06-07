@@ -288,3 +288,19 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	assert.True(t, ok, "the type of config is a map type")
 	assert.Equal(t, mapType.ElementType, model.DynamicType, "the element type is a dynamic")
 }
+
+func TestOutputsCanHaveSameNameAsOtherNodes(t *testing.T) {
+	t.Parallel()
+	// here we have an output with the same name as a config variable
+	// this should bind and type-check just fine
+	source := `
+config cidrBlock string { }
+output cidrBlock {
+  value = cidrBlock
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}

@@ -144,41 +144,39 @@ export = async () => {
             minSize: 1,
         },
     });
-    const clusterName = eksCluster.name;
-    const kubeconfig = pulumi.all([eksCluster.endpoint, eksCluster.certificateAuthority, eksCluster.name]).apply(([endpoint, certificateAuthority, name]) => JSON.stringify({
-        apiVersion: "v1",
-        clusters: [{
-            cluster: {
-                server: endpoint,
-                "certificate-authority-data": certificateAuthority.data,
-            },
-            name: "kubernetes",
-        }],
-        contexts: [{
-            contest: {
-                cluster: "kubernetes",
-                user: "aws",
-            },
-        }],
-        "current-context": "aws",
-        kind: "Config",
-        users: [{
-            name: "aws",
-            user: {
-                exec: {
-                    apiVersion: "client.authentication.k8s.io/v1alpha1",
-                    command: "aws-iam-authenticator",
-                },
-                args: [
-                    "token",
-                    "-i",
-                    name,
-                ],
-            },
-        }],
-    }));
     return {
-        clusterName: clusterName,
-        kubeconfig: kubeconfig,
+        clusterName: eksCluster.name,
+        kubeconfig: pulumi.all([eksCluster.endpoint, eksCluster.certificateAuthority, eksCluster.name]).apply(([endpoint, certificateAuthority, name]) => JSON.stringify({
+            apiVersion: "v1",
+            clusters: [{
+                cluster: {
+                    server: endpoint,
+                    "certificate-authority-data": certificateAuthority.data,
+                },
+                name: "kubernetes",
+            }],
+            contexts: [{
+                contest: {
+                    cluster: "kubernetes",
+                    user: "aws",
+                },
+            }],
+            "current-context": "aws",
+            kind: "Config",
+            users: [{
+                name: "aws",
+                user: {
+                    exec: {
+                        apiVersion: "client.authentication.k8s.io/v1alpha1",
+                        command: "aws-iam-authenticator",
+                    },
+                    args: [
+                        "token",
+                        "-i",
+                        name,
+                    ],
+                },
+            }],
+        })),
     };
 }
