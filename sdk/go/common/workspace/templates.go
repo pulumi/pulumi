@@ -27,6 +27,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
@@ -501,6 +502,14 @@ func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string,
 ) error {
+	// Needed for escaping special characters in user-provided descriptions.
+	yamlDescription := projectDescription
+	byts, err := yaml.Marshal(projectDescription)
+	if err != nil {
+		return err
+	}
+	yamlDescription = string(byts)
+
 	return walkFiles(sourceDir, destDir, projectName,
 		func(entry os.DirEntry, source string, dest string) error {
 			if entry.IsDir() {
@@ -517,7 +526,11 @@ func CopyTemplateFiles(
 			// Transform only if it isn't a binary file.
 			result := b
 			if !isBinary(b) {
-				transformed := transform(string(b), projectName, projectDescription)
+				name, description := projectName, projectDescription
+				if strings.HasSuffix(source, ".yaml") {
+					description = yamlDescription
+				}
+				transformed := transform(string(b), name, description)
 				result = []byte(transformed)
 			}
 

@@ -52,6 +52,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 		yes:               true,
 		prompt:            promptForValue,
 		secretsProvider:   "default",
+		description:       "foo: bar", // Needs special escaping for YAML
 		stack:             stackName,
 		templateNameOrURL: "typescript",
 	}
