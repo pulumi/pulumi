@@ -57,7 +57,8 @@ func newComponentScopes(
 	root *model.Scope,
 	component *Component,
 	rangeKeyType model.Type,
-	rangeValueType model.Type) model.Scopes {
+	rangeValueType model.Type,
+) model.Scopes {
 	scopes := &componentScopes{
 		root:      root,
 		withRange: root,
