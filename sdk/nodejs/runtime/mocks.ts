@@ -55,7 +55,7 @@ export interface MockResourceArgs {
 }
 
 /**
- * MockResourceResult is the expect result of a newResource Mock, returning a physical identifier and the output properties
+ * MockResourceResult is the result of a newResource Mock, returning a physical identifier and the output properties
  * for the resource being constructed.
  */
 export type MockResourceResult = {
@@ -84,7 +84,7 @@ export interface MockCallArgs {
 }
 
 /**
- * MockCallResult is the expect result of a call Mock.
+ * MockCallResult is the result of a call Mock.
  */
 export type MockCallResult = Record<string, any>;
 
