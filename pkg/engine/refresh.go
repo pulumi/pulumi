@@ -53,6 +53,10 @@ func Refresh(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
+	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
+		return nil, nil, result.FromError(err)
+	}
+
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,

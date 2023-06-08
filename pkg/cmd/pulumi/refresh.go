@@ -250,7 +250,7 @@ func newRefreshCmd() *cobra.Command {
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
 				DisableOutputValues:       disableOutputValues(),
-				RefreshTargets:            deploy.NewUrnTargets(targetUrns),
+				Targets:                   deploy.NewUrnTargets(targetUrns),
 				Experimental:              hasExperimentalCommands(),
 			}
 

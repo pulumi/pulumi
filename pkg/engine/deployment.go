@@ -286,10 +286,8 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 			Parallel:                  deployment.Options.Parallel,
 			Refresh:                   deployment.Options.Refresh,
 			RefreshOnly:               deployment.Options.isRefresh,
-			RefreshTargets:            deployment.Options.RefreshTargets,
 			ReplaceTargets:            deployment.Options.ReplaceTargets,
-			DestroyTargets:            deployment.Options.DestroyTargets,
-			UpdateTargets:             deployment.Options.UpdateTargets,
+			Targets:                   deployment.Options.Targets,
 			TargetDependents:          deployment.Options.TargetDependents,
 			TrustDependencies:         deployment.Options.trustDependencies,
 			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
@@ -342,4 +340,23 @@ func assertSeen(seen map[resource.URN]deploy.Step, step deploy.Step) {
 
 func isDefaultProviderStep(step deploy.Step) bool {
 	return providers.IsDefaultProvider(step.URN())
+}
+
+func checkTargets(targetUrns deploy.UrnTargets, snap *deploy.Snapshot) error {
+	if !targetUrns.IsConstrained() {
+		return nil
+	}
+	if snap == nil {
+		return fmt.Errorf("targets specified, but snapshot was nil")
+	}
+	urns := map[resource.URN]struct{}{}
+	for _, res := range snap.Resources {
+		urns[res.URN] = struct{}{}
+	}
+	for _, target := range targetUrns.Literals() {
+		if _, ok := urns[target]; !ok {
+			return fmt.Errorf("no resource named '%s' found", target)
+		}
+	}
+	return nil
 }

@@ -56,10 +56,8 @@ type Options struct {
 	Parallel                  int        // the degree of parallelism for resource operations (<=1 for serial).
 	Refresh                   bool       // whether or not to refresh before executing the deployment.
 	RefreshOnly               bool       // whether or not to exit after refreshing.
-	RefreshTargets            UrnTargets // The specific resources to refresh during a refresh op.
-	ReplaceTargets            UrnTargets // Specific resources to replace.
-	DestroyTargets            UrnTargets // Specific resources to destroy.
-	UpdateTargets             UrnTargets // Specific resources to update.
+	Targets                   UrnTargets // If specified, only operate on specified resources.
+	ReplaceTargets            UrnTargets // If specified, mark the specified resources for replacement.
 	TargetDependents          bool       // true if we're allowing things to proceed, even with unspecified targets
 	TrustDependencies         bool       // whether or not to trust the resource dependency graph.
 	UseLegacyDiff             bool       // whether or not to use legacy diffing behavior.

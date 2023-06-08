@@ -114,17 +114,11 @@ type UpdateOptions struct {
 	// true if the plan should refresh before executing.
 	Refresh bool
 
-	// Specific resources to refresh during a refresh operation.
-	RefreshTargets deploy.UrnTargets
-
 	// Specific resources to replace during an update operation.
 	ReplaceTargets deploy.UrnTargets
 
-	// Specific resources to destroy during a destroy operation.
-	DestroyTargets deploy.UrnTargets
-
-	// Specific resources to update during an update operation.
-	UpdateTargets deploy.UrnTargets
+	// Specific resources to update during a deployment.
+	Targets deploy.UrnTargets
 
 	// true if we're allowing dependent targets to change, even if not specified in one of the above
 	// XXXTargets lists.
@@ -194,6 +188,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 
 	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
+
+	// We skip the target check here because the targeted resource may not exist yet.
 
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
