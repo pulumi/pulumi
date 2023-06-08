@@ -483,7 +483,7 @@ const (
 
 // Validate an individual name token.
 func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, section, token string) hcl.Diagnostics {
-	diags := hcl.Diagnostics{}
+	var diags hcl.Diagnostics
 
 	path := memberPath(section, token)
 	parts := strings.Split(token, ":")
@@ -506,7 +506,7 @@ func (spec *PackageSpec) validateTypeToken(allowedPackageNames map[string]bool, 
 
 // This is for validating non-reference type tokens.
 func (spec *PackageSpec) validateTypeTokens() hcl.Diagnostics {
-	diags := hcl.Diagnostics{}
+	var diags hcl.Diagnostics
 	allowedPackageNames := map[string]bool{spec.Name: true}
 	for _, prefix := range spec.AllowedPackageNames {
 		allowedPackageNames[prefix] = true

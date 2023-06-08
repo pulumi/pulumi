@@ -148,7 +148,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	}
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.
-	diags := make(hcl.Diagnostics, 0, len(resp.Diagnostics))
+	var diags hcl.Diagnostics
 	for _, rpcDiag := range resp.Diagnostics {
 		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}

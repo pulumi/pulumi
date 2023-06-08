@@ -255,7 +255,7 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 
 func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
 	resourceOptions := &ResourceOptions{}
-	diagnostics := hcl.Diagnostics{}
+	var diagnostics hcl.Diagnostics
 	for _, item := range options.Body.Items {
 		switch item := item.(type) {
 		case *model.Attribute:
