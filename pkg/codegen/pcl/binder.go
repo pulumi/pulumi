@@ -205,7 +205,7 @@ func BindDirectory(directory string, loader schema.ReferenceLoader, strict bool)
 		return nil, nil, err
 	}
 
-	parseDiagnostics := make(hcl.Diagnostics, 0)
+	var parseDiagnostics hcl.Diagnostics
 	for _, file := range files {
 		if file.IsDir() {
 			continue

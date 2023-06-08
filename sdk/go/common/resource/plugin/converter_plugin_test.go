@@ -28,7 +28,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-type testConverterClient struct{}
+type testConverterClient struct {
+	diagnostics []*codegenrpc.Diagnostic
+}
 
 func (c *testConverterClient) ConvertState(
 	ctx context.Context, req *pulumirpc.ConvertStateRequest, opts ...grpc.CallOption,
@@ -64,13 +66,7 @@ func (c *testConverterClient) ConvertProgram(
 	}
 
 	return &pulumirpc.ConvertProgramResponse{
-		Diagnostics: []*codegenrpc.Diagnostic{
-			{
-				Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
-				Summary:  "test:summary",
-				Detail:   "test:detail",
-			},
-		},
+		Diagnostics: c.diagnostics,
 	}, nil
 }
 
@@ -100,7 +96,15 @@ func TestConverterPlugin_Program(t *testing.T) {
 	t.Parallel()
 
 	plugin := &converter{
-		clientRaw: &testConverterClient{},
+		clientRaw: &testConverterClient{
+			diagnostics: []*codegenrpc.Diagnostic{
+				{
+					Severity: codegenrpc.DiagnosticSeverity_DIAG_ERROR,
+					Summary:  "test:summary",
+					Detail:   "test:detail",
+				},
+			},
+		},
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
@@ -116,4 +120,27 @@ func TestConverterPlugin_Program(t *testing.T) {
 	assert.Equal(t, hcl.DiagError, diag.Severity)
 	assert.Equal(t, "test:summary", diag.Summary)
 	assert.Equal(t, "test:detail", diag.Detail)
+}
+
+func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi-terraform-bridge/issues/1201 hcl.Diagnostics
+	// implements the Error interface, but this means a list of zero diagnostics still looks like a non-nil
+	// error, which throws of normal "if err == nil" checks. We make sure that if the RPC diagnostics list is
+	// empty we return nil not an empty slice.
+	t.Parallel()
+
+	plugin := &converter{
+		clientRaw: &testConverterClient{
+			diagnostics: []*codegenrpc.Diagnostic{},
+		},
+	}
+
+	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
+		MapperAddress:   "localhost:1234",
+		SourceDirectory: "src",
+		TargetDirectory: "dst",
+	})
+
+	require.NoError(t, err)
+	assert.Nil(t, resp.Diagnostics)
 }
