@@ -158,6 +158,8 @@ message GenerateProjectRequest {
     string target_directory = 2;
     // the JSON-encoded pulumi project file.
     string project = 3;
+    // if PCL binding should be strict or not.
+    bool strict = 4;
 }
 
 message GenerateProjectResponse {

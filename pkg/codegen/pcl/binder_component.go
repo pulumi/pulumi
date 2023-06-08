@@ -130,10 +130,23 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			}
 		}
 
-		componentProgram, programDiags, err := BindProgram(parser.Files,
+		opts := []BindOption{
 			Loader(loader),
 			DirPath(componentSourceDir),
-			ComponentBinder(ComponentProgramBinderFromFileSystem()))
+			ComponentBinder(ComponentProgramBinderFromFileSystem()),
+		}
+
+		if args.AllowMissingVariables {
+			opts = append(opts, AllowMissingVariables)
+		}
+		if args.AllowMissingProperties {
+			opts = append(opts, AllowMissingProperties)
+		}
+		if args.SkipResourceTypecheck {
+			opts = append(opts, SkipResourceTypechecking)
+		}
+
+		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
 
 		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
 
@@ -179,10 +192,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
-		BinderLoader:       b.options.loader,
-		BinderDirPath:      b.options.dirPath,
-		ComponentSource:    node.source,
-		ComponentNodeRange: node.SyntaxNode().Range(),
+		AllowMissingVariables:  b.options.allowMissingVariables,
+		AllowMissingProperties: b.options.allowMissingProperties,
+		SkipResourceTypecheck:  b.options.skipResourceTypecheck,
+		BinderLoader:           b.options.loader,
+		BinderDirPath:          b.options.dirPath,
+		ComponentSource:        node.source,
+		ComponentNodeRange:     node.SyntaxNode().Range(),
 	})
 	if err != nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))

@@ -828,19 +828,23 @@ func (host *goLanguageHost) GenerateProject(
 	}
 
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader)
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, req.Strict)
 	if err != nil {
 		return nil, err
 	}
-	if diags.HasErrors() {
-		rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-		for _, diag := range diags {
-			rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-		}
 
+	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
+	for _, diag := range diags {
+		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
+	}
+
+	if diags.HasErrors() {
 		return &pulumirpc.GenerateProjectResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error: program was nil")
 	}
 
 	var project workspace.Project
@@ -851,11 +855,6 @@ func (host *goLanguageHost) GenerateProject(
 	err = codegen.GenerateProject(req.TargetDirectory, project, program)
 	if err != nil {
 		return nil, err
-	}
-
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
 	}
 
 	return &pulumirpc.GenerateProjectResponse{
@@ -892,8 +891,19 @@ func (host *goLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
-	if pdiags.HasErrors() || program == nil {
-		return nil, fmt.Errorf("internal error: %w", pdiags)
+
+	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
+	for _, diag := range pdiags {
+		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
+	}
+
+	if pdiags.HasErrors() {
+		return &pulumirpc.GenerateProgramResponse{
+			Diagnostics: rpcDiagnostics,
+		}, nil
+	}
+	if program == nil {
+		return nil, fmt.Errorf("internal error: program was nil")
 	}
 
 	files, diags, err := codegen.GenerateProgram(program)
@@ -901,7 +911,6 @@ func (host *goLanguageHost) GenerateProgram(
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
 	for _, diag := range diags {
 		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
 	}

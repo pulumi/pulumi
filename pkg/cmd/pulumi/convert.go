@@ -56,6 +56,7 @@ func newConvertCmd() *cobra.Command {
 	var language string
 	var generateOnly bool
 	var mappings []string
+	var strict bool
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -70,7 +71,7 @@ func newConvertCmd() *cobra.Command {
 				return result.FromError(fmt.Errorf("get current working directory: %w", err))
 			}
 
-			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly)
+			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly, strict)
 		}),
 	}
 
@@ -96,6 +97,9 @@ func newConvertCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		//nolint:lll
 		&mappings, "mappings", []string{}, "Any mapping files to use in the conversion")
+
+	cmd.PersistentFlags().BoolVar(
+		&strict, "strict", false, "If strict is set the conversion will fail on errors such as missing variables")
 
 	return cmd
 }
@@ -136,7 +140,7 @@ func writeProgram(directory string, proj *workspace.Project, program *pcl.Progra
 }
 
 // Same pcl.BindDirectory but recovers from panics
-func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
+func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader, strict bool,
 ) (program *pcl.Program, diagnostics hcl.Diagnostics, err error) {
 	// PCL binding can be quite panic'y but even it panics we want to write out the intermediate PCL generated
 	// from the converter, so we use a recover statement here.
@@ -145,19 +149,16 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 			err = fmt.Errorf("panic binding program: %v", r)
 		}
 	}()
-	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader)
+	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, strict)
 	return
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
-func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-	program, diagnostics, err := safePclBindDirectory(sourceDirectory, loader)
+func pclGenerateProject(sink diag.Sink,
+	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+) error {
+	_, diagnostics, err := safePclBindDirectory(sourceDirectory, loader, strict)
 	printDiagnostics(sink, diagnostics)
-	if program != nil {
-		// If we successfully bound the program, write out the .pp files from it
-		// We don't write out a Pulumi.yaml for PCL, just the .pp files.
-		return writeProgram(targetDirectory, nil, program)
-	}
 	// We couldn't bind the program so print that for the user to see but then just copy the filetree across
 	if err != nil {
 		logging.Warningf("failed to bind program: %v", err)
@@ -170,37 +171,31 @@ func pclGenerateProject(sink diag.Sink, sourceDirectory, targetDirectory string,
 	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
 }
 
+type projectGeneratorFunction func(diag.Sink, string, string, *workspace.Project, schema.ReferenceLoader, bool) error
+
+func generatorWrapper(generator projectGeneratorFunc) projectGeneratorFunction {
+	return func(sink diag.Sink,
+		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+	) error {
+		contract.Requiref(proj != nil, "proj", "must not be nil")
+
+		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, strict)
+		printDiagnostics(sink, diagnostics)
+		if err != nil {
+			return fmt.Errorf("failed to bind program: %w", err)
+		} else if program == nil {
+			// We've already printed the diagnostics above
+			return fmt.Errorf("failed to bind program")
+		}
+		return generator(targetDirectory, *proj, program)
+	}
+}
+
 func runConvert(
 	e env.Env,
 	cwd string, mappings []string, from string, language string,
-	outDir string, generateOnly bool,
+	outDir string, generateOnly bool, strict bool,
 ) result.Result {
-	wrapper := func(generator projectGeneratorFunc) func(diag.Sink, string, string, schema.ReferenceLoader) error {
-		return func(sink diag.Sink, sourceDirectory, targetDirectory string, loader schema.ReferenceLoader) error {
-			program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader)
-			printDiagnostics(sink, diagnostics)
-			if err != nil {
-				return fmt.Errorf("failed to bind program: %w", err)
-			} else if program == nil {
-				// We've already printed the diagnostics above
-				return fmt.Errorf("failed to bind program")
-			}
-
-			// Load the project from the target directory if there is one. We default to a project with just
-			// the name of the original directory.
-			proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
-			path, _ := workspace.DetectProjectPathFrom(sourceDirectory)
-			if path != "" {
-				proj, err = workspace.LoadProject(path)
-				if err != nil {
-					return fmt.Errorf("load project: %w", err)
-				}
-			}
-
-			return generator(targetDirectory, *proj, program)
-		}
-	}
-
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
 		return result.FromError(fmt.Errorf("create plugin host: %w", err))
@@ -223,16 +218,16 @@ func runConvert(
 		language = "nodejs"
 	}
 
-	var projectGenerator func(diag.Sink, string, string, schema.ReferenceLoader) error
+	var projectGenerator projectGeneratorFunction
 	switch language {
 	case "dotnet":
-		projectGenerator = wrapper(dotnet.GenerateProject)
+		projectGenerator = generatorWrapper(dotnet.GenerateProject)
 	case "python":
-		projectGenerator = wrapper(python.GenerateProject)
+		projectGenerator = generatorWrapper(python.GenerateProject)
 	case "java":
-		projectGenerator = wrapper(javagen.GenerateProject)
+		projectGenerator = generatorWrapper(javagen.GenerateProject)
 	case "yaml":
-		projectGenerator = wrapper(yamlgen.GenerateProject)
+		projectGenerator = generatorWrapper(yamlgen.GenerateProject)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
@@ -241,18 +236,11 @@ func runConvert(
 		projectGenerator = func(
 			sink diag.Sink,
 			sourceDirectory, targetDirectory string,
+			proj *workspace.Project,
 			loader schema.ReferenceLoader,
+			strict bool,
 		) error {
-			// Load the project from the target directory if there is one. We default to a project with just
-			// the name of the original directory.
-			proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
-			path, _ := workspace.DetectProjectPathFrom(sourceDirectory)
-			if path != "" {
-				proj, err = workspace.LoadProject(path)
-				if err != nil {
-					return fmt.Errorf("load project: %w", err)
-				}
-			}
+			contract.Requiref(proj != nil, "proj", "must not be nil")
 
 			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
 			if err != nil {
@@ -265,7 +253,7 @@ func runConvert(
 			}
 			projectJSON := string(projectBytes)
 
-			diagnostics, err := languagePlugin.GenerateProject(sourceDirectory, targetDirectory, projectJSON)
+			diagnostics, err := languagePlugin.GenerateProject(sourceDirectory, targetDirectory, projectJSON, strict)
 			if err != nil {
 				return err
 			}
@@ -325,12 +313,8 @@ func runConvert(
 			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
 		}
 	} else if from == "pcl" {
-		if e.GetBool(env.Dev) {
-			// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it
-			pclDirectory = cwd
-		} else {
-			return result.FromError(fmt.Errorf("unrecognized source %q", from))
-		}
+		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it
+		pclDirectory = cwd
 	} else {
 		// Try and load the converter plugin for this
 		converter, err := plugin.NewConverter(pCtx, from, nil)
@@ -378,8 +362,19 @@ func runConvert(
 		printDiagnostics(pCtx.Diag, resp.Diagnostics)
 	}
 
+	// Load the project from the pcl directory if there is one. We default to a project with just
+	// the name of the original directory.
+	proj := &workspace.Project{Name: tokens.PackageName(filepath.Base(cwd))}
+	path, _ := workspace.DetectProjectPathFrom(pclDirectory)
+	if path != "" {
+		proj, err = workspace.LoadProject(path)
+		if err != nil {
+			return result.FromError(fmt.Errorf("load project: %w", err))
+		}
+	}
+
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	err = projectGenerator(pCtx.Diag, pclDirectory, outDir, loader)
+	err = projectGenerator(pCtx.Diag, pclDirectory, outDir, proj, loader, strict)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 	}
