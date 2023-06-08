@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -40,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -154,40 +155,38 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 }
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
-func pclGenerateProject(sink diag.Sink,
+func pclGenerateProject(
 	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
-) error {
-	_, diagnostics, err := safePclBindDirectory(sourceDirectory, loader, strict)
-	printDiagnostics(sink, diagnostics)
-	// We couldn't bind the program so print that for the user to see but then just copy the filetree across
-	if err != nil {
-		logging.Warningf("failed to bind program: %v", err)
-	} else {
-		// We've already printed the diagnostics above
-		logging.Warningf("failed to bind program")
+) (hcl.Diagnostics, error) {
+	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
+	// We always try to copy the source directory to the target directory even if binding failed
+	copyErr := aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
+	// And then we return the combined diagnostics and errors
+	var err error
+	if bindErr != nil || copyErr != nil {
+		err = multierror.Append(bindErr, copyErr)
 	}
-
-	// Copy the source directory to the target directory
-	return aferoUtil.CopyDir(afero.NewOsFs(), sourceDirectory, targetDirectory)
+	return diagnostics, err
 }
 
-type projectGeneratorFunction func(diag.Sink, string, string, *workspace.Project, schema.ReferenceLoader, bool) error
+type projectGeneratorFunction func(
+	string, string, *workspace.Project, schema.ReferenceLoader, bool,
+) (hcl.Diagnostics, error)
 
 func generatorWrapper(generator projectGeneratorFunc) projectGeneratorFunction {
-	return func(sink diag.Sink,
+	return func(
 		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
-	) error {
+	) (hcl.Diagnostics, error) {
 		contract.Requiref(proj != nil, "proj", "must not be nil")
 
 		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, strict)
-		printDiagnostics(sink, diagnostics)
 		if err != nil {
-			return fmt.Errorf("failed to bind program: %w", err)
+			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
 		} else if program == nil {
 			// We've already printed the diagnostics above
-			return fmt.Errorf("failed to bind program")
+			return diagnostics, fmt.Errorf("failed to bind program")
 		}
-		return generator(targetDirectory, *proj, program)
+		return diagnostics, generator(targetDirectory, *proj, program)
 	}
 }
 
@@ -234,34 +233,29 @@ func runConvert(
 		projectGenerator = pclGenerateProject
 	default:
 		projectGenerator = func(
-			sink diag.Sink,
 			sourceDirectory, targetDirectory string,
 			proj *workspace.Project,
 			loader schema.ReferenceLoader,
 			strict bool,
-		) error {
+		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
 
 			languagePlugin, err := pCtx.Host.LanguageRuntime(cwd, cwd, language, nil)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			projectBytes, err := encoding.JSON.Marshal(proj)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			projectJSON := string(projectBytes)
 
 			diagnostics, err := languagePlugin.GenerateProject(sourceDirectory, targetDirectory, projectJSON, strict)
 			if err != nil {
-				return err
+				return diagnostics, err
 			}
-			printDiagnostics(sink, diagnostics)
-			if diagnostics.HasErrors() {
-				return fmt.Errorf("failed to bind program")
-			}
-			return nil
+			return diagnostics, nil
 		}
 	}
 
@@ -343,8 +337,6 @@ func runConvert(
 		}
 		defer contract.IgnoreClose(converter)
 
-		pCtx.Diag.Warningf(diag.RawMessage("", "Plugin converters are currently experimental"))
-
 		mapperServer := convert.NewMapperServer(mapper)
 		grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
 		if err != nil {
@@ -359,7 +351,14 @@ func runConvert(
 		if err != nil {
 			return result.FromError(err)
 		}
+		// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
+		// going to print them.
 		printDiagnostics(pCtx.Diag, resp.Diagnostics)
+		if resp.Diagnostics.HasErrors() {
+			// If we've got error diagnostics then program generation failed, we've printed the error above so
+			// just return a plain message here.
+			return result.FromError(fmt.Errorf("conversion failed"))
+		}
 	}
 
 	// Load the project from the pcl directory if there is one. We default to a project with just
@@ -374,9 +373,29 @@ func runConvert(
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	err = projectGenerator(pCtx.Diag, pclDirectory, outDir, proj, loader, strict)
+	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
 	if err != nil {
 		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+	}
+	// If we have error diagnostics then program generation failed, print an error to the user that they
+	// should raise an issue about this
+	if diagnostics.HasErrors() {
+		// Don't print the notice about this being a bug if we're in strict mode
+		if !strict {
+			fmt.Fprintln(os.Stderr, "================================================================================")
+			fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
+			fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+			fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
+			fmt.Fprintln(os.Stderr, "================================================================================")
+			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
+		}
+		printDiagnostics(pCtx.Diag, diagnostics)
+		return result.FromError(fmt.Errorf("could not generate output program"))
+	}
+
+	// If we've got code generation warnings only print them if we've got PULUMI_DEV set or emitting pcl
+	if e.GetBool(env.Dev) || language == "pcl" {
+		printDiagnostics(pCtx.Diag, diagnostics)
 	}
 
 	// Project should now exist at outDir. Run installDependencies in that directory (if requested)
