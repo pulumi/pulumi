@@ -4089,7 +4089,7 @@ func isZero(v interface{}) bool {
 
 func (pkg *pkgContext) GenVersionFile(w io.Writer) error {
 	const versionFile = `var SdkVersion semver.Version = semver.Version{}
-var pluginDownloadURL string = "thisurldoesnotexist"
+var pluginDownloadURL string = ""
 `
 	_, err := fmt.Fprintf(w, versionFile)
 	return err
@@ -4110,7 +4110,14 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 }
 `
 	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
-	version := ""
+	versionPackageRef := "SdkVersion"
+	versionPkgName := pkg.pkg.Name()
+
+	if pkg.mod == "config" {
+		versionPackageRef = versionPkgName + "." + versionPackageRef
+
+	}
+	version := fmt.Sprintf(", pulumi.Version(%s.String())", versionPackageRef)
 	if info := p.Language["go"]; info != nil {
 		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
 			version = fmt.Sprintf(", pulumi.Version(%q)", p.Version.String())
@@ -4135,6 +4142,7 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 	if p.PluginDownloadURL == "" {
 		return nil
 	}
+
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
