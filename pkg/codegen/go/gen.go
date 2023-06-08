@@ -4104,27 +4104,34 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
 	const template string = `
 // pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
 func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
-	defaults := []pulumi.%[1]sOption{%[2]s%[3]s}
-
+	defaults := []pulumi.%[1]sOption{}
+		%[2]s
+		version := %[3]s
+		if !version.Equals(semver.Version{}){
+			defaults = append(defaults, pulumi.Version(version.String()))
+		}
 	return append(defaults, opts...)
 }
 `
-	pluginDownloadURL := fmt.Sprintf("pulumi.PluginDownloadURL(%q)", url)
+	var pluginDownloadURL string
+	if url != "" {
+		pluginDownloadURL = fmt.Sprintf(`defaults = append(defaults, pulumi.PluginDownloadURL("%s"))`, url)
+	}
+
 	versionPackageRef := "SdkVersion"
 	versionPkgName := pkg.pkg.Name()
 
-	if pkg.mod == "config" {
+	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
 
 	}
-	version := fmt.Sprintf(", pulumi.Version(%s.String())", versionPackageRef)
 	if info := p.Language["go"]; info != nil {
 		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
-			version = fmt.Sprintf(", pulumi.Version(%q)", p.Version.String())
+			versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 		}
 	}
 	for _, typ := range []string{"Resource", "Invoke"} {
-		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, version)
+		_, err := fmt.Fprintf(w, template, typ, pluginDownloadURL, versionPackageRef)
 		if err != nil {
 			return err
 		}
@@ -4134,20 +4141,12 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 
 // GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
 func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
-	// The `pkg%sDefaultOpts` call won't do anything, so we don't insert it.
-	p, err := pkg.pkg.Definition()
-	if err != nil {
-		return err
-	}
-	if p.PluginDownloadURL == "" {
-		return nil
-	}
 
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
 		typ = "Invoke"
 	}
-	_, err = fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
+	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
 	return err
 }
