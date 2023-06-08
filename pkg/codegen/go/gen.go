@@ -3911,7 +3911,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
 
-			if pkg.mod == "config" {
+			if pkg.mod != "" {
 				importsAndAliases[pkg.importBasePath] = ""
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
@@ -4075,9 +4075,8 @@ func isZero(v interface{}) bool {
 	versionPackageRef := "SdkVersion"
 	versionPkgName := pkg.pkg.Name()
 
-	if pkg.mod == "config" {
+	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
-
 	}
 
 	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, versionPackageRef, packageRegex)
@@ -4091,7 +4090,7 @@ func (pkg *pkgContext) GenVersionFile(w io.Writer) error {
 	const versionFile = `var SdkVersion semver.Version = semver.Version{}
 var pluginDownloadURL string = ""
 `
-	_, err := fmt.Fprintf(w, versionFile)
+	_, err := fmt.Fprint(w, versionFile)
 	return err
 }
 
@@ -4123,7 +4122,6 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 
 	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
-
 	}
 	if info := p.Language["go"]; info != nil {
 		if info.(GoPackageInfo).RespectSchemaVersion && pkg.pkg.Version() != nil {
@@ -4141,7 +4139,6 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 
 // GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
 func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
-
 	pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
