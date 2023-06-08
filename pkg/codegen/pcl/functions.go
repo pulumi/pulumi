@@ -143,7 +143,8 @@ var pulumiBuiltins = map[string]*model.Function{
 			valueType := model.Type(model.DynamicType)
 			if len(args) > 0 {
 				valueType = args[0].Type()
-				switch valueType := model.ResolveOutputs(valueType).(type) {
+				elementType := UnwrapOption(model.ResolveOutputs(valueType))
+				switch valueType := elementType.(type) {
 				case *model.ListType, *model.MapType, *model.ObjectType, *model.TupleType:
 					// OK
 				default:

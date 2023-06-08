@@ -304,3 +304,46 @@ output cidrBlock {
 	assert.Equal(t, 0, len(diags), "There are no diagnostics")
 	assert.NotNil(t, program)
 }
+
+func TestUsingDynamicConfigAsRange(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "endpointsServiceNames" {
+	  description = "Information about the VPC endpoints to create."
+	}
+
+	config "vpcId" "int" {
+		description = "The ID of the VPC"
+	}
+
+	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	  options {
+		range = endpointsServiceNames
+	  }
+	  vpcId             = vpcId
+	  serviceName       = range.value.name
+	  vpcEndpointType   = range.value.type
+	  privateDnsEnabled = range.value.privateDns
+	}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
+
+func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "data" "object({ lambda=object({ subnetIds=list(string) }) })" {
+	}
+    output "numberOfEndpoints" { 
+        value = length(data.lambda.subnetIds)
+    }
+`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
