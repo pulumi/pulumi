@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fixes a bug where targeted previews would error on deletes of targeted resources.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go,nodejs
-  description: Fix a panic in diagnostics from go/nodejs project generation.

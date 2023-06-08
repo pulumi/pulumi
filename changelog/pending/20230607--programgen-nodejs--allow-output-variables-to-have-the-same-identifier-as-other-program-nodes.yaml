@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/nodejs
-  description: Allow output variables to have the same identifier as other program nodes
