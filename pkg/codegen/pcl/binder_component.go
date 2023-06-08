@@ -19,8 +19,9 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // componentVariableType returns the type of the variable of which the value is a component.
@@ -44,6 +45,48 @@ func componentVariableType(program *Program) model.Type {
 	}
 
 	return &model.ObjectType{Properties: properties}
+}
+
+type componentScopes struct {
+	root      *model.Scope
+	withRange *model.Scope
+	component *Component
+}
+
+func newComponentScopes(
+	root *model.Scope,
+	component *Component,
+	rangeKeyType model.Type,
+	rangeValueType model.Type) model.Scopes {
+	scopes := &componentScopes{
+		root:      root,
+		withRange: root,
+		component: component,
+	}
+
+	if rangeValueType != nil {
+		properties := map[string]model.Type{
+			"value": rangeValueType,
+		}
+		if rangeKeyType != nil {
+			properties["key"] = rangeKeyType
+		}
+
+		scopes.withRange = root.Push(syntax.None)
+		scopes.withRange.Define("range", &model.Variable{
+			Name:         "range",
+			VariableType: model.NewObjectType(properties),
+		})
+	}
+	return scopes
+}
+
+func (s *componentScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
+	return model.StaticScope(s.withRange), nil
+}
+
+func (s *componentScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
+	return s.withRange, nil
 }
 
 type componentInput struct {
@@ -89,7 +132,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		// this becomes the DirPath for the new binder
 		componentSourceDir := filepath.Join(binderDirPath, componentSource)
 
-		parser := hclsyntax.NewParser()
+		parser := syntax.NewParser()
 		// Load all .pp files in the components' directory
 		files, err := os.ReadDir(componentSourceDir)
 		if err != nil {
@@ -175,7 +218,53 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 }
 
 func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
-	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+	// When options { range = <expr> } is present
+	// We create a new scope for binding the component.
+	// This range expression is potentially a key/value object
+	// So here we compute the types for the key and value property of that object
+	var rangeKeyType, rangeValueType model.Type
+
+	transformComponentType := func(variableType model.Type) model.Type {
+		return variableType
+	}
+
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+
+				switch {
+				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+					// if range expression has a boolean type
+					// then variable type T of the component becomes Option<T>
+					transformComponentType = func(variableType model.Type) model.Type {
+						return model.NewOptionalType(variableType)
+					}
+				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+					// if the range expression has a numeric type
+					// then value of the iteration is a number
+					// and the variable type T of the component becomes List<T>
+					rangeValueType = model.IntType
+					transformComponentType = func(variableType model.Type) model.Type {
+						return model.NewListType(variableType)
+					}
+				default:
+					// for any other generic type iterations
+					// we compute the range key and range value types
+					// and the variable type T of the component becomes List<T>
+					rangeKeyType, rangeValueType, _ = model.GetCollectionTypes(typ, rng.Range())
+					transformComponentType = func(variableType model.Type) model.Type {
+						return model.NewListType(variableType)
+					}
+				}
+			}
+		}
+	}
+
+	scopes := newComponentScopes(b.root, node, rangeKeyType, rangeValueType)
+
+	block, diagnostics := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
 	node.Definition = block
 
 	// check we can use components and load the program
@@ -213,7 +302,8 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	node.Program = componentProgram
-	node.VariableType = componentVariableType(componentProgram)
+	programVariableType := componentVariableType(componentProgram)
+	node.VariableType = transformComponentType(programVariableType)
 	node.dirPath = filepath.Join(b.options.dirPath, node.source)
 
 	componentInputs := componentInputs(componentProgram)

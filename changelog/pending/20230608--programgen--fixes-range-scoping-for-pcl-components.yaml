@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen
+  description: Fixes range scoping for PCL components

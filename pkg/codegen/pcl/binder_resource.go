@@ -335,7 +335,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
-				case model.InputType(model.NumberType).ConversionFrom(typ) != model.NoConversion:
+				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
 					rangeArgs := []model.Expression{expr}
 					rangeSig, _ := pulumiBuiltins["range"].GetSignature(rangeArgs)
 

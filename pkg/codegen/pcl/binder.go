@@ -389,9 +389,10 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 				source := item.Labels[1]
 
 				v := &Component{
-					name:   name,
-					syntax: item,
-					source: source,
+					name:         name,
+					syntax:       item,
+					source:       source,
+					VariableType: model.DynamicType,
 				}
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
