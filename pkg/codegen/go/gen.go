@@ -3912,7 +3912,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			if pkg.mod != "" {
-				importsAndAliases[pkg.importBasePath] = ""
+				importsAndAliases[pkg.importBasePath] = strings.ReplaceAll(pkg.pkg.Name(), "-", "")
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
@@ -4073,8 +4073,7 @@ func isZero(v interface{}) bool {
 }
 `
 	versionPackageRef := "SdkVersion"
-	versionPkgName := pkg.pkg.Name()
-
+	versionPkgName := strings.ReplaceAll(pkg.pkg.Name(), "-", "")
 	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
 	}
@@ -4118,7 +4117,8 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 	}
 
 	versionPackageRef := "SdkVersion"
-	versionPkgName := pkg.pkg.Name()
+
+	versionPkgName := strings.ReplaceAll(pkg.pkg.Name(), "-", "")
 
 	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
