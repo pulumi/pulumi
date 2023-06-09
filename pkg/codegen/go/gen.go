@@ -2151,6 +2151,7 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
 	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+	importsAndAliases[pkg.importBasePath+"/internal"] = "internal"
 
 	buffer := &bytes.Buffer{}
 
@@ -3782,7 +3783,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, "pulumiVersion.go"), versionBuf.String())
+			setFile(path.Join(mod, "internal/pulumiVersion.go"), versionBuf.String())
 
 		case "config":
 			config, err := pkg.pkg.Config()
@@ -3809,6 +3810,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			importsAndAliases := map[string]string{}
 			pkg.getImports(r, importsAndAliases)
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+			importsAndAliases[pkg.importBasePath+"/internal"] = "internal"
 
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
@@ -3910,23 +3912,22 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				"github.com/blang/semver":                   "",
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
-
-			if pkg.mod != "" {
-				importsAndAliases[pkg.importBasePath] = strings.ReplaceAll(pkg.pkg.Name(), "-", "")
-			}
+			//if mod != "" {
+			//importsAndAliases[pkg.importBasePath+"/internal"] = strings.ReplaceAll(pkg.pkg.Name(), "-", "")
+			//}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
 			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name())
 			if pkg.rootPackageName != "" {
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
-			}
 
+			}
 			err := pkg.GenUtilitiesFile(buffer, packageRegex)
 			if err != nil {
 				return nil, err
 			}
 
-			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
+			setFile(path.Join(mod, "internal/pulumiUtilities.go"), buffer.String())
 		}
 
 		// If there are resources in this module, register the module with the runtime.
@@ -4077,7 +4078,7 @@ func isZero(v interface{}) bool {
 	if pkg.mod != "" {
 		versionPackageRef = versionPkgName + "." + versionPackageRef
 	}
-
+	// TODO: use indices in template string
 	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, versionPackageRef, packageRegex)
 	if err != nil {
 		return err
@@ -4100,8 +4101,8 @@ func (pkg *pkgContext) GenPkgDefaultOpts(w io.Writer) error {
 	}
 	url := p.PluginDownloadURL
 	const template string = `
-// pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
-func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
+// Pkg%[1]sDefaultOpts provides package level defaults to pulumi.Option%[1]s.
+func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 	defaults := []pulumi.%[1]sOption{}
 		%[2]s
 		version := %[3]s
@@ -4139,11 +4140,22 @@ func pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 
 // GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
 func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
-	pkg.needsUtils = true
+	//pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
 		typ = "Invoke"
 	}
-	_, err := fmt.Fprintf(w, "\topts = pkg%sDefaultOpts(opts)\n", typ)
-	return err
+	//if pkg.mod != "" {
+	//	_, err := fmt.Fprintf(w, "\topts = %s.Pkg%sDefaultOpts(opts)\n", pkg.pkg.Name(), typ)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//} else {
+	_, err := fmt.Fprintf(w, "\topts = internal.Pkg%sDefaultOpts(opts)\n", typ)
+	if err != nil {
+		return err
+	}
+	//}
+	return nil
 }
