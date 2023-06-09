@@ -1164,6 +1164,7 @@ func (d *pluginDownloader) tryDownloadToFile(pkgPlugin PluginSpec) (string, erro
 		return "", nil, err
 	}
 	readErr, writeErr := d.tryDownload(pkgPlugin, file)
+	logging.V(10).Infof("try downloaded plugin %s to %s: %v %v", pkgPlugin, file.Name(), readErr, writeErr)
 	if readErr != nil || writeErr != nil {
 		err2 := os.Remove(file.Name())
 		if err2 != nil {
@@ -1554,10 +1555,12 @@ func HasPluginGTE(spec PluginSpec) (bool, error) {
 	}
 
 	for _, p := range plugs {
-		if p.Name == spec.Name &&
-			p.Kind == spec.Kind &&
-			(p.Version != nil && spec.Version != nil && p.Version.GTE(*spec.Version)) {
-			return true, nil
+		if p.Name == spec.Name && p.Kind == spec.Kind {
+			if spec.Version == nil {
+				return true, nil
+			} else if p.Version != nil && p.Version.GTE(*spec.Version) {
+				return true, nil
+			}
 		}
 	}
 	return false, nil

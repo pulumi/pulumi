@@ -484,12 +484,27 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 }
 
 func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
-	if !workspace.HasPlugin(pkgPlugin) {
-		// TODO: schema and provider versions
-		// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
-		// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
+	// If we have a version then check that we have exactly that plugin version installed. Else see if we have
+	// any version of this plugin installed.
+	var installed bool
+	if pkgPlugin.Version != nil {
+		installed = workspace.HasPlugin(pkgPlugin)
+	} else {
+		var err error
+		installed, err = workspace.HasPluginGTE(pkgPlugin)
+		if err != nil {
+			return fmt.Errorf("check if plugin is installed: %w", err)
+		}
+	}
+
+	if !installed {
 		if pkgPlugin.Version == nil {
-			return nil
+			// Try and find the latest version of the plugin
+			latest, err := pkgPlugin.GetLatestVersion()
+			if err != nil {
+				return fmt.Errorf("get latest version: %w", err)
+			}
+			pkgPlugin.Version = latest
 		}
 
 		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
