@@ -13,12 +13,12 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="cat/" title="Cat"><span class="api-symbol api-symbol--resource"></span>Cat</a></li>
-    <li><a href="dog/" title="Dog"><span class="api-symbol api-symbol--resource"></span>Dog</a></li>
-    <li><a href="god/" title="God"><span class="api-symbol api-symbol--resource"></span>God</a></li>
-    <li><a href="norecursive/" title="NoRecursive"><span class="api-symbol api-symbol--resource"></span>NoRecursive</a></li>
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
-    <li><a href="toystore/" title="ToyStore"><span class="api-symbol api-symbol--resource"></span>ToyStore</a></li>
+    <li><a href="cat/" title="Cat">Cat</a></li>
+    <li><a href="dog/" title="Dog">Dog</a></li>
+    <li><a href="god/" title="God">God</a></li>
+    <li><a href="norecursive/" title="NoRecursive">NoRecursive</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
+    <li><a href="toystore/" title="ToyStore">ToyStore</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

@@ -13,8 +13,8 @@ Explore the resources and functions of the foo-bar.submodule1 module.
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="fooencryptedbarclass/" title="FOOEncryptedBarClass"><span class="api-symbol api-symbol--resource"></span>FOOEncryptedBarClass</a></li>
-    <li><a href="moduleresource/" title="ModuleResource"><span class="api-symbol api-symbol--resource"></span>ModuleResource</a></li>
+    <li><a href="fooencryptedbarclass/" title="FOOEncryptedBarClass">FOOEncryptedBarClass</a></li>
+    <li><a href="moduleresource/" title="ModuleResource">ModuleResource</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

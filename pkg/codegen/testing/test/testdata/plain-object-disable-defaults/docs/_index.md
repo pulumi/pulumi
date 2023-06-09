@@ -13,20 +13,20 @@ no_edit_this_page: true
 
 <h2 id="modules">Modules</h2>
 <ul class="api">
-    <li><a href="mod1/" title="mod1"><span class="api-symbol api-symbol--module"></span>mod1</a></li>
-    <li><a href="mod2/" title="mod2"><span class="api-symbol api-symbol--module"></span>mod2</a></li>
+    <li><a href="mod1/" title="mod1">mod1</a></li>
+    <li><a href="mod2/" title="mod2">mod2</a></li>
 </ul>
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="foo/" title="Foo"><span class="api-symbol api-symbol--resource"></span>Foo</a></li>
-    <li><a href="moduletest/" title="ModuleTest"><span class="api-symbol api-symbol--resource"></span>ModuleTest</a></li>
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
+    <li><a href="foo/" title="Foo">Foo</a></li>
+    <li><a href="moduletest/" title="ModuleTest">ModuleTest</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>
 <ul class="api">
-    <li><a href="funcwithalloptionalinputs/" title="FuncWithAllOptionalInputs"><span class="api-symbol api-symbol--function"></span>FuncWithAllOptionalInputs</a></li>
+    <li><a href="funcwithalloptionalinputs/" title="FuncWithAllOptionalInputs">FuncWithAllOptionalInputs</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>

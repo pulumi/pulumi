@@ -13,21 +13,21 @@ no_edit_this_page: true
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
-    <li><a href="provider/" title="Provider"><span class="api-symbol api-symbol--resource"></span>Provider</a></li>
+    <li><a href="provider/" title="Provider">Provider</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>
 <ul class="api">
-    <li><a href="funcwithalloptionalinputs/" title="FuncWithAllOptionalInputs"><span class="api-symbol api-symbol--function"></span>FuncWithAllOptionalInputs</a></li>
-    <li><a href="funcwithconstinput/" title="FuncWithConstInput"><span class="api-symbol api-symbol--function"></span>FuncWithConstInput</a></li>
-    <li><a href="funcwithdefaultvalue/" title="FuncWithDefaultValue"><span class="api-symbol api-symbol--function"></span>FuncWithDefaultValue</a></li>
-    <li><a href="funcwithdictparam/" title="FuncWithDictParam"><span class="api-symbol api-symbol--function"></span>FuncWithDictParam</a></li>
-    <li><a href="funcwithemptyoutputs/" title="FuncWithEmptyOutputs"><span class="api-symbol api-symbol--function"></span>FuncWithEmptyOutputs</a></li>
-    <li><a href="funcwithlistparam/" title="FuncWithListParam"><span class="api-symbol api-symbol--function"></span>FuncWithListParam</a></li>
-    <li><a href="getbastionshareablelink/" title="GetBastionShareableLink"><span class="api-symbol api-symbol--function"></span>GetBastionShareableLink</a></li>
-    <li><a href="getclientconfig/" title="GetClientConfig"><span class="api-symbol api-symbol--function"></span>GetClientConfig</a></li>
-    <li><a href="getintegrationruntimeobjectmetadatum/" title="GetIntegrationRuntimeObjectMetadatum"><span class="api-symbol api-symbol--function"></span>GetIntegrationRuntimeObjectMetadatum</a></li>
-    <li><a href="liststorageaccountkeys/" title="ListStorageAccountKeys"><span class="api-symbol api-symbol--function"></span>ListStorageAccountKeys</a></li>
+    <li><a href="funcwithalloptionalinputs/" title="FuncWithAllOptionalInputs">FuncWithAllOptionalInputs</a></li>
+    <li><a href="funcwithconstinput/" title="FuncWithConstInput">FuncWithConstInput</a></li>
+    <li><a href="funcwithdefaultvalue/" title="FuncWithDefaultValue">FuncWithDefaultValue</a></li>
+    <li><a href="funcwithdictparam/" title="FuncWithDictParam">FuncWithDictParam</a></li>
+    <li><a href="funcwithemptyoutputs/" title="FuncWithEmptyOutputs">FuncWithEmptyOutputs</a></li>
+    <li><a href="funcwithlistparam/" title="FuncWithListParam">FuncWithListParam</a></li>
+    <li><a href="getbastionshareablelink/" title="GetBastionShareableLink">GetBastionShareableLink</a></li>
+    <li><a href="getclientconfig/" title="GetClientConfig">GetClientConfig</a></li>
+    <li><a href="getintegrationruntimeobjectmetadatum/" title="GetIntegrationRuntimeObjectMetadatum">GetIntegrationRuntimeObjectMetadatum</a></li>
+    <li><a href="liststorageaccountkeys/" title="ListStorageAccountKeys">ListStorageAccountKeys</a></li>
 </ul>
 
 <h2 id="package-details">Package Details</h2>
