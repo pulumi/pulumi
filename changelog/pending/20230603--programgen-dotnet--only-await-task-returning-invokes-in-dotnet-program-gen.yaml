@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet
-  description: Only await task-returning invokes in dotnet program-gen

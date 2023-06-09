@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.70.0 (2023-06-08)
+
+
+### Features
+
+- [cli] 'convert' now defaults to be more leniant about program correctness, old behaviour can be toggled back on with --strict.
+  [#13120](https://github.com/pulumi/pulumi/pull/13120)
+
+- [engine] DeletedWith ResourceOption is now inherited from its parent across SDKs.
+  [#12572](https://github.com/pulumi/pulumi/pull/12572)
+
+- [engine] Add 'pulumi:tags' config option to set stack tags.
+  [#12856](https://github.com/pulumi/pulumi/pull/12856)
+
+- [pkg] Upgrade pulumi-java to v0.9.4.
+  [#13121](https://github.com/pulumi/pulumi/pull/13121)
+
+- [programgen/nodejs] Allow output variables to have the same identifier as other program nodes
+  [#13115](https://github.com/pulumi/pulumi/pull/13115)
+
+- [sdk/nodejs] Add support for asynchronous mock implementations
+
+
+### Bug Fixes
+
+- [cli/new] Escape special characters in project description
+  [#13122](https://github.com/pulumi/pulumi/pull/13122)
+
+- [engine] Fixes a bug where targeted previews would error on deletes of targeted resources.
+  [#13010](https://github.com/pulumi/pulumi/pull/13010)
+
+- [programgen/dotnet] Only await task-returning invokes in dotnet program-gen
+  [#13092](https://github.com/pulumi/pulumi/pull/13092)
+
+- [programgen/{dotnet,go}] Do not error out when generaing not yet implemented ForExpressions
+  [#13083](https://github.com/pulumi/pulumi/pull/13083)
+
+- [cli/plugin] Language plugins respect PULUMI_IGNORE_AMBIENT_PLUGINS.
+  [#13086](https://github.com/pulumi/pulumi/pull/13086)
+
+- [programgen/go] Fix conversion of programs with components for Go.
+  [#13037](https://github.com/pulumi/pulumi/pull/13037)
+
+- [programgen/go] Fix panic in go program-gen when encountering splat expressions
+  [#13116](https://github.com/pulumi/pulumi/pull/13116)
+
+- [programgen/{go,nodejs}] Fix a panic in diagnostics from go/nodejs project generation.
+  [#13084](https://github.com/pulumi/pulumi/pull/13084)
+
+- [programgen/nodejs] Only await promise-returning invokes in typescript program-gen
+  [#13085](https://github.com/pulumi/pulumi/pull/13085)
+
 ## 3.69.0 (2023-06-01)
 
 
