@@ -12,7 +12,6 @@
 
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseSharedCompilation>false</UseSharedCompilation>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

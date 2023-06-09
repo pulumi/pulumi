@@ -137,7 +137,6 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <UseSharedCompilation>false</UseSharedCompilation>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
