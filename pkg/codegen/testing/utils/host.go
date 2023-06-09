@@ -83,5 +83,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"lambda", "0.1.0"},
 		SchemaProvider{"remoteref", "1.0.0"},
 		SchemaProvider{"splat", "1.0.0"},
+		SchemaProvider{"snowflake", "0.66.1"},
 	)
 }

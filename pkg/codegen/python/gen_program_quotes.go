@@ -55,7 +55,7 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		_, isComponent := receiver.(*pcl.Component)
 
 		if hasSchema || isComponent {
-			objectKey, keyVal = true, PyName(keyVal)
+			objectKey = true
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:
 				t.Name = keyVal
@@ -95,6 +95,11 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 				Value: cty.StringVal(keyVal),
 			},
 		}
+
+		// typechecking the index expression will compute the type of the expression
+		// so that when we call Type() later on, we get the correct type.
+		typecheckDiags := currentExpression.Typecheck(true)
+		g.diagnostics = g.diagnostics.Extend(typecheckDiags)
 	}
 
 	if currentExpression == source {

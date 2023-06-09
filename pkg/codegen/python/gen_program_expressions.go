@@ -535,7 +535,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 		var key cty.Value
 		switch traverser := traverser.(type) {
 		case hcl.TraverseAttr:
-			key = cty.StringVal(traverser.Name)
+			key = cty.StringVal(PyName(traverser.Name))
 		case hcl.TraverseIndex:
 			key = traverser.Key
 		default:
@@ -544,7 +544,7 @@ func (g *generator) genRelativeTraversal(w io.Writer, traversal hcl.Traversal, p
 
 		switch key.Type() {
 		case cty.String:
-			keyVal := key.AsString()
+			keyVal := PyName(key.AsString())
 			contract.Assertf(isLegalIdentifier(keyVal), "illegal identifier: %q", keyVal)
 			g.Fgenf(w, ".%s", keyVal)
 		case cty.Number:

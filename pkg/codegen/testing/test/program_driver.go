@@ -299,6 +299,13 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Tests whether we are able to generate programs where output variables have same id as config var",
 		SkipCompile: codegen.NewStringSet("go"),
 	},
+	{
+		Directory:   "snowflake-python-12998",
+		Description: "Tests regression for issue https://github.com/pulumi/pulumi/issues/12998",
+		Skip:        allProgLanguages.Except("python"),
+		SkipCompile: allProgLanguages,
+		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables, pcl.AllowMissingProperties},
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
