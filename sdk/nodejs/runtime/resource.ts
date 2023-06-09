@@ -60,6 +60,7 @@ import {
     serialize,
     terminateRpcs,
 } from "./settings";
+import { isGrpcError } from "../errors";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -540,11 +541,15 @@ export function registerResource(
     );
 }
 
-/**
+// Global warning state to avoid spamming the user with the same warning over and over again.
+let shownResolveURNWarning = false;
+let shownResolveIDWarning = false;
+
+/** @internal
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(
+export async function prepareResource(
     label: string,
     res: Resource,
     parent: Resource | undefined,
@@ -593,6 +598,13 @@ async function prepareResource(
 
             resolveURN = (v, err) => {
                 if (err) {
+                    if (isGrpcError(err)) {
+                        if (!shownResolveURNWarning) {
+                            console.error("info: skipped rejection in resolveURN");
+                            shownResolveURNWarning = true;
+                        }
+                        return;
+                    }
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {
@@ -632,6 +644,13 @@ async function prepareResource(
 
             resolveID = (v, isKnown, err) => {
                 if (err) {
+                    if (isGrpcError(err)) {
+                        if (!shownResolveIDWarning) {
+                            console.error("info: skipped rejection in resolveID");
+                            shownResolveIDWarning = true;
+                        }
+                        return;
+                    }
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {

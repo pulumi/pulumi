@@ -34,6 +34,9 @@ export type OutputResolvers = Record<
     (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void
 >;
 
+// Global warning state to avoid spamming the user with the same warning over and over again.
+let shownTransferPropertiesWarning = false;
+
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
  * the 'props' input/output props.  *Importantly* all these promises are completely unresolved. This
@@ -70,6 +73,13 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 
         resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
             if (err) {
+                if (isGrpcError(err)) {
+                    if (!shownTransferPropertiesWarning) {
+                        console.error("info: skipped rejection in transferProperties");
+                        shownTransferPropertiesWarning = true;
+                    }
+                    return;
+                }
                 rejectValue(err);
                 rejectIsKnown(err);
                 rejectIsSecret(err);
