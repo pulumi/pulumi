@@ -1318,6 +1318,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		var arg interface{}
 		var err error
 
+		// Check that the property isn't deprecated
+		if prop.DeprecationMessage != "" {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
+			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "                pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
+		}
+
 		// Fill in computed defaults for arguments.
 		if prop.DefaultValue != nil {
 			dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
@@ -1332,14 +1340,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.IsRequired() {
 			fmt.Fprintf(w, "            if %s is None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                raise TypeError(\"Missing required property '%s'\")\n", pname)
-		}
-
-		// Check that the property isn't deprecated
-		if prop.DeprecationMessage != "" {
-			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
-			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "                pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
 
 		// And add it to the dictionary.
