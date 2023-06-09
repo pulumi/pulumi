@@ -314,6 +314,9 @@ func convertLiteralToString(from model.Expression) (string, bool) {
 		}
 	case *model.LiteralValueExpression:
 		if stringValue, err := convert.Convert(expr.Value, cty.String); err == nil {
+			if stringValue.IsNull() {
+				return "", false
+			}
 			return stringValue.AsString(), true
 		}
 	}
