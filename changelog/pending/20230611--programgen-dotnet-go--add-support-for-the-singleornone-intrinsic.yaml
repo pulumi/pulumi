@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,go
+  description: Add support for the singleOrNone intrinsic
