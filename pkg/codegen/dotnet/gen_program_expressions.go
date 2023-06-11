@@ -299,6 +299,7 @@ var functionNamespaces = map[string][]string{
 	"toBase64":         {"System"},
 	"fromBase64":       {"System"},
 	"sha1":             {"System.Security.Cryptography", "System.Text"},
+	"singleOrNone":     {"System.Linq"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -510,6 +511,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "ComputeFileBase64Sha256(%v)", expr.Args[0])
 	case "notImplemented":
 		g.Fgenf(w, "NotImplemented(%v)", expr.Args[0])
+	case "singleOrNone":
+		g.Fgenf(w, "Enumerable.Single(%v)", expr.Args[0])
 	case pcl.Invoke:
 		_, fullFunctionName := g.functionName(expr.Args[0])
 		functionParts := strings.Split(fullFunctionName, ".")

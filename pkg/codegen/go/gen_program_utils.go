@@ -96,6 +96,13 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %sfunc notImplemented(message string) pulumi.AnyOutput {
 %s  panic(message)
 %s}`, indent, indent, indent), true
+	case "singleOrNone":
+		return fmt.Sprintf(`%sfunc singleOrNone[T any](elements []T) T {
+%s	if len(elements) != 1 {
+%s		panic(fmt.Errorf("singleOrNone expected input slice to have a single element"))
+%s	}
+%s	return elements[0]
+%s}`, indent, indent, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}
