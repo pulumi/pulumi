@@ -374,9 +374,6 @@ func runConvert(
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
 	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
-	if err != nil {
-		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
-	}
 	// If we have error diagnostics then program generation failed, print an error to the user that they
 	// should raise an issue about this
 	if diagnostics.HasErrors() {
@@ -390,7 +387,15 @@ func runConvert(
 			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
 		}
 		printDiagnostics(pCtx.Diag, diagnostics)
-		return result.FromError(fmt.Errorf("could not generate output program"))
+		if err != nil {
+			return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+		} else {
+			return result.FromError(fmt.Errorf("could not generate output program"))
+		}
+	}
+
+	if err != nil {
+		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
 	}
 
 	// If we've got code generation warnings only print them if we've got PULUMI_DEV set or emitting pcl
