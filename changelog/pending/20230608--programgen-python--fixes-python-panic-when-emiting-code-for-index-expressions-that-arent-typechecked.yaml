@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/python
-  description: Fixes python panic when emiting code for index expressions that aren't typechecked

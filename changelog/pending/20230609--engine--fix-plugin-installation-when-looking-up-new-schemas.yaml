@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix plugin installation when looking up new schemas.
