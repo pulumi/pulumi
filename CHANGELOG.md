@@ -1,5 +1,39 @@
 # Changelog
 
+## 3.71.0 (2023-06-12)
+
+
+### Features
+
+- [cli] Support for `pulumi convert --from terraform`
+
+- [cli] Make convert errors more clear to users
+  [#13126](https://github.com/pulumi/pulumi/pull/13126)
+
+- [programgen/{dotnet,go}] Add support for the singleOrNone intrinsic
+  [#13149](https://github.com/pulumi/pulumi/pull/13149)
+
+
+### Bug Fixes
+
+- [engine] Fix plugin installation when looking up new schemas.
+  [#13140](https://github.com/pulumi/pulumi/pull/13140)
+
+- [programgen] Fixes range scoping for PCL components
+  [#13131](https://github.com/pulumi/pulumi/pull/13131)
+
+- [programgen] Fixes panic when trying to convert a null literal to a string value
+  [#13138](https://github.com/pulumi/pulumi/pull/13138)
+
+- [sdkgen/dotnet] sdkgen no longer sets the UseSharedCompilation project setting.
+  [#13146](https://github.com/pulumi/pulumi/pull/13146)
+
+- [programgen/python] Fixes python panic when emiting code for index expressions that aren't typechecked
+  [#13137](https://github.com/pulumi/pulumi/pull/13137)
+
+- [sdkgen/python] Fixes python always printing input deprecation messages.
+  [#13141](https://github.com/pulumi/pulumi/pull/13141)
+
 ## 3.70.0 (2023-06-08)
 
 
