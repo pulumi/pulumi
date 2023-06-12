@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Make convert errors more clear to users
