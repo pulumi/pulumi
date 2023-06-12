@@ -27,8 +27,8 @@ format:: ensure
 	yarn rome format --write .
 
 lint:: ensure
-	yarn run eslint -c .eslintrc.js --ext .ts .
 	yarn rome ci .
+	yarn run eslint -c .eslintrc.js --ext .ts .
 
 build_package:: ensure
 	yarn run tsc

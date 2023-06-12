@@ -297,7 +297,7 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
         throw new Error(`Error calling "Runtime.callFunction(${objectId})": ` + retType.exceptionDetails.text);
     }
 
-    if (!context.calls.hasOwnProperty(tableId)) {
+    if (!Object.hasOwn(context.calls, tableId)) {
         throw new Error(`Value was not stored into table after calling "Runtime.callFunctionOn(${objectId})"`);
     }
 

@@ -341,7 +341,7 @@ function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: 
                 newAlias.setUrn(a);
             } else {
                 const newAliasSpec = new aliasproto.Alias.Spec();
-                const noParent = !a.hasOwnProperty("parent") && !parentURN;
+                const noParent = !Object.hasOwn(a, "parent") && !parentURN;
                 newAliasSpec.setName(a.name);
                 newAliasSpec.setType(a.type);
                 newAliasSpec.setStack(a.stack);
@@ -349,7 +349,7 @@ function mapAliasesForRequest(aliases: (URN | Alias)[] | undefined, parentURN?: 
                 if (noParent) {
                     newAliasSpec.setNoparent(noParent);
                 } else {
-                    const aliasParentUrn = a.hasOwnProperty("parent") ? getParentURN(a.parent) : output(parentURN);
+                    const aliasParentUrn = Object.hasOwn(a, "parent") ? getParentURN(a.parent) : output(parentURN);
                     const urn = await aliasParentUrn.promise();
                     newAliasSpec.setParenturn(urn);
                 }
@@ -920,7 +920,7 @@ async function resolveOutputs(
     const label = `resource:${name}[${t}]#...`;
     if (!isDryRun() || isLegacyApplyEnabled()) {
         for (const key of Object.keys(props)) {
-            if (!allProps.hasOwnProperty(key)) {
+            if (!Object.hasOwn(allProps, key)) {
                 // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
                 // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
                 // Output values are handled properly w.r.t. unknowns.

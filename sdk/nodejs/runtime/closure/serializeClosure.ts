@@ -274,7 +274,7 @@ function serializeJavaScriptText(
     }
 
     function simpleEnvEntryToString(envEntry: closure.Entry, varName: string): string {
-        if (envEntry.hasOwnProperty("json")) {
+        if (Object.hasOwn(envEntry, "json")) {
             return JSON.stringify(envEntry.json);
         } else if (envEntry.function !== undefined) {
             return emitFunctionAndGetName(envEntry.function);
