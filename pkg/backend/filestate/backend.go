@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -377,53 +376,26 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 	// There's no limit to the number of stacks we need to upgrade.
 	// We don't want to overload the system with too many concurrent upgrades.
 	// We'll run a fixed pool of goroutines to upgrade stacks.
-	// They'll work their way through the list of old stacks
-	// using nextIdx to track which stack to upgrade next.
-	var (
-		// Index into olds for goroutines to track
-		// which stack they're upgrading.
-		nextIdx atomic.Int64
+	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	defer pool.Close()
 
-		// Number of stacks successfully upgraded.
-		upgraded atomic.Int64
-
-		wg sync.WaitGroup
-	)
-
-	// GOMAXPROCS defaults to the number of cores on the system,
-	// so this should be a reasonable default.
-	numWorkers := runtime.GOMAXPROCS(0)
-	if count := len(olds); count < numWorkers {
-		// Don't need more workers than work.
-		numWorkers = count
-	}
-
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for {
-				// Add returns the new value of the atomic,
-				// so we need to subtract 1 from the result.
-				idx := nextIdx.Add(1) - 1
-
-				// List of old stacks has been exhausted.
-				// We're done.
-				if idx >= int64(len(olds)) {
-					return
-				}
-
-				old := olds[idx]
-				if err := b.upgradeStack(ctx, newStore, old); err != nil {
-					b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
-				} else {
-					upgraded.Add(1)
-				}
+	var upgraded atomic.Int64 // number of stacks successfully upgraded
+	for _, old := range olds {
+		old := old
+		pool.Enqueue(func() error {
+			if err := b.upgradeStack(ctx, newStore, old); err != nil {
+				b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
+			} else {
+				upgraded.Add(1)
 			}
-		}()
+			return nil
+		})
 	}
-	wg.Wait()
+
+	// We log all errors above. This should never fail.
+	err = pool.Wait()
+	contract.AssertNoErrorf(err, "pool.Wait should never return an error")
+
 	b.store = newStore
 	b.d.Infoerrf(diag.Message("", "Upgraded %d stack(s) to project mode"), upgraded.Load())
 	return nil
