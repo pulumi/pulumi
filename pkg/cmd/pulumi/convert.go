@@ -389,9 +389,9 @@ func runConvert(
 		printDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
 			return result.FromError(fmt.Errorf("could not generate output program: %w", err))
-		} else {
-			return result.FromError(fmt.Errorf("could not generate output program"))
 		}
+
+		return result.FromError(fmt.Errorf("could not generate output program"))
 	}
 
 	if err != nil {
