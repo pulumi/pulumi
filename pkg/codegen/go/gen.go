@@ -161,7 +161,6 @@ type pkgContext struct {
 	// duplicateTokens tracks tokens that exist for both types and resources
 	duplicateTokens map[string]bool
 	functionNames   map[*schema.Function]string
-	needsUtils      bool
 	tool            string
 	packages        map[string]*pkgContext
 
@@ -1352,8 +1351,7 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "if tmp.%s == nil {\n", pkg.fieldName(nil, p))
 			} else {
-				pkg.needsUtils = true
-				fmt.Fprintf(w, "if isZero(tmp.%s) {\n", pkg.fieldName(nil, p))
+				fmt.Fprintf(w, "if internal.IsZero(tmp.%s) {\n", pkg.fieldName(nil, p))
 			}
 			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
 				pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
@@ -1635,20 +1633,18 @@ func (pkg *pkgContext) setDefaultValue(
 	// For environment variable override, we will assign only
 	// if the environment variable is set.
 
-	pkg.needsUtils = true
-
 	parser, typ := "nil", "string"
 	switch codegen.UnwrapType(t).(type) {
 	case *schema.ArrayType:
-		parser, typ = "parseEnvStringArray", "pulumi.StringArray"
+		parser, typ = "internal.ParseEnvStringArray", "pulumi.StringArray"
 	}
 	switch t {
 	case schema.BoolType:
-		parser, typ = "parseEnvBool", "bool"
+		parser, typ = "internal.ParseEnvBool", "bool"
 	case schema.IntType:
-		parser, typ = "parseEnvInt", "int"
+		parser, typ = "internal.ParseEnvInt", "int"
 	case schema.NumberType:
-		parser, typ = "parseEnvFloat", "float64"
+		parser, typ = "internal.ParseEnvFloat", "float64"
 	}
 
 	if val == "" {
@@ -1659,7 +1655,7 @@ func (pkg *pkgContext) setDefaultValue(
 
 	// Roughly, we generate:
 	//
-	//	if d := getEnvOrDefault(defaultValue, parser, "ENV_VAR"); d != nil {
+	//	if d := internal.getEnvOrDefault(defaultValue, parser, "ENV_VAR"); d != nil {
 	//		$assign(d.(type))
 	//	}
 	//
@@ -1668,7 +1664,7 @@ func (pkg *pkgContext) setDefaultValue(
 	//  - if an environment variable was set, read from that
 	//  - if a default value was specified, use that
 	//  - otherwise, leave the variable unset
-	fmt.Fprintf(w, "if d := getEnvOrDefault(%s, %s", val, parser)
+	fmt.Fprintf(w, "if d := internal.GetEnvOrDefault(%s, %s", val, parser)
 	for _, e := range dv.Environment {
 		fmt.Fprintf(w, ", %q", e)
 	}
@@ -1682,7 +1678,6 @@ func (pkg *pkgContext) setDefaultValue(
 
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
 	name := disambiguatedResourceName(r, pkg)
-
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
 
@@ -1760,8 +1755,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
 			} else {
-				pkg.needsUtils = true
-				fmt.Fprintf(w, "\tif isZero(args.%s) {\n", pkg.fieldName(r, p))
+				fmt.Fprintf(w, "\tif internal.IsZero(args.%s) {\n", pkg.fieldName(r, p))
 			}
 			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
 				assign(w, p, dv)
@@ -2151,7 +2145,8 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
 	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-	importsAndAliases[pkg.importBasePath+"/internal"] = "internal"
+	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = "internal"
+	fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉 in genFunctionCodeFile", path.Join(pkg.importBasePath, "internal"))
 
 	buffer := &bytes.Buffer{}
 
@@ -2971,6 +2966,8 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
 	}
 	pkg.getImports(variables, importsAndAliases)
+	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = "internal"
+	fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉 in genConfig; go do we have an import pkg name :sob:", path.Join(pkg.importBasePath, "internal"))
 
 	pkg.genHeader(w, nil, importsAndAliases)
 
@@ -3043,13 +3040,17 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 	}
+	imports[path.Join(pkg.importBasePath, "internal")] = "internal"
+	fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉not sure if I need this in genResourceModule", path.Join(pkg.importBasePath, "internal"))
 
 	topLevelModule := pkg.mod == ""
 	if !topLevelModule {
+		fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉🦉this is not a top level module")
+
 		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
 			imports[basePath] = alias
 		} else {
-			imports[basePath] = ""
+			imports[basePath] = "_"
 		}
 	}
 
@@ -3126,27 +3127,13 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	}
 
 	fmt.Fprintf(w, "func init() {\n")
-	if topLevelModule {
-		fmt.Fprintf(w, "\tversion, _ := PkgVersion()\n")
-	} else {
-		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
-		// in which case we use that instead.
-		var pkgName string
-		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
-			pkgName = alias
-		} else if pkg.rootPackageName != "" && basePath == pkg.importBasePath {
-			pkgName = pkg.rootPackageName
-		} else {
-			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
-		}
-		pkgName = strings.ReplaceAll(pkgName, "-", "")
-		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
-		// To avoid breaking compatibility, we don't change the function
-		// signature. We instead just ignore the error.
-		fmt.Fprintf(w, "\tif err != nil {\n")
-		fmt.Fprintf(w, "\t\tversion = semver.Version{Major: 1}\n")
-		fmt.Fprintf(w, "\t}\n")
-	}
+
+	fmt.Fprintf(w, "\tversion, err := internal.PkgVersion()\n")
+	// To avoid breaking compatibility, we don't change the function
+	// signature. We instead just ignore the error.
+	fmt.Fprintf(w, "\tif err != nil {\n")
+	fmt.Fprintf(w, "\t\tversion = semver.Version{Major: 1}\n")
+	fmt.Fprintf(w, "\t}\n")
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {
 			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
@@ -3810,8 +3797,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			importsAndAliases := map[string]string{}
 			pkg.getImports(r, importsAndAliases)
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-			importsAndAliases[pkg.importBasePath+"/internal"] = "internal"
-
+			importsAndAliases[path.Join(pkg.importBasePath, "internal")] = "internal"
+			fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉 making // Resources", path.Join(pkg.importBasePath, "internal"))
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
@@ -3830,6 +3817,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			fileName := path.Join(mod, cgstrings.Camel(tokenToName(f.Token))+".go")
+			fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉 making function file names ugggghhhh do they not have mods???", fileName)
 			code, err := pkg.genFunctionCodeFile(f)
 			if err != nil {
 				return nil, err
@@ -3906,21 +3894,17 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Utilities
-		if pkg.needsUtils || len(mod) == 0 {
+		if len(mod) == 0 {
 			buffer := &bytes.Buffer{}
 			importsAndAliases := map[string]string{
 				"github.com/blang/semver":                   "",
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
-			//if mod != "" {
-			//importsAndAliases[pkg.importBasePath+"/internal"] = strings.ReplaceAll(pkg.pkg.Name(), "-", "")
-			//}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
 			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name())
 			if pkg.rootPackageName != "" {
 				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
-
 			}
 			err := pkg.GenUtilitiesFile(buffer, packageRegex)
 			if err != nil {
@@ -3968,7 +3952,14 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType, kno
 		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 	}
 
+	if !pkg.disableObjectDefaults {
+		importsAndAliases[path.Join(pkg.importBasePath, "internal")] = "internal"
+		fmt.Println("🦉🦉🦉🦉🦉🦉🦉🦉 making // Types", path.Join(pkg.importBasePath, "internal"))
+
+	}
+
 	pkg.genHeader(w, goImports, importsAndAliases)
+	fmt.Fprintf(w, "var _ = internal.GetEnvOrDefault\n")
 
 	for _, t := range types {
 		if err := pkg.genType(w, t); err != nil {
@@ -4000,7 +3991,7 @@ func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error 
 	const utilitiesFile = `
 type envParser func(v string) interface{}
 
-func parseEnvBool(v string) interface{} {
+func ParseEnvBool(v string) interface{} {
 	b, err := strconv.ParseBool(v)
 	if err != nil {
 		return nil
@@ -4008,7 +3999,7 @@ func parseEnvBool(v string) interface{} {
 	return b
 }
 
-func parseEnvInt(v string) interface{} {
+func ParseEnvInt(v string) interface{} {
 	i, err := strconv.ParseInt(v, 0, 0)
 	if err != nil {
 		return nil
@@ -4016,7 +4007,7 @@ func parseEnvInt(v string) interface{} {
 	return int(i)
 }
 
-func parseEnvFloat(v string) interface{} {
+func ParseEnvFloat(v string) interface{} {
 	f, err := strconv.ParseFloat(v, 64)
 	if err != nil {
 		return nil
@@ -4024,7 +4015,7 @@ func parseEnvFloat(v string) interface{} {
 	return f
 }
 
-func parseEnvStringArray(v string) interface{} {
+func ParseEnvStringArray(v string) interface{} {
 	var result pulumi.StringArray
 	for _, item := range strings.Split(v, ";") {
 		result = append(result, pulumi.String(item))
@@ -4032,7 +4023,7 @@ func parseEnvStringArray(v string) interface{} {
 	return result
 }
 
-func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
+func GetEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {
 	for _, v := range vars {
 		if value, ok := os.LookupEnv(v); ok {
 			if parser != nil {
@@ -4049,12 +4040,12 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 // value is always nil.
 func PkgVersion() (semver.Version, error) {
     // emptyVersion defaults to v0.0.0
-	if !%s.Equals(semver.Version{}) {
-		return %s, nil
+	if !%[1]s.Equals(semver.Version{}) {
+		return %[1]s, nil
 	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile(%q)
+	re := regexp.MustCompile(%[2]q)
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
@@ -4066,7 +4057,7 @@ func PkgVersion() (semver.Version, error) {
 }
 
 // isZero is a null safe check for if a value is it's types zero value.
-func isZero(v interface{}) bool {
+func IsZero(v interface{}) bool {
 	if v == nil {
 		return true
 	}
@@ -4074,12 +4065,7 @@ func isZero(v interface{}) bool {
 }
 `
 	versionPackageRef := "SdkVersion"
-	versionPkgName := strings.ReplaceAll(pkg.pkg.Name(), "-", "")
-	if pkg.mod != "" {
-		versionPackageRef = versionPkgName + "." + versionPackageRef
-	}
-	// TODO: use indices in template string
-	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, versionPackageRef, packageRegex)
+	_, err := fmt.Fprintf(w, utilitiesFile, versionPackageRef, packageRegex)
 	if err != nil {
 		return err
 	}
@@ -4140,22 +4126,15 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 
 // GenPkgDefaultsOptsCall generates a call to Pkg{TYPE}DefaultsOpts.
 func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
-	//pkg.needsUtils = true
 	typ := "Resource"
 	if invoke {
 		typ = "Invoke"
 	}
-	//if pkg.mod != "" {
-	//	_, err := fmt.Fprintf(w, "\topts = %s.Pkg%sDefaultOpts(opts)\n", pkg.pkg.Name(), typ)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//} else {
+
 	_, err := fmt.Fprintf(w, "\topts = internal.Pkg%sDefaultOpts(opts)\n", typ)
 	if err != nil {
 		return err
 	}
-	//}
+
 	return nil
 }
