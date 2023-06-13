@@ -158,7 +158,8 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
         if len(args) == 1:
             return args[0]
 
-    raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
+    log.error(f"Unexpected type. Expected 'list' got '{typ}'")
+    return None
 
 
 async def serialize_properties(

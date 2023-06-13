@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: No longer raises error on unexpected output type for lists
