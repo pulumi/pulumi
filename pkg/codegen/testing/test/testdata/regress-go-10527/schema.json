@@ -31,5 +31,11 @@
                 }
             }
         }
+    },
+    "language": {
+        "go": {
+            "importBasePath": "regress-go-10527/world",
+            "generateExtraInputTypes": true
+        }
     }
 }

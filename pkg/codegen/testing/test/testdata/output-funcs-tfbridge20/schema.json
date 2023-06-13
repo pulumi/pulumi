@@ -216,7 +216,8 @@
       }
     },
     "go": {
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "output-funcs-tfbridge20/mypkg"
     }
   }
 }
