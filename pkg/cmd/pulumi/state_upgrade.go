@@ -101,5 +101,5 @@ func (cmd *stateUpgradeCmd) Run(ctx context.Context) error {
 		return nil
 	}
 
-	return lb.Upgrade(ctx)
+	return lb.Upgrade(ctx, nil /*opts*/)
 }

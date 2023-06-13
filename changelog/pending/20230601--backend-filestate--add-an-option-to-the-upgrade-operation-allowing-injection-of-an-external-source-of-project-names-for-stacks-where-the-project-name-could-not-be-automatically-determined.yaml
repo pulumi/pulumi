@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: backend/filestate
+  description: Add an option to the Upgrade operation allowing injection of an external source of project names for stacks where the project name could not be automatically determined.

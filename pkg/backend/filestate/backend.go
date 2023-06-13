@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -89,13 +90,32 @@ var (
 	PulumiFilestateLegacyLayoutEnvVar = env.SelfManagedStateLegacyLayout.Var().Name()
 )
 
+// UpgradeOptions customizes the behavior of the upgrade operation.
+type UpgradeOptions struct {
+	// ProjectsForDetachedStacks is an optional function that is able to
+	// backfill project names for stacks that have no project specified otherwise.
+	//
+	// It is called with a list of stack names that have no project specified.
+	// It should return a list of project names to use for each stack name
+	// in the same order.
+	// If a returned name is blank, the stack at that position will be skipped
+	// in the upgrade process.
+	//
+	// The length of 'projects' MUST match the length of 'stacks'.
+	// If it does not, the upgrade will panic.
+	//
+	// If this function is not specified,
+	// stacks without projects will be skipped during the upgrade.
+	ProjectsForDetachedStacks func(stacks []tokens.Name) (projects []tokens.Name, err error)
+}
+
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
 	local() // at the moment, no local specific info, so just use a marker function.
 
 	// Upgrade to the latest state store version.
-	Upgrade(ctx context.Context) error
+	Upgrade(ctx context.Context, opts *UpgradeOptions) error
 }
 
 type localBackend struct {
@@ -348,13 +368,87 @@ func newLocalBackend(
 	return backend, nil
 }
 
-func (b *localBackend) Upgrade(ctx context.Context) error {
+func (b *localBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
+	if opts == nil {
+		opts = &UpgradeOptions{}
+	}
+
 	// We don't use the existing b.store because
 	// this may already be a projectReferenceStore
 	// with new legacy files introduced to it accidentally.
 	olds, err := newLegacyReferenceStore(b.bucket).ListReferences(ctx)
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
+	}
+	sort.Slice(olds, func(i, j int) bool {
+		return olds[i].Name() < olds[j].Name()
+	})
+
+	// There's no limit to the number of stacks we need to upgrade.
+	// We don't want to overload the system with too many concurrent upgrades.
+	// We'll run a fixed pool of goroutines to upgrade stacks.
+	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
+	defer pool.Close()
+
+	// Projects for each stack in `olds` in the same order.
+	// projects[i] is the project name for olds[i].
+	projects := make([]tokens.Name, len(olds))
+	for idx, old := range olds {
+		idx, old := idx, old
+		pool.Enqueue(func() error {
+			project, err := b.guessProject(ctx, old)
+			if err != nil {
+				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
+			}
+
+			// No lock necessary;
+			// projects is pre-allocated.
+			projects[idx] = project
+			return nil
+		})
+	}
+
+	if err := pool.Wait(); err != nil {
+		return err
+	}
+
+	// If there are any stacks without projects
+	// and the user provided a callback to fill them,
+	// use it to fill in the missing projects.
+	if opts.ProjectsForDetachedStacks != nil {
+		var (
+			// Names of stacks in 'olds' that don't have a project
+			detached []tokens.Name
+
+			// reverseIdx[i] is the index of detached[i]
+			// in olds and projects.
+			//
+			// In other words:
+			//
+			//   detached[i] == olds[reverseIdx[i]].Name()
+			//   projects[reverseIdx[i]] == ""
+			reverseIdx []int
+		)
+		for i, ref := range olds {
+			if projects[i] == "" {
+				detached = append(detached, ref.Name())
+				reverseIdx = append(reverseIdx, i)
+			}
+		}
+
+		if len(detached) != 0 {
+			detachedProjects, err := opts.ProjectsForDetachedStacks(detached)
+			if err != nil {
+				return err
+			}
+			contract.Assertf(len(detached) == len(detachedProjects),
+				"ProjectsForDetachedStacks returned the wrong number of projects: "+
+					"expected %d, got %d", len(detached), len(detachedProjects))
+
+			for i, project := range detachedProjects {
+				projects[reverseIdx[i]] = project
+			}
+		}
 	}
 
 	// It's important that we attempt to write the new metadata file
@@ -373,17 +467,17 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 
 	newStore := newProjectReferenceStore(b.bucket, b.currentProject.Load)
 
-	// There's no limit to the number of stacks we need to upgrade.
-	// We don't want to overload the system with too many concurrent upgrades.
-	// We'll run a fixed pool of goroutines to upgrade stacks.
-	pool := newWorkerPool(0 /* numWorkers */, len(olds) /* numTasks */)
-	defer pool.Close()
-
 	var upgraded atomic.Int64 // number of stacks successfully upgraded
-	for _, old := range olds {
-		old := old
+	for idx, old := range olds {
+		idx, old := idx, old
 		pool.Enqueue(func() error {
-			if err := b.upgradeStack(ctx, newStore, old); err != nil {
+			project := projects[idx]
+			if project == "" {
+				b.d.Warningf(diag.Message("", "Skipping stack %q: no project name found"), old)
+				return nil
+			}
+
+			if err := b.upgradeStack(ctx, newStore, project, old); err != nil {
 				b.d.Warningf(diag.Message("", "Skipping stack %q: %v"), old, err)
 			} else {
 				upgraded.Add(1)
@@ -401,30 +495,35 @@ func (b *localBackend) Upgrade(ctx context.Context) error {
 	return nil
 }
 
-// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
-func (b *localBackend) upgradeStack(
-	ctx context.Context,
-	newStore *projectReferenceStore,
-	old *localBackendReference,
-) error {
+// guessProject inspects the checkpoint for the given stack and attempts to
+// guess the project name for it.
+// Returns an empty string if the project name cannot be determined.
+func (b *localBackend) guessProject(ctx context.Context, old *localBackendReference) (tokens.Name, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
 	chk, err := b.getCheckpoint(ctx, old)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("read checkpoint: %w", err)
 	}
 
 	// Try and find the project name from _any_ resource URN
-	var project tokens.Name
 	if chk.Latest != nil {
 		for _, res := range chk.Latest.Resources {
-			project = tokens.Name(res.URN.Project())
-			break
+			return tokens.Name(res.URN.Project()), nil
 		}
 	}
-	if project == "" {
-		return errors.New("no project found")
-	}
+	return "", nil
+}
+
+// upgradeStack upgrades a single stack to use the provided projectReferenceStore.
+func (b *localBackend) upgradeStack(
+	ctx context.Context,
+	newStore *projectReferenceStore,
+	project tokens.Name,
+	old *localBackendReference,
+) error {
+	contract.Requiref(old.project == "", "old.project", "must be empty")
+	contract.Requiref(project != "", "project", "must not be empty")
 
 	new := newStore.newReference(project, old.Name())
 	if err := b.renameStack(ctx, old, new); err != nil {

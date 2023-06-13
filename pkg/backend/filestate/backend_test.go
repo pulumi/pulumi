@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -953,7 +955,7 @@ func TestLegacyUpgrade(t *testing.T) {
 	assert.NotNil(t, lb)
 	assert.IsType(t, &legacyReferenceStore{}, lb.store)
 
-	err = lb.Upgrade(ctx)
+	err = lb.Upgrade(ctx, nil /* opts */)
 	require.NoError(t, err)
 	assert.IsType(t, &projectReferenceStore{}, lb.store)
 
@@ -979,7 +981,7 @@ func TestLegacyUpgrade(t *testing.T) {
 	}`), os.ModePerm)
 	require.NoError(t, err)
 
-	err = lb.Upgrade(ctx)
+	err = lb.Upgrade(ctx, nil /* opts */)
 	require.NoError(t, err)
 
 	// Check that b has been moved
@@ -1021,8 +1023,8 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
 	require.NoError(t, err)
 
-	require.NoError(t, b.Upgrade(ctx))
-	assert.Contains(t, buff.String(), `Skipping stack "bar": no project found`)
+	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
+	assert.Contains(t, buff.String(), `Skipping stack "bar": no project name found`)
 
 	exists, err := bucket.Exists(ctx, ".pulumi/stacks/project/foo.json")
 	require.NoError(t, err)
@@ -1031,6 +1033,125 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 	ref, err := b.ParseStackReference("organization/project/foo")
 	require.NoError(t, err)
 	assert.Equal(t, tokens.QName("organization/project/foo"), ref.FullyQualifiedName())
+}
+
+// When a stack project could not be determined,
+// we should fill it in with ProjectsForDetachedStacks.
+func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	// Write a few empty stacks.
+	// These stacks have no resources, so we can't guess the project name.
+	ctx := context.Background()
+	for _, stack := range []string{"foo", "bar", "baz"} {
+		statePath := path.Join(".pulumi", "stacks", stack+".json")
+		require.NoError(t,
+			bucket.WriteAll(ctx, statePath,
+				[]byte(`{"latest": {"resources": []}}`), nil),
+			"write stack %s", stack)
+	}
+
+	var stderr bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+	require.NoError(t, err, "initialize backend")
+
+	// For the first two stacks, we'll return project names to upgrade them.
+	// For the third stack, we will not set a project name, and it should be skipped.
+	err = b.Upgrade(ctx, &UpgradeOptions{
+		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
+			assert.ElementsMatch(t, []tokens.Name{"foo", "bar", "baz"}, stacks)
+
+			projects = make([]tokens.Name, len(stacks))
+			for idx, stack := range stacks {
+				switch stack {
+				case "foo":
+					projects[idx] = "proj1"
+				case "bar":
+					projects[idx] = "proj2"
+				case "baz":
+					// Leave baz detached.
+				}
+			}
+			return projects, nil
+		},
+	})
+	require.NoError(t, err)
+
+	for _, stack := range []string{"foo", "bar"} {
+		assert.NotContains(t, stderr.String(), fmt.Sprintf("Skipping stack %q", stack))
+	}
+	assert.Contains(t, stderr.String(), fmt.Sprintf("Skipping stack %q", "baz"))
+
+	wantFiles := []string{
+		".pulumi/stacks/proj1/foo.json",
+		".pulumi/stacks/proj2/bar.json",
+		".pulumi/stacks/baz.json",
+	}
+	for _, file := range wantFiles {
+		exists, err := bucket.Exists(ctx, file)
+		require.NoError(t, err, "exists(%q)", file)
+		assert.True(t, exists, "file %q must exist", file)
+	}
+}
+
+// When a stack project could not be determined
+// and ProjectsForDetachedStacks returns an error,
+// the upgrade should fail.
+func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	bucket, err := fileblob.OpenBucket(stateDir, nil)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	// We have one stack with a guessable project name, and one without.
+	// If ProjectsForDetachedStacks returns an error, the upgrade should
+	// fail for both because the user likely cancelled the upgrade.
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/foo.json", []byte(`{
+		"latest": {
+			"resources": [
+				{
+					"type": "package:module:resource",
+					"urn": "urn:pulumi:stack::project::package:module:resource::name"
+				}
+			]
+		}
+	}`), nil))
+	require.NoError(t,
+		bucket.WriteAll(ctx, ".pulumi/stacks/bar.json",
+			[]byte(`{"latest": {"resources": []}}`), nil))
+
+	sink := diag.DefaultSink(io.Discard, iotest.LogWriter(t), diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
+	require.NoError(t, err)
+
+	giveErr := errors.New("canceled operation")
+	err = b.Upgrade(ctx, &UpgradeOptions{
+		ProjectsForDetachedStacks: func(stacks []tokens.Name) (projects []tokens.Name, err error) {
+			assert.Equal(t, []tokens.Name{"bar"}, stacks)
+			return nil, giveErr
+		},
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, giveErr)
+
+	wantFiles := []string{
+		".pulumi/stacks/foo.json",
+		".pulumi/stacks/bar.json",
+	}
+	for _, file := range wantFiles {
+		exists, err := bucket.Exists(ctx, file)
+		require.NoError(t, err, "exists(%q)", file)
+		assert.True(t, exists, "file %q must exist", file)
+	}
 }
 
 // If an upgrade failed because we couldn't write the meta.yaml,
@@ -1064,7 +1185,7 @@ func TestLegacyUpgrade_writeMetaError(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(stateDir), nil)
 	require.NoError(t, err)
 
-	require.Error(t, b.Upgrade(ctx))
+	require.Error(t, b.Upgrade(ctx, nil /* opts */))
 
 	stderr := buff.String()
 	assert.Contains(t, stderr, "error: Could not write new state metadata file")
@@ -1137,7 +1258,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
-	require.NoError(t, b.Upgrade(ctx))
+	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
 	out := output.String()
 	for i := 0; i < numStacks; i++ {
 		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
