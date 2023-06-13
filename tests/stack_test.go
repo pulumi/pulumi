@@ -426,6 +426,57 @@ func TestStackBackups(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // mutates environment variables
+func TestDestroySetsEncryptedkey(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	const stackName = "imulup"
+
+	// Set up the environment.
+	{
+		e.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+
+		integration.CreateBasicPulumiRepo(e)
+		e.ImportDirectory("integration/stack_outputs/nodejs")
+
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", stackName)
+
+		// Build the project.
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		e.RunCommand("yarn", "install")
+
+		e.RunCommand("pulumi", "config", "set", "--secret", "token", "cookie")
+
+		// Now run pulumi up.
+		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	}
+
+	wd := e.RootPath
+	stackFile := filepath.Join(wd, "Pulumi.imulup.yaml")
+
+	// Remove `encryptionsalt` from `Pulumi.imulup.yaml`.
+	preamble := "secretsprovider: passphrase\n"
+	err := os.WriteFile(stackFile, []byte(preamble), 0o600)
+	assert.NoError(t, err, "writing Pulumi.imulup.yaml")
+
+	// Now run pulumi destroy.
+	e.RunCommand("pulumi", "destroy", "--non-interactive", "--yes", "--skip-preview")
+
+	// Check that the stack file has `encryptionsalt` set.
+	data, err := os.ReadFile(stackFile)
+	assert.NoError(t, err, "reading Pulumi.imulup.yaml")
+	s := string(data)
+	assert.Contains(t, s, "encryptionsalt", "should contain encryptionsalt")
+
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+}
+
 func TestStackRenameAfterCreate(t *testing.T) {
 	t.Parallel()
 
