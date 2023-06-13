@@ -68,8 +68,8 @@ const (
 
 // Name validation rules enforced by the Pulumi Service.
 var (
-	stackOwnerRegexp          = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
-	stackNameAndProjectRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
+	stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
+	stackNameRegexp  = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
 )
 
 // DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
@@ -695,7 +695,7 @@ func validateStackName(s string) error {
 	if len(s) > 100 {
 		return errors.New("stack names must be less than 100 characters")
 	}
-	if !stackNameAndProjectRegexp.MatchString(s) {
+	if !stackNameRegexp.MatchString(s) {
 		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 	return nil
@@ -714,13 +714,7 @@ func validateStackName(s string) error {
 // So we should only call validateProject name when creating _new_ stacks or creating _new_ projects.
 // We should not require that project names be valid when reading what is in the current workspace.
 func validateProjectName(s string) error {
-	if len(s) > 100 {
-		return errors.New("project names must be less than 100 characters")
-	}
-	if !stackNameAndProjectRegexp.MatchString(s) {
-		return errors.New("project names may only contain alphanumeric, hyphens, underscores, and periods")
-	}
-	return nil
+	return tokens.ValidateProjectName(s)
 }
 
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be

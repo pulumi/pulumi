@@ -84,7 +84,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Validate name (if specified) before further prompts/operations.
 	if args.name != "" && workspace.ValidateProjectName(args.name) != nil {
-		return fmt.Errorf("'%s' is not a valid project name. %w", args.name, workspace.ValidateProjectName(args.name))
+		return fmt.Errorf("'%s' is not a valid project name: %w", args.name, workspace.ValidateProjectName(args.name))
 	}
 
 	// Validate secrets provider type
