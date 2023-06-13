@@ -26,6 +26,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -42,6 +43,7 @@ Subcommands of this command are useful to package authors during development.`,
 	}
 	cmd.AddCommand(
 		newExtractSchemaCommand(),
+		newExtractMappingCommand(),
 		newGenSdkCommand(),
 		newPackagePublishCmd(),
 	)
@@ -55,19 +57,8 @@ Subcommands of this command are useful to package authors during development.`,
 //	FILE.[json|y[a]ml] | PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	var spec schema.PackageSpec
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	sink := cmdutil.Diag()
-	pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
-	if err != nil {
-		return nil, err
-	}
 	bind := func(spec schema.PackageSpec) (*schema.Package, error) {
-		var loader schema.Loader
-
-		pkg, diags, err := schema.BindSpec(spec, loader)
+		pkg, diags, err := schema.BindSpec(spec, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -98,6 +89,36 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 		return bind(spec)
 	}
 
+	p, err := providerFromSource(packageSource)
+	if err != nil {
+		return nil, err
+	}
+	defer p.Close()
+	bytes, err := p.GetSchema(0)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(bytes, &spec)
+	if err != nil {
+		return nil, err
+	}
+	return bind(spec)
+}
+
+// providerFromSource takes a plugin name or path.
+//
+// PLUGIN[@VERSION] | PATH_TO_PLUGIN
+func providerFromSource(packageSource string) (plugin.Provider, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	sink := cmdutil.Diag()
+	pCtx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	var version *semver.Version
 	pkg := packageSource
 	if s := strings.SplitN(packageSource, "@", 2); len(s) == 2 {
@@ -125,19 +146,17 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 			return nil, err
 		}
 		// We assume this was a plugin and not a path, so load the plugin.
-		schema, err := schema.NewPluginLoader(host).LoadPackage(pkg, version)
+		provider, err := host.Provider(tokens.Package(pkg), version)
 		if err != nil {
 			// There is an executable with the same name, so suggest that
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
 			}
 		}
-		return schema, err
-
+		return provider, nil
 	}
 
 	// We were given a path to a binary, so invoke that.
-
 	info, err := os.Stat(pkg)
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("could not find file %s", pkg)
@@ -158,14 +177,5 @@ func schemaFromSchemaSource(packageSource string) (*schema.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer p.Close()
-	bytes, err := p.GetSchema(0)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(bytes, &spec)
-	if err != nil {
-		return nil, err
-	}
-	return bind(spec)
+	return p, err
 }
