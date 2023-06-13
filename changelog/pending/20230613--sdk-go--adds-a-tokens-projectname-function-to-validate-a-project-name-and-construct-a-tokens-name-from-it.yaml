@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Adds `tokens.ValidateProjectName` to validate project names.

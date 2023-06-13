@@ -179,14 +179,10 @@ func (p *projectReferenceStore) ParseReference(stackRef string) (*localBackendRe
 		project = currentProject.Name.String()
 	}
 
-	if len(project) > 100 {
-		return nil, errors.New("project names are limited to 100 characters")
-	}
-
-	if project != "" && !tokens.IsName(project) {
-		return nil, fmt.Errorf(
-			"project names may only contain alphanumerics, hyphens, underscores, and periods: %s",
-			project)
+	if project != "" {
+		if err := tokens.ValidateProjectName(project); err != nil {
+			return nil, err
+		}
 	}
 
 	if !tokens.IsName(name) || len(name) > 100 {

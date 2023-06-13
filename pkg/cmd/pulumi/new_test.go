@@ -323,7 +323,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 
 	err := runNew(context.Background(), args)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project name may only contain")
+	assert.Contains(t, err.Error(), "project names may only contain")
 }
 
 //nolint:paralleltest // changes directory for process
@@ -349,7 +349,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project name may only contain")
+	assert.Contains(t, err.Error(), "project names may only contain")
 
 	err = runNew(context.Background(), newArgs{
 		generateOnly:      true,
@@ -359,7 +359,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 		templateNameOrURL: "typescript",
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project name may not be empty")
+	assert.Contains(t, err.Error(), "project names may not be empty")
 }
 
 //nolint:paralleltest // changes directory for process

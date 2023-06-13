@@ -20,7 +20,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -604,31 +604,16 @@ func GetTemplateDir(templateKind TemplateKind) (string, error) {
 	return GetPulumiPath(TemplateDir)
 }
 
-// Naming rules are backend-specific. However, we provide baseline sanitization for project names
-// in this file. Though the backend may enforce stronger restrictions for a project name or description
-// further down the line.
-var (
-	validProjectNameRegexp = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
-)
-
 // ValidateProjectName ensures a project name is valid, if it is not it returns an error with a message suitable
 // for display to an end user.
 func ValidateProjectName(s string) error {
-	if s == "" {
-		return errors.New("A project name may not be empty")
-	}
-
-	if len(s) > 100 {
-		return errors.New("A project name must be 100 characters or less")
-	}
-
-	if !validProjectNameRegexp.MatchString(s) {
-		return errors.New("A project name may only contain alphanumeric, hyphens, underscores, and periods")
+	if err := tokens.ValidateProjectName(s); err != nil {
+		return err
 	}
 
 	// This is needed to stop cyclic imports in DotNet projects
 	if strings.ToLower(s) == "pulumi" || strings.HasPrefix(strings.ToLower(s), "pulumi.") {
-		return errors.New("A project name must not be `Pulumi` and must not start with the prefix `Pulumi.` " +
+		return errors.New("project name must not be `Pulumi` and must not start with the prefix `Pulumi.` " +
 			"to avoid collision with standard libraries")
 	}
 
