@@ -17,7 +17,7 @@ type pnpm struct {
 	executable string
 }
 
-// Assert that YarnClassic is an instance of PackageManager.
+// Assert that it is an instance of PackageManager.
 var _ PackageManager = &pnpm{}
 
 func newPNPM() (*pnpm, error) {
