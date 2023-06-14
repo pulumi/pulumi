@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"hyphenated-symbols/repro/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Bar struct {
 	HasAHyphen *string `pulumi:"has-a-hyphen"`

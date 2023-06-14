@@ -51,7 +51,9 @@
                 "@types/node": "ts4.3"
             }
         },
-        "go": {},
+        "go": {
+            "importBasePath": "functions-secrets/mypkg"
+        },
         "python": {}
     }
 }

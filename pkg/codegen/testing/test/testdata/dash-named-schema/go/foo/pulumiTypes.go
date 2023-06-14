@@ -7,8 +7,11 @@ import (
 	"context"
 	"reflect"
 
+	"dash-named-schema/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type TopLevel struct {
 	Buzz *string `pulumi:"buzz"`

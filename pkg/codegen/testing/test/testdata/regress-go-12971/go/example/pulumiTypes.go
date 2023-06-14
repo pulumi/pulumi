@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-go-12971/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type World struct {
 	Name      *string  `pulumi:"name"`
@@ -23,19 +26,19 @@ func (val *World) Defaults() *World {
 	}
 	tmp := *val
 	if tmp.Name == nil {
-		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
 			name_ := d.(string)
 			tmp.Name = &name_
 		}
 	}
 	if tmp.Populated == nil {
-		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvBool, "WORLD_POPULATED"); d != nil {
 			populated_ := d.(bool)
 			tmp.Populated = &populated_
 		}
 	}
 	if tmp.RadiusKm == nil {
-		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
 			radiusKm_ := d.(float64)
 			tmp.RadiusKm = &radiusKm_
 		}
@@ -67,17 +70,17 @@ func (val *WorldArgs) Defaults() *WorldArgs {
 	}
 	tmp := *val
 	if tmp.Name == nil {
-		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
 			tmp.Name = pulumi.StringPtr(d.(string))
 		}
 	}
 	if tmp.Populated == nil {
-		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvBool, "WORLD_POPULATED"); d != nil {
 			tmp.Populated = pulumi.BoolPtr(d.(bool))
 		}
 	}
 	if tmp.RadiusKm == nil {
-		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
 			tmp.RadiusKm = pulumi.Float64Ptr(d.(float64))
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-disable-defaults/example/internal"
 )
 
 // The provider type for the kubernetes package.
@@ -22,6 +23,7 @@ func NewProvider(ctx *pulumi.Context,
 		args = &ProviderArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:example", name, args, &resource, opts...)
 	if err != nil {

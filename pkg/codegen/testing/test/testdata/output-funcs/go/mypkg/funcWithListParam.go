@@ -8,10 +8,12 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // Check codegen of functions with a List parameter.
 func FuncWithListParam(ctx *pulumi.Context, args *FuncWithListParamArgs, opts ...pulumi.InvokeOption) (*FuncWithListParamResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FuncWithListParamResult
 	err := ctx.Invoke("mypkg::funcWithListParam", args, &rv, opts...)
 	if err != nil {

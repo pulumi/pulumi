@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"errors"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-plain-schema-with-root-package/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -32,6 +33,7 @@ func NewComponent(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

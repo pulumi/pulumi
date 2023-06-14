@@ -2,10 +2,11 @@
   "emittedFiles": [
     "foo/doc.go",
     "foo/init.go",
+    "foo/internal/pulumiUtilities.go",
+    "foo/internal/pulumiVersion.go",
     "foo/moduleResource.go",
     "foo/provider.go",
     "foo/pulumi-plugin.json",
-    "foo/pulumiEnums.go",
-    "foo/pulumiUtilities.go"
+    "foo/pulumiEnums.go"
   ]
 }

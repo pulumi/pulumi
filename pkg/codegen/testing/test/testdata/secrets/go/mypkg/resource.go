@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"secrets/mypkg/internal"
 )
 
 type Resource struct {
@@ -74,6 +75,7 @@ func NewResource(ctx *pulumi.Context,
 		"fooMap",
 	})
 	opts = append(opts, secrets)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("mypkg::Resource", name, args, &resource, opts...)
 	if err != nil {

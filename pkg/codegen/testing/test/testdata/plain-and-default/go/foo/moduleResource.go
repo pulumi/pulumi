@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-and-default/foo/internal"
 )
 
 type ModuleResource struct {
@@ -51,14 +52,14 @@ func NewModuleResource(ctx *pulumi.Context,
 		plain_optional_string_ := "buzzer"
 		args.Plain_optional_string = &plain_optional_string_
 	}
-	if isZero(args.Plain_required_bool) {
+	if internal.IsZero(args.Plain_required_bool) {
 		args.Plain_required_bool = true
 	}
 	args.Plain_required_const = "val"
-	if isZero(args.Plain_required_number) {
+	if internal.IsZero(args.Plain_required_number) {
 		args.Plain_required_number = 42.0
 	}
-	if isZero(args.Plain_required_string) {
+	if internal.IsZero(args.Plain_required_string) {
 		args.Plain_required_string = "buzzer"
 	}
 	if args.Required_bool == nil {
@@ -73,6 +74,7 @@ func NewModuleResource(ctx *pulumi.Context,
 	if args.Required_string == nil {
 		args.Required_string = pulumi.String("buzzer")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foobar::ModuleResource", name, args, &resource, opts...)
 	if err != nil {

@@ -8,11 +8,13 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 // The list of configurations.
 // API Version: 2020-12-01-preview.
 func ListConfigurations(ctx *pulumi.Context, args *ListConfigurationsArgs, opts ...pulumi.InvokeOption) (*ListConfigurationsResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv ListConfigurationsResult
 	err := ctx.Invoke("myedgeorder::listConfigurations", args, &rv, opts...)
 	if err != nil {

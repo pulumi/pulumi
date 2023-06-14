@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"resource-args-python/example/internal"
 )
 
 type Person struct {
@@ -24,6 +25,7 @@ func NewPerson(ctx *pulumi.Context,
 		args = &PersonArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Person
 	err := ctx.RegisterResource("example::Person", name, args, &resource, opts...)
 	if err != nil {

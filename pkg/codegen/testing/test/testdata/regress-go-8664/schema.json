@@ -56,7 +56,8 @@
             "extraTypeScriptFiles": []
         },
         "go": {
-            "generateExtraInputTypes": true
+            "generateExtraInputTypes": true,
+            "importBasePath": "regress-go-8664/example"
         }
     }
 }

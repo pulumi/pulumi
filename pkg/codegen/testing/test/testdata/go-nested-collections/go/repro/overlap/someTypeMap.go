@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-nested-collections/repro/internal"
 )
 
 type SomeTypeMapResource struct {
@@ -21,6 +22,7 @@ func NewSomeTypeMapResource(ctx *pulumi.Context,
 		args = &SomeTypeMapResourceArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource SomeTypeMapResource
 	err := ctx.RegisterResource("repro:overlap:SomeTypeMap", name, args, &resource, opts...)
 	if err != nil {

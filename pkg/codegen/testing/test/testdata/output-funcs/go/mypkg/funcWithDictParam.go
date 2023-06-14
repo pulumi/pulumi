@@ -8,10 +8,12 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // Check codegen of functions with a Dict<str,str> parameter.
 func FuncWithDictParam(ctx *pulumi.Context, args *FuncWithDictParamArgs, opts ...pulumi.InvokeOption) (*FuncWithDictParamResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FuncWithDictParamResult
 	err := ctx.Invoke("mypkg::funcWithDictParam", args, &rv, opts...)
 	if err != nil {

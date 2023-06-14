@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-go-10527/world/internal"
 )
 
 type Universe struct {
@@ -21,6 +22,7 @@ func NewUniverse(ctx *pulumi.Context,
 		args = &UniverseArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Universe
 	err := ctx.RegisterResource("world::Universe", name, args, &resource, opts...)
 	if err != nil {

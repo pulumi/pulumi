@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-go-12971/example/internal"
 )
 
 type Provider struct {
@@ -22,20 +23,21 @@ func NewProvider(ctx *pulumi.Context,
 	}
 
 	if args.Name == nil {
-		if d := getEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "WORLD_NAME"); d != nil {
 			args.Name = pulumi.StringPtr(d.(string))
 		}
 	}
 	if args.Populated == nil {
-		if d := getEnvOrDefault(nil, parseEnvBool, "WORLD_POPULATED"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvBool, "WORLD_POPULATED"); d != nil {
 			args.Populated = pulumi.BoolPtr(d.(bool))
 		}
 	}
 	if args.RadiusKm == nil {
-		if d := getEnvOrDefault(nil, parseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "WORLD_RADIUS_KM"); d != nil {
 			args.RadiusKm = pulumi.Float64Ptr(d.(float64))
 		}
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:world", name, args, &resource, opts...)
 	if err != nil {

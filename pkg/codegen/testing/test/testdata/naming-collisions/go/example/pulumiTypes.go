@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"naming-collisions/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Object struct {
 	Bar *string `pulumi:"bar"`

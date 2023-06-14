@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 type Cat struct {
@@ -23,6 +24,7 @@ func NewCat(ctx *pulumi.Context,
 		args = &CatArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Cat
 	err := ctx.RegisterResource("example::Cat", name, args, &resource, opts...)
 	if err != nil {

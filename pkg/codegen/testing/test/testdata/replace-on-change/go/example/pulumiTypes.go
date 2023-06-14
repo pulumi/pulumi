@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // A toy for a dog
 type Chew struct {

@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-8403/mongodbatlas/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type GetCustomDbRolesResult struct {
 }

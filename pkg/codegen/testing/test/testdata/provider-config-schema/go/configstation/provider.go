@@ -9,6 +9,7 @@ import (
 
 	"config"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 type Provider struct {
@@ -23,13 +24,14 @@ func NewProvider(ctx *pulumi.Context,
 	}
 
 	if args.FavoriteColor == nil {
-		if d := getEnvOrDefault(nil, nil, "FAVE_COLOR"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "FAVE_COLOR"); d != nil {
 			args.FavoriteColor = pulumi.StringPtr(d.(string))
 		}
 	}
 	if args.SecretSandwiches != nil {
 		args.SecretSandwiches = pulumi.ToSecret(args.SecretSandwiches).(config.SandwichArrayInput)
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Provider
 	err := ctx.RegisterResource("pulumi:providers:configstation", name, args, &resource, opts...)
 	if err != nil {

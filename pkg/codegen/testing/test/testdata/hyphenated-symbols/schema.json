@@ -32,7 +32,7 @@
     "language": {
         "go": {
             "generateResourceContainerTypes": true,
-            "importBasePath": "go-plain-ref-repro/repro",
+            "importBasePath": "hyphenated-symbols/repro",
             "liftSingleValueMethodReturns": true
         }
     }

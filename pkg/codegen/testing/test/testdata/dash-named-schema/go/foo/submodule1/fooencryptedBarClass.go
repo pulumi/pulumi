@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"dash-named-schema/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -21,6 +22,7 @@ func NewFOOEncryptedBarClass(ctx *pulumi.Context,
 		args = &FOOEncryptedBarClassArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource FOOEncryptedBarClass
 	err := ctx.RegisterResource("foo-bar:submodule1:FOOEncryptedBarClass", name, args, &resource, opts...)
 	if err != nil {

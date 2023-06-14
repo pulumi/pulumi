@@ -30,7 +30,7 @@
     },
     "go": {
       "generateExtraInputTypes": true,
-      "importBasePath": "regress-8503/mongodbatlas"
+      "importBasePath": "regress-8403/mongodbatlas"
     }
   }
 }

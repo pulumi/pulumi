@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -30,6 +31,7 @@ func NewTypeUses(ctx *pulumi.Context,
 		args = &TypeUsesArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource TypeUses
 	err := ctx.RegisterResource("example::TypeUses", name, args, &resource, opts...)
 	if err != nil {

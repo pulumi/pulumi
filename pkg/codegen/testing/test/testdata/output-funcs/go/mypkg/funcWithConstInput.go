@@ -5,10 +5,12 @@ package mypkg
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // Codegen demo with const inputs
 func FuncWithConstInput(ctx *pulumi.Context, args *FuncWithConstInputArgs, opts ...pulumi.InvokeOption) error {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithConstInput", args, &rv, opts...)
 	return err

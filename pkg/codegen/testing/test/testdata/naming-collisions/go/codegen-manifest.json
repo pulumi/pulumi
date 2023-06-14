@@ -2,6 +2,8 @@
   "emittedFiles": [
     "example/doc.go",
     "example/init.go",
+    "example/internal/pulumiUtilities.go",
+    "example/internal/pulumiVersion.go",
     "example/mainComponent.go",
     "example/mod/component.go",
     "example/mod/component2.go",
@@ -10,7 +12,6 @@
     "example/pulumi-plugin.json",
     "example/pulumiEnums.go",
     "example/pulumiTypes.go",
-    "example/pulumiUtilities.go",
     "example/resource.go",
     "example/resourceInput.go"
   ]

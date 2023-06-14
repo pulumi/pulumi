@@ -8,11 +8,13 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 // The list of product families.
 // API Version: 2020-12-01-preview.
 func ListProductFamilies(ctx *pulumi.Context, args *ListProductFamiliesArgs, opts ...pulumi.InvokeOption) (*ListProductFamiliesResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv ListProductFamiliesResult
 	err := ctx.Invoke("myedgeorder::listProductFamilies", args, &rv, opts...)
 	if err != nil {

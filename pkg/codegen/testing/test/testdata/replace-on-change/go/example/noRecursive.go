@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
 
 type NoRecursive struct {
@@ -28,6 +29,7 @@ func NewNoRecursive(ctx *pulumi.Context,
 		"replace",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource NoRecursive
 	err := ctx.RegisterResource("example::NoRecursive", name, args, &resource, opts...)
 	if err != nil {

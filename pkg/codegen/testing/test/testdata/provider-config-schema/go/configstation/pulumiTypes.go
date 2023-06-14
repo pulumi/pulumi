@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Child struct {
 	Age  *int    `pulumi:"age"`

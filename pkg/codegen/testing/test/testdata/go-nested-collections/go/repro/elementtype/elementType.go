@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-nested-collections/repro/internal"
 )
 
 type ElementType struct {
@@ -23,6 +24,7 @@ func NewElementType(ctx *pulumi.Context,
 		args = &ElementTypeArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ElementType
 	err := ctx.RegisterResource("repro:elementType:ElementType", name, args, &resource, opts...)
 	if err != nil {

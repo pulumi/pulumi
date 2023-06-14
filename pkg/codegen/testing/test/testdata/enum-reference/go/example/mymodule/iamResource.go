@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"enum-reference/example/internal"
 	iam "github.com/pulumi/pulumi-google-native/sdk/go/google/iam/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -22,6 +23,7 @@ func NewIamResource(ctx *pulumi.Context,
 		args = &IamResourceArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource IamResource
 	err := ctx.RegisterRemoteComponentResource("example:myModule:IamResource", name, args, &resource, opts...)
 	if err != nil {

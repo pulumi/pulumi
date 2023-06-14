@@ -3038,7 +3038,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		return nil
 	}
 
-	//basePath := pkg.importBasePath
+	// basePath := pkg.importBasePath
 
 	imports := map[string]string{
 		"github.com/blang/semver":                   "",
@@ -3047,7 +3047,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	imports[path.Join(pkg.importBasePath, "internal")] = ""
 
 	// If there are any internal dependencies, include them as blank imports.
-	//if topLevelModule {
+	// if topLevelModule {
 	def, err := pkg.pkg.Definition()
 	if err != nil {
 		return err
@@ -3702,7 +3702,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	name := packageName(pkg)
 	pathPrefix, err := packageRoot(pkg.Reference())
-
 	if err != nil {
 		return nil, err
 	}

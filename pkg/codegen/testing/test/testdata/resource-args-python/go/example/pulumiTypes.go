@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"resource-args-python/example/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type PetType struct {
 	Name *string `pulumi:"name"`
