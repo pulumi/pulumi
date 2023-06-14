@@ -307,6 +307,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.AllowMissingVariables, pcl.AllowMissingProperties},
 	},
+	{
+		Directory:   "unknown-resource",
+		Description: "Tests generating code for unknown resources when skipping resource type-checking",
+		SkipCompile: allProgLanguages,
+		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

@@ -850,10 +850,14 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
-				g.diagnostics = append(g.diagnostics, diagnostics...)
-				g.Fgenf(w, fmtString, propertyName,
-					g.lowerExpression(attr.Value, destType.(model.Type)))
+				if r.Schema != nil {
+					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+					g.diagnostics = append(g.diagnostics, diagnostics...)
+					g.Fgenf(w, fmtString, propertyName,
+						g.lowerExpression(attr.Value, destType.(model.Type)))
+				} else {
+					g.Fgenf(w, fmtString, propertyName, attr.Value)
+				}
 			}
 		})
 		if len(r.Inputs) > 1 {

@@ -273,6 +273,9 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
 		if err != nil {
+			if b.options.skipResourceTypecheck {
+				continue
+			}
 			return err
 		}
 		b.referencedPackages[name] = pkg.schema

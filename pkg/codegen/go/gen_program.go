@@ -695,7 +695,12 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
-				panic(err)
+				if r.Schema != nil {
+					panic(err)
+				} else {
+					// for unknown resources, make a best guess
+					vPath = "/v1"
+				}
 			}
 
 			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
@@ -955,13 +960,20 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	options, temps := g.lowerResourceOptions(r.Options)
 	g.genTemps(w, temps)
 
-	// Add conversions to input properties
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
-		input.Value = expr
-		g.genTemps(w, temps)
+	if r.Schema != nil {
+		// Add conversions to input properties
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			expr, temps := g.lowerExpression(input.Value, destType.(model.Type))
+			input.Value = expr
+			g.genTemps(w, temps)
+		}
+	}
+
+	if r.Schema == nil {
+		// for unknown resource the type name of the resource should be upper-case
+		typ = Title(typ)
 	}
 
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
