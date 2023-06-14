@@ -3038,8 +3038,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		return nil
 	}
 
-	// basePath := pkg.importBasePath
-
 	imports := map[string]string{
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
@@ -3047,7 +3045,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 	imports[path.Join(pkg.importBasePath, "internal")] = ""
 
 	// If there are any internal dependencies, include them as blank imports.
-	// if topLevelModule {
 	def, err := pkg.pkg.Definition()
 	if err != nil {
 		return err
@@ -3057,7 +3054,6 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 			imports[dep] = "_"
 		}
 	}
-	//}
 
 	pkg.genHeader(w, []string{"fmt"}, imports)
 
