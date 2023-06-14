@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pulumi
+package internal
 
 import (
 	"sync/atomic"
@@ -28,7 +28,7 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 	check := func(j int) func(*testing.T) {
 		return func(*testing.T) {
 			var n int32
-			wg := &workGroup{}
+			wg := &WorkGroup{}
 			wg.Add(j)
 
 			for k := 0; k < j; k++ {
@@ -50,6 +50,6 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 	t.Run("j=4", check(4)) //nolint:paralleltest // uses shared state with parent
 
 	// test Wait does not block on empty
-	wg := &workGroup{}
+	wg := &WorkGroup{}
 	wg.Wait()
 }

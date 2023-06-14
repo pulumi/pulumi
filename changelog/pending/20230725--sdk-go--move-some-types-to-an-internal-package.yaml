@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Move some types to an internal package, re-exporting them from sdk/go/pulumi. This should have no meaningful effect on users of these APIs.

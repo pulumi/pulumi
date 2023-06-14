@@ -25,6 +25,7 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +37,7 @@ type simpleComponentResource struct {
 func newSimpleComponentResource(ctx *Context, urn URN) ComponentResource {
 	var res simpleComponentResource
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
 	return &res
 }
 
@@ -48,8 +49,8 @@ func newSimpleCustomResource(ctx *Context, urn URN, id ID) CustomResource {
 	var res simpleCustomResource
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
-	res.id.resolve(id, id != "", false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
+	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	return &res
 }
 
@@ -61,8 +62,8 @@ func newSimpleProviderResource(ctx *Context, urn URN, id ID) ProviderResource {
 	var res simpleProviderResource
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
-	res.id.resolve(id, id != "", false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
+	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	res.pkg = string(resource.URN(urn).Type().Name())
 	return &res
 }
@@ -195,7 +196,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	out, resolve, _ := ctx.NewOutput()
 	resolve("outputty")
 	out2 := ctx.newOutputState(reflect.TypeOf(""))
-	out2.fulfill(nil, false, false, nil, nil)
+	internal.FulfillOutput(out2, nil, false, false, resourcesToInternal(nil), nil)
 	inputs := testInputs{
 		S:           String("a string"),
 		A:           Bool(true),
@@ -550,7 +551,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := ctx.newOutputState(reflect.TypeOf(""))
-	out2.fulfill(nil, false, true, nil, nil)
+	internal.FulfillOutput(out2, nil, false, true, resourcesToInternal(nil), nil)
 	inputs := testInputs{
 		S:           String("a string"),
 		A:           Bool(true),
@@ -637,8 +638,8 @@ func TestMapInputMarshalling(t *testing.T) {
 	t.Parallel()
 
 	var theResource simpleCustomResource
-	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
-	out.getState().resolve("outputty", true, false, nil)
+	out := internal.NewOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
+	internal.ResolveOutput(out, "outputty", true, false, resourcesToInternal(nil))
 
 	inputs1 := Map(map[string]Input{
 		"prop": out,
@@ -950,7 +951,7 @@ func TestOutputValueMarshalling(t *testing.T) {
 					}
 
 					out := ctx.newOutput(anyOutputType, resources...)
-					out.getState().resolve(value.value, known, secret, nil)
+					internal.ResolveOutput(out, value.value, known, secret, resourcesToInternal(nil))
 					inputs := Map{"value": out}
 
 					expectedValue := value.expected
@@ -1224,34 +1225,33 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 
 	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
 	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
-	unknownTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(unknownTemplateOptionsPtrOutput, nil, false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
-	unknownSecretTemplateOptionsPtrOutput.getState().resolve(nil, false /*known*/, true /*secret*/, nil)
+	internal.ResolveOutput(unknownSecretTemplateOptionsPtrOutput, nil, false, true, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
 	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
-	unknownStringOutput.getState().resolve("", false /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(unknownStringOutput, "", false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	assetOutputType := reflect.TypeOf((*AssetOutput)(nil)).Elem()
 	fileAssetOutput := ctx.newOutput(assetOutputType).(AssetOutput)
-	fileAssetOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(fileAssetOutput, &asset{path: "foo.txt"}, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 	fileAssetSecretOutput := ctx.newOutput(assetOutputType).(AssetOutput)
-	fileAssetSecretOutput.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, true /*secret*/, nil)
+	internal.ResolveOutput(fileAssetSecretOutput, &asset{path: "foo.txt"}, true, true, resourcesToInternal(nil)) /*known*/ /*secret*/
 	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
-	fileAssetOutputDeps.getState().resolve(&asset{path: "foo.txt"}, true /*known*/, false, /*secret*/
-		[]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})
+	internal.ResolveOutput(fileAssetOutputDeps, &asset{path: "foo.txt"}, true, false, resourcesToInternal([]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})) /*known*/ /*secret*/
 
 	anyOutputType := reflect.TypeOf((*AnyOutput)(nil)).Elem()
 
 	nestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	nestedOutput.getState().resolve(fileAssetOutput, true /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(nestedOutput, fileAssetOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	nestedPtrOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	nestedPtrOutput.getState().resolve(&fileAssetOutput, true /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(nestedPtrOutput, &fileAssetOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	nestedNestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
-	nestedNestedOutput.getState().resolve(nestedOutput, true /*known*/, false /*secret*/, nil)
+	internal.ResolveOutput(nestedNestedOutput, nestedOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	tests := []struct {
 		name     string

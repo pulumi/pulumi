@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
 {{with $builtins := .Builtins}}
@@ -208,13 +210,9 @@ func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Out
 {{end}}
 {{end}}
 
-func getResolvedValue(input Input) (reflect.Value, bool) {
-	switch input := input.(type) {
-	case *asset, *archive:
-		return reflect.ValueOf(input), true
-	default:
-		return reflect.Value{}, false
-	}
+func init() {
+	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
 }
 
 {{range .Builtins}}

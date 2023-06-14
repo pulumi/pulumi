@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pulumi
+package internal
 
 import (
 	"fmt"
 	"sync"
 )
 
-// Mimicks the interface of `sync.WaitGroup` but does not panic in
+// WorkGroup mimicks the interface of `sync.WaitGroup` but does not panic in
 // case of races between `Wait` and `Add` with a positive delta in the
 // state with a zero counter. The reason `sync.WaitGroup` panics is to
-// warn about a race condition. Using `workGroup` implicitly accept
+// warn about a race condition. Using `WorkGroup` implicitly accept
 // these race conditions instead. Use sparingly and document why it is
 // used.
-type workGroup struct {
+type WorkGroup struct {
 	mutex   sync.Mutex
 	cond    *sync.Cond
 	counter int
 }
 
-func (wg *workGroup) Wait() {
+func (wg *WorkGroup) Wait() {
 	wg.mutex.Lock()
 	defer wg.mutex.Unlock()
 
@@ -44,7 +44,7 @@ func (wg *workGroup) Wait() {
 	}
 }
 
-func (wg *workGroup) Add(delta int) {
+func (wg *WorkGroup) Add(delta int) {
 	wg.mutex.Lock()
 	defer wg.mutex.Unlock()
 
@@ -66,6 +66,6 @@ func (wg *workGroup) Add(delta int) {
 	}
 }
 
-func (wg *workGroup) Done() {
+func (wg *WorkGroup) Done() {
 	wg.Add(-1)
 }

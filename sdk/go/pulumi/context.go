@@ -39,12 +39,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
+
+type workGroup = internal.WorkGroup
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
@@ -499,7 +502,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			}
 			if err != nil {
 				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
-				output.getState().reject(err)
+				internal.RejectOutput(output, err)
 				return
 			}
 
@@ -509,9 +512,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			known := !outprops.ContainsUnknowns()
 			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
 			if err != nil {
-				output.getState().reject(err)
+				internal.RejectOutput(output, err)
 			} else {
-				output.getState().resolve(dest.Interface(), known, secret, deps)
+				internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
 			}
 
 			logging.V(9).Infof("Call(%s, ...): success: w/ %d outs (err=%v)", tok, len(outprops), err)
@@ -806,7 +809,7 @@ func (ctx *Context) registerResource(
 
 	options := merge(opts...)
 
-	if parent := options.Parent; parent != nil && parent.URN().getState() == nil {
+	if parent := options.Parent; parent != nil && internal.GetOutputState(parent.URN()) == nil {
 		// Guard against uninitialized parent resources to prevent
 		// panics from invalid state further down the line.
 		// Uninitialized parent resources won't have a URN.
@@ -1198,7 +1201,8 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 			fieldV.Set(reflect.ValueOf(output))
 
 			if tag == "" && field.Type != mapOutputType {
-				output.getState().reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
+				internal.RejectOutput(output,
+					fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
 			}
 
 			state.outputs[tag] = output
@@ -1273,9 +1277,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	if err != nil {
 		// If there was an error, we must reject everything.
 		for _, output := range state.outputs {
-			output.getState().reject(err)
+			internal.RejectOutput(output, err)
 		}
-		state.rawOutputs.getState().reject(err)
+		internal.RejectOutput(state.rawOutputs, err)
 		return
 	}
 
@@ -1305,7 +1309,7 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 
 	// We need to wait until after we finish mutating outprops to resolve. Resolving
 	// unlocks multithreaded access to the resolved value, making mutation a data race.
-	state.rawOutputs.getState().resolve(outprops, true, false, nil)
+	internal.ResolveOutput(state.rawOutputs, outprops, true, false, resourcesToInternal(nil))
 
 	for k, output := range state.outputs {
 		// If this is an unknown or missing value during a dry run, do nothing.
@@ -1323,9 +1327,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		dest := reflect.New(output.ElementType()).Elem()
 		secret, err := unmarshalOutput(ctx, v, dest)
 		if err != nil {
-			output.getState().reject(err)
+			internal.RejectOutput(output, err)
 		} else {
-			output.getState().resolve(dest.Interface(), known, secret, deps[k])
+			internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps[k]))
 		}
 	}
 }
@@ -1371,7 +1375,7 @@ func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) 
 			return nil
 		}
 
-		noParent, _, _, _, err := alias.NoParent.ToBoolOutput().await(ctx.Context())
+		noParent, _, _, _, err := internal.AwaitOutput(ctx.Context(), alias.NoParent.ToBoolOutput())
 		if err != nil {
 			return fmt.Errorf("alias NoParent field could not be resolved: %w", err)
 		}
@@ -1414,7 +1418,7 @@ func (ctx *Context) mapAliases(aliases []Alias,
 		if input == nil {
 			return "", nil
 		}
-		content, known, secret, _, err := input.ToStringOutput().await(ctx.Context())
+		content, known, secret, _, err := internal.AwaitOutput(ctx.Context(), input.ToStringOutput())
 		if err != nil {
 			return "", err
 		}
@@ -1824,11 +1828,11 @@ func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error 
 }
 
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
-	return newOutputState(&ctx.join, elementType, deps...)
+	return internal.NewOutputState(&ctx.join, elementType, resourcesToInternal(deps)...)
 }
 
 func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
-	return newOutput(&ctx.join, typ, deps...)
+	return internal.NewOutput(&ctx.join, typ, resourcesToInternal(deps)...)
 }
 
 // NewOutput creates a new output associated with this context.
