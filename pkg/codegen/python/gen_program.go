@@ -741,13 +741,16 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	}
 
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
-		temps = append(temps, valueTemps...)
-		input.Value = value
+	if r.Schema != nil {
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
+			temps = append(temps, valueTemps...)
+			input.Value = value
+		}
 	}
+
 	g.genTemps(w, temps)
 
 	instantiate := func(resName string) {

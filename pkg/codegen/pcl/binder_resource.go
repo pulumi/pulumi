@@ -97,6 +97,10 @@ func AnnotateAttributeValue(expr model.Expression, attributeType schema.Type) mo
 }
 
 func AnnotateResourceInputs(node *Resource) {
+	if node.Schema == nil {
+		// skip annotations for resource which don't have a schema
+		return
+	}
 	resourceProperties := make(map[string]*schema.Property)
 	for _, property := range node.Schema.Properties {
 		resourceProperties[property.Name] = property
@@ -129,6 +133,17 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		return diagnostics
 	}
 
+	makeResourceDynamic := func() {
+		// make the inputs and outputs of the resource dynamic
+		node.Token = token
+		node.OutputType = model.DynamicType
+		inferredInputProperties := map[string]model.Type{}
+		for _, attr := range node.Inputs {
+			inferredInputProperties[attr.Name] = attr.Type()
+		}
+		node.InputType = model.NewObjectType(inferredInputProperties)
+	}
+
 	isProvider := false
 	if pkg == "pulumi" && module == "providers" {
 		pkg, isProvider = name, true
@@ -144,6 +159,12 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if err != nil {
 		e := unknownPackage(pkg, tokenRange)
 		e.Detail = err.Error()
+
+		if b.options.skipResourceTypecheck {
+			makeResourceDynamic()
+			return hcl.Diagnostics{asWarningDiagnostic(e)}
+		}
+
 		return hcl.Diagnostics{e}
 	}
 
@@ -152,14 +173,28 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	if isProvider {
 		r, err := pkgSchema.schema.Provider()
 		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		}
 		res = r
 	} else {
 		r, tk, ok, err := pkgSchema.LookupResource(token)
 		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
+
 			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
 		} else if !ok {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return diagnostics
+			}
+
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
 		res = r

@@ -1143,12 +1143,14 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	csharpInputPropertyNameMap := g.extractInputPropertyNameMap(r)
 
 	// Add conversions to input properties
-	for _, input := range r.Inputs {
-		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
-		g.diagnostics = append(g.diagnostics, diagnostics...)
-		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
-		if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
-			input.Name = csharpName
+	if r.Schema != nil {
+		for _, input := range r.Inputs {
+			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+			g.diagnostics = append(g.diagnostics, diagnostics...)
+			input.Value = g.lowerExpression(input.Value, destType.(model.Type))
+			if csharpName, ok := csharpInputPropertyNameMap[input.Name]; ok {
+				input.Name = csharpName
+			}
 		}
 	}
 

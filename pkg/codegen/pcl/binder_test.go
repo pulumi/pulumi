@@ -348,6 +348,37 @@ func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
 	assert.NotNil(t, program)
 }
 
+func TestBindingUnknownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	source := `
+resource provider "pulumi:providers:unknown" { }
+
+resource main "unknown:index:main" {
+    first = "hello"
+    second = {
+        foo = "bar"
+    }
+}
+
+resource fromModule "unknown:eks:example" {
+   options { range = 10 }
+   associatedMain = main.id
+}
+
+output "mainId" {
+    value = main.id
+}
+
+output "values" {
+    value = fromModule.values.first
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "There are no errors")
+	assert.NotNil(t, program)
+}
+
 func TestTraversalOfOptionalObject(t *testing.T) {
 	t.Parallel()
 	// foo : Option<{ bar: string }>

@@ -45,6 +45,15 @@ func resourceLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagn
 	return errorf(tokenRange, "error loading resource type '%s': %v", token, err)
 }
 
+func asWarningDiagnostic(diag *hcl.Diagnostic) *hcl.Diagnostic {
+	if diag == nil {
+		return diag
+	}
+
+	diag.Severity = hcl.DiagWarning
+	return diag
+}
+
 func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
 }
