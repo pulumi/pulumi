@@ -47,7 +47,7 @@
     },
     "go": {
       "generateResourceContainerTypes": true,
-      "importBasePath": "github.com/pulumi/pulumi-xyz/sdk/go/xyz",
+      "importBasePath": "plain-schema-gh6957/xyz",
       "generateExtraInputTypes": true
     },
     "nodejs": {

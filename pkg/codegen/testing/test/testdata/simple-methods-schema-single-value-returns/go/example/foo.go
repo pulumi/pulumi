@@ -7,8 +7,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-methods-schema/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-methods-schema-single-value-returns/example/internal"
 )
 
 type Foo struct {

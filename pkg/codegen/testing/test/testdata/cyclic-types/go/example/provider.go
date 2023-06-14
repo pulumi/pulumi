@@ -7,7 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/cyclic-types/go/example/internal"
+	"cyclic-types/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

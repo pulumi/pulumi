@@ -4,8 +4,8 @@
 package example
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-yaml-schema/example/internal"
 )
 
 func ArgFunction(ctx *pulumi.Context, args *ArgFunctionArgs, opts ...pulumi.InvokeOption) (*ArgFunctionResult, error) {

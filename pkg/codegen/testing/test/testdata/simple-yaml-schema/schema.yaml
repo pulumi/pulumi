@@ -143,7 +143,7 @@ language:
   csharp: { "packageReferences": { "Pulumi": "3.23" } }
   go:
     {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example",
+      "importBasePath": "simple-yaml-schema/example",
       "disableFunctionOutputVersions": true
     }
   nodejs:

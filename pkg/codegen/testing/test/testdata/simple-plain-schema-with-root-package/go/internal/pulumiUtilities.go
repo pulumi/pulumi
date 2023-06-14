@@ -71,7 +71,7 @@ func PkgVersion() (semver.Version, error) {
 	}
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-plain-schema-with-root-package/go/example(/v\\d+)?")
+	re := regexp.MustCompile("^simple-plain-schema-with-root-package(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.

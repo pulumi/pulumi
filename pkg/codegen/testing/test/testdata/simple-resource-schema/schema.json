@@ -255,7 +255,7 @@
       "respectSchemaVersion": true
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-resource-schema/go/example",
+      "importBasePath": "simple-resource-schema/example",
       "generateExtraInputTypes": true,
       "respectSchemaVersion": true
     },

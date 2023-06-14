@@ -8,8 +8,8 @@ import (
 	"reflect"
 
 	"errors"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/simple-plain-schema/go/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-plain-schema/example/internal"
 )
 
 type Component struct {
