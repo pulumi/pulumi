@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1233,7 +1234,7 @@ func assertHasDeps(
 
 func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 	out := newIntOutput()
-	out.resolve(0, isKnown, false /* secret */, []Resource{res})
+	internal.ResolveOutput(out, 0, isKnown, false, resourcesToInternal([]Resource{res})) /* secret */
 	return out
 }
 
