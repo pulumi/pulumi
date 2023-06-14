@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/go
+  description: Adds explicit package versioning to Golang codegen
