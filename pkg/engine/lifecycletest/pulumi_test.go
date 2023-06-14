@@ -1473,6 +1473,9 @@ type Resource struct {
 	dependencies        []resource.URN
 	parent              resource.URN
 	deleteBeforeReplace bool
+
+	aliasSpecs         bool
+	grpcRequestHeaders map[string]string
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
@@ -1484,6 +1487,8 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
 			AliasURNs:           r.aliasURNs,
 			Aliases:             r.aliases,
+			AliasSpecs:          r.aliasSpecs,
+			GrpcRequestHeaders:  r.grpcRequestHeaders,
 		})
 		if err != nil {
 			return err
@@ -1496,29 +1501,14 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 	return nil
 }
 
-func TestAliases(t *testing.T) {
-	t.Parallel()
+type updateProgramWithResourceFunc func(*deploy.Snapshot, []Resource, []display.StepOp, bool) *deploy.Snapshot
 
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := olds["forcesReplacement"]
-					new, hasNew := news["forcesReplacement"]
-					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
-						replaceKeys = append(replaceKeys, "forcesReplacement")
-					}
-					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
-				},
-			}, nil
-		}),
-	}
-
-	updateProgramWithResource := func(
+func createUpdateProgramWithResourceFuncForAliasTests(
+	t *testing.T,
+	loaders []*deploytest.ProviderLoader,
+) updateProgramWithResourceFunc {
+	t.Helper()
+	return func(
 		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
 	) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1563,6 +1553,31 @@ func TestAliases(t *testing.T) {
 		}
 		return p.Run(t, snap)
 	}
+}
+
+func TestAliases(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// The `forcesReplacement` key forces replacement and all other keys can update in place
+				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					replaceKeys := []resource.PropertyKey{}
+					old, hasOld := olds["forcesReplacement"]
+					new, hasNew := news["forcesReplacement"]
+					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
+						replaceKeys = append(replaceKeys, "forcesReplacement")
+					}
+					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
+				},
+			}, nil
+		}),
+	}
+
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
 
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
@@ -1573,7 +1588,7 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:       "pkgA:index:t1",
 		name:    "n2",
-		aliases: []resource.Alias{{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"}},
+		aliases: []resource.Alias{{Name: "n1"}},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	// Ensure that rename produces Same with multiple aliases
@@ -1581,8 +1596,8 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n3",
 		aliases: []resource.Alias{
-			{Name: "n2", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
-			{Name: "n1", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n2"},
+			{Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1592,7 +1607,7 @@ func TestAliases(t *testing.T) {
 		name: "n3",
 		aliases: []resource.Alias{
 			{URN: "urn:pulumi:test::test::pkgA:index:t1::n2"},
-			{Name: "n1", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1602,9 +1617,8 @@ func TestAliases(t *testing.T) {
 		name: "n1",
 		aliases: []resource.Alias{
 			{URN: "urn:pulumi:test::test::pkgA:index:t1::n3"},
-			{Name: "n2", Type: "pkgA:index:t1", Stack: "test", Project: "test"},
+			{Name: "n2"},
 		},
-		aliasURNs: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1::n3"},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
 	// Ensure that removing aliases is okay (once old names are gone from all snapshots)
@@ -1618,7 +1632,7 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t2",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1627,8 +1641,8 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:othermod:t3",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n1"},
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1637,9 +1651,9 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:othermod:t3",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:othermod:t3::n1"},
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n1"},
+			{Type: "pkgA:index:t1"},
+			{Type: "pkgA:othermod:t3"},
+			{Type: "pkgA:index:t2"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1657,7 +1671,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("x"): resource.NewNumberProperty(42),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:othermod:t3::n1"},
+			{Type: "pkgA:othermod:t3", Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
 
@@ -1669,7 +1683,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("x"): resource.NewNumberProperty(1000),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t4::n2"},
+			{Type: "pkgA:index:t4", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpUpdate}, false)
 
@@ -1681,7 +1695,7 @@ func TestAliases(t *testing.T) {
 			resource.PropertyKey("forcesReplacement"): resource.NewNumberProperty(1000),
 		},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t5::n3"},
+			{Type: "pkgA:index:t5", Name: "n3"},
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1695,7 +1709,7 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t6::n4"},
+			{Type: "pkgA:index:t6", Name: "n4"},
 		},
 	}}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1721,14 +1735,14 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:            "pkgA:index:t2-new",
 		name:         "n2-new",
 		dependencies: []resource.URN{"urn:pulumi:test::test::pkgA:index:t1-new::n1-new"},
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t2::n2"},
+			{Type: "pkgA:index:t2", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1754,14 +1768,14 @@ func TestAliases(t *testing.T) {
 		},
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:      "pkgA:index:t2-new",
 		name:   "n2-new",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n2"},
+			{Type: "pkgA:index:t2", Name: "n2"},
 		},
 	}}, []display.StepOp{deploy.OpSame, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}, false)
 
@@ -1770,13 +1784,13 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n2",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Name: "n1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n3",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}}, []display.StepOp{deploy.OpCreate}, true)
 
@@ -1785,13 +1799,13 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1",
 		name: "n1",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Name: "n1"},
 		},
 	}, {
 		t:    "pkgA:index:t2",
 		name: "n2",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n2"},
+			{Type: "index:t1"},
 		},
 	}}, []display.StepOp{deploy.OpCreate}, false)
 
@@ -1815,21 +1829,21 @@ func TestAliases(t *testing.T) {
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1::n1"},
+			{Type: "pkgA:index:t1", Name: "n1"},
 		},
 	}, {
 		t:      "pkgA:index:t2",
 		name:   "n1-new-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new::n1-new"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::n1-sub"},
+			{Type: "pkgA:index:t2", Name: "n1-sub"},
 		},
 	}, {
 		t:      "pkgA:index:t3",
 		name:   "n1-new-sub-sub",
 		parent: resource.URN("urn:pulumi:test::test::pkgA:index:t1-new$pkgA:index:t2::n1-new-sub"),
 		aliases: []resource.Alias{
-			{URN: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2$pkgA:index:t3::n1-sub-sub"},
+			{Type: "pkgA:index:t3", Name: "n1-sub-sub"},
 		},
 	}}, []display.StepOp{deploy.OpSame}, false)
 
@@ -1890,6 +1904,195 @@ func TestAliases(t *testing.T) {
 	var err error
 	_, err = snap.NormalizeURNReferences()
 	assert.Nil(t, err)
+
+	// Start again with a parent and child.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "child",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Ensure renaming just the child produces Same
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "childnew",
+		aliases: []resource.Alias{
+			{Name: "child"},
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Ensure changing just the child's type produces Same
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child2",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "childnew",
+		aliases: []resource.Alias{
+			{Type: "pkgA:index:child"},
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Start again with multiple nested children.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::parent",
+		name:   "sub",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1::sub",
+		name:   "sub-sub",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Ensure renaming the bottom child produces Same.
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::parent",
+		name:   "sub",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1::sub",
+		name:   "sub-sub-new",
+		aliases: []resource.Alias{
+			{Name: "sub-sub"},
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Start again with two resources with no relationship.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:    "pkgA:index:t2",
+		name: "two",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Now make "two" a child of "one" ensuring no changes.
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:      "pkgA:index:t2",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::one",
+		name:   "two",
+		aliases: []resource.Alias{
+			{NoParent: true},
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Now remove the parent relationship.
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:    "pkgA:index:t2",
+		name: "two",
+		aliases: []resource.Alias{
+			{Parent: "urn:pulumi:test::test::pkgA:index:t1::one"},
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+}
+
+func TestAliasesNodeJSBackCompat(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
+
+	tests := []struct {
+		name               string
+		aliasSpecs         bool
+		grpcRequestHeaders map[string]string
+		noParentAlias      resource.Alias
+	}{
+		{
+			name:               "Old Node SDK",
+			grpcRequestHeaders: map[string]string{"pulumi-runtime": "nodejs"},
+			// Old Node.js SDKs set Parent to "" rather than setting NoParent to true,
+			noParentAlias: resource.Alias{Parent: ""},
+		},
+		{
+			name:               "New Node SDK",
+			grpcRequestHeaders: map[string]string{"pulumi-runtime": "nodejs"},
+			// Indicate we're sending alias specs correctly.
+			aliasSpecs: true,
+			// Properly set NoParent to true.
+			noParentAlias: resource.Alias{NoParent: true},
+		},
+		{
+			name: "Unknown SDK",
+			// Properly set NoParent to true.
+			noParentAlias: resource.Alias{NoParent: true},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := updateProgramWithResource(nil, []Resource{{
+				t:                  "pkgA:index:t1",
+				name:               "one",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}, {
+				t:                  "pkgA:index:t2",
+				name:               "two",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpCreate}, false)
+
+			// Now make "two" a child of "one" ensuring no changes.
+			snap = updateProgramWithResource(snap, []Resource{{
+				t:                  "pkgA:index:t1",
+				name:               "one",
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}, {
+				t:      "pkgA:index:t2",
+				parent: "urn:pulumi:test::test::pkgA:index:t1::one",
+				name:   "two",
+				aliases: []resource.Alias{
+					tt.noParentAlias,
+				},
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpSame}, false)
+
+			// Now remove the parent relationship.
+			_ = updateProgramWithResource(snap, []Resource{{
+				t:    "pkgA:index:t1",
+				name: "one",
+			}, {
+				t:    "pkgA:index:t2",
+				name: "two",
+				aliases: []resource.Alias{
+					{Parent: "urn:pulumi:test::test::pkgA:index:t1::one"},
+				},
+				aliasSpecs:         tt.aliasSpecs,
+				grpcRequestHeaders: tt.grpcRequestHeaders,
+			}}, []display.StepOp{deploy.OpSame}, false)
+		})
+	}
 }
 
 func TestAliasURNs(t *testing.T) {
@@ -1914,51 +2117,7 @@ func TestAliasURNs(t *testing.T) {
 		}),
 	}
 
-	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
-	) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			err := registerResources(t, monitor, resources)
-			return err
-		})
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
-			Steps: []TestStep{
-				{
-					Op:            Update,
-					ExpectFailure: expectFailure,
-					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result,
-					) result.Result {
-						for _, event := range events {
-							if event.Type == ResourcePreEvent {
-								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
-							}
-						}
-
-						for _, entry := range entries {
-							if entry.Step.Type() == "pulumi:providers:pkgA" {
-								continue
-							}
-							switch entry.Kind {
-							case JournalEntrySuccess:
-								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
-							case JournalEntryFailure:
-								assert.Fail(t, "unexpected failure in journal")
-							case JournalEntryBegin:
-							case JournalEntryOutputs:
-							}
-						}
-
-						return res
-					},
-				},
-			},
-		}
-		return p.Run(t, snap)
-	}
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
 
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
@@ -2281,6 +2440,107 @@ func TestAliasURNs(t *testing.T) {
 	var err error
 	_, err = snap.NormalizeURNReferences()
 	assert.Nil(t, err)
+
+	// Start again with a parent and child.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "child",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Ensure renaming just the child produces Same
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "childnew",
+		aliasURNs: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:parent$pkgA:index:child::child",
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Ensure changing just the child's type produces Same
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:parent",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:child2",
+		parent: "urn:pulumi:test::test::pkgA:index:parent::parent",
+		name:   "childnew",
+		aliasURNs: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:parent$pkgA:index:child::childnew",
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Start again with multiple nested children.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::parent",
+		name:   "sub",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1::sub",
+		name:   "sub-sub",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Ensure renaming the bottom child produces Same.
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "parent",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::parent",
+		name:   "sub",
+	}, {
+		t:      "pkgA:index:t1",
+		parent: "urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1::sub",
+		name:   "sub-sub-new",
+		aliasURNs: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t1$pkgA:index:t1::sub-sub",
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Start again with two resources with no relationship.
+	snap = updateProgramWithResource(nil, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:    "pkgA:index:t2",
+		name: "two",
+	}}, []display.StepOp{deploy.OpCreate}, false)
+
+	// Now make "two" a child of "one" ensuring no changes.
+	snap = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:      "pkgA:index:t2",
+		parent: "urn:pulumi:test::test::pkgA:index:t1::one",
+		name:   "two",
+		aliasURNs: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t2::two",
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
+
+	// Now remove the parent relationship.
+	_ = updateProgramWithResource(snap, []Resource{{
+		t:    "pkgA:index:t1",
+		name: "one",
+	}, {
+		t:    "pkgA:index:t2",
+		name: "two",
+		aliasURNs: []resource.URN{
+			"urn:pulumi:test::test::pkgA:index:t1$pkgA:index:t2::two",
+		},
+	}}, []display.StepOp{deploy.OpSame}, false)
 }
 
 func TestPersistentDiff(t *testing.T) {

@@ -6,12 +6,13 @@ import (
 )
 
 type Alias struct {
-	URN     URN
-	Name    string
-	Type    string
-	Project string
-	Stack   string
-	Parent  URN
+	URN      URN
+	Name     string
+	Type     string
+	Project  string
+	Stack    string
+	Parent   URN
+	NoParent bool
 }
 
 func (a *Alias) GetURN() URN {
@@ -19,10 +20,6 @@ func (a *Alias) GetURN() URN {
 		return a.URN
 	}
 	return CreateURN(a.Name, a.Type, a.Parent, a.Project, a.Stack)
-}
-
-func (a *Alias) NoParent() bool {
-	return a.Parent == ""
 }
 
 // CreateURN computes a URN from the combination of a resource name, resource type, and optional parent,

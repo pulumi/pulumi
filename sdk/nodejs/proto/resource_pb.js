@@ -1298,7 +1298,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     retainondelete: jspb.Message.getBooleanFieldWithDefault(msg, 25, false),
     aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
-    deletedwith: jspb.Message.getFieldWithDefault(msg, 27, "")
+    deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
+    aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false)
   };
 
   if (includeInstance) {
@@ -1449,6 +1450,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 27:
       var value = /** @type {string} */ (reader.readString());
       msg.setDeletedwith(value);
+      break;
+    case 28:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAliasspecs(value);
       break;
     default:
       reader.skipField();
@@ -1662,6 +1667,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       27,
+      f
+    );
+  }
+  f = message.getAliasspecs();
+  if (f) {
+    writer.writeBool(
+      28,
       f
     );
   }
@@ -2658,6 +2670,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getDeletedwith = function() {
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.setDeletedwith = function(value) {
   return jspb.Message.setProto3StringField(this, 27, value);
+};
+
+
+/**
+ * optional bool aliasSpecs = 28;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAliasspecs = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 28, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setAliasspecs = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 28, value);
 };
 
 

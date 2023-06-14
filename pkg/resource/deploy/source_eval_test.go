@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -1161,6 +1162,125 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 			newGoal := inheritFromParent(*goal, *parentGoal)
 
 			assert.Equal(t, test.wantDeletedWith, newGoal.DeletedWith)
+		})
+	}
+}
+
+func TestRequestFromNodeJS(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	newContext := func(md map[string]string) context.Context {
+		return metadata.NewIncomingContext(ctx, metadata.New(md))
+	}
+
+	tests := []struct {
+		name     string
+		ctx      context.Context
+		expected bool
+	}{
+		{
+			name:     "no metadata",
+			ctx:      ctx,
+			expected: false,
+		},
+		{
+			name:     "empty metadata",
+			ctx:      newContext(map[string]string{}),
+			expected: false,
+		},
+		{
+			name:     "user-agent foo/1.0",
+			ctx:      newContext(map[string]string{"user-agent": "foo/1.0"}),
+			expected: false,
+		},
+		{
+			name:     "user-agent grpc-node-js/1.8.15",
+			ctx:      newContext(map[string]string{"user-agent": "grpc-node-js/1.8.15"}),
+			expected: true,
+		},
+		{
+			name:     "pulumi-runtime foo",
+			ctx:      newContext(map[string]string{"pulumi-runtime": "foo"}),
+			expected: false,
+		},
+		{
+			name:     "pulumi-runtime nodejs",
+			ctx:      newContext(map[string]string{"pulumi-runtime": "nodejs"}),
+			expected: true,
+		},
+		{
+			// Always respect the value of pulumi-runtime, regardless of the user-agent.
+			name: "user-agent grpc-go/1.54.0, pulumi-runtime nodejs",
+			ctx: newContext(map[string]string{
+				"user-agent":     "grpc-go/1.54.0",
+				"pulumi-runtime": "nodejs",
+			}),
+			expected: true,
+		},
+		{
+			name: "user-agent grpc-node-js/1.8.15, pulumi-runtime python",
+			ctx: newContext(map[string]string{
+				"user-agent":     "grpc-node-js/1.8.15",
+				"pulumi-runtime": "python",
+			}),
+			expected: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := requestFromNodeJS(tt.ctx)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestTransformAliasForNodeJSCompat(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    resource.Alias
+		expected resource.Alias
+	}{
+		{
+			name:     `{Parent: "", NoParent: true} (transformed)`,
+			input:    resource.Alias{Parent: "", NoParent: true},
+			expected: resource.Alias{Parent: "", NoParent: false},
+		},
+		{
+			name:     `{Parent: "", NoParent: false} (transformed)`,
+			input:    resource.Alias{Parent: "", NoParent: false},
+			expected: resource.Alias{Parent: "", NoParent: true},
+		},
+		{
+			name:     `{Parent: "", NoParent: false, Name: "name"} (transformed)`,
+			input:    resource.Alias{Parent: "", NoParent: false, Name: "name"},
+			expected: resource.Alias{Parent: "", NoParent: true, Name: "name"},
+		},
+		{
+			name:     `{Parent: "", NoParent: true, Name: "name"} (transformed)`,
+			input:    resource.Alias{Parent: "", NoParent: true, Name: "name"},
+			expected: resource.Alias{Parent: "", NoParent: false, Name: "name"},
+		},
+		{
+			name:     `{Parent: "foo", NoParent: false} (no transform)`,
+			input:    resource.Alias{Parent: "foo", NoParent: false},
+			expected: resource.Alias{Parent: "foo", NoParent: false},
+		},
+		{
+			name:     `{Parent: "foo", NoParent: false, Name: "name"} (no transform)`,
+			input:    resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
+			expected: resource.Alias{Parent: "foo", NoParent: false, Name: "name"},
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := transformAliasForNodeJSCompat(tt.input)
+			assert.Equal(t, tt.expected, actual)
 		})
 	}
 }

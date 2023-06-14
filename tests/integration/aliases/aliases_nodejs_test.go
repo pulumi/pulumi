@@ -22,6 +22,10 @@ func TestNodejsAliases(t *testing.T) {
 		"retype_component",
 		"rename_component",
 		"retype_parents",
+		"adopt_component_child",
+		"extract_component_child",
+		"rename_component_child",
+		"retype_component_child",
 	}
 
 	for _, dir := range dirs {

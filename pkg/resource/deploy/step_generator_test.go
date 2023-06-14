@@ -360,3 +360,124 @@ func TestEngineDiff(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateAliases(t *testing.T) {
+	t.Parallel()
+
+	const (
+		project = "project"
+		stack   = "stack"
+	)
+
+	parentTypeAlias := resource.CreateURN("myres", "test:resource:type2", "", project, stack)
+	parentNameAlias := resource.CreateURN("myres2", "test:resource:type", "", project, stack)
+
+	cases := []struct {
+		name         string
+		parentAlias  *resource.URN
+		childAliases []resource.Alias
+		expected     map[resource.URN]struct{}
+	}{
+		{
+			name:     "no aliases",
+			expected: map[resource.URN]struct{}{},
+		},
+		{
+			name: "child alias (type), no parent aliases",
+			childAliases: []resource.Alias{
+				{Type: "test:resource:child2"},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child2::myres-child": {},
+			},
+		},
+		{
+			name: "child alias (name), no parent aliases",
+			childAliases: []resource.Alias{
+				{Name: "child2"},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::child2": {},
+			},
+		},
+		{
+			name: "child alias (type, noParent), no parent aliases",
+			childAliases: []resource.Alias{
+				{
+					Type:     "test:resource:child2",
+					NoParent: true,
+				},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:child2::myres-child": {},
+			},
+		},
+		{
+			name: "child alias (type, parent), no parent aliases",
+			childAliases: []resource.Alias{
+				{
+					Type:   "test:resource:child2",
+					Parent: resource.CreateURN("originalparent", "test:resource:original", "", project, stack),
+				},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:original$test:resource:child2::myres-child": {},
+			},
+		},
+		{
+			name:        "child alias (name), parent alias (type)",
+			parentAlias: &parentTypeAlias,
+			childAliases: []resource.Alias{
+				{Name: "myres-child2"},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child":  {},
+				"urn:pulumi:stack::project::test:resource:type2$test:resource:child::myres-child2": {},
+			},
+		},
+		{
+			name:        "child alias (name), parent alias (name)",
+			parentAlias: &parentNameAlias,
+			childAliases: []resource.Alias{
+				{Name: "myres-child2"},
+			},
+			expected: map[resource.URN]struct{}{
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres-child2":  {},
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child":  {},
+				"urn:pulumi:stack::project::test:resource:type$test:resource:child::myres2-child2": {},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			parentURN := resource.CreateURN("myres", "test:resource:type", "", project, stack)
+			goal := &resource.Goal{
+				Parent:  parentURN,
+				Name:    "myres-child",
+				Type:    "test:resource:child",
+				Aliases: tt.childAliases,
+			}
+
+			sg := newStepGenerator(&Deployment{
+				target: &Target{
+					Name: stack,
+				},
+				source: NewNullSource(project),
+			}, Options{}, NewUrnTargets(nil), NewUrnTargets(nil))
+
+			if tt.parentAlias != nil {
+				sg.aliases = map[resource.URN]resource.URN{
+					parentURN: *tt.parentAlias,
+				}
+			}
+
+			actual := sg.generateAliases(goal)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

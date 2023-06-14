@@ -27,6 +27,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 type ResourceMonitor struct {
@@ -108,9 +109,11 @@ type ResourceOptions struct {
 	Remote                  bool
 	Providers               map[string]string
 	AdditionalSecretOutputs []resource.PropertyKey
+	AliasSpecs              bool
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
+	GrpcRequestHeaders        map[string]string
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -156,8 +159,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 				Project: a.Project,
 				Stack:   a.Stack,
 			}
-			if a.NoParent() {
-				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent()}
+			if a.NoParent {
+				alias.Parent = &pulumirpc.Alias_Spec_NoParent{NoParent: a.NoParent}
 			} else if a.Parent != "" {
 				alias.Parent = &pulumirpc.Alias_Spec_ParentUrn{ParentUrn: string(a.Parent)}
 			}
@@ -228,10 +231,16 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		AdditionalSecretOutputs:    additionalSecretOutputs,
 		Aliases:                    aliasObjects,
 		DeletedWith:                string(opts.DeletedWith),
+		AliasSpecs:                 opts.AliasSpecs,
+	}
+
+	ctx := context.Background()
+	if len(opts.GrpcRequestHeaders) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(opts.GrpcRequestHeaders))
 	}
 
 	// submit request
-	resp, err := rm.resmon.RegisterResource(context.Background(), requestInput)
+	resp, err := rm.resmon.RegisterResource(ctx, requestInput)
 	if err != nil {
 		return "", "", nil, err
 	}
