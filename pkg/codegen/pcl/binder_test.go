@@ -347,3 +347,34 @@ func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
 	assert.Equal(t, 0, len(diags), "There are no diagnostics")
 	assert.NotNil(t, program)
 }
+
+func TestTraversalOfOptionalObject(t *testing.T) {
+	t.Parallel()
+	// foo : Option<{ bar: string }>
+	// assert that foo.bar : Option<string>
+	source := `
+	config "foo" "object({ bar=string })" {
+      default = null
+      description = "Foo is an optional object because the default is null"
+	}
+
+    output "fooBar" { 
+        value = foo.bar
+    }
+`
+
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+
+	// get the output variable
+	outputVars := program.OutputVariables()
+	assert.Equal(t, 1, len(outputVars), "There is only one output variable")
+	fooBar := outputVars[0]
+	fooBarType := fooBar.Value.Type()
+	assert.True(t, model.IsOptionalType(fooBarType))
+	unwrappedType := pcl.UnwrapOption(fooBarType)
+	assert.Equal(t, model.StringType, unwrappedType)
+}
