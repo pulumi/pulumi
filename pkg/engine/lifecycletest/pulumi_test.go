@@ -1496,29 +1496,14 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 	return nil
 }
 
-func TestAliases(t *testing.T) {
-	t.Parallel()
+type updateProgramWithResourceFunc func(*deploy.Snapshot, []Resource, []display.StepOp, bool) *deploy.Snapshot
 
-	loaders := []*deploytest.ProviderLoader{
-		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				// The `forcesReplacement` key forces replacement and all other keys can update in place
-				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
-					ignoreChanges []string,
-				) (plugin.DiffResult, error) {
-					replaceKeys := []resource.PropertyKey{}
-					old, hasOld := olds["forcesReplacement"]
-					new, hasNew := news["forcesReplacement"]
-					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
-						replaceKeys = append(replaceKeys, "forcesReplacement")
-					}
-					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
-				},
-			}, nil
-		}),
-	}
-
-	updateProgramWithResource := func(
+func createUpdateProgramWithResourceFuncForAliasTests(
+	t *testing.T,
+	loaders []*deploytest.ProviderLoader,
+) updateProgramWithResourceFunc {
+	t.Helper()
+	return func(
 		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
 	) *deploy.Snapshot {
 		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1563,6 +1548,31 @@ func TestAliases(t *testing.T) {
 		}
 		return p.Run(t, snap)
 	}
+}
+
+func TestAliases(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// The `forcesReplacement` key forces replacement and all other keys can update in place
+				DiffF: func(res resource.URN, id resource.ID, olds, news resource.PropertyMap,
+					ignoreChanges []string,
+				) (plugin.DiffResult, error) {
+					replaceKeys := []resource.PropertyKey{}
+					old, hasOld := olds["forcesReplacement"]
+					new, hasNew := news["forcesReplacement"]
+					if hasOld && !hasNew || hasNew && !hasOld || hasOld && hasNew && old.Diff(new) != nil {
+						replaceKeys = append(replaceKeys, "forcesReplacement")
+					}
+					return plugin.DiffResult{ReplaceKeys: replaceKeys}, nil
+				},
+			}, nil
+		}),
+	}
+
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
 
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
@@ -2014,51 +2024,7 @@ func TestAliasURNs(t *testing.T) {
 		}),
 	}
 
-	updateProgramWithResource := func(
-		snap *deploy.Snapshot, resources []Resource, allowedOps []display.StepOp, expectFailure bool,
-	) *deploy.Snapshot {
-		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			err := registerResources(t, monitor, resources)
-			return err
-		})
-		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
-		p := &TestPlan{
-			Options: UpdateOptions{Host: host},
-			Steps: []TestStep{
-				{
-					Op:            Update,
-					ExpectFailure: expectFailure,
-					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
-						events []Event, res result.Result,
-					) result.Result {
-						for _, event := range events {
-							if event.Type == ResourcePreEvent {
-								payload := event.Payload().(ResourcePreEventPayload)
-								assert.Subset(t, allowedOps, []display.StepOp{payload.Metadata.Op})
-							}
-						}
-
-						for _, entry := range entries {
-							if entry.Step.Type() == "pulumi:providers:pkgA" {
-								continue
-							}
-							switch entry.Kind {
-							case JournalEntrySuccess:
-								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
-							case JournalEntryFailure:
-								assert.Fail(t, "unexpected failure in journal")
-							case JournalEntryBegin:
-							case JournalEntryOutputs:
-							}
-						}
-
-						return res
-					},
-				},
-			},
-		}
-		return p.Run(t, snap)
-	}
+	updateProgramWithResource := createUpdateProgramWithResourceFuncForAliasTests(t, loaders)
 
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
