@@ -169,7 +169,14 @@ type StackSummary struct {
 
 // WhoAmIResult contains detailed information about the currently logged-in Pulumi identity.
 type WhoAmIResult struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User          string     `json:"user"`
+	Organizations []string   `json:"organizations,omitempty"`
+	TokenInfo     *TokenInfo `json:"tokenInfo,omitempty"`
+	URL           string     `json:"url"`
+}
+
+type TokenInfo struct {
+	Name         string  `json:"name"`
+	Organization *string `json:"organization,omitempty"`
+	Team         *string `json:"team,omitempty"`
 }

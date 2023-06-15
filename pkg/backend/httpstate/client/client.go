@@ -212,10 +212,17 @@ type serviceUser struct {
 	Organizations []serviceUserInfo `json:"organizations"`
 	Identities    []string          `json:"identities"`
 	SiteAdmin     *bool             `json:"siteAdmin,omitempty"`
+	TokenInfo 	  *ServiceTokenInfo `json:"tokenInfo"`
+}
+
+type ServiceTokenInfo struct {
+	Name         string  `json:"name"`
+	Organization *string `json:"organization,omitempty"`
+	Team         *string `json:"team,omitempty"`
 }
 
 // GetPulumiAccountName returns the user implied by the API token associated with this client.
-func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, error) {
+func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string, ServiceTokenInfo, error) {
 	if pc.apiUser == "" {
 		resp := serviceUser{}
 		if err := pc.restCall(ctx, "GET", "/api/user", nil, nil, &resp); err != nil {
@@ -237,7 +244,7 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 		}
 	}
 
-	return pc.apiUser, pc.apiOrgs, nil
+	return pc.apiUser, pc.apiOrgs, resp.TokenInfo, nil
 }
 
 // GetCLIVersionInfo asks the service for information about versions of the CLI (the newest version as well as the

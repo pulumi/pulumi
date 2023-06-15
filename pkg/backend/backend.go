@@ -212,7 +212,7 @@ type Backend interface {
 	// LogoutAll logs you out of all the backend and removes any stored credentials.
 	LogoutAll() error
 	// Returns the identity of the current user and any organizations they are in for the backend.
-	CurrentUser() (string, []string, error)
+	CurrentUser() (string, []string, client.TokenInfo error)
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error

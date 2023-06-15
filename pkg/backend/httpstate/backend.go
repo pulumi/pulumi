@@ -220,7 +220,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project
 
 	accessToken := <-c
 
-	username, organizations, err := client.NewClient(cloudURL, accessToken, insecure, d).GetPulumiAccountDetails(ctx)
+	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, d).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +230,7 @@ func loginWithBrowser(ctx context.Context, d diag.Sink, cloudURL string, project
 		AccessToken:     accessToken,
 		Username:        username,
 		Organizations:   organizations,
+		TokenInfo:       tokenInfo,
 		LastValidatedAt: time.Now(),
 		Insecure:        insecure,
 	}
@@ -496,7 +497,7 @@ func (b *cloudBackend) CurrentUser() (string, []string, error) {
 	return b.currentUser(context.Background())
 }
 
-func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, error) {
+func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, client.ServiceTokenInfo, error) {
 	account, err := workspace.GetAccount(b.CloudURL())
 	if err != nil {
 		return "", nil, err
@@ -506,8 +507,7 @@ func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, error
 		return account.Username, account.Organizations, nil
 	}
 	logging.V(1).Infof("no username for access token")
-	name, orgs, err := b.client.GetPulumiAccountDetails(ctx)
-	return name, orgs, err
+	return b.client.GetPulumiAccountDetails(ctx)
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -1614,7 +1614,7 @@ func IsValidAccessToken(ctx context.Context, cloudURL string,
 	// Make a request to get the authenticated user. If it returns a successful response,
 	// we know the access token is legit. We also parse the response as JSON and confirm
 	// it has a githubLogin field that is non-empty (like the Pulumi Service would return).
-	username, organizations, err := client.NewClient(cloudURL, accessToken,
+	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken,
 		insecure, cmdutil.Diag()).GetPulumiAccountDetails(ctx)
 	if err != nil {
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {

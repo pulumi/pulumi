@@ -98,6 +98,7 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return fprintJSON(cmd.Stdout, WhoAmIJSON{
 			User:          name,
 			Organizations: orgs,
+			TokenInfo:     tokenInfo,
 			URL:           b.URL(),
 		})
 	}
@@ -115,7 +116,8 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 
 // WhoAmIJSON is the shape of the --json output of this command.
 type WhoAmIJSON struct {
-	User          string   `json:"user"`
-	Organizations []string `json:"organizations,omitempty"`
-	URL           string   `json:"url"`
+	User          string            `json:"user"`
+	Organizations []string          `json:"organizations,omitempty"`
+	tokenInfo     *client.TokenInfo `json:"tokenInfo",omitempty`
+	URL           string            `json:"url"`
 }
