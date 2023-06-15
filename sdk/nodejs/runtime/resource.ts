@@ -34,7 +34,7 @@ import {
     ResourceOptions,
     URN,
 } from "../resource";
-import { debuggablePromise } from "./debuggable";
+import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { monitorSupportsDeletedWith } from "./settings";
 import { invoke } from "./invoke";
 
@@ -60,6 +60,7 @@ import {
     serialize,
     terminateRpcs,
 } from "./settings";
+import { isGrpcError } from "../errors";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
@@ -551,11 +552,11 @@ export function registerResource(
     );
 }
 
-/**
+/** @internal
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(
+export async function prepareResource(
     label: string,
     res: Resource,
     parent: Resource | undefined,
@@ -604,6 +605,12 @@ async function prepareResource(
 
             resolveURN = (v, err) => {
                 if (err) {
+                    if (isGrpcError(err)) {
+                        if (debugPromiseLeaks) {
+                            console.error("info: skipped rejection in resolveURN");
+                        }
+                        return;
+                    }
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {
@@ -643,6 +650,12 @@ async function prepareResource(
 
             resolveID = (v, isKnown, err) => {
                 if (err) {
+                    if (isGrpcError(err)) {
+                        if (debugPromiseLeaks) {
+                            console.error("info: skipped rejection in resolveID");
+                        }
+                        return;
+                    }
                     rejectValue(err);
                     rejectIsKnown(err);
                 } else {

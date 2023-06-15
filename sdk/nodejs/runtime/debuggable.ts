@@ -14,10 +14,10 @@
 
 import * as log from "../log";
 import * as state from "./state";
-/**
+/** @internal
  * debugPromiseLeaks can be set to enable promises leaks debugging.
  */
-const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
+export const debugPromiseLeaks: boolean = !!process.env.PULUMI_DEBUG_PROMISE_LEAKS;
 
 /**
  * leakDetectorScheduled is true when the promise leak detector is scheduled for process exit.
