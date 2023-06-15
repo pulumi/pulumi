@@ -196,12 +196,12 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			// Use the current snapshot secrets manager, if there is one, as the fallback secrets manager.
-			var sm secrets.Manager
+			var defaultSecretsManager secrets.Manager
 			if snap != nil {
-				sm = snap.SecretsManager
+				defaultSecretsManager = snap.SecretsManager
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, sm)
+			cfg, sm, err := getStackConfiguration(ctx, s, proj, defaultSecretsManager)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}

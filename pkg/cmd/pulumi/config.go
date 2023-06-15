@@ -996,13 +996,26 @@ func looksLikeSecret(k config.Key, v string) bool {
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
 }
 
+func getAndSaveSecretsManager(stack backend.Stack, workspaceStack *workspace.ProjectStack) (secrets.Manager, error) {
+	sm, needsSave, err := getStackSecretsManager(stack, workspaceStack)
+	if err != nil {
+		return nil, fmt.Errorf("get stack secrets manager: %w", err)
+	}
+	if needsSave {
+		if err = saveProjectStack(stack, workspaceStack); err != nil {
+			return nil, fmt.Errorf("save stack config: %w", err)
+		}
+	}
+	return sm, nil
+}
+
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
 func getStackConfiguration(
 	ctx context.Context,
 	stack backend.Stack,
 	project *workspace.Project,
-	sm secrets.Manager,
+	fallbackSecretsManager secrets.Manager, // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	defaultStackConfig := backend.StackConfiguration{}
 
@@ -1019,16 +1032,12 @@ func getStackConfiguration(
 		}
 	}
 
-	if sm == nil {
-		var needsSave bool
-		sm, needsSave, err = getStackSecretsManager(stack, workspaceStack)
-		if err != nil {
-			return defaultStackConfig, nil, fmt.Errorf("get stack secrets manager: %w", err)
-		}
-		if needsSave {
-			if err = saveProjectStack(stack, workspaceStack); err != nil {
-				return defaultStackConfig, nil, fmt.Errorf("save stack config: %w", err)
-			}
+	sm, err := getAndSaveSecretsManager(stack, workspaceStack)
+	if err != nil {
+		if fallbackSecretsManager != nil {
+			sm = fallbackSecretsManager
+		} else {
+			return defaultStackConfig, nil, err
 		}
 	}
 
