@@ -17,7 +17,7 @@ import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
+import { debuggablePromise, errorString, debugPromiseLeaks } from "./debuggable";
 import {
     excessiveDebugOutput,
     isDryRun,
@@ -33,9 +33,6 @@ export type OutputResolvers = Record<
     string,
     (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void
 >;
-
-// Global warning state to avoid spamming the user with the same warning over and over again.
-let shownTransferPropertiesWarning = false;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -74,9 +71,8 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
             if (err) {
                 if (isGrpcError(err)) {
-                    if (!shownTransferPropertiesWarning) {
+                    if (debugPromiseLeaks) {
                         console.error("info: skipped rejection in transferProperties");
-                        shownTransferPropertiesWarning = true;
                     }
                     return;
                 }

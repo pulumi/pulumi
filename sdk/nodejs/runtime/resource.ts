@@ -34,7 +34,7 @@ import {
     ResourceOptions,
     URN,
 } from "../resource";
-import { debuggablePromise } from "./debuggable";
+import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { monitorSupportsDeletedWith } from "./settings";
 import { invoke } from "./invoke";
 
@@ -541,10 +541,6 @@ export function registerResource(
     );
 }
 
-// Global warning state to avoid spamming the user with the same warning over and over again.
-let shownResolveURNWarning = false;
-let shownResolveIDWarning = false;
-
 /** @internal
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
@@ -599,9 +595,8 @@ export async function prepareResource(
             resolveURN = (v, err) => {
                 if (err) {
                     if (isGrpcError(err)) {
-                        if (!shownResolveURNWarning) {
+                        if (debugPromiseLeaks) {
                             console.error("info: skipped rejection in resolveURN");
-                            shownResolveURNWarning = true;
                         }
                         return;
                     }
@@ -645,9 +640,8 @@ export async function prepareResource(
             resolveID = (v, isKnown, err) => {
                 if (err) {
                     if (isGrpcError(err)) {
-                        if (!shownResolveIDWarning) {
+                        if (debugPromiseLeaks) {
                             console.error("info: skipped rejection in resolveID");
-                            shownResolveIDWarning = true;
                         }
                         return;
                     }
