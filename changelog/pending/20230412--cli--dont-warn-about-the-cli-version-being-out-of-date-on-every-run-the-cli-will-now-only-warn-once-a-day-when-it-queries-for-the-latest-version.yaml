@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Don't warn about the CLI version being out of date on every run. The CLI will now only warn once a day, when it queries for the latest version.
