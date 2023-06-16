@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: `pulumi convert` will now cleanup temporary pulumi-convert directories when the command is finished.
