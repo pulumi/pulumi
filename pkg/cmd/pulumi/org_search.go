@@ -150,7 +150,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	userName, orgs, err := cloudBackend.CurrentUser()
+	userName, orgs, _, err := cloudBackend.CurrentUser()
 	if err != nil {
 		return err
 	}

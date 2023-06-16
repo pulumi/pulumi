@@ -65,8 +65,8 @@ func TestSearch_cmd(t *testing.T) {
 							Total: &total,
 						}, nil
 					},
-					CurrentUserF: func() (string, []string, error) {
-						return "user", []string{"org1", "org2"}, nil
+					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+						return "user", []string{"org1", "org2"}, nil, nil
 					},
 				}, nil
 			},
@@ -117,8 +117,8 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 							Total: &total,
 						}, nil
 					},
-					CurrentUserF: func() (string, []string, error) {
-						return "user", []string{"org1", "org2"}, nil
+					CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+						return "user", []string{"org1", "org2"}, nil, nil
 					},
 				}, nil
 			},
@@ -142,7 +142,7 @@ type stubHTTPBackend struct {
 		context.Context, string, *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
-	CurrentUserF           func() (string, []string, error)
+	CurrentUserF           func() (string, []string, *workspace.TokenInformation, error)
 }
 
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)
@@ -159,6 +159,6 @@ func (f *stubHTTPBackend) NaturalLanguageSearch(
 	return f.NaturalLanguageSearchF(ctx, orgName, query)
 }
 
-func (f *stubHTTPBackend) CurrentUser() (string, []string, error) {
+func (f *stubHTTPBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
 	return f.CurrentUserF()
 }

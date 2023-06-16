@@ -66,7 +66,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, _, err = b.CurrentUser()
+				orgName, _, _, err = b.CurrentUser()
 				if err != nil {
 					return err
 				}

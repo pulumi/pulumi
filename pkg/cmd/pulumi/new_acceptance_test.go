@@ -260,7 +260,7 @@ func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
-	currentUser, _, err := b.CurrentUser()
+	currentUser, _, _, err := b.CurrentUser()
 	assert.NoError(t, err)
 	return currentUser
 }
