@@ -373,10 +373,106 @@ output "values" {
     value = fromModule.values.first
 }`
 
-	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.SkipResourceTypechecking)
-	require.NoError(t, err)
-	assert.False(t, diags.HasErrors(), "There are no errors")
-	assert.NotNil(t, program)
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the random package is available, but it doesn't have a resource called "Unknown"
+	source := `
+resource main "random:index:unknown" {
+    first = "hello"
+    second = {
+        foo = "bar"
+    }
+}
+
+output "mainId" {
+    value = main.id
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestBindingUnknownPropertyFromKnownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the resource declaration is correctly typed but the output mainId references an unknown property
+	// this program binds without errors
+	source := `
+resource randomPet "random:index/randomPet:RandomPet" {
+  prefix = "doggo"
+}
+
+output "mainId" {
+    value = randomPet.unknownProperty
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestAssigningWrongTypeToResourcePropertyWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+
+	// here the RandomPet resource expects the prefix property to be of type string
+	// but we assigned to a boolean. It should still bind when using pcl.SkipResourceTypechecking
+	source := `
+config data "list(string)" {}
+resource randomPet "random:index/randomPet:RandomPet" {
+  prefix = data
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
+}
+
+func TestAssigningUnknownPropertyFromKnownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
+	t.Parallel()
+	// here the resource declaration is assigning an unknown property "unknown" which is not part
+	// of the RandomPet inputs.
+	source := `
+resource randomPet "random:index/randomPet:RandomPet" {
+  unknown = "doggo"
+}
+
+output "mainId" {
+    value = randomPet.unknownProperty
+}`
+
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Nil(t, strictProgram)
 }
 
 func TestTraversalOfOptionalObject(t *testing.T) {
