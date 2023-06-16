@@ -962,6 +962,17 @@ func (pt *ProgramTester) runCommand(name string, args []string, wd string) error
 	return RunCommand(pt.t, name, args, wd, pt.opts)
 }
 
+// RunPulumiCommand runs a Pulumi command in the project directory.
+// For example:
+//
+//	pt.RunPulumiCommand("preview", "--stack", "dev")
+func (pt *ProgramTester) RunPulumiCommand(name string, args ...string) error {
+	// pt.runPulumiCommand uses 'name' for logging only.
+	// We want it to be part of the actual command.
+	args = append([]string{name}, args...)
+	return pt.runPulumiCommand(name, args, pt.projdir, false /* expectFailure */)
+}
+
 func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
 	cmd, err := pt.pulumiCmd(name, args)
 	if err != nil {
