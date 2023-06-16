@@ -45,7 +45,7 @@ import (
 // This token is always an invalid module since ':' is not allowed within modules.
 const ExternalModuleSig = ":always-external:"
 
-var isUtil bool = false
+var isUtil = false
 
 type typeDetails struct {
 	// Note: if any of {ptr,array,map}Input are set, input and the corresponding output field must also be set. The
