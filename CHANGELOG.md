@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.72.1 (2023-06-16)
+
+
+### Bug Fixes
+
+- [cli] Revert go.cloud update to fixes issues with using azure object store and secrets.
+  [#13184](https://github.com/pulumi/pulumi/pull/13184)
+
 ## 3.72.0 (2023-06-15)
 
 
