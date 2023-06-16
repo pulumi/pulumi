@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: `pulumi destroy` now sets the `encryptedkey` every run like the rest of the CLI commands.

@@ -1,5 +1,43 @@
 # Changelog
 
+## 3.72.0 (2023-06-15)
+
+
+### Features
+
+- [cli] Don't warn about the CLI version being out of date on every run. The CLI will now only warn once a day, when it queries for the latest version.
+  [#12660](https://github.com/pulumi/pulumi/pull/12660)
+
+- [programgen/{dotnet,go,nodejs,python}] Extend SkipResourceTypechecking to allow generating unknown resources
+  [#13172](https://github.com/pulumi/pulumi/pull/13172)
+
+- [cli/package] Add a "get-mapping" command to query providers for their mapping information.
+  [#13155](https://github.com/pulumi/pulumi/pull/13155)
+
+
+### Bug Fixes
+
+- [cli/config] `pulumi destroy` now sets the `encryptedkey` every run like the rest of the CLI commands.
+  [#13168](https://github.com/pulumi/pulumi/pull/13168)
+
+- [engine] Fix aliasing children
+  [#12848](https://github.com/pulumi/pulumi/pull/12848)
+
+- [sdk/nodejs] Fix Parent/NoParent aliases
+  [#12848](https://github.com/pulumi/pulumi/pull/12848)
+
+- [sdk/nodejs] Fixes uncaught rejections on the resource monitor terminating causing Automation API programs to exit prematurely.
+  [#13070](https://github.com/pulumi/pulumi/pull/13070)
+
+
+### Miscellaneous
+
+- [backend/filestate] Add an option to the Upgrade operation allowing injection of an external source of project names for stacks where the project name could not be automatically determined.
+  [#13077](https://github.com/pulumi/pulumi/pull/13077)
+
+- [sdk/go] Adds `tokens.ValidateProjectName` to validate project names.
+  [#13165](https://github.com/pulumi/pulumi/pull/13165)
+
 ## 3.71.0 (2023-06-12)
 
 

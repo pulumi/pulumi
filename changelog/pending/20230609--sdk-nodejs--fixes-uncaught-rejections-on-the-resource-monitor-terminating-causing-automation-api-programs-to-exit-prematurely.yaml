@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Fixes uncaught rejections on the resource monitor terminating causing Automation API programs to exit prematurely.
