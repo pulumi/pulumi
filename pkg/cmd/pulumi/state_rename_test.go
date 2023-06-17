@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRenameProvider tests that we can rename a provider and produce a valid snapshot.
@@ -64,4 +65,56 @@ func TestRenameProvider(t *testing.T) {
 			assert.Equal(t, "our-provider", res.URN.Name().String())
 		}
 	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13179.
+//
+// Defines a state with a two resources, one parented to the other,
+// and renames the parent.
+// The child must have an updated parent reference.
+func TestStateRename_updatesChildren(t *testing.T) {
+	t.Parallel()
+
+	provider := resource.URN("urn:pulumi:dev::pets::random::provider")
+	parent := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::parent")
+	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::child")
+
+	snap := deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN:  provider,
+				ID:   "provider-id",
+				Type: "pulumi:provider:random",
+			},
+			{
+				URN:  parent,
+				ID:   "parent-id",
+				Type: "random:index/randomPet:RandomPet",
+			},
+			{
+				URN:    child,
+				ID:     "child-id",
+				Type:   "random:index/randomPet:RandomPet",
+				Parent: parent,
+			},
+		},
+	}
+	require.NoError(t, snap.VerifyIntegrity(),
+		"invalid test: snapshot is already broken")
+
+	err := stateRenameOperation(parent, "new-parent", display.Options{}, &snap)
+	require.NoError(t, err)
+
+	require.NoError(t, snap.VerifyIntegrity(), "snapshot is broken after rename")
+
+	// VerifyIntegrity checks that the parent reference is updated,
+	// but we'll check it explicitly here to be sure.
+	var sawChild bool
+	for _, res := range snap.Resources {
+		if res.URN == child {
+			sawChild = true
+			assert.Equal(t, "new-parent", res.Parent.Name().String())
+		}
+	}
+	assert.True(t, sawChild, "child resource not found in snapshot")
 }

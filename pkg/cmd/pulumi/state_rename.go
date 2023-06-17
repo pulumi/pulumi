@@ -72,6 +72,11 @@ func stateRenameOperation(urn resource.URN, newResourceName string, opts display
 			for property, dependencies := range existingResource.PropertyDependencies {
 				existingResource.PropertyDependencies[property] = updateDependencies(dependencies, oldUrn, newUrn)
 			}
+
+			// Update parent, if any.
+			if existingResource.Parent == oldUrn {
+				existingResource.Parent = newUrn
+			}
 		}
 	}
 

@@ -955,3 +955,49 @@ func TestProjectRename_Cloud(t *testing.T) {
 	organization := strings.TrimSpace(output)
 	testProjectRename(e, organization)
 }
+
+//nolint:paralleltest // uses parallel programtest
+func TestParentRename_issue13179(t *testing.T) {
+	// This test is a reproduction of the issue reported in
+	// https://github.com/pulumi/pulumi/issues/13179.
+	//
+	// It creates a stack with a resource that has a parent
+	// and then renames the parent resource with 'pulumi state rename'.
+
+	var parentURN resource.URN
+	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
+		Dir: "state_rename_parent",
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+		},
+		// Only run up:
+		SkipRefresh: true,
+		Quick:       true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			for _, res := range stackInfo.Deployment.Resources {
+				if res.URN.Name() == "parent" {
+					parentURN = res.URN
+				}
+			}
+		},
+	})
+
+	require.NoError(t, pt.TestLifeCyclePrepare(), "prepare")
+	t.Cleanup(pt.TestCleanUp)
+
+	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
+
+	require.NoError(t, pt.TestPreviewUpdateAndEdits(), "update")
+
+	// PreviewUpdateAndEdits calls ExtraRuntimeValidation,
+	// so we should have captured the parent URN.
+	require.NotEmpty(t, parentURN, "no parent URN captured")
+
+	// Rename the parent resource.
+	require.NoError(t,
+		pt.RunPulumiCommand("state", "rename", "-y", string(parentURN), "newParent"),
+		"rename failed")
+}
