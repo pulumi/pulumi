@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.72.2 (2023-06-17)
+
+
+### Bug Fixes
+
+- [cli/state] Fix panic caused by an invalid stack when a parent resource is renamed in the state. Now, parent references are also updated when the resource is renamed.
+  [#13190](https://github.com/pulumi/pulumi/pull/13190)
+
 ## 3.72.1 (2023-06-16)
 
 
