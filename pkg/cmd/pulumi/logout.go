@@ -43,7 +43,7 @@ func newLogoutCmd() *cobra.Command {
 			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
 			"If no URL is provided, you will be logged out of the current backend." +
 			"\n\n" +
-			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n" +
+			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
