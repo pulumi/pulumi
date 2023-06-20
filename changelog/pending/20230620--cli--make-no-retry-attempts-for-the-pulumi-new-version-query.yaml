@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Make no retry attempts for the Pulumi new version query. This should speed up the CLI in certain environments.
