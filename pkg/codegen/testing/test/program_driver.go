@@ -313,6 +313,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.SkipResourceTypechecking},
 	},
+	{
+		Directory:   "using-dashes",
+		Description: "Test program generation on packages with a dash in the name",
+		SkipCompile: allProgLanguages, // since we are using a synthetic schema
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
