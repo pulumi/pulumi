@@ -17,6 +17,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,9 +116,19 @@ func DetectProjectPathFrom(dir string) (string, error) {
 	path, err := fsutil.WalkUp(dir, isProject, func(s string) bool {
 		return true
 	})
+	// We special case permission errors to cause ErrProjectNotFound to return from this function. This is so
+	// users can run pulumi with unreadable root directories.
+	var perr *fs.PathError
+	if errors.As(err, &perr) {
+		if errors.Is(perr.Err, fs.ErrPermission) {
+			err = nil
+		}
+	}
+
 	if err != nil {
 		return "", fmt.Errorf("failed to locate Pulumi.yaml project file: %w", err)
 	}
+
 	if path == "" {
 		// Embed/wrap ErrProjectNotFound
 		return "", fmt.Errorf(
