@@ -184,13 +184,13 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// Build the pacakge.json
 	var packageJSON bytes.Buffer
 	fmt.Fprintf(&packageJSON, `{
-		"name": "%s",
-		"devDependencies": {
-			"@types/node": "^14"
-		},
-		"dependencies": {
-			"typescript": "^4.0.0",
-			"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
+	"name": "%s",
+	"devDependencies": {
+		"@types/node": "^14"
+	},
+	"dependencies": {
+		"typescript": "^4.0.0",
+		"@pulumi/pulumi": "^3.0.0"`, project.Name.String())
 
 	// For each package add a dependency line
 	packages, err := program.CollectNestedPackageSnapshots()
@@ -216,7 +216,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 				packageName = nodeInfo.PackageName
 			}
 		}
-		dependencyTemplate := ",\n			\"%s\": \"%s\""
+		dependencyTemplate := ",\n		\"%s\": \"%s\""
 		if p.Version != nil {
 			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
 		} else {
@@ -224,7 +224,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		}
 	}
 	packageJSON.WriteString(`
-		}
+	}
 }`)
 
 	files["package.json"] = packageJSON.Bytes()
@@ -236,26 +236,26 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 	// Add the basic tsconfig
 	var tsConfig bytes.Buffer
 	tsConfig.WriteString(`{
-		"compilerOptions": {
-			"strict": true,
-			"outDir": "bin",
-			"target": "es2016",
-			"module": "commonjs",
-			"moduleResolution": "node",
-			"sourceMap": true,
-			"experimentalDecorators": true,
-			"pretty": true,
-			"noFallthroughCasesInSwitch": true,
-			"noImplicitReturns": true,
-			"forceConsistentCasingInFileNames": true
-		},
-		"files": [
+	"compilerOptions": {
+		"strict": true,
+		"outDir": "bin",
+		"target": "es2016",
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"sourceMap": true,
+		"experimentalDecorators": true,
+		"pretty": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"files": [
 `)
 
 	fileCounter := 0
 	for file := range files {
 		if strings.HasSuffix(file, ".ts") {
-			tsConfig.WriteString("			\"" + file + "\"")
+			tsConfig.WriteString("		\"" + file + "\"")
 			lastFile := fileCounter == len(files)-1
 			if !lastFile {
 				tsConfig.WriteString(",\n")
@@ -267,7 +267,7 @@ func GenerateProject(directory string, project workspace.Project, program *pcl.P
 		fileCounter = fileCounter + 1
 	}
 
-	tsConfig.WriteString(`		]
+	tsConfig.WriteString(`	]
 }`)
 	files["tsconfig.json"] = tsConfig.Bytes()
 
