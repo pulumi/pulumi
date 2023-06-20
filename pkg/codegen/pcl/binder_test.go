@@ -363,6 +363,7 @@ resource main "unknown:index:main" {
 resource fromModule "unknown:eks:example" {
    options { range = 10 }
    associatedMain = main.id
+   anotherValue = main.unknown
 }
 
 output "mainId" {
@@ -410,21 +411,37 @@ output "mainId" {
 
 func TestBindingUnknownPropertyFromKnownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
 	t.Parallel()
-	// here the resource declaration is correctly typed but the output mainId references an unknown property
+	// here the resource declaration is correctly typed but the output `unknownId` references an unknown property
 	// this program binds without errors
 	source := `
 resource randomPet "random:index/randomPet:RandomPet" {
   prefix = "doggo"
 }
 
-output "mainId" {
+output "unknownId" {
     value = randomPet.unknownProperty
-}`
+}
+
+output "knownId" {
+    value = randomPet.id
+}
+`
 
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
 	assert.NotNil(t, lenientProgram)
+
+	for _, output := range lenientProgram.OutputVariables() {
+		outputType := model.ResolveOutputs(output.Value.Type())
+		if output.Name() == "unknownId" {
+			assert.Equal(t, model.DynamicType, outputType)
+		}
+
+		if output.Name() == "knownId" {
+			assert.Equal(t, model.StringType, outputType)
+		}
+	}
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
 	assert.NotNil(t, strictError, "Binding fails in strict mode")

@@ -342,12 +342,9 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	if b.options.skipResourceTypecheck {
-		node.VariableType = model.DynamicType
-	} else {
-		node.VariableType = node.OutputType
-	}
-
+	// Allow for lenient traversal when we choose to skip resource type-checking.
+	node.LenientTraversal = b.options.skipResourceTypecheck
+	node.VariableType = node.OutputType
 	// If the resource has a range option, we need to know the type of the collection being ranged over. Pre-bind the
 	// range expression now, but ignore the diagnostics.
 	var rangeKey, rangeValue model.Type
