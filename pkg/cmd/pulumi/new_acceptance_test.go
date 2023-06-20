@@ -65,6 +65,33 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
+func TestCreatingStackWithNumericName(t *testing.T) {
+	tempdir := t.TempDir()
+	chdir(t, tempdir)
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		name:              "123456", // Should be serialized as a string.
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "yaml",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.NoError(t, err)
+
+	p := loadProject(t, tempdir)
+	assert.NotNil(t, p)
+
+	assert.Equal(t, p.Name.String(), "123456")
+
+	assert.Equal(t, stackName, loadStackName(t))
+	removeStack(t, tempdir, stackName)
+}
+
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 

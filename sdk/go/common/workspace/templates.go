@@ -498,17 +498,29 @@ func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	return nil
 }
 
+func toYAMLString(value string) (string, error) {
+	byts, err := yaml.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	return string(byts), nil
+}
+
 // CopyTemplateFiles does the actual copy operation to a destination directory.
 func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string,
 ) error {
-	// Needed for escaping special characters in user-provided descriptions.
-	yamlDescription := projectDescription
-	byts, err := yaml.Marshal(projectDescription)
+	// Needed for stringifying numeric user-provided project names.
+	yamlName, err := toYAMLString(projectName)
 	if err != nil {
 		return err
 	}
-	yamlDescription = string(byts)
+
+	// Needed for escaping special characters in user-provided descriptions.
+	yamlDescription, err := toYAMLString(projectDescription)
+	if err != nil {
+		return err
+	}
 
 	return walkFiles(sourceDir, destDir, projectName,
 		func(entry os.DirEntry, source string, dest string) error {
@@ -528,6 +540,8 @@ func CopyTemplateFiles(
 			if !isBinary(b) {
 				name, description := projectName, projectDescription
 				if strings.HasSuffix(source, ".yaml") {
+					// Use the sanitized project name and description for the Pulumi.yaml file.
+					name = yamlName
 					description = yamlDescription
 				}
 				transformed := transform(string(b), name, description)
