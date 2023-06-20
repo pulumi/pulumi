@@ -118,7 +118,7 @@ func newPluginRmCmd() *cobra.Command {
 			var result error
 			for _, plugin := range deletes {
 				if err := plugin.Delete(); err == nil {
-					fmt.Printf("%s %s removed.\n", plugin.Kind, plugin.String())
+					fmt.Printf("removed: %s %v\n", plugin.Kind, plugin)
 				} else {
 					result = multierror.Append(
 						result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
