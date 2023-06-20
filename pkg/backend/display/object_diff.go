@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -810,7 +811,19 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 	} else if v.IsBool() {
 		p.write("%t", v.BoolValue())
 	} else if v.IsNumber() {
-		p.write("%v", v.NumberValue())
+		// All pulumi numbers are IEEE doubles really (even in languages where we codegen integers the wire
+		// protocol only supports doubles). But by default Go will print them in scientific notation for large
+		// enough values which is suboptimal for our purposes when the value is still an integer. (i.e.
+		// non-fractional). See https://github.com/pulumi/pulumi/issues/13016 for context.
+		number := v.NumberValue()
+		if math.Trunc(number) == number {
+			p.write("%.f", number)
+		} else {
+			// For factional values we're fine with Go printing them in scientific notation for large
+			// exponents.
+			p.write("%g", number)
+		}
+
 	} else if v.IsString() {
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.write("(%s) ", kind)
