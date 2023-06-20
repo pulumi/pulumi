@@ -33,12 +33,16 @@ func Test_decodeValue(t *testing.T) {
 		expected interface{}
 	}{
 		// Negative cases
+		{repr: ""},
 		{repr: "foo"},
 		{repr: "1.0"},
 		{repr: "true"},
 		{repr: "no"},
 		{repr: "-"},
 		{repr: "foo: bar"},
+		{repr: "[] bar"},
+		{repr: "{} bar"},
+		{repr: "[] \n not yaml"},
 
 		// Positive cases
 		{
@@ -60,6 +64,11 @@ func Test_decodeValue(t *testing.T) {
 			repr:     `{"foo": "bar"}`,
 			kind:     "json",
 			expected: map[string]interface{}{"foo": "bar"},
+		},
+		{
+			repr:     `  {"with": "whitespace"}  `,
+			kind:     "json",
+			expected: map[string]interface{}{"with": "whitespace"},
 		},
 		{
 			repr:     "- foo\n- bar",
