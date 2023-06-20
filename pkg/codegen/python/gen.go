@@ -1088,19 +1088,14 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
 		fmt.Fprintf(w, "            raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
-		if prop.DeprecationMessage != "" {
-			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "        if %s is not None:\n", pname)
-			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", pname, escaped)
-		}
-
 		// Now perform the assignment.
 		fmt.Fprintf(w, "        pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
 	}
 	fmt.Fprintf(w, "\n")
 
 	// Write out Python property getters for each property.
+	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
+	// This avoids spamming end users with irrelevant deprecation messages.
 	mod.genProperties(w, obj.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
 	})
@@ -1506,6 +1501,11 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		if prop.Comment != "" {
 			printComment(w, prop.Comment, indent+"        ")
 		}
+		if prop.DeprecationMessage != "" {
+			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
+			fmt.Fprintf(w, "%s        warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", indent, escaped)
+			fmt.Fprintf(w, "%s        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", indent, pname, escaped)
+		}
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
 		if setters {
@@ -1552,19 +1552,14 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
 			fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
-			if prop.DeprecationMessage != "" {
-				escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-				fmt.Fprintf(w, "            if %s is not None:\n", pname)
-				fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-				fmt.Fprintf(w, "                pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", pname, escaped)
-			}
-
 			// Now perform the assignment.
 			fmt.Fprintf(w, "            pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
 		}
 		fmt.Fprintf(w, "\n")
 
 		// Write out Python property getters for each property.
+		// Note that deprecation messages will be emitted on access to the property, rather than initialization.
+		// This avoids spamming end users with irrelevant deprecation messages.
 		mod.genProperties(w, obj.Properties, false /*setters*/, "    ", func(prop *schema.Property) string {
 			return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
 		})
@@ -1809,9 +1804,10 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			if i > 0 {
 				fmt.Fprintf(w, ",")
 			}
-			// Use the get_dict_value utility instead of calling __ret__.get directly in case the __ret__
-			// object has a get property that masks the underlying dict subclass's get method.
-			fmt.Fprintf(w, "\n        %[1]s=__ret__.%[1]s", PyName(ret.Name))
+			// Use the `pulumi.get()` utility instead of calling `__ret__.field` directly.
+			// This avoids calling getter functions which will print deprecation messages on unused
+			// fields and should be hidden from the user during Result instantiation.
+			fmt.Fprintf(w, "\n        %[1]s=pulumi.get(__ret__, '%[1]s')", PyName(ret.Name))
 		}
 		fmt.Fprintf(w, ")\n")
 	}

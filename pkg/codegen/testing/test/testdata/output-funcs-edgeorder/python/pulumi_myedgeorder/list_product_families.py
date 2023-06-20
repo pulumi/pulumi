@@ -83,8 +83,8 @@ def list_product_families(customer_subscription_details: Optional[pulumi.InputTy
     __ret__ = pulumi.runtime.invoke('myedgeorder::listProductFamilies', __args__, opts=opts, typ=ListProductFamiliesResult).value
 
     return AwaitableListProductFamiliesResult(
-        next_link=__ret__.next_link,
-        value=__ret__.value)
+        next_link=pulumi.get(__ret__, 'next_link'),
+        value=pulumi.get(__ret__, 'value'))
 
 
 @_utilities.lift_output_func(list_product_families)

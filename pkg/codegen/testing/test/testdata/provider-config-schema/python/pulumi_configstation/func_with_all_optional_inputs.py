@@ -55,7 +55,7 @@ def func_with_all_optional_inputs(a: Optional[str] = None,
     __ret__ = pulumi.runtime.invoke('configstation::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult).value
 
     return AwaitableFuncWithAllOptionalInputsResult(
-        r=__ret__.r)
+        r=pulumi.get(__ret__, 'r'))
 
 
 @_utilities.lift_output_func(func_with_all_optional_inputs)

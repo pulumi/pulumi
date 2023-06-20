@@ -47,4 +47,4 @@ def get_custom_db_roles(opts: Optional[pulumi.InvokeOptions] = None) -> Awaitabl
     __ret__ = pulumi.runtime.invoke('mongodbatlas::getCustomDbRoles', __args__, opts=opts, typ=GetCustomDbRolesResult).value
 
     return AwaitableGetCustomDbRolesResult(
-        result=__ret__.result)
+        result=pulumi.get(__ret__, 'result'))

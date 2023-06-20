@@ -50,7 +50,7 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
     __ret__ = pulumi.runtime.invoke('example::argFunction', __args__, opts=opts, typ=ArgFunctionResult).value
 
     return AwaitableArgFunctionResult(
-        age=__ret__.age)
+        age=pulumi.get(__ret__, 'age'))
 
 
 @_utilities.lift_output_func(arg_function)

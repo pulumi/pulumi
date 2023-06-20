@@ -68,9 +68,9 @@ def get_policy_document(statements: Optional[Sequence[pulumi.InputType['_x.GetPo
     __ret__ = pulumi.runtime.invoke('aws:x/iam/getPolicyDocument:getPolicyDocument', __args__, opts=opts, typ=GetPolicyDocumentResult).value
 
     return AwaitableGetPolicyDocumentResult(
-        id=__ret__.id,
-        json=__ret__.json,
-        statements=__ret__.statements)
+        id=pulumi.get(__ret__, 'id'),
+        json=pulumi.get(__ret__, 'json'),
+        statements=pulumi.get(__ret__, 'statements'))
 
 
 @_utilities.lift_output_func(get_policy_document)
