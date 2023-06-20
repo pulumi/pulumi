@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Validate and reject invalid project names at load time, preventing confusing error messages later on.

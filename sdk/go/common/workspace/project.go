@@ -453,6 +453,10 @@ func (proj *Project) Validate() error {
 	}
 
 	projectName := proj.Name.String()
+	if err := tokens.ValidateProjectName(projectName); err != nil {
+		return fmt.Errorf("invalid project name %q: %v", projectName, err)
+	}
+
 	for configKey, configType := range proj.Config {
 		if configType.Default != nil && configType.Value != nil {
 			return fmt.Errorf("project config '%v' cannot have both a 'default' and 'value' attribute", configKey)

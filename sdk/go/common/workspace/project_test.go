@@ -55,7 +55,7 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "project is missing a 'name' attribute", err.Error())
 	// Test lack of runtime
-	proj.Name = "a project"
+	proj.Name = "a-project"
 	err = proj.Validate()
 	assert.Error(t, err)
 	assert.Equal(t, "project is missing a 'runtime' attribute", err.Error())
@@ -1031,4 +1031,16 @@ func TestProjectEditRoundtrip(t *testing.T) {
 			assert.Equal(t, tt.expected, string(actualYaml))
 		})
 	}
+}
+
+// Test for https://github.com/pulumi/pulumi/issues/11264.
+func TestProject_badName(t *testing.T) {
+	t.Parallel()
+
+	projectYAML := "name: pulumi/proj\n" +
+		"runtime: yaml\n"
+
+	_, err := loadProjectFromText(t, projectYAML)
+	assert.ErrorContains(t, err,
+		"project names may only contain alphanumerics, hyphens, underscores, and periods")
 }
