@@ -2,7 +2,7 @@
     aws:region: us-west-2
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:dev::aws-ts-webserver::pulumi:pulumi:Stack::aws-ts-webserver-dev]
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    publicHostName: <{%reset%}><{%reset%}>"ec2-34-211-56-110.us-west-2.compute.amazonaws.com"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    publicIp      : <{%reset%}><{%reset%}>"34.211.56.110"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%reset%}>  aws:ec2/securityGroup:SecurityGroup: (same)

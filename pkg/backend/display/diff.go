@@ -207,17 +207,17 @@ func renderSummaryEvent(event engine.SummaryEventPayload, wroteDiagnosticHeader 
 	}
 
 	if len(summaryPieces) > 0 {
-		fprintfIgnoreError(out, "    ")
+		fprintIgnoreError(out, "    ")
 
 		for i, piece := range summaryPieces {
 			if i > 0 {
-				fprintfIgnoreError(out, ". ")
+				fprintIgnoreError(out, ". ")
 			}
 
 			out.WriteString(opts.Color.Colorize(piece))
 		}
 
-		fprintfIgnoreError(out, "\n")
+		fprintIgnoreError(out, "\n")
 	}
 
 	// Print policy packs loaded. Data is rendered as a table of {policy-pack-name, version}.
@@ -377,7 +377,7 @@ func renderDiffResourceOutputsEvent(
 			if text != "" {
 				header := fmt.Sprintf("%v%v--outputs:--%v\n",
 					deploy.Color(payload.Metadata.Op), getIndentationString(indent+1, payload.Metadata.Op, false), colors.Reset)
-				fprintfIgnoreError(out, opts.Color.Colorize(header))
+				fprintIgnoreError(out, opts.Color.Colorize(header))
 				fprintIgnoreError(out, opts.Color.Colorize(text))
 			}
 		}
