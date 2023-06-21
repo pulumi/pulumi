@@ -296,7 +296,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = handleConfig(ctx, proj, s, args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts)
+		err = handleConfig(
+			ctx, args.prompt, proj, s,
+			args.templateNameOrURL, template, args.configArray,
+			args.yes, args.configPath, opts)
 		if err != nil {
 			return err
 		}
@@ -848,6 +851,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
 	ctx context.Context,
+	prompt promptForValueFunc,
 	project *workspace.Project,
 	stack backend.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
@@ -932,15 +936,20 @@ func promptForConfig(
 		}
 
 		// Prepare the prompt.
-		prompt := prettyKey(k)
+		promptText := prettyKey(k)
 		if templateConfigValue.Description != "" {
-			prompt = prompt + ": " + templateConfigValue.Description
+			promptText = promptText + ": " + templateConfigValue.Description
 		}
 
 		// Prompt.
-		value, err := promptForValue(yes, prompt, defaultValue, secret, nil, opts)
+		value, err := prompt(yes, promptText, defaultValue, secret, nil, opts)
 		if err != nil {
 			return nil, err
+		}
+
+		if value == "" {
+			// Don't add empty values to the config.
+			continue
 		}
 
 		// Encrypt the value if needed.
