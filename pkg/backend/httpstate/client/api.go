@@ -82,8 +82,10 @@ type accessToken interface {
 }
 
 type httpCallOptions struct {
-	// RetryAllMethods allows non-GET calls to be retried if the server fails to return a response.
-	RetryAllMethods bool
+	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
+	//
+	// By default, only GET requests are retried.
+	RetryPolicy retryPolicy
 
 	// GzipCompress compresses the request using gzip before sending it.
 	GzipCompress bool
@@ -143,9 +145,52 @@ func intPtr(i int) *int {
 	return &i
 }
 
+// retryPolicy defines the policy for retrying requests by httpClient.Do.
+type retryPolicy int
+
+const (
+	// retryNone indicates that no retry should be attempted.
+	retryNone retryPolicy = iota - 1
+
+	// retryGetMethod indicates that only GET requests should be retried.
+	//
+	// This is the default retry policy.
+	retryGetMethod // == 0
+
+	// retryAllMethods indicates that all requests should be retried.
+	retryAllMethods
+)
+
+func (p retryPolicy) String() string {
+	switch p {
+	case retryNone:
+		return "none"
+	case retryGetMethod:
+		return "get"
+	case retryAllMethods:
+		return "all"
+	default:
+		return fmt.Sprintf("retryPolicy(%d)", p)
+	}
+}
+
+func (p retryPolicy) shouldRetry(req *http.Request) bool {
+	switch p {
+	case retryNone:
+		return false
+	case retryGetMethod:
+		return req.Method == http.MethodGet
+	case retryAllMethods:
+		return true
+	default:
+		contract.Failf("unknown retry policy: %v", p)
+		return false // unreachable
+	}
+}
+
 // httpClient is an HTTP client abstraction, used by defaultRESTClient.
 type httpClient interface {
-	Do(req *http.Request, retryAllMethods bool) (*http.Response, error)
+	Do(req *http.Request, policy retryPolicy) (*http.Response, error)
 }
 
 // defaultHTTPClient is an implementation of httpClient that provides a basic implementation of Do
@@ -154,8 +199,8 @@ type defaultHTTPClient struct {
 	client *http.Client
 }
 
-func (c *defaultHTTPClient) Do(req *http.Request, retryAllMethods bool) (*http.Response, error) {
-	if req.Method == "GET" || retryAllMethods {
+func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
+	if policy.shouldRetry(req) {
 		// Wait 1s before retrying on failure. Then increase by 2x until the
 		// maximum delay is reached. Stop after maxRetryCount requests have
 		// been made.
@@ -258,7 +303,7 @@ func pulumiAPICall(ctx context.Context,
 			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
 
-	resp, err := client.Do(req, opts.RetryAllMethods)
+	resp, err := client.Do(req, opts.RetryPolicy)
 	if err != nil {
 		// Don't wrap *apitype.ErrorResponse.
 		if _, ok := err.(*apitype.ErrorResponse); ok {
@@ -328,7 +373,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		opentracing.Tag{Key: "method", Value: method},
 		opentracing.Tag{Key: "path", Value: path},
 		opentracing.Tag{Key: "api", Value: cloudAPI},
-		opentracing.Tag{Key: "retry", Value: opts.RetryAllMethods})
+		opentracing.Tag{Key: "retry", Value: opts.RetryPolicy.String()})
 	defer requestSpan.Finish()
 
 	// Compute query string from query object

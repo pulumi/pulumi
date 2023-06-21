@@ -927,7 +927,7 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
 	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
-		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryAllMethods: true}); err != nil {
+		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryPolicy: retryAllMethods}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil
@@ -943,7 +943,7 @@ func (pc *Client) InvalidateUpdateCheckpoint(ctx context.Context, update UpdateI
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // PatchUpdateCheckpoint patches the checkpoint for the indicated update with the given contents.
@@ -963,7 +963,7 @@ func (pc *Client) PatchUpdateCheckpoint(ctx context.Context, update UpdateIdenti
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
@@ -985,7 +985,7 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
@@ -1003,14 +1003,14 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true, GzipCompress: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // CancelUpdate cancels the indicated update.
 func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) error {
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.restCallWithOptions(ctx, "POST", getUpdatePath(update, "cancel"), nil, nil, nil,
-		httpCallOptions{RetryAllMethods: true})
+		httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // CompleteUpdate completes the indicated update with the given status.
@@ -1023,7 +1023,7 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryAllMethods: true})
+		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // GetUpdateEngineEvents returns the engine events for an update.
@@ -1048,8 +1048,8 @@ func (pc *Client) RecordEngineEvents(
 	ctx context.Context, update UpdateIdentifier, batch apitype.EngineEventBatch, token UpdateTokenSource,
 ) error {
 	callOpts := httpCallOptions{
-		GzipCompress:    true,
-		RetryAllMethods: true,
+		GzipCompress: true,
+		RetryPolicy:  retryAllMethods,
 	}
 	return pc.updateRESTCall(
 		ctx, "POST", getUpdatePath(update, "events/batch"),
