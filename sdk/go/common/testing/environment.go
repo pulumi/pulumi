@@ -44,7 +44,7 @@ type Environment struct {
 
 	// RootPath is a new temp directory where the environment starts.
 	RootPath string
-	// Current working directory.
+	// Current working directory, defaults to the root path.
 	CWD string
 	// Backend to use for commands
 	Backend string
@@ -119,7 +119,7 @@ func (e *Environment) SetEnvVars(env ...string) {
 
 // ImportDirectory copies a folder into the test environment.
 func (e *Environment) ImportDirectory(path string) {
-	err := fsutil.CopyFile(e.RootPath, path, nil)
+	err := fsutil.CopyFile(e.CWD, path, nil)
 	if err != nil {
 		e.T.Fatalf("error importing directory: %v", err)
 	}
