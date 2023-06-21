@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -297,6 +299,190 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 	}
 
 	return true
+}
+
+func (p PropertyPath) reset(old, new PropertyValue) bool {
+	if len(p) == 0 {
+		return false
+	}
+
+	// If this is the last component we want to do the reset, else we want to search for the next component.
+	key := p[0]
+	switch key := key.(type) {
+	case int:
+		// An index < 0 is always a path error, even for empty arrays or objects
+		if key < 0 {
+			return false
+		}
+
+		// This is a leaf path element, so we want to reset the value at this index in new to the value at this index from old
+		if len(p) == 1 {
+			if !old.IsArray() && !new.IsArray() {
+				// Neither old nor new are arrays, so we can't reset this index
+				return true
+			} else if !old.IsArray() || !new.IsArray() {
+				// One of old or new is an array but the other isn't, so this is a path error
+				return false
+			}
+
+			// If neither array contains this index then this is a _same_ and so ok, e.g. given old:[1, 2] and
+			// new:[1] and a path of [3] we can return true because new at [3] is the same as old at [3], it
+			// doesn't exist.
+			if key >= len(old.ArrayValue()) && key >= len(new.ArrayValue()) {
+				return true
+			}
+			// If one array has this index but the other doesn't this is a path failure because we can't
+			// remove a location from an array.
+			if key >= len(old.ArrayValue()) || key >= len(new.ArrayValue()) {
+				return false
+			}
+			// Otherwise both arrays contain this index and we can reset the value of it in new to what is in
+			// old.
+			v := old.ArrayValue()[key]
+			new.ArrayValue()[key] = v
+			return true
+		}
+
+		if !old.IsArray() || !new.IsArray() {
+			// At least one of old or new is not an array, so we can't keep searching along this path but
+			// we only return an error if both are not arrays.
+			return !old.IsArray() && !new.IsArray()
+		}
+
+		// If this index is out of bounds in either array then this is a path failure because we can't
+		// continue the search of this path down each PropertyValue.
+		if key >= len(old.ArrayValue()) || key >= len(new.ArrayValue()) {
+			return false
+		}
+		old = old.ArrayValue()[key]
+		new = new.ArrayValue()[key]
+		return p[1:].reset(old, new)
+
+	case string:
+		if key == "*" {
+			if len(p) == 1 {
+				if new.IsObject() {
+					if old.IsObject() {
+						for k := range old.ObjectValue() {
+							v := old.ObjectValue()[k]
+							new.ObjectValue()[k] = v
+						}
+						for k := range new.ObjectValue() {
+							if _, has := old.ObjectValue()[k]; !has {
+								delete(new.ObjectValue(), k)
+							}
+						}
+					}
+					return true
+				} else if new.IsArray() {
+					if old.IsArray() {
+						for i := range old.ArrayValue() {
+							v := old.ArrayValue()[i]
+							new.ArrayValue()[i] = v
+						}
+					}
+					return true
+				} else {
+					return false
+				}
+			}
+
+			if old.IsObject() && new.IsObject() {
+				oldObject := old.ObjectValue()
+				newObject := new.ObjectValue()
+
+				for k := range oldObject {
+					var hasOld, hasNew bool
+					oldValue, hasOld := oldObject[k]
+					newValue, hasNew := newObject[k]
+					if !hasOld || !hasNew {
+						return false
+					}
+
+					if !p[1:].reset(oldValue, newValue) {
+						return false
+					}
+				}
+				return true
+			} else if old.IsArray() && new.IsArray() {
+				oldArray := old.ArrayValue()
+				newArray := new.ArrayValue()
+
+				for i := range oldArray {
+					if !p[1:].reset(oldArray[i], newArray[i]) {
+						return false
+					}
+				}
+				return true
+			} else {
+				return false
+			}
+		} else {
+			pkey := PropertyKey(key)
+
+			if len(p) == 1 {
+				// This is the leaf path entry, so we want to reset this property in new to it's value in old.
+
+				// Firstly if old doesn't have this key (either because it isn't an object or because it
+				// doesn't have the property) then we want to delete this from new.
+				var v PropertyValue
+				var has bool
+				if old.IsObject() {
+					v, has = old.ObjectValue()[pkey]
+				}
+
+				if has {
+					// If this path exists in old but new isn't an object than return a path error
+					if !new.IsObject() {
+						return false
+					}
+					// Else simply overwrite the value in new with the value from old
+					new.ObjectValue()[pkey] = v
+				} else {
+					// If the path doesn't exist in old then we want to delete it from new, but if new isn't
+					// an object then we can just do nothing we don't consider this a path error. e.g. given
+					// old:{} and new:1 and a path of "a" we can return true because ["a"] in both is the
+					// same (it doesn't exist).
+					if new.IsObject() {
+						delete(new.ObjectValue(), pkey)
+					}
+				}
+				return true
+			}
+
+			if !old.IsObject() || !new.IsObject() {
+				// At least one of old or new is not an object, so we can't keep searching along this path but
+				// we only return an error if both are not objects.
+				return !old.IsObject() && !new.IsObject()
+			}
+
+			new, hasNew := new.ObjectValue()[pkey]
+			old, hasOld := old.ObjectValue()[pkey]
+
+			if hasOld && !hasNew {
+				// Old has this key but new doesn't, but we still searching for the leaf item to set so this
+				// is a path error.
+				return false
+			}
+			if !hasOld && !hasNew {
+				// Neither value contain this path, so we're done.
+				return true
+			}
+
+			return p[1:].reset(old, new)
+		}
+	}
+
+	contract.Failf("Invalid property path component type: %T", key)
+	return true
+}
+
+// Reset attempts to reset the values located by the PropertyPath inside the given new PropertyMap to the
+// values from the same location in the old PropertyMap. Reset behaves likes Set in that it will not create
+// intermediate locations, it also won't create or delete array locations (because that would change the size
+// of the array).
+func (p PropertyPath) Reset(old, new PropertyMap) bool {
+	return p.reset(NewObjectProperty(old), NewObjectProperty(new))
 }
 
 func requiresQuote(c rune) bool {

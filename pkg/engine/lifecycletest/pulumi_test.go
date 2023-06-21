@@ -1230,10 +1230,28 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}), []string{"a", "b", "d", "e[0]"}, []display.StepOp{deploy.OpSame})
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
-	_ = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
 		"e": []interface{}{},
 		"f": 4,
 	}), []string{"a", "b", "d", "e"}, []display.StepOp{deploy.OpUpdate})
+
+	// Ensure that sub-elements of arrays can be ignored, first reset to a simple state
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 3,
+		"b": []string{"foo", "bar"},
+	}), nil, []display.StepOp{deploy.OpUpdate})
+
+	// Check that ignoring a specific sub-element of an array works
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 3,
+		"b": []string{"foo", "baz"},
+	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame})
+
+	// Check that ignoring all sub-elements of an array works
+	_ = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 3,
+		"b": []string{"foo", "baz"},
+	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame})
 }
 
 func TestIgnoreChangesInvalidPaths(t *testing.T) {
@@ -1303,6 +1321,23 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"qux[0]"},
+		})
+		assert.Error(t, err)
+		return nil
+	}
+
+	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	program = func(monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"qux": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("zed"),
+					resource.NewStringProperty("zob"),
+				}),
+			},
+			IgnoreChanges: []string{"qux[1]"},
 		})
 		assert.Error(t, err)
 		return nil
