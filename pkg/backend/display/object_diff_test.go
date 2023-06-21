@@ -15,8 +15,10 @@
 package display
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,6 +90,42 @@ func Test_decodeValue(t *testing.T) {
 				require.Equal(t, c.kind, kind)
 				assert.True(t, resource.NewPropertyValue(c.expected).DeepEquals(actual))
 			}
+		})
+	}
+}
+
+func Test_PrintObject(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		object   resource.PropertyMap
+		expected string
+	}{
+		{
+			"numbers",
+			resource.NewPropertyMapFromMap(map[string]interface{}{
+				"int":         1,
+				"float":       2.3,
+				"large_int":   1234567,
+				"large_float": 1234567.1234567,
+			}),
+			`<{%reset%}>float      : <{%reset%}><{%reset%}>2.3<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>int        : <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>large_float: <{%reset%}><{%reset%}>1.2345671234567e+06<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>large_int  : <{%reset%}><{%reset%}>1234567<{%reset%}><{%reset%}>
+<{%reset%}>`,
+		},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			PrintObject(&buf, c.object, false, 0, deploy.OpSame, false, false, false)
+			assert.Equal(t, c.expected, buf.String())
 		})
 	}
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // In the tests below we use temporary directories and then expect DetectProjectAndPath to return a path to
@@ -113,4 +114,32 @@ func TestProjectStackPath(t *testing.T) {
 			tt.validate(t, tmpDir, path, err)
 		})
 	}
+}
+
+//nolint:paralleltest // Theses test use and change the current working directory
+func TestDetectProjectUnreadableParent(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/12481
+
+	tmpDir := mkTempDir(t)
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { err := os.Chdir(cwd); assert.NoError(t, err) }()
+
+	// unreadable parent directory
+	parentDir := filepath.Join(tmpDir, "root")
+	err = os.Mkdir(parentDir, 0o300)
+	require.NoError(t, err)
+	// Make it readable so we can clean it up later
+	defer func() { err := os.Chmod(parentDir, 0o700); assert.NoError(t, err) }()
+
+	// readable current directory
+	currentDir := filepath.Join(parentDir, "current")
+	err = os.Mkdir(currentDir, 0o700)
+	require.NoError(t, err)
+
+	err = os.Chdir(currentDir)
+	require.NoError(t, err)
+
+	_, _, err = DetectProjectAndPath()
+	assert.ErrorIs(t, err, ErrProjectNotFound)
 }

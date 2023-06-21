@@ -295,6 +295,7 @@ func runConvert(
 	if err != nil {
 		return result.FromError(fmt.Errorf("create temporary directory: %w", err))
 	}
+	defer os.RemoveAll(pclDirectory)
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
 	if from == "yaml" {
@@ -307,9 +308,15 @@ func runConvert(
 			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
 		}
 	} else if from == "pcl" {
-		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it
+		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it, but
+		// remove the temp dir we just created first
+		err = os.RemoveAll(pclDirectory)
+		if err != nil {
+			return result.FromError(fmt.Errorf("remove temporary directory: %w", err))
+		}
 		pclDirectory = cwd
 	} else {
+
 		// Try and load the converter plugin for this
 		converter, err := plugin.NewConverter(pCtx, from, nil)
 		if err != nil {
@@ -342,6 +349,7 @@ func runConvert(
 		if err != nil {
 			return result.FromError(err)
 		}
+		defer contract.IgnoreClose(grpcServer)
 
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,
@@ -351,6 +359,19 @@ func runConvert(
 		if err != nil {
 			return result.FromError(err)
 		}
+
+		// We're done with the converter plugin now so can close it
+		err = converter.Close()
+		if err != nil {
+			// Don't hard exit if we fail to close the converter but do tell the user
+			pCtx.Diag.Warningf(diag.Message("", "failed to close converter plugin: %v"), err)
+		}
+		err = grpcServer.Close()
+		if err != nil {
+			// Again just warn
+			pCtx.Diag.Warningf(diag.Message("", "failed to close mapping server: %v"), err)
+		}
+
 		// These diagnostics come directly from the converter and so _should_ be user friendly. So we're just
 		// going to print them.
 		printDiagnostics(pCtx.Diag, resp.Diagnostics)

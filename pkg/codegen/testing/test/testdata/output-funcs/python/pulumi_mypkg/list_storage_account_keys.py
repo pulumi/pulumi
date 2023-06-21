@@ -66,7 +66,7 @@ def list_storage_account_keys(account_name: Optional[str] = None,
     __ret__ = pulumi.runtime.invoke('mypkg::listStorageAccountKeys', __args__, opts=opts, typ=ListStorageAccountKeysResult).value
 
     return AwaitableListStorageAccountKeysResult(
-        keys=__ret__.keys)
+        keys=pulumi.get(__ret__, 'keys'))
 
 
 @_utilities.lift_output_func(list_storage_account_keys)

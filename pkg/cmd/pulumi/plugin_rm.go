@@ -96,32 +96,35 @@ func newPluginRmCmd() *cobra.Command {
 				return nil
 			}
 
-			// Confirm that the user wants to do this (unless --yes was passed), and do the deletes.
-			var suffix string
-			if len(deletes) != 1 {
-				suffix = "s"
-			}
-			fmt.Print(
-				opts.Color.Colorize(
-					fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
-						colors.SpecAttention, len(deletes), suffix, colors.Reset)))
-			for _, del := range deletes {
-				fmt.Printf("    %s %s\n", del.Kind, del.String())
-			}
-			if yes || confirmPrompt("", "yes", opts) {
-				var result error
-				for _, plugin := range deletes {
-					if err := plugin.Delete(); err != nil {
-						result = multierror.Append(
-							result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
-					}
+			// Confirm that the user wants to do this (unless --yes was passed).
+			if !yes {
+				var suffix string
+				if len(deletes) != 1 {
+					suffix = "s"
 				}
-				if result != nil {
-					return result
+				fmt.Print(
+					opts.Color.Colorize(
+						fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
+							colors.SpecAttention, len(deletes), suffix, colors.Reset)))
+				for _, del := range deletes {
+					fmt.Printf("    %s %s\n", del.Kind, del.String())
+				}
+				if !confirmPrompt("", "yes", opts) {
+					return nil
 				}
 			}
 
-			return nil
+			// Run the actual delete operations.
+			var result error
+			for _, plugin := range deletes {
+				if err := plugin.Delete(); err == nil {
+					fmt.Printf("removed: %s %v\n", plugin.Kind, plugin)
+				} else {
+					result = multierror.Append(
+						result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
+				}
+			}
+			return result
 		}),
 	}
 

@@ -245,7 +245,18 @@ func (pc *Client) GetPulumiAccountDetails(ctx context.Context) (string, []string
 func (pc *Client) GetCLIVersionInfo(ctx context.Context) (semver.Version, semver.Version, error) {
 	var versionInfo apitype.CLIVersionResponse
 
-	if err := pc.restCall(ctx, "GET", "/api/cli/version", nil, nil, &versionInfo); err != nil {
+	err := pc.restCallWithOptions(
+		ctx,
+		"GET",
+		"/api/cli/version",
+		nil,          // query
+		nil,          // request
+		&versionInfo, // response
+		httpCallOptions{
+			RetryPolicy: retryNone,
+		},
+	)
+	if err != nil {
 		return semver.Version{}, semver.Version{}, err
 	}
 

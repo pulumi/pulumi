@@ -117,3 +117,34 @@ func TestCheckForUpdate(t *testing.T) {
 		assert.Equal(t, 1, requestCounter)
 	})
 }
+
+//nolint:paralleltest // changes environment variables and globals
+func TestCheckForUpdate_allFail(t *testing.T) {
+	// Cached version information is stored in PULUMI_HOME.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	var requestCounter int // number of requests
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/cli/version":
+			requestCounter++
+			http.Error(w, "great sadness", http.StatusInternalServerError)
+
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("PULUMI_API", srv.URL)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	msg := checkForUpdate(ctx)
+	assert.Nil(t, msg)
+
+	// We should not make more than one attempt to get this information.
+	assert.Equal(t, 1, requestCounter)
+}

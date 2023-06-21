@@ -78,10 +78,10 @@ def func_with_secrets(crypto_key: Optional[str] = None,
     __ret__ = pulumi.runtime.invoke('mypkg::funcWithSecrets', __args__, opts=opts, typ=FuncWithSecretsResult).value
 
     return AwaitableFuncWithSecretsResult(
-        ciphertext=__ret__.ciphertext,
-        crypto_key=__ret__.crypto_key,
-        id=__ret__.id,
-        plaintext=__ret__.plaintext)
+        ciphertext=pulumi.get(__ret__, 'ciphertext'),
+        crypto_key=pulumi.get(__ret__, 'crypto_key'),
+        id=pulumi.get(__ret__, 'id'),
+        plaintext=pulumi.get(__ret__, 'plaintext'))
 
 
 @_utilities.lift_output_func(func_with_secrets)

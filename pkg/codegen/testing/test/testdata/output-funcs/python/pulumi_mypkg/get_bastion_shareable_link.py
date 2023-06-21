@@ -66,7 +66,7 @@ def get_bastion_shareable_link(bastion_host_name: Optional[str] = None,
     __ret__ = pulumi.runtime.invoke('mypkg::getBastionShareableLink', __args__, opts=opts, typ=GetBastionShareableLinkResult).value
 
     return AwaitableGetBastionShareableLinkResult(
-        next_link=__ret__.next_link)
+        next_link=pulumi.get(__ret__, 'next_link'))
 
 
 @_utilities.lift_output_func(get_bastion_shareable_link)
