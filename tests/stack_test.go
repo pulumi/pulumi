@@ -811,3 +811,39 @@ func TestStackTags(t *testing.T) {
 	tags = lsTags()
 	assert.Equal(t, "projectValue", tags["projectTag"], "projectTag should be set to projectValue")
 }
+
+//nolint:paralleltest // pulumi new is not parallel safe
+func TestNewStackConflictingOrg(t *testing.T) {
+	// This test requires the service, as only the service supports orgs.
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+
+	project, err := resource.NewUniqueHex("test-name-", 8, -1)
+	require.NoError(t, err)
+
+	// `new` wants to work in an empty directory but our use of local filestate means we have a
+	// ".pulumi" directory at root.
+	projectDir := filepath.Join(e.RootPath, project)
+	err = os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	orgs := []string{"moolumi", "pulumi-test"}
+	for _, org := range orgs {
+		stackRef := fmt.Sprintf("%s/%s/stack", org, project)
+		// Ensure projects no longer exists. Ignoring errors.
+		_, _, err := e.GetCommandResults("pulumi", "stack", "rm", "-s", stackRef)
+		_ = err
+	}
+	for _, org := range orgs {
+		stackRef := fmt.Sprintf("%s/%s/stack", org, project)
+		e.RunCommand("pulumi", "new", "yaml", "-s", stackRef, "--yes", "--force")
+		e.RunCommand("pulumi", "up", "--yes")
+		e.RunCommand("pulumi", "destroy", "--yes", "--remove")
+	}
+}

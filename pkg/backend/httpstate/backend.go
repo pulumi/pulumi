@@ -749,14 +749,40 @@ func (b *cloudBackend) LogoutAll() error {
 	return workspace.DeleteAllAccounts()
 }
 
+func inferOrg(ctx context.Context,
+	getDefaultOrg func() (string, error),
+	getUserOrg func() (string, error),
+) (string, error) {
+	orgName, err := getDefaultOrg()
+	if err != nil || orgName == "" {
+		// Fallback to using the current user.
+		orgName, err = getUserOrg()
+		if err != nil || orgName == "" {
+			return "", errors.New("could not determine organization name")
+		}
+	}
+	return orgName, nil
+}
+
 // DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
-func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
-	owner, _, err := b.currentUser(ctx)
+func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, projectName string) (bool, error) {
+	if orgName != "" {
+		return b.client.DoesProjectExist(ctx, orgName, projectName)
+	}
+
+	getDefaultOrg := func() (string, error) {
+		return workspace.GetBackendConfigDefaultOrg(nil)
+	}
+	getUserOrg := func() (string, error) {
+		orgName, _, err := b.currentUser(ctx)
+		return orgName, err
+	}
+	orgName, err := inferOrg(ctx, getDefaultOrg, getUserOrg)
 	if err != nil {
 		return false, err
 	}
 
-	return b.client.DoesProjectExist(ctx, owner, projectName)
+	return b.client.DoesProjectExist(ctx, orgName, projectName)
 }
 
 func (b *cloudBackend) GetStack(ctx context.Context, stackRef backend.StackReference) (backend.Stack, error) {

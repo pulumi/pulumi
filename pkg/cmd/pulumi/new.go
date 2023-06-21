@@ -131,13 +131,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 
-	// Ensure the project doesn't already exist.
-	if args.name != "" {
-		if err := validateProjectName(ctx, b, args.name, args.generateOnly, opts); err != nil {
-			return err
-		}
-	}
-
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -183,7 +176,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	// The main purpose of this lookup is getting a proper start with a project
 	// created via the web app.
 	var s backend.Stack
+	var orgName string
 	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
+		parts := strings.SplitN(args.stack, "/", 3)
+
+		// Set the org name for future use.
+		orgName = parts[0]
+
+		projectName := parts[1]
+		if err := validateProjectName(ctx, b, orgName, projectName, args.generateOnly, opts); err != nil {
+			return err
+		}
+
 		stackName, err := buildStackName(args.stack)
 		if err != nil {
 			return err
@@ -219,7 +223,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project name, if it wasn't already specified.
 	if args.name == "" {
 		defaultValue := workspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		if err := validateProjectName(ctx, b, defaultValue, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, b, orgName, defaultValue, args.generateOnly, opts); err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
 			// See https://github.com/pulumi/pulumi/issues/8747.
@@ -230,9 +234,14 @@ func runNew(ctx context.Context, args newArgs) error {
 			// Do not suggest an invalid or existing name as the default project name.
 			defaultValue = ""
 		}
-		validate := func(s string) error { return validateProjectName(ctx, b, s, args.generateOnly, opts) }
+		validate := func(s string) error { return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
+			return err
+		}
+	} else {
+		// Ensure the project doesn't already exist.
+		if err := validateProjectName(ctx, b, orgName, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
@@ -552,7 +561,7 @@ func errorIfNotEmptyDirectory(path string) error {
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
-	projectName string, generateOnly bool, opts display.Options,
+	orgName string, projectName string, generateOnly bool, opts display.Options,
 ) error {
 	err := workspace.ValidateProjectName(projectName)
 	if err != nil {
@@ -562,7 +571,7 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 	if !generateOnly {
 		contract.Requiref(b != nil, "b", "must not be nil")
 
-		exists, err := b.DoesProjectExist(ctx, projectName)
+		exists, err := b.DoesProjectExist(ctx, orgName, projectName)
 		if err != nil {
 			return err
 		}
