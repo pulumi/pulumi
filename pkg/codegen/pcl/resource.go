@@ -62,6 +62,10 @@ type Resource struct {
 	// The definition of the resource.
 	Definition *model.Block
 
+	// When set to true, allows traversing unknown properties through a resource. i.e. `resource.unknownProperty`
+	// will be valid and the type of the traversal is dynamic. This property is set to false by default
+	LenientTraversal bool
+
 	// Token is the type token for this resource.
 	Token string
 
@@ -102,7 +106,13 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 		return model.DynamicType.Traverse(traverser)
 	}
 
-	return r.VariableType.Traverse(traverser)
+	traversable, diags := r.VariableType.Traverse(traverser)
+
+	if diags.HasErrors() && r.LenientTraversal {
+		return model.DynamicType.Traverse(traverser)
+	}
+
+	return traversable, diags
 }
 
 // Deprecated: Name returns the variable or declaration name of the resource.
