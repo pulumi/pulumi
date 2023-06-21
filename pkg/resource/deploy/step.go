@@ -389,7 +389,7 @@ func (d deleteProtectedError) Error() string {
 		"because it is protected. To unprotect the resource, "+
 		"either remove the `protect` flag from the resource in your Pulumi "+
 		"program and run `pulumi up`, or use the command:\n"+
-		"`pulumi state unprotect '%[1]s'`", d.urn)
+		"`pulumi state unprotect %[2]s`", d.urn, d.urn.Quote())
 }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
