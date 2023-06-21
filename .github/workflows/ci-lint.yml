@@ -31,6 +31,8 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
+          # golangci-lint-action handles all the caching for Go.
+          cache: false
 
       # We leverage the golangci-lint action to install
       # and maintain the cache,
