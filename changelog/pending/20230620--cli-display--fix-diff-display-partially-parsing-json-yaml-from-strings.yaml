@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix diff display partially parsing JSON/YAML from strings.

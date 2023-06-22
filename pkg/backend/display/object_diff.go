@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -1215,11 +1216,17 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
 	decode := func() (interface{}, string, bool) {
+		// Strip whitespace for the purposes of decoding.
+		repr = strings.TrimSpace(repr)
 		r := strings.NewReader(repr)
 
+		jsonDecoder := json.NewDecoder(r)
 		var object interface{}
-		if err := json.NewDecoder(r).Decode(&object); err == nil {
-			return object, "json", true
+		if err := jsonDecoder.Decode(&object); err == nil {
+			// Make sure _all_ the string was consumed as JSON.
+			if !jsonDecoder.More() {
+				return object, "json", true
+			}
 		}
 
 		// Only attempt to decode a YAML value if the representation is a multi-line string.
@@ -1229,12 +1236,19 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 		}
 
 		r.Reset(repr)
-		if err := yaml.NewDecoder(r).Decode(&object); err == nil {
-			translated, ok := p.translateYAMLValue(object)
-			if !ok {
-				return nil, "", false
+		yamlDecoder := yaml.NewDecoder(r)
+		if err := yamlDecoder.Decode(&object); err == nil {
+			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
+			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
+			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
+			eofErr := yamlDecoder.Decode(nil)
+			if errors.Is(eofErr, io.EOF) {
+				translated, ok := p.translateYAMLValue(object)
+				if !ok {
+					return nil, "", false
+				}
+				return translated, "yaml", true
 			}
-			return translated, "yaml", true
 		}
 
 		return nil, "", false
