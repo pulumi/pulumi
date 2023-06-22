@@ -82,13 +82,14 @@ func ensurePulumiMeta(ctx context.Context, b Bucket, getenv func(string) string)
 	// - Version 1 added support for project-scoped stacks.
 	//   For entirely new buckets, we'll use version 1
 	//   to give new users access to the latest features.
-	empty, err := isPulumiDirEmpty(ctx, b)
+	refs, err := newLegacyReferenceStore(b).ListReferences(ctx)
 	if err != nil {
+		// If there's an error listing don't fail, just don't print the warnings
 		return nil, err
 	}
 
-	useLegacy := !empty
-	if empty {
+	useLegacy := len(refs) > 0
+	if !useLegacy {
 		// Allow opting into legacy mode for new states
 		// by setting the environment variable.
 		v, err := strconv.ParseBool(getenv(PulumiFilestateLegacyLayoutEnvVar))
