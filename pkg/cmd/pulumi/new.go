@@ -126,6 +126,11 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Check project name and stack reference project name are the same.
+	if err := validateStackProjectName(b, args.stack, args.name); err != nil {
+		return err
+	}
+
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
 		if err := validateProjectName(ctx, b, args.name, args.generateOnly, opts); err != nil {
@@ -1111,4 +1116,30 @@ func containsWhiteSpace(value string) bool {
 		}
 	}
 	return false
+}
+
+func validateStackProjectName(b backend.Backend, stackName, projectName string) error {
+	if stackName == "" {
+		return nil
+	}
+	if projectName == "" {
+		return nil
+	}
+
+	if strings.Count(stackName, "/") == 2 {
+		ref, err := b.ParseStackReference(stackName)
+		if err != nil {
+			return err
+		}
+		stackProjectName, hasProject := ref.Project()
+		if !hasProject {
+			return nil
+		}
+		if projectName == stackProjectName.String() {
+			return nil
+		}
+		return fmt.Errorf("project name (%s) and stack reference project name (%s) must be the same",
+			projectName, stackProjectName)
+	}
+	return nil
 }

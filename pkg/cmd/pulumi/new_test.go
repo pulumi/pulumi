@@ -820,3 +820,49 @@ func genUniqueName(t *testing.T) string {
 
 	return hex.EncodeToString(bs[:])
 }
+
+func TestValidateStackRefAndProjectName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		projectName string
+		stackRef    string
+		valid       bool
+	}{
+		{
+			projectName: "foo",
+			stackRef:    "foo",
+			valid:       true,
+		},
+		{
+			projectName: "fooo",
+			stackRef:    "org/foo/dev",
+			valid:       false,
+		},
+		{
+			projectName: "",
+			stackRef:    "org/foo/dev",
+			valid:       true,
+		},
+		{
+			projectName: "foo",
+			stackRef:    "",
+			valid:       true,
+		},
+		{
+			projectName: "foo",
+			stackRef:    "org/foo/dev",
+			valid:       true,
+		},
+	}
+	b, err := currentBackend(context.Background(), nil, display.Options{})
+	require.NoError(t, err)
+
+	for _, tt := range tests {
+		err := validateStackProjectName(b, tt.stackRef, tt.projectName)
+		if tt.valid {
+			assert.NoError(t, err, "projectName: %s, stackRef: %s", tt.projectName, tt.stackRef)
+		} else {
+			assert.Error(t, err, "projectName: %s, stackRef: %s", tt.projectName, tt.stackRef)
+		}
+	}
+}
