@@ -199,11 +199,9 @@ func TestPrintfGo(t *testing.T) {
 // Tests basic configuration from the perspective of a Pulumi Go program.
 func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("config_basic", "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Quick: true,
+		Dir:          filepath.Join("config_basic", "go"),
+		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
+		Quick:        true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a value",
 		},
@@ -222,6 +220,34 @@ func TestConfigBasicGo(t *testing.T) {
 			{Key: "a.b[1].c", Value: "false", Path: true},
 			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+	})
+}
+
+// Tests configuration error from the perspective of a Pulumi Go program.
+func TestConfigMissingGo(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("config_missing", "go"),
+		Dependencies: []string{
+			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Quick:         true,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			text1 := "Missing required configuration variable 'config_missing_go:notFound'"
+			text2 := "\tplease set a value using the command `pulumi config set --secret config_missing_go:notFound <value>`"
+			var found1, found2 bool
+			for _, event := range stackInfo.Events {
+				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text1) {
+					found1 = true
+				}
+				if event.DiagnosticEvent != nil && strings.Contains(event.DiagnosticEvent.Message, text2) {
+					found2 = true
+				}
+			}
+			assert.True(t, found1, "expected error %q", text1)
+			assert.True(t, found2, "expected error %q", text2)
 		},
 	})
 }
