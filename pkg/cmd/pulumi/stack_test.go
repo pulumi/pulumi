@@ -50,6 +50,26 @@ func TestStringifyOutput(t *testing.T) {
 			give: "pass&word",
 			want: "pass&word",
 		},
+		{
+			// https://github.com/pulumi/pulumi/issues/10561
+			desc: "html/string",
+			give: "<html>",
+			want: "<html>",
+		},
+		{
+			// https://github.com/pulumi/pulumi/issues/10561
+			desc: "html/list",
+			give: []string{"<html>"},
+			want: `["<html>"]`,
+		},
+		{
+			// https://github.com/pulumi/pulumi/issues/10561
+			desc: "html/object",
+			give: map[string]any{
+				"foo": "<html>",
+			},
+			want: `{"foo":"<html>"}`,
+		},
 	}
 
 	for _, tt := range tests {

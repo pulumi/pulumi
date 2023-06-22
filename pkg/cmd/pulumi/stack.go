@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -233,9 +234,19 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	b, err := json.Marshal(v)
-	if err != nil {
+	// json.Marshal escapes HTML characters, which we don't want,
+	// so change that with json.NewEncoder.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
 		return "error: could not format value"
+	}
+
+	// json.NewEncoder always adds a trailing newline. Remove it.
+	b := buf.Bytes()
+	if n := len(b); n > 0 && b[n-1] == '\n' {
+		b = b[:n-1]
 	}
 
 	return string(b)

@@ -31,8 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-
 // Tests the output of 'pulumi stack output'
 // under different conditions.
 func TestStackOutputCmd_plainText(t *testing.T) {
