@@ -177,7 +177,7 @@ func TestMeta_roundTrip(t *testing.T) {
 			// The bucket is always non-empty,
 			// so we won't automatically try to use version 1.
 			require.NoError(t,
-				b.WriteAll(context.Background(), ".pulumi/foo", []byte("bar"), nil))
+				b.WriteAll(context.Background(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
 
 			ctx := context.Background()
 			require.NoError(t, tt.give.WriteTo(ctx, b))
@@ -214,7 +214,7 @@ func TestNew_noMetaOnInit(t *testing.T) {
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
 	require.NoError(t, err)
 	require.NoError(t,
-		bucket.WriteAll(context.Background(), ".pulumi/foo", []byte("bar"), nil))
+		bucket.WriteAll(context.Background(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
 
 	ctx := context.Background()
 	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)

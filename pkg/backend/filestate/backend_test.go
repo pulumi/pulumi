@@ -750,7 +750,17 @@ func TestProjectFolderStructure(t *testing.T) {
 	t.Parallel()
 
 	// Login to a temp dir filestate backend
+
+	// Make a dummy file in the legacy location which isn't a stack file, we should still automatically turn
+	// this into project mode.
 	tmpDir := t.TempDir()
+	err := os.MkdirAll(path.Join(tmpDir, ".pulumi", "plugins"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.MkdirAll(path.Join(tmpDir, ".pulumi", "stacks"), os.ModePerm)
+	require.NoError(t, err)
+	err = os.WriteFile(path.Join(tmpDir, ".pulumi", "stacks", "a.txt"), []byte("{}"), os.ModePerm)
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	assert.NoError(t, err)
