@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: On Windows, make `pulumi state unprotect` command suggestion use double-quotes instead of single-quotes.

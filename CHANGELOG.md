@@ -1,5 +1,75 @@
 # Changelog
 
+## 3.73.0 (2023-06-22)
+
+
+### Features
+
+- [programgen] Allow traversing unknown properties from resources when skipping resource type checking
+  [#13180](https://github.com/pulumi/pulumi/pull/13180)
+
+
+### Bug Fixes
+
+- [backend/filestate] Fix auto-opt-in to project mode.
+  [#13243](https://github.com/pulumi/pulumi/pull/13243)
+
+- [cli] `pulumi convert` will now cleanup temporary pulumi-convert directories when the command is finished.
+  [#13185](https://github.com/pulumi/pulumi/pull/13185)
+
+- [cli] Fix Markdown formatting issues in command usage.
+  [#13225](https://github.com/pulumi/pulumi/pull/13225)
+
+- [cli] Fix `stack rm` removing config files for the wrong project.
+  [#13227](https://github.com/pulumi/pulumi/pull/13227)
+
+- [cli/config] No longer error on directory read permissions when searching for project files.
+  [#13211](https://github.com/pulumi/pulumi/pull/13211)
+
+- [cli/display] Fix diff display partially parsing JSON/YAML from strings.
+
+- [cli/display] Fix large integers displaying in scientific notation.
+  [#13209](https://github.com/pulumi/pulumi/pull/13209)
+
+- [cli/display] Update summary is now correctly shown when `advisory` and `disabled` policy events are encountered.
+  [#13218](https://github.com/pulumi/pulumi/pull/13218)
+
+- [cli/display] Fix formatting bugs in display causing text like (MISSING) showing in output.
+  [#13228](https://github.com/pulumi/pulumi/pull/13228)
+
+- [cli/display] On Windows, make `pulumi state unprotect` command suggestion use double-quotes instead of single-quotes.
+  [#13236](https://github.com/pulumi/pulumi/pull/13236)
+
+- [cli/new] `pulumi new` now correctly supports numeric stack names.
+  [#13220](https://github.com/pulumi/pulumi/pull/13220)
+
+- [cli/new] Fix empty config values being added to the config file as part of `new`.
+  [#13233](https://github.com/pulumi/pulumi/pull/13233)
+
+- [cli/plugin] Fixes the output of plugin rm --yes command to explicitly say that plugins were removed
+  [#13216](https://github.com/pulumi/pulumi/pull/13216)
+
+- [engine] Fix wildcards in IgnoreChanges.
+  [#13005](https://github.com/pulumi/pulumi/pull/13005)
+
+- [engine] Fix ignoreChanges setting ignore array indexes to zero.
+  [#13005](https://github.com/pulumi/pulumi/pull/13005)
+
+- [sdk/nodejs] Write port to stdout as a string so Node doesn't colorize the output
+  [#13204](https://github.com/pulumi/pulumi/pull/13204)
+
+- [sdk/python] Allow tuples as Sequence input values to resources.
+  [#13210](https://github.com/pulumi/pulumi/pull/13210)
+
+- [sdkgen/python] Python SDK only prints a Function Invoke result's deprecation messages when using getters rather than on instantiation.
+  [#13213](https://github.com/pulumi/pulumi/pull/13213)
+
+
+### Miscellaneous
+
+- [cli] Make no retry attempts for the Pulumi new version query. This should speed up the CLI in certain environments.
+  [#13215](https://github.com/pulumi/pulumi/pull/13215)
+
 ## 3.72.2 (2023-06-17)
 
 

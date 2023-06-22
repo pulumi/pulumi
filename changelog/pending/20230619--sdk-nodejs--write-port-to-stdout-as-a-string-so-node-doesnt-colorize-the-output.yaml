@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/nodejs
-  description: Write port to stdout as a string so Node doesn't colorize the output

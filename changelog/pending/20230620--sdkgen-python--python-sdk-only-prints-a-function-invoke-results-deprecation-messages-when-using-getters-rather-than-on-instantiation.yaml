@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/python
-  description: Python SDK only prints a Function Invoke result's deprecation messages when using getters rather than on instantiation.
