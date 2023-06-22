@@ -17,8 +17,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -66,13 +68,22 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithNumericName(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
 	tempdir := t.TempDir()
 	chdir(t, tempdir)
+
+	// This test requires a numeric project name.
+	// Project names have to be unique or this test will fail.
+	// A test may crash and leave a project behind, so we use a timestamp to try to ensure uniqueness
+	// instead of a constant.
+	unixTsNanos := time.Now().UnixNano()
+	numericProjectName := strconv.Itoa(int(unixTsNanos))
 
 	args := newArgs{
 		interactive:       false,
 		yes:               true,
-		name:              "123456", // Should be serialized as a string.
+		name:              numericProjectName, // Should be serialized as a string.
 		prompt:            promptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
@@ -85,7 +96,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 	p := loadProject(t, tempdir)
 	assert.NotNil(t, p)
 
-	assert.Equal(t, p.Name.String(), "123456")
+	assert.Equal(t, p.Name.String(), numericProjectName)
 
 	assert.Equal(t, stackName, loadStackName(t))
 	removeStack(t, tempdir, stackName)
