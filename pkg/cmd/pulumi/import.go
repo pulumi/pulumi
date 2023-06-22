@@ -475,9 +475,11 @@ func newImportCmd() *cobra.Command {
 			var importFile importFile
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
+					contract.IgnoreError(cmd.Help())
 					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
 				}
 				if from != "" {
+					contract.IgnoreError(cmd.Help())
 					return result.Errorf("a converter may not be specified in conjunction with an import file")
 				}
 				f, err := readImportFile(importFilePath)
@@ -487,7 +489,8 @@ func newImportCmd() *cobra.Command {
 				importFile = f
 			} else if from != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
-					return result.Errorf("an inline resource may not be specified in conjunction with an import file")
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf("an inline resource may not be specified in conjunction with a converter")
 				}
 				converter, err := plugin.NewConverter(pCtx, from, nil)
 				if err != nil {
@@ -540,8 +543,18 @@ func newImportCmd() *cobra.Command {
 				}
 				importFile = f
 			} else {
-				if len(args) < 3 {
-					return result.Errorf("an inline resource must be specified if no converter or import file is used")
+				msg := "an inline resource must be specified if no converter or import file is used, missing "
+				if len(args) == 0 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "type, name, and id")
+				}
+				if len(args) == 1 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "name and id")
+				}
+				if len(args) == 2 {
+					contract.IgnoreError(cmd.Help())
+					return result.Errorf(msg + "id")
 				}
 				f, err := makeImportFile(args[0], args[1], args[2], properties, parentSpec, providerSpec, "")
 				if err != nil {
