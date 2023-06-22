@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
     project: "PULUMI_NODEJS_PROJECT",
@@ -188,6 +189,9 @@ export interface Store {
      * callbacks and forwards them to the engine.
      */
     callbacks?: ICallbackServer;
+
+    resourcePackages: Map<string, ResourcePackage[]>;
+    resourceModules: Map<string, ResourceModule[]>;
 }
 
 /**
@@ -231,6 +235,8 @@ export class LocalStore implements Store {
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
+    resourcePackages = new Map<string, ResourcePackage[]>();
+    resourceModules = new Map<string, ResourceModule[]>();
 }
 
 /**
