@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"runtime"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -66,6 +67,16 @@ func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType to
 			URNNameDelimiter + typ +
 			URNNameDelimiter + string(name),
 	)
+}
+
+// Quote returns the quoted form of the URN appropriate for use as a command line argument for the current OS.
+func (urn URN) Quote() string {
+	quote := `'`
+	if runtime.GOOS == "windows" {
+		// Windows uses double-quotes instead of single-quotes.
+		quote = `"`
+	}
+	return quote + string(urn) + quote
 }
 
 // IsValid returns true if the URN is well-formed.

@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -480,4 +481,26 @@ func TestGenerateAliases(t *testing.T) {
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
+}
+
+func TestDeleteProtectedErrorUsesCorrectQuotesOnOS(t *testing.T) {
+	t.Parallel()
+	err := deleteProtectedError{urn: "resource:urn"}
+
+	expectations := map[string]string{
+		`windows`: `"`,
+		`linux`:   `'`,
+		`darwin`:  `'`,
+	}
+
+	t.Run(runtime.GOOS, func(t *testing.T) {
+		t.Parallel()
+		gotErrMsg := err.Error()
+		contains, ok := expectations[runtime.GOOS]
+		if !ok {
+			t.Skipf("no quoting expectation for %s", runtime.GOOS)
+			return
+		}
+		assert.Contains(t, gotErrMsg, contains)
+	})
 }
