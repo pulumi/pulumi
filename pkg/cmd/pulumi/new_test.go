@@ -19,10 +19,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -294,6 +297,45 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, projectName, proj.Name.String())
+}
+
+//nolint:paralleltest // changes directory for process
+func TestCreatingProjectWithEmptyConfig(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/4081
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	tempdir := t.TempDir()
+	chdir(t, tempdir)
+	uniqueProjectName := filepath.Base(tempdir) + "test"
+
+	prompt := func(yes bool, valueType string, defaultValue string, secret bool,
+		isValidFn func(value string) error, opts display.Options,
+	) (string, error) {
+		if strings.HasPrefix(valueType, "aws:region:") {
+			return "", nil
+		}
+		return defaultValue, nil
+	}
+
+	args := newArgs{
+		name:              uniqueProjectName,
+		stack:             stackName,
+		interactive:       true,
+		prompt:            prompt,
+		secretsProvider:   "default",
+		templateNameOrURL: "aws-typescript",
+	}
+
+	err := runNew(context.Background(), args)
+	require.NoError(t, err)
+
+	proj := loadProject(t, tempdir)
+	projStack, err := workspace.LoadProjectStack(proj, filepath.Join(tempdir, "Pulumi."+stackName+".yaml"))
+	require.NoError(t, err)
+
+	assert.NotContains(t, projStack.Config, config.MustMakeKey("aws", "region"))
+
+	removeStack(t, tempdir, stackName)
 }
 
 //nolint:paralleltest // changes directory for process

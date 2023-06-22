@@ -302,7 +302,10 @@ func newUpCmd() *cobra.Command {
 		}
 
 		// Prompt for config values (if needed) and save.
-		if err = handleConfig(ctx, proj, s, templateNameOrURL, template, configArray, yes, path, opts.Display); err != nil {
+		if err = handleConfig(
+			ctx, promptForValue, proj, s,
+			templateNameOrURL, template, configArray,
+			yes, path, opts.Display); err != nil {
 			return result.FromError(err)
 		}
 
@@ -637,6 +640,7 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 // handleConfig handles prompting for config values (as needed) and saving config.
 func handleConfig(
 	ctx context.Context,
+	prompt promptForValueFunc,
 	project *workspace.Project,
 	s backend.Stack,
 	templateNameOrURL string,
@@ -676,7 +680,7 @@ func handleConfig(
 		}
 
 		// Prompt for config as needed.
-		c, err = promptForConfig(ctx, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
+		c, err = promptForConfig(ctx, prompt, project, s, template.Config, commandLineConfig, stackConfig, yes, opts)
 		if err != nil {
 			return err
 		}
