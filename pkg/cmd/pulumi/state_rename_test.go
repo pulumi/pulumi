@@ -67,6 +67,44 @@ func TestRenameProvider(t *testing.T) {
 	}
 }
 
+func TestStateRename_invalidName(t *testing.T) {
+	t.Parallel()
+
+	prov := resource.URN("urn:pulumi:dev::xxx-dev::kubernetes::provider")
+	res := resource.URN("urn:pulumi:dev::xxx-dev::kubernetes:core/v1:Namespace::amazon_cloudwatchNamespace")
+
+	snap := deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				URN:  prov,
+				ID:   "provider-id",
+				Type: "pulumi:provider:kubernetes",
+			},
+			{
+				URN:  res,
+				ID:   "res-id",
+				Type: "kubernetes:core/v1:Namespace",
+			},
+		},
+	}
+	require.NoError(t, snap.VerifyIntegrity(),
+		"invalid test: snapshot is already broken")
+
+	err := stateRenameOperation(
+		res,
+		"urn:pulumi:dev::xxx-dev::eks:index:Cluster$kubernetes:core/v1:Namespace::amazon_cloudwatchNamespace",
+		display.Options{},
+		&snap,
+	)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "invalid name")
+	assert.ErrorContains(t, err, "names may only contain alphanumerics")
+
+	// The state must still be valid, and the resource name unchanged.
+	require.NoError(t, snap.VerifyIntegrity(), "snapshot is broken after rename")
+	assert.Equal(t, res, snap.Resources[1].URN)
+}
+
 // Regression test for https://github.com/pulumi/pulumi/issues/13179.
 //
 // Defines a state with a two resources, one parented to the other,

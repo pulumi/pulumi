@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/state
+  description: Disallow renaming resources to invalid names that will corrupt the state.
