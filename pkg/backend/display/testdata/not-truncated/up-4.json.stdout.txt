@@ -24,7 +24,7 @@
 <{%reset%}><{%reset%}>        maxSessionDuration : <{%reset%}><{%reset%}>3600<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        name               : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        path               : <{%reset%}><{%reset%}>"/"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:iam::616138583583:role/eks-role-be36613"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        assumeRolePolicy   : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            Statement: <{%reset%}><{%reset%}>[
@@ -55,7 +55,7 @@
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
 <{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSServicePolicy"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-be36613-20220401073059037900000001"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%reset%}>  aws:iam/rolePolicyAttachment:RolePolicyAttachment: (same)
 <{%reset%}>        [id=eks-role-be36613-20220401073059129000000002]
@@ -63,7 +63,7 @@
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::eks::pulumi:providers:aws::default_4_36_0::0ec0509c-c2e3-422d-aec6-ea54de8d499b]
 <{%reset%}><{%reset%}>        policyArn : <{%reset%}><{%reset%}>"arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        role      : <{%reset%}><{%reset%}>"eks-role-be36613"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        id       : <{%reset%}><{%reset%}>"eks-role-be36613-20220401073059129000000002"<{%reset%}><{%reset%}>
 <{%reset%}>    <{%fg 3%}>~ aws:ec2/securityGroup:SecurityGroup: (update)
 <{%reset%}>        [id=sg-0d1f8bb63e78926f4]
@@ -80,7 +80,7 @@
 <{%reset%}><{%fg 2%}>                  + toPort    : <{%reset%}><{%fg 2%}>22<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 3%}>        ]
-<{%reset%}><{%reset%}><{%!f(MISSING)g 3%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%fg 3%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                : <{%reset%}><{%reset%}>"arn:aws:ec2:us-west-2:616138583583:security-group/sg-0d1f8bb63e78926f4"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        egress             : <{%reset%}><{%reset%}>[
 <{%reset%}><{%reset%}>            [0]: <{%reset%}><{%reset%}>{
@@ -149,7 +149,7 @@
 <{%reset%}><{%reset%}>                [3]: <{%reset%}><{%reset%}>"subnet-43f43a1e"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>        --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
 <{%reset%}>        arn                    : <{%reset%}><{%reset%}>"arn:aws:eks:us-west-2:616138583583:cluster/eks-cluster-dc83353"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        certificateAuthority   : <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            data: <{%reset%}><{%reset%}>"LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EUXdNVEEzTXpZeU5Gb1hEVE15TURNeU9UQTNNell5TkZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHBWCjRhZUVwNGgrcWcwbDhYeDQ4WlZ1eHlrc3IySFZyUWhkOTVsSm05WnRHUlB3Y2wzelAzNWtKVWV0dWdsMWtWVVkKcmRkc3NnNVBYdEtNK1lwdUlOQldDNTR5ZU14QzczcnpoU2hsYXAwMzliTExWcDI0WDFHQjJobWI3NDliN1JYZworNDRvdjVuRUFWTnc4SWgwU1FXL3g1bXBQNHBNTHVSNlFqOVpJZ3NXSTlDUGJCdG10RGphbHB4U1J3SWs3dXloCjZzOXhIUmFxNE95bmtCdFZ3OWNmd1pBdU5FeXFYbnppN0lrOW1Dc2hOWENuUXJScmFSWmhoMzdtUGVBS3RmdHIKdGV5UkNmQXo4U1UzREQrK0Z0SkJiSVdSZWFhVHBpU2NMclVXU21hQ0xSNlVpOXVhMEg5S2ttRUhZcHI3VGhFdQpMeHYrcnRFVnNxakZSOGhjN1VrQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZBRUlTUWNrVnQyZ0l5bzRRSVJ2eWZFcUQvNDJNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFDUVI2emtsRGIwRDd0ZXF2bEFHVzU3Q0xtWnp2MzRWWVRTRTlXQkcyTmRQcEJ5VFJCcQpZejBvb05VamNqclg2NE94dlZEY1N5MXdoMlQzbU5nYi95ZVQ3ZlhLMU8xMEN2bXRHUWU3UU1kMEEwOUVDNElqCndyWDJjUTRObVEzRVd6Mkc3SW9tSFlNMjQyaUNFRHNtL3pqVm5hK0ZDeVpPdy9yUnE0V2NycEFYL085djR5Z3cKMStPNUJlOFVBYUV5ZzJSZ1RHQ0g4VEp5ZW94cnhnOXJCcnRvNmpUTmVpYXB5djVsRktrK1ZCd3N4dXdicjN2MworWmNlQXpkOWFhc2l5QW9OeEV0V3FIYmN6Mmp6S1dvazBpTWpUUk9iQ1NJQXhCUzhhRWhlejhYOXQxbzVZa0VJCmhNK1BtcUIzbVF2aEhWblJZVWdySUh0MnBneVJXZ1FmaG9SNAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="<{%reset%}><{%reset%}>

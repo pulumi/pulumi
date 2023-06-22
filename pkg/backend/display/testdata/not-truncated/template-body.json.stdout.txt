@@ -2,7 +2,7 @@
     aws:region: us-west-2
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:dev::aws-ts-eks::pulumi:pulumi:Stack::aws-ts-eks-dev]
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    kubeconfig: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        clusters       : <{%reset%}><{%reset%}>[
@@ -643,7 +643,7 @@
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            version   : <{%reset%}><{%reset%}>"3.18.2"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    kubeconfig: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        apiVersion     : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        clusters       : <{%reset%}><{%reset%}>[

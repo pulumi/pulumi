@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: `pulumi new` now correctly supports numeric stack names.

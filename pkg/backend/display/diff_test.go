@@ -137,3 +137,51 @@ func TestDiffEvents(t *testing.T) {
 		})
 	}
 }
+
+func TestHasMandatoryPolicyViolations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		give []engine.PolicyViolationEventPayload
+		want bool
+	}{
+		{
+			name: "no policy violations",
+			give: []engine.PolicyViolationEventPayload{},
+			want: false,
+		},
+		{
+			name: "only advisory violations",
+			give: []engine.PolicyViolationEventPayload{
+				{EnforcementLevel: "advisory"},
+				{EnforcementLevel: "advisory"},
+			},
+			want: false,
+		},
+		{
+			name: "has 1 mandatory violation",
+			give: []engine.PolicyViolationEventPayload{
+				{EnforcementLevel: "mandatory"},
+				{EnforcementLevel: "advisory"},
+			},
+			want: true,
+		},
+		{
+			name: "has no mandatory violation",
+			give: []engine.PolicyViolationEventPayload{
+				{EnforcementLevel: "disabled"},
+				{EnforcementLevel: "advisory"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := hasMandatoryPolicyViolations(tt.give)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

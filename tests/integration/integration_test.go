@@ -1001,3 +1001,70 @@ func TestParentRename_issue13179(t *testing.T) {
 		pt.RunPulumiCommand("state", "rename", "-y", string(parentURN), "newParent"),
 		"rename failed")
 }
+
+func testStackRmConfig(e *ptesting.Environment, organization string) {
+	// We need to create two projects for this test
+	goDir := filepath.Join(e.RootPath, "large_resource_go")
+	err := os.Mkdir(goDir, 0o700)
+	require.NoError(e, err)
+
+	jsDir := filepath.Join(e.RootPath, "large_resource_js")
+	err = os.Mkdir(jsDir, 0o700)
+	require.NoError(e, err)
+
+	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	// Create a stack in the go project
+	e.CWD = goDir
+	e.ImportDirectory("large_resource/go")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
+	e.RunCommand("pulumi", "config", "set", "key", "value")
+
+	// Now create the js project
+	e.CWD = jsDir
+	e.ImportDirectory("large_resource/nodejs")
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
+	e.RunCommand("pulumi", "config", "set", "key", "value")
+
+	// Now try and remove the go stack while still in the js directory
+	stackRef := organization + "/large_resource_go/" + stackName
+	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
+
+	// And check that Pulumi.<name>.yaml file is still there for the js project
+	_, err = os.Stat(filepath.Join(jsDir, "Pulumi."+stackName+".yaml"))
+	assert.NoError(e, err)
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestStackRmConfig_LocalProject(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	testStackRmConfig(e, "organization")
+}
+
+//nolint:paralleltest // uses parallel programtest
+func TestStackRmConfig_Cloud(t *testing.T) {
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	output, _ := e.RunCommand("pulumi", "whoami")
+	organization := strings.TrimSpace(output)
+	testStackRmConfig(e, organization)
+}

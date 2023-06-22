@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Fix formatting bugs in display causing text like (MISSING) showing in output.

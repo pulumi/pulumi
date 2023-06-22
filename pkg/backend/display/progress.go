@@ -464,10 +464,10 @@ func (display *ProgressDisplay) processEndSteps() {
 	// Render several "sections" of output based on available data as applicable.
 	display.println("")
 	wroteDiagnosticHeader := display.printDiagnostics()
-	wrotePolicyViolations := display.printPolicyViolations()
+	wroteMandatoryPolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
-	// If no policies violated, print policy packs applied.
-	if !wrotePolicyViolations {
+	// If no mandatory policies violated, print policy packs applied.
+	if !wroteMandatoryPolicyViolations {
 		display.printSummary(wroteDiagnosticHeader)
 	}
 }
@@ -609,7 +609,16 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 		messageLine := fmt.Sprintf("    %s", message)
 		display.println(messageLine)
 	}
-	return true
+	return hasMandatoryPolicyViolations(policyEvents)
+}
+
+func hasMandatoryPolicyViolations(policyViolations []engine.PolicyViolationEventPayload) bool {
+	for _, policyEvent := range policyViolations {
+		if policyEvent.EnforcementLevel == apitype.Mandatory {
+			return true
+		}
+	}
+	return false
 }
 
 // printOutputs prints the Stack's outputs for the display in a new section, if appropriate.

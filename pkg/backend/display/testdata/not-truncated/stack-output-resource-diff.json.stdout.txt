@@ -1,7 +1,7 @@
 <{%reset%}>Configuration:<{%reset%}>
 <{%reset%}>  pulumi:pulumi:Stack: (same)
 <{%reset%}>    [urn=urn:pulumi:dev::pulumi-stack-output-diff::pulumi:pulumi:Stack::pulumi-stack-output-diff-dev]
-<{%reset%}><{%reset%}><{%!r(MISSING)eset%!}(MISSING)>    --outputs:--<{%!r(MISSING)eset%!}(MISSING)>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    vehicles: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        taxi: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>            color: <{%reset%}><{%reset%}>"yellow"<{%reset%}><{%reset%}>

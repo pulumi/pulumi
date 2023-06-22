@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
@@ -86,9 +87,14 @@ func newStackRmCmd() *cobra.Command {
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if _, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
-					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-						return result.FromError(err)
+				if proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
+					// Check that the detected project matches the stacks project, users can run `rm --stack
+					// <name>` from a different projects directory.
+					stackProject, has := s.Ref().Project()
+					if has && stackProject == tokens.Name(proj.Name) {
+						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
+							return result.FromError(err)
+						}
 					}
 				}
 			}

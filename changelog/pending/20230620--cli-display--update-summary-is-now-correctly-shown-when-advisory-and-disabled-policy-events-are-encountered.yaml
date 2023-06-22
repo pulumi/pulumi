@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Update summary is now correctly shown when `advisory` and `disabled` policy events are encountered.
