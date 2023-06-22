@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Allow tuples as Sequence input values to resources.

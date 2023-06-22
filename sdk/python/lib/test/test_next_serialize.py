@@ -131,6 +131,12 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(test_list, props)
 
     @pulumi_test
+    async def test_tuple(self):
+        test_tuple = tuple([1, 2, 3])
+        props = await rpc.serialize_property(test_tuple, [])
+        self.assertEqual([1, 2, 3], props)
+
+    @pulumi_test
     async def test_future(self):
         fut = asyncio.Future()
         fut.set_result(42)
@@ -462,7 +468,6 @@ class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_unsupported_sequences(self):
         cases = [
-            ("hi", 42),
             range(10),
             memoryview(bytes(10)),
             bytes(10),

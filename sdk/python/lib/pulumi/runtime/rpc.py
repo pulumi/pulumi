@@ -255,7 +255,7 @@ async def serialize_property(
     # Exclude some built-in types that are instances of Sequence that we don't want to treat as sequences here.
     # From: https://github.com/python/cpython/blob/master/Lib/_collections_abc.py
     if isinstance(value, abc.Sequence) and not isinstance(
-        value, (tuple, str, range, memoryview, bytes, bytearray)
+        value, (str, range, memoryview, bytes, bytearray)
     ):
         element_type = _get_list_element_type(typ)
         props = []
