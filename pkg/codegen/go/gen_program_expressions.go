@@ -448,10 +448,10 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		strVal := expr.Value.AsString()
 		if isPulumiType {
 			g.Fgenf(w, "%s(", argTypeName)
-			g.genStringLiteral(w, strVal)
+			g.genStringLiteral(w, strVal, true /* allow raw */)
 			g.Fgenf(w, ")")
 		} else {
-			g.genStringLiteral(w, strVal)
+			g.genStringLiteral(w, strVal, true /* allow raw */)
 		}
 	default:
 		contract.Failf("unexpected opaque type in GenLiteralValueExpression: %v (%v)", destType,
@@ -726,12 +726,7 @@ func (g *generator) genTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		g.Fgenf(args, ", %.v", v)
 	}
 	g.Fgenf(w, "fmt.Sprintf(")
-	str := fmtStr.String()
-	if canBeRaw && len(str) > 50 && strings.Count(str, "\n") > 5 {
-		fmt.Fprintf(w, "`%s`", str)
-	} else {
-		g.genStringLiteral(w, fmtStr.String())
-	}
+	g.genStringLiteral(w, fmtStr.String(), canBeRaw)
 	_, err := args.WriteTo(w)
 	contract.AssertNoErrorf(err, "Failed to write arguments")
 	g.Fgenf(w, ")")
@@ -1113,7 +1108,22 @@ func (g *generator) rewriteThenForAllApply(
 	return then, typeConvDecls
 }
 
-func (g *generator) genStringLiteral(w io.Writer, v string) {
+// Writes a Go string literal.
+// The literal will be a raw string literal if allowRaw is true
+// and the string is long enough to benefit from it.
+func (g *generator) genStringLiteral(w io.Writer, v string, allowRaw bool) {
+	// If the string is longer than 50 characters,
+	// contains at least 5 newlines,
+	// and does not contain a backtick,
+	// use a backtick string literal for readability.
+	canBeRaw := len(v) > 50 &&
+		strings.Count(v, "\n") >= 5 &&
+		!strings.Contains(v, "`")
+	if allowRaw && canBeRaw {
+		fmt.Fprintf(w, "`%s`", v)
+		return
+	}
+
 	g.Fgen(w, "\"")
 	g.Fgen(w, g.escapeString(v))
 	g.Fgen(w, "\"")

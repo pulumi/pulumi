@@ -248,6 +248,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Generate RetainOnDelete option",
 	},
 	{
+		Directory:   "multiline-string",
+		Description: "Multiline string literals",
+	},
+	{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
