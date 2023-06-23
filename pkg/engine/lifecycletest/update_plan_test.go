@@ -43,11 +43,6 @@ func TestPlannedUpdate(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 			}, nil
 		}),
 	}
@@ -617,11 +612,6 @@ func TestResoucesWithSames(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 			}, nil
 		}),
 	}
@@ -723,11 +713,6 @@ func TestPlannedPreviews(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 			}, nil
 		}),
 	}
@@ -809,11 +794,6 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
-				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
 				},
 			}, nil
 		}),
@@ -960,8 +940,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("created-id-" + urn.Name()), createOutputs, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
+				UpdateF: func(urn resource.URN, id resource.ID,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap,
+					timeout float64, ignoreChanges []string, preview bool,
 				) (resource.PropertyMap, resource.Status, error) {
 					return updateOutputs, resource.StatusOK, nil
 				},
@@ -1108,11 +1089,6 @@ func TestComputedCanBeDropped(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 			}, nil
 		}),
 	}
@@ -1242,11 +1218,6 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 				CheckF: func(urn resource.URN,
 					olds, news resource.PropertyMap, _ []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -1336,11 +1307,6 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
-				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
 				},
 				CheckF: func(urn resource.URN, olds, news resource.PropertyMap,
 					randomSeed []byte,
@@ -1468,10 +1434,10 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				DiffF: func(
 					urn resource.URN,
 					id resource.ID,
-					olds, news resource.PropertyMap,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap,
 					ignoreChanges []string,
 				) (plugin.DiffResult, error) {
-					if !olds["foo"].DeepEquals(news["foo"]) {
+					if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						// If foo changes do a replace, we use this to check we get a new name
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -1484,11 +1450,6 @@ func TestProviderDeterministicPreview(t *testing.T) {
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return "created-id", news, resource.StatusOK, nil
-				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
 				},
 			}, nil
 		}, deploytest.WithoutGrpc),
@@ -1555,18 +1516,13 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
 					return resource.ID("created-id-" + urn.Name()), news, resource.StatusOK, nil
 				},
-				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
-					ignoreChanges []string, preview bool,
-				) (resource.PropertyMap, resource.Status, error) {
-					return news, resource.StatusOK, nil
-				},
 				CheckF: func(urn resource.URN,
 					olds, news resource.PropertyMap, _ []byte,
 				) (resource.PropertyMap, []plugin.CheckFailure, error) {
 					return news, nil, nil
 				},
 				DiffF: func(urn resource.URN,
-					id resource.ID, olds, news resource.PropertyMap, ignoreChanges []string,
+					id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
 					if strings.Contains(string(urn), "resA") || strings.Contains(string(urn), "resB") {
 						assert.NotNil(t, diffResult, "Diff was called but diffResult wasn't set")

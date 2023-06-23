@@ -24,14 +24,14 @@ func TestImportOption(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
-					if olds["foo"].DeepEquals(news["foo"]) {
+					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
 					diffKind := plugin.DiffUpdate
-					if news["foo"].IsString() && news["foo"].StringValue() == "replace" {
+					if newInputs["foo"].IsString() && newInputs["foo"].StringValue() == "replace" {
 						diffKind = plugin.DiffUpdateReplace
 					}
 
@@ -276,9 +276,9 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(urn resource.URN, id resource.ID,
-					olds, news resource.PropertyMap, ignoreChanges []string,
+					oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 				) (plugin.DiffResult, error) {
-					if olds["foo"].DeepEquals(news["foo"]) {
+					if oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
 
@@ -461,17 +461,17 @@ const importSchema = `{
 }`
 
 func diffImportResource(urn resource.URN, id resource.ID,
-	olds, news resource.PropertyMap, ignoreChanges []string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-	if olds["foo"].DeepEquals(news["foo"]) && olds["frob"].DeepEquals(news["frob"]) {
+	if oldOutputs["foo"].DeepEquals(newInputs["foo"]) && oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
 	detailedDiff := make(map[string]plugin.PropertyDiff)
-	if !olds["foo"].DeepEquals(news["foo"]) {
+	if !oldOutputs["foo"].DeepEquals(newInputs["foo"]) {
 		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
-	if !olds["frob"].DeepEquals(news["frob"]) {
+	if !oldOutputs["frob"].DeepEquals(newInputs["frob"]) {
 		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 

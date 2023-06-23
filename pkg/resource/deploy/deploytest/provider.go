@@ -40,17 +40,17 @@ type Provider struct {
 
 	CheckConfigF func(urn resource.URN, olds,
 		news resource.PropertyMap, allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffConfigF func(urn resource.URN, olds, news resource.PropertyMap,
+	DiffConfigF func(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
 	ConfigureF func(news resource.PropertyMap) error
 
 	CheckF func(urn resource.URN,
 		olds, news resource.PropertyMap, randomSeed []byte) (resource.PropertyMap, []plugin.CheckFailure, error)
-	DiffF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
+	DiffF func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
 	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
 		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
-	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+	UpdateF func(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
 	ReadF   func(urn resource.URN, id resource.ID,
@@ -108,13 +108,13 @@ func (prov *Provider) CheckConfig(urn resource.URN, olds,
 	return prov.CheckConfigF(urn, olds, news, allowUnknowns)
 }
 
-func (prov *Provider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap, _ bool,
+func (prov *Provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool,
 	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffConfigF(urn, olds, news, ignoreChanges)
+	return prov.DiffConfigF(urn, oldInputs, oldOutputs, newInputs, ignoreChanges)
 }
 
 func (prov *Provider) Configure(inputs resource.PropertyMap) error {
@@ -153,21 +153,21 @@ func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeo
 }
 
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool, ignoreChanges []string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	if prov.DiffF == nil {
 		return plugin.DiffResult{}, nil
 	}
-	return prov.DiffF(urn, id, olds, news, ignoreChanges)
+	return prov.DiffF(urn, id, oldInputs, oldOutputs, newInputs, ignoreChanges)
 }
 
-func (prov *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
+func (prov *Provider) Update(urn resource.URN, id resource.ID, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	timeout float64, ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	if prov.UpdateF == nil {
-		return news, resource.StatusOK, nil
+		return newInputs, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges, preview)
+	return prov.UpdateF(urn, id, oldInputs, oldOutputs, newInputs, timeout, ignoreChanges, preview)
 }
 
 func (prov *Provider) Delete(urn resource.URN,

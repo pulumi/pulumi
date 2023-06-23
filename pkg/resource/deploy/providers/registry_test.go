@@ -143,10 +143,10 @@ func (prov *testProvider) CheckConfig(urn resource.URN, olds,
 	return prov.checkConfig(urn, olds, news, allowUnknowns)
 }
 
-func (prov *testProvider) DiffConfig(urn resource.URN, olds, news resource.PropertyMap,
+func (prov *testProvider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
 	allowUnknowns bool, ignoreChanges []string,
 ) (plugin.DiffResult, error) {
-	return prov.diffConfig(urn, olds, news, allowUnknowns, ignoreChanges)
+	return prov.diffConfig(urn, oldOutputs, newInputs, allowUnknowns, ignoreChanges)
 }
 
 func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
@@ -176,13 +176,13 @@ func (prov *testProvider) Read(urn resource.URN, id resource.ID,
 }
 
 func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, _ bool, _ []string,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, _ []string,
 ) (plugin.DiffResult, error) {
 	return plugin.DiffResult{}, errors.New("unsupported")
 }
 
 func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
+	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
 	ignoreChanges []string, preview bool,
 ) (resource.PropertyMap, resource.Status, error) {
 	return nil, resource.StatusOK, errors.New("unsupported")
@@ -486,7 +486,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -496,7 +496,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		outs, status, err := r.Update(urn, id, olds, inputs, timeout, nil, false)
+		outs, status, err := r.Update(urn, id, nil, olds, inputs, timeout, nil, false)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -625,7 +625,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
 
@@ -658,7 +658,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(urn, id, olds, news, false, nil)
+		diff, err := r.Diff(urn, id, nil, olds, news, false, nil)
 		assert.NoError(t, err)
 		assert.True(t, diff.Replace())
 

@@ -97,6 +97,7 @@ message ConfigureRequest {
     google.protobuf.Struct args = 2;   // the input properties for the provider. Only filled in for newer providers.
     bool acceptSecrets  = 3;           // when true, operations should return secrets as strongly typed.
     bool acceptResources = 4;          // when true, operations should return resources as strongly typed values to the provider.
+    bool sends_old_inputs = 5;         // when true, diff and update will be called with the old outputs and the old inputs.
 }
 
 message ConfigureResponse {
@@ -191,9 +192,10 @@ message CheckFailure {
 message DiffRequest {
     string id = 1;                     // the ID of the resource to diff.
     string urn = 2;                    // the Pulumi URN for this resource.
-    google.protobuf.Struct olds = 3;   // the old values of provider inputs to diff.
-    google.protobuf.Struct news = 4;   // the new values of provider inputs to diff.
+    google.protobuf.Struct olds = 3;   // the old output values of resource to diff.
+    google.protobuf.Struct news = 4;   // the new input values of resource to diff.
     repeated string ignoreChanges = 5; // a set of property paths that should be treated as unchanged.
+    google.protobuf.Struct old_inputs = 6;   // the old input values of the resource to diff.
 }
 
 message PropertyDiff {
@@ -294,6 +296,7 @@ message UpdateRequest {
     double timeout = 5;                // the update request timeout represented in seconds.
     repeated string ignoreChanges = 6; // a set of property paths that should be treated as unchanged.
     bool preview = 7;                   // true if this is a preview and the provider should not actually create the resource.
+    google.protobuf.Struct old_inputs = 8; // the old input values of the resource to diff.
 }
 
 message UpdateResponse {
