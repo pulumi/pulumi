@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -211,6 +212,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, res := func() (bool, result.Result) {
 		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+
+		wg := sync.WaitGroup{}
+		var hasErr bool
 		for {
 			select {
 			case event := <-incomingEvents:
@@ -228,6 +232,13 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				}
 
 				if event.Event == nil {
+					// We're done processing events. Check for errors.
+					wg.Wait()
+					if hasErr {
+						cancel()
+						return false, result.Bail()
+					}
+
 					// Check targets before performDeletes mutates the initial Snapshot.
 					targetErr := ex.checkTargets(opts.Targets)
 
@@ -247,15 +258,24 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 					return false, nil
 				}
 
-				if res := ex.handleSingleEvent(event.Event); res != nil {
-					if resErr := res.Error(); resErr != nil {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", resErr)
-						ex.reportError(ex.deployment.generateEventURN(event.Event), resErr)
+				wg.Add(1)
+				go func(event nextEvent) {
+					defer wg.Done()
+					res := ex.handleSingleEvent(event.Event)
+					if res != nil {
+						if resErr := res.Error(); resErr != nil {
+							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", resErr)
+							ex.reportError(ex.deployment.generateEventURN(event.Event), resErr)
+						}
+						hasErr = true
 					}
+				}(event)
+			case <-ctx.Done():
+				wg.Wait()
+				if hasErr {
 					cancel()
 					return false, result.Bail()
 				}
-			case <-ctx.Done():
 				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
