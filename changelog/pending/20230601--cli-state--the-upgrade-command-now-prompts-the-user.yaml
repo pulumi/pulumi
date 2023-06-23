@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/state
+  description: The upgrade command now prompts the user to supply project names for stacks for which the project name could not be automatically guessed.
