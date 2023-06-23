@@ -346,6 +346,19 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 			}
 		}
 
+		// If an input secret is potentially leaked as an output, preemptively mark it as secret.
+		for k, out := range newState.Outputs {
+			if !out.IsSecret() {
+				in, has := newState.Inputs[k]
+				if !has {
+					continue
+				}
+				if in.IsSecret() {
+					newState.Outputs[k] = resource.MakeSecret(out)
+				}
+			}
+		}
+
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
 		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
