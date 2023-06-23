@@ -150,7 +150,17 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 			err = fmt.Errorf("panic binding program: %v", r)
 		}
 	}()
-	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, strict)
+
+	extraOptions := make([]pcl.BindOption, 0)
+	if strict {
+		extraOptions = append(extraOptions, []pcl.BindOption{
+			pcl.AllowMissingProperties,
+			pcl.AllowMissingVariables,
+			pcl.SkipResourceTypechecking,
+		}...)
+	}
+
+	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
 	return
 }
 
@@ -173,13 +183,28 @@ type projectGeneratorFunction func(
 	string, string, *workspace.Project, schema.ReferenceLoader, bool,
 ) (hcl.Diagnostics, error)
 
-func generatorWrapper(generator projectGeneratorFunc) projectGeneratorFunction {
+func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) projectGeneratorFunction {
 	return func(
 		sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
 	) (hcl.Diagnostics, error) {
 		contract.Requiref(proj != nil, "proj", "must not be nil")
 
-		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, strict)
+		extraOptions := make([]pcl.BindOption, 0)
+		if strict {
+			extraOptions = append(extraOptions, []pcl.BindOption{
+				pcl.AllowMissingProperties,
+				pcl.AllowMissingVariables,
+				pcl.SkipResourceTypechecking,
+			}...)
+		}
+
+		if targetLanguage == "python" {
+			// for python, prefer output versioned invokes when possible
+			// also for typescript but that is handled by default in the language plugin
+			extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
+		}
+
+		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
 		if err != nil {
 			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
 		} else if program == nil {
@@ -220,13 +245,13 @@ func runConvert(
 	var projectGenerator projectGeneratorFunction
 	switch language {
 	case "dotnet":
-		projectGenerator = generatorWrapper(dotnet.GenerateProject)
+		projectGenerator = generatorWrapper(dotnet.GenerateProject, language)
 	case "python":
-		projectGenerator = generatorWrapper(python.GenerateProject)
+		projectGenerator = generatorWrapper(python.GenerateProject, language)
 	case "java":
-		projectGenerator = generatorWrapper(javagen.GenerateProject)
+		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
 	case "yaml":
-		projectGenerator = generatorWrapper(yamlgen.GenerateProject)
+		projectGenerator = generatorWrapper(yamlgen.GenerateProject, language)
 	case "pulumi", "pcl":
 		// No plugin for PCL to install dependencies with
 		generateOnly = true
