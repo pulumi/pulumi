@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
@@ -48,6 +49,11 @@ func stateRenameOperation(urn resource.URN, newResourceName string, opts display
 	existingResources := edit.LocateResource(snap, urn)
 	if len(existingResources) != 1 {
 		return errors.New("The input URN does not correspond to an existing resource")
+	}
+
+	if !tokens.IsQName(newResourceName) {
+		return fmt.Errorf("invalid name %q: "+
+			"resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes", newResourceName)
 	}
 
 	inputResource := existingResources[0]
