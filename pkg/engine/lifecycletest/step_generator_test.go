@@ -92,3 +92,47 @@ func TestDuplicateAlias(t *testing.T) {
 	_, res = TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	assert.NotNil(t, res)
 }
+
+func TestSecretMasked(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					// Return the secret value as an unmasked output. This should get masked by the engine.
+					return "id", resource.PropertyMap{
+						"shouldBeSecret": resource.NewStringProperty("bar"),
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"shouldBeSecret": resource.MakeSecret(resource.NewStringProperty("bar")),
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	assert.NotNil(t, snap)
+	if snap != nil {
+		assert.True(t, snap.Resources[1].Outputs["shouldBeSecret"].IsSecret())
+	}
+}
