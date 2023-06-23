@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fix conflicting imports generated when two imported packages have the same name.

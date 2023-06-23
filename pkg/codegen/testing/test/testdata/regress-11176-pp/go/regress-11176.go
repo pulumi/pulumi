@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ecs"
-	"github.com/pulumi/pulumi-awsx/sdk/go/awsx/ecs"
+	awsxecs "github.com/pulumi/pulumi-awsx/sdk/go/awsx/ecs"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -12,7 +12,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = ecs.NewFargateService(ctx, "nginx", &ecs.FargateServiceArgs{
+		_, err = awsxecs.NewFargateService(ctx, "nginx", &awsxecs.FargateServiceArgs{
 			Cluster: cluster.Arn,
 		})
 		if err != nil {
