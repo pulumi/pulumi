@@ -13,13 +13,13 @@
 // limitations under the License.
 
 import { ResourceError } from "./errors";
+import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
-import { unknownValue } from "./runtime/rpc";
 import * as utils from "./utils";
-import * as log from "./log";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -265,6 +265,14 @@ export abstract class Resource {
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __pluginDownloadURL?: string;
 
+    /**
+     * Private field containing the type ID for this object. Useful for implementing `isInstance` on
+     * classes that inherit from `Resource`.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __pulumiType: string;
+
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
@@ -303,6 +311,8 @@ export abstract class Resource {
         remote: boolean = false,
         dependency: boolean = false,
     ) {
+        this.__pulumiType = t;
+
         if (dependency) {
             this.__protect = false;
             this.__providers = {};
@@ -764,14 +774,6 @@ export abstract class CustomResource extends Resource {
     public readonly __pulumiCustomResource: boolean;
 
     /**
-     * Private field containing the type ID for this object. Useful for implementing `isInstance` on
-     * classes that inherit from `CustomResource`.
-     * @internal
-     */
-    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    public readonly __pulumiType: string;
-
-    /**
      * id is the provider-assigned unique ID for this managed resource.  It is set during
      * deployments and may be missing (undefined) during planning phases.
      */
@@ -809,7 +811,6 @@ export abstract class CustomResource extends Resource {
 
         super(t, name, true, props, opts, false, dependency);
         this.__pulumiCustomResource = true;
-        this.__pulumiType = t;
     }
 }
 
