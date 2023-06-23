@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fix aliasing package names using dashes when schema doesn't include go package info override

@@ -817,12 +817,7 @@ func (g *generator) getGoPackageInfo(pkg string) (GoPackageInfo, bool) {
 }
 
 func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
-	// We do this before we let the user set overrides. That way the user can still have a
-	// module named IndexToken.
-	info, _ := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
-
-	importPath := func(mod string) string {
-		importBasePath := info.ImportBasePath
+	importPath := func(mod, importBasePath string) string {
 		if importBasePath == "" {
 			importBasePath = fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", pkg, versionPath, pkg)
 		}
@@ -833,11 +828,32 @@ func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
 		return importBasePath
 	}
 
+	// We do this before we let the user set overrides. That way the user can still have a
+	// module named IndexToken.
+	info, hasInfo := g.getGoPackageInfo(pkg) // We're allowing `info` to be zero-initialized
+
+	if !hasInfo {
+		path := importPath(mod, "")
+		// users hasn't provided any extra overrides
+		if mod == "" || mod == IndexToken {
+			mod = pkg
+		}
+
+		needsAliasing := strings.Contains(mod, "-")
+		if needsAliasing {
+			// convert the dashed package name into camelCase
+			alias := strcase.ToLowerCamel(mod)
+			return fmt.Sprintf("%s %q", alias, path)
+		}
+
+		return fmt.Sprintf("%q", path)
+	}
+
 	if m, ok := info.ModuleToPackage[mod]; ok {
 		mod = m
 	}
 
-	path := importPath(mod)
+	path := importPath(mod, info.ImportBasePath)
 	if alias, ok := info.PackageImportAliases[path]; ok {
 		return fmt.Sprintf("%s %q", alias, path)
 	}
@@ -847,7 +863,7 @@ func (g *generator) getPulumiImport(pkg, versionPath, mod, name string) string {
 	// aws:s3/bucket:Bucket).
 	mod = strings.SplitN(mod, "/", 2)[0]
 
-	return fmt.Sprintf("%#v", importPath(mod))
+	return fmt.Sprintf("%#v", importPath(mod, info.ImportBasePath))
 }
 
 // genPostamble closes the method
@@ -1493,6 +1509,10 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 func (g *generator) getModOrAlias(pkg, mod, originalMod string) string {
 	info, ok := g.getGoPackageInfo(pkg)
 	if !ok {
+		needsAliasing := strings.Contains(mod, "-")
+		if needsAliasing {
+			return strcase.ToLowerCamel(mod)
+		}
 		return mod
 	}
 	if m, ok := info.ModuleToPackage[mod]; ok {
