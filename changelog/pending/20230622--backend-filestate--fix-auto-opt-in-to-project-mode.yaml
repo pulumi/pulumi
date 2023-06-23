@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: backend/filestate
-  description: Fix auto-opt-in to project mode.

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: No longer error on directory read permissions when searching for project files.

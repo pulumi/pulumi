@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen
-  description: Allow traversing unknown properties from resources when skipping resource type checking 

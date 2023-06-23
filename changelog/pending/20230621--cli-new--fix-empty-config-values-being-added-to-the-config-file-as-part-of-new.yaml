@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Fix empty config values being added to the config file as part of `new`.
