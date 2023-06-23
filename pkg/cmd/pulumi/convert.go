@@ -152,7 +152,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 	}()
 
 	extraOptions := make([]pcl.BindOption, 0)
-	if strict {
+	if !strict {
 		extraOptions = append(extraOptions, []pcl.BindOption{
 			pcl.AllowMissingProperties,
 			pcl.AllowMissingVariables,
@@ -190,7 +190,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 		contract.Requiref(proj != nil, "proj", "must not be nil")
 
 		extraOptions := make([]pcl.BindOption, 0)
-		if strict {
+		if !strict {
 			extraOptions = append(extraOptions, []pcl.BindOption{
 				pcl.AllowMissingProperties,
 				pcl.AllowMissingVariables,
