@@ -857,15 +857,33 @@ func addUpdatePlanMetadataToEnvironment(env map[string]string, updatePlan bool) 
 	env[backend.UpdatePlan] = strconv.FormatBool(updatePlan)
 }
 
-func makeJSONString(v interface{}) (string, error) {
+// makeJSONString turns the given value into a JSON string.
+// If multiline is true, the JSON will be formatted with indentation and a trailing newline.
+func makeJSONString(v interface{}, multiline bool) (string, error) {
 	var out bytes.Buffer
+
+	// json.Marshal escapes HTML characters, which we don't want,
+	// so change that with json.NewEncoder.
 	encoder := json.NewEncoder(&out)
 	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
+
+	if multiline {
+		encoder.SetIndent("", "  ")
+	}
+
 	if err := encoder.Encode(v); err != nil {
 		return "", err
 	}
-	return out.String(), nil
+
+	// json.NewEncoder always adds a trailing newline. Remove it.
+	bs := out.Bytes()
+	if !multiline {
+		if n := len(bs); n > 0 && bs[n-1] == '\n' {
+			bs = bs[:n-1]
+		}
+	}
+
+	return string(bs), nil
 }
 
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
@@ -875,7 +893,7 @@ func printJSON(v interface{}) error {
 
 // fprintJSON simply prints out some object, formatted as JSON, using standard indentation.
 func fprintJSON(w io.Writer, v interface{}) error {
-	jsonStr, err := makeJSONString(v)
+	jsonStr, err := makeJSONString(v, true /* multi line */)
 	if err != nil {
 		return err
 	}

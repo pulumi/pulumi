@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -233,12 +232,12 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	b, err := json.Marshal(v)
+	o, err := makeJSONString(v, false /* single line */)
 	if err != nil {
 		return "error: could not format value"
 	}
 
-	return string(b)
+	return o
 }
 
 type treeNode struct {
