@@ -15,8 +15,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -234,22 +232,12 @@ func stringifyOutput(v interface{}) string {
 		return s
 	}
 
-	// json.Marshal escapes HTML characters, which we don't want,
-	// so change that with json.NewEncoder.
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
+	o, err := makeJSONString(v, false /* single line */)
+	if err != nil {
 		return "error: could not format value"
 	}
 
-	// json.NewEncoder always adds a trailing newline. Remove it.
-	b := buf.Bytes()
-	if n := len(b); n > 0 && b[n-1] == '\n' {
-		b = b[:n-1]
-	}
-
-	return string(b)
+	return o
 }
 
 type treeNode struct {
