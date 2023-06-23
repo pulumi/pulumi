@@ -463,18 +463,20 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Render several "sections" of output based on available data as applicable.
 	display.println("")
-	wroteDiagnosticHeader := display.printDiagnostics()
+	hasError := display.printDiagnostics()
 	wroteMandatoryPolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
 	// If no mandatory policies violated, print policy packs applied.
 	if !wroteMandatoryPolicyViolations {
-		display.printSummary(wroteDiagnosticHeader)
+		display.printSummary(hasError)
 	}
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
-// resource. If no diagnostics were emitted, prints nothing.
+// resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
 func (display *ProgressDisplay) printDiagnostics() bool {
+	hasError := false
+
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
@@ -501,6 +503,11 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 			for _, v := range payloads {
 				if v.Ephemeral {
 					continue
+				}
+
+				if v.Severity == diag.Error {
+					// An error occurred and the display should consider this a failure.
+					hasError = true
 				}
 
 				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
@@ -537,7 +544,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 		}
 
 	}
-	return wroteDiagnosticHeader
+	return hasError
 }
 
 // printPolicyViolations prints a new "Policy Violation:" section with all of the violations
@@ -644,13 +651,13 @@ func (display *ProgressDisplay) printOutputs() {
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
-func (display *ProgressDisplay) printSummary(wroteDiagnosticHeader bool) {
+func (display *ProgressDisplay) printSummary(hasError bool) {
 	// If we never saw the SummaryEvent payload, we have nothing to do.
 	if display.summaryEventPayload == nil {
 		return
 	}
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, wroteDiagnosticHeader, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, hasError, display.opts)
 	display.println(msg)
 }
 

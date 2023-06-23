@@ -10,6 +10,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -188,6 +189,46 @@ func TestStatusDisplayFlags(t *testing.T) {
 				assert.NotContains(t, doneStatus, "[retain]", "%s should NOT contain [retain] (done)", step.Op)
 				assert.NotContains(t, inProgressStatus, "[retain]", "%s should NOT contain [retain] (in-progress)", step.Op)
 			}
+		})
+	}
+}
+
+func TestPrintDiagnosticsIsTolerantOfDiagnostics(t *testing.T) {
+	t.Parallel()
+	makeDisplayWithDiagnostic := func(sev diag.Severity) *ProgressDisplay {
+		return &ProgressDisplay{
+			eventUrnToResourceRow: map[resource.URN]ResourceRow{
+				"urn:pulumi:test::test::pulumi:pulumi:Stack::test": &resourceRowData{
+					diagInfo: &DiagInfo{
+						StreamIDToDiagPayloads: map[int32][]engine.DiagEventPayload{
+							0: {
+								{
+									Severity: sev,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+		give diag.Severity
+		want bool
+	}{
+		{"info", diag.Info, false},
+		{"warning", diag.Warning, false},
+		{"error", diag.Error, true},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			d := makeDisplayWithDiagnostic(tt.give)
+			got := d.printDiagnostics()
+			assert.Equal(t, tt.want, got, "printDiagnostics(%v) = %v, want %v", tt.give, got, tt.want)
 		})
 	}
 }
