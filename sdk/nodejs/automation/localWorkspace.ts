@@ -268,6 +268,10 @@ export class LocalWorkspace implements Workspace {
                 remoteSkipInstallDependencies,
             } = opts;
             if (workDir) {
+                // Verify that the workdir exists.
+                if (!fs.existsSync(workDir)) {
+                    throw new Error(`Invalid workDir passed to local workspace: '${workDir}' does not exist`);
+                }
                 dir = workDir;
             }
             this.pulumiHome = pulumiHome;

@@ -53,6 +53,18 @@ describe("LocalWorkspace", () => {
         }
     });
 
+    it(`fails gracefully for missing local workspace workDir`, async () => {
+        try {
+            const ws = await LocalWorkspace.create({ workDir: "invalid-missing-workdir" });
+            assert.fail("expected create with invalid workDir to throw");
+        } catch (err) {
+            assert.strictEqual(
+                err.toString(),
+                "Error: Invalid workDir passed to local workspace: 'invalid-missing-workdir' does not exist",
+            );
+        }
+    });
+
     it(`adds/removes/lists plugins successfully`, async () => {
         const ws = await LocalWorkspace.create({});
         await ws.installPlugin("aws", "v3.0.0");
