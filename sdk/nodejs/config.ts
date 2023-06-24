@@ -291,13 +291,14 @@ export class Config {
 
     private requireImpl<K extends string = string>(
         key: string,
+        secret: boolean,
         opts?: StringConfigOptions<K>,
         use?: (...args: any[]) => any,
         insteadOf?: (...args: any[]) => any,
     ): K {
         const v: K | undefined = this.getImpl(key, opts, use, insteadOf);
         if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
+            throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
     }
@@ -309,7 +310,7 @@ export class Config {
      * @param opts An options bag to constrain legal values.
      */
     public require<K extends string = string>(key: string, opts?: StringConfigOptions<K>): K {
-        return this.requireImpl(key, opts, this.requireSecret, this.require);
+        return this.requireImpl(key, false, opts, this.requireSecret, this.require);
     }
 
     /**
@@ -320,17 +321,18 @@ export class Config {
      * @param opts An options bag to constrain legal values.
      */
     public requireSecret<K extends string = string>(key: string, opts?: StringConfigOptions<K>): Output<K> {
-        return makeSecret(this.requireImpl(key, opts));
+        return makeSecret(this.requireImpl(key, true, opts));
     }
 
     private requireBooleanImpl(
         key: string,
+        secret: boolean,
         use?: (...args: any[]) => any,
         insteadOf?: (...args: any[]) => any,
     ): boolean {
         const v: boolean | undefined = this.getBooleanImpl(key, use, insteadOf);
         if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
+            throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
     }
@@ -342,7 +344,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireBoolean(key: string): boolean {
-        return this.requireBooleanImpl(key, this.requireSecretBoolean, this.requireBoolean);
+        return this.requireBooleanImpl(key, false, this.requireSecretBoolean, this.requireBoolean);
     }
 
     /**
@@ -352,18 +354,19 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireSecretBoolean(key: string): Output<boolean> {
-        return makeSecret(this.requireBooleanImpl(key));
+        return makeSecret(this.requireBooleanImpl(key, true));
     }
 
     private requireNumberImpl(
         key: string,
+        secret: boolean,
         opts?: NumberConfigOptions,
         use?: (...args: any[]) => any,
         insteadOf?: (...args: any[]) => any,
     ): number {
         const v: number | undefined = this.getNumberImpl(key, opts, use, insteadOf);
         if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
+            throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
     }
@@ -376,7 +379,7 @@ export class Config {
      * @param opts An options bag to constrain legal values.
      */
     public requireNumber(key: string, opts?: NumberConfigOptions): number {
-        return this.requireNumberImpl(key, opts, this.requireSecretNumber, this.requireNumber);
+        return this.requireNumberImpl(key, false, opts, this.requireSecretNumber, this.requireNumber);
     }
 
     /**
@@ -387,13 +390,18 @@ export class Config {
      * @param opts An options bag to constrain legal values.
      */
     public requireSecretNumber(key: string, opts?: NumberConfigOptions): Output<number> {
-        return makeSecret(this.requireNumberImpl(key, opts));
+        return makeSecret(this.requireNumberImpl(key, true, opts));
     }
 
-    private requireObjectImpl<T>(key: string, use?: (...args: any[]) => any, insteadOf?: (...args: any[]) => any): T {
+    private requireObjectImpl<T>(
+        key: string,
+        secret: boolean,
+        use?: (...args: any[]) => any,
+        insteadOf?: (...args: any[]) => any,
+    ): T {
         const v: T | undefined = this.getObjectImpl<T>(key, use, insteadOf);
         if (v === undefined) {
-            throw new ConfigMissingError(this.fullKey(key));
+            throw new ConfigMissingError(this.fullKey(key), secret);
         }
         return v;
     }
@@ -405,7 +413,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireObject<T>(key: string): T {
-        return this.requireObjectImpl<T>(key, this.requireSecretObject, this.requireObject);
+        return this.requireObjectImpl<T>(key, false, this.requireSecretObject, this.requireObject);
     }
 
     /**
@@ -416,7 +424,7 @@ export class Config {
      * @param key The key to lookup.
      */
     public requireSecretObject<T>(key: string): Output<T> {
-        return makeSecret(this.requireObjectImpl<T>(key));
+        return makeSecret(this.requireObjectImpl<T>(key, true));
     }
 
     /**
@@ -516,10 +524,12 @@ class ConfigPatternError extends RunError {
  * ConfigMissingError is used when a configuration value is completely missing.
  */
 class ConfigMissingError extends RunError {
-    constructor(public key: string) {
+    constructor(public key: string, public secret: boolean) {
         super(
             `Missing required configuration variable '${key}'\n` +
-                `\tplease set a value using the command \`pulumi config set ${key} <value>\``,
+                `\tplease set a value using the command \`pulumi config set${
+                    secret ? " --secret " : " "
+                }${key} <value>\``,
         );
     }
 }
