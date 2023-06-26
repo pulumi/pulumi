@@ -828,7 +828,17 @@ func (host *goLanguageHost) GenerateProject(
 	}
 
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, req.Strict)
+
+	extraOptions := make([]pcl.BindOption, 0)
+	if !req.Strict {
+		extraOptions = append(extraOptions, []pcl.BindOption{
+			pcl.AllowMissingProperties,
+			pcl.AllowMissingVariables,
+			pcl.SkipResourceTypechecking,
+		}...)
+	}
+
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
 	if err != nil {
 		return nil, err
 	}

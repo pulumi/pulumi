@@ -36,23 +36,25 @@ const (
 )
 
 type ComponentProgramBinderArgs struct {
-	AllowMissingVariables  bool
-	AllowMissingProperties bool
-	SkipResourceTypecheck  bool
-	BinderDirPath          string
-	BinderLoader           schema.Loader
-	ComponentSource        string
-	ComponentNodeRange     hcl.Range
+	AllowMissingVariables        bool
+	AllowMissingProperties       bool
+	SkipResourceTypecheck        bool
+	PreferOutputVersionedInvokes bool
+	BinderDirPath                string
+	BinderLoader                 schema.Loader
+	ComponentSource              string
+	ComponentNodeRange           hcl.Range
 }
 
 type ComponentProgramBinder = func(ComponentProgramBinderArgs) (*Program, hcl.Diagnostics, error)
 
 type bindOptions struct {
-	allowMissingVariables  bool
-	allowMissingProperties bool
-	skipResourceTypecheck  bool
-	loader                 schema.Loader
-	packageCache           *PackageCache
+	allowMissingVariables        bool
+	allowMissingProperties       bool
+	skipResourceTypecheck        bool
+	preferOutputVersionedInvokes bool
+	loader                       schema.Loader
+	packageCache                 *PackageCache
 	// the directory path of the PCL program being bound
 	// we use this to locate the source of the component blocks
 	// which refer to a component resource in a relative directory
@@ -90,6 +92,10 @@ func AllowMissingProperties(options *bindOptions) {
 
 func SkipResourceTypechecking(options *bindOptions) {
 	options.skipResourceTypecheck = true
+}
+
+func PreferOutputVersionedInvokes(options *bindOptions) {
+	options.preferOutputVersionedInvokes = true
 }
 
 func PluginHost(host plugin.Host) BindOption {
@@ -197,7 +203,11 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 }
 
 // Used by language plugins to bind a PCL program in the given directory.
-func BindDirectory(directory string, loader schema.ReferenceLoader, strict bool) (*Program, hcl.Diagnostics, error) {
+func BindDirectory(
+	directory string,
+	loader schema.ReferenceLoader,
+	extraOptions ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
 	parser := syntax.NewParser()
 	// Load all .pp files in the directory
 	files, err := os.ReadDir(directory)
@@ -237,13 +247,7 @@ func BindDirectory(directory string, loader schema.ReferenceLoader, strict bool)
 		ComponentBinder(ComponentProgramBinderFromFileSystem()),
 	}
 
-	if !strict {
-		opts = append(opts, []BindOption{
-			SkipResourceTypechecking,
-			AllowMissingVariables,
-			AllowMissingProperties,
-		}...)
-	}
+	opts = append(opts, extraOptions...)
 
 	program, bindDiagnostics, err := BindProgram(parser.Files, opts...)
 

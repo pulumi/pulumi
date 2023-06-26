@@ -189,6 +189,9 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		if args.SkipResourceTypecheck {
 			opts = append(opts, SkipResourceTypechecking)
 		}
+		if args.PreferOutputVersionedInvokes {
+			opts = append(opts, PreferOutputVersionedInvokes)
+		}
 
 		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
 
@@ -282,13 +285,14 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	componentProgram, programDiags, err := b.options.componentProgramBinder(ComponentProgramBinderArgs{
-		AllowMissingVariables:  b.options.allowMissingVariables,
-		AllowMissingProperties: b.options.allowMissingProperties,
-		SkipResourceTypecheck:  b.options.skipResourceTypecheck,
-		BinderLoader:           b.options.loader,
-		BinderDirPath:          b.options.dirPath,
-		ComponentSource:        node.source,
-		ComponentNodeRange:     node.SyntaxNode().Range(),
+		AllowMissingVariables:        b.options.allowMissingVariables,
+		AllowMissingProperties:       b.options.allowMissingProperties,
+		SkipResourceTypecheck:        b.options.skipResourceTypecheck,
+		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
+		BinderLoader:                 b.options.loader,
+		BinderDirPath:                b.options.dirPath,
+		ComponentSource:              node.source,
+		ComponentNodeRange:           node.SyntaxNode().Range(),
 	})
 	if err != nil {
 		diagnostics = diagnostics.Append(errorf(node.SyntaxNode().Range(), err.Error()))

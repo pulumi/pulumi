@@ -1033,7 +1033,19 @@ func (host *nodeLanguageHost) GenerateProject(
 	}
 
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, req.Strict)
+	extraOptions := make([]pcl.BindOption, 0)
+	if !req.Strict {
+		extraOptions = append(extraOptions, []pcl.BindOption{
+			pcl.AllowMissingProperties,
+			pcl.AllowMissingVariables,
+			pcl.SkipResourceTypechecking,
+		}...)
+	}
+
+	// for nodejs, prefer output-versioned invokes
+	extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
+
+	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1098,7 +1110,9 @@ func (host *nodeLanguageHost) GenerateProgram(
 	}
 
 	loader := schema.NewPluginLoader(pluginCtx.Host)
-	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
+	program, pdiags, err := pcl.BindProgram(parser.Files,
+		pcl.Loader(loader),
+		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}

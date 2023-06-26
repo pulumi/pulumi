@@ -82,6 +82,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Fargate",
 	},
 	{
+		Directory:   "aws-fargate-output-versioned",
+		Description: "AWS Fargate Using Output-versioned invokes for python and typescript",
+		Skip:        codegen.NewStringSet("go", "dotnet"),
+		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
+	},
+	{
 		Directory:   "aws-s3-logging",
 		Description: "AWS S3 with logging",
 		SkipCompile: codegen.NewStringSet("go"),
