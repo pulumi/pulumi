@@ -174,9 +174,9 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			}
 
 			return p, nil
-		} else {
-			return provider, nil
 		}
+
+		return provider, nil
 	}
 
 	// We were given a path to a binary, so invoke that.
