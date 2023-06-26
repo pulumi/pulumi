@@ -99,7 +99,8 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 
-	defer panicHandler()
+	finished := new(bool)
+	defer panicHandler(finished)
 
 	// Copy the test flags into the Pulumi command's flags.
 	cmd := NewPulumiCmd()
@@ -116,4 +117,5 @@ func TestMain(m *testing.M) {
 		contract.IgnoreError(err)
 		os.Exit(1)
 	}
+	*finished = true
 }
