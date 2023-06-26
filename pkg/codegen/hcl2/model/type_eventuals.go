@@ -151,21 +151,21 @@ func containsEventualsImpl(t Type, seen map[Type]struct{}) (containsOutputs, con
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
-		return
+		return containsOutputs, containsPromises
 	case *ObjectType:
 		for _, t := range t.Properties {
 			outputs, promises := containsEventualsImpl(t, seen)
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
-		return
+		return containsOutputs, containsPromises
 	case *TupleType:
 		for _, t := range t.ElementTypes {
 			outputs, promises := containsEventualsImpl(t, seen)
 			containsOutputs = outputs || containsOutputs
 			containsPromises = promises || containsPromises
 		}
-		return
+		return containsOutputs, containsPromises
 	default:
 		return false, false
 	}
