@@ -180,11 +180,8 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 }
 
 func TestPackageGetSchema(t *testing.T) {
-	t.Parallel()
-
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
-
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}
@@ -234,11 +231,8 @@ func TestPackageGetSchema(t *testing.T) {
 }
 
 func TestPackageGetMapping(t *testing.T) {
-	t.Parallel()
-
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
-
 	removeRandomFromLocalPlugins := func() {
 		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
 	}

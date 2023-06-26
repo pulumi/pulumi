@@ -171,7 +171,11 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	}
 
 	if e.UseLocalPulumiBuild {
-		home := os.Getenv("HOME")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			e.Logf("Run Error: %v", err)
+			e.Fatalf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
+		}
 		if home != "" {
 			cmd = filepath.Join(home, ".pulumi-dev", "bin", "pulumi")
 		}
