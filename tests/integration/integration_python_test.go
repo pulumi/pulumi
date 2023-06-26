@@ -1076,3 +1076,11 @@ func TestDuplicateOutputPython(t *testing.T) {
 		},
 	})
 }
+
+func TestConstructProviderExplicitPython(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderExplicit(t, "python", []string{
+		filepath.Join("..", "..", "sdk", "python", "env", "src"),
+	})
+}
