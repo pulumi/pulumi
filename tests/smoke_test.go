@@ -179,6 +179,7 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
@@ -230,6 +231,7 @@ func TestPackageGetSchema(t *testing.T) {
 	bindSchema(schemaJSON)
 }
 
+//nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
