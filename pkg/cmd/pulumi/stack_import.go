@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -56,7 +59,6 @@ func newStackImportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stackName := s.Ref().Name()
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
@@ -79,67 +81,10 @@ func newStackImportCmd() *cobra.Command {
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
 			if err != nil {
-				return checkDeploymentVersionError(err, stackName.String())
+				return checkDeploymentVersionError(err, s.Ref().Name().String())
 			}
-			var result error
-			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != stackName.Q() {
-					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
-						res.URN, res.URN.Stack(), stackName)
-					if force {
-						// If --force was passed, just issue a warning and proceed anyway.
-						// Note: we could associate this diagnostic with the resource URN
-						// we have.  However, this sort of message seems to be better as
-						// something associated with the stack as a whole.
-						cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
-					} else {
-						// Otherwise, gather up an error so that we can quit before doing damage.
-						result = multierror.Append(result, errors.New(msg))
-					}
-				}
-			}
-			// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
-			if err := snapshot.VerifyIntegrity(); err != nil {
-				msg := fmt.Sprintf("state file contains errors: %v", err)
-				if force {
-					cmdutil.Diag().Warningf(diag.Message("", msg))
-				} else {
-					result = multierror.Append(result, errors.New(msg))
-				}
-			}
-			if result != nil {
-				return multierror.Append(result,
-					errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
-			}
-
-			// Explicitly clear-out any pending operations.
-			if snapshot.PendingOperations != nil {
-				for _, op := range snapshot.PendingOperations {
-					msg := fmt.Sprintf(
-						"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
-					cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
-				}
-
-				snapshot.PendingOperations = nil
-			}
-			sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
-			if err != nil {
-				return fmt.Errorf("constructing deployment for upload: %w", err)
-			}
-
-			bytes, err := json.Marshal(sdp)
-			if err != nil {
+			if err := saveSnapshot(ctx, s, snapshot, force); err != nil {
 				return err
-			}
-
-			dep := apitype.UntypedDeployment{
-				Version:    apitype.DeploymentSchemaVersionCurrent,
-				Deployment: bytes,
-			}
-
-			// Now perform the deployment.
-			if err = s.ImportDeployment(ctx, &dep); err != nil {
-				return fmt.Errorf("could not import deployment: %w", err)
 			}
 			fmt.Printf("Import complete.\n")
 			return nil
@@ -155,4 +100,69 @@ func newStackImportCmd() *cobra.Command {
 		&file, "file", "", "", "A filename to read stack input from")
 
 	return cmd
+}
+
+func saveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapshot, force bool) error {
+	stackName := s.Ref().Name()
+	var result error
+	for _, res := range snapshot.Resources {
+		if res.URN.Stack() != stackName.Q() {
+			msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
+				res.URN, res.URN.Stack(), stackName)
+			if force {
+				// If --force was passed, just issue a warning and proceed anyway.
+				// Note: we could associate this diagnostic with the resource URN
+				// we have.  However, this sort of message seems to be better as
+				// something associated with the stack as a whole.
+				cmdutil.Diag().Warningf(diag.Message("" /*urn*/, msg))
+			} else {
+				// Otherwise, gather up an error so that we can quit before doing damage.
+				result = multierror.Append(result, errors.New(msg))
+			}
+		}
+	}
+	// Validate the stack. If --force was passed, issue an error if validation fails. Otherwise, issue a warning.
+	if err := snapshot.VerifyIntegrity(); err != nil {
+		msg := fmt.Sprintf("state file contains errors: %v", err)
+		if force {
+			cmdutil.Diag().Warningf(diag.Message("", msg))
+		} else {
+			result = multierror.Append(result, errors.New(msg))
+		}
+	}
+	if result != nil {
+		return multierror.Append(result,
+			errors.New("importing this file could be dangerous; rerun with --force to proceed anyway"))
+	}
+
+	// Explicitly clear-out any pending operations.
+	if snapshot.PendingOperations != nil {
+		for _, op := range snapshot.PendingOperations {
+			msg := fmt.Sprintf(
+				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
+			cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
+		}
+
+		snapshot.PendingOperations = nil
+	}
+	sdp, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false /* showSecrets */)
+	if err != nil {
+		return fmt.Errorf("constructing deployment for upload: %w", err)
+	}
+
+	bytes, err := json.Marshal(sdp)
+	if err != nil {
+		return err
+	}
+
+	dep := apitype.UntypedDeployment{
+		Version:    apitype.DeploymentSchemaVersionCurrent,
+		Deployment: bytes,
+	}
+
+	// Now perform the deployment.
+	if err = s.ImportDeployment(ctx, &dep); err != nil {
+		return fmt.Errorf("could not import deployment: %w", err)
+	}
+	return nil
 }
