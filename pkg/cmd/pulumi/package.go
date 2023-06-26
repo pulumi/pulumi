@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -156,26 +157,29 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
 			}
 
-			spec := workspace.PluginSpec{
-				Kind:    workspace.ResourcePlugin,
-				Name:    pkg,
-				Version: version,
-			}
-			util.SetKnownPluginDownloadURL(&spec)
+			var missingError *workspace.MissingError
+			if errors.As(err, &missingError) {
+				spec := workspace.PluginSpec{
+					Kind:    workspace.ResourcePlugin,
+					Name:    pkg,
+					Version: version,
+				}
+				util.SetKnownPluginDownloadURL(&spec)
 
-			err = host.InstallPlugin(spec)
-			if err != nil {
-				return nil, err
-			}
-			packageTokens := tokens.Package(pkg)
-			p, err := plugin.NewProvider(host, pCtx, packageTokens, version, nil, false, "")
-			if err != nil {
-				return nil, err
-			}
+				err = host.InstallPlugin(spec)
+				if err != nil {
+					return nil, err
+				}
+				packageTokens := tokens.Package(pkg)
+				p, err := plugin.NewProvider(host, pCtx, packageTokens, version, nil, false, "")
+				if err != nil {
+					return nil, err
+				}
 
-			return p, nil
+				return p, nil
+			}
+			return nil, err
 		}
-
 		return provider, nil
 	}
 
