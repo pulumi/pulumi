@@ -185,6 +185,8 @@ type StepEventStateMetadata struct {
 	Parent resource.URN
 	// true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool
+	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
+	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
 	// over rpc boundaries it will be slightly different than the Inputs found in resource_state.
 	// Specifically, secrets will have been filtered out, and large values (like assets) will be
@@ -329,18 +331,19 @@ func makeStepEventStateMetadata(state *resource.State, debug bool) *StepEventSta
 	}
 
 	return &StepEventStateMetadata{
-		State:      state,
-		Type:       state.Type,
-		URN:        state.URN,
-		Custom:     state.Custom,
-		Delete:     state.Delete,
-		ID:         state.ID,
-		Parent:     state.Parent,
-		Protect:    state.Protect,
-		Inputs:     filterResourceProperties(state.Inputs, debug),
-		Outputs:    filterResourceProperties(state.Outputs, debug),
-		Provider:   state.Provider,
-		InitErrors: state.InitErrors,
+		State:          state,
+		Type:           state.Type,
+		URN:            state.URN,
+		Custom:         state.Custom,
+		Delete:         state.Delete,
+		ID:             state.ID,
+		Parent:         state.Parent,
+		Protect:        state.Protect,
+		RetainOnDelete: state.RetainOnDelete,
+		Inputs:         filterResourceProperties(state.Inputs, debug),
+		Outputs:        filterResourceProperties(state.Outputs, debug),
+		Provider:       state.Provider,
+		InitErrors:     state.InitErrors,
 	}
 }
 
