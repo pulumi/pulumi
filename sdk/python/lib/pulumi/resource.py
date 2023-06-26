@@ -34,6 +34,7 @@ from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
 from .runtime.resource import (
+    _pkg_from_type,
     get_resource,
     register_resource,
     register_resource_outputs,
@@ -843,15 +844,11 @@ class Resource:
             # Infer providers and provider maps from parent, if one was provided.
             self._providers = opts.parent._providers
 
-        type_components = t.split(":")
-        pkg = None
-        if len(type_components) == 3:
-            [pkg, _, _] = type_components
-
+        pkg = _pkg_from_type(t)
         opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
         self._protect = bool(opts.protect)
-        self._provider = opts.provider if custom else None
+        self._provider = opts.provider if (custom or remote) else None
         if self._provider and self._provider.package != pkg:
             action = (
                 "get"
@@ -994,11 +991,10 @@ class Resource:
         :return: The :class:`ProviderResource` associated with the given module member, or None if one does not exist.
         :rtype: Optional[ProviderResource]
         """
-        components = module_member.split(":")
-        if len(components) != 3:
+        pkg = _pkg_from_type(module_member)
+        if pkg is None:
             return None
 
-        [pkg, _, _] = components
         return self._providers.get(pkg)
 
 
