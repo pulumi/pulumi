@@ -1469,7 +1469,7 @@ describe("rpc", () => {
         },
         remote_component_providers: {
             program: path.join(base, "068.remote_component_providers"),
-            expectResourceCount: 4,
+            expectResourceCount: 8,
             registerResource: (
                 ctx: any,
                 dryrun: boolean,
@@ -1489,10 +1489,14 @@ describe("rpc", () => {
                 providers?: any,
             ) => {
                 if (name === "singular" || name === "map" || name === "array") {
-                    assert.strictEqual(provider, "");
+                    assert.strictEqual(provider, "pulumi:providers:test::myprovider::1");
                     assert.deepStrictEqual(Object.keys(providers), ["test"]);
                 }
-                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+                if (name === "foo-singular" || name === "foo-map" || name === "foo-array") {
+                    assert.strictEqual(provider, "");
+                    assert.deepStrictEqual(Object.keys(providers), ["foo"]);
+                }
+                return { urn: makeUrn(t, name), id: name === "myprovider" ? "1" : undefined, props: undefined };
             },
         },
         ambiguous_entrypoints: {
