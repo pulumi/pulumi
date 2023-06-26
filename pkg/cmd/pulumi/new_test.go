@@ -858,11 +858,15 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, tt := range tests {
-		err := validateStackProjectName(b, tt.stackRef, tt.projectName)
-		if tt.valid {
-			assert.NoError(t, err, "projectName: %s, stackRef: %s", tt.projectName, tt.stackRef)
-		} else {
-			assert.Error(t, err, "projectName: %s, stackRef: %s", tt.projectName, tt.stackRef)
-		}
+		tt := tt
+		t.Run(fmt.Sprintf("project=%q/stackRef=%q", tt.projectName, tt.stackRef), func(t *testing.T) {
+			t.Parallel()
+			err := validateStackProjectName(b, tt.stackRef, tt.projectName)
+			if tt.valid {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
 	}
 }

@@ -1118,14 +1118,17 @@ func containsWhiteSpace(value string) bool {
 	return false
 }
 
+// validateStackProjectName takes a stack name and a project name and returns an error if they are not the same.
+//   - projectName comes from the --name flag.
+//   - stackName comes from the --stack flag. stackName can be a stack name or a fully qualified stack reference
+//     i.e org/project/stack
 func validateStackProjectName(b backend.Backend, stackName, projectName string) error {
-	if stackName == "" {
-		return nil
-	}
-	if projectName == "" {
+	if stackName == "" || projectName == "" {
+		// No potential for conflicting project names.
 		return nil
 	}
 
+	// Catch the case where the user has specified a fully qualified stack reference.
 	if strings.Count(stackName, "/") == 2 {
 		ref, err := b.ParseStackReference(stackName)
 		if err != nil {
@@ -1138,8 +1141,10 @@ func validateStackProjectName(b backend.Backend, stackName, projectName string) 
 		if projectName == stackProjectName.String() {
 			return nil
 		}
-		return fmt.Errorf("project name (%s) and stack reference project name (%s) must be the same",
+		return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
 			projectName, stackProjectName)
 	}
+
+	// No conflict as the stack reference does not have a project name.
 	return nil
 }

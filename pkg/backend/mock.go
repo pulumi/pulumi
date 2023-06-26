@@ -16,6 +16,7 @@ package backend
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -139,7 +140,28 @@ func (be *MockBackend) ParseStackReference(s string) (StackReference, error) {
 	if be.ParseStackReferenceF != nil {
 		return be.ParseStackReferenceF(s)
 	}
-	panic("not implemented")
+
+	// default implementation
+	split := strings.Split(s, "/")
+	var project, name tokens.Name
+	switch len(split) {
+	case 1:
+		name = tokens.Name(split[0])
+	case 2:
+		project = tokens.Name(split[0])
+		name = tokens.Name(split[1])
+	case 3:
+		// org is unused
+		project = tokens.Name(split[1])
+		name = tokens.Name(split[2])
+	}
+
+	return &MockStackReference{
+		StringV:             s,
+		NameV:               name,
+		ProjectV:            project,
+		FullyQualifiedNameV: tokens.QName(s),
+	}, nil
 }
 
 func (be *MockBackend) ValidateStackName(s string) error {
