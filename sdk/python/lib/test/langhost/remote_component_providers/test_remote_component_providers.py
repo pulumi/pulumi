@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016-2023, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@ import unittest
 from ..util import LanghostTest
 
 
-class RemoteComponentDependenciesTest(LanghostTest):
+class RemoteComponentProvidersTest(LanghostTest):
     def test_remote_component_dependencies(self):
         self.run_test(
-            program=path.join(self.base_path(), "remote_component_dependencies"),
-            expected_resource_count=3,
+            program=path.join(self.base_path(), "remote_component_providers"),
+            expected_resource_count=8,
         )
 
     def register_resource(
@@ -33,31 +33,24 @@ class RemoteComponentDependenciesTest(LanghostTest):
         _dependencies,
         _parent,
         _custom,
-        protect,
-        _provider,
+        _protect,
+        provider,
         _property_deps,
         _delete_before_replace,
         _ignore_changes,
         _version,
         _import,
         _replace_on_changes,
-        _providers,
+        providers,
     ):
-
-        if name == "resA":
-            self.assertEqual(len(_dependencies), 0, "resA dependencies")
-        elif name == "resB":
-            self.assertEqual(len(_dependencies), 1, "resB dependencies")
-        elif name == "resC":
-            self.assertEqual(len(_dependencies), 1, "resC dependencies")
-            self.assertEqual(_parent, "resA", "resC parent")
-        else:
-            assert False
+        if name == "singular" or name == "map" or name == "array":
+            self.assertEqual(provider, "myprovider::myprovider")
+            self.assertEqual(list(providers.keys()), ["test"])
+        if name == "foo-singular" or name == "foo-map" or name == "foo-array":
+            self.assertEqual(provider, "")
+            self.assertEqual(list(providers.keys()), ["foo"])
 
         return {
             "urn": name,
             "id": name,
-            "object": {
-                "outprop": "qux",
-            },
         }
