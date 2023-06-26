@@ -209,17 +209,17 @@ func TestPackageGetSchema(t *testing.T) {
 	}
 
 	// get the schema and bind it
-	schemaJson, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
-	bindSchema(schemaJson)
+	schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
+	bindSchema(schemaJSON)
 
 	// try again using a specific version
 	removeRandomFromLocalPlugins()
-	schemaJson, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
-	bindSchema(schemaJson)
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	bindSchema(schemaJSON)
 
 	// Now that the random provider is installed, run the command again without removing random from plugins
-	schemaJson, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
-	bindSchema(schemaJson)
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
+	bindSchema(schemaJSON)
 
 	// Now try to get the schema from the path to the binary
 	binaryPath := filepath.Join(
@@ -229,8 +229,8 @@ func TestPackageGetSchema(t *testing.T) {
 		"resource-random-v4.13.0",
 		"pulumi-resource-random")
 
-	schemaJson, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
-	bindSchema(schemaJson)
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	bindSchema(schemaJSON)
 }
 
 func TestPackageGetMapping(t *testing.T) {
