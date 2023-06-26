@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -67,10 +68,7 @@ const (
 )
 
 // Name validation rules enforced by the Pulumi Service.
-var (
-	stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
-	stackNameRegexp  = regexp.MustCompile("^[A-Za-z0-9_.-]{1,100}$")
-)
+var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 
 // DefaultURL returns the default cloud URL.  This may be overridden using the PULUMI_API environment
 // variable.  If no override is found, and we are authenticated with a cloud, choose that.  Otherwise,
@@ -646,9 +644,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		qualifiedName.Project = b.currentProject.Name.String()
 	}
 
-	if !tokens.IsName(qualifiedName.Name) {
-		return nil, errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
+	if err := validation.ValidateStackName(qualifiedName.Name); err != nil {
+		return nil, err
 	}
+	contract.Assertf(tokens.IsName(qualifiedName.Name),
+		"qualifiedName.Name must be a valid name because it is a valid stack name")
 
 	return cloudBackendReference{
 		owner:   qualifiedName.Owner,
@@ -678,7 +678,7 @@ func (b *cloudBackend) ValidateStackName(s string) error {
 		}
 	}
 
-	return validateStackName(qualifiedName.Name)
+	return validation.ValidateStackName(qualifiedName.Name)
 }
 
 // validateOwnerName checks if a stack owner name is valid. An "owner" is simply the namespace
@@ -686,17 +686,6 @@ func (b *cloudBackend) ValidateStackName(s string) error {
 func validateOwnerName(s string) error {
 	if !stackOwnerRegexp.MatchString(s) {
 		return errors.New("invalid stack owner")
-	}
-	return nil
-}
-
-// validateStackName checks if a stack name is valid, returning a user-suitable error if needed.
-func validateStackName(s string) error {
-	if len(s) > 100 {
-		return errors.New("stack names must be less than 100 characters")
-	}
-	if !stackNameRegexp.MatchString(s) {
-		return errors.New("stack names may only contain alphanumeric, hyphens, underscores, and periods")
 	}
 	return nil
 }
