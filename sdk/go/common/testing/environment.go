@@ -54,7 +54,8 @@ type Environment struct {
 	Passphrase string
 	// Set to true to turn off setting PULUMI_CONFIG_PASSPHRASE.
 	NoPassphrase bool
-
+	// Set to true to use the local Pulumi dev build from ~/.pulumi-dev/bin/pulumi which get from `make install`
+	UseLocalPulumiBuild bool
 	// Content to pass on stdin, if any
 	Stdin io.Reader
 }
@@ -168,6 +169,14 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 		YarnInstallMutex.Lock()
 		defer YarnInstallMutex.Unlock()
 	}
+
+	if e.UseLocalPulumiBuild {
+		home := os.Getenv("HOME")
+		if home != "" {
+			cmd = filepath.Join(home, ".pulumi-dev", "bin", "pulumi")
+		}
+	}
+
 	e.Helper()
 	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
