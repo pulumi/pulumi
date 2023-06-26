@@ -170,8 +170,7 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 				if err != nil {
 					return nil, err
 				}
-				packageTokens := tokens.Package(pkg)
-				p, err := plugin.NewProvider(host, pCtx, packageTokens, version, nil, false, "")
+				p, err := host.Provider(tokens.Package(pkg), version)
 				if err != nil {
 					return nil, err
 				}
