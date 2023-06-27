@@ -1,10 +1,13 @@
 package tests
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/require"
@@ -174,6 +177,85 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "package", "gen-sdk", "--language", runtime, "schema.json")
 		})
 	}
+}
+
+//nolint:paralleltest // disabled parallel because we change the plugins cache
+func TestPackageGetSchema(t *testing.T) {
+	// Skipping because it gets rate limited in CI
+	t.Skip()
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+	removeRandomFromLocalPlugins := func() {
+		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+	}
+
+	bindSchema := func(schemaJson string) {
+		var schemaSpec *schema.PackageSpec
+		err := json.Unmarshal([]byte(schemaJson), &schemaSpec)
+		require.NoError(t, err, "Unmarshalling schema specs from random should work")
+		require.NotNil(t, schemaSpec, "Specification should be non-nil")
+		schema, diags, err := schema.BindSpec(*schemaSpec, nil)
+		require.NoError(t, err, "Binding the schema spec should work")
+		require.False(t, diags.HasErrors(), "Binding schema spec should have no errors")
+		require.NotNil(t, schema)
+	}
+
+	// Make sure the random provider is not installed locally
+	// So that we can test the `package get-schema` command works if the plugin
+	// is not installed locally on first run.
+	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	if strings.Contains(out, "random  resource") {
+		removeRandomFromLocalPlugins()
+	}
+
+	// get the schema and bind it
+	schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", "random")
+	bindSchema(schemaJSON)
+
+	// try again using a specific version
+	removeRandomFromLocalPlugins()
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random@4.13.0")
+	bindSchema(schemaJSON)
+
+	// Now that the random provider is installed, run the command again without removing random from plugins
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "random")
+	bindSchema(schemaJSON)
+
+	// Now try to get the schema from the path to the binary
+	binaryPath := filepath.Join(
+		os.Getenv("HOME"),
+		".pulumi",
+		"plugins",
+		"resource-random-v4.13.0",
+		"pulumi-resource-random")
+
+	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", binaryPath)
+	bindSchema(schemaJSON)
+}
+
+//nolint:paralleltest // disabled parallel because we change the plugins cache
+func TestPackageGetMapping(t *testing.T) {
+	// Skipping because it gets rate limited in CI
+	t.Skip()
+	e := ptesting.NewEnvironment(t)
+	defer deleteIfNotFailed(e)
+	removeRandomFromLocalPlugins := func() {
+		e.RunCommand("pulumi", "plugin", "rm", "resource", "random", "--all", "--yes")
+	}
+
+	// Make sure the random provider is not installed locally
+	// So that we can test the `package get-mapping` command works if the plugin
+	// is not installed locally on first run.
+	out, _ := e.RunCommand("pulumi", "plugin", "ls")
+	if strings.Contains(out, "random  resource") {
+		removeRandomFromLocalPlugins()
+	}
+
+	result, _ := e.RunCommand("pulumi", "package", "get-mapping", "terraform", "random@4.13.0", "--out", "mapping.json")
+	require.Contains(t, result, "random@4.13.0 maps to provider random")
+	contents, err := os.ReadFile(filepath.Join(e.RootPath, "mapping.json"))
+	require.NoError(t, err, "Reading the generated tf mapping from file should work")
+	require.NotNil(t, contents, "mapping contents should be non-empty")
 }
 
 // Quick sanity tests for each downstream language to check that import works.

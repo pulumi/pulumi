@@ -16,12 +16,16 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -152,6 +156,28 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 			if info, statErr := os.Stat(pkg); statErr == nil && isExecutable(info) {
 				return nil, fmt.Errorf("could not find installed plugin %s, did you mean ./%[1]s: %w", pkg, err)
 			}
+
+			var missingError *workspace.MissingError
+			if errors.As(err, &missingError) {
+				spec := workspace.PluginSpec{
+					Kind:    workspace.ResourcePlugin,
+					Name:    pkg,
+					Version: version,
+				}
+				util.SetKnownPluginDownloadURL(&spec)
+
+				err = host.InstallPlugin(spec)
+				if err != nil {
+					return nil, err
+				}
+				p, err := host.Provider(tokens.Package(pkg), version)
+				if err != nil {
+					return nil, err
+				}
+
+				return p, nil
+			}
+			return nil, err
 		}
 		return provider, nil
 	}
@@ -173,9 +199,10 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	p, err := plugin.NewProviderFromPath(host, pCtx, pkg)
 	if err != nil {
 		return nil, err
 	}
-	return p, err
+	return p, nil
 }
