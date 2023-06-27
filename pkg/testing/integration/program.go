@@ -245,12 +245,6 @@ type ProgramTestOptions struct {
 	// file.
 	Tracing string
 
-	// If non-empty, specifies the value of the `--test.coverprofile` flag to pass to the Pulumi CLI. As with the
-	// Tracing field, the `{command}` template will expand to the current command name.
-	//
-	// If PULUMI_TEST_COVERAGE_PATH is set, this defaults to $PULUMI_TEST_COVERAGE_PATH/{command}-[random suffix].out
-	CoverProfile string
-
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
@@ -546,9 +540,6 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
 	}
-	if overrides.CoverProfile != "" {
-		opts.CoverProfile = overrides.CoverProfile
-	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
 	}
@@ -748,16 +739,6 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 		opts.Tracing = os.Getenv("PULUMI_TEST_TRACE_ENDPOINT")
 	}
 
-	if opts.CoverProfile == "" {
-		if cov := os.Getenv("PULUMI_TEST_COVERAGE_PATH"); cov != "" {
-			var b [4]byte
-			if _, err := cryptorand.Read(b[:]); err != nil {
-				t.Errorf("could not read random bytes: %v", err)
-			}
-			opts.CoverProfile = filepath.Join(cov, "{command}-"+hex.EncodeToString(b[:])+".cov")
-		}
-	}
-
 	if opts.UseSharedVirtualEnv == nil {
 		if sharedVenv := os.Getenv("PULUMI_TEST_PYTHON_SHARED_VENV"); sharedVenv != "" {
 			useSharedVenvBool := sharedVenv == "true"
@@ -921,9 +902,6 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
 		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
-	}
-	if cov := pt.opts.CoverProfile; cov != "" {
-		cmd = append(cmd, "--test.coverprofile", strings.ReplaceAll(cov, "{command}", name))
 	}
 	return cmd, nil
 }

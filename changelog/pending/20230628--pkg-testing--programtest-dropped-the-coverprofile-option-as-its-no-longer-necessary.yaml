@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg/testing
+  description: ProgramTest dropped the CoverProfile option as it's no longer necessary.

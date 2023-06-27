@@ -31,6 +31,11 @@ on:
         required: false
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
+      enable-coverage:
+        description: "Build coverage instrumented binaries"
+        default: false
+        required: false
+        type: boolean
 
 defaults:
   run:
@@ -106,6 +111,7 @@ jobs:
         shell: bash
         env:
           GORELEASER_CURRENT_TAG: v${{ inputs.version }}
+          PULUMI_BUILD_MODE: ${{ inputs.enable-coverage && 'coverage' || 'normal' }}
         run: |
           set -euxo pipefail
           # Spurious, this command requires piping via stdin
