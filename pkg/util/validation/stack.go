@@ -20,16 +20,38 @@ import (
 	"regexp"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-// validateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
+var stackNameRE = regexp.MustCompile("^" + tokens.NameRegexpPattern)
+
+// ValidateStackName checks if s is a valid stack name, otherwise returns a descriptive error.
 // This should match the stack naming rules enforced by the Pulumi Service.
-func validateStackName(s string) error {
-	stackNameRE := regexp.MustCompile("^[a-zA-Z0-9-_.]{1,100}$")
-	if stackNameRE.MatchString(s) {
+func ValidateStackName(s string) error {
+	if s == "" {
+		return errors.New("a stack name may not be empty")
+	}
+	if len(s) > 100 {
+		return errors.New("a stack name cannot exceed 100 characters")
+	}
+
+	failure := -1
+	if match := stackNameRE.FindStringIndex(s); match == nil {
+		// We have failed to find any match, so the first token must be invalid.
+		failure = 0
+	} else if match[1] != len(s) {
+		// Our match did not extend to the end, so the invalid token must be the
+		// first token not matched.
+		failure = match[1]
+	}
+
+	if failure == -1 {
 		return nil
 	}
-	return errors.New("a stack name may only contain alphanumeric, hyphens, underscores, or periods")
+
+	return fmt.Errorf(
+		"a stack name may only contain alphanumeric, hyphens, underscores, or periods: "+
+			"invalid character %q at position %d", s[failure], failure)
 }
 
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.
@@ -70,11 +92,7 @@ func ValidateStackTags(tags map[apitype.StackTagName]string) error {
 // ValidateStackProperties validates the stack name and its tags to confirm they adhear to various
 // naming and length restrictions.
 func ValidateStackProperties(stack string, tags map[apitype.StackTagName]string) error {
-	const maxStackName = 100 // Derived from the regex in validateStackName.
-	if len(stack) > maxStackName {
-		return fmt.Errorf("stack name too long (max length %d characters)", maxStackName)
-	}
-	if err := validateStackName(stack); err != nil {
+	if err := ValidateStackName(stack); err != nil {
 		return err
 	}
 

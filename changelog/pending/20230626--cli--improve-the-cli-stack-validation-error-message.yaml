@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Improve the CLI stack validation error message
