@@ -62,29 +62,22 @@ generate::
 	$(call STEP_MESSAGE)
 	echo "This command does not do anything anymore. It will be removed in a future version."
 
-ifeq ($(PULUMI_TEST_COVERAGE_PATH),)
 build:: build-proto go.ensure
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install:: .ensure.phony go.ensure
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
-else
-build:: build_cover ensure_cover
-
-ensure_cover::
-	mkdir -p $(PULUMI_TEST_COVERAGE_PATH)
-
-install:: install_cover
-endif
 
 build_debug::
 	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 build_cover::
-	cd pkg && go test -coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... -cover -c -o $(shell go env GOPATH)/bin/pulumi -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go build -cover -o ../bin/pulumi \
+		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
+		-ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_cover:: build_cover
-	cp $(shell go env GOPATH)/bin/pulumi $(PULUMI_BIN)
+	cp bin/pulumi $(PULUMI_BIN)
 
 developer_docs::
 	cd developer-docs && make html
