@@ -181,6 +181,8 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetSchema(t *testing.T) {
+	// Skipping because it gets rate limited in CI
+	t.Skip()
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
@@ -233,6 +235,8 @@ func TestPackageGetSchema(t *testing.T) {
 
 //nolint:paralleltest // disabled parallel because we change the plugins cache
 func TestPackageGetMapping(t *testing.T) {
+	// Skipping because it gets rate limited in CI
+	t.Skip()
 	e := ptesting.NewEnvironment(t)
 	defer deleteIfNotFailed(e)
 	removeRandomFromLocalPlugins := func() {
