@@ -27,10 +27,10 @@ import (
 	"flag"
 	"fmt"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/golang/glog"
+	aho_corasick "github.com/pgavlin/aho-corasick"
 )
 
 type Filter interface {
@@ -44,8 +44,9 @@ var (
 )
 
 var (
-	rwLock  sync.RWMutex
-	filters []Filter
+	rwLock       sync.RWMutex
+	globalFilter *globalAhoCorasickFilter
+	filters      []Filter
 )
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
@@ -147,12 +148,23 @@ func (f *nopFilter) Filter(s string) string {
 	return s
 }
 
-type replacerFilter struct {
-	replacer *strings.Replacer
+type ahoCorasickFilter struct {
+	replacement string
+	replacer    aho_corasick.Replacer
 }
 
-func (f *replacerFilter) Filter(s string) string {
-	return f.replacer.Replace(s)
+func (f *ahoCorasickFilter) Filter(s string) string {
+	return f.replacer.ReplaceAllWith(s, f.replacement)
+}
+
+type globalAhoCorasickFilter struct {
+	patterns     []string
+	replacements []string
+	replacer     aho_corasick.Replacer
+}
+
+func (f *globalAhoCorasickFilter) filter(s string) string {
+	return f.replacer.ReplaceAll(s, f.replacements)
 }
 
 func AddGlobalFilter(filter Filter) {
@@ -161,15 +173,45 @@ func AddGlobalFilter(filter Filter) {
 	rwLock.Unlock()
 }
 
-func CreateFilter(secrets []string, replacement string) Filter {
-	items := make([]string, 0, len(secrets))
+func CreateGlobalFilter(secrets []string, replacement string) {
+	rwLock.Lock()
+	defer rwLock.Unlock()
+
+	patterns := makePatterns(secrets)
+	if len(patterns) == 0 {
+		return
+	}
+	replacements := make([]string, len(patterns))
+	for i := range replacements {
+		replacements[i] = replacement
+	}
+
+	if globalFilter != nil {
+		patterns = append(patterns, globalFilter.patterns...)
+		replacements = append(replacements, globalFilter.replacements...)
+	}
+
+	builder := aho_corasick.NewAhoCorasickBuilder(aho_corasick.Opts{
+		MatchKind: aho_corasick.StandardMatch,
+	})
+	replacer := aho_corasick.NewReplacer(builder.Build(patterns))
+
+	globalFilter = &globalAhoCorasickFilter{
+		patterns:     patterns,
+		replacements: replacements,
+		replacer:     replacer,
+	}
+}
+
+func makePatterns(secrets []string) []string {
+	patterns := make([]string, 0, len(secrets)*2)
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.
 		if len(secret) < 3 {
 			continue
 		}
-		items = append(items, secret, replacement)
+		patterns = append(patterns, secret)
 
 		// Catch secrets that are serialized to JSON.
 		bs, err := json.Marshal(secret)
@@ -177,22 +219,38 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			continue
 		}
 		if escaped := string(bs[1 : len(bs)-1]); escaped != secret {
-			items = append(items, escaped, replacement)
+			patterns = append(patterns, escaped)
 		}
 	}
-	if len(items) > 0 {
-		return &replacerFilter{replacer: strings.NewReplacer(items...)}
+	return patterns
+}
+
+func CreateFilter(secrets []string, replacement string) Filter {
+	patterns := makePatterns(secrets)
+	if len(patterns) == 0 {
+		return &nopFilter{}
 	}
 
-	return &nopFilter{}
+	builder := aho_corasick.NewAhoCorasickBuilder(aho_corasick.Opts{
+		MatchKind: aho_corasick.StandardMatch,
+	})
+	return &ahoCorasickFilter{
+		replacement: replacement,
+		replacer:    aho_corasick.NewReplacer(builder.Build(patterns)),
+	}
 }
 
 func FilterString(msg string) string {
+	var localGlobalFilter *globalAhoCorasickFilter
 	var localFilters []Filter
 	rwLock.RLock()
+	localGlobalFilter = globalFilter
 	localFilters = filters
 	rwLock.RUnlock()
 
+	if localGlobalFilter != nil {
+		msg = localGlobalFilter.filter(msg)
+	}
 	for _, filter := range localFilters {
 		msg = filter.Filter(msg)
 	}
