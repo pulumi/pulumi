@@ -150,6 +150,8 @@ type StepEventStateMetadata struct {
 	Parent string `json:"parent"`
 	// Protect is true to "protect" this resource (protected resources cannot be deleted).
 	Protect bool `json:"protect,omitempty"`
+	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
+	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have
 	// filtered out, and large assets have been replaced by hashes as applicable.
 	Inputs map[string]interface{} `json:"inputs"`
