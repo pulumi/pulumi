@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/spf13/afero"
 )
 
@@ -120,13 +121,13 @@ func (p *Program) Packages() []*schema.Package {
 
 // PackageReferences returns the list of package referenced used by this program.
 func (p *Program) PackageReferences() []schema.PackageReference {
-	keys := make([]string, 0, len(p.binder.referencedPackages))
+	keys := slice.Prealloc[string](len(p.binder.referencedPackages))
 	for k := range p.binder.referencedPackages {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	values := make([]schema.PackageReference, 0, len(p.binder.referencedPackages))
+	values := slice.Prealloc[schema.PackageReference](len(p.binder.referencedPackages))
 	for _, k := range keys {
 		values = append(values, p.binder.referencedPackages[k])
 	}
@@ -137,13 +138,13 @@ func (p *Program) PackageReferences() []schema.PackageReference {
 // its returned value is a snapshot that contains only the package members referenced by the program. Otherwise, its
 // returned value is the full package definition.
 func (p *Program) PackageSnapshots() ([]*schema.Package, error) {
-	keys := make([]string, 0, len(p.binder.referencedPackages))
+	keys := slice.Prealloc[string](len(p.binder.referencedPackages))
 	for k := range p.binder.referencedPackages {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	values := make([]*schema.Package, 0, len(p.binder.referencedPackages))
+	values := slice.Prealloc[*schema.Package](len(p.binder.referencedPackages))
 	for _, k := range keys {
 		ref := p.binder.referencedPackages[k]
 

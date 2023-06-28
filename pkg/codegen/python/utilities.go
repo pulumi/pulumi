@@ -10,6 +10,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Python identifier as per
@@ -112,7 +113,7 @@ var pypiPost = regexp.MustCompile("^post[0-9]+$")
 // Details can be found here: https://www.python.org/dev/peps/pep-0440/#version-scheme
 // [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
 func pypiVersion(v semver.Version) string {
-	localList := make([]string, 0, len(pypiReleaseTranslations))
+	localList := slice.Prealloc[string](len(pypiReleaseTranslations))
 
 	getRelease := func(maybeRelease string) string {
 		for _, tup := range pypiReleaseTranslations {

@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
@@ -757,7 +758,7 @@ func (a *Archive) readAssets() (ArchiveReader, error) {
 	contract.Assertf(isassets, "Expected an asset map-based archive")
 
 	// Calculate and sort the list of member names s.t. it is deterministically orderered.
-	keys := make([]string, 0, len(m))
+	keys := slice.Prealloc[string](len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}

@@ -24,6 +24,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/lockedfile"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -208,7 +209,7 @@ func GetStoredCredentials() (Credentials, error) {
 			"`pulumi login` to reset your credentials file: %w", err)
 	}
 
-	secrets := make([]string, 0, len(creds.AccessTokens))
+	secrets := slice.Prealloc[string](len(creds.AccessTokens))
 	for _, v := range creds.AccessTokens {
 		secrets = append(secrets, v)
 	}

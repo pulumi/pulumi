@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -896,11 +897,11 @@ func assertResult(t *testing.T, o Output, expectedValue interface{}, expectedKno
 	assert.Equal(t, expectedValue, v, "values do not match")
 	assert.Equal(t, expectedKnown, known, "known-ness does not match")
 	assert.Equal(t, expectedSecret, secret, "secret-ness does not match")
-	depUrns := make([]URN, 0, len(deps))
+	depUrns := slice.Prealloc[URN](len(deps))
 	for _, v := range deps {
 		depUrns = append(depUrns, v.URN().value.(URN))
 	}
-	expectedUrns := make([]URN, 0, len(expectedDeps))
+	expectedUrns := slice.Prealloc[URN](len(expectedDeps))
 	for _, v := range expectedDeps {
 		expectedUrns = append(expectedUrns, v.URN().value.(URN))
 	}

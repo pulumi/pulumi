@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
@@ -121,7 +122,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	resources := make([]apitype.ResourceV3, 0, len(snap.Resources))
+	resources := slice.Prealloc[apitype.ResourceV3](len(snap.Resources))
 	for _, res := range snap.Resources {
 		sres, err := SerializeResource(res, enc, showSecrets)
 		if err != nil {
@@ -130,7 +131,7 @@ func SerializeDeployment(snap *deploy.Snapshot, sm secrets.Manager, showSecrets 
 		resources = append(resources, sres)
 	}
 
-	operations := make([]apitype.OperationV2, 0, len(snap.PendingOperations))
+	operations := slice.Prealloc[apitype.OperationV2](len(snap.PendingOperations))
 	for _, op := range snap.PendingOperations {
 		sop, err := SerializeOperation(op, enc, showSecrets)
 		if err != nil {
@@ -258,7 +259,7 @@ func DeserializeDeploymentV3(
 	}
 
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
-	resources := make([]*resource.State, 0, len(deployment.Resources))
+	resources := slice.Prealloc[*resource.State](len(deployment.Resources))
 	for _, res := range deployment.Resources {
 		desres, err := DeserializeResource(res, dec, enc)
 		if err != nil {
@@ -267,7 +268,7 @@ func DeserializeDeploymentV3(
 		resources = append(resources, desres)
 	}
 
-	ops := make([]resource.Operation, 0, len(deployment.PendingOperations))
+	ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
 	for _, op := range deployment.PendingOperations {
 		desop, err := DeserializeOperation(op, dec, enc)
 		if err != nil {

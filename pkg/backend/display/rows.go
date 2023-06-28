@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 type Row interface {
@@ -465,7 +466,7 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 			}
 
 			filteredKeys := func(m resource.PropertyMap) []string {
-				keys := make([]string, 0, len(m))
+				keys := slice.Prealloc[string](len(m))
 				for k := range m {
 					keys = append(keys, string(k))
 				}

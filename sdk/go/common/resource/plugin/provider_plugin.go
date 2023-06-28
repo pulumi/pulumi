@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -396,7 +397,7 @@ func (p *provider) CheckConfig(urn resource.URN, olds,
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -505,15 +506,15 @@ func (p *provider) DiffConfig(urn resource.URN, oldInputs, oldOutputs, newInputs
 		return DiffResult{}, nil
 	}
 
-	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -753,7 +754,7 @@ func (p *provider) Check(urn resource.URN,
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -841,15 +842,16 @@ func (p *provider) Diff(urn resource.URN, id resource.ID,
 		return DiffResult{}, rpcError
 	}
 
-	replaces := make([]resource.PropertyKey, 0, len(resp.GetReplaces()))
+	// nil is semantically important to a lot of the pulumi system so we only pre-allocate if we have non-zero length.
+	replaces := slice.Prealloc[resource.PropertyKey](len(resp.GetReplaces()))
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-	stables := make([]resource.PropertyKey, 0, len(resp.GetStables()))
+	stables := slice.Prealloc[resource.PropertyKey](len(resp.GetStables()))
 	for _, stable := range resp.GetStables() {
 		stables = append(stables, resource.PropertyKey(stable))
 	}
-	diffs := make([]resource.PropertyKey, 0, len(resp.GetDiffs()))
+	diffs := slice.Prealloc[resource.PropertyKey](len(resp.GetDiffs()))
 	for _, diff := range resp.GetDiffs() {
 		diffs = append(diffs, resource.PropertyKey(diff))
 	}
@@ -1455,7 +1457,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
@@ -1633,7 +1635,7 @@ func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info
 	}
 
 	// And now any properties that failed verification.
-	failures := make([]CheckFailure, 0, len(resp.GetFailures()))
+	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}

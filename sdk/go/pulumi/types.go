@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -211,12 +212,12 @@ func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
 	if len(ours) == 0 && len(theirs) == 0 {
 		return nil
 	} else if len(theirs) == 0 {
-		return append(make([]Resource, 0, len(ours)), ours...)
+		return append(slice.Prealloc[Resource](len(ours)), ours...)
 	} else if len(ours) == 0 {
-		return append(make([]Resource, 0, len(theirs)), theirs...)
+		return append(slice.Prealloc[Resource](len(theirs)), theirs...)
 	}
 	depSet := make(map[Resource]struct{})
-	mergedDeps := make([]Resource, 0, len(ours)+len(theirs))
+	mergedDeps := slice.Prealloc[Resource](len(ours) + len(theirs))
 	for _, d := range ours {
 		depSet[d] = struct{}{}
 	}
@@ -478,7 +479,7 @@ func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
 
 // Call executes the applier on the provided value and returns the result.
 func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, error) {
-	args := make([]reflect.Value, 0, 2) // ([ctx], in)
+	args := slice.Prealloc[reflect.Value](2) // ([ctx], in)
 	if ap.ctx {
 		args = append(args, reflect.ValueOf(ctx))
 	}
@@ -742,7 +743,7 @@ func gatherJoins(v interface{}) workGroups {
 
 	var joins workGroups
 	if len(joinSet) > 0 {
-		joins = make([]*workGroup, 0, len(joinSet))
+		joins = slice.Prealloc[*workGroup](len(joinSet))
 		for j := range joinSet {
 			joins = append(joins, j)
 		}

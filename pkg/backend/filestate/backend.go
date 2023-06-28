@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -765,7 +766,7 @@ func (b *localBackend) ListStacks(
 
 	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
 	// aren't persisted in the local backend.
-	results := make([]backend.StackSummary, 0, len(stacks))
+	results := slice.Prealloc[backend.StackSummary](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
 		stackProject, hasProject := stackRef.Project()

@@ -30,6 +30,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -454,7 +455,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		for k, deps := range argDeps {
 			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
-			urns := make([]string, 0, len(deps))
+			urns := slice.Prealloc[string](len(deps))
 			for i, d := range deps {
 				if i > 0 && urns[i-1] == string(d) {
 					continue
@@ -1085,7 +1086,7 @@ func getPackage(t string) string {
 func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Resource) ([]URNOutput, error) {
 	project, stack := ctx.Project(), ctx.Stack()
 
-	aliasURNs := make([]URNOutput, 0, len(aliases))
+	aliasURNs := slice.Prealloc[URNOutput](len(aliases))
 
 	for _, alias := range aliases {
 		urn, err := alias.collapseToURN(name, t, parent, project, stack)
@@ -1394,7 +1395,7 @@ func (ctx *Context) mapAliases(aliases []Alias,
 	name string,
 	parent Resource,
 ) ([]*pulumirpc.Alias, error) {
-	aliasSpecs := make([]*pulumirpc.Alias, 0, len(aliases))
+	aliasSpecs := slice.Prealloc[*pulumirpc.Alias](len(aliases))
 	await := func(input StringInput) (string, error) {
 		if input == nil {
 			return "", nil

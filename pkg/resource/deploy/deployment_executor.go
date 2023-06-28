@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -563,7 +564,7 @@ func (ex *deploymentExecutor) rebuildBaseState(resourceToStep map[*resource.Stat
 
 		// Remove any deleted resources from this resource's dependency list.
 		if len(new.Dependencies) != 0 {
-			deps := make([]resource.URN, 0, len(new.Dependencies))
+			deps := slice.Prealloc[resource.URN](len(new.Dependencies))
 			for _, d := range new.Dependencies {
 				if referenceable[d] {
 					deps = append(deps, d)

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1679,7 +1680,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 		return diff, nil
 	}
 
-	replaceOnChangePaths := make([]resource.PropertyPath, 0, len(replaceOnChanges))
+	replaceOnChangePaths := slice.Prealloc[resource.PropertyPath](len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
 		path, err := resource.ParsePropertyPath(p)
 		if err != nil {
@@ -1727,7 +1728,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 			}
 		}
 	}
-	modifiedReplaceKeys := make([]resource.PropertyKey, 0, len(modifiedReplaceKeysMap))
+	modifiedReplaceKeys := slice.Prealloc[resource.PropertyKey](len(modifiedReplaceKeysMap))
 	for k := range modifiedReplaceKeysMap {
 		modifiedReplaceKeys = append(modifiedReplaceKeys, k)
 	}

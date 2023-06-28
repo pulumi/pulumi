@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
@@ -1310,7 +1311,7 @@ func escapeString(s string) string {
 
 	// Escape `${`
 	runes := []rune(s)
-	out := make([]rune, 0, len(runes))
+	out := slice.Prealloc[rune](len(runes))
 	for i, r := range runes {
 		next := func() rune {
 			if i >= len(runes)-1 {
@@ -1506,7 +1507,7 @@ func (x *ObjectConsExpression) WithType(updateType func(Type) *ObjectConsExpress
 func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	keys := make([]Expression, 0, len(x.Items))
+	keys := slice.Prealloc[Expression](len(x.Items))
 	for _, item := range x.Items {
 		if typecheckOperands {
 			keyDiags := item.Key.Typecheck(true)

@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -71,7 +72,7 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 	}
 
 	// Translate the hcl.Diagnostics into rpc diagnostics.
-	diags := make([]*codegenrpc.Diagnostic, 0, len(resp.Diagnostics))
+	diags := slice.Prealloc[*codegenrpc.Diagnostic](len(resp.Diagnostics))
 	for _, diag := range resp.Diagnostics {
 		diags = append(diags, HclDiagnosticToRPCDiagnostic(diag))
 	}

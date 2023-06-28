@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -747,7 +748,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -833,7 +834,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(ret.Failures))
 	for _, failure := range ret.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -888,7 +889,7 @@ func (rm *resmon) StreamInvoke(
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -933,7 +934,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 
 	id := resource.ID(req.GetId())
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
-	deps := make([]resource.URN, 0, len(req.GetDependencies()))
+	deps := slice.Prealloc[resource.URN](len(req.GetDependencies()))
 	for _, depURN := range req.GetDependencies() {
 		deps = append(deps, resource.URN(depURN))
 	}
@@ -948,7 +949,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
-	additionalSecretOutputs := make([]resource.PropertyKey, 0, len(req.GetAdditionalSecretOutputs()))
+	additionalSecretOutputs := slice.Prealloc[resource.PropertyKey](len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
 		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
 	}
@@ -1291,7 +1292,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 	} else {
-		additionalSecretKeys := make([]resource.PropertyKey, 0, len(additionalSecretOutputs))
+		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
 		for _, name := range additionalSecretOutputs {
 			additionalSecretKeys = append(additionalSecretKeys, resource.PropertyKey(name))
 		}

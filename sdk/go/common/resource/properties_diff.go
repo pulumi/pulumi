@@ -16,6 +16,8 @@ package resource
 
 import (
 	"sort"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // ObjectDiff holds the results of diffing two object property maps.
@@ -63,7 +65,7 @@ func (diff *ObjectDiff) AnyChanges() bool {
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
 	bufferSize := len(diff.Adds) + len(diff.Deletes) + len(diff.Sames) + len(diff.Updates)
-	ks := make([]PropertyKey, 0, bufferSize)
+	ks := slice.Prealloc[PropertyKey](bufferSize)
 	for k := range diff.Adds {
 		ks = append(ks, k)
 	}

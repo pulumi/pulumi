@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -620,7 +621,7 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 		}, nil
 	case value.IsObject():
 		obj := value.ObjectValue()
-		items := make([]model.ObjectConsItem, 0, len(obj))
+		items := slice.Prealloc[model.ObjectConsItem](len(obj))
 
 		switch arg := typ.(type) {
 		case *schema.ObjectType:

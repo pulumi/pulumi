@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/mapper"
@@ -203,7 +204,7 @@ func (props PropertyMap) Copy() PropertyMap {
 
 // StableKeys returns all of the map's keys in a stable order.
 func (props PropertyMap) StableKeys() []PropertyKey {
-	sorted := make([]PropertyKey, 0, len(props))
+	sorted := slice.Prealloc[PropertyKey](len(props))
 	for k := range props {
 		sorted = append(sorted, k)
 	}

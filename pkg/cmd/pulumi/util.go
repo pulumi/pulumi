@@ -54,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -397,7 +398,7 @@ func chooseStack(ctx context.Context,
 		inContToken = outContToken
 	}
 
-	options := make([]string, 0, len(allSummaries))
+	options := slice.Prealloc[string](len(allSummaries))
 	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)

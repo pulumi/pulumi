@@ -24,6 +24,8 @@ import (
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 type builtin struct {
@@ -210,7 +212,7 @@ var funcs = template.FuncMap{
 
 func makeBuiltins(primitives []*builtin) []*builtin {
 	// Augment primitives with array and map types.
-	builtins := make([]*builtin, 0, len(primitives))
+	builtins := slice.Prealloc[*builtin](len(primitives))
 	for _, p := range primitives {
 		p.Strategy = "primitive"
 		name := ""

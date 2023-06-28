@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
@@ -211,7 +212,7 @@ func TestPackageNaming(t *testing.T) {
 			}
 			files, err := GeneratePackage("test", schema)
 			require.NoError(t, err)
-			ordering := make([]string, 0, len(files))
+			ordering := slice.Prealloc[string](len(files))
 			for k := range files {
 				ordering = append(ordering, k)
 			}

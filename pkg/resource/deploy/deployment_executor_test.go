@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +48,7 @@ func (nl *nodeList) AsRefreshSteps() map[*resource.State]Step {
 func (nl *nodeList) sorted() []*resource.State {
 	// Since we add elements before we add their parents, we are guaranteed a reverse
 	// topological sort. We can retrieve a topological sort by reversing the list.
-	l := make([]*resource.State, 0, len(*nl))
+	l := slice.Prealloc[*resource.State](len(*nl))
 	for i := len(*nl) - 1; i >= 0; i-- {
 		l = append(l, (*nl)[i])
 	}

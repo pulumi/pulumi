@@ -26,6 +26,7 @@ import (
 	"github.com/hexops/gotextdiff/span"
 	"github.com/pgavlin/diff/lcs"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	segmentio_json "github.com/segmentio/encoding/json"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -51,8 +52,8 @@ type spans struct {
 
 func newSpans(capacity int) spans {
 	return spans{
-		offsets: make([]int, 0, capacity),
-		spans:   make([][]byte, 0, capacity),
+		offsets: slice.Prealloc[int](capacity),
+		spans:   slice.Prealloc[[]byte](capacity),
 	}
 }
 

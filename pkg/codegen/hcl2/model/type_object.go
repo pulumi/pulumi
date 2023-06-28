@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -88,7 +89,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 
 	if key == cty.DynamicVal {
 		if t.propertyUnion == nil {
-			types := make([]Type, 0, len(t.Properties))
+			types := slice.Prealloc[Type](len(t.Properties))
 			for _, t := range t.Properties {
 				types = append(types, t)
 			}
@@ -121,7 +122,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 				},
 			}
 		}
-		props := make([]string, 0, len(t.Properties))
+		props := slice.Prealloc[string](len(t.Properties))
 		for k := range t.Properties {
 			props = append(props, k)
 		}
@@ -304,7 +305,7 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	}
 	seen[t] = struct{}{}
 
-	properties := make([]string, 0, len(t.Properties))
+	properties := slice.Prealloc[string](len(t.Properties))
 	for k, v := range t.Properties {
 		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -182,7 +183,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	//
 	// NOTE: what if the configuration for an existing default provider has changed? If it has, we should diff it and
 	// replace it appropriately or we should not use the ambient config at all.
-	defaultProviderRequests := make([]providers.ProviderRequest, 0, len(i.deployment.imports))
+	defaultProviderRequests := slice.Prealloc[providers.ProviderRequest](len(i.deployment.imports))
 	defaultProviders := map[resource.URN]struct{}{}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider != "" {
@@ -302,7 +303,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 	// Create a step per resource to import and execute them in parallel. If there are duplicates, fail the import.
 	urns := map[resource.URN]struct{}{}
-	steps := make([]Step, 0, len(i.deployment.imports))
+	steps := slice.Prealloc[Step](len(i.deployment.imports))
 	for _, imp := range i.deployment.imports {
 		parent := imp.Parent
 		if parent == "" {

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -83,7 +84,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	prompt := "Multiple resources with the given URN exist, please select the one to edit:"
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
-	options := make([]string, 0, len(candidateResources))
+	options := slice.Prealloc[string](len(candidateResources))
 	optionMap := make(map[string]*resource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.

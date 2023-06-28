@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -56,7 +57,7 @@ type methodDocArgs struct {
 }
 
 func (mod *modContext) genMethods(r *schema.Resource) []methodDocArgs {
-	methods := make([]methodDocArgs, 0, len(r.Methods))
+	methods := slice.Prealloc[methodDocArgs](len(r.Methods))
 	for _, m := range r.Methods {
 		methods = append(methods, mod.genMethod(r, m))
 	}
@@ -201,7 +202,7 @@ func (mod *modContext) genMethodPython(f *schema.Function) []formalParam {
 
 	if f.Inputs != nil {
 		// Filter out the __self__ argument from the inputs.
-		args := make([]*schema.Property, 0, len(f.Inputs.InputShape.Properties)-1)
+		args := slice.Prealloc[*schema.Property](len(f.Inputs.InputShape.Properties) - 1)
 		for _, arg := range f.Inputs.InputShape.Properties {
 			if arg.Name == "__self__" {
 				continue

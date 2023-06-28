@@ -16,6 +16,7 @@ package model
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // unwrapIterableSourceType removes any eventual types that wrap a type intended for iteration.
@@ -76,7 +77,7 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Dia
 	case *ObjectType:
 		keyType = StringType
 
-		types := make([]Type, 0, len(collectionType.Properties))
+		types := slice.Prealloc[Type](len(collectionType.Properties))
 		for _, t := range collectionType.Properties {
 			types = append(types, t)
 		}

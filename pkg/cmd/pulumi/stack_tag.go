@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -125,13 +126,13 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 }
 
 func printStackTags(tags map[apitype.StackTagName]string) {
-	names := make([]string, 0, len(tags))
+	names := slice.Prealloc[string](len(tags))
 	for n := range tags {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 
-	rows := make([]cmdutil.TableRow, 0, len(names))
+	rows := slice.Prealloc[cmdutil.TableRow](len(names))
 	for _, name := range names {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}

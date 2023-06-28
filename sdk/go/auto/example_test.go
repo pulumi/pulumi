@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -499,7 +500,7 @@ func ExampleLocalWorkspace_RemoveAllConfig() {
 	stackName := FullyQualifiedStackName("org", "proj", "stackA")
 	// get all config currently set in the workspace
 	cfg, _ := w.GetAllConfig(ctx, stackName)
-	keys := make([]string, 0, len(cfg))
+	keys := slice.Prealloc[string](len(cfg))
 	for k := range cfg {
 		keys = append(keys, k)
 	}

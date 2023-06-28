@@ -30,6 +30,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/segmentio/encoding/json"
@@ -53,7 +54,7 @@ func init() {
 
 func sortedKeys(m interface{}) []string {
 	rv := reflect.ValueOf(m)
-	keys := make([]string, 0, rv.Len())
+	keys := slice.Prealloc[string](rv.Len())
 	for it := rv.MapRange(); it.Next(); {
 		keys = append(keys, it.Key().String())
 	}
@@ -1040,7 +1041,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
-	result := make([]*Property, 0, len(properties))
+	result := slice.Prealloc[*Property](len(properties))
 	for name, spec := range properties {
 		propertyPath := path + "/" + name
 		// NOTE: The correct determination for if we should bind an input is:
@@ -1220,7 +1221,7 @@ func (t *types) finishTypes(tokens []string) ([]Type, hcl.Diagnostics, error) {
 	}
 
 	// Build the type list.
-	typeList := make([]Type, 0, len(t.resources))
+	typeList := slice.Prealloc[Type](len(t.resources))
 	for _, t := range t.resources {
 		typeList = append(typeList, t)
 	}
@@ -1256,13 +1257,13 @@ func bindMethods(path, resourceToken string, methods map[string]string,
 ) ([]*Method, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	names := make([]string, 0, len(methods))
+	names := slice.Prealloc[string](len(methods))
 	for name := range methods {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	result := make([]*Method, 0, len(methods))
+	result := slice.Prealloc[*Method](len(methods))
 	for _, name := range names {
 		token := methods[name]
 
@@ -1379,7 +1380,7 @@ func (t *types) bindResourceDetails(path, token string, spec ResourceSpec, decl 
 		stateInputs = si.InputShape
 	}
 
-	aliases := make([]*Alias, 0, len(spec.Aliases))
+	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{Name: a.Name, Project: a.Project, Type: a.Type})
 	}
@@ -1423,7 +1424,7 @@ func (t *types) bindProvider(decl *Resource) (hcl.Diagnostics, error) {
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
 	// strings, or types with an underlying type of string, before we generate the provider code.
-	stringProperties := make([]*Property, 0, len(decl.Properties))
+	stringProperties := slice.Prealloc[*Property](len(decl.Properties))
 	for _, prop := range decl.Properties {
 		typ := plainType(prop.Type)
 		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
@@ -1452,7 +1453,7 @@ func (t *types) finishResources(tokens []string) (*Resource, []*Resource, hcl.Di
 	}
 	diags = diags.Extend(provDiags)
 
-	resources := make([]*Resource, 0, len(tokens))
+	resources := slice.Prealloc[*Resource](len(tokens))
 	for _, token := range tokens {
 		res, resDiags, err := t.bindResourceTypeDef(token)
 		diags = diags.Extend(resDiags)
@@ -1611,7 +1612,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 func (t *types) finishFunctions(tokens []string) ([]*Function, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
-	functions := make([]*Function, 0, len(tokens))
+	functions := slice.Prealloc[*Function](len(tokens))
 	for _, token := range tokens {
 		f, fdiags, err := t.bindFunctionDef(token)
 		diags = diags.Extend(fdiags)

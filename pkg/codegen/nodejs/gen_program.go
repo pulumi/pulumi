@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/zclconf/go-cty/cty"
@@ -366,7 +367,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	}
 
 	sortedValues := importSet.SortedValues()
-	imports := make([]string, 0, len(sortedValues))
+	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
 		if pkg == "@pulumi/pulumi" {
 			continue

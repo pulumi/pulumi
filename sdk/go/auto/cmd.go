@@ -20,6 +20,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 const unknownErrorCode = -2
@@ -58,7 +60,7 @@ func runPulumiCommandSync(
 }
 
 func withNonInteractiveArg(args []string) []string {
-	out := make([]string, 0, len(args))
+	out := slice.Prealloc[string](len(args))
 	seen := false
 	for _, a := range args {
 		out = append(out, a)

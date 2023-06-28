@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -196,9 +197,9 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	// Sort
 	sort.SliceStable(logs, func(i, j int) bool { return logs[i].Timestamp < logs[j].Timestamp })
 	// Remove duplicates
-	retLogs := make([]LogEntry, 0, len(logs))
+	retLogs := slice.Prealloc[LogEntry](len(logs))
 	var lastLogTimestamp int64
-	lastLogs := make([]LogEntry, 0, len(logs))
+	lastLogs := slice.Prealloc[LogEntry](len(logs))
 	for _, log := range logs {
 		shouldContinue := false
 		if log.Timestamp == lastLogTimestamp {

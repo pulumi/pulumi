@@ -16,6 +16,7 @@ package model
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -282,7 +283,7 @@ func visitExpressions(ns []Expression, pre, post ExpressionVisitor) ([]Expressio
 		return []Expression{}, diagnostics
 	}
 
-	nns := make([]Expression, 0, len(ns)-nils)
+	nns := slice.Prealloc[Expression](len(ns) - nils)
 	for _, e := range ns {
 		if e != nil {
 			nns = append(nns, e)

@@ -31,6 +31,7 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 type Filter interface {
@@ -162,7 +163,7 @@ func AddGlobalFilter(filter Filter) {
 }
 
 func CreateFilter(secrets []string, replacement string) Filter {
-	items := make([]string, 0, len(secrets))
+	items := slice.Prealloc[string](len(secrets))
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
 		// displaying `[secret]`. Travis does a similar thing, for example.

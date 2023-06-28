@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -533,7 +534,7 @@ func (runtime projectRuntimeAbout) MarshalJSON() ([]byte, error) {
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	params := make([]string, 0, len(runtime.other))
+	params := slice.Prealloc[string](len(runtime.other))
 
 	if r := runtime.Executable; r != "" {
 		params = append(params, fmt.Sprintf("executable='%s'", r))
