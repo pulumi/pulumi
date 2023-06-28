@@ -91,10 +91,6 @@ func (host *testPluginHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds 
 	return nil
 }
 
-func (host *testPluginHost) InstallPlugin(plugin workspace.PluginSpec) error {
-	return nil
-}
-
 func (host *testPluginHost) ResolvePlugin(
 	kind workspace.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: Fix loading schemas from providers on PATH.

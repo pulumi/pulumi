@@ -24,11 +24,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -164,12 +165,16 @@ func providerFromSource(packageSource string) (plugin.Provider, error) {
 					Name:    pkg,
 					Version: version,
 				}
-				util.SetKnownPluginDownloadURL(&spec)
 
-				err = host.InstallPlugin(spec)
+				log := func(sev diag.Severity, msg string) {
+					host.Log(sev, "", msg, 0)
+				}
+
+				_, err = pkgWorkspace.InstallPlugin(spec, log)
 				if err != nil {
 					return nil, err
 				}
+
 				p, err := host.Provider(tokens.Package(pkg), version)
 				if err != nil {
 					return nil, err

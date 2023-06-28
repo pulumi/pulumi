@@ -75,8 +75,6 @@ type Host interface {
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginSpec, kinds Flags) error
-	// InstallPlugin installs a given plugin if it's not available.
-	InstallPlugin(plugin workspace.PluginSpec) error
 
 	// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin to load.
 	ResolvePlugin(kind workspace.PluginKind, name string, version *semver.Version) (*workspace.PluginInfo, error)
@@ -481,43 +479,6 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginSpec, kinds Fla
 	}
 
 	return result
-}
-
-func (host *defaultHost) InstallPlugin(pkgPlugin workspace.PluginSpec) error {
-	// If we have a version then check that we have exactly that plugin version installed. Else see if we have
-	// any version of this plugin installed.
-	var installed bool
-	if pkgPlugin.Version != nil {
-		installed = workspace.HasPlugin(pkgPlugin)
-	} else {
-		var err error
-		installed, err = workspace.HasPluginGTE(pkgPlugin)
-		if err != nil {
-			return fmt.Errorf("check if plugin is installed: %w", err)
-		}
-	}
-
-	if !installed {
-		if pkgPlugin.Version == nil {
-			// Try and find the latest version of the plugin
-			latest, err := pkgPlugin.GetLatestVersion()
-			if err != nil {
-				return fmt.Errorf("get latest version: %w", err)
-			}
-			pkgPlugin.Version = latest
-		}
-
-		tarball, err := workspace.DownloadToFile(pkgPlugin, nil, nil)
-		if err != nil {
-			return fmt.Errorf("failed to download plugin: %s: %w", pkgPlugin, err)
-		}
-		defer func() { contract.IgnoreError(os.Remove(tarball.Name())) }()
-		if err := pkgPlugin.InstallWithContext(host.ctx.baseContext, workspace.TarPlugin(tarball), false); err != nil {
-			return fmt.Errorf("failed to install plugin %s: %w", pkgPlugin, err)
-		}
-	}
-
-	return nil
 }
 
 func (host *defaultHost) ResolvePlugin(

@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -64,6 +65,7 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}
 	}
+	util.SetKnownPluginDownloadURL(&pluginSpec)
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		log(diag.Info, fmt.Sprintf("Downloading provider: %s", pluginSpec.Name))
