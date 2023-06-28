@@ -35,6 +35,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -1038,4 +1039,31 @@ func surveyIcons(color colors.Colorization) survey.AskOpt {
 		icons.Question = survey.Icon{}
 		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
 	})
+}
+
+// Ask multiple survey based questions.
+//
+// Ctrl-C will go back in the stack, and valid answers will go forward.
+func surveyStack(interactions ...func() error) error {
+	for i := 0; i < len(interactions); {
+		err := interactions[i]()
+		switch err {
+		// No error, so go to the next interaction.
+		case nil:
+			i++
+		// We have received an interrupt, so go back to the previous interaction.
+		case terminal.InterruptErr:
+			// If we have received in interrupt at the beginning of the stack,
+			// the user has asked to go back to before the stack. We can't do
+			// that, so we just return the interrupt.
+			if i == 0 {
+				return err
+			}
+			i--
+		// We have received an unexpected error, so return it.
+		default:
+			return err
+		}
+	}
+	return nil
 }

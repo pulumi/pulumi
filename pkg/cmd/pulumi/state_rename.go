@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
@@ -44,22 +45,20 @@ func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn
 }
 
 // stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
-func stateRenameOperation(urn resource.URN, newResourceName string, opts display.Options, snap *deploy.Snapshot) error {
+func stateRenameOperation(urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot) error {
 	// Check whether the input URN corresponds to an existing resource
 	existingResources := edit.LocateResource(snap, urn)
 	if len(existingResources) != 1 {
 		return errors.New("The input URN does not correspond to an existing resource")
 	}
 
-	if !tokens.IsQName(newResourceName) {
-		return fmt.Errorf("invalid name %q: "+
-			"resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes", newResourceName)
-	}
+	contract.Assertf(tokens.IsQName(string(newResourceName)),
+		"QName must be valid")
 
 	inputResource := existingResources[0]
 	oldUrn := inputResource.URN
 	// update the URN with only the name part changed
-	newUrn := oldUrn.Rename(newResourceName)
+	newUrn := oldUrn.Rename(string(newResourceName))
 	// Check whether the new URN _does not_ correspond to an existing resource
 	candidateResources := edit.LocateResource(snap, newUrn)
 	if len(candidateResources) > 0 {
@@ -128,32 +127,71 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rename <resource URN> <new name>",
+		Use:   "rename [resource URN] [new name]",
 		Short: "Renames a resource from a stack's state",
 		Long: `Renames a resource from a stack's state
 
 This command renames a resource from a stack's state. The resource is specified
-by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it) and the new name of the resource.
+by its Pulumi URN and the new name of the resource.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
-		Args:    cmdutil.ExactArgs(2),
+		Args:    cmdutil.MaximumNArgs(2),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
-			urn := resource.URN(args[0])
-			newResourceName := args[1]
+
+			if len(args) < 2 && !cmdutil.Interactive() {
+				return result.Error("Must supply <resource URN> and <new name> unless in an interactive session")
+			}
+
+			var urn resource.URN
+			var newResourceName tokens.QName
+			switch len(args) {
+			case 0:
+				var snap *deploy.Snapshot
+				err := surveyStack(
+					func() (err error) {
+						urn, err = getURNFromState(ctx, stack, &snap, "Select a resource to rename:")
+						return
+					},
+					func() (err error) {
+						newResourceName, err = getNewResourceName()
+						return err
+					},
+				)
+				if err != nil {
+					return result.FromError(err)
+				}
+
+			case 2: // We got the URN and the name.
+				rName := args[1]
+				if !tokens.IsQName(rName) {
+					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
+					return result.Errorf("invalid name %q: %s", rName, reason)
+				}
+				newResourceName = tokens.QName(rName)
+			case 1: // We got the urn but not the name
+				urn = resource.URN(args[0])
+				if !urn.IsValid() {
+					return result.Error("The provided input URN is not valid")
+				}
+				var err error
+				newResourceName, err = getNewResourceName()
+				if err != nil {
+					return result.FromError(err)
+				}
+
+			}
+
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			if !urn.IsValid() {
-				return result.Error("The provided input URN is not valid")
-			}
-
-			res := runTotalStateEdit(ctx, stack, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-				return stateRenameOperation(urn, newResourceName, opts, snap)
-			})
+			res := runTotalStateEdit(ctx, stack, showPrompt,
+				func(opts display.Options, snap *deploy.Snapshot) error {
+					return stateRenameOperation(urn, newResourceName, opts, snap)
+				})
 
 			if res != nil {
 				// an error occurred
