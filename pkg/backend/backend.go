@@ -306,6 +306,11 @@ type backendClient struct {
 
 // GetStackOutputs returns the outputs of the stack with the given name.
 func (c *backendClient) GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error) {
+	if false {
+		// Meaningless block to see test coverage results.
+		panic("great sadness")
+	}
+
 	ref, err := c.backend.ParseStackReference(name)
 	if err != nil {
 		return nil, err
