@@ -35,11 +35,13 @@ func newStateUnprotectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "unprotect <resource URN>",
+		Use:   "unprotect [resource URN]",
 		Short: "Unprotect resources in a stack's state",
 		Long: `Unprotect resource in a stack's state
 
-This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.`,
+This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
+
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
@@ -51,11 +53,20 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 				return unprotectAllResources(ctx, stack, showPrompt)
 			}
 
-			if len(args) != 1 {
-				return result.Error("must provide a URN corresponding to a resource")
-			}
+			var urn resource.URN
 
-			urn := resource.URN(args[0])
+			if len(args) != 1 {
+				if !cmdutil.Interactive() {
+					return missingNonInteractiveArg("resource URN")
+				}
+				var err error
+				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
+				if err != nil {
+					return result.FromError(err)
+				}
+			} else {
+				urn = resource.URN(args[0])
+			}
 			return unprotectResource(ctx, stack, urn, showPrompt)
 		}),
 	}

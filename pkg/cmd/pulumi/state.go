@@ -22,6 +22,8 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -30,10 +32,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/spf13/cobra"
 )
 
 func newStateCmd() *cobra.Command {
@@ -192,4 +194,71 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		Deployment: bytes,
 	}
 	return result.WrapIfNonNil(s.ImportDeployment(ctx, &dep))
+}
+
+// Prompt the user to select a URN from the passed in state.
+//
+// stackName is the name of the current stack.
+//
+// snap is the snapshot of the current stack.  If (*snap) is not nil, it will be set to
+// the retrieved snapshot value. This allows caching between calls.
+//
+// Prompt is displayed to the user when selecting the URN.
+func getURNFromState(
+	ctx context.Context, stackName string, snap **deploy.Snapshot, prompt string,
+) (resource.URN, error) {
+	if snap == nil {
+		// This means we won't cache the value.
+		snap = new(*deploy.Snapshot)
+	}
+	if *snap == nil {
+		opts := display.Options{
+			Color: cmdutil.GetGlobalColorization(),
+		}
+
+		s, err := requireStack(ctx, stackName, stackLoadOnly, opts)
+		if err != nil {
+			return "", err
+		}
+		*snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		if err != nil {
+			return "", err
+		}
+	}
+	urnList := make([]string, len((*snap).Resources))
+	for i, r := range (*snap).Resources {
+		urnList[i] = string(r.URN)
+	}
+	var urn string
+	err := survey.AskOne(&survey.Select{
+		Message: prompt,
+		Options: urnList,
+	}, &urn, survey.WithValidator(survey.Required), surveyIcons(cmdutil.GetGlobalColorization()))
+	if err != nil {
+		return "", err
+	}
+	result := resource.URN(urn)
+	contract.Assertf(result.IsValid(),
+		"Because we chose from an existing URN, it must be valid")
+	return result, nil
+}
+
+// Ask the user for a resource name.
+func getNewResourceName() (tokens.QName, error) {
+	var resourceName string
+	err := survey.AskOne(&survey.Input{
+		Message: "Choose a new resource name:",
+	}, &resourceName, surveyIcons(cmdutil.GetGlobalColorization()),
+		survey.WithValidator(func(ans interface{}) error {
+			if tokens.IsQName(ans.(string)) {
+				return nil
+			}
+			return fmt.Errorf("resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes")
+		}))
+	if err != nil {
+		return "", err
+	}
+	contract.Assertf(tokens.IsQName(resourceName),
+		"Survey validated that resourceName %q is a QName", resourceName)
+	return tokens.QName(resourceName), nil
 }

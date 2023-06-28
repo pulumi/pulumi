@@ -35,6 +35,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	git "github.com/go-git/go-git/v5"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -60,6 +61,7 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -1038,4 +1040,48 @@ func surveyIcons(color colors.Colorization) survey.AskOpt {
 		icons.Question = survey.Icon{}
 		icons.SelectFocus = survey.Icon{Text: color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
 	})
+}
+
+// Ask multiple survey based questions.
+//
+// Ctrl-C will go back in the stack, and valid answers will go forward.
+func surveyStack(interactions ...func() error) error {
+	for i := 0; i < len(interactions); {
+		err := interactions[i]()
+		switch err {
+		// No error, so go to the next interaction.
+		case nil:
+			i++
+		// We have received an interrupt, so go back to the previous interaction.
+		case terminal.InterruptErr:
+			// If we have received in interrupt at the beginning of the stack,
+			// the user has asked to go back to before the stack. We can't do
+			// that, so we just return the interrupt.
+			if i == 0 {
+				return err
+			}
+			i--
+		// We have received an unexpected error, so return it.
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+// Format a non-nil result.Result that indicates some arguments are missing for a
+// non-interactive session.
+func missingNonInteractiveArg(args ...string) result.Result {
+	switch len(args) {
+	case 0:
+		panic("cannot create an error message for missing zero args")
+	case 1:
+		return result.Errorf("Must supply <%s> unless pulumi is run interactively", args[0])
+	default:
+		for i, s := range args {
+			args[i] = "<" + s + ">"
+		}
+		return result.Errorf("Must supply %s and %s unless pulumi is run interactively",
+			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
+	}
 }

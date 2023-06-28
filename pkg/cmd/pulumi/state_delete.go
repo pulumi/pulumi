@@ -34,24 +34,41 @@ func newStateDeleteCommand() *cobra.Command {
 	var targetDepenedents bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <resource URN>",
+		Use:   "delete [resource URN]",
 		Short: "Deletes a resource from a stack's state",
 		Long: `Deletes a resource from a stack's state
 
 This command deletes a resource from a stack's state, as long as it is safe to do so. The resource is specified
-by its Pulumi URN (use ` + "`pulumi stack --show-urns`" + ` to get it).
+by its Pulumi URN. If the URN is omitted, this command will prompt for it.
 
 Resources can't be deleted if there exist other resources that depend on it or are parented to it. Protected resources
 will not be deleted unless it is specifically requested using the --force flag.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
-		Args:    cmdutil.ExactArgs(1),
+		Args:    cmdutil.MaximumNArgs(1),
+
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
-			urn := resource.URN(args[0])
+			var urn resource.URN
+			if len(args) == 0 {
+				if !cmdutil.Interactive() {
+					return missingNonInteractiveArg("resource URN")
+				}
+
+				var err error
+				urn, err = getURNFromState(ctx, stack, nil,
+					"Select the resource to delete")
+				if err != nil {
+					return result.FromError(err)
+				}
+			} else {
+				urn = resource.URN(args[0])
+			}
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
