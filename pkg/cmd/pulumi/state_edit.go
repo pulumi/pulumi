@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -60,7 +61,7 @@ func getDeployment(s backend.Stack) (apitype.DeploymentV3, error) {
 
 func handleNoEditor(filename string) {
 	var response string
-	fmt.Printf("EDITOR environment variable is not set. You can edit the file manually at: %s\n", filename)
+	fmt.Printf("no EDITOR environment variable detected.\nchanges will be read from: `%s`\n", filename)
 	surveycore.DisableColor = true
 	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question = survey.Icon{}
@@ -224,6 +225,10 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 					cancel,
 				}
 
+				// Print a banner so it's clear this is going to the cloud.
+				fmt.Printf(cmdutil.GetGlobalColorization().Colorize(
+					colors.SpecHeadline+"Previewing edit (%s)"+colors.Reset+"\n\n"), s.Ref().FullyQualifiedName())
+
 				accept := "accept"
 				if failed {
 					// There was an error, so we can't add the yes option
@@ -235,9 +240,16 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 						return result.FromError(err)
 					}
 
-					fmt.Printf("Previewing changes on `%s`\n", s.Ref().FullyQualifiedName())
-					if msg != "" {
-						fmt.Println(msg)
+					if strings.TrimSpace(msg) != "" {
+						fmt.Printf(cmdutil.GetGlobalColorization().Colorize(
+							colors.SpecHeadline + "Changes:" + colors.Reset + "\n"))
+						cleaned := msg
+						if cleaned[0] == '\n' {
+							cleaned = cleaned[1:]
+						}
+						cleaned = "    " + cleaned
+						cleaned = strings.Replace(cleaned, "\n", "\n    ", -1)
+						fmt.Print(cleaned)
 						options = append([]string{accept}, options...)
 					} else {
 						fmt.Printf("warning: no changes `%s`\n", s.Ref().FullyQualifiedName())
@@ -245,13 +257,22 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 				}
 
 				// Now prompt the user for a yes, no, or details, and then proceed accordingly.
+				// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
+				var prompt string
+				if failed {
+					prompt = "\b" + cmdutil.GetGlobalColorization().Colorize(
+						colors.SpecPrompt+"What would you like to do?"+colors.Reset)
+				} else {
+					prompt = "\b" + cmdutil.GetGlobalColorization().Colorize(
+						colors.SpecPrompt+"Do you want to perform this edit?"+colors.Reset)
+				}
 				surveycore.DisableColor = true
 				surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 					icons.Question = survey.Icon{}
 					icons.SelectFocus = survey.Icon{Text: cmdutil.GetGlobalColorization().Colorize(colors.BrightGreen + ">" + colors.Reset)}
 				})
 				if err := survey.AskOne(&survey.Select{
-					Message: "Choices",
+					Message: prompt,
 					Options: options,
 					Default: options[1],
 				}, &response, surveyIcons); err != nil {
