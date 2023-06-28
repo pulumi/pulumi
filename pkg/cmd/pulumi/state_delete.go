@@ -45,6 +45,8 @@ Resources can't be deleted if there exist other resources that depend on it or a
 will not be deleted unless it is specifically requested using the --force flag.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
 		Args:    cmdutil.MaximumNArgs(1),

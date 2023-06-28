@@ -137,6 +137,8 @@ This command renames a resource from a stack's state. The resource is specified
 by its Pulumi URN and the new name of the resource.
 
 Make sure that URNs are single-quoted to avoid having characters unexpectedly interpreted by the shell.
+
+To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
 		Args:    cmdutil.MaximumNArgs(2),
@@ -151,7 +153,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 			var urn resource.URN
 			var newResourceName tokens.QName
 			switch len(args) {
-			case 0:
+			case 0: // We got neither the URN nor the name.
 				var snap *deploy.Snapshot
 				err := surveyStack(
 					func() (err error) {
@@ -166,14 +168,6 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 				if err != nil {
 					return result.FromError(err)
 				}
-
-			case 2: // We got the URN and the name.
-				rName := args[1]
-				if !tokens.IsQName(rName) {
-					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
-					return result.Errorf("invalid name %q: %s", rName, reason)
-				}
-				newResourceName = tokens.QName(rName)
 			case 1: // We got the urn but not the name
 				urn = resource.URN(args[0])
 				if !urn.IsValid() {
@@ -184,7 +178,17 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 				if err != nil {
 					return result.FromError(err)
 				}
-
+			case 2: // We got the URN and the name.
+				urn = resource.URN(args[0])
+				if !urn.IsValid() {
+					return result.Error("The provided input URN is not valid")
+				}
+				rName := args[1]
+				if !tokens.IsQName(rName) {
+					reason := "resource names may only contain alphanumerics, underscores, hyphens, dots, and slashes"
+					return result.Errorf("invalid name %q: %s", rName, reason)
+				}
+				newResourceName = tokens.QName(rName)
 			}
 
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.

@@ -200,8 +200,8 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 //
 // stackName is the name of the current stack.
 //
-// snap is the snapshot of the current stack. snap cannot be nil, but (*snap) may be nil.
-// (*snap) will be set to the retrieved snapshot value is it is nil.
+// snap is the snapshot of the current stack.  If (*snap) is not nil, it will be set to
+// the retrieved snapshot value. This allows caching between calls.
 //
 // Prompt is displayed to the user when selecting the URN.
 func getURNFromState(
