@@ -90,15 +90,17 @@ func TestStateRename_invalidName(t *testing.T) {
 	require.NoError(t, snap.VerifyIntegrity(),
 		"invalid test: snapshot is already broken")
 
-	err := stateRenameOperation(
-		res,
-		"urn:pulumi:dev::xxx-dev::eks:index:Cluster$kubernetes:core/v1:Namespace::amazon_cloudwatchNamespace",
-		display.Options{},
-		&snap,
-	)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "invalid name")
-	assert.ErrorContains(t, err, "names may only contain alphanumerics")
+	// stateRenameOperation accepts newResouceName: a tokens.QName. It assumes that
+	// newResourceName is valid but it *must* not invalidate state when given an
+	// invalid QName. This is a defensive measure to prevent invalidating state.
+	assert.Panicsf(t, func() {
+		_ = stateRenameOperation(
+			res,
+			"urn:pulumi:dev::xxx-dev::eks:index:Cluster$kubernetes:core/v1:Namespace::amazon_cloudwatchNamespace",
+			display.Options{},
+			&snap,
+		)
+	}, "swallowed invalid QName")
 
 	// The state must still be valid, and the resource name unchanged.
 	require.NoError(t, snap.VerifyIntegrity(), "snapshot is broken after rename")
