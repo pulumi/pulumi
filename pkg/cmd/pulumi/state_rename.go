@@ -145,7 +145,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 			yes = yes || skipConfirmations()
 
 			if len(args) < 2 && !cmdutil.Interactive() {
-				return result.Error("Must supply <resource URN> and <new name> unless in an interactive session")
+				return missingNonInteractiveArg("resource URN", "new name")
 			}
 
 			var urn resource.URN

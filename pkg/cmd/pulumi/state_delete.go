@@ -55,7 +55,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 			var urn resource.URN
 			if len(args) == 0 {
 				if !cmdutil.Interactive() {
-					return result.Error("Must supply <resource URN> unless run in interactive mode")
+					return missingNonInteractiveArg("resource URN")
 				}
 
 				var err error

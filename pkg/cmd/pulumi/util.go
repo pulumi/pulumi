@@ -61,6 +61,7 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -1066,4 +1067,21 @@ func surveyStack(interactions ...func() error) error {
 		}
 	}
 	return nil
+}
+
+// Format a non-nil result.Result that indicates some arguments are missing for a
+// non-interactive session.
+func missingNonInteractiveArg(args ...string) result.Result {
+	switch len(args) {
+	case 0:
+		panic("cannot create an error message for missing zero args")
+	case 1:
+		return result.Errorf("Must supply <%s> unless pulumi is run interactively", args[0])
+	default:
+		for i, s := range args {
+			args[i] = "<" + s + ">"
+		}
+		return result.Errorf("Must supply %s and %s unless pulumi is run interactively",
+			strings.Join(args[:len(args)-1], ", "), args[len(args)-1])
+	}
 }

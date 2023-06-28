@@ -55,7 +55,7 @@ This command clears the 'protect' bit on one or more resources, allowing those r
 
 			if len(args) != 1 {
 				if !cmdutil.Interactive() {
-					return result.Error("Must supply <resource URN> unless in an interactive session")
+					return missingNonInteractiveArg("resource URN")
 				}
 				var err error
 				urn, err = getURNFromState(ctx, stack, nil, "Select a resource to unprotect:")
