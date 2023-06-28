@@ -241,7 +241,6 @@ func getURNFromState(
 	contract.Assertf(result.IsValid(),
 		"Because we chose from an existing URN, it must be valid")
 	return result, nil
-
 }
 
 // Ask the user for a resource name.

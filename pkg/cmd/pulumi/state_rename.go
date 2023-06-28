@@ -45,7 +45,9 @@ func updateDependencies(dependencies []resource.URN, oldUrn resource.URN, newUrn
 }
 
 // stateRenameOperation renames a resource (or provider) and mutates/rewrites references to it in the snapshot.
-func stateRenameOperation(urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot) error {
+func stateRenameOperation(
+	urn resource.URN, newResourceName tokens.QName, opts display.Options, snap *deploy.Snapshot,
+) error {
 	// Check whether the input URN corresponds to an existing resource
 	existingResources := edit.LocateResource(snap, urn)
 	if len(existingResources) != 1 {
@@ -158,7 +160,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 					},
 					func() (err error) {
 						newResourceName, err = getNewResourceName()
-						return err
+						return
 					},
 				)
 				if err != nil {
