@@ -28,6 +28,10 @@ linters:
     - paralleltest
 
 linters-settings:
+  nakedret:
+    # Make an issue if func has more lines of code than this setting, and it has naked returns.
+    # Default: 30
+    max-func-lines: 60
   nolintlint:
     # Some linter exclusions are added to generated or templated files
     # pre-emptively.
