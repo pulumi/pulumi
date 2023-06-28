@@ -264,7 +264,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 					if err != nil {
 						return result.FromError(err)
 					}
-					break
+					return nil
 				case edit:
 					continue
 				case reset:
