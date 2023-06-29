@@ -139,7 +139,7 @@ class Alias:
     parent of the resource is used (`opts.parent` if provided, else the implicit stack resource
     parent).
 
-    To specify no original parent, use `Alias(parent=pulumi.rootStackResource)`.
+    To specify no original parent, use `Alias(parent=pulumi.ROOT_STACK_RESOURCE)`.
     """
 
     stack: Optional["Input[str]"]
