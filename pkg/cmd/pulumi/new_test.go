@@ -24,9 +24,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -823,6 +825,32 @@ func genUniqueName(t *testing.T) string {
 
 func TestValidateStackRefAndProjectName(t *testing.T) {
 	t.Parallel()
+
+	b := &backend.MockBackend{
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			parts := strings.Split(s, "/")
+			switch len(parts) {
+			case 1:
+				return &backend.MockStackReference{
+					NameV: tokens.Name(parts[0]),
+				}, nil
+			case 2:
+				return &backend.MockStackReference{
+					ProjectV: tokens.Name(parts[0]),
+					NameV:    tokens.Name(parts[1]),
+				}, nil
+			case 3:
+				return &backend.MockStackReference{
+					ProjectV: tokens.Name(parts[1]),
+					NameV:    tokens.Name(parts[2]),
+				}, nil
+
+			default:
+				return nil, errors.Errorf("invalid stack reference %q", s)
+			}
+		},
+	}
+
 	tests := []struct {
 		projectName string
 		stackRef    string
@@ -854,14 +882,12 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 			valid:       true,
 		},
 	}
-	b, err := currentBackend(context.Background(), nil, display.Options{})
-	require.NoError(t, err)
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(fmt.Sprintf("project=%q/stackRef=%q", tt.projectName, tt.stackRef), func(t *testing.T) {
 			t.Parallel()
-			err := validateStackProjectName(b, tt.stackRef, tt.projectName)
+			err := compareStackProjectName(b, tt.stackRef, tt.projectName)
 			if tt.valid {
 				assert.NoError(t, err)
 			} else {
