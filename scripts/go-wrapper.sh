@@ -23,17 +23,6 @@ COVER_PACKAGES=( \
 # Join COVER_PACKAGES with commas.
 COVERPKG=$(IFS=,; echo "${COVER_PACKAGES[*]}")
 
-# If it's a production or local build - building for macOS on macOS - use CGO for DNS resolver functionality.
-#
-# See: https://github.com/golang/go/issues/12524
-if [ "$(go env GOOS)" = "darwin" ] && [ "$(uname)" = "Darwin" ]; then
-    # `go env GOOS` returns "darwin" when cross-compiling to macOS
-    # `uname` returns "Darwin" on macOS
-    export CGO_ENABLED=1
-else
-    export CGO_ENABLED=0
-fi
-
 case "$1" in
     build)
         MODE="$PULUMI_BUILD_MODE"
