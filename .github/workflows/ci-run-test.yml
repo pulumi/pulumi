@@ -129,9 +129,12 @@ jobs:
         run: |
           ./scripts/versions.sh | tee -a "$GITHUB_ENV"
       - name: Enable code coverage
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        if: ${{ inputs.enable-coverage }}
         run: |
           echo "PULUMI_TEST_COVERAGE_PATH=$(pwd)/coverage" >> "$GITHUB_ENV"
+          # Post integration test coverage to a temporary directory.
+          # This will be merged at a later step.
+          echo "GOCOVERDIR=$(mktemp -d)" >> "$GITHUB_ENV"
       - name: Configure Go Cache Key
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
@@ -312,19 +315,25 @@ jobs:
         run: |
           cd sdk/nodejs
           if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
-      - name: Merge Go coverage data
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+      - name: Merge integration test code coverage
+        if: ${{ inputs.enable-coverage }}
         run: |
-          pulumictl cover merge --in ./coverage --out ./coverage/go-all.txt
-          rm ./coverage/*.cov || true
+          # Merge coverage data from coverage-instrumented binaries
+          # if available.
+          if [ -n "$(ls -A "$GOCOVERDIR")" ]; then
+            # Cross-platform way to get milliseconds since Unix epoch.
+            TS=$(python -c 'import time; print(int(time.time() * 1000))')
+            go tool covdata textfmt -i="$GOCOVERDIR" -o="$PULUMI_TEST_COVERAGE_PATH/integration.$TS.cov"
+          fi
       - name: Upload code coverage
-        if: ${{ inputs.enable-coverage && runner.os != 'Windows' }}
+        if: ${{ inputs.enable-coverage }}
         uses: codecov/codecov-action@v3
         with:
           directory: coverage
-          files: "*"
+          files: "*,!.gitkeep"
           fail_ci_if_error: false
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:

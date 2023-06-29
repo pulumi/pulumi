@@ -8,13 +8,20 @@
 # This builds binaries via `go test -c` workaround. Disabled for
 # Windows builds. Only enabled on the Pulumi CLI binaries.
 
-PULUMI_TEST_COVERAGE_PATH=$PULUMI_TEST_COVERAGE_PATH
-
 set -euo pipefail
 
-PKG=github.com/pulumi/pulumi/pkg/v3/...
-SDK=github.com/pulumi/pulumi/sdk/v3/...
-COVERPKG="$PKG,$SDK"
+PULUMI_TEST_COVERAGE_PATH=${PULUMI_TEST_COVERAGE_PATH:-}
+PULUMI_BUILD_MODE=${PULUMI_BUILD_MODE:-}
+
+COVER_PACKAGES=( \
+    "github.com/pulumi/pulumi/pkg/v3/..." \
+    "github.com/pulumi/pulumi/sdk/v3/..." \
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/..." \
+    "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/..." \
+)
+
+# Join COVER_PACKAGES with commas.
+COVERPKG=$(IFS=,; echo "${COVER_PACKAGES[*]}")
 
 # If it's a production or local build - building for macOS on macOS - use CGO for DNS resolver functionality.
 #
@@ -29,27 +36,14 @@ fi
 
 case "$1" in
     build)
-        ARGS=( "$@" )
-        BUILDDIR=${ARGS[${#ARGS[@]}-1]}
-        OUTPUT=${ARGS[${#ARGS[@]}-2]}
-
-        MODE=coverage
-
-        if [ -z "$PULUMI_TEST_COVERAGE_PATH" ]; then
+        MODE="$PULUMI_BUILD_MODE"
+        if [ -z "$MODE" ]; then
+            # If a build mode was not specified,
+            # guess based on whether a coverage path was supplied.
             MODE=normal
-        fi
-
-        # TODO: coverage-enabled builds of pulumi CLI on Windows fail
-        # to parse CLI arguments correctly as in `pulumi version`,
-        # disabling coverage-enabled builds on Windows.
-        if [[ "$OUTPUT" == *"windows"* ]]; then
-            MODE=normal
-        fi
-
-        # TODO[pulumi/pulumi#8615] - coverage-aware builds of the
-        # language providers break and are disabled.
-        if [[ "$BUILDDIR" != "./cmd/pulumi" ]]; then
-            MODE=normal
+            if [ -z "$PULUMI_TEST_COVERAGE_PATH" ]; then
+                MODE=normal
+            fi
         fi
 
         case "$MODE" in
@@ -58,7 +52,11 @@ case "$1" in
                 ;;
             coverage)
                 shift
-                go test -c -cover -coverpkg "$COVERPKG" "$@"
+                go build -cover -coverpkg "$COVERPKG" "$@"
+                ;;
+            *)
+                echo "unknown build mode: $MODE"
+                exit 1
                 ;;
         esac
         ;;
