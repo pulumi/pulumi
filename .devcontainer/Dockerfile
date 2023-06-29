@@ -6,7 +6,7 @@ RUN version=1.42.1 \
     && golangci-lint version
 
 # Install pulumictl
-RUN version=0.0.25 \
+RUN version=0.0.42 \
     && curl -fsSLO https://github.com/pulumi/pulumictl/releases/download/v$version/pulumictl-v$version-linux-amd64.tar.gz \
     && tar -xzf pulumictl-v$version-linux-amd64.tar.gz --directory /usr/local/bin --no-same-owner pulumictl \
     && rm -f pulumictl-v$version-linux-amd64.tar.gz \
