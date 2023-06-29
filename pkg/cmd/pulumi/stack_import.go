@@ -19,8 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
+	surveycore "github.com/AlecAivazis/survey/v2/core"
+	dyff "github.com/dixler/dyff/pkg/pulumi"
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/spf13/cobra"
@@ -31,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -83,6 +89,102 @@ func newStackImportCmd() *cobra.Command {
 			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
 			if err != nil {
 				return checkDeploymentVersionError(err, stackName.String())
+			}
+			original, err := s.ExportDeployment(ctx)
+			if err == nil && cmdutil.Interactive() {
+				diagnostics := ""
+				if err := snapshot.VerifyIntegrity(); err != nil {
+					diagnostics += fmt.Sprintf("The edited state is not valid: %v\n", err)
+				}
+
+				// Survey user
+				cancel := "cancel"
+				var response string
+				options := []string{
+					// `accept` is only added if there is no error.
+					cancel,
+				}
+				// Print a banner so it's clear this is going to the cloud.
+				fmt.Printf(cmdutil.GetGlobalColorization().Colorize(
+					colors.SpecHeadline+"Previewing stack import (%s)"+colors.Reset+"\n\n"), s.Ref().FullyQualifiedName())
+
+				accept := "accept"
+				if diagnostics != "" {
+					// There was an error, so we can't add the yes option
+					// Print the edited state is not valid in RED
+					fmt.Println(cmdutil.GetGlobalColorization().Colorize(colors.BrightRed + "Error: Edited state is not valid" + colors.Reset))
+				} else {
+					// make original.Deployment and deployment.Deployment into temp files with filenames.
+					originalFile, err := ioutil.TempFile("", "original")
+					if err != nil {
+						return err
+					}
+					defer os.Remove(originalFile.Name())
+					_, err = originalFile.Write(original.Deployment)
+					if err != nil {
+						return err
+					}
+
+					newFile, err := ioutil.TempFile("", "new")
+					if err != nil {
+						return err
+					}
+					defer os.Remove(newFile.Name())
+					_, err = newFile.Write(deployment.Deployment)
+					if err != nil {
+						return err
+					}
+
+					// run diff on them
+					msg, err := dyff.Compare(originalFile.Name(), newFile.Name())
+					if err != nil {
+						diagnostics += fmt.Sprintf("unable to compute diff: %v\n", err)
+					} else {
+
+						if strings.TrimSpace(msg) != "" {
+							fmt.Printf(cmdutil.GetGlobalColorization().Colorize(
+								colors.SpecHeadline + "Changes:" + colors.Reset + "\n"))
+							cleaned := msg
+							if cleaned[0] == '\n' {
+								cleaned = cleaned[1:]
+							}
+							cleaned = "    " + cleaned
+							cleaned = strings.Replace(cleaned, "\n", "\n    ", -1)
+							fmt.Print(cleaned)
+							options = append([]string{accept}, options...)
+						} else {
+							fmt.Printf("warning: no changes `%s`\n", s.Ref().FullyQualifiedName())
+						}
+					}
+				}
+
+				// Now prompt the user for a yes, no, or details, and then proceed accordingly.
+				// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
+				var prompt string
+				if diagnostics != "" {
+					fmt.Printf(cmdutil.GetGlobalColorization().Colorize(colors.BrightRed + diagnostics + colors.Reset))
+					prompt = "\b" + cmdutil.GetGlobalColorization().Colorize(
+						colors.SpecPrompt+"What would you like to do?"+colors.Reset)
+				} else {
+					prompt = "\b" + cmdutil.GetGlobalColorization().Colorize(
+						colors.SpecPrompt+"Do you want to perform this edit?"+colors.Reset)
+				}
+				surveycore.DisableColor = true
+				surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+					icons.Question = survey.Icon{}
+					icons.SelectFocus = survey.Icon{Text: cmdutil.GetGlobalColorization().Colorize(colors.BrightGreen + ">" + colors.Reset)}
+				})
+				if err := survey.AskOne(&survey.Select{
+					Message: prompt,
+					Options: options,
+					Default: cancel,
+				}, &response, surveyIcons); err != nil {
+					return fmt.Errorf("confirmation cancelled, not proceeding with the stack import: %w", err)
+				}
+
+				if response == cancel {
+					return nil
+				}
 			}
 
 			if err := saveSnapshot(ctx, s, snapshot, force); err != nil {
