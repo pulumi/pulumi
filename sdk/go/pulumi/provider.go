@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -91,7 +92,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		aliases[i] = Alias{URN: URN(urn)}
 	}
 
-	dependencies := make([]Resource, 0, len(req.GetDependencies()))
+	dependencies := slice.Prealloc[Resource](len(req.GetDependencies()))
 	for _, urn := range req.GetDependencies() {
 		dependencies = append(dependencies, pulumiCtx.newDependencyResource(URN(urn)))
 	}
@@ -169,7 +170,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	for k, deps := range propertyDeps {
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
-		urns := make([]string, 0, len(deps))
+		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {
 			if i > 0 && urns[i-1] == string(d) {
 				continue
@@ -822,7 +823,7 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	for k, deps := range propertyDeps {
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 
-		urns := make([]string, 0, len(deps))
+		urns := slice.Prealloc[string](len(deps))
 		for i, d := range deps {
 			if i > 0 && urns[i-1] == string(d) {
 				continue

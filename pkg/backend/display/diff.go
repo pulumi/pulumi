@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -274,7 +275,7 @@ func renderPreludeEvent(event engine.PreludeEventPayload, opts Options) string {
 	fprintIgnoreError(out, opts.Color.Colorize(
 		fmt.Sprintf("%sConfiguration:%s\n", colors.SpecUnimportant, colors.Reset)))
 
-	keys := make([]string, 0, len(event.Config))
+	keys := slice.Prealloc[string](len(event.Config))
 	for key := range event.Config {
 		keys = append(keys, key)
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/rivo/uniseg"
 	"golang.org/x/term"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
 
@@ -165,7 +166,7 @@ func MeasureText(text string) int {
 //
 // A row is considered normalized if and only if it has no new lines in any of its fields.
 func (table *Table) normalizedRows() []TableRow {
-	rows := make([]TableRow, 0, len(table.Rows))
+	rows := slice.Prealloc[TableRow](len(table.Rows))
 	for _, row := range table.Rows {
 		info := row.AdditionalInfo
 		buckets := make([][]string, len(row.Columns))

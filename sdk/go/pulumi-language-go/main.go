@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -434,7 +435,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
 
-	args := make([]string, 0, len(gomod.Require)+3)
+	args := slice.Prealloc[string](len(gomod.Require) + 3)
 	args = append(args, "list", "-m", "-json")
 	for _, req := range gomod.Require {
 		args = append(args, req.Mod.Path)
@@ -757,7 +758,7 @@ func (host *goLanguageHost) GetProgramDependencies(
 		return nil, fmt.Errorf("load go.mod: %w", err)
 	}
 
-	result := make([]*pulumirpc.DependencyInfo, 0, len(gomod.Require))
+	result := slice.Prealloc[*pulumirpc.DependencyInfo](len(gomod.Require))
 	for _, d := range gomod.Require {
 		if !d.Indirect || req.TransitiveDependencies {
 			datum := pulumirpc.DependencyInfo{

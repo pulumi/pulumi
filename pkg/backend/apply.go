@@ -313,7 +313,7 @@ func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpt
 	seen := make(map[resource.URN]engine.StepEventMetadata)
 	displayOpts.SummaryDiff = true
 
-	outputEventsDiff := make([]string, 0)
+	var outputEventsDiff []string
 	for _, e := range events {
 		if e.Type == engine.SummaryEvent {
 			continue

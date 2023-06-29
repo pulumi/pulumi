@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -3631,7 +3632,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	}
 
 	// emit each package
-	pkgMods := make([]string, 0, len(packages))
+	pkgMods := slice.Prealloc[string](len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}
@@ -3714,7 +3715,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	// emit each package
-	pkgMods := make([]string, 0, len(packages))
+	pkgMods := slice.Prealloc[string](len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}
@@ -3855,7 +3856,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Types
-		sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
+		sortedKnownTypes := slice.Prealloc[schema.Type](len(knownTypes))
 		for k := range knownTypes {
 			sortedKnownTypes = append(sortedKnownTypes, k)
 		}

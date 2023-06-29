@@ -20,6 +20,7 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -56,7 +57,7 @@ func (ss StringSet) Except(s string) StringSet {
 }
 
 func (ss StringSet) SortedValues() []string {
-	values := make([]string, 0, len(ss))
+	values := slice.Prealloc[string](len(ss))
 	for v := range ss {
 		values = append(values, v)
 	}
@@ -114,7 +115,7 @@ func (s Set) Has(v interface{}) bool {
 
 // SortedKeys returns a sorted list of keys for the given map.
 func SortedKeys[T any](m map[string]T) []string {
-	keys := make([]string, 0, len(m))
+	keys := slice.Prealloc[string](len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}

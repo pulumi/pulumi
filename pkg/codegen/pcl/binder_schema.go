@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -482,7 +483,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		if len(schemas) == 0 {
 			return nil, false
 		}
-		schemaTypes := make([]schema.Type, 0, len(schemas))
+		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
 		for t := range schemas {
 			schemaTypes = append(schemaTypes, t.(schema.Type))
 		}

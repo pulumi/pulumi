@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -289,7 +290,7 @@ func (c *converter) convertSchemaObject(schema *jsonschema.Schema, level int) {
 		required[name] = true
 	}
 
-	properties := make([]string, 0, len(schema.Properties))
+	properties := slice.Prealloc[string](len(schema.Properties))
 	for name, schema := range schema.Properties {
 		if schema.Always != nil && !*schema.Always {
 			continue
@@ -347,7 +348,7 @@ func (c *converter) convertRootSchema(schema *jsonschema.Schema) {
 
 	c.convertSchema(schema, level)
 
-	defs := make([]*jsonschema.Schema, 0, len(c.defs))
+	defs := slice.Prealloc[*jsonschema.Schema](len(c.defs))
 	for _, def := range c.defs {
 		defs = append(defs, def)
 	}
@@ -405,7 +406,7 @@ func main() {
 		return jsonschema.LoadURL(s)
 	}
 
-	schemas := make([]*jsonschema.Schema, 0, len(ids))
+	schemas := slice.Prealloc[*jsonschema.Schema](len(ids))
 	for id := range ids {
 		schema, err := compiler.Compile(id)
 		if err != nil {

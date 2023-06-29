@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -80,7 +81,7 @@ func (s *ResourceState) getChildren() []Resource {
 
 	var children []Resource
 	if len(s.children) != 0 {
-		children = make([]Resource, 0, len(s.children))
+		children = slice.Prealloc[Resource](len(s.children))
 		for r := range s.children {
 			children = append(children, r)
 		}
@@ -436,7 +437,7 @@ func resourceOptionsSnapshot(ro *resourceOptions) *ResourceOptions {
 
 	var providers []ProviderResource
 	if len(ro.Providers) > 0 {
-		providers = make([]ProviderResource, 0, len(ro.Providers))
+		providers = slice.Prealloc[ProviderResource](len(ro.Providers))
 		for _, p := range ro.Providers {
 			providers = append(providers, p)
 		}

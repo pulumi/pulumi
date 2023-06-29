@@ -147,34 +147,22 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 		expected         plugin.DiffResult
 	}{
 		{
-			name: "Empty diff and replaceOnChanges",
-			diff: plugin.DiffResult{
-				StableKeys:  []resource.PropertyKey{},
-				ChangedKeys: []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
-			},
+			name:             "Empty diff and replaceOnChanges",
+			diff:             plugin.DiffResult{},
 			replaceOnChanges: []string{},
 			hasInitErrors:    false,
-			expected: plugin.DiffResult{
-				StableKeys:  []resource.PropertyKey{},
-				ChangedKeys: []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
-			},
+			expected:         plugin.DiffResult{},
 		},
 		{
 			name: "DiffSome and empty replaceOnChanges",
 			diff: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
 			},
 			replaceOnChanges: []string{},
 			hasInitErrors:    false,
 			expected: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
 			},
 		},
@@ -182,9 +170,7 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 			name: "DiffSome and non-empty replaceOnChanges",
 			diff: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
-				ReplaceKeys: []resource.PropertyKey{},
 			},
 			replaceOnChanges: []string{"a"},
 			hasInitErrors:    false,
@@ -192,38 +178,25 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 				Changes:     plugin.DiffSome,
 				ChangedKeys: []resource.PropertyKey{"a"},
 				ReplaceKeys: []resource.PropertyKey{"a"},
-				StableKeys:  []resource.PropertyKey{},
 			},
 		},
 		{
-			name: "Empty diff and replaceOnChanges w/ init errors",
-			diff: plugin.DiffResult{
-				StableKeys:  []resource.PropertyKey{},
-				ChangedKeys: []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
-			},
+			name:             "Empty diff and replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{},
 			replaceOnChanges: []string{},
 			hasInitErrors:    true,
-			expected: plugin.DiffResult{
-				StableKeys:  []resource.PropertyKey{},
-				ChangedKeys: []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
-			},
+			expected:         plugin.DiffResult{},
 		},
 		{
 			name: "DiffSome and empty replaceOnChanges w/ init errors",
 			diff: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
 			},
 			replaceOnChanges: []string{},
 			hasInitErrors:    true,
 			expected: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
-				ReplaceKeys: []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
 			},
 		},
@@ -231,7 +204,6 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 			name: "DiffSome and non-empty replaceOnChanges w/ init errors",
 			diff: plugin.DiffResult{
 				Changes:     plugin.DiffSome,
-				StableKeys:  []resource.PropertyKey{},
 				ChangedKeys: []resource.PropertyKey{"a"},
 			},
 			replaceOnChanges: []string{"a"},
@@ -240,7 +212,6 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 				Changes:     plugin.DiffSome,
 				ChangedKeys: []resource.PropertyKey{"a"},
 				ReplaceKeys: []resource.PropertyKey{"a"},
-				StableKeys:  []resource.PropertyKey{},
 			},
 		},
 		{

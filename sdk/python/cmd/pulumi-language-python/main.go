@@ -42,6 +42,7 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -415,7 +416,7 @@ func determinePulumiPackages(ctx context.Context, virtualenv, cwd string) ([]pyt
 	}
 
 	// Only return Pulumi packages.
-	pulumiPackages := make([]pythonPackage, 0, len(packages))
+	pulumiPackages := slice.Prealloc[pythonPackage](len(packages))
 	for _, pkg := range packages {
 		if !pkg.isPulumiPackage() {
 			continue

@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -228,7 +229,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 				continue
 			}
 
-			pdeps := make([]string, 0, 1)
+			pdeps := slice.Prealloc[string](1)
 			for _, d := range pd {
 				pdeps = append(pdeps, string(d))
 			}

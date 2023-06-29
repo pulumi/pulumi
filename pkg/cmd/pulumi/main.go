@@ -52,6 +52,7 @@ func panicHandler(finished *bool) {
 func main() {
 	finished := new(bool)
 	defer panicHandler(finished)
+
 	if err := NewPulumiCmd().Execute(); err != nil {
 		_, err = fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		contract.IgnoreError(err)

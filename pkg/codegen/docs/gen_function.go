@@ -27,6 +27,7 @@ import (
 	go_gen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -292,7 +293,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 			inputs = inputs.InputShape
 		}
 
-		params = make([]formalParam, 0, len(inputs.Properties))
+		params = slice.Prealloc[formalParam](len(inputs.Properties))
 		for _, prop := range inputs.Properties {
 
 			var schemaType schema.Type
@@ -316,7 +317,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 			})
 		}
 	} else {
-		params = make([]formalParam, 0, 1)
+		params = slice.Prealloc[formalParam](1)
 	}
 
 	params = append(params, formalParam{

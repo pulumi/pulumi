@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -209,7 +210,7 @@ func (p *projectReferenceStore) ListProjects(ctx context.Context) ([]tokens.Name
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
 
-	projects := make([]tokens.Name, 0, len(files))
+	projects := slice.Prealloc[tokens.Name](len(files))
 	for _, file := range files {
 		if !file.IsDir {
 			continue // ignore files
@@ -368,7 +369,7 @@ func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*localBack
 	if err != nil {
 		return nil, fmt.Errorf("error listing stacks: %w", err)
 	}
-	stacks := make([]*localBackendReference, 0, len(files))
+	stacks := slice.Prealloc[*localBackendReference](len(files))
 
 	for _, file := range files {
 		if file.IsDir {

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -98,7 +99,7 @@ func (p pluginSet) Deduplicate() pluginSet {
 
 // Values returns a slice of all of the plugins contained within this set.
 func (p pluginSet) Values() []workspace.PluginSpec {
-	plugins := make([]workspace.PluginSpec, 0, len(p))
+	plugins := slice.Prealloc[workspace.PluginSpec](len(p))
 	for _, value := range p {
 		plugins = append(plugins, value)
 	}

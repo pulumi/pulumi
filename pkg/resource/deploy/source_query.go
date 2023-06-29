@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -366,7 +367,7 @@ func (rm *queryResmon) Invoke(
 		return nil, fmt.Errorf("failed to marshal return: %w", err)
 	}
 
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -417,7 +418,7 @@ func (rm *queryResmon) StreamInvoke(
 		return fmt.Errorf("streaming invocation of %v returned an error: %w", tok, err)
 	}
 
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(failures))
 	for _, failure := range failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),
@@ -494,7 +495,7 @@ func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*p
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	chkfails := make([]*pulumirpc.CheckFailure, 0, len(ret.Failures))
+	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(ret.Failures))
 	for _, failure := range ret.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
 			Property: string(failure.Property),

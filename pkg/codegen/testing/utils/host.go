@@ -6,6 +6,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -27,7 +28,7 @@ func NewHostWithProviders(schemaDirectoryPath string, providers ...SchemaProvide
 		}, deploytest.WithPath(schemaDirectoryPath))
 	}
 
-	pluginLoaders := make([]*deploytest.PluginLoader, 0, len(providers))
+	pluginLoaders := slice.Prealloc[*deploytest.PluginLoader](len(providers))
 
 	for _, v := range providers {
 		pluginLoaders = append(pluginLoaders, mockProvider(tokens.Package(v.name), v.version))

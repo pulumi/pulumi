@@ -312,7 +312,7 @@ func TestProjectReferenceStore_List(t *testing.T) {
 		{
 			desc:     "empty",
 			stacks:   []tokens.QName{},
-			projects: []tokens.Name{},
+			projects: nil,
 		},
 		{
 			desc: "json",

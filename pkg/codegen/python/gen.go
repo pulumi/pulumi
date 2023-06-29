@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -81,7 +82,7 @@ func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 }
 
 func (imports imports) strings() []string {
-	result := make([]string, 0, len(imports))
+	result := slice.Prealloc[string](len(imports))
 	for imp := range imports {
 		result = append(result, imp)
 	}
@@ -1591,7 +1592,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		var args []*schema.Property
 		if fun.Inputs != nil {
 			// Filter out the __self__ argument from the inputs.
-			args = make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties)-1)
+			args = slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties) - 1)
 			for _, arg := range fun.Inputs.InputShape.Properties {
 				if arg.Name == "__self__" {
 					continue
@@ -2173,7 +2174,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "      install_requires=[\n          ")
 	// Concat the first and second element together,
 	// and break each element apart with a comman and a newline.
-	depStrings := make([]string, 0, len(deps))
+	depStrings := slice.Prealloc[string](len(deps))
 	for _, dep := range deps {
 		concat := fmt.Sprintf("'%s%s'", dep[0], dep[1])
 		depStrings = append(depStrings, concat)
@@ -2374,7 +2375,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 		}
 
 		elementTypeSet := codegen.NewStringSet()
-		elements := make([]string, 0, len(t.ElementTypes))
+		elements := slice.Prealloc[string](len(t.ElementTypes))
 		for _, e := range t.ElementTypes {
 			et := mod.typeString(e, input, acceptMapping)
 			if !elementTypeSet.Has(et) {
@@ -3155,7 +3156,7 @@ func ensureValidPulumiVersion(requires map[string]string) (map[string]string, er
 // dep fails to validate.
 func calculateDeps(requires map[string]string) ([][2]string, error) {
 	var err error
-	result := make([][2]string, 0, len(requires))
+	result := slice.Prealloc[[2]string](len(requires))
 	if requires, err = ensureValidPulumiVersion(requires); err != nil {
 		return nil, err
 	}

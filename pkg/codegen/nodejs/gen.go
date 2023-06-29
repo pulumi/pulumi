@@ -38,6 +38,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -84,7 +85,7 @@ func camel(s string) string {
 		return ""
 	}
 	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
+	res := slice.Prealloc[rune](len(runes))
 	for i, r := range runes {
 		if unicode.IsLower(r) {
 			res = append(res, runes[i:]...)
@@ -953,7 +954,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		argsOptional := true
 		if fun.Inputs != nil {
 			// Filter out the __self__ argument from the inputs.
-			args = make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			args = slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties))
 			for _, arg := range fun.Inputs.InputShape.Properties {
 				if arg.Name == "__self__" {
 					continue
@@ -1047,7 +1048,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fun := method.Function
 		methodName := title(method.Name)
 		if fun.Inputs != nil {
-			args := make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			args := slice.Prealloc[*schema.Property](len(fun.Inputs.InputShape.Properties))
 			for _, arg := range fun.Inputs.InputShape.Properties {
 				if arg.Name == "__self__" {
 					continue
@@ -1889,7 +1890,7 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
-	files := make([]fileInfo, 0, len(mod.extraSourceFiles))
+	files := slice.Prealloc[fileInfo](len(mod.extraSourceFiles))
 	for _, path := range mod.extraSourceFiles {
 		files = append(files, fileInfo{
 			fileType:         otherFileType,

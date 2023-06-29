@@ -28,6 +28,7 @@ import (
 	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1216,7 +1217,7 @@ func assertHasDeps(
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
-	expDeps := make([]URN, 0, len(expectedDeps))
+	expDeps := slice.Prealloc[URN](len(expectedDeps))
 	for _, expDepRes := range expectedDeps {
 		expDep := urn(t, ctx, expDepRes)
 		expDeps = append(expDeps, expDep)

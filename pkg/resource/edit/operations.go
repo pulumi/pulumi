@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -95,7 +96,7 @@ func DeleteResource(
 
 	// If there are no resources that depend on condemnedRes, iterate through the snapshot and keep everything that's
 	// not condemnedRes.
-	newSnapshot := make([]*resource.State, 0, len(snapshot.Resources))
+	newSnapshot := slice.Prealloc[*resource.State](len(snapshot.Resources))
 	var children []*resource.State
 	for _, res := range snapshot.Resources {
 		if res == condemnedRes {

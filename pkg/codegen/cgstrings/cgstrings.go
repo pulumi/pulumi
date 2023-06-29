@@ -4,6 +4,8 @@ package cgstrings
 import (
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // Unhyphenate removes all hyphens from s, then uppercasing the letter following each hyphen.
@@ -19,7 +21,7 @@ func Camel(s string) string {
 	}
 	s = Unhyphenate(s)
 	runes := []rune(s)
-	res := make([]rune, 0, len(runes))
+	res := slice.Prealloc[rune](len(runes))
 	for i, r := range runes {
 		if unicode.IsLower(r) {
 			res = append(res, runes[i:]...)

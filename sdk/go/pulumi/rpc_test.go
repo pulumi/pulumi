@@ -1770,7 +1770,7 @@ func TestMarshalInputsPropertyDependencies(t *testing.T) {
 		"s": resource.NewStringProperty("a string"),
 		"a": resource.NewBoolProperty(true),
 	}, pmap)
-	assert.Equal(t, []URN{}, deps)
+	assert.Nil(t, deps)
 	// Expect a non-empty property deps map, even when there aren't any deps.
-	assert.Equal(t, map[string][]URN{"s": {}, "a": {}}, pdeps)
+	assert.Equal(t, map[string][]URN{"s": nil, "a": nil}, pdeps)
 }

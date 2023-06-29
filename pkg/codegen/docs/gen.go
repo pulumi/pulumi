@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -431,7 +432,7 @@ func (mod *modContext) withDocGenContext(dctx *docGenContext) *modContext {
 	}
 	newctx := *mod
 	newctx.docGenContext = dctx
-	children := make([]*modContext, 0, len(newctx.children))
+	children := slice.Prealloc[*modContext](len(newctx.children))
 	for _, c := range newctx.children {
 		children = append(children, c.withDocGenContext(dctx))
 	}
@@ -904,7 +905,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	}
 
 	// We perform at least three appends before iterating over input types.
-	params := make([]formalParam, 0, 3+len(r.InputProperties))
+	params := slice.Prealloc[formalParam](3 + len(r.InputProperties))
 
 	params = append(params, formalParam{
 		Name: "resource_name",
@@ -988,7 +989,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	sortedTokens := make([]string, 0, len(tokens))
+	sortedTokens := slice.Prealloc[string](len(tokens))
 	for token := range tokens {
 		sortedTokens = append(sortedTokens, token)
 	}
@@ -1076,7 +1077,7 @@ func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.
 	if len(properties) == 0 {
 		return nil
 	}
-	docProperties := make([]property, 0, len(properties))
+	docProperties := slice.Prealloc[property](len(properties))
 	for _, prop := range properties {
 		if prop == nil {
 			continue
@@ -1474,7 +1475,7 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 	// The input properties for a resource needs to be exploded as
 	// individual constructor params.
 	docLanguageHelper := dctx.getLanguageDocHelper("python")
-	params := make([]formalParam, 0, len(r.StateInputs.Properties))
+	params := slice.Prealloc[formalParam](len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
 		def, err := mod.pkg.Definition()
 		contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
@@ -1839,7 +1840,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	}
 
 	// If there are submodules, list them.
-	modules := make([]indexEntry, 0, len(mod.children))
+	modules := slice.Prealloc[indexEntry](len(mod.children))
 	for _, mod := range mod.children {
 		modName := mod.getModuleFileName()
 		displayName := modFilenameToDisplayName(modName)
@@ -1855,7 +1856,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	sortIndexEntries(modules)
 
 	// If there are resources in the root, list them.
-	resources := make([]indexEntry, 0, len(mod.resources))
+	resources := slice.Prealloc[indexEntry](len(mod.resources))
 	for _, r := range mod.resources {
 		title := resourceName(r)
 		link := getResourceLink(title)
@@ -1877,7 +1878,7 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	sortIndexEntries(resources)
 
 	// If there are functions in the root, list them.
-	functions := make([]indexEntry, 0, len(mod.functions))
+	functions := slice.Prealloc[indexEntry](len(mod.functions))
 	for _, f := range mod.functions {
 		name := tokenToName(f.Token)
 		link := getFunctionLink(name)

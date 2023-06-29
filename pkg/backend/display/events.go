@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -155,10 +156,12 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 	for i, v := range md.Keys {
 		keys[i] = string(v)
 	}
-	diffs := make([]string, 0, len(md.Diffs))
+
+	diffs := slice.Prealloc[string](len(md.Diffs))
 	for _, v := range md.Diffs {
 		diffs = append(diffs, string(v))
 	}
+
 	var detailedDiff map[string]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
 		detailedDiff = make(map[string]apitype.PropertyDiff)
@@ -338,11 +341,7 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	for i, v := range md.Keys {
 		keys[i] = resource.PropertyKey(v)
 	}
-	//nolint:prealloc
-	var diffs []resource.PropertyKey
-	if len(md.Diffs) > 0 {
-		diffs = make([]resource.PropertyKey, 0, len(md.Diffs))
-	}
+	diffs := slice.Prealloc[resource.PropertyKey](len(md.Diffs))
 	for _, v := range md.Diffs {
 		diffs = append(diffs, resource.PropertyKey(v))
 	}

@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -712,7 +713,7 @@ func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
 }
 
 func getFileNames(infos []os.DirEntry) []string {
-	result := make([]string, 0, len(infos))
+	result := slice.Prealloc[string](len(infos))
 	for _, i := range infos {
 		result = append(result, i.Name())
 	}

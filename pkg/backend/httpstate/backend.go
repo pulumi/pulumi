@@ -51,6 +51,7 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -869,7 +870,7 @@ func (b *cloudBackend) ListStacks(
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
-	backendSummaries := make([]backend.StackSummary, 0, len(apiSummaries))
+	backendSummaries := slice.Prealloc[backend.StackSummary](len(apiSummaries))
 	for _, apiSummary := range apiSummaries {
 		backendSummary := cloudStackSummary{
 			summary: apiSummary,
@@ -1267,7 +1268,7 @@ func (b *cloudBackend) GetHistory(
 	}
 
 	// Convert apitype.UpdateInfo objects to the backend type.
-	beUpdates := make([]backend.UpdateInfo, 0, len(updates))
+	beUpdates := slice.Prealloc[backend.UpdateInfo](len(updates))
 	for _, update := range updates {
 		// Convert types from the apitype package into their internal counterparts.
 		cfg, err := convertConfig(update.Config)

@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 
 	"gopkg.in/yaml.v3"
 )
@@ -649,7 +650,7 @@ type Language interface {
 }
 
 func sortedLanguageNames(metadata map[string]interface{}) []string {
-	names := make([]string, 0, len(metadata))
+	names := slice.Prealloc[string](len(metadata))
 	for lang := range metadata {
 		names = append(names, lang)
 	}
@@ -1107,7 +1108,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
-	aliases := make([]AliasSpec, 0, len(r.Aliases))
+	aliases := slice.Prealloc[AliasSpec](len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
 			Name:    a.Name,

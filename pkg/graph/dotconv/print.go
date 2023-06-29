@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/graph"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -41,7 +42,7 @@ func Print(g graph.Graph, w io.Writer) error {
 
 	// Initialize the frontier with unvisited graph vertices.
 	queued := make(map[graph.Vertex]bool)
-	frontier := make([]graph.Vertex, 0, len(g.Roots()))
+	frontier := slice.Prealloc[graph.Vertex](len(g.Roots()))
 	for _, root := range g.Roots() {
 		to := root.To()
 		queued[to] = true

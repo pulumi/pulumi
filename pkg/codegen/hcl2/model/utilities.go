@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -39,7 +40,7 @@ func SourceOrderLess(a, b hcl.Range) bool {
 
 // SourceOrderBody sorts the contents of an HCL2 body in source order.
 func SourceOrderBody(body *hclsyntax.Body) []hclsyntax.Node {
-	items := make([]hclsyntax.Node, 0, len(body.Attributes)+len(body.Blocks))
+	items := slice.Prealloc[hclsyntax.Node](len(body.Attributes) + len(body.Blocks))
 	for _, attr := range body.Attributes {
 		items = append(items, attr)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // CRDTypes returns a map from each module name to a buffer containing the
@@ -23,7 +24,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		return nil, err
 	}
 
-	pkgMods := make([]string, 0, len(packages))
+	pkgMods := slice.Prealloc[string](len(packages))
 	for mod := range packages {
 		pkgMods = append(pkgMods, mod)
 	}

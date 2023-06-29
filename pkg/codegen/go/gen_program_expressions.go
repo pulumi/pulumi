@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -996,7 +997,7 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 
 	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps)
-	temps := make([]interface{}, 0, bufferSize)
+	temps := slice.Prealloc[interface{}](bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}
@@ -1082,7 +1083,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 func (g *generator) rewriteThenForAllApply(
 	then *model.AnonymousFunctionExpression,
 ) (*model.AnonymousFunctionExpression, []string) {
-	typeConvDecls := make([]string, 0, len(then.Parameters))
+	typeConvDecls := slice.Prealloc[string](len(then.Parameters))
 	for i, v := range then.Parameters {
 		typ := g.argumentTypeName(nil, v.VariableType, false)
 		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)
