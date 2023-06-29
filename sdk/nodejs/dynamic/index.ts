@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Inputs } from "../output";
+import { Inputs, Input, Output } from "../output";
 import * as resource from "../resource";
 import * as settings from "../runtime/settings";
 import * as serializeClosure from "../runtime/closure/serializeClosure";
@@ -162,28 +162,41 @@ export interface ResourceProvider<Inputs = any, Outputs = any> {
     delete?: (id: resource.ID, props: Outputs) => Promise<void>;
 }
 
-const providerCache = new WeakMap<ResourceProvider, Promise<string>>();
+const providerCache = new WeakMap<ResourceProvider, Input<string>>();
 
-function serializeProvider(provider: ResourceProvider): Promise<string> {
-    // Load runtime/closure on demand, as its dependencies are slow to load.
-    //
-    // See https://www.typescriptlang.org/docs/handbook/modules.html#optional-module-loading-and-other-advanced-loading-scenarios
-    const sc: typeof serializeClosure = require("../runtime/closure/serializeClosure");
-
-    let result: Promise<string>;
+function serializeProvider(provider: ResourceProvider): Input<string> {
+    let result: Input<string>;
     // caching is enabled by default as of 3.0
     if (settings.cacheDynamicProviders()) {
         const cachedProvider = providerCache.get(provider);
         if (cachedProvider) {
             result = cachedProvider;
         } else {
-            result = sc.serializeFunction(() => provider).then((sf) => sf.text);
+            result = serializeFunctionMaybeSecret(provider);
             providerCache.set(provider, result);
         }
     } else {
-        result = sc.serializeFunction(() => provider).then((sf) => sf.text);
+        result = serializeFunctionMaybeSecret(provider);
     }
     return result;
+}
+
+function serializeFunctionMaybeSecret(provider: ResourceProvider): Output<string> {
+    // Load runtime/closure on demand, as its dependencies are slow to load.
+    //
+    // See https://www.typescriptlang.org/docs/handbook/modules.html#optional-module-loading-and-other-advanced-loading-scenarios
+    const sc: typeof serializeClosure = require("../runtime/closure/serializeClosure");
+
+    const sfPromise = sc.serializeFunction(() => provider, { allowSecrets: true });
+
+    // Create an Output from the promise's text and containsSecrets properties.  Uses the internal API since we don't provide a public interface for this.
+    return new Output(
+        [],
+        sfPromise.then((sf) => sf.text),
+        new Promise((resolve) => resolve(true)),
+        sfPromise.then((sf) => sf.containsSecrets),
+        new Promise((resolve) => resolve([])),
+    );
 }
 
 /**
