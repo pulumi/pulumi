@@ -256,6 +256,9 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 
 `,
 				}
+				// Build body here instead of in the frontend implementation.
+				// TODO cleanup
+				maxHistory += 1
 				if maxHistory > 0 {
 					// Check that the stack and its backend supports the ability to do this.
 					be, ok := s.Backend().(httpstate.Backend)
