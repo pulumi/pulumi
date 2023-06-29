@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"sort"
+	"strings"
 
 	dyff "github.com/dixler/dyff/pkg/pulumi"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -111,6 +111,8 @@ func (se *jsonStateFrontend) Diff() (string, error) {
 
 type yamlStateFrontend struct {
 	// Descending Historical State files
+	header      string
+	footer      string
 	backingFile string
 	original    *apitype.DeploymentV3
 }
@@ -124,10 +126,6 @@ func (se *yamlStateFrontend) GetBackingFile() string {
 func (se *yamlStateFrontend) Reset() error {
 	contract.Assert(se.original != nil)
 	return se.SaveToFile(*se.original)
-}
-func writeYAMLHeader(w io.Writer) {
-	w.Write([]byte("# Welcome to pulumi state edit!\n"))
-	w.Write([]byte("# \"You've met with a terrible fate, haven't you?\"\n"))
 }
 
 type nodes []*yaml.Node
@@ -148,6 +146,7 @@ func (i nodes) Less(x, y int) bool {
 	yKey := i[y].Value
 	priority := func(key string) int {
 		p, ok := map[string]int{
+			// Resource fields
 			"urn":                     0,
 			"custom":                  1,
 			"delete":                  2,
@@ -171,6 +170,19 @@ func (i nodes) Less(x, y int) bool {
 			"deletedWith":             20,
 			"created":                 21,
 			"modified":                22,
+
+			// Update History fields
+			"kind":            100,
+			"startTime":       100,
+			"message":         101,
+			"environment":     102,
+			"config":          103,
+			"result":          104,
+			"endTime":         105,
+			"version":         106,
+			"deployment":      107,
+			"resourceChanges": 108,
+			"resourceCount":   109,
 		}[key]
 		if !ok {
 			return 1000
@@ -234,8 +246,6 @@ func (se *yamlStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		return fmt.Errorf("could not open file: %w", err)
 	}
 
-	writeYAMLHeader(writer)
-
 	enc := yaml.NewEncoder(writer)
 	enc.SetIndent(2)
 	if err = enc.Encode(idk); err != nil {
@@ -253,9 +263,20 @@ func (se *yamlStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		if err != nil {
 			return err
 		}
+
+		if se.header != "" {
+			wFile.Write([]byte(se.header))
+		}
+
 		_, err = wFile.Write(b)
 		if err != nil {
 			return err
+		}
+
+		if se.footer != "" {
+			cleaned := se.footer
+			cleaned = strings.ReplaceAll(se.footer, "\n", "\n# ")
+			wFile.Write([]byte(cleaned))
 		}
 		return nil
 	}

@@ -4,7 +4,7 @@ go 1.20
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 
-//replace github.com/dixler/dyff => ../../../dixler/dyff
+replace github.com/dixler/dyff => ../../../dixler/dyff
 
 // Working around https://github.com/sergi/go-diff/issues/123
 replace github.com/sergi/go-diff => github.com/sergi/go-diff v1.1.0

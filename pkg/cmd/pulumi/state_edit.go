@@ -21,20 +21,27 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
+	"sync"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 func getDeployment(s backend.Stack) (apitype.DeploymentV3, error) {
@@ -159,8 +166,38 @@ func formatDiff(olds, news deploy.Snapshot) string {
 	return cmdutil.GetGlobalColorization().Colorize(msg)
 }
 
+func yamlHistory(history apitype.UpdateInfo) (string, error) {
+	b, err := json.Marshal(history)
+	contract.AssertNoError(err)
+
+	idk := map[string]interface{}{}
+	err = json.Unmarshal(b, &idk)
+	contract.AssertNoError(err)
+
+	writer := &bytes.Buffer{}
+	if err != nil {
+		return "", fmt.Errorf("could not open file: %w", err)
+	}
+
+	enc := yaml.NewEncoder(writer)
+	enc.SetIndent(2)
+	if err = enc.Encode(idk); err != nil {
+		return "", fmt.Errorf("could not serialize deployment as YAML : %w", err)
+	}
+
+	{
+		b, err := sortYAML(writer.Bytes())
+		if err != nil {
+			return "", err
+		}
+
+		return string(b), nil
+	}
+}
+
 func newStateEditCommand() *cobra.Command {
 	var useJson bool
+	var maxHistory int
 	cmd := &cobra.Command{
 		Use:   "edit",
 		Short: "Edit the current stack's state",
@@ -173,11 +210,113 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 			ctx := commandContext()
 			stackName := ""
 
+			if maxHistory < 0 {
+				return result.FromError(errors.New("--max-history must be >= 0"))
+			}
+			if useJson && maxHistory > 0 {
+				return result.FromError(errors.New("--max-history cannot be used with json"))
+			}
+
 			// Fetch the current stack and export its deployment
 			s, err := requireStack(ctx, stackName, stackLoadOnly, display.Options{IsInteractive: false})
 			if err != nil {
 				return result.FromError(err)
 			}
+
+			var sf stateFrontend
+			if useJson {
+				sf = &jsonStateFrontend{}
+			} else {
+				ysf := &yamlStateFrontend{
+					header: `# Make your edits to the state below.
+# To continue deploying the stack, save your changes and exit the editor.
+# You will be able to preview your changes before deploying the update.
+# If you specified --max-history, previous states will be appended to the bottom of this YAML file
+# as additional documents, but only the top-most state will be considered.
+
+`,
+				}
+				if maxHistory > 0 {
+					// Check that the stack and its backend supports the ability to do this.
+					be, ok := s.Backend().(httpstate.Backend)
+					if !ok {
+						return result.FromError(
+							fmt.Errorf("the current backend (%s) does not provide the ability to export previous deployments",
+								be.Name()),
+						)
+					}
+
+					specificExpBE, ok := be.(backend.SpecificDeploymentExporter)
+					if !ok {
+						return result.FromError(
+							fmt.Errorf("the current backend (%s) does not provide the ability to export previous deployments",
+								be.Name()),
+						)
+					}
+
+					// Try to read the current project
+					project, _, err := readProject()
+					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+						return result.FromError(err)
+					}
+
+					cloudURL, err := workspace.GetCurrentCloudURL(project)
+					if err != nil {
+						return result.FromError(
+							fmt.Errorf("could not determine current cloud: %w", err),
+						)
+					}
+
+					account, err := workspace.GetAccount(cloudURL)
+					if err != nil {
+						return result.FromError(
+							fmt.Errorf("getting stored credentials: %w", err),
+						)
+					}
+					pc := client.NewClient(cloudURL, account.AccessToken, false, nil)
+
+					parts := strings.Split(s.Ref().FullyQualifiedName().String(), "/")
+					if len(parts) != 3 {
+						return result.FromError(
+							fmt.Errorf("invalid stack reference: %s", s.Ref().String()),
+						)
+					}
+					orgName, projectName, stackName := parts[0], parts[1], parts[2]
+
+					hs, err := pc.GetStackUpdates(ctx, client.StackIdentifier{
+						Owner:   orgName,
+						Project: projectName,
+						Stack:   stackName,
+					}, maxHistory, 0)
+
+					if err != nil {
+						return result.FromError(
+							fmt.Errorf("failed to get stack updates: %w", err),
+						)
+					}
+					history := make([]string, len(hs))
+					wg := sync.WaitGroup{}
+					for i, h := range hs {
+						i, h := i, h
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							var dep *apitype.UntypedDeployment
+							dep, err = specificExpBE.ExportDeploymentForVersion(ctx, s, strconv.Itoa(h.Version))
+							h.Deployment = dep.Deployment
+							entry, err := yamlHistory(h)
+							if err != nil {
+								entry = fmt.Sprintf("# Unable to export previous deployment %d\n", h.Version)
+							}
+							history[i] = entry
+						}()
+					}
+					wg.Wait()
+					ysf.footer = "---\n" + strings.Join(history, "---\n")
+				}
+				sf = ysf
+			}
+
 			olds, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 			if err != nil {
 				return result.FromError(err)
@@ -190,11 +329,6 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 			deployment, err := getDeployment(s)
 			if err != nil {
 				return result.FromError(err)
-			}
-
-			var sf stateFrontend = &yamlStateFrontend{}
-			if useJson {
-				sf = &jsonStateFrontend{}
 			}
 
 			sf.SaveToFile(deployment)
@@ -299,6 +433,9 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 			}
 		}),
 	}
+	cmd.PersistentFlags().IntVarP(
+		&maxHistory, "max-history", "n", 0,
+		"Maximum number of history states to embed in the edit. (incompatible with --json")
 	cmd.PersistentFlags().BoolVar(
 		&useJson, "json", false,
 		"Remove the stack and its config file after all resources in the stack have been deleted")
