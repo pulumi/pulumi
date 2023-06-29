@@ -15,13 +15,16 @@
 import asyncio
 import base64
 import pickle
-from typing import Any, ClassVar, Optional, List, TYPE_CHECKING, no_type_check, cast
+from typing import TYPE_CHECKING, Any, ClassVar, List, Optional, cast, no_type_check
 
 import dill
+
+import pulumi
+
 from .. import CustomResource, ResourceOptions
 
 if TYPE_CHECKING:
-    from ..output import Output, Inputs
+    from ..output import Inputs, Output
 
 PROVIDER_KEY = "__provider"
 
@@ -278,6 +281,6 @@ class Resource(CustomResource):
             raise Exception("A dynamic resource must not define the __provider key")
 
         props = cast(dict, props)
-        props[PROVIDER_KEY] = serialize_provider(provider)
+        props[PROVIDER_KEY] = pulumi.Output.secret(serialize_provider(provider))
 
         super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)
