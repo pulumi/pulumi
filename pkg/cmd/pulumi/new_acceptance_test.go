@@ -45,7 +45,7 @@ func chdir(t *testing.T, dir string) {
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newArgs{
@@ -69,7 +69,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 func TestCreatingStackWithNumericName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	// This test requires a numeric project name.
@@ -105,8 +105,7 @@ func TestCreatingStackWithNumericName(t *testing.T) {
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir)
 
@@ -128,8 +127,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
@@ -168,8 +166,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	t.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
 
 	backendInstance = nil
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	defaultProjectName := filepath.Base(tempdir)
 
@@ -235,7 +232,7 @@ func currentUser(t *testing.T) string {
 
 func loadStackName(t *testing.T) string {
 	w, err := workspace.New()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return w.Settings().Stack
 }
 

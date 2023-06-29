@@ -36,7 +36,7 @@ import (
 func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newArgs{
@@ -56,7 +56,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	orgStackName := fmt.Sprintf("%s/%s", currentUser(t), stackName)
@@ -81,8 +81,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	uniqueProjectName := filepath.Base(tempdir)
@@ -106,8 +105,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	// the project name and the project name in the stack name must match
@@ -134,8 +132,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
@@ -162,8 +159,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 func TestCreatingProjectWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
@@ -187,7 +183,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -214,7 +210,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -239,7 +235,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -270,7 +266,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -300,8 +296,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/4081
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := filepath.Join(t.TempDir(), genUniqueName(t))
-	require.NoError(t, os.MkdirAll(tempdir, 0o700))
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 	uniqueProjectName := filepath.Base(tempdir) + "test"
 
@@ -339,7 +334,7 @@ func TestCreatingProjectWithEmptyConfig(t *testing.T) {
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -368,7 +363,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
@@ -404,7 +399,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		args := newArgs{
@@ -421,7 +416,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		// A template that will never exist.
@@ -441,7 +436,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		// A template that will never exist remotely.
@@ -811,6 +806,14 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 	}
 }
 
+func tempProjectDir(t *testing.T) string {
+	t.Helper()
+
+	dir := filepath.Join(t.TempDir(), genUniqueName(t))
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	return dir
+}
+
 func genUniqueName(t *testing.T) string {
 	t.Helper()
 
@@ -818,5 +821,5 @@ func genUniqueName(t *testing.T) string {
 	_, err := rand.Read(bs[:])
 	require.NoError(t, err)
 
-	return hex.EncodeToString(bs[:])
+	return "test-" + hex.EncodeToString(bs[:])
 }
