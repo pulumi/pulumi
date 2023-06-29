@@ -8,6 +8,7 @@ builds:
   binary: pulumi
   dir: pkg
   main: ./cmd/pulumi
+  no_main_check: true
   gobinary: ../scripts/go-wrapper.sh
   env:
   - CGO_ENABLED=0
@@ -23,18 +24,21 @@ builds:
   binary: pulumi-language-go
   dir: sdk/go/pulumi-language-go
   main: ./
+  no_main_check: true
   gobinary: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk/nodejs/cmd/pulumi-language-nodejs
   main: ./
+  no_main_check: true
   gobinary: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk
   main: ./python/cmd/pulumi-language-python
+  no_main_check: true
 
 archives:
 - id: pulumi
