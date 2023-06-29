@@ -42,8 +42,6 @@ archives:
   format_overrides:
     - goos: windows
       format: zip
-  replacements:
-    amd64: x64
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
@@ -53,7 +51,7 @@ archives:
     - src: bin/{{ .Os }}-{{ .Arch }}/*
       dst: '.'
       strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}"
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
