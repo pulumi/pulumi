@@ -28,7 +28,7 @@ import (
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newPolicyArgs{
@@ -51,7 +51,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	const nonExistantTemplate = "this-is-not-the-template-youre-looking-for"
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		args := newPolicyArgs{
@@ -66,7 +66,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
-		tempdir := t.TempDir()
+		tempdir := tempProjectDir(t)
 		chdir(t, tempdir)
 
 		args := newPolicyArgs{

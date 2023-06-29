@@ -27,7 +27,7 @@ import (
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir := t.TempDir()
+	tempdir := tempProjectDir(t)
 	chdir(t, tempdir)
 
 	args := newPolicyArgs{
