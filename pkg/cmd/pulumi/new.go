@@ -563,7 +563,7 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 		}
 
 		if exists {
-			return errors.New("A project with this name already exists")
+			return fmt.Errorf("a project with this name already exists: %s", projectName)
 		}
 	}
 
