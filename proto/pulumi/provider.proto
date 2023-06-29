@@ -17,6 +17,7 @@ syntax = "proto3";
 import "pulumi/plugin.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
+import "pulumi/source.proto";
 
 package pulumirpc;
 
@@ -154,6 +155,8 @@ message CallRequest {
     int32 parallel = 11;            // the degree of parallelism for resource operations (<=1 for serial).
     string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
     string organization = 14;       // the organization of the stack being deployed into.
+
+    SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
 }
 
 message CallResponse {

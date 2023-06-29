@@ -91,7 +91,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "")
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}

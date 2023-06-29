@@ -333,6 +333,8 @@ type ResourceV3 struct {
 	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
+	// SourcePosition tracks the source location of this resource's registration
+	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.

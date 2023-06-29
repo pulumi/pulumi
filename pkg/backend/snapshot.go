@@ -243,6 +243,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
+	// If the source position of this resource has changed, we must write the checkpoint.
+	if old.SourcePosition != new.SourcePosition {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of SourcePosition")
+		return true
+	}
+
 	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.

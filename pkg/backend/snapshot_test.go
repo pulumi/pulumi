@@ -342,6 +342,10 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 	changes = append(changes, NewResource(string(resourceA.URN)))
 	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
 
+	// Change the resource source position.
+	changes = append(changes, NewResource(string(resourceA.URN)))
+	changes[4].SourcePosition = "project:///foo.ts#1,2"
+
 	snap := NewSnapshot([]*resource.State{
 		provider,
 		resourceP,
