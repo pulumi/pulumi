@@ -167,11 +167,30 @@ func formatDiff(olds, news deploy.Snapshot) string {
 }
 
 func yamlHistory(history apitype.UpdateInfo) (string, error) {
-	b, err := json.Marshal(history)
+	dep := history.Deployment
+	var historyDetails string
+	var err error
+	{
+		// Set the deployment to nil so that we can unmarshal the history as YAML
+		history.Deployment = nil
+		b, err := yaml.Marshal(history)
+		if err != nil {
+			return "", fmt.Errorf("could not unmarshal history as YAML: %w", err)
+		}
+		bHistory, err := sortYAML(b)
+		if err != nil {
+			return "", err
+		}
+		historyDetails = string(bHistory)
+		// Comment yaml history details to make it easy to use the deployment data.
+		historyDetails = "# " + strings.ReplaceAll(historyDetails, "\n", "\n# ") + "\n"
+	}
+
+	bDep, err := json.Marshal(dep)
 	contract.AssertNoError(err)
 
-	idk := map[string]interface{}{}
-	err = json.Unmarshal(b, &idk)
+	depData := map[string]interface{}{}
+	err = json.Unmarshal(bDep, &depData)
 	contract.AssertNoError(err)
 
 	writer := &bytes.Buffer{}
@@ -181,21 +200,23 @@ func yamlHistory(history apitype.UpdateInfo) (string, error) {
 
 	enc := yaml.NewEncoder(writer)
 	enc.SetIndent(2)
-	if err = enc.Encode(idk); err != nil {
+	if err = enc.Encode(depData); err != nil {
 		return "", fmt.Errorf("could not serialize deployment as YAML : %w", err)
 	}
 
 	{
-		b, err := sortYAML(writer.Bytes())
+		bDep, err = sortYAML(writer.Bytes())
 		if err != nil {
 			return "", err
 		}
+		deployment := string(bDep)
 
-		return string(b), nil
+		return historyDetails + deployment, nil
 	}
 }
 
 func newStateEditCommand() *cobra.Command {
+	var stackName string
 	var useJson bool
 	var maxHistory int
 	cmd := &cobra.Command{
@@ -208,7 +229,6 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
 			ctx := commandContext()
-			stackName := ""
 
 			if maxHistory < 0 {
 				return result.FromError(errors.New("--max-history must be >= 0"))
@@ -312,7 +332,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 						}()
 					}
 					wg.Wait()
-					ysf.footer = "---\n" + strings.Join(history, "---\n")
+					ysf.body = "---\n" + strings.Join(history, "---\n")
 				}
 				sf = ysf
 			}
@@ -438,6 +458,9 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 		"Maximum number of history states to embed in the edit. (incompatible with --json")
 	cmd.PersistentFlags().BoolVar(
 		&useJson, "json", false,
+		"Remove the stack and its config file after all resources in the stack have been deleted")
+	cmd.PersistentFlags().StringVar(
+		&stackName, "stack", "",
 		"Remove the stack and its config file after all resources in the stack have been deleted")
 	return cmd
 }

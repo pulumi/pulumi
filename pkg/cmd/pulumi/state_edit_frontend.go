@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	dyff "github.com/dixler/dyff/pkg/pulumi"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -48,7 +47,7 @@ type jsonStateFrontend struct {
 var _ stateFrontend = &jsonStateFrontend{}
 
 func (se *jsonStateFrontend) GetBackingFile() string {
-	return ".pulumi/state-edit.json"
+	return ".pulumi-state-edit.json"
 }
 
 func (se *jsonStateFrontend) Reset() error {
@@ -61,7 +60,7 @@ func (se *jsonStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		se.original = &state
 	}
 	if se.backingFile == "" {
-		se.backingFile = ".pulumi/state-edit.json"
+		se.backingFile = ".pulumi-state-edit.json"
 	}
 	writer, err := os.Create(se.backingFile)
 	if err != nil {
@@ -99,7 +98,7 @@ func (se *jsonStateFrontend) ReadNewSnapshot() (deploy.Snapshot, error) {
 
 func (se *jsonStateFrontend) Diff() (string, error) {
 	contract.Assert(se.original != nil)
-	old := jsonStateFrontend{backingFile: ".pulumi/state-edit.original.json"}
+	old := jsonStateFrontend{backingFile: ".pulumi-state-edit.original.json"}
 	old.SaveToFile(*se.original)
 
 	diff, err := dyff.Compare(old.backingFile, se.backingFile)
@@ -112,7 +111,7 @@ func (se *jsonStateFrontend) Diff() (string, error) {
 type yamlStateFrontend struct {
 	// Descending Historical State files
 	header      string
-	footer      string
+	body        string
 	backingFile string
 	original    *apitype.DeploymentV3
 }
@@ -120,7 +119,7 @@ type yamlStateFrontend struct {
 var _ stateFrontend = &yamlStateFrontend{}
 
 func (se *yamlStateFrontend) GetBackingFile() string {
-	return ".pulumi/state-edit.yaml"
+	return ".pulumi-state-edit.yaml"
 }
 
 func (se *yamlStateFrontend) Reset() error {
@@ -172,17 +171,17 @@ func (i nodes) Less(x, y int) bool {
 			"modified":                22,
 
 			// Update History fields
-			"kind":            100,
-			"startTime":       100,
-			"message":         101,
-			"environment":     102,
-			"config":          103,
-			"result":          104,
-			"endTime":         105,
-			"version":         106,
-			"deployment":      107,
-			"resourceChanges": 108,
-			"resourceCount":   109,
+			"version":         101,
+			"kind":            102,
+			"result":          103,
+			"message":         104,
+			"resourcecount":   106,
+			"resourcechanges": 105,
+			"starttime":       107,
+			"endtime":         108,
+			"deployment":      109,
+			"environment":     110,
+			"config":          111,
 		}[key]
 		if !ok {
 			return 1000
@@ -232,7 +231,7 @@ func (se *yamlStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		se.original = &state
 	}
 	if se.backingFile == "" {
-		se.backingFile = ".pulumi/state-edit.yaml"
+		se.backingFile = ".pulumi-state-edit.yaml"
 	}
 	b, err := json.Marshal(state)
 	contract.AssertNoError(err)
@@ -252,13 +251,15 @@ func (se *yamlStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		return fmt.Errorf("could not serialize deployment as YAML : %w", err)
 	}
 
-	{
-		wFile, err := os.Create(se.backingFile)
-		if err != nil {
-			return err
-		}
-		defer wFile.Close()
-
+	wFile, err := os.Create(se.backingFile)
+	if err != nil {
+		return err
+	}
+	defer wFile.Close()
+	if se.body != "" {
+		cleaned := se.body
+		wFile.Write([]byte(cleaned))
+	} else {
 		b, err := sortYAML(writer.Bytes())
 		if err != nil {
 			return err
@@ -272,14 +273,8 @@ func (se *yamlStateFrontend) SaveToFile(state apitype.DeploymentV3) error {
 		if err != nil {
 			return err
 		}
-
-		if se.footer != "" {
-			cleaned := se.footer
-			cleaned = strings.ReplaceAll(se.footer, "\n", "\n# ")
-			wFile.Write([]byte(cleaned))
-		}
-		return nil
 	}
+	return nil
 }
 
 func (se *yamlStateFrontend) ReadNewSnapshot() (deploy.Snapshot, error) {
@@ -314,7 +309,7 @@ func (se *yamlStateFrontend) ReadNewSnapshot() (deploy.Snapshot, error) {
 }
 func (se *yamlStateFrontend) Diff() (string, error) {
 	contract.Assert(se.original != nil)
-	old := yamlStateFrontend{original: se.original, backingFile: ".pulumi/state-edit.original.yaml"}
+	old := yamlStateFrontend{original: se.original, backingFile: ".pulumi-state-edit.original.yaml"}
 	old.SaveToFile(*se.original)
 
 	diff, err := dyff.Compare(old.backingFile, se.backingFile)
