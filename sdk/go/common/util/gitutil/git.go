@@ -84,7 +84,9 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpen(filepath.Dir(gitRoot))
+	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{
+		EnableDotGitCommonDir: true,
+	})
 	if err == git.ErrRepositoryNotExists {
 		return nil, nil
 	}
