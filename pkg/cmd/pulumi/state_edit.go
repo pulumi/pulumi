@@ -274,7 +274,7 @@ troubleshooting a stack or when performing specific edits that otherwise would r
 				if err := survey.AskOne(&survey.Select{
 					Message: prompt,
 					Options: options,
-					Default: options[1],
+					Default: edit,
 				}, &response, surveyIcons); err != nil {
 					return result.FromError(fmt.Errorf("confirmation cancelled, not proceeding with the state edit: %w", err))
 				}
