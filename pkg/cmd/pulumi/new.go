@@ -126,6 +126,11 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Check project name and stack reference project name are the same.
+	if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+		return err
+	}
+
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
 		if err := validateProjectName(ctx, b, args.name, args.generateOnly, opts); err != nil {
@@ -1111,4 +1116,32 @@ func containsWhiteSpace(value string) bool {
 		}
 	}
 	return false
+}
+
+// compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.
+//   - projectName comes from the --name flag.
+//   - stackName comes from the --stack flag. stackName can be a stack name or a fully qualified stack reference
+//     i.e org/project/stack
+func compareStackProjectName(b backend.Backend, stackName, projectName string) error {
+	if stackName == "" || projectName == "" {
+		// No potential for conflicting project names.
+		return nil
+	}
+
+	// Catch the case where the user has specified a fully qualified stack reference.
+	ref, err := b.ParseStackReference(stackName)
+	if err != nil {
+		// If we can't parse the stack reference, we can't compare the project names.
+		// We assume the project names don't conflict and that this parsing issue will be handled downstream.
+		return nil
+	}
+	stackProjectName, hasProject := ref.Project()
+	if !hasProject {
+		return nil
+	}
+	if projectName == stackProjectName.String() {
+		return nil
+	}
+	return fmt.Errorf("project name (--name %s) and stack reference project name (--stack %s) must be the same",
+		projectName, stackProjectName)
 }

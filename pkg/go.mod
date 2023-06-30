@@ -80,6 +80,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
+	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-java/pkg v0.9.4
 	github.com/pulumi/pulumi-yaml v1.1.1
 	github.com/segmentio/encoding v0.3.5
@@ -201,7 +202,6 @@ require (
 	github.com/pgavlin/text v0.0.0-20230428184845-84c285f11d2f // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
