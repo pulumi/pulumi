@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/nodejs
-  description: Adds a better error message for invalid NodeJS AutoAPI workDir.

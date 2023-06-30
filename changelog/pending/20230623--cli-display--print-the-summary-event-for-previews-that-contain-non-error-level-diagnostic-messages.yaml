@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Print the summary event for previews that contain non-error level diagnostic messages.

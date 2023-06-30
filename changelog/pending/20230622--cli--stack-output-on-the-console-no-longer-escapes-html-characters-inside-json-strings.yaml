@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Stack output on the console no longer escapes HTML characters inside JSON strings. This matches the behavior of the `--json` flag.
