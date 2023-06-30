@@ -14,33 +14,17 @@
 
   outputs = { self, nixpkgs, flake-utils }: let
     pulumi-packages = pkgs: rec {
-        pulumi-cli = pkgs.buildGoModule {
-          name = "pulumi-cli";
-          src = ./pkg;
-          subPackages = [ "cmd/pulumi" ];
-          vendorSha256 = "sha256-rlxQtxfJ8/0j6PznvIly5x/72zyf3QhMsymrHggw+UU=";
-          buildInputs = [ pulumi-sdk ];
-
-          ldflags = let
-            version = pkgs.lib.fileContents ./.version;
-          in ["-X" "github.com/pulumi/pulumi/pkg/v3/version.Version=${version}"];
-
-          # don't run tests because they make network requests
-          doCheck = false; # TODO: fix
-
-          # Add the 'replace' directive to point ot the local pulumi-sdk.
-          # Add it as a patch step rather than a build step for better caching.
-          prePatch = ''
-            go mod edit -replace github.com/pulumi/pulumi/sdk/v3=${pulumi-sdk.src}
-          '';
+        pulumi-version = pkgs.lib.fileContents ./.version;
+        pulumi-sdk = import ./sdk/module.nix {
+          nixpkgs = pkgs;
         };
-        pulumi-sdk = pkgs.buildGoModule {
-          name = "pulumi-sdk";
-          src = ./sdk;
-          subPackages = [ "go/pulumi" ];
-          vendorSha256 = "sha256-S8eb2V7ZHhQ0xas+88lwxjL50+22dbyJ0aM60dAtb5k=";
+        pulumi-cli = import ./pkg/module.nix {
+          nixpkgs = pkgs;
+          pulumi-sdk = pulumi-sdk;
+          pulumi-version = pulumi-version;
         };
       };
+
     flakeForSystem = nixpkgs: system: let
       pkgs = nixpkgs.legacyPackages.${system};
       pulumi = pulumi-packages pkgs;
