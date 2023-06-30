@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fix diffs sometimes not showing even in details view.

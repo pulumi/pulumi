@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Old inputs are sent to provider Diff and Update functions, as well as the old outputs.

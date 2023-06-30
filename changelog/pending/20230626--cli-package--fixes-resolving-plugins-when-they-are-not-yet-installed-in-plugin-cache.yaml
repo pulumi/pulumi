@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Fixes resolving plugins when they are not yet installed in plugin cache

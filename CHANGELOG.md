@@ -1,5 +1,76 @@
 # Changelog
 
+## 3.74.0 (2023-06-30)
+
+
+### Features
+
+- [cli] Improve the CLI stack validation error message
+  [#13285](https://github.com/pulumi/pulumi/pull/13285)
+
+- [engine] Old inputs are sent to provider Diff and Update functions, as well as the old outputs.
+  [#13139](https://github.com/pulumi/pulumi/pull/13139)
+
+- [sdk/nodejs] Support loading package.json from parent directory. If `package.json` is not found in the Pulumi main directory, Pulumi recursively searches up the directory tree until it is found. If `package.json` provides a `main` field, per the [NPM spec](https://docs.npmjs.com/cli/v6/configuring-npm/package-json#main), that field is relative to the directory containing package.json.
+  [#13273](https://github.com/pulumi/pulumi/pull/13273)
+
+- [programgen/{nodejs,python}] Prefer output-versioned invokes in generated programs for nodejs and python
+  [#13251](https://github.com/pulumi/pulumi/pull/13251)
+
+- [cli/state] The upgrade command now prompts the user to supply project names for stacks for which the project name could not be automatically guessed.
+  [#13078](https://github.com/pulumi/pulumi/pull/13078)
+
+- [cli/state] Add interactive URN selection to `pulumi state {rename,unprotect,delete}`.
+  [#13302](https://github.com/pulumi/pulumi/pull/13302)
+
+
+### Bug Fixes
+
+- [auto/nodejs] Adds a better error message for invalid NodeJS AutoAPI workDir.
+  [#13275](https://github.com/pulumi/pulumi/pull/13275)
+
+- [cli] Stack output on the console no longer escapes HTML characters inside JSON strings. This matches the behavior of the `--json` flag.
+  [#13257](https://github.com/pulumi/pulumi/pull/13257)
+
+- [engine] Engine marks outputs secret if an output of the same name is marked secret.
+  [#13260](https://github.com/pulumi/pulumi/pull/13260)
+
+- [sdkgen] Fix loading schemas from providers on PATH.
+  [#13305](https://github.com/pulumi/pulumi/pull/13305)
+
+- [cli/display] Print the summary event for previews that contain non-error level diagnostic messages.
+  [#13264](https://github.com/pulumi/pulumi/pull/13264)
+
+- [cli/display] Fix diffs sometimes not showing even in details view.
+  [#13311](https://github.com/pulumi/pulumi/pull/13311)
+
+- [cli/package] Fixes resolving plugins when they are not yet installed in plugin cache
+  [#13283](https://github.com/pulumi/pulumi/pull/13283)
+
+- [cli/state] Disallow renaming resources to invalid names that will corrupt the state.
+  [#13254](https://github.com/pulumi/pulumi/pull/13254)
+
+- [programgen/go] Fix aliasing package names using dashes when schema doesn't include go package info override
+  [#13212](https://github.com/pulumi/pulumi/pull/13212)
+
+- [programgen/go] Use raw string literals for long, multi-line strings.
+  [#13249](https://github.com/pulumi/pulumi/pull/13249)
+
+- [sdk/{go,nodejs,python}] Missing config error text includes "--secret" if requireSecret was used.
+  [#13241](https://github.com/pulumi/pulumi/pull/13241)
+
+- [sdkgen/nodejs] Fix isInstance methods for generated provider types.
+  [#13265](https://github.com/pulumi/pulumi/pull/13265)
+
+
+### Miscellaneous
+
+- [pkg/testing] ProgramTest dropped the CoverProfile option as it's no longer necessary.
+  [#13298](https://github.com/pulumi/pulumi/pull/13298)
+
+- [sdk/nodejs] Update @grpc/grpc-js to 1.8.16.
+  [#13237](https://github.com/pulumi/pulumi/pull/13237)
+
 ## 3.73.0 (2023-06-22)
 
 

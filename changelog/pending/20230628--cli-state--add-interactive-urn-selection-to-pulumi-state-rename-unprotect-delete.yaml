@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Add interactive URN selection to `pulumi state {rename,unprotect,delete}`.
