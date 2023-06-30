@@ -10,7 +10,8 @@ NPM_TAG="dev"
 ## We need split the GITHUB_REF into the correct parts
 ## so that we can test for NPM Tags
 IFS='/' read -ra my_array <<< "${GITHUB_REF:-}"
-BRANCH_NAME="${my_array[2]}"
+last_index=$((${#my_array[@]} - 1))
+BRANCH_NAME="${my_array[last_index]}"
 
 echo $BRANCH_NAME
 if [[ "${BRANCH_NAME}" == features/* ]]; then
