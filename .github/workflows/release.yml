@@ -66,7 +66,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["nodejs", "python", "go"]
+        #language: ["nodejs", "python", "go"]
+        language: ["nodejs"]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -99,32 +100,32 @@ jobs:
         run: |
           make -C sdk/${{ matrix.language}} publish
 
-  s3-blobs:
-    name: s3 blobs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ inputs.ref }}
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-region: us-east-2
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          role-duration-seconds: 3600
-          role-external-id: upload-pulumi-release
-          role-session-name: pulumi@githubActions
-          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
-      - name: Download release artifacts
-        run: |
-          mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'pulumi-*'
-          find artifacts
-      - name: Publish Blobs
-        run: |
-          aws s3 sync artifacts s3://get.pulumi.com/releases/sdk --acl public-read
+  # s3-blobs:
+  #   name: s3 blobs
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Repo
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: ${{ inputs.ref }}
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-region: us-east-2
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         role-duration-seconds: 3600
+  #         role-external-id: upload-pulumi-release
+  #         role-session-name: pulumi@githubActions
+  #         role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+  #     - name: Download release artifacts
+  #       run: |
+  #         mkdir -p artifacts
+  #         gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'pulumi-*'
+  #         find artifacts
+  #     - name: Publish Blobs
+  #       run: |
+  #         aws s3 sync artifacts s3://get.pulumi.com/releases/sdk --acl public-read
 
   pr:
     # Relies on the Go SDK being published to update pkg
@@ -181,14 +182,14 @@ jobs:
         run: ${{ matrix.job.run-command }}
 
 
-  update-homebrew-tap:
-    name: Update Homebrew Tap
-    if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
-    uses: ./.github/workflows/release-homebrew-tap.yml
-    permissions:
-      contents: read
-    with:
-      ref: ${{ inputs.ref }}
-      version: ${{ inputs.version }}
-      dry-run: false
-    secrets: inherit
+  # update-homebrew-tap:
+  #   name: Update Homebrew Tap
+  #   if: inputs.run-dispatch-commands && !contains(inputs.version, '-')
+  #   uses: ./.github/workflows/release-homebrew-tap.yml
+  #   permissions:
+  #     contents: read
+  #   with:
+  #     ref: ${{ inputs.ref }}
+  #     version: ${{ inputs.version }}
+  #     dry-run: false
+  #   secrets: inherit
