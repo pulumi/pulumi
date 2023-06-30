@@ -145,6 +145,8 @@ jobs:
             --version-set current \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-module sdk 1 \
+            --partition-module sdk/go/pulumi-language-go 1 \
+            --partition-module sdk/nodejs/cmd/pulumi-language-nodejs 1 \
             --partition-module tests 2
           )
 

@@ -16,7 +16,7 @@ export class Provider extends pulumi.ProviderResource {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Provider.__pulumiType;
+        return obj['__pulumiType'] === "pulumi:providers:" + Provider.__pulumiType;
     }
 
 

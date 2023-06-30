@@ -260,12 +260,15 @@
       "respectSchemaVersion": true
     },
     "nodejs": {
-      "dependencies": {
-        "@pulumi/pulumi": "^3.12"
-      },
       "devDependencies": {
-        "typescript": "^3.7.0"
+        "@types/mocha": "latest",
+        "@types/node": "ts4.3",
+        "mocha": "latest",
+        "ts-node": "latest"
       },
+      "extraTypeScriptFiles": [
+        "tests/codegen.spec.ts"
+      ],
       "respectSchemaVersion": true,
       "pluginVersion": "3.2.1"
     },

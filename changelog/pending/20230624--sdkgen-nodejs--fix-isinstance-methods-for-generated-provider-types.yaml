@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/nodejs
+  description: Fix isInstance methods for generated provider types.

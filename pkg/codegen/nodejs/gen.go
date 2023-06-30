@@ -692,7 +692,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "        if (obj === undefined || obj === null) {\n")
 	fmt.Fprintf(w, "            return false;\n")
 	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "        return obj['__pulumiType'] === %s.__pulumiType;\n", name)
+
+	typeExpression := fmt.Sprintf("%s.__pulumiType", name)
+	if r.IsProvider {
+		// We pass __pulumiType to the ProviderResource constructor as the "type" for this provider, the
+		// ProviderResource constructor in the SDK then prefixes "pulumi:providers:" to that token and passes that
+		// down to the CustomResource constructor, which then assigns that type token to the newly constructed
+		// objects __pulumiType field. As such we also need to prefix "pulumi:providers:" when doing the equality
+		// check here.
+		typeExpression = "\"pulumi:providers:\" + " + typeExpression
+	}
+	fmt.Fprintf(w, "        return obj['__pulumiType'] === %s;\n", typeExpression)
 	fmt.Fprintf(w, "    }\n")
 	fmt.Fprintf(w, "\n")
 

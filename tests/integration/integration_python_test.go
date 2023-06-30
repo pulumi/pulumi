@@ -1061,3 +1061,18 @@ func TestConstructProviderPropagationPython(t *testing.T) {
 		filepath.Join("..", "..", "sdk", "python", "env", "src"),
 	})
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/9411
+func TestDuplicateOutputPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "duplicate-output"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			expected := []interface{}{float64(1), float64(2)}
+			assert.Equal(t, expected, stack.Outputs["export1"])
+			assert.Equal(t, expected, stack.Outputs["export2"])
+		},
+	})
+}

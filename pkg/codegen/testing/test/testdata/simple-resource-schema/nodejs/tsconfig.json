@@ -20,6 +20,7 @@
         "otherResource.ts",
         "provider.ts",
         "resource.ts",
+        "tests/codegen.spec.ts",
         "typeUses.ts",
         "types/index.ts",
         "types/input.ts",
