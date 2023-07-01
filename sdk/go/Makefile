@@ -40,6 +40,7 @@ test_auto:: $(TEST_ALL_DEPS)
 	@$(GO_TEST) $(TEST_AUTO_PKGS)
 
 dist::
+	cd pulumi-language-go && \
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
