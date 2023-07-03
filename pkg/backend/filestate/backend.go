@@ -654,7 +654,7 @@ func (b *localBackend) ValidateStackName(stackRef string) error {
 	return err
 }
 
-func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+func (b *localBackend) DoesProjectExist(ctx context.Context, _ string, projectName string) (bool, error) {
 	projStore, ok := b.store.(*projectReferenceStore)
 	if !ok {
 		// Legacy stores don't have projects

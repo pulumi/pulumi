@@ -778,7 +778,7 @@ func TestProjectFolderStructure(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that testproj is reported as existing
-	exists, err := b.DoesProjectExist(ctx, "testproj")
+	exists, err := b.DoesProjectExist(ctx, "", "testproj")
 	assert.NoError(t, err)
 	assert.True(t, exists)
 

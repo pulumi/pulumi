@@ -43,7 +43,7 @@ type MockBackend struct {
 	SupportsOrganizationsF func() bool
 	ParseStackReferenceF   func(s string) (StackReference, error)
 	ValidateStackNameF     func(s string) error
-	DoesProjectExistF      func(context.Context, string) (bool, error)
+	DoesProjectExistF      func(context.Context, string, string) (bool, error)
 	GetStackF              func(context.Context, StackReference) (Stack, error)
 	CreateStackF           func(context.Context, StackReference, string, *CreateStackOptions) (Stack, error)
 	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
@@ -171,9 +171,9 @@ func (be *MockBackend) ValidateStackName(s string) error {
 	panic("not implemented")
 }
 
-func (be *MockBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
+func (be *MockBackend) DoesProjectExist(ctx context.Context, orgName string, projectName string) (bool, error) {
 	if be.DoesProjectExistF != nil {
-		return be.DoesProjectExistF(ctx, projectName)
+		return be.DoesProjectExistF(ctx, orgName, projectName)
 	}
 	panic("not implemented")
 }

@@ -189,7 +189,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
 	}
@@ -216,7 +216,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return name == projectName, nil
 		},
 	}
@@ -241,7 +241,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -272,7 +272,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -340,7 +340,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -369,7 +369,7 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	chdir(t, tempdir)
 
 	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -895,6 +895,69 @@ func TestValidateStackRefAndProjectName(t *testing.T) {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestProjectExists(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	b := &backend.MockBackend{
+		DoesProjectExistF: func(ctx context.Context, orgName string, projectName string) (bool, error) {
+			type Org string
+			type ProjectName string
+			projects := map[Org]map[ProjectName]struct{}{
+				"moolumi": {
+					"my-moolumi-project": {},
+				},
+				"pulumi": {},
+			}
+			orgProjects, ok := projects[Org(orgName)]
+			if !ok {
+				return false, fmt.Errorf("org %s not found", orgName)
+			}
+			_, exists := orgProjects[ProjectName(projectName)]
+			return exists, nil
+		},
+	}
+
+	// Table Test
+	type Project struct {
+		orgName     string
+		projectName string
+	}
+	tests := []struct {
+		name   string
+		give   Project
+		hasErr bool
+	}{
+		{
+			name: "project exists",
+			give: Project{
+				projectName: "my-moolumi-project",
+				orgName:     "moolumi",
+			},
+			hasErr: true,
+		},
+		{
+			name: "project exists in another org",
+			give: Project{
+				projectName: "my-moolumi-project",
+				orgName:     "pulumi",
+			},
+			hasErr: false,
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
+			if tt.hasErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

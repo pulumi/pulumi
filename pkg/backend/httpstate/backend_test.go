@@ -14,6 +14,8 @@
 package httpstate
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,4 +34,93 @@ func TestValueOrDefaultURL(t *testing.T) {
 		t.Setenv("PULUMI_API", "https://api-test3.pulumi.com/")
 		assert.Equal(t, "https://api-test3.pulumi.com/", ValueOrDefaultURL(""))
 	})
+}
+
+// TestDefaultOrganizationPriority tests the priority of the default organization.
+// The priority is:
+// 1. The default organization.
+// 2. The user's organization.
+func TestDefaultOrganizationPriority(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		getDefaultOrg func() (string, error)
+		getUserOrg    func() (string, error)
+		wantOrg       string
+		wantErr       bool
+	}{
+		{
+			name: "default org set",
+			getDefaultOrg: func() (string, error) {
+				return "default-org", nil
+			},
+			getUserOrg: func() (string, error) {
+				return "", nil
+			},
+			wantOrg: "default-org",
+		},
+		{
+			name: "user org set",
+			getDefaultOrg: func() (string, error) {
+				return "", nil
+			},
+			getUserOrg: func() (string, error) {
+				return "user-org", nil
+			},
+			wantOrg: "user-org",
+		},
+		{
+			name: "no org set",
+			getDefaultOrg: func() (string, error) {
+				return "", nil
+			},
+			getUserOrg: func() (string, error) {
+				return "", nil
+			},
+			wantErr: true,
+		},
+		{
+			name: "both orgs set",
+			getDefaultOrg: func() (string, error) {
+				return "default-org", nil
+			},
+			getUserOrg: func() (string, error) {
+				return "user-org", nil
+			},
+			wantOrg: "default-org",
+		},
+		{
+			name: "default org set, user org error",
+			getDefaultOrg: func() (string, error) {
+				return "default-org", nil
+			},
+			getUserOrg: func() (string, error) {
+				return "", errors.New("user org error")
+			},
+			wantOrg: "default-org",
+		},
+		{
+			name: "user org set, default org error",
+			getDefaultOrg: func() (string, error) {
+				return "", errors.New("default org error")
+			},
+			getUserOrg: func() (string, error) {
+				return "user-org", nil
+			},
+			wantOrg: "user-org",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			org, err := inferOrg(context.Background(), tt.getDefaultOrg, tt.getUserOrg)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantOrg, org)
+		})
+	}
 }

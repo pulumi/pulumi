@@ -155,7 +155,7 @@ type Backend interface {
 	ValidateStackName(s string) error
 
 	// DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
-	DoesProjectExist(ctx context.Context, projectName string) (bool, error)
+	DoesProjectExist(ctx context.Context, orgName string, projectName string) (bool, error)
 
 	// GetStack returns a stack object tied to this backend with the given name, or nil if it cannot be found.
 	GetStack(ctx context.Context, stackRef StackReference) (Stack, error)
