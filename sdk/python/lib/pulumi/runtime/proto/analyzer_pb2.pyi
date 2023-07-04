@@ -374,6 +374,49 @@ class AnalyzeDiagnostic(google.protobuf.message.Message):
 global___AnalyzeDiagnostic = AnalyzeDiagnostic
 
 @typing_extensions.final
+class TransformResponse(google.protobuf.message.Message):
+    """TransformResponse is a single resource's transformation."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """the URN for the transformed resource."""
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """the transformed properties to use."""
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["properties", b"properties", "urn", b"urn"]) -> None: ...
+
+global___TransformResponse = TransformResponse
+
+@typing_extensions.final
+class TransformStackResponse(google.protobuf.message.Message):
+    """TransformStackResponse is an entire stack's transformation across all resources."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TRANSFORMS_FIELD_NUMBER: builtins.int
+    @property
+    def transforms(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___TransformResponse]:
+        """the set of transforms to apply."""
+    def __init__(
+        self,
+        *,
+        transforms: collections.abc.Iterable[global___TransformResponse] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["transforms", b"transforms"]) -> None: ...
+
+global___TransformStackResponse = TransformStackResponse
+
+@typing_extensions.final
 class AnalyzerInfo(google.protobuf.message.Message):
     """AnalyzerInfo provides metadata about a PolicyPack inside an analyzer."""
 

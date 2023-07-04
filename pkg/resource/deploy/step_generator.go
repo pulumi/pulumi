@@ -722,46 +722,74 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, err
 		}
 	}
 
-	// Send the resource off to any Analyzers before being operated on.
+	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
+	// transforms, and *then* we do analysis, since we want analyzers to run on the final resource states.
 	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
-	for _, analyzer := range analyzers {
-		r := plugin.AnalyzerResource{
-			URN:        new.URN,
-			Type:       new.Type,
-			Name:       new.URN.Name(),
-			Properties: inputs,
-			Options: plugin.AnalyzerResourceOptions{
-				Protect:                 new.Protect,
-				IgnoreChanges:           goal.IgnoreChanges,
-				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
-				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
-				Aliases:                 new.GetAliases(),
-				CustomTimeouts:          new.CustomTimeouts,
-			},
-		}
-		providerResource := sg.getProviderResource(new.URN, new.Provider)
-		if providerResource != nil {
-			r.Provider = &plugin.AnalyzerProviderResource{
-				URN:        providerResource.URN,
-				Type:       providerResource.Type,
-				Name:       providerResource.URN.Name(),
-				Properties: providerResource.Inputs,
+	for _, transform := range []bool{true, false} {
+		for _, analyzer := range analyzers {
+			r := plugin.AnalyzerResource{
+				URN:        new.URN,
+				Type:       new.Type,
+				Name:       new.URN.Name(),
+				Properties: inputs,
+				Options: plugin.AnalyzerResourceOptions{
+					Protect:                 new.Protect,
+					IgnoreChanges:           goal.IgnoreChanges,
+					DeleteBeforeReplace:     goal.DeleteBeforeReplace,
+					AdditionalSecretOutputs: new.AdditionalSecretOutputs,
+					Aliases:                 new.GetAliases(),
+					CustomTimeouts:          new.CustomTimeouts,
+				},
 			}
-		}
-
-		diagnostics, err := analyzer.Analyze(r)
-		if err != nil {
-			return nil, err
-		}
-		for _, d := range diagnostics {
-			if d.EnforcementLevel == apitype.Mandatory {
-				if !sg.deployment.preview {
-					invalid = true
+			providerResource := sg.getProviderResource(new.URN, new.Provider)
+			if providerResource != nil {
+				r.Provider = &plugin.AnalyzerProviderResource{
+					URN:        providerResource.URN,
+					Type:       providerResource.Type,
+					Name:       providerResource.URN.Name(),
+					Properties: providerResource.Inputs,
 				}
-				sg.sawError = true
 			}
-			// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
-			sg.opts.Events.OnPolicyViolation(new.URN, d)
+
+			if transform {
+				transformed, err := analyzer.Transform(r)
+				if err != nil {
+					return nil, result.FromError(err)
+				} else if transformed != nil && len(transformed) > 0 {
+					// Emit a nice message so users know what was transformed.
+					info, err := analyzer.GetAnalyzerInfo()
+					if err != nil {
+						return nil, result.FromError(err)
+					}
+					transNew := *new
+					transNew.Inputs = transformed
+					diff, err := sg.diff(urn, new, &transNew, oldInputs, oldOutputs, transformed, prov, allowUnknowns, goal.IgnoreChanges)
+					if err != nil {
+						sg.opts.Events.OnPolicyTransform(new.URN, x, y, z, nil)
+					} else if diff.Changes == plugin.DiffSome {
+						sg.opts.Events.OnPolicyTransform(new.URN, x, y, z, nil)
+					}
+
+					// Finally, use the transformed inputs rather than the old ones from this point onwards.
+					inputs = transformed
+					new.Inputs = transformed
+				}
+			} else {
+				diagnostics, err := analyzer.Analyze(r)
+				if err != nil {
+					return nil, result.FromError(err)
+				}
+				for _, d := range diagnostics {
+					if d.EnforcementLevel == apitype.Mandatory {
+						if !sg.deployment.preview {
+							invalid = true
+						}
+						sg.sawError = true
+					}
+					// For now, we always use the URN we have here rather than a URN specified with the diagnostic.
+					sg.opts.Events.OnPolicyViolation(new.URN, d)
+				}
+			}
 		}
 	}
 

@@ -280,6 +280,132 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDia
 	return diags, nil
 }
 
+// Transform is given the opportunity to transform a single resource, and returns its new properties.
+func (a *analyzer) Transform(r AnalyzerResource) ([]TransformResult, error) {
+	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
+
+	label := fmt.Sprintf("%s.Transform(%s)", a.label(), t)
+	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	mprops, err := MarshalProperties(props,
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	if err != nil {
+		return nil, err
+	}
+
+	provider, err := marshalProvider(r.Provider)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.client.Transform(a.ctx.Request(), &pulumirpc.AnalyzeRequest{
+		Urn:        string(urn),
+		Type:       string(t),
+		Name:       string(name),
+		Properties: mprops,
+		Options:    marshalResourceOptions(r.Options),
+		Provider:   provider,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		return nil, rpcError
+	}
+
+	/*
+		if tURN := resp.GetUrn(); tURN != "" && tURN != string(urn) {
+			return nil, errors.Wrap(err, "expected transformed URN to match input URN")
+		}
+	*/
+
+	rprops, err := UnmarshalProperties(resp.GetProperties(),
+		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	if err != nil {
+		return nil, err
+	}
+
+	logging.V(7).Infof("%s success: #returns=%d", label, len(rprops))
+	return rprops, nil
+}
+
+// TransformStack is given the opportunity to transfom all resources in the stack, and returns the
+// resulting rewritten properties in a map indexed by resource URN.
+func (a *analyzer) TransformStack(resources []AnalyzerStackResource) (map[resource.URN][]TransformResult, error) {
+	logging.V(7).Infof("%s.TransformStack(#resources=%d) executing", a.label(), len(resources))
+
+	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
+	for idx, resource := range resources {
+		props, err := MarshalProperties(resource.Properties,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		if err != nil {
+			return nil, errors.Wrap(err, "marshalling properties")
+		}
+
+		provider, err := marshalProvider(resource.Provider)
+		if err != nil {
+			return nil, err
+		}
+
+		propertyDeps := make(map[string]*pulumirpc.AnalyzerPropertyDependencies)
+		for pk, pd := range resource.PropertyDependencies {
+			// Skip properties that have no dependencies.
+			if len(pd) == 0 {
+				continue
+			}
+
+			pdeps := make([]string, 0, 1)
+			for _, d := range pd {
+				pdeps = append(pdeps, string(d))
+			}
+			propertyDeps[string(pk)] = &pulumirpc.AnalyzerPropertyDependencies{
+				Urns: pdeps,
+			}
+		}
+
+		protoResources[idx] = &pulumirpc.AnalyzerResource{
+			Urn:                  string(resource.URN),
+			Type:                 string(resource.Type),
+			Name:                 string(resource.Name),
+			Properties:           props,
+			Options:              marshalResourceOptions(resource.Options),
+			Provider:             provider,
+			Parent:               string(resource.Parent),
+			Dependencies:         convertURNs(resource.Dependencies),
+			PropertyDependencies: propertyDeps,
+		}
+	}
+
+	resp, err := a.client.TransformStack(a.ctx.Request(), &pulumirpc.AnalyzeStackRequest{
+		Resources: protoResources,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		// Handle the case where we the policy pack doesn't implement a recent enough
+		// AnalyzerService to support the AnalyzeStack method. Ignore the error as it
+		// just means the analyzer isn't capable of this specific type of check.
+		if rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s.TransformStack(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			return nil, nil
+		}
+
+		logging.V(7).Infof("%s.TransformStack(...) failed: err=%v", a.label(), rpcError)
+		return nil, rpcError
+	}
+
+	transforms := resp.GetTransforms()
+	logging.V(7).Infof("%s.TransformStack(...) success: transforms=#%d", a.label(), len(transforms))
+
+	results := make(map[resource.URN]resource.PropertyMap)
+	for _, transform := range transforms {
+		props, err := UnmarshalProperties(transform.GetProperties(),
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		if err != nil {
+			return nil, err
+		}
+		results[resource.URN(transform.GetUrn())] = props
+	}
+	return results, nil
+}
+
 // GetAnalyzerInfo returns metadata about the policies contained in this analyzer plugin.
 func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	label := fmt.Sprintf("%s.GetAnalyzerInfo()", a.label())

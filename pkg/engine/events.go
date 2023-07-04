@@ -60,6 +60,8 @@ func NewEvent(typ EventType, payload interface{}) Event {
 		_, ok = payload.(ResourceOperationFailedPayload)
 	case PolicyViolationEvent:
 		_, ok = payload.(PolicyViolationEventPayload)
+	case PolicyTransformEvent:
+		_, ok = payload.(PolicyTransformEventPayload)
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -83,6 +85,7 @@ const (
 	ResourceOutputsEvent    EventType = "resource-outputs"
 	ResourceOperationFailed EventType = "resource-operationfailed"
 	PolicyViolationEvent    EventType = "policy-violation"
+	PolicyTransformEvent    EventType = "policy-transform"
 )
 
 func (e Event) Payload() interface{} {
@@ -113,6 +116,17 @@ type PolicyViolationEventPayload struct {
 	PolicyPackName    string
 	PolicyPackVersion string
 	EnforcementLevel  apitype.EnforcementLevel
+	Prefix            string
+}
+
+// PolicyTransformEventPayload is the payload for an event with type `policy-transform`.
+type PolicyTransformEventPayload struct {
+	ResourceURN       resource.URN
+	Message           string
+	Color             colors.Colorization
+	PolicyName        string
+	PolicyPackName    string
+	PolicyPackVersion string
 	Prefix            string
 }
 
@@ -456,6 +470,43 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 		PolicyPackName:    d.PolicyPackName,
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
+		Prefix:            logging.FilterString(prefix.String()),
+	}))
+}
+
+func (e *eventEmitter) policyTransformEvent(urn resource.URN, policyName, policyPackName, policyPackVersion string, diffProps []string) {
+	contract.Requiref(e != nil, "e", "!= nil")
+
+	// Write prefix.
+	var prefix bytes.Buffer
+	prefix.WriteString(colors.SpecInfo)
+
+	// Write the message itself.
+	var buffer bytes.Buffer
+	buffer.WriteString(colors.SpecNote)
+
+	if len(diffProps) == 0 {
+		buffer.WriteString("this resource was transformed, but it was not possible to determine a diff")
+	} else {
+		buffer.WriteString("this resource's properties were transformed: ")
+		for i, diffProp := range diffProps {
+			if i > 0 {
+				buffer.WriteString(", ")
+			}
+			buffer.WriteString(diffProp)
+		}
+	}
+
+	buffer.WriteString(colors.Reset)
+	buffer.WriteRune('\n')
+
+	e.sendEvent(NewEvent(PolicyTransformEvent, PolicyTransformEventPayload{
+		ResourceURN:       urn,
+		Message:           logging.FilterString(buffer.String()),
+		Color:             colors.Raw,
+		PolicyName:        policyName,
+		PolicyPackName:    policyPackName,
+		PolicyPackVersion: policyPackVersion,
 		Prefix:            logging.FilterString(prefix.String()),
 	}))
 }

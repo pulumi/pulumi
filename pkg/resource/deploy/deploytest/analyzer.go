@@ -15,6 +15,7 @@
 package deploytest
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -23,8 +24,10 @@ import (
 type Analyzer struct {
 	Info plugin.AnalyzerInfo
 
-	AnalyzeF      func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
-	AnalyzeStackF func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
+	AnalyzeF        func(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnostic, error)
+	AnalyzeStackF   func(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error)
+	TransformF      func(r plugin.AnalyzerResource) (resource.PropertyMap, error)
+	TransformStackF func(resources []plugin.AnalyzerStackResource) (map[resource.URN]resource.PropertyMap, error)
 
 	ConfigureF func(policyConfig map[string]plugin.AnalyzerPolicyConfig) error
 }
@@ -49,6 +52,20 @@ func (a *Analyzer) Analyze(r plugin.AnalyzerResource) ([]plugin.AnalyzeDiagnosti
 func (a *Analyzer) AnalyzeStack(resources []plugin.AnalyzerStackResource) ([]plugin.AnalyzeDiagnostic, error) {
 	if a.AnalyzeStackF != nil {
 		return a.AnalyzeStackF(resources)
+	}
+	return nil, nil
+}
+
+func (a *Analyzer) Transform(r plugin.AnalyzerResource) (resource.PropertyMap, error) {
+	if a.TransformF != nil {
+		return a.TransformF(r)
+	}
+	return nil, nil
+}
+
+func (a *Analyzer) TransformStack(resources []plugin.AnalyzerStackResource) (map[resource.URN]resource.PropertyMap, error) {
+	if a.TransformStackF != nil {
+		return a.TransformStackF(resources)
 	}
 	return nil, nil
 }

@@ -634,6 +634,10 @@ func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeD
 	acts.Opts.Events.policyViolationEvent(urn, d)
 }
 
+func (acts *updateActions) OnPolicyTransform(urn resource.URN, policyName, policyPackName, policypackVersion string, d plugin.AnalyzeDiagnostic) {
+	acts.Opts.Events.policyTransformEvent(urn, policyName, policyPackName, policyPackVersion, d)
+}
+
 func (acts *updateActions) MaybeCorrupt() bool {
 	return acts.maybeCorrupt
 }
@@ -750,6 +754,10 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 
 func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
 	acts.Opts.Events.policyViolationEvent(urn, d)
+}
+
+func (acts *previewActions) OnPolicyTransform(urn resource.URN, policyName, policyPackName, policyPackVersion string, d plugin.AnalyzeDiagnostic) {
+	acts.Opts.Events.policyViolationEvent(urn, policyName, policyPackName, policyPackVersion, d)
 }
 
 func (acts *previewActions) MaybeCorrupt() bool {

@@ -37,6 +37,10 @@ type Analyzer interface {
 	// AnalyzeStack analyzes all resources after a successful preview or update.
 	// Is called after all resources have been processed, and all changes applied.
 	AnalyzeStack(resources []AnalyzerStackResource) ([]AnalyzeDiagnostic, error)
+	// Transform is given the opportunity to optionally transform a single resource's properties.
+	Transform(r AnalyzerResource) ([]TransformResult, error)
+	// TransformStack is given the opportunity to optionally transform an entire stack of resources.
+	TransformStack(resources []AnalyzerStackResource) (map[resource.URN][]TransformResult, error)
 	// GetAnalyzerInfo returns metadata about the analyzer (e.g., list of policies contained).
 	GetAnalyzerInfo() (AnalyzerInfo, error)
 	// GetPluginInfo returns this plugin's information.
@@ -93,6 +97,17 @@ type AnalyzeDiagnostic struct {
 	Tags              []string
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
+}
+
+// TransformResult indicates that a resource transfomration took place, and contains the resulting
+// properties and associated metadata.
+type TransformResult struct {
+	TransformName     string
+	PolicyPackName    string
+	PolicyPackVersion string
+	Description       string
+	URN               resource.URN
+	Properties        resource.PropertyMap
 }
 
 // AnalyzerInfo provides metadata about a PolicyPack inside an analyzer.
