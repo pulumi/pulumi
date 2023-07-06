@@ -144,7 +144,9 @@ jobs:
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           cache: true
-          cache-dependency-path: '*/go.sum'
+          cache-dependency-path: |
+            pkg/go.sum
+            .gocache.tmp
       - name: Prime Go cache
         if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
         # Compile every test to ensure we populate a good cache entry.

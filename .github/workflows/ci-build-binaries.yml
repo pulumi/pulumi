@@ -76,7 +76,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Configure Go Cache Key
         env:
-          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}-${{ inputs.os }}-${{ inputs.arch }}"
+          CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
       - uses: actions/setup-go@v3
         with:
