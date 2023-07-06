@@ -72,6 +72,11 @@ func TestInputElementType(t *testing.T) {
 			want: reflect.TypeOf([]string{}),
 		},
 		{
+			desc: "ArrayOutput",
+			give: reflect.TypeOf(ArrayOutput[int]{}),
+			want: reflect.TypeOf([]int{}),
+		},
+		{
 			desc: "not an input",
 			give: reflect.TypeOf(42),
 			want: nil,

@@ -55,3 +55,9 @@ func JoinContext[A any, I Input[A]](ctx context.Context, i Input[I]) Output[A] {
 func Join[A any, I Input[A]](i Input[I]) Output[A] {
 	return JoinContext[A, I](context.Background(), i)
 }
+
+// All combines multiple inputs into a single output
+// that produces a list of all the input values.
+func All(args ...Input[any]) Output[[]any] {
+	return Array[any](args).ToOutput(context.Background())
+}

@@ -180,6 +180,25 @@ func MustCast[T any](o internal.Output) Output[T] {
 	return v
 }
 
+// SpecializeOutput turns any Input[T] into a concrete Output type O.
+//
+// O must meet the following requirements:
+//
+//   - implement ElementType() returning a type compatible with T
+//   - embed *OutputState as a field
+//
+// For example, given an Output[[]string], you can use SpecializeOutput
+// to build an ArrayOutput[string].
+//
+//	var o pulumix.Output[[]string] = // ...
+//	ao := pulumix.SpecializeOutput[pulumix.ArrayOutput[string]](o)
+func SpecializeOutput[O OutputOf[T], T any](i Input[T]) O {
+	state := internal.GetOutputState(i.ToOutput(context.Background()))
+	output := reflect.New(typeOf[O]()).Elem()
+	internal.SetOutputState(output, state)
+	return output.Interface().(O)
+}
+
 // typeOf reports the reflect.Type of T.
 //
 // This may be deleted if https://github.com/golang/go/issues/60088 lands.

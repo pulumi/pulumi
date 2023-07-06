@@ -70,3 +70,25 @@ func TestJoin_failedOutput(t *testing.T) {
 	_, _, _, _, err := internal.AwaitOutput(context.Background(), o)
 	assert.ErrorIs(t, err, giveErr)
 }
+
+func TestAll(t *testing.T) {
+	t.Parallel()
+
+	o := pulumix.All(
+		pulumix.Val("a").AsAny(),
+		pulumix.Val(1).AsAny(),
+		pulumix.Val(true).AsAny(),
+		pulumix.Array[string]{pulumix.Val("b"), pulumix.Val("c")}.AsAny(),
+		pulumix.Map[int]{"d": pulumix.Val(3), "e": pulumix.Val(4)}.AsAny(),
+	)
+	v, _, _, _, err := internal.AwaitOutput(context.Background(), o)
+	require.NoError(t, err)
+
+	assert.Equal(t, []any{
+		"a",
+		1,
+		true,
+		[]string{"b", "c"},
+		map[string]int{"d": 3, "e": 4},
+	}, v)
+}
