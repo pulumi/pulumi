@@ -45,8 +45,6 @@ import (
 // This token is always an invalid module since ':' is not allowed within modules.
 const ExternalModuleSig = ":always-external:"
 
-var notUtil = false
-
 type typeDetails struct {
 	// Note: if any of {ptr,array,map}Input are set, input and the corresponding output field must also be set. The
 	// mark* functions ensure that these invariants hold.
@@ -2155,7 +2153,7 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 		imports = []string{"context", "reflect"}
 	}
 
-	pkg.genHeader(buffer, imports, importsAndAliases, notUtil)
+	pkg.genHeader(buffer, imports, importsAndAliases, false /* isUtil */)
 	if err := pkg.genFunction(buffer, f); err != nil {
 		return "", err
 	}
@@ -2972,7 +2970,7 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	}
 	pkg.getImports(variables, importsAndAliases)
 	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
-	pkg.genHeader(w, nil, importsAndAliases, notUtil)
+	pkg.genHeader(w, nil, importsAndAliases, false /* isUtil */)
 
 	// in case we're not using the internal package, assign to a blank var
 	fmt.Fprintf(w, "var _ = internal.GetEnvOrDefault\n")
@@ -3057,7 +3055,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		}
 	}
 
-	pkg.genHeader(w, []string{"fmt"}, imports, notUtil)
+	pkg.genHeader(w, []string{"fmt"}, imports, false /* isUtil */)
 
 	var provider *schema.Resource
 	registrations := codegen.StringSet{}
@@ -3753,8 +3751,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// Version
 			versionBuf := &bytes.Buffer{}
 			importsAndAliases := map[string]string{}
-			isUtil := true
-			pkg.genHeader(versionBuf, []string{"github.com/blang/semver"}, importsAndAliases, isUtil)
+			pkg.genHeader(versionBuf, []string{"github.com/blang/semver"}, importsAndAliases, true /* isUtil */)
 			err = pkg.GenVersionFile(versionBuf)
 			if err != nil {
 				return nil, err
@@ -3789,7 +3786,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 			importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases, notUtil)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases, false /* isUtil */)
 
 			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
 				return nil, err
@@ -3832,7 +3829,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, goImports, imports, notUtil)
+			pkg.genHeader(buffer, goImports, imports, false /* isUtil */)
 
 			for _, e := range pkg.enums {
 				if err := pkg.genEnum(buffer, e); err != nil {
@@ -3889,8 +3886,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
 
-			isUtil := true
-			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases, isUtil)
+			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases, true /* isUtil */)
 
 			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name())
 			if pkg.rootPackageName != "" {
@@ -3943,7 +3939,7 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType, kno
 	}
 
 	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
-	pkg.genHeader(w, goImports, importsAndAliases, notUtil)
+	pkg.genHeader(w, goImports, importsAndAliases, false /* isUtil */)
 	// in case we're not using the internal package, assign to a blank var
 	fmt.Fprintf(w, "var _ = internal.GetEnvOrDefault\n")
 
