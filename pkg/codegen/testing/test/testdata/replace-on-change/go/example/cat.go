@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
 
 type Cat struct {
@@ -40,6 +41,7 @@ func NewCat(ctx *pulumi.Context,
 		"toy.color",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Cat
 	err := ctx.RegisterResource("example::Cat", name, args, &resource, opts...)
 	if err != nil {

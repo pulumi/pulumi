@@ -8,9 +8,12 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-disable-defaults/example/internal"
 	"plain-object-disable-defaults/example/mod1"
 	"plain-object-disable-defaults/example/mod2"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // BETA FEATURE - Options to configure the Helm Release resource.
 type HelmReleaseSettings struct {

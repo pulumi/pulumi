@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
 
 type Dog struct {
@@ -27,6 +28,7 @@ func NewDog(ctx *pulumi.Context,
 		"bone",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Dog
 	err := ctx.RegisterResource("example::Dog", name, args, &resource, opts...)
 	if err != nil {

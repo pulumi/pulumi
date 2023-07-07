@@ -3,9 +3,10 @@
     "mongodbatlas/doc.go",
     "mongodbatlas/getCustomDbRoles.go",
     "mongodbatlas/init.go",
+    "mongodbatlas/internal/pulumiUtilities.go",
+    "mongodbatlas/internal/pulumiVersion.go",
     "mongodbatlas/provider.go",
     "mongodbatlas/pulumi-plugin.json",
-    "mongodbatlas/pulumiTypes.go",
-    "mongodbatlas/pulumiUtilities.go"
+    "mongodbatlas/pulumiTypes.go"
   ]
 }

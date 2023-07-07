@@ -7,8 +7,11 @@ import (
 	"context"
 	"reflect"
 
+	"cyclic-types/example/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type AcyclicReferent struct {
 	Bar  IndirectCycleS `pulumi:"bar"`

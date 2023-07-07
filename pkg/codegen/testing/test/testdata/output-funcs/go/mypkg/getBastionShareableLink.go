@@ -8,11 +8,13 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // Response for all the Bastion Shareable Link endpoints.
 // API Version: 2020-11-01.
 func GetBastionShareableLink(ctx *pulumi.Context, args *GetBastionShareableLinkArgs, opts ...pulumi.InvokeOption) (*GetBastionShareableLinkResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv GetBastionShareableLinkResult
 	err := ctx.Invoke("mypkg::getBastionShareableLink", args, &rv, opts...)
 	if err != nil {

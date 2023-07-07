@@ -1,11 +1,12 @@
 {
   "emittedFiles": [
-    "my8664/conditionalAccessPolicy.go",
-    "my8664/doc.go",
-    "my8664/init.go",
-    "my8664/provider.go",
-    "my8664/pulumi-plugin.json",
-    "my8664/pulumiTypes.go",
-    "my8664/pulumiUtilities.go"
+    "example/conditionalAccessPolicy.go",
+    "example/doc.go",
+    "example/init.go",
+    "example/internal/pulumiUtilities.go",
+    "example/internal/pulumiVersion.go",
+    "example/provider.go",
+    "example/pulumi-plugin.json",
+    "example/pulumiTypes.go"
   ]
 }

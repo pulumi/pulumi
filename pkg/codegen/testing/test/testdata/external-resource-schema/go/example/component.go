@@ -13,6 +13,7 @@ import (
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
 	storagev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/storage/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"internal"
 )
 
 type Component struct {
@@ -39,6 +40,7 @@ func NewComponent(ctx *pulumi.Context,
 	if args.RequiredMetadataMap == nil {
 		return nil, errors.New("invalid value for required argument 'RequiredMetadataMap'")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

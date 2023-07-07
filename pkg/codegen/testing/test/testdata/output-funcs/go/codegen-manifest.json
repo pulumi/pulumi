@@ -11,10 +11,11 @@
     "mypkg/getClientConfig.go",
     "mypkg/getIntegrationRuntimeObjectMetadatum.go",
     "mypkg/init.go",
+    "mypkg/internal/pulumiUtilities.go",
+    "mypkg/internal/pulumiVersion.go",
     "mypkg/listStorageAccountKeys.go",
     "mypkg/provider.go",
     "mypkg/pulumi-plugin.json",
-    "mypkg/pulumiTypes.go",
-    "mypkg/pulumiUtilities.go"
+    "mypkg/pulumiTypes.go"
   ]
 }

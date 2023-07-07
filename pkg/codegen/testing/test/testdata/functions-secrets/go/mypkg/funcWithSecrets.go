@@ -7,10 +7,12 @@ import (
 	"context"
 	"reflect"
 
+	"functions-secrets/mypkg/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func FuncWithSecrets(ctx *pulumi.Context, args *FuncWithSecretsArgs, opts ...pulumi.InvokeOption) (*FuncWithSecretsResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv FuncWithSecretsResult
 	err := ctx.Invoke("mypkg::funcWithSecrets", args, &rv, opts...)
 	if err != nil {

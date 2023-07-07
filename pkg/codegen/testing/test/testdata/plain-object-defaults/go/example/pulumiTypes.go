@@ -8,9 +8,12 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-defaults/example/internal"
 	"plain-object-defaults/example/mod1"
 	"plain-object-defaults/example/mod2"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // BETA FEATURE - Options to configure the Helm Release resource.
 type HelmReleaseSettings struct {
@@ -29,13 +32,13 @@ func (val *HelmReleaseSettings) Defaults() *HelmReleaseSettings {
 	}
 	tmp := *val
 	if tmp.Driver == nil {
-		if d := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
+		if d := internal.GetEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
 			driver_ := d.(string)
 			tmp.Driver = &driver_
 		}
 	}
 	if tmp.PluginsPath == nil {
-		if d := getEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
 			pluginsPath_ := d.(string)
 			tmp.PluginsPath = &pluginsPath_
 		}
@@ -71,12 +74,12 @@ func (val *HelmReleaseSettingsArgs) Defaults() *HelmReleaseSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Driver == nil {
-		if d := getEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
+		if d := internal.GetEnvOrDefault("secret", nil, "PULUMI_K8S_HELM_DRIVER"); d != nil {
 			tmp.Driver = pulumi.StringPtr(d.(string))
 		}
 	}
 	if tmp.PluginsPath == nil {
-		if d := getEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, nil, "PULUMI_K8S_HELM_PLUGINS_PATH"); d != nil {
 			tmp.PluginsPath = pulumi.StringPtr(d.(string))
 		}
 	}
@@ -245,13 +248,13 @@ func (val *KubeClientSettings) Defaults() *KubeClientSettings {
 	}
 	tmp := *val
 	if tmp.Burst == nil {
-		if d := getEnvOrDefault(nil, parseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
 			burst_ := d.(int)
 			tmp.Burst = &burst_
 		}
 	}
 	if tmp.Qps == nil {
-		if d := getEnvOrDefault(nil, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
 			qps_ := d.(float64)
 			tmp.Qps = &qps_
 		}
@@ -288,12 +291,12 @@ func (val *KubeClientSettingsArgs) Defaults() *KubeClientSettingsArgs {
 	}
 	tmp := *val
 	if tmp.Burst == nil {
-		if d := getEnvOrDefault(nil, parseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvInt, "PULUMI_K8S_CLIENT_BURST"); d != nil {
 			tmp.Burst = pulumi.IntPtr(d.(int))
 		}
 	}
 	if tmp.Qps == nil {
-		if d := getEnvOrDefault(nil, parseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
+		if d := internal.GetEnvOrDefault(nil, internal.ParseEnvFloat, "PULUMI_K8S_CLIENT_QPS"); d != nil {
 			tmp.Qps = pulumi.Float64Ptr(d.(float64))
 		}
 	}
@@ -474,14 +477,14 @@ func (val *LayeredType) Defaults() *LayeredType {
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
-		if d := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
+		if d := internal.GetEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
 			question_ := d.(string)
 			tmp.Question = &question_
 		}
 	}
 	tmp.Recursive = tmp.Recursive.Defaults()
 
-	if isZero(tmp.Thinker) {
+	if internal.IsZero(tmp.Thinker) {
 		tmp.Thinker = "not a good interaction"
 	}
 	return &tmp
@@ -525,7 +528,7 @@ func (val *LayeredTypeArgs) Defaults() *LayeredTypeArgs {
 	tmp.PlainOther = tmp.PlainOther.Defaults()
 
 	if tmp.Question == nil {
-		if d := getEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
+		if d := internal.GetEnvOrDefault("<unknown>", nil, "PULUMI_THE_QUESTION"); d != nil {
 			tmp.Question = pulumi.StringPtr(d.(string))
 		}
 	}

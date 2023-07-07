@@ -3,9 +3,10 @@
     "example/doc.go",
     "example/foo.go",
     "example/init.go",
+    "example/internal/pulumiUtilities.go",
+    "example/internal/pulumiVersion.go",
     "example/nested/pulumiTypes.go",
     "example/provider.go",
-    "example/pulumi-plugin.json",
-    "example/pulumiUtilities.go"
+    "example/pulumi-plugin.json"
   ]
 }

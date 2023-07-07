@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"dash-named-schema/foo"
+	"dash-named-schema/foo/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -24,6 +25,7 @@ func NewModuleResource(ctx *pulumi.Context,
 		args = &ModuleResourceArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ModuleResource
 	err := ctx.RegisterResource("foo-bar:submodule1:ModuleResource", name, args, &resource, opts...)
 	if err != nil {

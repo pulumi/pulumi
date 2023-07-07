@@ -5,10 +5,12 @@ package mypkg
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
 func GetClientConfig(ctx *pulumi.Context, opts ...pulumi.InvokeOption) (*GetClientConfigResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv GetClientConfigResult
 	err := ctx.Invoke("mypkg::getClientConfig", nil, &rv, opts...)
 	if err != nil {

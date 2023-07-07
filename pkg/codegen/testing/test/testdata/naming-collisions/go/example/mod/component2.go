@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"naming-collisions/example/internal"
 )
 
 type Component2 struct {
@@ -21,6 +22,7 @@ func NewComponent2(ctx *pulumi.Context,
 		args = &Component2Args{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component2
 	err := ctx.RegisterResource("example:mod:Component2", name, args, &resource, opts...)
 	if err != nil {

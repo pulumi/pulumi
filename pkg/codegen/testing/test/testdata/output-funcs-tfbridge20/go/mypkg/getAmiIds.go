@@ -8,12 +8,14 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs-tfbridge20/mypkg/internal"
 )
 
 // Taken from pulumi-AWS to regress an issue
 //
 // Deprecated: aws.getAmiIds has been deprecated in favor of aws.ec2.getAmiIds
 func GetAmiIds(ctx *pulumi.Context, args *GetAmiIdsArgs, opts ...pulumi.InvokeOption) (*GetAmiIdsResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv GetAmiIdsResult
 	err := ctx.Invoke("mypkg::getAmiIds", args, &rv, opts...)
 	if err != nil {

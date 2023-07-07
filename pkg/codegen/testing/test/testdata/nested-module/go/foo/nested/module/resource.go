@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"nested-module/foo/internal"
 )
 
 type Resource struct {
@@ -30,6 +31,7 @@ func NewResource(ctx *pulumi.Context,
 		"bar",
 	})
 	opts = append(opts, secrets)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Resource
 	err := ctx.RegisterResource("foo:nested/module:Resource", name, args, &resource, opts...)
 	if err != nil {

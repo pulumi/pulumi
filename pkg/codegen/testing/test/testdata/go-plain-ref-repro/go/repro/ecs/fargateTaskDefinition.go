@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-plain-ref-repro/repro/internal"
 )
 
 type FargateTaskDefinition struct {
@@ -23,6 +24,7 @@ func NewFargateTaskDefinition(ctx *pulumi.Context,
 		args = &FargateTaskDefinitionArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource FargateTaskDefinition
 	err := ctx.RegisterRemoteComponentResource("repro:ecs:FargateTaskDefinition", name, args, &resource, opts...)
 	if err != nil {

@@ -5,10 +5,12 @@ package mypkg
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
 
 // n/a
 func FuncWithEmptyOutputs(ctx *pulumi.Context, args *FuncWithEmptyOutputsArgs, opts ...pulumi.InvokeOption) error {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv struct{}
 	err := ctx.Invoke("mypkg::funcWithEmptyOutputs", args, &rv, opts...)
 	return err

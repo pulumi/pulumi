@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"go-nested-collections/repro/internal"
 )
 
 type Consumer struct {
@@ -21,6 +22,7 @@ func NewConsumer(ctx *pulumi.Context,
 		args = &ConsumerArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Consumer
 	err := ctx.RegisterResource("repro:overlap:Consumer", name, args, &resource, opts...)
 	if err != nil {

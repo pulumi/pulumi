@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"resource-args-python/example/internal"
 )
 
 type Pet struct {
@@ -23,6 +24,7 @@ func NewPet(ctx *pulumi.Context,
 		args = &PetArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Pet
 	err := ctx.RegisterResource("example::Pet", name, args, &resource, opts...)
 	if err != nil {

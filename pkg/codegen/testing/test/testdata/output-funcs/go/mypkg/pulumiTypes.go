@@ -8,7 +8,10 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"output-funcs/mypkg/internal"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // Bastion Shareable Link.
 type BastionShareableLink struct {

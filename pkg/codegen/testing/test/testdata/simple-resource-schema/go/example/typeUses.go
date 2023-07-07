@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema/example/internal"
 )
 
 type TypeUses struct {
@@ -25,7 +26,7 @@ func NewTypeUses(ctx *pulumi.Context,
 		args = &TypeUsesArgs{}
 	}
 
-	opts = pkgResourceDefaultOpts(opts)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource TypeUses
 	err := ctx.RegisterResource("example::TypeUses", name, args, &resource, opts...)
 	if err != nil {

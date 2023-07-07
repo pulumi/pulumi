@@ -5,8 +5,9 @@
     "repro/ecs/init.go",
     "repro/ecs/pulumiTypes.go",
     "repro/init.go",
+    "repro/internal/pulumiUtilities.go",
+    "repro/internal/pulumiVersion.go",
     "repro/provider.go",
-    "repro/pulumi-plugin.json",
-    "repro/pulumiUtilities.go"
+    "repro/pulumi-plugin.json"
   ]
 }

@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
 
 type ToyStore struct {
@@ -34,6 +35,7 @@ func NewToyStore(ctx *pulumi.Context,
 		"wanted[*]",
 	})
 	opts = append(opts, replaceOnChanges)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ToyStore
 	err := ctx.RegisterResource("example::ToyStore", name, args, &resource, opts...)
 	if err != nil {

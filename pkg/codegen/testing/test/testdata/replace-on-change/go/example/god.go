@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"replace-on-change/example/internal"
 )
 
 type God struct {
@@ -23,6 +24,7 @@ func NewGod(ctx *pulumi.Context,
 		args = &GodArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource God
 	err := ctx.RegisterResource("example::God", name, args, &resource, opts...)
 	if err != nil {

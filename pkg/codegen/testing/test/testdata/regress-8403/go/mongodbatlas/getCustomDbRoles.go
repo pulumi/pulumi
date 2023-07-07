@@ -5,9 +5,11 @@ package mongodbatlas
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-8403/mongodbatlas/internal"
 )
 
 func LookupCustomDbRoles(ctx *pulumi.Context, args *LookupCustomDbRolesArgs, opts ...pulumi.InvokeOption) (*LookupCustomDbRolesResult, error) {
+	opts = internal.PkgInvokeDefaultOpts(opts)
 	var rv LookupCustomDbRolesResult
 	err := ctx.Invoke("mongodbatlas::getCustomDbRoles", args, &rv, opts...)
 	if err != nil {

@@ -651,7 +651,8 @@
       ]
     },
     "go": {
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "output-funcs/mypkg"
     },
     "python": {},
     "csharp": {

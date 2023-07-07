@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"regress-go-10527/world/internal"
 )
 
 type WorldMap struct {
@@ -23,6 +24,7 @@ func NewWorldMap(ctx *pulumi.Context,
 		args = &WorldMapArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource WorldMap
 	err := ctx.RegisterResource("world::WorldMap", name, args, &resource, opts...)
 	if err != nil {

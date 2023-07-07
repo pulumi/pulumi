@@ -13,7 +13,8 @@
   "language": {
     "go": {
       "generateResourceContainerTypes": true,
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "resource-property-overlap/example"
     },
     "nodejs": {
       "dependencies": {

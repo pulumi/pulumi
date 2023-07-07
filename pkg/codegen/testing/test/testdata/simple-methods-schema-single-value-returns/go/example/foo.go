@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-methods-schema-single-value-returns/example/internal"
 )
 
 type Foo struct {
@@ -21,6 +22,7 @@ func NewFoo(ctx *pulumi.Context,
 		args = &FooArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Foo
 	err := ctx.RegisterRemoteComponentResource("example::Foo", name, args, &resource, opts...)
 	if err != nil {

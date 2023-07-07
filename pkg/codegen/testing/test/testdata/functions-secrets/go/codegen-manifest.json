@@ -3,8 +3,9 @@
     "mypkg/doc.go",
     "mypkg/funcWithSecrets.go",
     "mypkg/init.go",
+    "mypkg/internal/pulumiUtilities.go",
+    "mypkg/internal/pulumiVersion.go",
     "mypkg/provider.go",
-    "mypkg/pulumi-plugin.json",
-    "mypkg/pulumiUtilities.go"
+    "mypkg/pulumi-plugin.json"
   ]
 }

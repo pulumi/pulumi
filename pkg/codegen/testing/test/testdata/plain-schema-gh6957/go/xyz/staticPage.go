@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/pulumi/pulumi-aws/sdk/v4/go/aws/s3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-schema-gh6957/xyz/internal"
 )
 
 type StaticPage struct {
@@ -31,6 +32,7 @@ func NewStaticPage(ctx *pulumi.Context,
 	if args.IndexContent == nil {
 		return nil, errors.New("invalid value for required argument 'IndexContent'")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource StaticPage
 	err := ctx.RegisterRemoteComponentResource("xyz:index:StaticPage", name, args, &resource, opts...)
 	if err != nil {

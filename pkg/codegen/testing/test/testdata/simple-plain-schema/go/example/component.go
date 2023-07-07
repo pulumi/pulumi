@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-plain-schema/example/internal"
 )
 
 type Component struct {
@@ -32,6 +33,7 @@ func NewComponent(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Component
 	err := ctx.RegisterRemoteComponentResource("example::Component", name, args, &resource, opts...)
 	if err != nil {

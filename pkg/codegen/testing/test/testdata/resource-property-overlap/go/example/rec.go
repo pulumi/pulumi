@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"resource-property-overlap/example/internal"
 )
 
 type Rec struct {
@@ -23,6 +24,7 @@ func NewRec(ctx *pulumi.Context,
 		args = &RecArgs{}
 	}
 
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Rec
 	err := ctx.RegisterResource("example::Rec", name, args, &resource, opts...)
 	if err != nil {

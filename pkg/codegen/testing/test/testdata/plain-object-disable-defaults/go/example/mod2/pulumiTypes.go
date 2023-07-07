@@ -8,8 +8,11 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"plain-object-disable-defaults/example/internal"
 	"plain-object-disable-defaults/example/mod1"
 )
+
+var _ = internal.GetEnvOrDefault
 
 // A test for namespaces (mod 2)
 type Typ struct {

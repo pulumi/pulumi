@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"simple-enum-schema/plant"
+	"simple-enum-schema/plant/internal"
 )
 
 type RubberTree struct {
@@ -44,6 +45,7 @@ func NewRubberTree(ctx *pulumi.Context,
 	if args.Type == nil {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
 	if err != nil {

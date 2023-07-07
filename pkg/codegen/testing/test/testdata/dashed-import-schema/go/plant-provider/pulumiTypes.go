@@ -7,8 +7,11 @@ import (
 	"context"
 	"reflect"
 
+	"dashed-import-schema/plant-provider/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+var _ = internal.GetEnvOrDefault
 
 type Container struct {
 	Brightness *ContainerBrightness `pulumi:"brightness"`

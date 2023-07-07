@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"simple-resource-schema/example/internal"
 )
 
 type BarResource struct {
@@ -23,7 +24,7 @@ func NewBarResource(ctx *pulumi.Context,
 		args = &BarResourceArgs{}
 	}
 
-	opts = pkgResourceDefaultOpts(opts)
+	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource BarResource
 	err := ctx.RegisterRemoteComponentResource("bar::BarResource", name, args, &resource, opts...)
 	if err != nil {

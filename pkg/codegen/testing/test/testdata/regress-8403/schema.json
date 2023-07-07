@@ -29,7 +29,8 @@
       }
     },
     "go": {
-      "generateExtraInputTypes": true
+      "generateExtraInputTypes": true,
+      "importBasePath": "regress-8403/mongodbatlas"
     }
   }
 }

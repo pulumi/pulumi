@@ -44,7 +44,7 @@ types:
 language:
   go:
     {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/cyclic-types/go/example",
+      "importBasePath": "cyclic-types/example",
       "generateExtraInputTypes": true,
     }
   nodejs:
