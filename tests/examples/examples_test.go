@@ -152,14 +152,15 @@ func TestAccDynamicProviderSecrets(t *testing.T) {
 				"password": "s3cret",
 			},
 			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-				// Ensure the __provider input was marked secret
+				// Ensure the __provider input (and corresponding output) was marked secret
 				dynRes := stackInfo.Deployment.Resources[2]
-				providerVal := dynRes.Inputs["__provider"]
-				switch v := providerVal.(type) {
-				case string:
-					assert.Fail(t, "__provider was not a secret")
-				case map[string]interface{}:
-					assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+				for _, providerVal := range []interface{}{dynRes.Inputs["__provider"], dynRes.Outputs["__provider"]} {
+					switch v := providerVal.(type) {
+					case string:
+						assert.Fail(t, "__provider was not a secret")
+					case map[string]interface{}:
+						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
+					}
 				}
 				// Ensure the resulting output had the expected value
 				code, ok := stackInfo.Outputs["out"].(string)
