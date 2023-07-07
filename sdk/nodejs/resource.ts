@@ -269,8 +269,9 @@ export abstract class Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
-    // getProvider fetches the provider for the given module member, if any.
-    public getProvider(moduleMember: string): ProviderResource | undefined {
+    // getProviderInput fetches the provider for the given module member, if any. The result is Input to account for
+    // the possibility of Input values used to configure ResourceOptions.provider or ComponentResourceOptions.providers.
+    public getProviderInput(moduleMember: string): Input<ProviderResource|undefined> {
         const memComponents = moduleMember.split(":");
         if (memComponents.length !== 3) {
             return undefined;
@@ -278,6 +279,18 @@ export abstract class Resource {
         const pkg = memComponents[0];
 
         return this.__providers[pkg];
+    }
+
+    // Deprecated. getProviderInput fetches the provider for the given module member, if any. Prefer getProviderInput.
+    public getProvider(moduleMember: string): ProviderResource | undefined {
+        let p = this.getProviderInput(moduleMember);
+        if (p instanceof ProviderResource) {
+            return p;
+        }
+        const message = `getProvider cannot resolve ProviderResource promptly, since Input<ProviderResource> was used `+
+            `to configure ResourceOptions; please refactor the use of getProvider to getProviderInput`;
+        log.warn(message);
+        return undefined;
     }
 
     /**

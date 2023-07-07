@@ -18,7 +18,7 @@ import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs, Output } from "../output";
+import { Inputs, Output, output } from "../output";
 import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
@@ -107,7 +107,7 @@ export async function streamInvoke(
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
-        const provider = await ProviderResource.register(getProvider(tok, opts));
+        const provider = await ProviderResource.register(await getProvider(tok, opts));
         const req = createInvokeRequest(tok, serialized, provider, opts);
 
         // Call `streamInvoke`.
@@ -150,7 +150,7 @@ async function invokeAsync(tok: string, props: Inputs, opts: InvokeOptions): Pro
         // Fetch the monitor and make an RPC request.
         const monitor: any = getMonitor();
 
-        const provider = await ProviderResource.register(getProvider(tok, opts));
+        const provider = await ProviderResource.register(await getProvider(tok, opts));
         const req = createInvokeRequest(tok, serialized, provider, opts);
 
         const resp: any = await debuggablePromise(
@@ -216,8 +216,14 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
     return req;
 }
 
-function getProvider(tok: string, opts: InvokeOptions) {
-    return opts.provider ? opts.provider : opts.parent ? opts.parent.getProvider(tok) : undefined;
+async function getProvider(tok: string, opts: InvokeOptions): Promise<ProviderResource|undefined> {
+    if (opts.provider) {
+        return opts.provider;
+    }
+    if (opts.parent) {
+        return await output(opts.parent.getProviderInput(tok)).promise(/*withUnknowns*/false);
+    }
+    return undefined;
 }
 
 function deserializeResponse(tok: string, resp: any): any {
