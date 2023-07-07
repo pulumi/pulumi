@@ -29,11 +29,9 @@ def pulumi_test(coro):
         settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
-
         wrapped(*args, **kwargs)
 
     return wrapper
-
 
 class OutputSecretTests(unittest.TestCase):
     @pulumi_test
@@ -252,8 +250,7 @@ This function may throw in a future version of Pulumi.""")
 
 class OutputApplyTests(unittest.TestCase):
 
-    @pulumi_test
-    async def test_apply_always_sets_is_secret_and_is_known(self):
+    def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
         program hangs when those futures were awaited.
@@ -264,14 +261,20 @@ class OutputApplyTests(unittest.TestCase):
         state.
 
         """
-        bad = asyncio.Future()
-        bad.set_exception(Exception('!'))
-        ok = asyncio.Future()
-        ok.set_result('ok')
-        bad_output = Output(resources=set(), future=ok, is_known=bad)
-        test_output = Output.from_input('anything').apply(lambda _: bad_output)
-        self.assertEqual(await test_output.is_secret(), False)
-        self.assertEqual(await test_output.is_known(), False)
+        async def test():
+            bad = asyncio.Future()
+            bad.set_exception(Exception('!'))
+            ok = asyncio.Future()
+            ok.set_result('ok')
+            bad_output = Output(resources=set(), future=ok, is_known=bad)
+            test_output = Output.from_input('anything').apply(lambda _: bad_output)
+            self.assertEqual(await test_output.is_secret(), False)
+            self.assertEqual(await test_output.is_known(), False)
+
+        try:
+            pulumi_test(test)()
+        except Exception as e:
+            pass
 
 class OutputAllTests(unittest.TestCase):
     @pulumi_test

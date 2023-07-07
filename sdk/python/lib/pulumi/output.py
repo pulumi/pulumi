@@ -37,6 +37,7 @@ from typing import (
 
 from . import _types, runtime
 from .runtime import rpc
+from .runtime.settings import _get_rpc_manager
 from .runtime.sync_await import _sync_await
 
 if TYPE_CHECKING:
@@ -116,6 +117,10 @@ class Output(Generic[T_co]):
         else:
             self._is_secret = asyncio.Future()
             self._is_secret.set_result(False)
+
+        # We want to make sure every Output we create resolves before the program closes, we're "abusing" the
+        # RPCManager to track that even though these aren't strictly speaking RPC calls.
+        _get_rpc_manager().rpcs.append(self.future())
 
     # Private implementation details - do not document.
     def resources(self) -> Awaitable[Set["Resource"]]:
