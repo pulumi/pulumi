@@ -503,15 +503,87 @@ func (x *ConditionalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostic
 		diagnostics = append(diagnostics, falseDiags...)
 	}
 
-	// Compute the type of the result.
-	resultType, _ := UnifyTypes(x.TrueResult.Type(), x.FalseResult.Type())
-
-	// Typecheck the condition expression.
+	// make sure the condition expression is a boolean
 	if InputType(BoolType).ConversionFrom(x.Condition.Type()) == NoConversion {
 		diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), x.Condition))
 	}
 
-	x.exprType = liftOperationType(resultType, x.Condition)
+	// if either operands are dynamic, make the entire conditional expression dynamic and we are done
+	if x.TrueResult.Type() == DynamicType || x.FalseResult.Type() == DynamicType {
+		x.exprType = DynamicType
+		return diagnostics
+	}
+
+	switch leftOperand := x.TrueResult.(type) {
+	case *LiteralValueExpression:
+		if leftOperand != nil && leftOperand.Value.IsNull() {
+			// expr = condition ? null : rightOperand
+			// type(expr) == optional(type(rightOperand))
+			exprType := x.FalseResult.Type()
+			if !IsOptionalType(exprType) && !ContainsOutputs(exprType) {
+				exprType = NewOptionalType(exprType)
+			}
+
+			x.exprType = exprType
+			return diagnostics
+		}
+	}
+
+	switch rightOperand := x.FalseResult.(type) {
+	case *LiteralValueExpression:
+		if rightOperand != nil && rightOperand.Value.IsNull() {
+			// expr = condition ? leftOperand : null
+			// type(expr) == optional(type(leftOperand))
+			exprType := x.TrueResult.Type()
+			if !IsOptionalType(exprType) && !ContainsOutputs(exprType) {
+				exprType = NewOptionalType(exprType)
+			}
+
+			x.exprType = exprType
+			return diagnostics
+		}
+	}
+
+	// in the expression `condition ? A : B`
+	if x.TrueResult.Type().ConversionFrom(x.FalseResult.Type()) == SafeConversion {
+		// this means that the type of TrueResult is less generic than FalseResult
+		// use the less generic type for the entire conditional expression
+		// for example if we had <condition> ? Output<T> : T
+		// we would choose Output<T> for the entire conditional expression
+		x.exprType = x.TrueResult.Type()
+		return diagnostics
+	}
+
+	if x.FalseResult.Type().ConversionFrom(x.TrueResult.Type()) == SafeConversion {
+		x.exprType = x.FalseResult.Type()
+		return diagnostics
+	}
+
+	// if we have empty lists as operands i.e.
+	// <condition> ? [] : T
+	// <condition> ? T : []
+	// then use T as the type for the conditional expression
+	switch leftOperand := x.TrueResult.(type) {
+	case *TupleConsExpression:
+		if len(leftOperand.Expressions) == 0 {
+			x.exprType = x.FalseResult.Type()
+			return diagnostics
+		}
+	}
+
+	switch rightOperand := x.FalseResult.(type) {
+	case *TupleConsExpression:
+		if len(rightOperand.Expressions) == 0 {
+			x.exprType = x.TrueResult.Type()
+			return diagnostics
+		}
+	}
+
+	// We tried best-effort heuristics to choose the type of the expression
+	// if we reached here, just use the type of the one of the operands
+	// in this case, the left hand side since most languages expect both TrueResult and FalseResult
+	// to be of the same type
+	x.exprType = x.TrueResult.Type()
 	return diagnostics
 }
 

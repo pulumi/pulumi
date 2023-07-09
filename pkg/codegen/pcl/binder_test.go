@@ -522,3 +522,196 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 	unwrappedType := pcl.UnwrapOption(fooBarType)
 	assert.Equal(t, model.StringType, unwrappedType)
 }
+
+func localVar(program *pcl.Program, name string, t *testing.T) *pcl.LocalVariable {
+	for _, node := range program.Nodes {
+		switch node := node.(type) {
+		case *pcl.LocalVariable:
+			if node.Name() == name {
+				return node
+			}
+		}
+	}
+
+	t.Fatalf("Could not fine local variable with name '%s'", name)
+	return nil
+}
+
+func TestConversions(t *testing.T) {
+	t.Parallel()
+	promiseString := model.NewPromiseType(model.StringType)
+	optionString := model.NewOptionalType(model.StringType)
+	conversionFromElementType := optionString.ConversionFrom(model.StringType)
+	conversionToLiftedType := model.StringType.ConversionFrom(optionString)
+
+	assert.Equal(t, model.SafeConversion, conversionFromElementType)
+	assert.Equal(t, model.UnsafeConversion, conversionToLiftedType)
+	assert.Equal(t, model.SafeConversion, promiseString.ConversionFrom(model.StringType))
+}
+
+func TestConditionalExpressionResolvesDynamicOperands(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+	dynamicRightOperand = enable ? ["One", "Two"] : notImplemented("Oops")
+    dynamicLeftOperand = enable ? notImplemented("Oops") : ["One", "Two"]
+`
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+	// Assert that the local variables which are conditional expression are dynamically typed
+	// because one of their operands is dynamic i.e. the notImplemented(...) function
+	dynamicRightOperand := localVar(program, "dynamicRightOperand", t)
+	dynamicLeftOperand := localVar(program, "dynamicLeftOperand", t)
+	assert.Equal(t, dynamicRightOperand.Type(), model.DynamicType)
+	assert.Equal(t, dynamicLeftOperand.Type(), model.DynamicType)
+}
+
+func TestConditionalExpressionResolvesNullOperands(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+	optionalStringRight = enable ? "Enabled" : null
+    optionalStringLeft = enable ? null : "Enabled"
+`
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+
+	optionalStringRight := localVar(program, "optionalStringRight", t)
+	assert.True(t, model.IsOptionalType(optionalStringRight.Type()))
+	assert.Equal(t, model.StringType, pcl.UnwrapOption(optionalStringRight.Type()))
+
+	optionalStringLeft := localVar(program, "optionalStringLeft", t)
+	assert.True(t, model.IsOptionalType(optionalStringLeft.Type()))
+	assert.Equal(t, model.StringType, pcl.UnwrapOption(optionalStringLeft.Type()))
+}
+
+func TestConditionalExpressionResolvesOutputOperands(t *testing.T) {
+	// if either operands is a lifted promise(T) or output(T),
+	// and the other operand is just T
+	// then the conditional expression should have the lifted type
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+	outputOfInt = invoke("std:index:AbsMultiArgs", { a: 100 })
+    conditionalOutputOfIntLeft = enable ? outputOfInt : 100
+    conditionalOutputOfIntRight = enable ? 100 : outputOfInt
+`
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.PreferOutputVersionedInvokes)
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+
+	isOutputOf := func(name string, typ model.Type) {
+		local := localVar(program, name, t)
+		localType := local.Type()
+		if output, ok := localType.(*model.OutputType); ok {
+			assert.Equal(t, typ, output.ElementType)
+		} else {
+			assert.FailNow(t, "local variable "+name+"was not an output(T)")
+		}
+	}
+
+	isOutputOf("conditionalOutputOfIntLeft", model.NumberType)
+	isOutputOf("conditionalOutputOfIntRight", model.NumberType)
+}
+
+func TestConditionalExpressionResolvesPromiseOperands(t *testing.T) {
+	// if either operands is a lifted promise(T) or output(T),
+	// and the other operand is just T
+	// then the conditional expression should have the lifted type
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+	promiseOfInt = invoke("std:index:AbsMultiArgs", { a: 100 })
+    conditionalPromiseOfIntLeft = enable ? promiseOfInt : 100
+    conditionalPromiseOfIntRight = enable ? 100 : promiseOfInt
+`
+	// first assert that binding the program works
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+
+	isPromiseOf := func(name string, typ model.Type) {
+		local := localVar(program, name, t)
+		localType := local.Type()
+		if output, ok := localType.(*model.PromiseType); ok {
+			assert.Equal(t, typ, output.ElementType)
+		} else {
+			assert.FailNow(t, "local variable "+name+"was not a promise(T)")
+		}
+	}
+
+	isPromiseOf("conditionalPromiseOfIntLeft", model.NumberType)
+	isPromiseOf("conditionalPromiseOfIntRight", model.NumberType)
+}
+
+func TestConditionalExpressionWorksWhenOperandsHaveSameType(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+    count = enable ? 1 : 0
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+	count := localVar(program, "count", t)
+	constType, ok := count.Type().(*model.ConstType)
+	assert.True(t, ok, "It is a constant type")
+	assert.Equal(t, model.NumberType, constType.Type)
+}
+
+func TestConditionalExpressionInfersListType(t *testing.T) {
+	t.Parallel()
+	source := `
+	config "enable" "bool" { }
+    config "info" "list(string)" { }
+    listLeft = enable ? info : []
+    listRight = enable ? [] : info
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+	listLeft := localVar(program, "listLeft", t)
+	listType, isList := listLeft.Type().(*model.ListType)
+	assert.True(t, isList, "Should be list")
+	assert.Equal(t, model.StringType, listType.ElementType, "element type is a string")
+
+	listRight := localVar(program, "listRight", t)
+	listType, isList = listRight.Type().(*model.ListType)
+	assert.True(t, isList, "Should be list")
+	assert.Equal(t, model.StringType, listType.ElementType, "element type is a string")
+}
+
+func TestConditionalExpressionCanBeUsedInResourceRange(t *testing.T) {
+	t.Parallel()
+	source := `
+    config "vpcId" "int" { }
+	config "enableVpcEndpoint" "bool" { }
+    config "serviceName" "string" { }
+
+	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	  options { range = enableVpcEndpoint ? 1 : 0 }
+	  vpcId             = vpcId
+	  serviceName       = serviceName
+	}
+
+    output "endpointId" {
+        value = enableVpcEndpoint ? endpoint[0].id : null
+    }
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Equal(t, 0, len(diags), "There are no diagnostics")
+	assert.NotNil(t, program)
+}
