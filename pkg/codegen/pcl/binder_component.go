@@ -240,16 +240,22 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
 				typ := model.ResolveOutputs(expr.Type())
+				rangeIs := func(t model.Type) bool {
+					return model.InputType(t).ConversionFrom(typ) == model.SafeConversion
+				}
 
 				switch {
-				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+				case rangeIs(model.BoolType):
 					// if range expression has a boolean type
 					// then variable type T of the component becomes Option<T>
 					transformComponentType = func(variableType model.Type) model.Type {
 						return model.NewOptionalType(variableType)
 					}
-				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
-					// if the range expression has a numeric type
+				case rangeIs(model.NumberType) || rangeIs(model.StringType):
+					// if range is string, then we use parseInt to implicitly convert it to a number
+					// we do this when binding the component resource options
+
+					// otherwise if the range expression has a numeric type
 					// then value of the iteration is a number
 					// and the variable type T of the component becomes List<T>
 					rangeValueType = model.IntType

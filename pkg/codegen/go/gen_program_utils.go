@@ -103,6 +103,14 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s	}
 %s	return elements[0]
 %s}`, indent, indent, indent, indent, indent, indent), true
+	case "parseInt":
+		return fmt.Sprintf(`%sfunc parseInt(input string) int {
+%s	value, err := strconv.Atoi(input)
+%s	if err != nil {
+%s		panic(err)
+%s	}
+%s	return value
+%s}`, indent, indent, indent, indent, indent, indent, indent), true
 	default:
 		return "", false
 	}

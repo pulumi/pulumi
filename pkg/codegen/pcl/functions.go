@@ -346,6 +346,13 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.DynamicType,
 	}),
+	"parseInt": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "input",
+			Type: model.StringType,
+		}},
+		ReturnType: model.IntType,
+	}),
 	// Returns either the single item in a list, none if the list is empty or errors.
 	"singleOrNone": model.NewFunction(model.GenericFunctionSignature(
 		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {

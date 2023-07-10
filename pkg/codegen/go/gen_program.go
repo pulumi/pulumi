@@ -682,6 +682,13 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 	preambleHelperMethods := codegen.NewStringSet()
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
+		if component, ok := n.(*pcl.Component); ok {
+			if component.Options != nil && component.Options.Range != nil {
+				// needed for component names which use fmt to format the name of the component
+				stdImports.Add("fmt")
+			}
+		}
+
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
 			pkg, mod, name, _ := r.DecomposeToken()
@@ -704,6 +711,12 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 			}
 
 			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod, name))
+
+			if r.Options != nil && r.Options.Range != nil {
+				// needed for resource names which use fmt to format the name of the resource and the key
+				// of the range expression
+				stdImports.Add("fmt")
+			}
 		}
 		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
 			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
@@ -1062,7 +1075,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)

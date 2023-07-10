@@ -334,6 +334,10 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
 	},
+	{
+		Directory:   "implicit-string-range",
+		Description: "Tests that we can use implicit string as integer in resource ranges",
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

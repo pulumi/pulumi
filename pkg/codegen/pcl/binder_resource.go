@@ -297,8 +297,22 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			var t model.Type
 			switch item.Name {
 			case "range":
-				t = model.NewUnionType(model.BoolType, model.NumberType, model.NewListType(model.DynamicType),
+				if item.Value.Type() == model.StringType {
+					// implicitly wrap the string in a call to parseInt
+					item.Value = &model.FunctionCallExpression{
+						Name: "parseInt",
+						Args: []model.Expression{item.Value},
+						// only return type needed later on when checking the type of the range attribute
+						Signature: model.StaticFunctionSignature{
+							ReturnType: model.IntType,
+						},
+					}
+				}
+
+				t = model.NewUnionType(model.BoolType, model.NumberType, model.StringType,
+					model.NewListType(model.DynamicType),
 					model.NewMapType(model.DynamicType))
+
 				resourceOptions.Range = item.Value
 			case "parent":
 				t = model.DynamicType
@@ -358,8 +372,13 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					Name:         "r",
 					VariableType: node.VariableType,
 				}
+
+				rangeIs := func(t model.Type) bool {
+					return model.InputType(t).ConversionFrom(typ) == model.SafeConversion
+				}
+
 				switch {
-				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+				case rangeIs(model.BoolType):
 					condExpr := &model.ConditionalExpression{
 						Condition:  expr,
 						TrueResult: model.VariableReference(resourceVar),
@@ -372,7 +391,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					contract.Assertf(len(diags) == 0, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
-				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+				case rangeIs(model.NumberType) || rangeIs(model.StringType):
+					// when range is string, assume it's a number and parse it as such in the generated code
 					rangeArgs := []model.Expression{expr}
 					rangeSig, _ := pulumiBuiltins["range"].GetSignature(rangeArgs)
 

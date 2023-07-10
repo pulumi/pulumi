@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,go,nodejs,python
+  description: Implement parseInt function and allow range expression to be of type string
