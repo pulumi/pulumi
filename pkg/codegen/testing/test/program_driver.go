@@ -328,6 +328,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Test program generation on packages with a dash in the name",
 		SkipCompile: allProgLanguages, // since we are using a synthetic schema
 	},
+	{
+		Directory:   "unknown-invoke",
+		Description: "Tests generating code for unknown invokes when skipping invoke type checking",
+		SkipCompile: allProgLanguages,
+		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

@@ -39,6 +39,7 @@ type ComponentProgramBinderArgs struct {
 	AllowMissingVariables        bool
 	AllowMissingProperties       bool
 	SkipResourceTypecheck        bool
+	SkipInvokeTypecheck          bool
 	PreferOutputVersionedInvokes bool
 	BinderDirPath                string
 	BinderLoader                 schema.Loader
@@ -52,6 +53,7 @@ type bindOptions struct {
 	allowMissingVariables        bool
 	allowMissingProperties       bool
 	skipResourceTypecheck        bool
+	skipInvokeTypecheck          bool
 	preferOutputVersionedInvokes bool
 	loader                       schema.Loader
 	packageCache                 *PackageCache
@@ -96,6 +98,10 @@ func SkipResourceTypechecking(options *bindOptions) {
 
 func PreferOutputVersionedInvokes(options *bindOptions) {
 	options.preferOutputVersionedInvokes = true
+}
+
+func SkipInvokeTypechecking(options *bindOptions) {
+	options.skipInvokeTypecheck = true
 }
 
 func PluginHost(host plugin.Host) BindOption {
