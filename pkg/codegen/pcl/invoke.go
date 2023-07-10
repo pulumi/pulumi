@@ -125,13 +125,24 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	}
 	pkgSchema, ok := b.options.packageCache.entries[pkgInfo]
 	if !ok {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
 		return b.zeroSignature(), hcl.Diagnostics{unknownPackage(pkg, tokenRange)}
 	}
 
 	var fn *schema.Function
 	if f, tk, ok, err := pkgSchema.LookupFunction(token); err != nil {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
+
 		return b.zeroSignature(), hcl.Diagnostics{functionLoadError(token, err, tokenRange)}
 	} else if !ok {
+		if b.options.skipInvokeTypecheck {
+			return b.zeroSignature(), nil
+		}
+
 		return b.zeroSignature(), hcl.Diagnostics{unknownFunction(token, tokenRange)}
 	} else {
 		fn = f

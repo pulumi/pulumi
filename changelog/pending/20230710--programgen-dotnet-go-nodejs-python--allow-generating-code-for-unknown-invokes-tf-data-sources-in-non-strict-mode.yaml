@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: programgen/dotnet,go,nodejs,python
+  description: Allow generating code for unknown invokes (tf data sources) in non-strict mode

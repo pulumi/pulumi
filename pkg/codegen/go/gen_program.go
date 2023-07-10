@@ -716,6 +716,12 @@ func (g *generator) collectImports(program *pcl.Program) programImports {
 					token := tokenArg.(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
 					tokenRange := tokenArg.SyntaxNode().Range()
 					pkg, mod, name, diagnostics := pcl.DecomposeToken(token, tokenRange)
+					if call.Type() == model.DynamicType {
+						// then this is an unknown function, create a dummy import for it
+						dummyVersionPath := "/v1"
+						pulumiImports.Add(g.getPulumiImport(pkg, dummyVersionPath, mod, name))
+						return call, nil
+					}
 
 					contract.Assertf(len(diagnostics) == 0, "Expected no diagnostics, got %d", len(diagnostics))
 

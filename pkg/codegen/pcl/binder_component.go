@@ -192,6 +192,9 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		if args.PreferOutputVersionedInvokes {
 			opts = append(opts, PreferOutputVersionedInvokes)
 		}
+		if args.SkipInvokeTypecheck {
+			opts = append(opts, SkipInvokeTypechecking)
+		}
 
 		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
 
@@ -288,6 +291,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 		AllowMissingVariables:        b.options.allowMissingVariables,
 		AllowMissingProperties:       b.options.allowMissingProperties,
 		SkipResourceTypecheck:        b.options.skipResourceTypecheck,
+		SkipInvokeTypecheck:          b.options.skipInvokeTypecheck,
 		PreferOutputVersionedInvokes: b.options.preferOutputVersionedInvokes,
 		BinderLoader:                 b.options.loader,
 		BinderDirPath:                b.options.dirPath,

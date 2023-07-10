@@ -107,6 +107,12 @@ func (g *generator) outputInvokes(x model.Expression) model.Expression {
 			return x, nil
 		}
 
+		if call.Type() == model.DynamicType {
+			// ignore if the return type of the invoke is dynamic
+			// this means that we are working with an unknown invoke
+			return x, nil
+		}
+
 		_, isOutput := call.Type().(*model.OutputType)
 		if isOutput {
 			return x, nil

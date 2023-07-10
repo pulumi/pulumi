@@ -195,6 +195,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 				pcl.AllowMissingProperties,
 				pcl.AllowMissingVariables,
 				pcl.SkipResourceTypechecking,
+				pcl.SkipInvokeTypechecking,
 			}...)
 		}
 

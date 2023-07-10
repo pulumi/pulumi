@@ -275,7 +275,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "We don't allow problems getting the function name")
-		if module == "" {
+		if module == "" || module == "index" {
 			module = pkg
 		}
 		isOut, outArgs, outArgsType := pcl.RecognizeOutputVersionedInvoke(expr)
