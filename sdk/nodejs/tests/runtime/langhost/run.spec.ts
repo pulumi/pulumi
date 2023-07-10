@@ -56,6 +56,7 @@ interface RunCase {
         par: string,
         state: any,
         version: string,
+        sourcePosition?: runtime.SourcePosition,
     ) => {
         urn: URN | undefined;
         props: any | undefined;
@@ -77,6 +78,7 @@ interface RunCase {
         importID?: string,
         replaceOnChanges?: string[],
         providers?: any,
+        sourcePosition?: runtime.SourcePosition,
     ) => {
         urn: URN | undefined;
         id: ID | undefined;
@@ -1553,6 +1555,45 @@ describe("rpc", () => {
                 return { urn: makeUrn(t, name), id: undefined, props: undefined };
             },
         },
+        source_position: {
+            program: path.join(base, "074.source_position"),
+            expectResourceCount: 2,
+            registerResource: (
+                ctx: any,
+                dryrun: boolean,
+                t: string,
+                name: string,
+                res: any,
+                dependencies?: string[],
+                custom?: boolean,
+                protect?: boolean,
+                parent?: string,
+                provider?: string,
+                propertyDeps?: any,
+                ignoreChanges?: string[],
+                version?: string,
+                importID?: string,
+                replaceOnChanges?: string[],
+                providers?: any,
+                sourcePosition?: runtime.SourcePosition,
+            ) => {
+                assert(sourcePosition !== undefined);
+                assert(sourcePosition.uri.endsWith("index.js"));
+
+                switch (name) {
+                    case "custom":
+                        assert.strictEqual(sourcePosition.line, 2);
+                        break;
+                    case "component":
+                        assert.strictEqual(sourcePosition.line, 2);
+                        break;
+                    default:
+                        throw new Error(`unexpected resource ${name}`);
+                }
+
+                return { urn: makeUrn(t, name), id: undefined, props: undefined };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1642,6 +1683,15 @@ describe("rpc", () => {
                                     },
                                     {},
                                 );
+                                const rpcSourcePosition = req.getSourceposition();
+                                let sourcePosition: runtime.SourcePosition | undefined;
+                                if (rpcSourcePosition) {
+                                    sourcePosition = {
+                                        uri: rpcSourcePosition.getUri(),
+                                        line: rpcSourcePosition.getLine(),
+                                        column: rpcSourcePosition.getColumn(),
+                                    };
+                                }
                                 const { urn, id, props } = opts.registerResource(
                                     ctx,
                                     dryrun,
@@ -1659,6 +1709,7 @@ describe("rpc", () => {
                                     importID,
                                     replaceOnChanges,
                                     providers,
+                                    sourcePosition,
                                 );
                                 resp.setUrn(urn);
                                 resp.setId(id);

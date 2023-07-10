@@ -20,8 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -647,6 +651,10 @@ func (ctx *Context) ReadResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
+	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
+	// between the this function and user code.
+	sourcePosition := ctx.getSourcePosition(2)
+
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
@@ -681,6 +689,7 @@ func (ctx *Context) ReadResource(
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
+			SourcePosition:          sourcePosition,
 		})
 		if err != nil {
 			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
@@ -866,6 +875,10 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
+	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
+	// frames between this function and user code.
+	sourcePosition := ctx.getSourcePosition(3)
+
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
 	go func() {
@@ -939,6 +952,7 @@ func (ctx *Context) registerResource(
 				ReplaceOnChanges:        inputs.replaceOnChanges,
 				RetainOnDelete:          inputs.retainOnDelete,
 				DeletedWith:             inputs.deletedWith,
+				SourcePosition:          sourcePosition,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -966,7 +980,7 @@ func (ctx *Context) registerResource(
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
-	return ctx.RegisterResource(t, name, nil /*props*/, resource, opts...)
+	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
@@ -1833,4 +1847,28 @@ func (ctx *Context) withKeepOrRejectUnknowns(options plugin.MarshalOptions) plug
 		options.RejectUnknowns = true
 	}
 	return options
+}
+
+// Returns the source position of the Nth stack frame, where N is skip+1.
+//
+// This is used to compute the source position of the user code that instantiated a resource. The number of frames to
+// skip is parameterized in order to account for differing call stacks for different operations.
+func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
+	var pcs [1]uintptr
+	if callers := runtime.Callers(skip+1, pcs[:]); callers != 1 {
+		return nil
+	}
+	frames := runtime.CallersFrames(pcs[:])
+	frame, _ := frames.Next()
+	if frame.File == "" || frame.Line == 0 {
+		return nil
+	}
+	elems := filepath.SplitList(frame.File)
+	for i := range elems {
+		elems[i] = url.PathEscape(elems[i])
+	}
+	return &pulumirpc.SourcePosition{
+		Uri:  "project://" + path.Join(elems...),
+		Line: int32(frame.Line),
+	}
 }

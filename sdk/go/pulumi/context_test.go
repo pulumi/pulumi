@@ -561,3 +561,45 @@ func (c *resmonClientWithFeatures) SupportsFeature(
 	}
 	return c.ResourceMonitorClient.SupportsFeature(ctx, req, opts...)
 }
+
+func TestSourcePosition(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			var sourcePosition *pulumirpc.SourcePosition
+			switch {
+			case args.RegisterRPC != nil:
+				sourcePosition = args.RegisterRPC.SourcePosition
+			case args.ReadRPC != nil:
+				sourcePosition = args.ReadRPC.SourcePosition
+			}
+
+			require.NotNil(t, sourcePosition)
+			assert.True(t, strings.HasSuffix(sourcePosition.Uri, "context_test.go"))
+
+			return "myID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		reg := func() error {
+			var res testResource2
+			return ctx.RegisterResource("test:resource:type", "reg", &testResource2Inputs{}, &res)
+		}
+
+		read := func() error {
+			var res testResource2
+			return ctx.ReadResource("test:resource:type", "read", ID("myid"), &testResource2Inputs{}, &res)
+		}
+
+		err := reg()
+		require.NoError(t, err)
+
+		err = read()
+		require.NoError(t, err)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}

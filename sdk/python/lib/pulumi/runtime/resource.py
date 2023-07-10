@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 import os
+import pathlib
 import traceback
 from typing import (
     TYPE_CHECKING,
@@ -36,7 +37,7 @@ from google.protobuf import struct_pb2
 from .. import _types, log
 from .. import urn as urn_util
 from ..output import Input, Output
-from ..runtime.proto import alias_pb2, resource_pb2
+from ..runtime.proto import alias_pb2, resource_pb2, source_pb2
 from . import known_types, rpc, settings
 from .rpc import _expand_dependencies
 from .settings import _get_rpc_manager, handle_grpc_error
@@ -648,6 +649,34 @@ def _translate_replace_on_changes(
     return replace_on_changes
 
 
+def _get_source_position(skip: int) -> Optional[source_pb2.SourcePosition]:
+    """
+    Returns the source position of the Nth stack frame, where N is skip+1.
+
+    This is used to compute the source position of the user code that instantiated a resource. The number of frames to
+    skip is parameterized in order to account for differing call stacks for different operations.
+    """
+
+    # Capture a stack that includes the Nth stack frame. If the stack is not deep enough, return the empty string.
+    stack = traceback.extract_stack(limit=skip + 2)
+    if len(stack) < skip + 2:
+        return None
+
+    # Extract the Nth stack frame. If that frame is missing file or line information, return the empty string.
+    caller = stack[0]
+    if caller.filename == "" or caller.lineno is None:
+        return None
+
+    try:
+        uri = pathlib.Path(caller.filename).as_uri()
+    except BaseException:
+        return None
+
+    # Convert the Nth source position to a source position URI by converting the filename to a URI and appending
+    # the line and column fragment.
+    return source_pb2.SourcePosition(uri=uri, line=caller.lineno)
+
+
 def read_resource(
     res: "CustomResource",
     ty: str,
@@ -684,6 +713,18 @@ def read_resource(
     # Like below, "transfer" all input properties onto unresolved futures on res.
     resolvers = rpc.transfer_properties(res, props)
 
+    # Get the source position.
+    #
+    # This is somewhat brittle in that it expects a call stack of the form:
+    # - read_resource
+    # - Resource class constructor
+    # - abstract Resource subclass constructor
+    # - concrete Resource subclass constructor
+    # - user code
+    #
+    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
+    source_position = _get_source_position(4)
+
     async def do_read():
         try:
             resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
@@ -719,6 +760,7 @@ def read_resource(
                 acceptSecrets=True,
                 acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
+                sourcePosition=source_position,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
@@ -805,6 +847,18 @@ def register_resource(
     # this resource will look like it has all its output properties to anyone it is
     # passed to.  However, those futures won't actually resolve until the RPC returns
     resolvers = rpc.transfer_properties(res, props)
+
+    # Get the source position.
+    #
+    # This is somewhat brittle in that it expects a call stack of the form:
+    # - register_resource
+    # - Resource class constructor
+    # - abstract Resource subclass constructor
+    # - concrete Resource subclass constructor
+    # - user code
+    #
+    # This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
+    source_position = _get_source_position(4)
 
     async def do_register() -> None:
         try:
@@ -905,6 +959,7 @@ def register_resource(
                 replaceOnChanges=replace_on_changes or [],
                 retainOnDelete=opts.retain_on_delete or False,
                 deletedWith=resolver.deleted_with_urn or "",
+                sourcePosition=source_position,
             )
 
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()

@@ -15,11 +15,19 @@
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
-import { getResource, pkgFromType, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import {
+    getResource,
+    pkgFromType,
+    readResource,
+    registerResource,
+    registerResourceOutputs,
+    SourcePosition,
+} from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
 import * as utils from "./utils";
+import * as url from "url";
 
 export type ID = string; // a provider-assigned ID.
 export type URN = string; // an automatically generated logical URN, used to stably identify resources.
@@ -133,6 +141,12 @@ export function allAliases(
  * Resource represents a class whose CRUD operations are implemented by a provider plugin.
  */
 export abstract class Resource {
+    /**
+     * A regexp for use with sourcePosition.
+     */
+    private static sourcePositionRegExp =
+        /Error:\s*\n\s*at new Resource \(.*\)\n\s*at new \S*Resource \(.*\)\n(\s*at new \S* \(.*\)\n)?[^(]*\((?<file>.*):(?<line>[0-9]+):(?<col>[0-9]+)\)\n/;
+
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
@@ -277,6 +291,52 @@ export abstract class Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
 
+    // sourcePosition returns the source position of the user code that instantiated this resource.
+    //
+    // This is somewhat brittle in that it expects a call stack of the form:
+    // - Resource class constructor
+    // - abstract Resource subclass constructor
+    // - concrete Resource subclass constructor
+    // - user code
+    //
+    // This stack reflects the expected class hierarchy of "cloud resource / component resource < customresource/componentresource < resource".
+    //
+    // For example, consider the AWS S3 Bucket resource. When user code instantiates a Bucket, the stack will look like
+    // this:
+    //
+    //     new Resource (/path/to/resource.ts:123:45)
+    //     new CustomResource (/path/to/resource.ts:678:90)
+    //     new Bucket (/path/to/bucket.ts:987:65)
+    //     <user code> (/path/to/index.ts:4:3)
+    //
+    // Because Node can only give us the stack trace as text, we parse out the source position using a regex that
+    // matches traces of this form (see stackTraceRegExp above).
+    private static sourcePosition(): SourcePosition | undefined {
+        const stackObj: any = {};
+        Error.captureStackTrace(stackObj, Resource.sourcePosition);
+
+        // Parse out the source position of the user code. If any part of the match is missing, return undefined.
+        const { file, line, col } = Resource.sourcePositionRegExp.exec(stackObj.stack)?.groups || {};
+        if (!file || !line || !col) {
+            return undefined;
+        }
+
+        // Parse the line and column numbers. If either fails to parse, return undefined.
+        //
+        // Note: this really shouldn't happen given the regex; this is just a bit of defensive coding.
+        const lineNum = parseInt(line, 10);
+        const colNum = parseInt(col, 10);
+        if (Number.isNaN(lineNum) || Number.isNaN(colNum)) {
+            return undefined;
+        }
+
+        return {
+            uri: url.pathToFileURL(file).toString(),
+            line: lineNum,
+            column: colNum,
+        };
+    }
+
     // getProvider fetches the provider for the given module member, if any.
     public getProvider(moduleMember: string): ProviderResource | undefined {
         const pkg = pkgFromType(moduleMember);
@@ -408,6 +468,8 @@ export abstract class Resource {
             }
         }
 
+        const sourcePosition = Resource.sourcePosition();
+
         if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
             getResource(this, parent, props, custom, opts.urn);
@@ -419,13 +481,24 @@ export abstract class Resource {
                     opts.parent,
                 );
             }
-            readResource(this, parent, t, name, props, opts);
+            readResource(this, parent, t, name, props, opts, sourcePosition);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, parent, t, name, custom, remote, (urn) => new DependencyResource(urn), props, opts);
+            registerResource(
+                this,
+                parent,
+                t,
+                name,
+                custom,
+                remote,
+                (urn) => new DependencyResource(urn),
+                props,
+                opts,
+                sourcePosition,
+            );
         }
     }
 }
