@@ -21,6 +21,8 @@ var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb
 goog.object.extend(proto, google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
+var pulumi_source_pb = require('./source_pb.js');
+goog.object.extend(proto, pulumi_source_pb);
 goog.exportSymbol('proto.pulumirpc.CallRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.CallRequest.ArgumentDependencies', null, global);
 goog.exportSymbol('proto.pulumirpc.CallResponse', null, global);
@@ -2267,7 +2269,8 @@ proto.pulumirpc.CallRequest.toObject = function(includeInstance, msg) {
     dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 11, 0),
     monitorendpoint: jspb.Message.getFieldWithDefault(msg, 12, ""),
-    organization: jspb.Message.getFieldWithDefault(msg, 14, "")
+    organization: jspb.Message.getFieldWithDefault(msg, 14, ""),
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2364,6 +2367,11 @@ proto.pulumirpc.CallRequest.deserializeBinaryFromReader = function(msg, reader) 
     case 14:
       var value = /** @type {string} */ (reader.readString());
       msg.setOrganization(value);
+      break;
+    case 15:
+      var value = new pulumi_source_pb.SourcePosition;
+      reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
+      msg.setSourceposition(value);
       break;
     default:
       reader.skipField();
@@ -2485,6 +2493,14 @@ proto.pulumirpc.CallRequest.serializeBinaryToWriter = function(message, writer) 
     writer.writeString(
       14,
       f
+    );
+  }
+  f = message.getSourceposition();
+  if (f != null) {
+    writer.writeMessage(
+      15,
+      f,
+      pulumi_source_pb.SourcePosition.serializeBinaryToWriter
     );
   }
 };
@@ -2941,6 +2957,43 @@ proto.pulumirpc.CallRequest.prototype.getOrganization = function() {
  */
 proto.pulumirpc.CallRequest.prototype.setOrganization = function(value) {
   return jspb.Message.setProto3StringField(this, 14, value);
+};
+
+
+/**
+ * optional SourcePosition sourcePosition = 15;
+ * @return {?proto.pulumirpc.SourcePosition}
+ */
+proto.pulumirpc.CallRequest.prototype.getSourceposition = function() {
+  return /** @type{?proto.pulumirpc.SourcePosition} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.SourcePosition, 15));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.SourcePosition|undefined} value
+ * @return {!proto.pulumirpc.CallRequest} returns this
+*/
+proto.pulumirpc.CallRequest.prototype.setSourceposition = function(value) {
+  return jspb.Message.setWrapperField(this, 15, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CallRequest} returns this
+ */
+proto.pulumirpc.CallRequest.prototype.clearSourceposition = function() {
+  return this.setSourceposition(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CallRequest.prototype.hasSourceposition = function() {
+  return jspb.Message.getField(this, 15) != null;
 };
 
 

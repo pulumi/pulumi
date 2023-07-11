@@ -37,7 +37,7 @@ type Context struct {
 	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
 	Host       Host      // the host that can be used to fetch providers.
 	Pwd        string    // the working directory to spawn all plugins in.
-	Root       string    // the root directory of the project.
+	Root       string    // the root directory of the context.
 
 	// If non-nil, configures custom gRPC client options. Receives pluginInfo which is a JSON-serializable bit of
 	// metadata describing the plugin.

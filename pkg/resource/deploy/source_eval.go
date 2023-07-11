@@ -19,6 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,11 +55,18 @@ import (
 
 // EvalRunInfo provides information required to execute and deploy resources within a package.
 type EvalRunInfo struct {
-	Proj    *workspace.Project `json:"proj" yaml:"proj"`                         // the package metadata.
-	Pwd     string             `json:"pwd" yaml:"pwd"`                           // the package's working directory.
-	Program string             `json:"program" yaml:"program"`                   // the path to the program.
-	Args    []string           `json:"args,omitempty" yaml:"args,omitempty"`     // any arguments to pass to the package.
-	Target  *Target            `json:"target,omitempty" yaml:"target,omitempty"` // the target being deployed into.
+	// the package metadata.
+	Proj *workspace.Project `json:"proj" yaml:"proj"`
+	// the package's working directory.
+	Pwd string `json:"pwd" yaml:"pwd"`
+	// the path to the program.
+	Program string `json:"program" yaml:"program"`
+	// the path to the project's directory.
+	ProjectRoot string `json:"projectRoot,omitempty" yaml:"projectRoot,omitempty"`
+	// any arguments to pass to the package.
+	Args []string `json:"args,omitempty" yaml:"args,omitempty"`
+	// the target being deployed into.
+	Target *Target `json:"target,omitempty" yaml:"target,omitempty"`
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -335,7 +345,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
 			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil,
-			nil, nil, nil, "", nil, nil, false, ""),
+			nil, nil, nil, "", nil, nil, false, "", ""),
 		done: done,
 	}
 	return event, done, nil
@@ -492,6 +502,7 @@ type resmon struct {
 	componentProviders        map[resource.URN]map[string]string // which providers component resources used
 	componentProvidersLock    sync.Mutex                         // which locks the componentProviders map
 	defaultProviders          *defaultProviders                  // the default provider manager.
+	sourcePositions           *sourcePositions                   // source position manager.
 	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
 	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
@@ -527,6 +538,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 		diagostics:                src.plugctx.Diag,
 		providers:                 provs,
 		defaultProviders:          d,
+		sourcePositions:           newSourcePositions(src.runinfo.ProjectRoot),
 		resGoals:                  map[resource.URN]resource.Goal{},
 		componentProviders:        map[resource.URN]map[string]string{},
 		regChan:                   regChan,
@@ -963,6 +975,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		props:                   props,
 		dependencies:            deps,
 		additionalSecretOutputs: additionalSecretOutputs,
+		sourcePosition:          rm.sourcePositions.getFromRequest(req),
 		done:                    make(chan *ReadResult),
 	}
 	select {
@@ -1006,6 +1019,77 @@ func inheritFromParent(child resource.Goal, parent resource.Goal) *resource.Goal
 		goal.DeletedWith = parent.DeletedWith
 	}
 	return &goal
+}
+
+type sourcePositions struct {
+	projectRoot string
+}
+
+func newSourcePositions(projectRoot string) *sourcePositions {
+	if projectRoot == "" {
+		projectRoot = "/"
+	} else {
+		contract.Assertf(filepath.IsAbs(projectRoot), "projectRoot is not an absolute path")
+		projectRoot = filepath.Clean(projectRoot)
+	}
+	return &sourcePositions{projectRoot: projectRoot}
+}
+
+func (s *sourcePositions) parseSourcePosition(raw *pulumirpc.SourcePosition) (string, error) {
+	if raw == nil {
+		return "", nil
+	}
+
+	if raw.Line <= 0 {
+		return "", fmt.Errorf("invalid line number %v", raw.Line)
+	}
+
+	col := ""
+	if raw.Column != 0 {
+		if raw.Column < 0 {
+			return "", fmt.Errorf("invalid column number %v", raw.Column)
+		}
+		col = "," + strconv.FormatInt(int64(raw.Column), 10)
+	}
+
+	posURL, err := url.Parse(raw.Uri)
+	if err != nil {
+		return "", err
+	}
+	if posURL.Scheme != "file" {
+		return "", fmt.Errorf("unrecognized scheme %q", posURL.Scheme)
+	}
+
+	file := filepath.FromSlash(posURL.Path)
+	if !filepath.IsAbs(file) {
+		return "", fmt.Errorf("source positions must include absolute paths")
+	}
+	rel, err := filepath.Rel(s.projectRoot, file)
+	if err != nil {
+		return "", fmt.Errorf("making relative path: %w", err)
+	}
+
+	posURL.Scheme = "project"
+	posURL.Path = "/" + filepath.ToSlash(rel)
+	posURL.Fragment = fmt.Sprintf("%v%s", raw.Line, col)
+
+	return posURL.String(), nil
+}
+
+// Allow getFromRequest to accept any gRPC request that has a source position (ReadResourceRequest,
+// RegisterResourceRequest, ResourceInvokeRequest, and CallRequest).
+type hasSourcePosition interface {
+	GetSourcePosition() *pulumirpc.SourcePosition
+}
+
+// getFromRequest returns any source position information from an incoming request.
+func (s *sourcePositions) getFromRequest(req hasSourcePosition) string {
+	pos, err := s.parseSourcePosition(req.GetSourcePosition())
+	if err != nil {
+		logging.V(5).Infof("parsing source position %#v: %v", req.GetSourcePosition(), err)
+		return ""
+	}
+	return pos
 }
 
 // requestFromNodeJS returns true if the request is coming from a Node.js language runtime
@@ -1064,6 +1148,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	customTimeouts := req.GetCustomTimeouts()
 	retainOnDelete := req.GetRetainOnDelete()
 	deletedWith := resource.URN(req.GetDeletedWith())
+	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
@@ -1324,7 +1409,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		goal := resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 			providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith)
+			additionalSecretKeys, aliases, id, &timeouts, replaceOnChanges, retainOnDelete, deletedWith,
+			sourcePosition,
+		)
 
 		if goal.Parent != "" {
 			rm.resGoalsLock.Lock()
@@ -1568,6 +1655,7 @@ type readResourceEvent struct {
 	props                   resource.PropertyMap
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
+	sourcePosition          string
 	done                    chan *ReadResult
 }
 
@@ -1585,6 +1673,7 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
+func (g *readResourceEvent) SourcePosition() string { return g.sourcePosition }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result

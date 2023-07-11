@@ -125,6 +125,8 @@ type ReadResourceEvent interface {
 	Done(result *ReadResult)
 	// The names of any additional outputs that should be treated as secrets.
 	AdditionalSecretOutputs() []resource.PropertyKey
+	// The source position of the resource read
+	SourcePosition() string
 }
 
 type ReadResult struct {

@@ -18,6 +18,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "pulumi/provider.proto";
 import "pulumi/alias.proto";
+import "pulumi/source.proto";
 
 package pulumirpc;
 
@@ -70,13 +71,15 @@ message ReadResourceRequest {
 
     bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 13;         // the server url of the provider to use when servicing this request.
+
+    SourcePosition sourcePosition = 14;    // the optional source position of the user code that initiated the read.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
 message ReadResourceResponse {
     string urn = 1;                        // the URN for this resource.
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
-    }
+}
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
 message RegisterResourceRequest {
@@ -127,6 +130,8 @@ message RegisterResourceRequest {
     // Other SDKs that are correctly specifying alias specs could set this to
     // true, but it's not necessary.
     bool aliasSpecs = 28;
+
+    SourcePosition sourcePosition = 29;    // the optional source position of the user code that initiated the register.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -158,4 +163,6 @@ message ResourceInvokeRequest {
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
+
+    SourcePosition sourcePosition = 7; // the optional source position of the user code that initiated the invoke.
 }

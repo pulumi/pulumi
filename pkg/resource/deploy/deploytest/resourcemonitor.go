@@ -17,6 +17,9 @@ package deploytest
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -79,6 +82,35 @@ func supportsFeature(ctx context.Context, resmon pulumirpc.ResourceMonitorClient
 	return resp.GetHasSupport(), nil
 }
 
+func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	pos := pulumirpc.SourcePosition{
+		Uri: fmt.Sprintf("%v://%v", u.Scheme, u.Path),
+	}
+
+	line, col, _ := strings.Cut(u.Fragment, ",")
+	if line != "" {
+		l, err := strconv.ParseInt(line, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		pos.Line = int32(l)
+	}
+	if col != "" {
+		c, err := strconv.ParseInt(col, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		pos.Column = int32(c)
+	}
+
+	return &pos, nil
+}
+
 func (rm *ResourceMonitor) Close() error {
 	return rm.conn.Close()
 }
@@ -111,6 +143,7 @@ type ResourceOptions struct {
 	AdditionalSecretOutputs []resource.PropertyKey
 	AliasSpecs              bool
 
+	SourcePosition            string
 	DisableSecrets            bool
 	DisableResourceReferences bool
 	GrpcRequestHeaders        map[string]string
@@ -203,6 +236,15 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	for i, v := range opts.AdditionalSecretOutputs {
 		additionalSecretOutputs[i] = string(v)
 	}
+
+	var sourcePosition *pulumirpc.SourcePosition
+	if opts.SourcePosition != "" {
+		sourcePosition, err = parseSourcePosition(opts.SourcePosition)
+		if err != nil {
+			return "", "", nil, err
+		}
+	}
+
 	requestInput := &pulumirpc.RegisterResourceRequest{
 		Type:                       string(t),
 		Name:                       name,
@@ -232,6 +274,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		Aliases:                    aliasObjects,
 		DeletedWith:                string(opts.DeletedWith),
 		AliasSpecs:                 opts.AliasSpecs,
+		SourcePosition:             sourcePosition,
 	}
 
 	ctx := context.Background()
@@ -279,7 +322,7 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 }
 
 func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.ID, parent resource.URN,
-	inputs resource.PropertyMap, provider string, version string,
+	inputs resource.PropertyMap, provider, version, sourcePosition string,
 ) (resource.URN, resource.PropertyMap, error) {
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
@@ -290,15 +333,24 @@ func (rm *ResourceMonitor) ReadResource(t tokens.Type, name string, id resource.
 		return "", nil, err
 	}
 
+	var sourcePos *pulumirpc.SourcePosition
+	if sourcePosition != "" {
+		sourcePos, err = parseSourcePosition(sourcePosition)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
 	// submit request
 	resp, err := rm.resmon.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
-		Type:       string(t),
-		Name:       name,
-		Id:         string(id),
-		Parent:     string(parent),
-		Provider:   provider,
-		Properties: ins,
-		Version:    version,
+		Type:           string(t),
+		Name:           name,
+		Id:             string(id),
+		Parent:         string(parent),
+		Provider:       provider,
+		Properties:     ins,
+		Version:        version,
+		SourcePosition: sourcePos,
 	})
 	if err != nil {
 		return "", nil, err

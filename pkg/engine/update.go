@@ -368,7 +368,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 }
 
 func newUpdateSource(
-	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
+	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	//
@@ -418,11 +418,12 @@ func newUpdateSource(
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
-		Proj:    proj,
-		Pwd:     pwd,
-		Program: main,
-		Args:    args,
-		Target:  target,
+		Proj:        proj,
+		Pwd:         pwd,
+		Program:     main,
+		ProjectRoot: projectRoot,
+		Args:        args,
+		Target:      target,
 	}, defaultProviderVersions, dryRun), nil
 }
 

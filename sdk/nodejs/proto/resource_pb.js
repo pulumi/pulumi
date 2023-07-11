@@ -23,6 +23,8 @@ var pulumi_provider_pb = require('./provider_pb.js');
 goog.object.extend(proto, pulumi_provider_pb);
 var pulumi_alias_pb = require('./alias_pb.js');
 goog.object.extend(proto, pulumi_alias_pb);
+var pulumi_source_pb = require('./source_pb.js');
+goog.object.extend(proto, pulumi_source_pb);
 goog.exportSymbol('proto.pulumirpc.ReadResourceRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.ReadResourceResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RegisterResourceOutputsRequest', null, global);
@@ -575,7 +577,8 @@ proto.pulumirpc.ReadResourceRequest.toObject = function(includeInstance, msg) {
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 9, false),
     additionalsecretoutputsList: (f = jspb.Message.getRepeatedField(msg, 10)) == null ? undefined : f,
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 13, ""),
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -660,6 +663,11 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 14:
+      var value = new pulumi_source_pb.SourcePosition;
+      reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
+      msg.setSourceposition(value);
       break;
     default:
       reader.skipField();
@@ -773,6 +781,14 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
     writer.writeString(
       13,
       f
+    );
+  }
+  f = message.getSourceposition();
+  if (f != null) {
+    writer.writeMessage(
+      14,
+      f,
+      pulumi_source_pb.SourcePosition.serializeBinaryToWriter
     );
   }
 };
@@ -1051,6 +1067,43 @@ proto.pulumirpc.ReadResourceRequest.prototype.setPlugindownloadurl = function(va
 };
 
 
+/**
+ * optional SourcePosition sourcePosition = 14;
+ * @return {?proto.pulumirpc.SourcePosition}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getSourceposition = function() {
+  return /** @type{?proto.pulumirpc.SourcePosition} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.SourcePosition, 14));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.SourcePosition|undefined} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+*/
+proto.pulumirpc.ReadResourceRequest.prototype.setSourceposition = function(value) {
+  return jspb.Message.setWrapperField(this, 14, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.clearSourceposition = function() {
+  return this.setSourceposition(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.hasSourceposition = function() {
+  return jspb.Message.getField(this, 14) != null;
+};
+
+
 
 
 
@@ -1299,7 +1352,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     aliasesList: jspb.Message.toObjectList(msg.getAliasesList(),
     pulumi_alias_pb.Alias.toObject, includeInstance),
     deletedwith: jspb.Message.getFieldWithDefault(msg, 27, ""),
-    aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false)
+    aliasspecs: jspb.Message.getBooleanFieldWithDefault(msg, 28, false),
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1454,6 +1508,11 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 28:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAliasspecs(value);
+      break;
+    case 29:
+      var value = new pulumi_source_pb.SourcePosition;
+      reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
+      msg.setSourceposition(value);
       break;
     default:
       reader.skipField();
@@ -1675,6 +1734,14 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
     writer.writeBool(
       28,
       f
+    );
+  }
+  f = message.getSourceposition();
+  if (f != null) {
+    writer.writeMessage(
+      29,
+      f,
+      pulumi_source_pb.SourcePosition.serializeBinaryToWriter
     );
   }
 };
@@ -2691,6 +2758,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setAliasspecs = function(value
 };
 
 
+/**
+ * optional SourcePosition sourcePosition = 29;
+ * @return {?proto.pulumirpc.SourcePosition}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getSourceposition = function() {
+  return /** @type{?proto.pulumirpc.SourcePosition} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.SourcePosition, 29));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.SourcePosition|undefined} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+*/
+proto.pulumirpc.RegisterResourceRequest.prototype.setSourceposition = function(value) {
+  return jspb.Message.setWrapperField(this, 29, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearSourceposition = function() {
+  return this.setSourceposition(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.hasSourceposition = function() {
+  return jspb.Message.getField(this, 29) != null;
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -3395,7 +3499,8 @@ proto.pulumirpc.ResourceInvokeRequest.toObject = function(includeInstance, msg) 
     provider: jspb.Message.getFieldWithDefault(msg, 3, ""),
     version: jspb.Message.getFieldWithDefault(msg, 4, ""),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 5, false),
-    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, "")
+    plugindownloadurl: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -3456,6 +3561,11 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setPlugindownloadurl(value);
+      break;
+    case 7:
+      var value = new pulumi_source_pb.SourcePosition;
+      reader.readMessage(value,pulumi_source_pb.SourcePosition.deserializeBinaryFromReader);
+      msg.setSourceposition(value);
       break;
     default:
       reader.skipField();
@@ -3527,6 +3637,14 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
     writer.writeString(
       6,
       f
+    );
+  }
+  f = message.getSourceposition();
+  if (f != null) {
+    writer.writeMessage(
+      7,
+      f,
+      pulumi_source_pb.SourcePosition.serializeBinaryToWriter
     );
   }
 };
@@ -3656,6 +3774,43 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.getPlugindownloadurl = function(
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.setPlugindownloadurl = function(value) {
   return jspb.Message.setProto3StringField(this, 6, value);
+};
+
+
+/**
+ * optional SourcePosition sourcePosition = 7;
+ * @return {?proto.pulumirpc.SourcePosition}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getSourceposition = function() {
+  return /** @type{?proto.pulumirpc.SourcePosition} */ (
+    jspb.Message.getWrapperField(this, pulumi_source_pb.SourcePosition, 7));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.SourcePosition|undefined} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+*/
+proto.pulumirpc.ResourceInvokeRequest.prototype.setSourceposition = function(value) {
+  return jspb.Message.setWrapperField(this, 7, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.clearSourceposition = function() {
+  return this.setSourceposition(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.hasSourceposition = function() {
+  return jspb.Message.getField(this, 7) != null;
 };
 
 

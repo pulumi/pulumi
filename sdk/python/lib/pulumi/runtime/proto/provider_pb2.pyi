@@ -22,6 +22,7 @@ import google.protobuf.internal.containers
 import google.protobuf.internal.enum_type_wrapper
 import google.protobuf.message
 import google.protobuf.struct_pb2
+import pulumi.source_pb2
 import sys
 import typing
 
@@ -290,6 +291,7 @@ class CallRequest(google.protobuf.message.Message):
     PARALLEL_FIELD_NUMBER: builtins.int
     MONITORENDPOINT_FIELD_NUMBER: builtins.int
     ORGANIZATION_FIELD_NUMBER: builtins.int
+    SOURCEPOSITION_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     @property
@@ -322,6 +324,9 @@ class CallRequest(google.protobuf.message.Message):
     """the address for communicating back to the resource monitor."""
     organization: builtins.str
     """the organization of the stack being deployed into."""
+    @property
+    def sourcePosition(self) -> pulumi.source_pb2.SourcePosition:
+        """the optional source position of the user code that initiated the call."""
     def __init__(
         self,
         *,
@@ -339,9 +344,10 @@ class CallRequest(google.protobuf.message.Message):
         parallel: builtins.int = ...,
         monitorEndpoint: builtins.str = ...,
         organization: builtins.str = ...,
+        sourcePosition: pulumi.source_pb2.SourcePosition | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal["args", b"args"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "pluginDownloadURL", b"pluginDownloadURL", "project", b"project", "provider", b"provider", "stack", b"stack", "tok", b"tok", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal["args", b"args", "sourcePosition", b"sourcePosition"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal["argDependencies", b"argDependencies", "args", b"args", "config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "monitorEndpoint", b"monitorEndpoint", "organization", b"organization", "parallel", b"parallel", "pluginDownloadURL", b"pluginDownloadURL", "project", b"project", "provider", b"provider", "sourcePosition", b"sourcePosition", "stack", b"stack", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___CallRequest = CallRequest
 
