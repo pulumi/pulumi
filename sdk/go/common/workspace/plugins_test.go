@@ -342,7 +342,7 @@ func TestPluginDownload(t *testing.T) {
 	t.Run("Custom http URL", func(t *testing.T) {
 		version := semver.MustParse("4.32.0")
 		spec := PluginSpec{
-			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			PluginDownloadURL: "http://customurl.jfrog.io/artifactory/pulumi-packages/package-name/v${VERSION}/${OS}/${ARCH}",
 			Name:              "mockdl",
 			Version:           &version,
 			Kind:              PluginKind("resource"),
@@ -352,7 +352,7 @@ func TestPluginDownload(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"http://customurl.jfrog.io/artifactory/pulumi-packages/"+
-					"package-name/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
+					"package-name/v4.32.0/darwin/amd64/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
@@ -366,7 +366,7 @@ func TestPluginDownload(t *testing.T) {
 	t.Run("Custom https URL", func(t *testing.T) {
 		version := semver.MustParse("4.32.0")
 		spec := PluginSpec{
-			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name",
+			PluginDownloadURL: "https://customurl.jfrog.io/artifactory/pulumi-packages/package-name/v${VERSION}/${OS}/${ARCH}/",
 			Name:              "mockdl",
 			Version:           &version,
 			Kind:              PluginKind("resource"),
@@ -376,7 +376,7 @@ func TestPluginDownload(t *testing.T) {
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			assert.Equal(t,
 				"https://customurl.jfrog.io/artifactory/pulumi-packages/"+
-					"package-name/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
+					"package-name/v4.32.0/darwin/amd64/pulumi-resource-mockdl-v4.32.0-darwin-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
 		}
@@ -726,24 +726,6 @@ func TestPluginGetLatestVersion(t *testing.T) {
 		assert.Contains(t, err.Error(), "rate limit exceeded")
 		assert.Contains(t, err.Error(), "https://api.github.com/repos/pulumi/pulumi-mock-latest/releases/latest")
 	})
-}
-
-func TestInterpolateURL(t *testing.T) {
-	t.Parallel()
-
-	version := semver.MustParse("1.0.0")
-	const os = "linux"
-	const arch = "amd64"
-	assert.Equal(t, "", interpolateURL("", version, os, arch))
-	assert.Equal(t,
-		"https://get.pulumi.com/releases/plugins",
-		interpolateURL("https://get.pulumi.com/releases/plugins", version, os, arch))
-	assert.Equal(t,
-		"https://github.com/org/repo/releases/download/1.0.0",
-		interpolateURL("https://github.com/org/repo/releases/download/${VERSION}", version, os, arch))
-	assert.Equal(t,
-		"https://github.com/org/repo/releases/download/1.0.0/linux/amd64",
-		interpolateURL("https://github.com/org/repo/releases/download/${VERSION}/${OS}/${ARCH}", version, os, arch))
 }
 
 func TestParsePluginDownloadURLOverride(t *testing.T) {
