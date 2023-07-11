@@ -300,10 +300,10 @@ func TestGetPlugin(t *testing.T) {
 			t.Parallel()
 
 			cwd := t.TempDir()
+			if c.Mod.Dir == "" {
+				c.Mod.Dir = cwd
+			}
 			if c.JSON != nil {
-				if c.Mod.Dir == "" {
-					c.Mod.Dir = cwd
-				}
 				path := filepath.Join(cwd, c.JSONPath)
 				err := os.MkdirAll(path, 0o700)
 				assert.NoErrorf(t, err, "Failed to setup test folder %s", path)
