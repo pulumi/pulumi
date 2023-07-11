@@ -368,7 +368,7 @@
     "@opentelemetry/instrumentation" "0.32.0"
     "@opentelemetry/semantic-conventions" "1.6.0"
 
-"@opentelemetry/instrumentation@0.32.0":
+"@opentelemetry/instrumentation@0.32.0", "@opentelemetry/instrumentation@^0.32.0":
   version "0.32.0"
   resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation/-/instrumentation-0.32.0.tgz#27c5975a323a2ba83d9bf2ea8b11faaab37c5827"
   integrity sha512-y6ADjHpkUz/v1nkyyYjsQa/zorhX+0qVGpFvXMcbjU4sHnBnC02c6wcc93sIgZfiQClIWo45TGku1KQxJ5UUbQ==
