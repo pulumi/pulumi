@@ -18,6 +18,7 @@ package ints
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,12 +26,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grapl-security/pulumi-hcp/sdk/go/hcp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sourcegraph.com/sourcegraph/appdash"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // This checks that the buildTarget option for Pulumi Go programs does build a binary.
@@ -931,4 +937,89 @@ func TestConstructResourceOptionsGo(t *testing.T) {
 	t.Parallel()
 
 	testConstructResourceOptions(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/13301.
+// The reproduction is a bit involved:
+//
+//   - Set up a fake Pulumi Go project that imports a specific non-Pulumi plugin.
+//     Specifically, the plugin MUST NOT be imported by any Go file in the project.
+//   - Install that plugin with 'pulumi plugin install'.
+//   - Run a Go Automation program that uses that plugin.
+//
+// The issue in #13301 was that this plugin would not be downloaded by `pulumi plugin install`,
+// causing a failure when the Automation program tried to use it.
+func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
+	// Context scoped to the lifetime of the test.
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(filepath.Join("go", "regress-13301"))
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	// Plugins are installed globally in PULUMI_HOME.
+	// We will set that to a temporary directory,
+	// so this is not polluted by other tests.
+	pulumiHome := filepath.Join(e.RootPath, ".pulumi-home")
+	require.NoError(t, os.MkdirAll(pulumiHome, 0o700))
+
+	// The commands that follow will make gRPC requests that
+	// we don't have a lot of visibility into.
+	// If we run the Pulumi CLI with PULUMI_DEBUG_GRPC set to a path,
+	// it will log the gRPC requests and responses to that file.
+	//
+	// Capture these and print them if the test fails.
+	grpcLog := filepath.Join(e.RootPath, "debug-grpc.log")
+	defer func() {
+		if !t.Failed() {
+			return
+		}
+
+		if bs, err := os.ReadFile(grpcLog); err == nil {
+			t.Logf("grpc debug log:\n%s", bs)
+		}
+	}()
+
+	e.Env = append(e.Env,
+		"PULUMI_HOME="+pulumiHome,
+		"PULUMI_DEBUG_GRPC="+grpcLog)
+	e.RunCommand("pulumi", "plugin", "install")
+
+	ws, err := auto.NewLocalWorkspace(ctx,
+		auto.Project(workspace.Project{
+			Name:    "issue-13301",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		}),
+		auto.WorkDir(e.CWD),
+		auto.PulumiHome(pulumiHome),
+		auto.EnvVars(map[string]string{
+			"PULUMI_CONFIG_PASSPHRASE": "not-a-real-passphrase",
+			"PULUMI_DEBUG_COMMANDS":    "true",
+			"PULUMI_CREDENTIALS_PATH":  e.RootPath,
+			"PULUMI_DEBUG_GRPC":        grpcLog,
+		}),
+	)
+	require.NoError(t, err)
+
+	ws.SetProgram(func(ctx *pulumi.Context) error {
+		provider, err := hcp.NewProvider(ctx, "hcp", &hcp.ProviderArgs{})
+		if err != nil {
+			return err
+		}
+
+		_ = provider // unused
+		return nil
+	})
+
+	stack, err := auto.UpsertStack(ctx, "foo", ws)
+	require.NoError(t, err)
+
+	_, err = stack.Preview(ctx)
+	require.NoError(t, err)
 }
