@@ -21,7 +21,8 @@ import (
 
 func getEntriesSignature(
 	args []model.Expression,
-	options bindOptions) (model.StaticFunctionSignature, hcl.Diagnostics) {
+	options bindOptions,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 
 	keyType, valueType := model.Type(model.DynamicType), model.Type(model.DynamicType)
