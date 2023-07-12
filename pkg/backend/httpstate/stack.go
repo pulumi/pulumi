@@ -64,9 +64,12 @@ func (c cloudBackendReference) String() string {
 				return string(c.name)
 			}
 		} else {
-			currentUser, _, userErr := c.b.CurrentUser()
-			if userErr == nil && c.owner == currentUser {
-				return string(c.name)
+			currentUser, userErr := c.b.CurrentUser()
+			if userErr == nil {
+				contract.Assertf(currentUser != nil, "cloudBackend returned nil user")
+				if c.owner == currentUser.Username {
+					return string(c.name)
+				}
 			}
 		}
 		return fmt.Sprintf("%s/%s", c.owner, c.name)

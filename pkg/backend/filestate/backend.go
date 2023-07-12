@@ -1274,12 +1274,8 @@ func (b *localBackend) LogoutAll() error {
 	return workspace.DeleteAllAccounts()
 }
 
-func (b *localBackend) CurrentUser() (string, []string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", nil, err
-	}
-	return user.Username, nil, nil
+func (b *localBackend) CurrentUser() (*workspace.Account, error) {
+	return nil, nil
 }
 
 func (b *localBackend) getLocalStacks(ctx context.Context) ([]*localBackendReference, error) {

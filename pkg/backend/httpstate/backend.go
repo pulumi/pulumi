@@ -480,33 +480,38 @@ func (b *cloudBackend) Name() string {
 }
 
 func (b *cloudBackend) URL() string {
-	user, _, err := b.CurrentUser()
+	user, err := b.currentUser(context.Background())
 	if err != nil {
 		return cloudConsoleURL(b.url)
 	}
-	return cloudConsoleURL(b.url, user)
+	return cloudConsoleURL(b.url, user.Username)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 	b.currentProject = project
 }
 
-func (b *cloudBackend) CurrentUser() (string, []string, error) {
-	return b.currentUser(context.Background())
+func (b *cloudBackend) CurrentUser() (*workspace.Account, error) {
+	account, err := b.currentUser(context.Background())
+	return &account, err
 }
 
-func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, error) {
+func (b *cloudBackend) currentUser(ctx context.Context) (workspace.Account, error) {
 	account, err := workspace.GetAccount(b.CloudURL())
 	if err != nil {
-		return "", nil, err
+		return workspace.Account{}, err
 	}
-	if account.Username != "" {
-		logging.V(1).Infof("found username for access token")
-		return account.Username, account.Organizations, nil
+
+	if account.Username == "" {
+		logging.V(1).Infof("no username for access token")
+		name, orgs, err := b.client.GetPulumiAccountDetails(ctx)
+		if err != nil {
+			return workspace.Account{}, err
+		}
+		account.Username = name
+		account.Organizations = orgs
 	}
-	logging.V(1).Infof("no username for access token")
-	name, orgs, err := b.client.GetPulumiAccountDetails(ctx)
-	return name, orgs, err
+	return account, nil
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -526,11 +531,11 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUser, _, userErr := b.CurrentUser()
-		if userErr != nil {
-			return nil, userErr
+		currentUser, err := b.currentUser(context.Background())
+		if err != nil {
+			return nil, err
 		}
-		orgName = currentUser
+		orgName = currentUser.Username
 	}
 
 	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil
@@ -628,11 +633,11 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
-			currentUser, _, userErr := b.CurrentUser()
+			currentUser, userErr := b.currentUser(context.Background())
 			if userErr != nil {
 				return nil, userErr
 			}
-			qualifiedName.Owner = currentUser
+			qualifiedName.Owner = currentUser.Username
 		}
 	}
 
@@ -774,8 +779,8 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return workspace.GetBackendConfigDefaultOrg(nil)
 	}
 	getUserOrg := func() (string, error) {
-		orgName, _, err := b.currentUser(ctx)
-		return orgName, err
+		user, err := b.currentUser(ctx)
+		return user.Username, err
 	}
 	orgName, err := inferOrg(ctx, getDefaultOrg, getUserOrg)
 	if err != nil {

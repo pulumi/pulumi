@@ -89,9 +89,16 @@ func (cmd *whoAmICmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	name, orgs, err := b.CurrentUser()
+	name := "organization"
+	orgs := []string{}
+
+	user, err := b.CurrentUser()
 	if err != nil {
 		return err
+	}
+	if user != nil {
+		name = user.Username
+		orgs = user.Organizations
 	}
 
 	if cmd.jsonOut {

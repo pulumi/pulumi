@@ -225,9 +225,12 @@ func currentUser(t *testing.T) string {
 	ctx := context.Background()
 	b, err := currentBackend(ctx, nil, display.Options{})
 	assert.NoError(t, err)
-	currentUser, _, err := b.CurrentUser()
+	currentUser, err := b.CurrentUser()
 	assert.NoError(t, err)
-	return currentUser
+	if currentUser == nil {
+		return "organization"
+	}
+	return currentUser.Username
 }
 
 func loadStackName(t *testing.T) string {

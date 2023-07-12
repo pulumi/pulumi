@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/about
+  description: Username for about and whoami is now 'organization' for filestate backends. This matches the expectation for their fully qualified stack references.

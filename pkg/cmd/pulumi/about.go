@@ -307,15 +307,20 @@ type backendAbout struct {
 }
 
 func getBackendAbout(b backend.Backend) backendAbout {
-	currentUser, currentOrgs, err := b.CurrentUser()
-	if err != nil {
-		currentUser = "Unknown"
+	username := "organization"
+	orgs := []string{}
+
+	currentUser, err := b.CurrentUser()
+	if err == nil && currentUser != nil {
+		username = currentUser.Username
+		orgs = currentUser.Organizations
 	}
+
 	return backendAbout{
 		Name:          b.Name(),
 		URL:           b.URL(),
-		User:          currentUser,
-		Organizations: currentOrgs,
+		User:          username,
+		Organizations: orgs,
 	}
 }
 

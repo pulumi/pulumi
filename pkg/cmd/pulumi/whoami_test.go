@@ -12,6 +12,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestWhoAmICmd_none(t *testing.T) {
+	t.Parallel()
+
+	var buff bytes.Buffer
+	cmd := whoAmICmd{
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return &backend.MockBackend{
+				CurrentUserF: func() (*workspace.Account, error) {
+					return nil, nil
+				},
+			}, nil
+		},
+	}
+
+	err := cmd.Run(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, "organization", buff.String())
+}
+
 func TestWhoAmICmd_default(t *testing.T) {
 	t.Parallel()
 
@@ -20,8 +41,8 @@ func TestWhoAmICmd_default(t *testing.T) {
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, error) {
-					return "user1", []string{"org1", "org2"}, nil
+				CurrentUserF: func() (*workspace.Account, error) {
+					return &workspace.Account{Username: "user1", Organizations: []string{"org1", "org2"}}, nil
 				},
 			}, nil
 		},
@@ -42,8 +63,8 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 		Stdout:  &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, error) {
-					return "user2", []string{"org1", "org2"}, nil
+				CurrentUserF: func() (*workspace.Account, error) {
+					return &workspace.Account{Username: "user2", Organizations: []string{"org1", "org2"}}, nil
 				},
 				URLF: func() string {
 					return "https://pulumi.example.com"
@@ -70,8 +91,8 @@ func TestWhoAmICmd_json(t *testing.T) {
 		Stdout:  &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &backend.MockBackend{
-				CurrentUserF: func() (string, []string, error) {
-					return "user3", []string{"org1", "org2"}, nil
+				CurrentUserF: func() (*workspace.Account, error) {
+					return &workspace.Account{Username: "user3", Organizations: []string{"org1", "org2"}}, nil
 				},
 				URLF: func() string {
 					return "https://pulumi.example.com"
