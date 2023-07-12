@@ -247,7 +247,7 @@ class OutputStrTests(unittest.TestCase):
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://pulumi.io/help/outputs for more details.
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of Pulumi.""")
 
 
