@@ -260,7 +260,8 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 					// for any other generic type iterations
 					// we compute the range key and range value types
 					// and the variable type T of the component becomes List<T>
-					rangeKeyType, rangeValueType, _ = model.GetCollectionTypes(typ, rng.Range())
+					strict := !b.options.skipRangeTypecheck
+					rangeKeyType, rangeValueType, _ = model.GetCollectionTypes(typ, rng.Range(), strict)
 					transformComponentType = func(variableType model.Type) model.Type {
 						return model.NewListType(variableType)
 					}

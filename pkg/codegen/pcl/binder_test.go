@@ -522,3 +522,28 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 	unwrappedType := pcl.UnwrapOption(fooBarType)
 	assert.Equal(t, model.StringType, unwrappedType)
 }
+
+func TestBindingInvalidRangeTypeWhenSkippingRangeTypechecking(t *testing.T) {
+	t.Parallel()
+	// here the range function expects a number but we pass a boolean
+	source := `
+config "inputRange" "string" { }
+
+data = [for x in inputRange : x]
+
+resource randomPet "random:index/randomPet:RandomPet" {
+	options { range = inputRange }
+}
+`
+	// usually a string is not a valid range type
+	// but when skipping range typechecking it should still bind
+	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipRangeTypechecking)
+	require.NoError(t, lenientError)
+	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
+	assert.NotNil(t, lenientProgram)
+
+	strictProgram, diags, strictError := ParseAndBindProgram(t, source, "program.pp")
+	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	assert.Equal(t, 2, len(diags), "There are two diagnostics")
+	assert.Nil(t, strictProgram)
+}

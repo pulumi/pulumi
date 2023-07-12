@@ -26,12 +26,17 @@ import (
 
 type BindOption func(options *bindOptions)
 
+type bindOptions struct {
+	allowMissingVariables bool
+	skipRangeTypechecking bool
+}
+
 func AllowMissingVariables(options *bindOptions) {
 	options.allowMissingVariables = true
 }
 
-type bindOptions struct {
-	allowMissingVariables bool
+func SkipRangeTypechecking(options *bindOptions) {
+	options.skipRangeTypechecking = true
 }
 
 type expressionBinder struct {
@@ -329,9 +334,13 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 
 	collection, collectionDiags := b.bindExpression(syntax.CollExpr)
 	diagnostics = append(diagnostics, collectionDiags...)
-
 	// TODO(pdg): handle union types.
-	keyType, valueType, kvDiags := GetCollectionTypes(collection.Type(), syntax.CollExpr.Range())
+	strictCollectionTypechecking := !b.options.skipRangeTypechecking
+	keyType, valueType, kvDiags := GetCollectionTypes(
+		collection.Type(),
+		syntax.CollExpr.Range(),
+		strictCollectionTypechecking)
+
 	diagnostics = append(diagnostics, kvDiags...)
 
 	// Push a scope for the key and value variables and define these vars.
@@ -370,15 +379,16 @@ func (b *expressionBinder) bindForExpression(syntax *hclsyntax.ForExpr) (Express
 			syntax.CondExpr != nil)
 	}
 	expr := &ForExpression{
-		Syntax:        syntax,
-		Tokens:        tokens,
-		KeyVariable:   keyVariable,
-		ValueVariable: valueVariable,
-		Collection:    collection,
-		Key:           key,
-		Value:         value,
-		Condition:     condition,
-		Group:         syntax.Group,
+		Syntax:                       syntax,
+		Tokens:                       tokens,
+		KeyVariable:                  keyVariable,
+		ValueVariable:                valueVariable,
+		Collection:                   collection,
+		Key:                          key,
+		Value:                        value,
+		Condition:                    condition,
+		Group:                        syntax.Group,
+		StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
 	}
 	typecheckDiags := expr.typecheck(false, false)
 	diagnostics = append(diagnostics, typecheckDiags...)
@@ -464,10 +474,11 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 		tokens = _syntax.NewIndexTokens()
 	}
 	expr := &IndexExpression{
-		Syntax:     syntax,
-		Tokens:     tokens,
-		Collection: collection,
-		Key:        key,
+		Syntax:                       syntax,
+		Tokens:                       tokens,
+		Collection:                   collection,
+		Key:                          key,
+		StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)

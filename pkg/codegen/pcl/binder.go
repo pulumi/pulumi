@@ -54,6 +54,7 @@ type bindOptions struct {
 	allowMissingProperties       bool
 	skipResourceTypecheck        bool
 	skipInvokeTypecheck          bool
+	skipRangeTypecheck           bool
 	preferOutputVersionedInvokes bool
 	loader                       schema.Loader
 	packageCache                 *PackageCache
@@ -65,10 +66,14 @@ type bindOptions struct {
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
+	var options []model.BindOption
 	if opts.allowMissingVariables {
-		return []model.BindOption{model.AllowMissingVariables}
+		options = append(options, model.AllowMissingVariables)
 	}
-	return nil
+	if opts.skipRangeTypecheck {
+		options = append(options, model.SkipRangeTypechecking)
+	}
+	return options
 }
 
 type binder struct {
@@ -94,6 +99,10 @@ func AllowMissingProperties(options *bindOptions) {
 
 func SkipResourceTypechecking(options *bindOptions) {
 	options.skipResourceTypecheck = true
+}
+
+func SkipRangeTypechecking(options *bindOptions) {
+	options.skipRangeTypecheck = true
 }
 
 func PreferOutputVersionedInvokes(options *bindOptions) {
@@ -172,7 +181,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
 	})
 	// Define builtin functions.
-	for name, fn := range pulumiBuiltins {
+	for name, fn := range pulumiBuiltins(options) {
 		b.root.DefineFunction(name, fn)
 	}
 	// Define the invoke function.

@@ -373,8 +373,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 					node.VariableType = condExpr.Type()
 				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+					functions := pulumiBuiltins(b.options)
 					rangeArgs := []model.Expression{expr}
-					rangeSig, _ := pulumiBuiltins["range"].GetSignature(rangeArgs)
+					rangeSig, _ := functions["range"].GetSignature(rangeArgs)
 
 					rangeExpr := &model.ForExpression{
 						ValueVariable: &model.Variable{
@@ -395,7 +396,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 					node.VariableType = rangeExpr.Type()
 				default:
-					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range())
+					strictCollectionType := !b.options.skipRangeTypecheck
+					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
 
 					iterationExpr := &model.ForExpression{
@@ -403,8 +405,9 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 							Name:         "_",
 							VariableType: rangeValue,
 						},
-						Collection: expr,
-						Value:      model.VariableReference(resourceVar),
+						Collection:                   expr,
+						Value:                        model.VariableReference(resourceVar),
+						StrictCollectionTypechecking: strictCollectionType,
 					}
 					diags = iterationExpr.Typecheck(false)
 					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.

@@ -726,6 +726,11 @@ type ForExpression struct {
 	// True if the value expression is being grouped.
 	Group bool
 
+	// Whether the collection type should be strictly type-checked
+	// When true, unsupported collection types will result in an error
+	// otherwise a warning will be emitted
+	StrictCollectionTypechecking bool
+
 	exprType Type
 }
 
@@ -761,7 +766,7 @@ func (x *ForExpression) typecheck(typecheckCollection, typecheckOperands bool) h
 	}
 
 	if typecheckCollection {
-		keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng)
+		keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng, x.StrictCollectionTypechecking)
 		diagnostics = append(diagnostics, kvDiags...)
 
 		if x.KeyVariable != nil {
@@ -1147,6 +1152,10 @@ type IndexExpression struct {
 	Collection Expression
 	// The index key.
 	Key Expression
+	// Whether the collection type should be strictly type-checked
+	// When true, unsupported collection types will result in an error
+	// otherwise a warning will be emitted
+	StrictCollectionTypechecking bool
 
 	keyType  Type
 	exprType Type
@@ -1191,7 +1200,7 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		rng = x.Syntax.Collection.Range()
 	}
 
-	keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng)
+	keyType, valueType, kvDiags := GetCollectionTypes(x.Collection.Type(), rng, x.StrictCollectionTypechecking)
 	diagnostics = append(diagnostics, kvDiags...)
 	x.keyType = keyType
 
