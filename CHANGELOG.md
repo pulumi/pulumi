@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.75.0 (2023-07-12)
+
+
+### Features
+
+- [programgen/{dotnet,go,nodejs,python}] Allow generating code for unknown invokes (tf data sources) in non-strict mode
+  [#13448](https://github.com/pulumi/pulumi/pull/13448)
+
+- [programgen/go] Adds explicit package versioning to Golang codegen
+  [#13136](https://github.com/pulumi/pulumi/pull/13136)
+
+
+### Bug Fixes
+
+- [sdk/go] Fix downloading of unimported external plugins.
+  [#13455](https://github.com/pulumi/pulumi/pull/13455)
+
+- [cli/new] `pulumi new -s 'org/project/stack'` checks the specified organization for project existence rather than the currentUser.
+  [#13234](https://github.com/pulumi/pulumi/pull/13234)
+
+- [cli/new] When providing a `--stack` and `--name` to `pulumi new`, the project names must match before creating Pulumi.yaml.
+  [#13250](https://github.com/pulumi/pulumi/pull/13250)
+
+- [cli/plugin] Fix interpolation of vesion into http plugin source URLs.
+  [#13447](https://github.com/pulumi/pulumi/pull/13447)
+
+- [sdk/nodejs] Add dependency on @opentelemetry/instrumentation
+  [#13278](https://github.com/pulumi/pulumi/pull/13278)
+
+- [sdk/nodejs] Node.js dynamic providers mark serialized functions as secret if they capture any secrets
+  [#13329](https://github.com/pulumi/pulumi/pull/13329)
+
+- [sdk/python] Python dynamic provider serialized code is now saved to state as secret.
+  [#13315](https://github.com/pulumi/pulumi/pull/13315)
+
 ## 3.74.0 (2023-06-30)
 
 
