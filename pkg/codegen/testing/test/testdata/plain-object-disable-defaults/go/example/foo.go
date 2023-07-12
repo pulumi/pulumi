@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-object-disable-defaults/example/internal"
 )
 
@@ -106,6 +107,12 @@ func (i *Foo) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FooOutput)
 }
 
+func (i *Foo) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: i.ToFooOutputWithContext(ctx).OutputState,
+	}
+}
+
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -118,6 +125,12 @@ func (o FooOutput) ToFooOutput() FooOutput {
 
 func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 	return o
+}
+
+func (o FooOutput) ToOutput(ctx context.Context) pulumix.Output[*Foo] {
+	return pulumix.Output[*Foo]{
+		OutputState: o.OutputState,
+	}
 }
 
 // A test for plain types

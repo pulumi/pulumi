@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"plain-object-defaults/example/internal"
 )
 
@@ -74,6 +75,12 @@ func (i TypArgs) ToTypOutputWithContext(ctx context.Context) TypOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(TypOutput)
 }
 
+func (i TypArgs) ToOutput(ctx context.Context) pulumix.Output[Typ] {
+	return pulumix.Output[Typ]{
+		OutputState: i.ToTypOutputWithContext(ctx).OutputState,
+	}
+}
+
 func (i TypArgs) ToTypPtrOutput() TypPtrOutput {
 	return i.ToTypPtrOutputWithContext(context.Background())
 }
@@ -115,6 +122,12 @@ func (i *typPtrType) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(TypPtrOutput)
 }
 
+func (i *typPtrType) ToOutput(ctx context.Context) pulumix.Output[*Typ] {
+	return pulumix.Output[*Typ]{
+		OutputState: i.ToTypPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 // A test for namespaces (mod 1)
 type TypOutput struct{ *pulumi.OutputState }
 
@@ -140,6 +153,12 @@ func (o TypOutput) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 	}).(TypPtrOutput)
 }
 
+func (o TypOutput) ToOutput(ctx context.Context) pulumix.Output[Typ] {
+	return pulumix.Output[Typ]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o TypOutput) Val() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Typ) *string { return v.Val }).(pulumi.StringPtrOutput)
 }
@@ -156,6 +175,12 @@ func (o TypPtrOutput) ToTypPtrOutput() TypPtrOutput {
 
 func (o TypPtrOutput) ToTypPtrOutputWithContext(ctx context.Context) TypPtrOutput {
 	return o
+}
+
+func (o TypPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*Typ] {
+	return pulumix.Output[*Typ]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o TypPtrOutput) Elem() TypOutput {

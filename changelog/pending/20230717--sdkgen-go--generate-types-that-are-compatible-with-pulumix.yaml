@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen/go
+  description: Generate types that are compatible with sdk/go/pulumix's type-safe APIs.

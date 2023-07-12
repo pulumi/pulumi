@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"simple-resource-schema/example/internal"
 )
 
@@ -65,6 +66,12 @@ func (i *BarResource) ToBarResourceOutputWithContext(ctx context.Context) BarRes
 	return pulumi.ToOutputWithContext(ctx, i).(BarResourceOutput)
 }
 
+func (i *BarResource) ToOutput(ctx context.Context) pulumix.Output[*BarResource] {
+	return pulumix.Output[*BarResource]{
+		OutputState: i.ToBarResourceOutputWithContext(ctx).OutputState,
+	}
+}
+
 type BarResourceOutput struct{ *pulumi.OutputState }
 
 func (BarResourceOutput) ElementType() reflect.Type {
@@ -77,6 +84,12 @@ func (o BarResourceOutput) ToBarResourceOutput() BarResourceOutput {
 
 func (o BarResourceOutput) ToBarResourceOutputWithContext(ctx context.Context) BarResourceOutput {
 	return o
+}
+
+func (o BarResourceOutput) ToOutput(ctx context.Context) pulumix.Output[*BarResource] {
+	return pulumix.Output[*BarResource]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o BarResourceOutput) Foo() ResourceOutput {
