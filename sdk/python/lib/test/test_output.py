@@ -29,7 +29,6 @@ def pulumi_test(coro):
         settings.configure(settings.Settings("project", "stack"))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
 
         wrapped(*args, **kwargs)
 

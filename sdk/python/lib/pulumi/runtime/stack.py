@@ -17,19 +17,19 @@ Support for automatic stack components.
 """
 import asyncio
 from inspect import isawaitable
-from typing import Callable, Any, Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
+from .. import log
 from ..resource import ComponentResource, Resource, ResourceTransformation
 from .settings import (
+    _get_rpc_manager,
     get_project,
-    get_stack,
     get_root_resource,
+    get_stack,
     is_dry_run,
     set_root_resource,
 )
-from .rpc_manager import RPC_MANAGER
 from .sync_await import _all_tasks, _get_current_task
-from .. import log
 
 if TYPE_CHECKING:
     from .. import Output
@@ -57,6 +57,7 @@ async def run_pulumi_func(func: Callable):
 async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
     log.debug("Waiting for outstanding RPCs to complete")
 
+    rpc_manager = _get_rpc_manager()
     while True:
         # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
         # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
@@ -65,27 +66,27 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         # https://github.com/python/asyncio/issues/284#issuecomment-154180935
         #
         # We await each RPC in turn so that this loop will actually block rather than busy-wait.
-        while len(RPC_MANAGER.rpcs) > 0:
+        while len(rpc_manager.rpcs) > 0:
             await asyncio.sleep(0)
             log.debug(
-                f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding"
+                f"waiting for quiescence; {len(rpc_manager.rpcs)} RPCs outstanding"
             )
             try:
-                await RPC_MANAGER.rpcs.pop()
+                await rpc_manager.rpcs.pop()
             except Exception as exn:
                 # If the RPC failed, re-raise the original traceback
                 # instead of the await above.
-                if RPC_MANAGER.unhandled_exception is not None:
-                    cause = RPC_MANAGER.unhandled_exception.with_traceback(
-                        RPC_MANAGER.exception_traceback,
+                if rpc_manager.unhandled_exception is not None:
+                    cause = rpc_manager.unhandled_exception.with_traceback(
+                        rpc_manager.exception_traceback,
                     )
                     raise exn from cause
 
                 raise
 
-        if RPC_MANAGER.unhandled_exception is not None:
-            raise RPC_MANAGER.unhandled_exception.with_traceback(
-                RPC_MANAGER.exception_traceback
+        if rpc_manager.unhandled_exception is not None:
+            raise rpc_manager.unhandled_exception.with_traceback(
+                rpc_manager.exception_traceback
             )
 
         log.debug("RPCs successfully completed")
@@ -123,7 +124,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # Check to see if any more RPCs have been scheduled, and repeat the cycle if so.
         # Break if no RPCs remain.
-        if len(RPC_MANAGER.rpcs) == 0:
+        if len(rpc_manager.rpcs) == 0:
             break
 
 

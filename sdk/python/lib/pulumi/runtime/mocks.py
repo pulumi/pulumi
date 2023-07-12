@@ -18,23 +18,15 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
+
 from google.protobuf import empty_pb2
-from . import rpc, rpc_manager
-from .settings import (
-    Settings,
-    configure,
-    get_stack,
-    get_project,
-    get_root_resource,
-)
-from .sync_await import _ensure_event_loop, _sync_await
-from ..runtime.proto import (
-    engine_pb2,
-    provider_pb2,
-    resource_pb2,
-)
+
+from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
+from . import rpc, rpc_manager
+from .settings import Settings, configure, get_project, get_root_resource, get_stack
+from .sync_await import _ensure_event_loop, _sync_await
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -50,14 +42,11 @@ def test(fn):
     def wrapper(*args, **kwargs):
         from .. import Output  # pylint: disable=import-outside-toplevel
 
-        try:
-            _sync_await(
-                run_pulumi_func(
-                    lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())
-                )
+        _sync_await(
+            run_pulumi_func(
+                lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())
             )
-        finally:
-            rpc_manager.RPC_MANAGER.clear()
+        )
 
     return wrapper
 
@@ -282,6 +271,7 @@ class MockEngine:
 # Because ContextVars are context-sensitive, asyncio threads lose track of external settings meddling
 class MockSettings(Settings):
     def __init__(self, *_, **kwargs):  # pylint: disable=super-init-not-called
+        self.rpc_manager = rpc_manager.RPCManager()
         for key, value in kwargs.items():
             setattr(self, key, value)
 

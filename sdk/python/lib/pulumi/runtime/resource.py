@@ -38,9 +38,8 @@ from .. import urn as urn_util
 from ..output import Input, Output
 from ..runtime.proto import alias_pb2, resource_pb2
 from . import known_types, rpc, settings
-from .resource_cycle_breaker import declare_dependency
-from .rpc_manager import RPC_MANAGER
-from .settings import handle_grpc_error
+from .rpc import _expand_dependencies
+from .settings import _get_rpc_manager, handle_grpc_error
 
 if TYPE_CHECKING:
     from .. import Alias, CustomResource, Inputs, ProviderResource, Resource
@@ -585,7 +584,7 @@ def get_resource(
             transform_using_type_metadata,
         )
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("get resource", do_get)())
 
 
 def _translate_ignore_changes(
@@ -753,7 +752,7 @@ def read_resource(
             transform_using_type_metadata,
         )
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
 
 
 def register_resource(
@@ -988,7 +987,7 @@ def register_resource(
 
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("register resource", do_register)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("register resource", do_register)())
 
 
 def register_resource_outputs(
@@ -1024,7 +1023,9 @@ def register_resource_outputs(
         )
 
     asyncio.ensure_future(
-        RPC_MANAGER.do_rpc("register resource outputs", do_register_resource_outputs)()
+        _get_rpc_manager().do_rpc(
+            "register resource outputs", do_register_resource_outputs
+        )()
     )
 
 
@@ -1080,78 +1081,6 @@ def convert_providers(
     return result
 
 
-async def _add_dependency(
-    deps: Set[str], res: "Resource", from_resource: Optional["Resource"]
-):
-    """
-    _add_dependency adds a dependency on the given resource to the set of deps.
-
-    The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
-    or a remote component resource:
-
-    - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
-    - Local component resources act as aggregations of their descendents. Rather than adding the component resource
-      itself, each child resource is added as a dependency.
-    - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
-      with respect to dependencies: the construction of a remote component always waits on the construction of its
-      children.
-
-    In other words, if we had:
-
-                     Comp1
-                 |     |     |
-             Cust1   Comp2  Remote1
-                     |   |       |
-                 Cust2   Cust3  Comp3
-                 |                 |
-             Cust4                Cust5
-
-    Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
-    It will *not* include:
-    * Cust4 because it is a child of a custom resource
-    * Comp2 because it is a non-remote component resoruce
-    * Comp3 and Cust5 because Comp3 is a child of a remote component resource
-    """
-
-    # Exit early if there are cycles to avoid hangs.
-    no_cycles = declare_dependency(from_resource, res) if from_resource else True
-    if not no_cycles:
-        return
-
-    from .. import ComponentResource  # pylint: disable=import-outside-toplevel
-
-    # Local component resources act as aggregations of their descendents.
-    # Rather than adding the component resource itself, each child resource
-    # is added as a dependency.
-    if isinstance(res, ComponentResource) and not res._remote:
-        # Copy the set before iterating so that any concurrent child additions during
-        # the dependency computation (which is async, so can be interleaved with other
-        # operations including child resource construction which adds children to this
-        # resource) do not trigger modification during iteration errors.
-        child_resources = res._childResources.copy()
-        for child in child_resources:
-            await _add_dependency(deps, child, from_resource)
-        return
-
-    urn = await res.urn.future()
-    if urn:
-        deps.add(urn)
-
-
-async def _expand_dependencies(
-    deps: Iterable["Resource"], from_resource: Optional["Resource"]
-) -> Set[str]:
-    """
-    _expand_dependencies expands the given iterable of Resources into a set of URNs.
-    """
-
-    urns: Set[str] = set()
-    for d in deps:
-        await _add_dependency(urns, d, from_resource)
-
-    return urns
-
-
 async def _resolve_depends_on_urns(
     options: "ResourceOptions", from_resource: "Resource"
 ) -> Set[str]:
@@ -1176,4 +1105,4 @@ async def _resolve_depends_on_urns(
         if direct_dep is not None:
             all_deps.add(direct_dep)
 
-    return await _expand_dependencies(all_deps, from_resource)
+    return await rpc._expand_dependencies(all_deps, from_resource)

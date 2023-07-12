@@ -14,10 +14,10 @@
 
 import sys
 import traceback
-import pytest
 
+import pytest
 from pulumi.runtime import stack
-from pulumi.runtime.rpc_manager import RPC_MANAGER
+from pulumi.runtime.settings import _get_rpc_manager
 
 
 async def _explode(n = 10):
@@ -34,7 +34,7 @@ async def test_wait_for_rpcs():
     rather than wait_for_rpcs's own stack trace.
     """
 
-    await RPC_MANAGER.do_rpc("sadness", _explode)()
+    await _get_rpc_manager().do_rpc("sadness", _explode)()
     try:
         await stack.wait_for_rpcs()
     except Exception:
