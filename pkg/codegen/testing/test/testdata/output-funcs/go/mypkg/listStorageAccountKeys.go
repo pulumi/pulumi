@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs/mypkg/internal"
 )
 
@@ -77,6 +78,12 @@ func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutput
 
 func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutputWithContext(ctx context.Context) ListStorageAccountKeysResultOutput {
 	return o
+}
+
+func (o ListStorageAccountKeysResultOutput) ToOutput(ctx context.Context) pulumix.Output[ListStorageAccountKeysResult] {
+	return pulumix.Output[ListStorageAccountKeysResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Gets the list of storage account keys and their properties for the specified storage account.

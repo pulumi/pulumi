@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs/mypkg/internal"
 )
 
@@ -83,6 +84,12 @@ func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToGetIntegrationRuntim
 
 func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToGetIntegrationRuntimeObjectMetadatumResultOutputWithContext(ctx context.Context) GetIntegrationRuntimeObjectMetadatumResultOutput {
 	return o
+}
+
+func (o GetIntegrationRuntimeObjectMetadatumResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetIntegrationRuntimeObjectMetadatumResult] {
+	return pulumix.Output[GetIntegrationRuntimeObjectMetadatumResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // The link to the next page of results, if any remaining results exist.

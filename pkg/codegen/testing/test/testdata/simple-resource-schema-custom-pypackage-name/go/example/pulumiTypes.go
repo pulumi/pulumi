@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"simple-resource-schema-custom-pypackage-name/example/internal"
 )
 
@@ -44,6 +45,12 @@ func (i ConfigMapArgs) ToConfigMapOutputWithContext(ctx context.Context) ConfigM
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigMapOutput)
 }
 
+func (i ConfigMapArgs) ToOutput(ctx context.Context) pulumix.Output[ConfigMap] {
+	return pulumix.Output[ConfigMap]{
+		OutputState: i.ToConfigMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ConfigMapArrayInput is an input type that accepts ConfigMapArray and ConfigMapArrayOutput values.
 // You can construct a concrete instance of `ConfigMapArrayInput` via:
 //
@@ -69,6 +76,12 @@ func (i ConfigMapArray) ToConfigMapArrayOutputWithContext(ctx context.Context) C
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigMapArrayOutput)
 }
 
+func (i ConfigMapArray) ToOutput(ctx context.Context) pulumix.Output[[]ConfigMap] {
+	return pulumix.Output[[]ConfigMap]{
+		OutputState: i.ToConfigMapArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ConfigMapOutput struct{ *pulumi.OutputState }
 
 func (ConfigMapOutput) ElementType() reflect.Type {
@@ -81,6 +94,12 @@ func (o ConfigMapOutput) ToConfigMapOutput() ConfigMapOutput {
 
 func (o ConfigMapOutput) ToConfigMapOutputWithContext(ctx context.Context) ConfigMapOutput {
 	return o
+}
+
+func (o ConfigMapOutput) ToOutput(ctx context.Context) pulumix.Output[ConfigMap] {
+	return pulumix.Output[ConfigMap]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ConfigMapOutput) Config() pulumi.StringPtrOutput {
@@ -99,6 +118,12 @@ func (o ConfigMapArrayOutput) ToConfigMapArrayOutput() ConfigMapArrayOutput {
 
 func (o ConfigMapArrayOutput) ToConfigMapArrayOutputWithContext(ctx context.Context) ConfigMapArrayOutput {
 	return o
+}
+
+func (o ConfigMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ConfigMap] {
+	return pulumix.Output[[]ConfigMap]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ConfigMapArrayOutput) Index(i pulumi.IntInput) ConfigMapOutput {
@@ -150,6 +175,12 @@ func (i ObjectArgs) ToObjectOutputWithContext(ctx context.Context) ObjectOutput 
 	return pulumi.ToOutputWithContext(ctx, i).(ObjectOutput)
 }
 
+func (i ObjectArgs) ToOutput(ctx context.Context) pulumix.Output[Object] {
+	return pulumix.Output[Object]{
+		OutputState: i.ToObjectOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ObjectOutput struct{ *pulumi.OutputState }
 
 func (ObjectOutput) ElementType() reflect.Type {
@@ -162,6 +193,12 @@ func (o ObjectOutput) ToObjectOutput() ObjectOutput {
 
 func (o ObjectOutput) ToObjectOutputWithContext(ctx context.Context) ObjectOutput {
 	return o
+}
+
+func (o ObjectOutput) ToOutput(ctx context.Context) pulumix.Output[Object] {
+	return pulumix.Output[Object]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ObjectOutput) Bar() pulumi.StringPtrOutput {
@@ -217,6 +254,12 @@ func (i OtherResourceOutputTypeArgs) ToOtherResourceOutputTypeOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutputTypeOutput)
 }
 
+func (i OtherResourceOutputTypeArgs) ToOutput(ctx context.Context) pulumix.Output[OtherResourceOutputType] {
+	return pulumix.Output[OtherResourceOutputType]{
+		OutputState: i.ToOtherResourceOutputTypeOutputWithContext(ctx).OutputState,
+	}
+}
+
 type OtherResourceOutputTypeOutput struct{ *pulumi.OutputState }
 
 func (OtherResourceOutputTypeOutput) ElementType() reflect.Type {
@@ -229,6 +272,12 @@ func (o OtherResourceOutputTypeOutput) ToOtherResourceOutputTypeOutput() OtherRe
 
 func (o OtherResourceOutputTypeOutput) ToOtherResourceOutputTypeOutputWithContext(ctx context.Context) OtherResourceOutputTypeOutput {
 	return o
+}
+
+func (o OtherResourceOutputTypeOutput) ToOutput(ctx context.Context) pulumix.Output[OtherResourceOutputType] {
+	return pulumix.Output[OtherResourceOutputType]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o OtherResourceOutputTypeOutput) Foo() pulumi.StringPtrOutput {
@@ -266,6 +315,12 @@ func (i SomeOtherObjectArgs) ToSomeOtherObjectOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectOutput)
 }
 
+func (i SomeOtherObjectArgs) ToOutput(ctx context.Context) pulumix.Output[SomeOtherObject] {
+	return pulumix.Output[SomeOtherObject]{
+		OutputState: i.ToSomeOtherObjectOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SomeOtherObjectArrayInput is an input type that accepts SomeOtherObjectArray and SomeOtherObjectArrayOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayInput` via:
 //
@@ -291,6 +346,12 @@ func (i SomeOtherObjectArray) ToSomeOtherObjectArrayOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayOutput)
 }
 
+func (i SomeOtherObjectArray) ToOutput(ctx context.Context) pulumix.Output[[]SomeOtherObject] {
+	return pulumix.Output[[]SomeOtherObject]{
+		OutputState: i.ToSomeOtherObjectArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 type SomeOtherObjectOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectOutput) ElementType() reflect.Type {
@@ -303,6 +364,12 @@ func (o SomeOtherObjectOutput) ToSomeOtherObjectOutput() SomeOtherObjectOutput {
 
 func (o SomeOtherObjectOutput) ToSomeOtherObjectOutputWithContext(ctx context.Context) SomeOtherObjectOutput {
 	return o
+}
+
+func (o SomeOtherObjectOutput) ToOutput(ctx context.Context) pulumix.Output[SomeOtherObject] {
+	return pulumix.Output[SomeOtherObject]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SomeOtherObjectOutput) Baz() pulumi.StringPtrOutput {
@@ -323,6 +390,12 @@ func (o SomeOtherObjectArrayOutput) ToSomeOtherObjectArrayOutputWithContext(ctx 
 	return o
 }
 
+func (o SomeOtherObjectArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]SomeOtherObject] {
+	return pulumix.Output[[]SomeOtherObject]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o SomeOtherObjectArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SomeOtherObject {
 		return vs[0].([]SomeOtherObject)[vs[1].(int)]
@@ -341,6 +414,12 @@ func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutput() SomeOther
 
 func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(ctx context.Context) SomeOtherObjectArrayArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayArrayOutput)
+}
+
+func (i SomeOtherObjectArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]SomeOtherObject] {
+	return pulumix.Output[[][]SomeOtherObject]{
+		OutputState: i.ToSomeOtherObjectArrayArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // SomeOtherObjectArrayArrayInput is an input type that accepts SomeOtherObjectArrayArray and SomeOtherObjectArrayArrayOutput values.
@@ -368,6 +447,12 @@ func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutputWithCo
 	return o
 }
 
+func (o SomeOtherObjectArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]SomeOtherObject] {
+	return pulumix.Output[[][]SomeOtherObject]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o SomeOtherObjectArrayArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectArrayOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) []SomeOtherObject {
 		return vs[0].([][]SomeOtherObject)[vs[1].(int)]
@@ -386,6 +471,12 @@ func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutput() SomeOtherObje
 
 func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx context.Context) SomeOtherObjectArrayMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayMapOutput)
+}
+
+func (i SomeOtherObjectArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]SomeOtherObject] {
+	return pulumix.Output[map[string][]SomeOtherObject]{
+		OutputState: i.ToSomeOtherObjectArrayMapOutputWithContext(ctx).OutputState,
+	}
 }
 
 // SomeOtherObjectArrayMapInput is an input type that accepts SomeOtherObjectArrayMap and SomeOtherObjectArrayMapOutput values.
@@ -411,6 +502,12 @@ func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutput() SomeOth
 
 func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutputWithContext(ctx context.Context) SomeOtherObjectArrayMapOutput {
 	return o
+}
+
+func (o SomeOtherObjectArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]SomeOtherObject] {
+	return pulumix.Output[map[string][]SomeOtherObject]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SomeOtherObjectArrayMapOutput) MapIndex(k pulumi.StringInput) SomeOtherObjectArrayOutput {

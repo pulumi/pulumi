@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"simple-resource-schema-custom-pypackage-name/example/internal"
 )
 
@@ -65,6 +66,12 @@ func (i *OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) Ot
 	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput)
 }
 
+func (i *OtherResource) ToOutput(ctx context.Context) pulumix.Output[*OtherResource] {
+	return pulumix.Output[*OtherResource]{
+		OutputState: i.ToOtherResourceOutputWithContext(ctx).OutputState,
+	}
+}
+
 type OtherResourceOutput struct{ *pulumi.OutputState }
 
 func (OtherResourceOutput) ElementType() reflect.Type {
@@ -77,6 +84,12 @@ func (o OtherResourceOutput) ToOtherResourceOutput() OtherResourceOutput {
 
 func (o OtherResourceOutput) ToOtherResourceOutputWithContext(ctx context.Context) OtherResourceOutput {
 	return o
+}
+
+func (o OtherResourceOutput) ToOutput(ctx context.Context) pulumix.Output[*OtherResource] {
+	return pulumix.Output[*OtherResource]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o OtherResourceOutput) Foo() ResourceOutput {
