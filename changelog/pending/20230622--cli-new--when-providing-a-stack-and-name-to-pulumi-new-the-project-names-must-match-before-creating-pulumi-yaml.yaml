@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: When providing a `--stack` and `--name` to `pulumi new`, the project names must match before creating Pulumi.yaml.

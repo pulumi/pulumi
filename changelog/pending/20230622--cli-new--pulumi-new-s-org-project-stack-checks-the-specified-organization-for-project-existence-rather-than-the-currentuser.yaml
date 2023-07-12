@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: `pulumi new -s 'org/project/stack'` checks the specified organization for project existence rather than the currentUser.
