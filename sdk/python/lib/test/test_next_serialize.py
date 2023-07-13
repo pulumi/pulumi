@@ -16,20 +16,17 @@ import unittest
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 
-from google.protobuf import struct_pb2
-from google.protobuf import json_format
-from pulumi.resource import ComponentResource, CustomResource, DependencyResource, Resource, ResourceOptions
-from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, mocks, rpc, rpc_manager, set_mocks, settings
-from pulumi import Input, Output, UNKNOWN, input_type
-from pulumi.asset import (
-    FileAsset,
-    RemoteAsset,
-    StringAsset,
-    AssetArchive,
-    FileArchive,
-    RemoteArchive
-)
+from google.protobuf import json_format, struct_pb2
+from pulumi.asset import (AssetArchive, FileArchive, FileAsset, RemoteArchive,
+                          RemoteAsset, StringAsset)
+from pulumi.resource import (ComponentResource, CustomResource,
+                             DependencyResource, Resource, ResourceOptions)
+from pulumi.runtime import (MockCallArgs, MockResourceArgs, Mocks,
+                            ResourceModule, mocks, rpc, rpc_manager, set_mocks,
+                            settings)
+
 import pulumi
+from pulumi import UNKNOWN, Input, Output, input_type
 
 
 class FakeCustomResource(CustomResource):
@@ -116,7 +113,6 @@ def pulumi_test(coro):
         settings.configure(mocks.MockSettings(dry_run=False))
         rpc._RESOURCE_PACKAGES.clear()
         rpc._RESOURCE_MODULES.clear()
-        rpc_manager.RPC_MANAGER = rpc_manager.RPCManager()
 
         wrapped(*args, **kwargs)
 

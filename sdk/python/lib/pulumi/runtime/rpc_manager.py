@@ -88,9 +88,3 @@ class RPCManager:
         self.rpcs = []
         self.exception_traceback = None
         self.unhandled_exception = None
-
-
-RPC_MANAGER: RPCManager = RPCManager()
-"""
-Singleton RPC manager responsible for coordinating RPC calls to the engine.
-"""

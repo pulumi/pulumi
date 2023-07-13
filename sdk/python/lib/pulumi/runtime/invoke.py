@@ -22,8 +22,12 @@ from .. import _types, log
 from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2, resource_pb2
 from . import rpc
-from .rpc_manager import RPC_MANAGER
-from .settings import get_monitor, grpc_error_to_exception, handle_grpc_error
+from .settings import (
+    _get_rpc_manager,
+    get_monitor,
+    grpc_error_to_exception,
+    handle_grpc_error,
+)
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
@@ -128,7 +132,7 @@ def invoke(
         return None, None
 
     async def do_rpc():
-        resp, exn = await RPC_MANAGER.do_rpc("invoke", do_invoke)()
+        resp, exn = await _get_rpc_manager().do_rpc("invoke", do_invoke)()
         # If there was an RPC level exception, we will raise it. Note that this will also crash the
         # process because it will have been considered "unhandled". For semantic level errors, such
         # as errors from the data source itself, we return that as part of the returned tuple instead.
@@ -282,6 +286,6 @@ def call(
             resolve_deps.set_result(set())
             raise
 
-    asyncio.ensure_future(RPC_MANAGER.do_rpc("call", do_call)())
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())
 
     return out
