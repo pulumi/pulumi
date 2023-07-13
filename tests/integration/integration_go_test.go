@@ -1023,3 +1023,9 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	_, err = stack.Preview(ctx)
 	require.NoError(t, err)
 }
+
+func TestConstructProviderExplicitGo(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderExplicit(t, "go", []string{"github.com/pulumi/pulumi/sdk/v3"})
+}

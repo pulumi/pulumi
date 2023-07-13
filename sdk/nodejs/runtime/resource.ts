@@ -688,11 +688,26 @@ export async function prepareResource(
         // If no parent was provided, parent to the root resource.
         const parentURN = parent ? await parent.urn.promise() : undefined;
 
-        let providerRef: string | undefined;
         let importID: ID | undefined;
         if (custom) {
             const customOpts = <CustomResourceOptions>opts;
             importID = customOpts.import;
+        }
+
+        let providerRef: string | undefined;
+        let sendProvider = custom;
+        if (remote && opts.provider) {
+            // If it's a remote component and a provider was specified, only
+            // send the provider in the request if the provider's package is
+            // the same as the component's package. Otherwise, don't send it
+            // because the user specified `provider: someProvider` as shorthand
+            // for `providers: [someProvider]`.
+            const pkg = pkgFromType(type!);
+            if (pkg && pkg === opts.provider.getPackage()) {
+                sendProvider = true;
+            }
+        }
+        if (sendProvider) {
             providerRef = await ProviderResource.register(opts.provider);
         }
 
@@ -1113,4 +1128,16 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
             log.debug(`Resource RPC serialization requested: ${label} is behind ${resourceChainLabel}`);
         }
     }
+}
+
+/**
+ * Extract the pkg from the type token of the form "pkg:module:member".
+ * @internal
+ */
+export function pkgFromType(type: string): string | undefined {
+    const parts = type.split(":");
+    if (parts.length === 3) {
+        return parts[0];
+    }
+    return undefined;
 }

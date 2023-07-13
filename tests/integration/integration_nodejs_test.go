@@ -1448,3 +1448,9 @@ func TestConstructProviderPropagationNode(t *testing.T) {
 
 	testConstructProviderPropagation(t, "nodejs", []string{"@pulumi/pulumi"})
 }
+
+func TestConstructProviderExplicitNode(t *testing.T) {
+	t.Parallel()
+
+	testConstructProviderExplicit(t, "nodejs", []string{"@pulumi/pulumi"})
+}

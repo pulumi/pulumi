@@ -504,3 +504,23 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 	assert.Equal(t, 11, foundStdout)
 	assert.Equal(t, 11, foundStderr)
 }
+
+func testConstructProviderExplicit(t *testing.T, lang string, dependencies []string) {
+	const testDir = "construct_component_provider_explicit"
+	runComponentSetup(t, testDir)
+
+	localProvider := integration.LocalDependency{
+		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:            filepath.Join(testDir, lang),
+		Dependencies:   dependencies,
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
+		NoParallel:     true, // already called by tests
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+			assert.Equal(t, "hello world", stackInfo.Outputs["nestedMessage"])
+		},
+	})
+}

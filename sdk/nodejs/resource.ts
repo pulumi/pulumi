@@ -15,7 +15,7 @@
 import { ResourceError } from "./errors";
 import * as log from "./log";
 import { Input, Inputs, interpolate, Output, output } from "./output";
-import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getResource, pkgFromType, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { unknownValue } from "./runtime/rpc";
 import { getProject, getStack } from "./runtime/settings";
 import { getStackResource } from "./runtime/state";
@@ -279,11 +279,10 @@ export abstract class Resource {
 
     // getProvider fetches the provider for the given module member, if any.
     public getProvider(moduleMember: string): ProviderResource | undefined {
-        const memComponents = moduleMember.split(":");
-        if (memComponents.length !== 3) {
+        const pkg = pkgFromType(moduleMember);
+        if (pkg === undefined) {
             return undefined;
         }
-        const pkg = memComponents[0];
 
         return this.__providers[pkg];
     }
@@ -384,12 +383,8 @@ export abstract class Resource {
         // 1. opts.provider
         // 2. a matching provider in opts.providers
         // 3. a matching provider inherited from opts.parent
-        if (custom && opts.provider === undefined) {
-            let pkg = undefined;
-            const memComponents = t.split(":");
-            if (memComponents.length === 3) {
-                pkg = memComponents[0];
-            }
+        if ((custom || remote) && opts.provider === undefined) {
+            const pkg = pkgFromType(t);
             const parentProvider = parent?.getProvider(t);
 
             if (pkg && pkg in this.__providers) {
@@ -400,7 +395,7 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
-        this.__prov = custom ? opts.provider : undefined;
+        this.__prov = custom || remote ? opts.provider : undefined;
         this.__version = opts.version;
         this.__pluginDownloadURL = opts.pluginDownloadURL;
 

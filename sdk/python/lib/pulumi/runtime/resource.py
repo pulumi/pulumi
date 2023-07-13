@@ -193,7 +193,15 @@ async def prepare_resource(
 
     # Construct the provider reference, if we were given a provider to use.
     provider_ref = None
-    if custom and opts is not None and opts.provider is not None:
+    send_provider = custom
+    if remote and opts is not None and opts.provider is not None:
+        # If it's a remote component and a provider was specified, only
+        # send the provider in the request if the provider's package is
+        # the same as the component's package.
+        pkg = _pkg_from_type(ty)
+        if pkg is not None and pkg == opts.provider.package:
+            send_provider = True
+    if send_provider and opts is not None and opts.provider is not None:
         provider = opts.provider
 
         # If we were given a provider, wait for it to resolve and construct a provider reference from it.
@@ -1106,3 +1114,13 @@ async def _resolve_depends_on_urns(
             all_deps.add(direct_dep)
 
     return await rpc._expand_dependencies(all_deps, from_resource)
+
+
+def _pkg_from_type(ty: str) -> Optional[str]:
+    """
+    Extract the pkg from the type token of the form "pkg:module:member".
+    """
+    parts = ty.split(":")
+    if len(parts) != 3:
+        return None
+    return parts[0]
