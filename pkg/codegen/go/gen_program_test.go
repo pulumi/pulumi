@@ -166,4 +166,6 @@ resource main "auto-deploy:index:AutoDeployer" {
 
 	files, diags, err := GenerateProjectFiles(workspace.Project{}, program)
 	assert.NotNil(t, files, "Files were generated")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
 }
