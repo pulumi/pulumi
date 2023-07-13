@@ -58,6 +58,7 @@ func (err *InstallPluginError) Unwrap() error {
 }
 
 func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, msg string)) (*semver.Version, error) {
+	util.SetKnownPluginDownloadURL(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginSpec.GetLatestVersion()
@@ -65,7 +66,6 @@ func InstallPlugin(pluginSpec workspace.PluginSpec, log func(sev diag.Severity, 
 			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
 		}
 	}
-	util.SetKnownPluginDownloadURL(&pluginSpec)
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		log(diag.Info, fmt.Sprintf("Downloading provider: %s", pluginSpec.Name))
