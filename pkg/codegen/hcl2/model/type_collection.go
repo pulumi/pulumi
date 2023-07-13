@@ -61,7 +61,7 @@ func wrapIterableResultType(sourceType, iterableType Type) Type {
 }
 
 // GetCollectionTypes returns the key and value types of the given type if it is a collection.
-func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Diagnostics) {
+func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, Type, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
 	var keyType, valueType Type
 	// Poke through any eventual and optional types that may wrap the collection type.
@@ -83,9 +83,14 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range) (Type, Type, hcl.Dia
 		}
 		valueType, _ = UnifyTypes(types...)
 	default:
-		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic). Otherwise, issue an error.
+		// If the collection is a dynamic type, treat it as an iterable(dynamic, dynamic).
+		// Otherwise, if we are in strict-mode, issue an error.
 		if collectionType != DynamicType {
-			diagnostics = append(diagnostics, unsupportedCollectionType(collectionType, rng))
+			unsupportedError := unsupportedCollectionType(collectionType, rng)
+			if !strict {
+				unsupportedError.Severity = hcl.DiagWarning
+			}
+			diagnostics = append(diagnostics, unsupportedError)
 		}
 		keyType, valueType = DynamicType, DynamicType
 	}

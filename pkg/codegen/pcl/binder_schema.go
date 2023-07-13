@@ -193,7 +193,8 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
 				typ := model.ResolveOutputs(expr.Type())
-				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range())
+				strict := !b.options.skipRangeTypecheck
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range(), strict)
 				rangeKey, rangeValue = rk, rv
 			}
 		}
