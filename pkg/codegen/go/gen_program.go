@@ -455,20 +455,20 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
 	files, diagnostics, err := GenerateProgram(program)
 	if err != nil {
-		return err
+		return files, diagnostics, err
 	}
 	if diagnostics.HasErrors() {
-		return diagnostics
+		return files, diagnostics, err
 	}
 
 	// Set the runtime to "go" then marshal to Pulumi.yaml
 	project.Runtime = workspace.NewProjectRuntimeInfo("go", nil)
 	projectBytes, err := encoding.YAML.Marshal(project)
 	if err != nil {
-		return err
+		return nil, diagnostics, err
 	}
 	files["Pulumi.yaml"] = projectBytes
 
@@ -485,14 +485,14 @@ require (
 	// For each package add a PackageReference line
 	packages, err := programPackageDefs(program)
 	if err != nil {
-		return err
+		return nil, diagnostics, err
 	}
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
 		if err := p.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
-			return err
+			return nil, diagnostics, err
 		}
 
 		if p.Version != nil && p.Version.Major <= 0 {
@@ -550,14 +550,31 @@ require (
 			}
 		}
 
+		version := ""
+		if p.Version != nil {
+			version = fmt.Sprintf("v%s", p.Version.String())
+		}
 		if packageName != "" {
-			fmt.Fprintf(&gomod, "	%s v%s\n", packageName, p.Version.String())
+			fmt.Fprintf(&gomod, "	%s %s\n", packageName, version)
 		}
 	}
 
 	gomod.WriteString(")")
 
 	files["go.mod"] = gomod.Bytes()
+
+	return files, diagnostics, nil
+}
+
+func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+	files, diagnostics, err := GenerateProjectFiles(project, program)
+	if err != nil {
+		return err
+	}
+
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
