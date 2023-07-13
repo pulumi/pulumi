@@ -153,11 +153,7 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 
 	extraOptions := make([]pcl.BindOption, 0)
 	if !strict {
-		extraOptions = append(extraOptions, []pcl.BindOption{
-			pcl.AllowMissingProperties,
-			pcl.AllowMissingVariables,
-			pcl.SkipResourceTypechecking,
-		}...)
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
 	program, diagnostics, err = pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
@@ -191,13 +187,7 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 
 		extraOptions := make([]pcl.BindOption, 0)
 		if !strict {
-			extraOptions = append(extraOptions, []pcl.BindOption{
-				pcl.AllowMissingProperties,
-				pcl.AllowMissingVariables,
-				pcl.SkipResourceTypechecking,
-				pcl.SkipInvokeTypechecking,
-				pcl.SkipRangeTypechecking,
-			}...)
+			extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 		}
 
 		if targetLanguage == "python" {

@@ -141,6 +141,18 @@ func ComponentBinder(binder ComponentProgramBinder) BindOption {
 	}
 }
 
+// NonStrictBindOptions returns a set of bind options that make the binder lenient about type checking.
+// Changing errors into warnings when possible
+func NonStrictBindOptions() []BindOption {
+	return []BindOption{
+		AllowMissingVariables,
+		AllowMissingProperties,
+		SkipResourceTypechecking,
+		SkipInvokeTypechecking,
+		SkipRangeTypechecking,
+	}
+}
+
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given
 // host, if any, is used for loading any resource plugins necessary to extract schema information.
 func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
