@@ -106,7 +106,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      * 2. `pulumi.interpolate ``prefix${v}suffix`` `
      *
      * This will return an Output with the inner computed value and all resources still tracked. See
-     * https://pulumi.io/help/outputs for more details
+     * https://www.pulumi.com/docs/concepts/inputs-outputs for more details
      * @internal
      */
     public toString: () => string;
@@ -123,7 +123,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      * 2. `o.apply(v => JSON.stringify(v))`
      *
      * This will return an Output with the inner computed value and all resources still tracked.
-     * See https://pulumi.io/help/outputs for more details
+     * See https://www.pulumi.com/docs/concepts/inputs-outputs for more details
      * @internal
      */
     public toJSON: () => any;
@@ -202,7 +202,7 @@ To get the value of an Output<T> as an Output<string> consider either:
 1: o.apply(v => \`prefix\${v}suffix\`)
 2: pulumi.interpolate \`prefix\${v}suffix\`
 
-See https://pulumi.io/help/outputs for more details.
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
@@ -214,7 +214,7 @@ To get the value of an Output as a JSON value or JSON string consider either:
     1: o.apply(v => v.toJSON())
     2: o.apply(v => JSON.stringify(v))
 
-See https://pulumi.io/help/outputs for more details.
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
 This function may throw in a future version of @pulumi/pulumi.`;
             return message;
         };
