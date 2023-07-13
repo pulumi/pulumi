@@ -77,3 +77,10 @@ var (
 	SelfManagedStateLegacyLayout = env.Bool("SELF_MANAGED_STATE_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.")
 )
+
+// Environment variables which affect Pulumi AI integrations
+var (
+	AIServiceEndpoint  = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
+	AIErrorSuggestions = env.Bool("AI_ERROR_SUGGESTIONS",
+		"Prompts user to view error solution suggestions in the Pulumi CLI")
+)

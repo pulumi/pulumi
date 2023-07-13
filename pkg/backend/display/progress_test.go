@@ -227,7 +227,7 @@ func TestPrintDiagnosticsIsTolerantOfDiagnostics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			d := makeDisplayWithDiagnostic(tt.give)
-			got := d.printDiagnostics()
+			got, _ := d.printDiagnostics()
 			assert.Equal(t, tt.want, got, "printDiagnostics(%v) = %v, want %v", tt.give, got, tt.want)
 		})
 	}

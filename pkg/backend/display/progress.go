@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/integrations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -237,12 +238,43 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Name,
 	if opts.deterministicOutput {
 		ticker.Stop()
 	}
-	display.processEvents(ticker, events)
+	errors := display.processEvents(ticker, events)
+	if isInteractive && integrations.AIEnabled() {
+		if len(errors) != 0 {
+			display.println(colors.SpecHeadline + "Pulumi AI Suggestions:" + colors.Reset)
+			err := display.showAIErrorSuggestions(errors)
+			if err != nil {
+				display.println(colors.Red + "Failed to get AI suggestions: " + err.Error() + colors.Reset)
+			}
+		}
+	}
 	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
 
 	// let our caller know we're done.
 	close(done)
+}
+
+func (display *ProgressDisplay) showAIErrorSuggestions(errors []string) (err error) {
+	aiClient := integrations.NewPulumiAIClient()
+	err = aiClient.SendHealthCheckRequest()
+	if err != nil {
+		return err
+	}
+	for _, err := range errors {
+		helpMessages, err := aiClient.SendErrorMessageHelpRequest(err)
+		if err != nil {
+			contract.IgnoreError(err)
+			continue
+		} else {
+			for _, helpMessage := range helpMessages {
+				line := strings.TrimRightFunc(helpMessage, unicode.IsSpace)
+				display.println("    " + line)
+			}
+			display.println("\n")
+		}
+	}
+	return nil
 }
 
 func (display *ProgressDisplay) println(line string) {
@@ -432,7 +464,7 @@ func removeInfoColumnIfUnneeded(rows [][]string) {
 // Performs all the work at the end once we've heard about the last message from the engine.
 // Specifically, this will update the status messages for any resources, and will also then
 // print out all final diagnostics. and finally will print out the summary.
-func (display *ProgressDisplay) processEndSteps() {
+func (display *ProgressDisplay) processEndSteps() (errors []string) {
 	// Figure out the rows that are currently in progress.
 	var inProgressRows []ResourceRow
 	if !display.isTerminal {
@@ -463,19 +495,21 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Render several "sections" of output based on available data as applicable.
 	display.println("")
-	hasError := display.printDiagnostics()
+	hasError, errors := display.printDiagnostics()
 	wroteMandatoryPolicyViolations := display.printPolicyViolations()
 	display.printOutputs()
 	// If no mandatory policies violated, print policy packs applied.
 	if !wroteMandatoryPolicyViolations {
 		display.printSummary(hasError)
 	}
+	return errors
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
 // resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
-func (display *ProgressDisplay) printDiagnostics() bool {
+func (display *ProgressDisplay) printDiagnostics() (bool, []string) {
 	hasError := false
+	errors := []string{}
 
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
@@ -508,6 +542,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 				if v.Severity == diag.Error {
 					// An error occurred and the display should consider this a failure.
 					hasError = true
+					errors = append(errors, v.Message)
 				}
 
 				msg := display.renderProgressDiagEvent(v, true /*includePrefix:*/)
@@ -544,7 +579,7 @@ func (display *ProgressDisplay) printDiagnostics() bool {
 		}
 
 	}
-	return hasError
+	return hasError, errors
 }
 
 // printPolicyViolations prints a new "Policy Violation:" section with all of the violations
@@ -920,7 +955,7 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 	display.resourceRows = append(display.resourceRows, stackRow)
 }
 
-func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) {
+func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan engine.Event) (errors []string) {
 	// Main processing loop.  The purpose of this func is to read in events from the engine
 	// and translate them into Status objects and progress messages to be presented to the
 	// command line.
@@ -934,8 +969,9 @@ func (display *ProgressDisplay) processEvents(ticker *time.Ticker, events <-chan
 				// Engine finished sending events.  Do all the final processing and return
 				// from this local func.  This will print out things like full diagnostic
 				// events, as well as the summary event from the engine.
-				display.processEndSteps()
-				return
+				errors = display.processEndSteps()
+
+				return errors
 			}
 
 			display.processNormalEvent(event)
