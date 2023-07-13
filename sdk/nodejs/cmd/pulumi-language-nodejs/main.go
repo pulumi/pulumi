@@ -1035,11 +1035,7 @@ func (host *nodeLanguageHost) GenerateProject(
 	loader := schema.NewPluginLoader(pluginCtx.Host)
 	extraOptions := make([]pcl.BindOption, 0)
 	if !req.Strict {
-		extraOptions = append(extraOptions, []pcl.BindOption{
-			pcl.AllowMissingProperties,
-			pcl.AllowMissingVariables,
-			pcl.SkipResourceTypechecking,
-		}...)
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
 	// for nodejs, prefer output-versioned invokes

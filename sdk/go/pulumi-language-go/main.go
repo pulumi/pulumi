@@ -1019,11 +1019,7 @@ func (host *goLanguageHost) GenerateProject(
 
 	extraOptions := make([]pcl.BindOption, 0)
 	if !req.Strict {
-		extraOptions = append(extraOptions, []pcl.BindOption{
-			pcl.AllowMissingProperties,
-			pcl.AllowMissingVariables,
-			pcl.SkipResourceTypechecking,
-		}...)
+		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
 
 	program, diags, err := pcl.BindDirectory(req.SourceDirectory, loader, extraOptions...)
