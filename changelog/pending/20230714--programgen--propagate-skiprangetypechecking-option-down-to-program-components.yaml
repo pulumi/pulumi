@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen
+  description: Propagate SkipRangeTypechecking option down to program components

@@ -40,6 +40,7 @@ type ComponentProgramBinderArgs struct {
 	AllowMissingProperties       bool
 	SkipResourceTypecheck        bool
 	SkipInvokeTypecheck          bool
+	SkipRangeTypecheck           bool
 	PreferOutputVersionedInvokes bool
 	BinderDirPath                string
 	BinderLoader                 schema.Loader
