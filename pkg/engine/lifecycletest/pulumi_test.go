@@ -5406,6 +5406,110 @@ func TestSourcePositions(t *testing.T) {
 				) (plugin.ReadResult, resource.Status, error) {
 					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
 				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor,
+					typ, name string, parent resource.URN, inputs resource.PropertyMap,
+					options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					// The position of the root component should be replaced with the position of the corresponding call
+					// to RegisterResource in the user program (see compPos below).
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+						Parent:         parent,
+						SourcePosition: "/component/source/positions#7,8",
+					})
+					require.NoError(t, err)
+
+					// The position of this resource should be elided, as it is not part of the user program.
+					_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
+						Parent:         urn,
+						SourcePosition: "/component/source/positions#9,10",
+					})
+					require.NoError(t, err)
+
+					err = monitor.RegisterResourceOutputs(urn, resource.PropertyMap{})
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN:     urn,
+						Outputs: resource.PropertyMap{},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const regPos = "/test/source/positions#1,2"
+	const readPos = "/test/source/positions#3,4"
+	const compPos = "/test/source/positions#5,6"
+	inputs := resource.PropertyMap{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:         inputs,
+			SourcePosition: "file://" + regPos,
+		})
+		require.NoError(t, err)
+
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "id", "", inputs, "", "", "file://"+readPos)
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resC", true, deploytest.ResourceOptions{
+			Remote:         true,
+			Inputs:         inputs,
+			SourcePosition: "file://" + compPos,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+	regURN := p.NewURN("pkgA:m:typA", "resA", "")
+	readURN := p.NewURN("pkgA:m:typA", "resB", "")
+	compURN := p.NewURN("pkgA:m:typB", "resC", "")
+	innerURN := p.NewURN("pkgA:m:typA", "resD", compURN)
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	assert.Len(t, snap.Resources, 5)
+
+	reg := snap.Resources[1]
+	assert.Equal(t, regURN, reg.URN)
+	assert.Equal(t, "project://"+regPos, reg.SourcePosition)
+
+	read := snap.Resources[2]
+	assert.Equal(t, readURN, read.URN)
+	assert.Equal(t, "project://"+readPos, read.SourcePosition)
+
+	comp := snap.Resources[3]
+	assert.Equal(t, compURN, comp.URN)
+	assert.Equal(t, "project://"+compPos, comp.SourcePosition)
+
+	inner := snap.Resources[4]
+	assert.Equal(t, innerURN, inner.URN)
+	assert.Empty(t, inner.SourcePosition)
+}
+
+func TestComponentSourcePositions(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool,
+				) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
 			}, nil
 		}),
 	}
