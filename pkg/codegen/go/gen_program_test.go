@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"
@@ -127,4 +130,42 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 	}
 	g.Formatter = format.NewFormatter(g)
 	return g
+}
+
+func parseAndBindProgram(t *testing.T,
+	text string,
+	name string,
+	options ...pcl.BindOption,
+) (*pcl.Program, hcl.Diagnostics, error) {
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(text), name)
+	if err != nil {
+		t.Fatalf("could not read %v: %v", name, err)
+	}
+	if parser.Diagnostics.HasErrors() {
+		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
+	}
+
+	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+
+	return pcl.BindProgram(parser.Files, options...)
+}
+
+func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
+	t.Parallel()
+
+	source := `	
+resource main "auto-deploy:index:AutoDeployer" {
+    project = "example"
+}`
+
+	program, diags, err := parseAndBindProgram(t, source, "main.pp")
+
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProjectFiles(workspace.Project{}, program)
+	assert.NotNil(t, files, "Files were generated")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
 }
