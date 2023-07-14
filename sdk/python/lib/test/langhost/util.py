@@ -100,6 +100,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         import_ = request.importId
         replace_on_changes = sorted(list(request.replaceOnChanges))
         providers = request.providers
+        source_position = request.sourcePosition
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -109,7 +110,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
             outs = self.langhost_test.register_resource(
                 context, self.dryrun, type_, name, props, deps, parent, custom, protect, provider,
                 property_dependencies, delete_before_replace, ignore_changes, version, import_, replace_on_changes,
-                providers,
+                providers, source_position,
             )
             if outs.get("urn"):
                 urn = outs["urn"]
@@ -282,7 +283,7 @@ class LanghostTest(unittest.TestCase):
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
-                          _replace_on_changes, _providers):
+                          _replace_on_changes, _providers, source_position):
         """
         Method corresponding to the `RegisterResource` resource monitor RPC call.
         Override for custom behavior or assertions.

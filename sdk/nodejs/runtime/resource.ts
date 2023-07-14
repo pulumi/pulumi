@@ -65,6 +65,24 @@ import { isGrpcError } from "../errors";
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 const resproto = require("../proto/resource_pb.js");
 const aliasproto = require("../proto/alias_pb.js");
+const sourceproto = require("../proto/source_pb.js");
+
+export interface SourcePosition {
+    uri: string;
+    line: number;
+    column: number;
+}
+
+function marshalSourcePosition(sourcePosition?: SourcePosition) {
+    if (sourcePosition === undefined) {
+        return undefined;
+    }
+    const pos = new sourceproto.SourcePosition();
+    pos.setUri(sourcePosition.uri);
+    pos.setLine(sourcePosition.line);
+    pos.setColumn(sourcePosition.column);
+    return pos;
+}
 
 interface ResourceResolverOperation {
     // A resolver for a resource's URN.
@@ -224,6 +242,7 @@ export function readResource(
     name: string,
     props: Inputs,
     opts: ResourceOptions,
+    sourcePosition?: SourcePosition,
 ): void {
     const id: Input<ID> | undefined = opts.id;
     if (!id) {
@@ -259,6 +278,7 @@ export function readResource(
             req.setAcceptsecrets(true);
             req.setAcceptresources(!utils.disableResourceReferences);
             req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
+            req.setSourceposition(marshalSourcePosition(sourcePosition));
 
             // Now run the operation, serializing the invocation if necessary.
             const opLabel = `monitor.readResource(${label})`;
@@ -386,6 +406,7 @@ export function registerResource(
     newDependency: (urn: URN) => Resource,
     props: Inputs,
     opts: ResourceOptions,
+    sourcePosition?: SourcePosition,
 ): void {
     const label = `resource:${name}[${t}]`;
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
@@ -435,6 +456,7 @@ export function registerResource(
             req.setRetainondelete(opts.retainOnDelete || false);
             req.setDeletedwith(resop.deletedWithURN || "");
             req.setAliasspecs(true);
+            req.setSourceposition(marshalSourcePosition(sourcePosition));
 
             if (resop.deletedWithURN && !(await monitorSupportsDeletedWith())) {
                 throw new Error(

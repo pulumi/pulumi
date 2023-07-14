@@ -42,6 +42,7 @@ class RemoteComponentDependenciesTest(LanghostTest):
         _import,
         _replace_on_changes,
         _providers,
+        source_position,
     ):
 
         if name == "resA":
