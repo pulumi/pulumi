@@ -334,6 +334,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 		BindOptions: []pcl.BindOption{pcl.SkipInvokeTypechecking},
 	},
+	{
+		Directory:   "optional-complex-config",
+		Description: "Tests generating code for optional and complex config values",
+		Skip:        allProgLanguages.Except("nodejs"),
+		SkipCompile: allProgLanguages.Except("nodejs"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{

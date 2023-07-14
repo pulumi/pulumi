@@ -5,9 +5,9 @@ import * as std from "@pulumi/std";
 export = async () => {
     const config = new pulumi.Config();
     // A list of availability zones names or ids in the region
-    const azs = config.getObject("azs") || [];
+    const azs = config.getObject<Array<string>>("azs") || [];
     // Assigns IPv6 public subnet id based on the Amazon provided /56 prefix base 10 integer (0-256). Must be of equal length to the corresponding IPv4 subnet list
-    const publicSubnetIpv6Prefixes = config.getObject("publicSubnetIpv6Prefixes") || [];
+    const publicSubnetIpv6Prefixes = config.getObject<Array<string>>("publicSubnetIpv6Prefixes") || [];
     // Should be true if you want only one NAT Gateway per availability zone. Requires `var.azs` to be set, and the number of `public_subnets` created to be greater than or equal to the number of availability zones specified in `var.azs`
     const oneNatGatewayPerAz = config.getBoolean("oneNatGatewayPerAz") || false;
     // Requests an Amazon-provided IPv6 CIDR block with a /56 prefix length for the VPC. You cannot specify the range of IP addresses, or the size of the CIDR block
