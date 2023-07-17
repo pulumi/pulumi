@@ -1108,16 +1108,56 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	g.genTrivia(w, component.Definition.Tokens.GetCloseBrace())
 }
 
-func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
-	// TODO(pdg): trivia
+func computeConfigTypeParam(configType model.Type) string {
+	switch pcl.UnwrapOption(configType) {
+	case model.StringType:
+		return "string"
+	case model.NumberType, model.IntType:
+		return "number"
+	case model.BoolType:
+		return "boolean"
+	case model.DynamicType:
+		return "any"
+	default:
+		switch complexType := pcl.UnwrapOption(configType).(type) {
+		case *model.ListType:
+			return fmt.Sprintf("Array<%s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.MapType:
+			return fmt.Sprintf("Record<string, %s>", computeConfigTypeParam(complexType.ElementType))
+		case *model.ObjectType:
+			if len(complexType.Properties) == 0 {
+				return "any"
+			}
 
+			attributeKeys := []string{}
+			for attributeKey := range complexType.Properties {
+				attributeKeys = append(attributeKeys, attributeKey)
+			}
+			// get deterministically sorted attribute keys
+			sort.Strings(attributeKeys)
+
+			var elementTypes []string
+			for _, propertyName := range attributeKeys {
+				propertyType := complexType.Properties[propertyName]
+				elementType := fmt.Sprintf("%s?: %s", propertyName, computeConfigTypeParam(propertyType))
+				elementTypes = append(elementTypes, elementType)
+			}
+
+			return fmt.Sprintf("{%s}", strings.Join(elementTypes, ", "))
+		default:
+			return "any"
+		}
+	}
+}
+
+func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprintf(w, "%sconst config = new pulumi.Config();\n", g.Indent)
 		g.configCreated = true
 	}
 
 	getType := "Object"
-	switch v.Type() {
+	switch pcl.UnwrapOption(v.Type()) {
 	case model.StringType:
 		getType = ""
 	case model.NumberType, model.IntType:
@@ -1126,8 +1166,18 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getType = "Boolean"
 	}
 
+	typeParam := ""
+	if getType == "Object" {
+		// compute the type parameter T for the call to config.getObject<T>(...)
+		computedTypeParam := computeConfigTypeParam(v.Type())
+		if computedTypeParam != "any" {
+			// any is redundant
+			typeParam = fmt.Sprintf("<%s>", computedTypeParam)
+		}
+	}
+
 	getOrRequire := "get"
-	if v.DefaultValue == nil {
+	if v.DefaultValue == nil && !model.IsOptionalType(v.Type()) {
 		getOrRequire = "require"
 	}
 
@@ -1138,9 +1188,9 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	name := makeValidIdentifier(v.Name())
-	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s(\"%[5]s\")",
-		g.Indent, name, getOrRequire, getType, v.LogicalName())
-	if v.DefaultValue != nil {
+	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
+		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
+	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
 		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
 	}
 	g.Fgenf(w, ";\n")
