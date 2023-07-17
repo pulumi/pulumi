@@ -1017,12 +1017,45 @@ func getStackConfiguration(
 	project *workspace.Project,
 	fallbackSecretsManager secrets.Manager, // optional
 ) (backend.StackConfiguration, secrets.Manager, error) {
+	return getStackConfigurationWithFallback(ctx, stack, project, fallbackSecretsManager, nil)
+}
+
+// getStackConfigurationOrLatest runs getStackConfiguration and if no Project is found,
+// falls back on the latest stack configuration in the backend.
+func getStackConfigurationOrLatest(
+	ctx context.Context,
+	stack backend.Stack,
+	project *workspace.Project,
+	fallbackSecretsManager secrets.Manager, // optional
+) (backend.StackConfiguration, secrets.Manager, error) {
+	return getStackConfigurationWithFallback(
+		ctx, stack, project, fallbackSecretsManager,
+		func(err error) (config.Map, error) {
+			if errors.Is(err, workspace.ErrProjectNotFound) {
+				// This error indicates that we're not being run in a project directory.
+				// We should fallback on the backend.
+				return backend.GetLatestConfiguration(ctx, stack)
+			}
+			return nil, err
+		})
+}
+
+func getStackConfigurationWithFallback(
+	ctx context.Context,
+	stack backend.Stack,
+	project *workspace.Project,
+	fallbackSecretsManager secrets.Manager, // optional
+	fallbackGetConfig func(err error) (config.Map, error), // optional
+) (backend.StackConfiguration, secrets.Manager, error) {
 	defaultStackConfig := backend.StackConfiguration{}
 
 	workspaceStack, err := loadProjectStack(project, stack)
 	if err != nil || workspaceStack == nil {
+		if fallbackGetConfig == nil {
+			return defaultStackConfig, nil, err
+		}
 		// On first run or the latest configuration is unavailable, fallback to check the project's configuration
-		cfg, err := backend.GetLatestConfiguration(ctx, stack)
+		cfg, err := fallbackGetConfig(err)
 		if err != nil {
 			return defaultStackConfig, nil, fmt.Errorf(
 				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)

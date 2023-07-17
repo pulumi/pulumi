@@ -15,10 +15,13 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -45,4 +48,67 @@ func TestSecretDetection(t *testing.T) {
 
 	// The key name does not match the pattern, so even though this "looks like" a secret, we say it is not.
 	assert.False(t, looksLikeSecret(config.MustMakeKey("test", "okay"), "1415fc1f4eaeb5e096ee58c1480016638fff29bf"))
+}
+
+func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
+	t.Parallel()
+	// Don't check return values. Just check that GetLatestConfiguration() is not called.
+	_, _, _ = getStackConfiguration(
+		context.Background(),
+		&backend.MockStack{
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					StringV:             "org/project/name",
+					NameV:               "name",
+					ProjectV:            "project",
+					FullyQualifiedNameV: tokens.QName("org/project/name"),
+				}
+			},
+			BackendF: func() backend.Backend {
+				return &backend.MockBackend{
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+						t.Fatalf("GetLatestConfiguration should not be called in typical getStackConfiguration calls.")
+						return config.Map{}, nil
+					},
+				}
+			},
+		},
+		nil,
+		nil,
+	)
+}
+
+func TestGetStackConfigurationOrLatest(t *testing.T) {
+	t.Parallel()
+	// Don't check return values. Just check that GetLatestConfiguration() is called.
+	called := false
+	_, _, _ = getStackConfigurationOrLatest(
+		context.Background(),
+		&backend.MockStack{
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					StringV:             "org/project/name",
+					NameV:               "name",
+					ProjectV:            "project",
+					FullyQualifiedNameV: tokens.QName("org/project/name"),
+				}
+			},
+			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
+			BackendF: func() backend.Backend {
+				return &backend.MockBackend{
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+						called = true
+						return config.Map{}, nil
+					},
+				}
+			},
+		},
+		nil,
+		nil,
+	)
+	if !called {
+		t.Fatalf("GetLatestConfiguration should be called in getStackConfigurationOrLatest.")
+	}
 }
