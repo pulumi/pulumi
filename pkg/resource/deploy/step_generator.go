@@ -365,6 +365,11 @@ func (sg *stepGenerator) collapseAliasToUrn(goal *resource.Goal, alias resource.
 	parent := alias.Parent
 	if parent == "" {
 		parent = goal.Parent
+	} else {
+		// If the parent used an alias then use it's old URN here, as that will be this resource old URN as well.
+		if parentAlias, has := sg.aliases[parent]; has {
+			parent = parentAlias
+		}
 	}
 	parentIsRootStack := parent != "" && parent.Type() == resource.RootStackType
 	if alias.NoParent || parentIsRootStack {
