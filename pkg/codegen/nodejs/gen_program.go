@@ -1135,7 +1135,7 @@ func computeConfigTypeParam(configType model.Type) string {
 			}
 			// get deterministically sorted attribute keys
 			sort.Strings(attributeKeys)
-			
+
 			var elementTypes []string
 			for _, propertyName := range attributeKeys {
 				propertyType := complexType.Properties[propertyName]
