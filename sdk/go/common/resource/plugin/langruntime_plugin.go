@@ -219,8 +219,8 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 
 	progerr := resp.GetError()
 	bail := resp.GetBail()
-	logging.V(7).Infof("langhost[%v].RunPlan(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v",
-		h.runtime, info.Pwd, info.Program, info.DryRun, progerr)
+	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,...,dryrun=%v) success: progerr=%v, bail=%v",
+		h.runtime, info.Pwd, info.Program, info.DryRun, progerr, bail)
 	return progerr, bail, nil
 }
 
