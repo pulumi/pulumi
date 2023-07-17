@@ -1135,19 +1135,15 @@ func computeConfigTypeParam(configType model.Type) string {
 			}
 			// get deterministically sorted attribute keys
 			sort.Strings(attributeKeys)
-
-			objectType := "{"
-			for index, propertyName := range attributeKeys {
+			
+			var elementTypes []string
+			for _, propertyName := range attributeKeys {
 				propertyType := complexType.Properties[propertyName]
-				if index != len(attributeKeys)-1 {
-					objectType += fmt.Sprintf("%s?: %s, ", propertyName, computeConfigTypeParam(propertyType))
-				} else {
-					// last element, do not add a comma
-					objectType += fmt.Sprintf("%s?: %s", propertyName, computeConfigTypeParam(propertyType))
-				}
+				elementType := fmt.Sprintf("%s?: %s", propertyName, computeConfigTypeParam(propertyType))
+				elementTypes = append(elementTypes, elementType)
 			}
-			objectType += "}"
-			return objectType
+
+			return fmt.Sprintf("{%s}", strings.Join(elementTypes, ", "))
 		default:
 			return "any"
 		}
