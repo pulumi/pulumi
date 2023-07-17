@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
+
 from ..util import LanghostTest
 
 
@@ -19,6 +20,7 @@ class UnhandledExceptionTest(LanghostTest):
     def test_unhandled_exception(self):
         self.run_test(
             program=path.join(self.base_path(), "resource_op_bad_inputs"),
+            expected_log_message="unexpected input of type MyClass",
             expected_bail=True)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
