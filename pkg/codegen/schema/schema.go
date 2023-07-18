@@ -1234,14 +1234,16 @@ func (pkg *Package) marshalProperties(props []*Property, plain bool) (required [
 		}
 
 		specs[p.Name] = PropertySpec{
-			TypeSpec:           pkg.marshalType(typ, plain),
-			Description:        p.Comment,
-			Const:              p.ConstValue,
-			Default:            defaultValue,
-			DefaultInfo:        defaultSpec,
-			DeprecationMessage: p.DeprecationMessage,
-			Language:           lang,
-			Secret:             p.Secret,
+			TypeSpec:             pkg.marshalType(typ, plain),
+			Description:          p.Comment,
+			Const:                p.ConstValue,
+			Default:              defaultValue,
+			DefaultInfo:          defaultSpec,
+			DeprecationMessage:   p.DeprecationMessage,
+			Language:             lang,
+			Secret:               p.Secret,
+			ReplaceOnChanges:     p.ReplaceOnChanges,
+			WillReplaceOnChanges: p.WillReplaceOnChanges,
 		}
 	}
 	return required, specs, nil
