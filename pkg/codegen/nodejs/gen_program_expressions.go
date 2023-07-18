@@ -584,9 +584,8 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 				break
 			}
 		}
-		var buf bytes.Buffer
-		g.GenTemplateExpression(&buf, x)
-		return buf.String(), true
+
+		return "", false
 	default:
 		return "", false
 	}
