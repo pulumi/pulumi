@@ -932,17 +932,6 @@ export abstract class ProviderResource extends CustomResource implements Provide
     public getPackage() {
         return this.pkg;
     }
-
-    /** @internal */
-    public static inputReference(pkg: string, pri: Input<ProviderResource>): ProviderResourceReference {
-        let pro = output(pri);
-        return {
-            __registrationId: undefined,
-            urn: pro.apply(pr => pr.urn),
-            id: pro.apply(pr => pr.id),
-            getPackage: () => pkg,
-        }
-    }
 }
 
 /**
@@ -966,6 +955,31 @@ export interface ProviderResourceReference {
      * (undefined) during planning phases.
      */
     readonly id: Output<ID>;
+}
+
+export function referenceProviderResource(pkg: string, pri: Input<ProviderResource>): ProviderResourceReference {
+    let pro = output(pri);
+    return {
+        __registrationId: undefined,
+        urn: pro.apply(pr => {
+            // TODO: pr provider variable may be of type String and not ProviderResource, it may be a plain URN, or even
+            // an ID.
+            //
+            // This happens when the provider is missing from registration tables, which is easy to do in an MLC context
+            // when an MLC Remote Component Resource uses a dependency that the program does not use.
+            //
+            // In this case pr.urn will be undefined, which is very bad. We need to compensate somehow.
+            //
+            // For the code that breaks the type safety see:
+            //
+            // https://github.com/pulumi/pulumi/blob/8e7baaef2e44d22b16308b5850d1cde63ba5895b/sdk/nodejs/runtime/rpc.ts#L646
+            return pr.urn;
+        }),
+        id: pro.apply(pr => {
+            return pr.id;
+        }),
+        getPackage: () => pkg,
+    }
 }
 
 /**
