@@ -23,6 +23,7 @@ package docs
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -1946,6 +1947,144 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 	return addFileTemplated("", "index.tmpl", idxData)
 }
 
+func (mod *modContext) genJson(fs codegen.Fs) error {
+	glog.V(4).Infoln("genIndex for", mod.mod)
+
+	modName := mod.getModuleFileName()
+	conflictResolver := mod.docGenContext.newModuleConflictResolver()
+
+	def, err := mod.pkg.Definition()
+	contract.AssertNoErrorf(err, "failed to get definition for package %q", mod.pkg.Name())
+
+	modTitle := modName
+	if modTitle == "" {
+		// An empty string indicates that this is the root module.
+		if def.DisplayName != "" {
+			modTitle = def.DisplayName
+		} else {
+			modTitle = getPackageDisplayName(mod.pkg.Name())
+		}
+	}
+
+	// addFileJson executes template tmpl with data,
+	// and adds a file $dirName/_index.md with the result.
+	addFileJson := func(dirName string, data interface{}) error {
+		bytes, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return err
+		}
+		p := path.Join(modName, dirName, "page.json")
+		fs.Add(p, bytes)
+		return nil
+	}
+
+	// If there are submodules, list them.
+	modules := make([]indexEntry, 0, len(mod.children))
+	for _, mod := range mod.children {
+		modName := mod.getModuleFileName()
+		displayName := modFilenameToDisplayName(modName)
+		safeName := conflictResolver.getSafeName(displayName, mod)
+		if safeName == "" {
+			continue // unresolved conflict
+		}
+		modules = append(modules, indexEntry{
+			Link:        getModuleLink(safeName),
+			DisplayName: displayName,
+		})
+	}
+	sortIndexEntries(modules)
+
+	// If there are resources in the root, list them.
+	resources := make([]indexEntry, 0, len(mod.resources))
+	for _, r := range mod.resources {
+		title := resourceName(r)
+		link := getResourceLink(title)
+		link = conflictResolver.getSafeName(link, r)
+		if link == "" {
+			continue // unresolved conflict
+		}
+
+		data := mod.genResource(r)
+		if err := addFileJson(link, data); err != nil {
+			return err
+		}
+
+		resources = append(resources, indexEntry{
+			Link:        link + "/",
+			DisplayName: title,
+		})
+	}
+	sortIndexEntries(resources)
+
+	// If there are functions in the root, list them.
+	functions := make([]indexEntry, 0, len(mod.functions))
+	for _, f := range mod.functions {
+		name := tokenToName(f.Token)
+		link := getFunctionLink(name)
+		link = conflictResolver.getSafeName(link, f)
+		if link == "" {
+			continue // unresolved conflict
+		}
+
+		data := mod.genFunction(f)
+		if err := addFileJson(link, data); err != nil {
+			return err
+		}
+
+		functions = append(functions, indexEntry{
+			Link:        link + "/",
+			DisplayName: strings.Title(name),
+		})
+	}
+	sortIndexEntries(functions)
+
+	version := ""
+	if mod.pkg.Version() != nil {
+		version = mod.pkg.Version().String()
+	}
+
+	packageDetails := packageDetails{
+		DisplayName:    getPackageDisplayName(def.Name),
+		Repository:     def.Repository,
+		RepositoryName: getRepositoryName(def.Repository),
+		License:        def.License,
+		Notes:          def.Attribution,
+		Version:        version,
+	}
+
+	var modTitleTag string
+	var packageDescription string
+	// The same index.tmpl template is used for both top level package and module pages, if modules not present,
+	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
+	// top level page when generating title tags.
+	if len(modules) > 0 {
+		modTitleTag = fmt.Sprintf("%s Package", getPackageDisplayName(modTitle))
+	} else {
+		modTitleTag = fmt.Sprintf("%s.%s", mod.pkg.Name(), modTitle)
+		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.",
+			mod.pkg.Name(), modTitle)
+	}
+
+	// Generate the index file.
+	idxData := indexData{
+		Tool:               mod.tool,
+		PackageDescription: packageDescription,
+		Title:              modTitle,
+		TitleTag:           modTitleTag,
+		Resources:          resources,
+		Functions:          functions,
+		Modules:            modules,
+		PackageDetails:     packageDetails,
+	}
+
+	// If this is the root module, write out the package description.
+	if mod.mod == "" {
+		idxData.PackageDescription = mod.pkg.Description()
+	}
+
+	return addFileJson("", idxData)
+}
+
 // indexEntry represents an individual entry on an index page.
 type indexEntry struct {
 	Link        string
@@ -2177,6 +2316,30 @@ func (dctx *docGenContext) generatePackage(tool string, pkg *schema.Package) (ma
 	return files, nil
 }
 
+func (dctx *docGenContext) generatePackageJson(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	if dctx.modules() == nil {
+		return nil, errors.New("must call Initialize before generating the docs package")
+	}
+
+	defer glog.Flush()
+
+	glog.V(3).Infoln("generating package docs now...")
+	files := codegen.Fs{}
+	modules := []string{}
+	modMap := dctx.modules()
+	for k := range modMap {
+		modules = append(modules, k)
+	}
+	sort.Strings(modules)
+	for _, mod := range modules {
+		if err := modMap[mod].genJson(files); err != nil {
+			return nil, err
+		}
+	}
+
+	return files, nil
+}
+
 // GeneratePackageTree returns a navigable structure starting from the top-most module.
 func (dctx *docGenContext) generatePackageTree() ([]PackageTreeItem, error) {
 	if dctx.modules() == nil {
@@ -2224,6 +2387,10 @@ func Initialize(tool string, pkg *schema.Package) {
 // and the contents as its value.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	return defaultContext.generatePackage(tool, pkg)
+}
+
+func GeneratePackageJson(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	return defaultContext.generatePackageJson(tool, pkg)
 }
 
 // GeneratePackageTree returns a navigable structure starting from the top-most module.

@@ -24,6 +24,7 @@ import (
 
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/docs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -58,7 +59,7 @@ func newGenSdkCommand() *cobra.Command {
 			}
 
 			if language == "all" {
-				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
+				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python", "docs"} {
 					err := genSDK(lang, out, pkg, overlays)
 					if err != nil {
 						return err
@@ -120,6 +121,9 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 		generatePackage = writeWrapper(python.GeneratePackage)
 	case "java":
 		generatePackage = writeWrapper(javagen.GeneratePackage)
+	case "docs":
+		docs.Initialize("pulumi", pkg)
+		generatePackage = writeWrapper(docs.GeneratePackageJson)
 	default:
 		generatePackage = func(directory string, pkg *schema.Package, extraFiles map[string][]byte) error {
 			// Ensure the target directory is clean, but created.
