@@ -65,6 +65,8 @@ const (
 	VCSRepoName = "vcs.repo"
 	// VCSRepoKind is the cloud host where the repo is hosted.
 	VCSRepoKind = "vcs.kind"
+	// VCSRepoRoot is the root directory of the project in the repo.
+	VCSRepoRoot = "vcs.root"
 
 	// CISystem is the name of the CI system running the pulumi operation.
 	CISystem = "ci.system"

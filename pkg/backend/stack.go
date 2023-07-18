@@ -17,7 +17,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -225,7 +224,7 @@ func GetEnvironmentTagsForCurrentStack(root string,
 // addGitMetadataToStackTags fetches the git repository from the directory, and attempts to detect
 // and add any relevant git metadata as stack tags.
 func addGitMetadataToStackTags(tags map[apitype.StackTagName]string, projPath string) error {
-	repo, err := gitutil.GetGitRepository(filepath.Dir(projPath))
+	repo, err := gitutil.GetGitRepository(projPath)
 	if repo == nil {
 		return fmt.Errorf("no git repository found from %v", projPath)
 	}

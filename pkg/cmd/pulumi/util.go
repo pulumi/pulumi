@@ -690,11 +690,11 @@ func addPulumiCLIMetadataToEnvironment(env map[string]string, flags *pflag.FlagS
 }
 
 // addGitMetadata populate's the environment metadata bag with Git-related values.
-func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
+func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := gitutil.GetGitRepository(repoRoot)
+	repo, err := gitutil.GetGitRepository(projectRoot)
 	if err != nil {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
@@ -702,11 +702,11 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 		return nil
 	}
 
-	if err := AddGitRemoteMetadataToMap(repo, m.Environment); err != nil {
+	if err := AddGitRemoteMetadataToMap(repo, projectRoot, m.Environment); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
-	if err := addGitCommitMetadata(repo, repoRoot, m); err != nil {
+	if err := addGitCommitMetadata(repo, projectRoot, m); err != nil {
 		allErrors = multierror.Append(allErrors, err)
 	}
 
@@ -714,7 +714,7 @@ func addGitMetadata(repoRoot string, m *backend.UpdateMetadata) error {
 }
 
 // AddGitRemoteMetadataToMap reads the given git repo and adds its metadata to the given map bag.
-func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) error {
+func AddGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map[string]string) error {
 	var allErrors *multierror.Error
 
 	// Get the remote URL for this repo.
@@ -729,6 +729,19 @@ func AddGitRemoteMetadataToMap(repo *git.Repository, env map[string]string) erro
 	// Check if the remote URL is a GitHub or a GitLab URL.
 	if err := addVCSMetadataToEnvironment(remoteURL, env); err != nil {
 		allErrors = multierror.Append(allErrors, err)
+	}
+
+	// Add the repository root path.
+	tree, err := repo.Worktree()
+	if err != nil {
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+	} else {
+		rel, err := filepath.Rel(tree.Filesystem.Root(), projectRoot)
+		if err != nil {
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+		} else if !strings.HasPrefix(rel, "..") {
+			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+		}
 	}
 
 	return allErrors.ErrorOrNil()

@@ -406,6 +406,9 @@ const (
 	// VCSRepositoryKindTag is a tag that represents the kind of the cloud VCS that this stack
 	// may be associated with (inferred by the CLI based on the git remote info).
 	VCSRepositoryKindTag StackTagName = "vcs:kind"
+	// VCSRepositoryRootTag is a tag that represents the root directory of the repository on the cloud VCS that
+	// this stack may be associated with (pulled from git by the CLI)
+	VCSRepositoryRootTag StackTagName = "vcs:root"
 )
 
 // Stack describes a Stack running on a Pulumi Cloud.
