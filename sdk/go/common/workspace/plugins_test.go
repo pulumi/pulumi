@@ -1057,3 +1057,38 @@ func TestMissingErrorText(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // modifies environment variables
+func TestBundledPluginSearch(t *testing.T) {
+	// Get the path of this executable
+	exe, err := os.Executable()
+	require.NoError(t, err)
+
+	// Create a fake side-by-side plugin next to this executable
+	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-mock")
+	err = os.WriteFile(bundledPath, []byte{}, 0o700) //nolint: gosec // we intended to write an executable file here
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Remove(bundledPath)
+		require.NoError(t, err)
+	})
+
+	// Create a fake plugin in the path
+	pathDir := t.TempDir()
+	t.Setenv("PATH", pathDir)
+	ambientPath := filepath.Join(pathDir, "pulumi-language-mock")
+	err = os.WriteFile(ambientPath, []byte{}, 0o700) //nolint: gosec
+	require.NoError(t, err)
+
+	// Lookup the plugin with ambient search turned on
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(LanguagePlugin, "mock", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, ambientPath, path)
+
+	// Lookup the plugin with ambient search turned off
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
+	path, err = GetPluginPath(LanguagePlugin, "mock", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, bundledPath, path)
+}
