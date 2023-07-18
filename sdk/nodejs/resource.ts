@@ -254,7 +254,7 @@ export abstract class Resource {
      * @internal
      */
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    private readonly __providers: Record<string, ProviderResource>;
+    private readonly __providers: Record<string, ProviderResourceReference>;
 
     /**
      * The specified provider or provider determined from the parent for custom resources.
@@ -263,7 +263,7 @@ export abstract class Resource {
     // Note: This is deliberately not named `__provider` as that conflicts with the property
     // used by the `dynamic.Resource` class.
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
-    readonly __prov?: ProviderResource;
+    readonly __prov?: ProviderResourceReference;
 
     /**
      * The specified provider version.
@@ -338,7 +338,9 @@ export abstract class Resource {
     }
 
     // getProvider fetches the provider for the given module member, if any.
-    public getProvider(moduleMember: string): ProviderResource | undefined {
+    //
+    // TODO the signature change from ProviderResource to ProvideResourceReference here may break compilation.
+    public getProvider(moduleMember: string): ProviderResourceReference | undefined {
         const pkg = pkgFromType(moduleMember);
         if (pkg === undefined) {
             return undefined;
@@ -503,7 +505,9 @@ export abstract class Resource {
     }
 }
 
-function convertToProvidersMap(providers: Record<string, ProviderResource> | ProviderResource[] | undefined) {
+function convertToProvidersMap(
+    providers: Record<string, ProviderResourceReference> | ProviderResourceReference[] | undefined
+): Record<string, ProviderResourceReference> {
     if (!providers) {
         return {};
     }
@@ -512,7 +516,7 @@ function convertToProvidersMap(providers: Record<string, ProviderResource> | Pro
         return providers;
     }
 
-    const result: Record<string, ProviderResource> = {};
+    const result: Record<string, ProviderResourceReference> = {};
     for (const provider of providers) {
         result[provider.getPackage()] = provider;
     }
@@ -673,7 +677,7 @@ export interface ResourceOptions {
      *
      * If this is a [ComponentResourceOptions] do not provide both [provider] and [providers]
      */
-    provider?: ProviderResource;
+    provider?: ProviderResourceReference;
     /**
      * An optional customTimeouts configuration block.
      */
@@ -821,7 +825,7 @@ export interface ComponentResourceOptions extends ResourceOptions {
      *
      * Note: only a list should be used. Mapping keys are not respected.
      */
-    providers?: Record<string, ProviderResource> | ProviderResource[];
+    providers?: Record<string, ProviderResourceReference> | ProviderResourceReference[];
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.
@@ -888,7 +892,7 @@ export abstract class CustomResource extends Resource {
  * ProviderResource is a resource that implements CRUD operations for other custom resources. These resources are
  * managed similarly to other resources, including the usual diffing and update semantics.
  */
-export abstract class ProviderResource extends CustomResource {
+export abstract class ProviderResource extends CustomResource implements ProviderResourceReference {
     /** @internal */
     private readonly pkg: string;
 
@@ -896,7 +900,7 @@ export abstract class ProviderResource extends CustomResource {
     // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public __registrationId?: string;
 
-    public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
+    public static async register(provider: ProviderResourceReference | undefined): Promise<string | undefined> {
         if (provider === undefined) {
             return undefined;
         }
@@ -928,6 +932,40 @@ export abstract class ProviderResource extends CustomResource {
     public getPackage() {
         return this.pkg;
     }
+
+    /** @internal */
+    public static inputReference(pkg: string, pri: Input<ProviderResource>): ProviderResourceReference {
+        let pro = output(pri);
+        return {
+            __registrationId: undefined,
+            urn: pro.apply(pr => pr.urn),
+            id: pro.apply(pr => pr.id),
+            getPackage: () => pkg,
+        }
+    }
+}
+
+/**
+ * ProviderResourceReference points to an explicit provider when configuring a resource.
+ * See ProviderResource and ProviderResource.inputReference.
+ */
+export interface ProviderResourceReference {
+    /** @internal */
+    getPackage(): string;
+
+    /** @internal */
+    __registrationId?: string;
+
+    /**
+     * urn is the stable logical URN used to distinctly address a resource, both before and after deployments.
+     */
+    readonly urn: Output<URN>;
+
+    /**
+     * id is the provider-assigned unique ID for this managed resource. It is set during deployments and may be missing
+     * (undefined) during planning phases.
+     */
+    readonly id: Output<ID>;
 }
 
 /**
