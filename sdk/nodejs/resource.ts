@@ -958,7 +958,7 @@ export interface ProviderResourceReference {
 }
 
 export function referenceProviderResource(pkg: string, pri: Input<ProviderResource>): ProviderResourceReference {
-    let pro = output(pri);
+    let pro = ensureKnown(output(pri), "Unknown provider resource references are not supported");
     return {
         __registrationId: undefined,
         urn: pro.apply(pr => {
@@ -980,6 +980,15 @@ export function referenceProviderResource(pkg: string, pri: Input<ProviderResour
         }),
         getPackage: () => pkg,
     }
+}
+
+function ensureKnown<T>(o: Output<T>, error: string): Output<T> {
+    return output(o.isKnown).apply(isKnown => {
+        if (!isKnown) {
+            throw new Error(error);
+        }
+        return o;
+    });
 }
 
 /**
