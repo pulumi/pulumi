@@ -340,6 +340,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs"),
 		SkipCompile: allProgLanguages.Except("nodejs"),
 	},
+	{
+		Directory:   "interpolated-string-keys",
+		Description: "Tests that interpolated string keys are supported in maps. ",
+		Skip:        allProgLanguages.Except("nodejs").Except("python"),
+	},
 }
 
 var PulumiPulumiYAMLProgramTests = []ProgramTest{
