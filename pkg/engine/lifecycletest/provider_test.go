@@ -1486,9 +1486,11 @@ func TestProviderVersionAssignment(t *testing.T) {
 func TestDeletedWithOptionInheritance(t *testing.T) {
 	t.Parallel()
 
+	expectedUrn := resource.CreateURN("expect-this", "pkg:index:type", "", "project", "stack")
+
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		parentUrn, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			DeletedWith: "expect-this",
+			DeletedWith: expectedUrn,
 		})
 		assert.NoError(t, err)
 
@@ -1521,7 +1523,7 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 	project := p.GetProject()
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[1:] {
-		assert.Equal(t, resource.URN("expect-this"), res.DeletedWith)
+		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
 	assert.Nil(t, res)
 }
@@ -1532,10 +1534,12 @@ func TestDeletedWithOptionInheritance(t *testing.T) {
 func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	t.Parallel()
 
+	expectedUrn := resource.CreateURN("expect-this", "pkg:index:type", "", "project", "stack")
+
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		parentUrn, _, _, err := monitor.RegisterResource("pkgA:m:typComponent", "resA", false, deploytest.ResourceOptions{
 			Remote:      true,
-			DeletedWith: "expect-this",
+			DeletedWith: expectedUrn,
 		})
 		assert.NoError(t, err)
 
@@ -1587,7 +1591,7 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 	project := p.GetProject()
 	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	for _, res := range snap.Resources[1:] {
-		assert.Equal(t, resource.URN("expect-this"), res.DeletedWith)
+		assert.Equal(t, expectedUrn, res.DeletedWith)
 	}
 	assert.Nil(t, res)
 }

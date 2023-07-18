@@ -4155,3 +4155,97 @@ func TestSourcePositions(t *testing.T) {
 	assert.Equal(t, readURN, read.URN)
 	assert.Equal(t, "project://"+readPos, read.SourcePosition)
 }
+
+func TestBadResourceOptionURNs(t *testing.T) {
+	// Test for https://github.com/pulumi/pulumi/issues/13490, check that if a user (or SDK) sends a malformed
+	// URN we return an error.
+
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		opts     deploytest.ResourceOptions
+		assertFn func(err error)
+	}{
+		{
+			name: "malformed alias urn",
+			opts: deploytest.ResourceOptions{
+				Aliases: []resource.Alias{{URN: "very-bad urn"}},
+			},
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid alias URN: invalid URN \"very-bad urn\"")
+			},
+		},
+		{
+			name: "malformed alias parent urn",
+			opts: deploytest.ResourceOptions{
+				Aliases: []resource.Alias{{Parent: "very-bad urn"}},
+			},
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid parent alias URN: invalid URN \"very-bad urn\"")
+			},
+		},
+		{
+			name: "malformed parent urn",
+			opts: deploytest.ResourceOptions{
+				Parent: "very-bad urn",
+			},
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid parent URN: invalid URN \"very-bad urn\"")
+			},
+		},
+		{
+			name: "malformed deleted with urn",
+			opts: deploytest.ResourceOptions{
+				DeletedWith: "very-bad urn",
+			},
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid DeletedWith URN: invalid URN \"very-bad urn\"")
+			},
+		},
+		{
+			name: "malformed dependency",
+			opts: deploytest.ResourceOptions{
+				Dependencies: []resource.URN{"very-bad urn"},
+			},
+			assertFn: func(err error) {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid dependency URN: invalid URN \"very-bad urn\"")
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{}, nil
+				}, deploytest.WithoutGrpc),
+			}
+
+			program := deploytest.NewLanguageRuntime(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "res", true, tt.opts)
+				tt.assertFn(err)
+				return nil
+			})
+			host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+			p := &TestPlan{
+				Options: UpdateOptions{Host: host},
+			}
+
+			project := p.GetProject()
+
+			snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+			assert.Nil(t, res)
+			assert.NotNil(t, snap)
+		})
+	}
+}

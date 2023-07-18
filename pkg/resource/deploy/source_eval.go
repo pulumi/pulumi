@@ -17,7 +17,6 @@ package deploy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -803,7 +802,11 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumi
 	for name, deps := range req.GetArgDependencies() {
 		urns := make([]resource.URN, len(deps.Urns))
 		for i, urn := range deps.Urns {
-			urns[i] = resource.URN(urn)
+			urn, err := resource.ParseURN(urn)
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on argument %d URN: %s", i, err))
+			}
+			urns[i] = urn
 		}
 		argDependencies[resource.PropertyKey(name)] = urns
 	}
@@ -926,7 +929,10 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	name := tokens.QName(req.GetName())
-	parent := resource.URN(req.GetParent())
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
 
 	provider := req.GetProvider()
 	if !providers.IsProviderType(t) && provider == "" {
@@ -948,7 +954,11 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
 	deps := slice.Prealloc[resource.URN](len(req.GetDependencies()))
 	for _, depURN := range req.GetDependencies() {
-		deps = append(deps, resource.URN(depURN))
+		urn, err := resource.ParseURN(depURN)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency: %s", err))
+		}
+		deps = append(deps, urn)
 	}
 
 	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
@@ -1139,7 +1149,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	name := tokens.QName(req.GetName())
 	custom := req.GetCustom()
 	remote := req.GetRemote()
-	parent := resource.URN(req.GetParent())
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
 	protect := req.GetProtect()
 	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
@@ -1147,12 +1160,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
 	retainOnDelete := req.GetRetainOnDelete()
-	deletedWith := resource.URN(req.GetDeletedWith())
+	deletedWith, err := resource.ParseOptionalURN(req.GetDeletedWith())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid DeletedWith URN: %s", err))
+	}
 	sourcePosition := rm.sourcePositions.getFromRequest(req)
 
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
-	var err error
 	var t tokens.Type
 	if custom || remote {
 		t, err = tokens.ParseTypeToken(req.GetType())
@@ -1211,7 +1226,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	aliases := []resource.Alias{}
 	for _, aliasURN := range req.GetAliasURNs() {
-		aliases = append(aliases, resource.Alias{URN: resource.URN(aliasURN)})
+		urn, err := resource.ParseURN(aliasURN)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid alias URN: %s", err))
+		}
+		aliases = append(aliases, resource.Alias{URN: urn})
 	}
 
 	// We assume aliases are properly specified. However, if a request hasn't explicitly
@@ -1225,28 +1244,38 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		aliasSpec := aliasObject.GetSpec()
 		var alias resource.Alias
 		if aliasSpec != nil {
+			parentURN, err := resource.ParseOptionalURN(aliasSpec.GetParentUrn())
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent alias URN: %s", err))
+			}
 			alias = resource.Alias{
 				Name:     aliasSpec.Name,
 				Type:     aliasSpec.Type,
 				Stack:    aliasSpec.Stack,
 				Project:  aliasSpec.Project,
-				Parent:   resource.URN(aliasSpec.GetParentUrn()),
+				Parent:   parentURN,
 				NoParent: aliasSpec.GetNoParent(),
 			}
 			if transformAliases {
 				alias = transformAliasForNodeJSCompat(alias)
 			}
 		} else {
-			alias = resource.Alias{
-				URN: resource.URN(aliasObject.GetUrn()),
+			urn, err := resource.ParseURN(aliasObject.GetUrn())
+			if err != nil {
+				return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid alias URN: %s", err))
 			}
+			alias = resource.Alias{URN: urn}
 		}
 		aliases = append(aliases, alias)
 	}
 
 	dependencies := []resource.URN{}
 	for _, dependingURN := range req.GetDependencies() {
-		dependencies = append(dependencies, resource.URN(dependingURN))
+		urn, err := resource.ParseURN(dependingURN)
+		if err != nil {
+			return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency URN: %s", err))
+		}
+		dependencies = append(dependencies, urn)
 	}
 
 	props, err := plugin.UnmarshalProperties(
@@ -1301,7 +1330,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		for pk, pd := range req.GetPropertyDependencies() {
 			var deps []resource.URN
 			for _, d := range pd.Urns {
-				deps = append(deps, resource.URN(d))
+				urn, err := resource.ParseURN(d)
+				if err != nil {
+					return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid dependency on property %s URN: %s", pk, err))
+				}
+				deps = append(deps, urn)
 			}
 			propertyDependencies[resource.PropertyKey(pk)] = deps
 		}
@@ -1328,7 +1361,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if remote {
 		provider, ok := rm.providers.GetProvider(providerRef)
 		if providers.IsDenyDefaultsProvider(providerRef) {
-			msg := diag.GetDefaultProviderDenied(resource.URN(t.String())).Message
+			msg := diag.GetDefaultProviderDenied("").Message
 			return nil, fmt.Errorf(msg, t.Package().String(), t.String())
 		}
 		if !ok {
@@ -1560,10 +1593,11 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
 ) (*pbempty.Empty, error) {
 	// Obtain and validate the message's inputs (a URN plus the output property map).
-	urn := resource.URN(req.GetUrn())
-	if urn == "" {
-		return nil, errors.New("missing required URN")
+	urn, err := resource.ParseURN(req.Urn)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource URN: %s", err)
 	}
+
 	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
 	outs, err := plugin.UnmarshalProperties(
 		req.GetOutputs(), plugin.MarshalOptions{

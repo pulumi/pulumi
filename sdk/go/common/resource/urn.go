@@ -15,6 +15,7 @@
 package resource
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 
@@ -52,6 +53,27 @@ const (
 	URNNameDelimiter = "::"                          // the delimiter between URN name elements
 	URNTypeDelimiter = "$"                           // the delimiter between URN type elements
 )
+
+// ParseURN attempts to parse a string into a URN returning an error if it's not valid.
+func ParseURN(s string) (URN, error) {
+	if s == "" {
+		return "", fmt.Errorf("missing required URN")
+	}
+
+	urn := URN(s)
+	if !urn.IsValid() {
+		return "", fmt.Errorf("invalid URN %q", s)
+	}
+	return urn, nil
+}
+
+// ParseOptionalURN is the same as ParseURN except it will allow the empty string.
+func ParseOptionalURN(s string) (URN, error) {
+	if s == "" {
+		return "", nil
+	}
+	return ParseURN(s)
+}
 
 // NewURN creates a unique resource URN for the given resource object.
 func NewURN(stack tokens.QName, proj tokens.PackageName, parentType, baseType tokens.Type, name tokens.QName) URN {
