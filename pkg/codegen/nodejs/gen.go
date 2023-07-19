@@ -938,9 +938,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 
 	fmt.Fprintf(w, "    }\n")
 
-	// Generate methods.
-	genMethod := func(method *schema.Method) {
+	// Generate methods. The async flag, if true, indicates the fooAsync(..): Promise<T> variant. The default
+	// variant is foo(..): Output<T>
+	genMethod := func(method *schema.Method, async bool) {
 		methodName := camel(method.Name)
+
+		if async {
+			methodName = fmt.Sprintf("%sAsync", methodName)
+		}
+
 		fun := method.Function
 
 		var objectReturnType *schema.ObjectType
@@ -983,13 +989,21 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				argsig = fmt.Sprintf("args%s: %s.%sArgs", optFlag, name, title(method.Name))
 			}
 		}
+
+		outType := "pulumi.Output"
+		if async {
+			outType = "Promise"
+		}
+
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
 		} else if liftReturn {
-			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
+			retty = fmt.Sprintf("%s<%s>", outType,
+				mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
-			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
+			retty = fmt.Sprintf("%s<%s.%sResult>", outType,
+				name, title(method.Name))
 		}
 		fmt.Fprintf(w, "    %s(%s): %s {\n", methodName, argsig, retty)
 		if fun.DeprecationMessage != "" {
@@ -1006,12 +1020,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var ret string
 		if fun.ReturnType != nil {
 			if liftReturn {
-				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
+				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", outType, name, title(method.Name))
 			} else {
 				ret = "return "
 			}
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+
+		intrinsic := "call"
+		if async {
+			intrinsic = "callAsync"
+		}
+
+		fmt.Fprintf(w, "        %spulumi.runtime.%s(\"%s\", {\n", ret, intrinsic, fun.Token)
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1029,7 +1049,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "    }\n")
 	}
 	for _, method := range r.Methods {
-		genMethod(method)
+		genMethod(method, true /*async*/)
+		genMethod(method, false /*async*/)
 	}
 
 	// Finish the class.
