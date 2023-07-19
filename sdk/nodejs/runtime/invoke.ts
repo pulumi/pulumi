@@ -352,6 +352,22 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
     return out;
 }
 
+/**
+ * Behaves exactly like `call` but returns a Promise instead. Unknowns are not allowed in the response, and an exception
+ * will be thrown blaming the provider for violating the contract if the provider returns any unknown values. Secret
+ * bits and dependencies returned from the provider are similarly discarded.
+ */
+export async function callAsync<T>(tok: string, props: Inputs, res?: Resource): Promise<T> {
+    const o = call<T>(tok, props, res);
+    if (!(await o.isKnown)) {
+        throw new Error("Unexpected unknown values received from the provider in response to calling " + tok + ". "+
+            "This is an error in the resource provider. Please contact the provider developer.");
+    }
+    // o.isSecret information is discarded here, unfortunately.
+    // o.allResources dependency information is discarded here, unfortunately.
+    return await o.promise();
+}
+
 function createOutput<T>(
     label: string,
 ): [Output<T>, (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void] {
