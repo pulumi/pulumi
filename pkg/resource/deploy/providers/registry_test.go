@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -801,4 +802,47 @@ func TestLoadProvider_missingError(t *testing.T) {
 	assert.ErrorContains(t, err,
 		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
 	assert.Equal(t, 5, count)
+}
+
+func TestConcurrentRegistryUsage(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13491, make sure we can use registry in
+	// parallel.
+
+	t.Parallel()
+
+	loaders := []*providerLoader{
+		newSimpleLoader(t, "pkgA", "1.0.0", nil),
+	}
+	host := newPluginHost(t, loaders)
+
+	r := NewRegistry(host, false, nil)
+	assert.NotNil(t, r)
+
+	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
+	// them.
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			typ := MakeProviderType("pkgA")
+			providerURN := resource.NewURN("test", "test", "", typ, tokens.QName(fmt.Sprintf("p%d", i)))
+
+			for j := 0; j < 1000; j++ {
+				aliasURN := resource.NewURN("test", "test", "", typ, tokens.QName(fmt.Sprintf("p%d_%d", i, j)))
+				r.RegisterAlias(providerURN, aliasURN)
+			}
+
+			// Now check that we can get the provider back.
+			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewBoolProperty(true)}
+
+			// Check
+			inputs, failures, err := r.Check(providerURN, olds, news, false, nil)
+			assert.NoError(t, err)
+			assert.Len(t, failures, 1)
+			assert.Equal(t, "version", string(failures[0].Property))
+			assert.Nil(t, inputs)
+		}(i)
+	}
 }

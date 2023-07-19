@@ -292,6 +292,9 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 // RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
 // of URNs.
 func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
+	r.m.Lock()
+	defer r.m.Unlock()
+
 	if providerURN != alias {
 		r.aliases[providerURN] = alias
 	}
