@@ -1714,7 +1714,7 @@ func getPluginInfoAndPath(
 	kind PluginKind, name string, version *semver.Version, skipMetadata bool,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
-	var filename string
+	filename := (&PluginSpec{Kind: kind, Name: name}).File()
 
 	for i, p1 := range projectPlugins {
 		for j, p2 := range projectPlugins {
@@ -1767,7 +1767,6 @@ func getPluginInfoAndPath(
 	// This supports development scenarios.
 	includeAmbient := !(env.IgnoreAmbientPlugins.Value())
 	if includeAmbient {
-		filename = (&PluginSpec{Kind: kind, Name: name}).File()
 		if path, err := exec.LookPath(filename); err == nil {
 			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
 			return &PluginInfo{
