@@ -943,11 +943,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		methodName := camel(method.Name)
 		fun := method.Function
 
+		plainResReturnType, returnsPlainRes := fun.ReturnsPlainResource()
 		var objectReturnType *schema.ObjectType
 		if fun.ReturnType != nil {
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				objectReturnType = objectType
-			} else {
+			} else if !returnsPlainRes {
+				// Currently the code only knows how to generate code for methods returning an
+				// ObjectType (objectReturnType!=nil) or methods returning a plain resource
+				// (returnsPlainRes==true). All other methods are simply skipped; bail here.
 				return
 			}
 		}
@@ -986,6 +990,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
+		} else if returnsPlainRes {
+			innerType := mod.typeString(plainResReturnType, false, nil)
+			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
@@ -1011,7 +1018,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				ret = "return "
 			}
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+
+		if returnsPlainRes {
+			fmt.Fprintf(w, "        %spulumi.runtime.callAsync(\"%s\", {\n", ret, fun.Token)
+		} else {
+			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+		}
+
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1022,12 +1035,21 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				}
 			}
 		}
-		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "        }, this")
+
+		if returnsPlainRes {
+			prop := camel("resource")
+			fmt.Fprintf(w, ", {plainResourceField: %q}", prop)
+		}
+
+		fmt.Fprintf(w, ");\n")
+
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
+
 	for _, method := range r.Methods {
 		genMethod(method)
 	}
@@ -1078,15 +1100,33 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 
 		if fun.ReturnType != nil {
-			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			genReturnType := func(properties []*schema.Property) error {
 				comment := fun.Inputs.Comment
 				if comment == "" {
 					comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
 				}
-				if err := mod.genPlainType(w, methodName+"Result", comment, objectType.Properties, false, true, 1); err != nil {
+				if err := mod.genPlainType(w, methodName+"Result", comment, properties, false, true, 1); err != nil {
 					return err
 				}
 				fmt.Fprintf(w, "\n")
+				return nil
+			}
+			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+				if err := genReturnType(objectType.Properties); err != nil {
+					return err
+				}
+			}
+			if resTy, ok := fun.ReturnsPlainResource(); ok {
+				props := []*schema.Property{
+					{
+						Name:  "resource",
+						Plain: true,
+						Type:  resTy,
+					},
+				}
+				if err := genReturnType(props); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -1550,6 +1590,9 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 		for _, method := range member.Methods {
 			if method.Function.Inputs != nil {
 				for _, p := range method.Function.Inputs.Properties {
+					if p.Name == "__self__" {
+						continue
+					}
 					needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
@@ -1559,6 +1602,9 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 					for _, p := range objectType.Properties {
 						needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 					}
+				}
+				if resTy, ok := method.Function.ReturnsPlainResource(); ok {
+					needsTypes = mod.getTypeImportsForResource(resTy, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
 		}

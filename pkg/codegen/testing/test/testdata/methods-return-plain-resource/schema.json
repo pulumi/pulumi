@@ -1,0 +1,49 @@
+{
+  "version": "0.0.1",
+  "name": "metaprovider",
+  "resources": {
+    "metaprovider:index:Configurer": {
+      "isComponent": true,
+      "inputProperties": {
+        "awsProfile": {
+          "type": "string"
+        },
+        "awsRegion": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": [
+        "awsRegion",
+        "awsProfile"
+      ],
+      "methods": {
+        "awsProvider": "metaprovider:index:Configurer/awsProvider"
+      }
+    }
+  },
+  "functions": {
+    "metaprovider:index:Configurer/awsProvider": {
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/metaprovider:index:Configurer"
+          }
+        }
+      },
+      "outputs": {
+         "$ref": "/aws/v5.16.2/schema.json#/provider",
+         "plain": true
+      }
+    }
+  },
+  "language": {
+    "nodejs": {
+        "dependencies": {
+            "@pulumi/aws": "^5.16"
+        }
+    },
+    "go": {
+      "importBasePath": "methods-return-plain-resource/metaprovider"
+    }
+  }
+}

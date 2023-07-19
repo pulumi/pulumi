@@ -153,11 +153,23 @@ def call(
     props: "Inputs",
     res: Optional["Resource"] = None,
     typ: Optional[type] = None,
+    plainResourceField: Optional[str] = None,
 ) -> "Output[Any]":
     """
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
     """
+
+    # If set, the caller is requesting support for XReturnPlainResource. Call normally, force-await the output, extract
+    # the resource by field name and return promptly.
+    if plainResourceField:
+        output = call(tok, props, res, typ)
+        result = _force_output(output)
+        if result is None:
+            raise Error(f"Plain resource method '{tok}; incorrectly returned an unknown Resource value. "+
+ 		        "This is an error in the provider, please report this to the provider developer.")
+        return getattr(result, plainResourceField)
+
     log.debug(f"Calling function: tok={tok}")
 
     if typ and not _types.is_output_type(typ):
@@ -289,3 +301,17 @@ def call(
     asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())
 
     return out
+
+
+def _force_output(o: "Output[Any]") -> Any:
+    return _sync_await(asyncio.ensure_future(_force_output_async(o)))
+
+
+async def _force_output_async(o: "Output[Any]") -> Any:
+    is_known = await o._is_known
+    if not is_known:
+        return None
+    # TODO dependencies and the secret bit are discarded here; push to call site and explain that while they are
+    # currently discarded, in the future they can be propagated through the returned prompt Resource value.
+    value = await o._future
+    return value
