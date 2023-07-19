@@ -201,7 +201,13 @@ func newDestroyCmd() *cobra.Command {
 				defaultSecretsManager = snap.SecretsManager
 			}
 
-			cfg, sm, err := getStackConfiguration(ctx, s, proj, defaultSecretsManager)
+			getConfig := getStackConfiguration
+			if stackName != "" {
+				// `pulumi destroy --stack <stack>` can be run outside of the project directory.
+				// The config may be missing, fallback on the latest configuration in the backend.
+				getConfig = getStackConfigurationOrLatest
+			}
+			cfg, sm, err := getConfig(ctx, s, proj, defaultSecretsManager)
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack configuration: %w", err))
 			}
