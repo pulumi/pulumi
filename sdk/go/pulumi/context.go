@@ -560,6 +560,51 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 	return output, nil
 }
 
+// Not to be used directly, but is exposed to support code-generated methods marked with XReturnPlainResource.
+func (ctx *Context) XCallReturnPlainResource(
+	tok string,
+	args Input,
+	output Output,
+	self Resource,
+	resultPtr reflect.Value,
+	errorPtr *error,
+	opts ...InvokeOption,
+) {
+	res, err := func() (any, error) {
+		o, err := ctx.Call(tok, args, output, self, opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		value, known, _ /*secret*/, _ /*deps*/, err := awaitWithContext(ctx.Context(), o)
+		if err != nil {
+			return nil, err
+		}
+
+		// Ignoring deps; would be better to attach them to the *T resource.
+		// Ignoring secret; perhaps would be better to mark all outputs in the *T resource as secret.
+
+		contract.Assertf(known, "Plain resource method %q incorrectly returned an unknown Resource value. "+
+			"This is an error in the provider, please report this to the provider developer.", tok)
+
+		return value, nil
+
+	}()
+
+	if err != nil {
+		*errorPtr = err
+		return
+	}
+
+	// res is of type struct {Foo: *Res} with a single field; extract it here.
+	firstFieldValue := reflect.ValueOf(res).Field(0)
+
+	// return by setting the result pointer; this style of returns shortens the generated code a bit without
+	// assuming generics are available.
+	resultPtr.Elem().Set(firstFieldValue)
+	return
+}
+
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
 // token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the ID
 // of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).

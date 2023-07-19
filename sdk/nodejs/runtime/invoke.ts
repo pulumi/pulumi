@@ -18,7 +18,7 @@ import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs, Output } from "../output";
+import { Inputs, Output, isUnknown } from "../output";
 import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
@@ -245,9 +245,51 @@ function deserializeResponse(tok: string, resp: any): any {
 export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
-
     const [out, resolver] = createOutput<T>(`call(${tok})`);
+    callInner<T>(label, resolver, tok, props, res);
+    return out;
+}
 
+/**
+ * Behaves exactly like `call` but returns a Promise instead, to support code generated calls for methods with that
+ * return a plain resource. After awaiting the output, extract the resource by field name specified in
+ * plainResourceField. Unknowns are not allowed in the response, and an exception will be thrown blaming the provider
+ * for violating the contract if the provider returns any unknown values. Secret bits and dependencies returned from the
+ * provider are similarly discarded at the moment.
+ */
+export function callAsync<T>(tok: string, props: Inputs, res: Resource, callAsyncOpts: {
+    plainResourceField: string,
+}): Promise<T> {
+    const label = `Calling function: tok=${tok} (callAsync)`;
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    return debuggablePromise(new Promise<T>((resolve, reject) => {
+        const resolver = (v: T, isKnown: boolean, _isSecret: boolean, _deps?: Resource[], err?: Error | undefined) => {
+            if (err) {
+                return reject(err);
+            }
+
+            const extracted = (<any>v)[callAsyncOpts.plainResourceField];
+
+            if (isUnknown(extracted)) {
+                return reject(new Error(`Plain resource method "${tok}" incorrectly returned an unknown` +
+                    " Resource value. This is an error in the provider, please report this to the provider developer."));
+            }
+
+            // TODO _isSecret is currently ignored; it would be better to propagate that through the extracted resource.
+            // TODO _deps is currently ignored, similarly.
+
+            resolve(extracted);
+        };
+        callInner<T>(label, resolver, tok, props, res);
+    }), label);
+}
+
+function callInner<T>(
+    label: string,
+    resolver: (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void,
+    tok: string, props: Inputs, res?: Resource,
+) {
     debuggablePromise(
         Promise.resolve().then(async () => {
             const done = rpcKeepAlive();
@@ -348,8 +390,6 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
         }),
         label,
     );
-
-    return out;
 }
 
 function createOutput<T>(
