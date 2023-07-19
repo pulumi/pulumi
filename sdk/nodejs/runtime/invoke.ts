@@ -18,7 +18,7 @@ import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs, Output } from "../output";
+import { Inputs, Output, output } from "../output";
 import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
@@ -245,9 +245,44 @@ function deserializeResponse(tok: string, resp: any): any {
 export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
-
     const [out, resolver] = createOutput<T>(`call(${tok})`);
+    callInner<T>(label, resolver, tok, props, res);
+    return out;
+}
 
+/**
+ * Behaves exactly like `call` but returns a Promise instead. Unknowns are not allowed in the response, and an exception
+ * will be thrown blaming the provider for violating the contract if the provider returns any unknown values. Secret
+ * bits and dependencies returned from the provider are similarly discarded.
+ */
+export function callAsync<T>(tok: string, props: Inputs, res?: Resource): Promise<T> {
+    const label = `Calling function: tok=${tok} (callAsync)`;
+    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
+
+    return debuggablePromise(new Promise<T>((resolve, reject) => {
+        const resolver = (v: T, _isKnown: boolean, _isSecret: boolean, _deps?: Resource[], err?: Error | undefined) => {
+            if (err) {
+                return reject(err);
+            }
+
+            // For objects we recur into each field and transform it into an Output, which recursively flattens any
+            // nested Output. This is necessary for type safety, since the expected return types from Call methods
+            // expose properties as prompt values, but the runtime values such as v.foo here are Outputs.
+            //
+            // Unlike call, callAsync does not just transform v into an Output at top level to avoid unkown poisoning,
+            // the situation when any output field being unknown results in the entire result being unknown and
+            // corresponding loss of information. Instead, unknown values are discarded.
+            unsafeUnwrapProperties(v).then(resolve);
+        };
+        callInner<T>(label, resolver, tok, props, res);
+    }), label);
+}
+
+function callInner<T>(
+    label: string,
+    resolver: (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void,
+    tok: string, props: Inputs, res?: Resource,
+) {
     debuggablePromise(
         Promise.resolve().then(async () => {
             const done = rpcKeepAlive();
@@ -339,6 +374,8 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
+
+                //console.log("resolver", deserialized, true, isSecret, deps);
                 resolver(deserialized, true, isSecret, deps);
             } catch (e) {
                 resolver(<any>undefined, true, false, undefined, e);
@@ -348,24 +385,6 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
         }),
         label,
     );
-
-    return out;
-}
-
-/**
- * Behaves exactly like `call` but returns a Promise instead. Unknowns are not allowed in the response, and an exception
- * will be thrown blaming the provider for violating the contract if the provider returns any unknown values. Secret
- * bits and dependencies returned from the provider are similarly discarded.
- */
-export async function callAsync<T>(tok: string, props: Inputs, res?: Resource): Promise<T> {
-    const o = call<T>(tok, props, res);
-    if (!(await o.isKnown)) {
-        throw new Error("Unexpected unknown values received from the provider in response to calling " + tok + ". "+
-            "This is an error in the resource provider. Please contact the provider developer.");
-    }
-    // o.isSecret information is discarded here, unfortunately.
-    // o.allResources dependency information is discarded here, unfortunately.
-    return await o.promise();
 }
 
 function createOutput<T>(
@@ -463,4 +482,29 @@ async function createCallRequest(
     }
 
     return req;
+}
+
+// Transform objects by resolving any Output-type properties to their values, replacing unknowns with undefined and
+// discarding isSecret bits and dependencies.
+function unsafeUnwrapProperties(obj: any): Promise<any> {
+    if (typeof(obj) !== "object") {
+        return obj;
+    }
+
+    const unwrapped: any = {};
+
+    for (const k of Object.keys(obj)) {
+        let v = obj[k];
+
+        // if something is not an output, such as a plain Undefined marker or a plain value, promote it to an output.
+        if (!Output.isInstance(v)) {
+            v = output(v);
+        }
+
+        // discard isSecret, deps; unknown values become undefined
+        unwrapped[k] = output(v.promise());
+    }
+
+    // nested outputs are flattened out; the resulting value is never unknown/undefined but is an object.
+    return output(unwrapped).promise();
 }
