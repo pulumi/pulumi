@@ -17,11 +17,16 @@
 package ints
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -171,4 +176,42 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 			}
 		},
 	}
+}
+
+func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows")
+	}
+
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+
+	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
+	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "go")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
+	err = cmd.Run()
+	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
+		" test has generated the Go SDK:\n%s\n%s\n",
+		stdout.String(), stderr.String())
+
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "go"),
+		Dependencies: []string{
+			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
+		},
+	})
+	integration.ProgramTest(t, &opts)
 }

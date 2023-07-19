@@ -154,6 +154,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Simple schema with methods that return single values",
 	},
 	{
+		Directory:   "methods-return-plain-resource",
+		Description: "Test returning plain Resource objects from methods",
+		Skip:        codegen.NewStringSet("dotnet/any"),
+	},
+	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 	},
