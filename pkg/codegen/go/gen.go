@@ -2050,8 +2050,16 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 			outputsType = fmt.Sprintf("%s%sResultOutput", name, methodName)
 		}
 	}
-	fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
-	if objectReturnType == nil {
+
+	if !f.XReturnPlainResource {
+		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
+	}
+
+	if f.XReturnPlainResource {
+		fmt.Fprintf(w, "\treturn pulumi.XCallResource[%s](ctx, %q, %s, %s{}, r)\n",
+			pkg.typeString(codegen.ResolvedType(objectReturnType.Properties[0].Type)),
+			f.Token, inputsVar, outputsType)
+	} else if objectReturnType == nil {
 		fmt.Fprintf(w, "\treturn err\n")
 	} else if liftReturn {
 		// Check the error before proceeding.
@@ -2095,7 +2103,7 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 		fmt.Fprintf(w, "}\n\n")
 	}
-	if objectReturnType != nil {
+	if objectReturnType != nil && !f.XReturnPlainResource {
 		outputStructName := name
 
 		// Don't export the result struct if we're lifting the value

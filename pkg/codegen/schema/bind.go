@@ -1603,6 +1603,7 @@ func (t *types) bindFunctionDef(token string) (*Function, hcl.Diagnostics, error
 		DeprecationMessage:       spec.DeprecationMessage,
 		Language:                 language,
 		IsOverlay:                spec.IsOverlay,
+		XReturnPlainResource:     spec.XReturnPlainResource,
 	}
 	t.functionDefs[token] = fn
 

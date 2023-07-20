@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -523,5 +524,279 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 
 	for _, typ := range typedefs2 {
 		assert.NotContains(t, typedefs1, typ)
+	}
+}
+
+func methodTestPackageSpec() schema.PackageSpec {
+	stringTS := schema.TypeSpec{Type: "string"}
+	prov := "myprov"
+	self := "__self__"
+	resToken := fmt.Sprintf("%s:index:Res", prov)
+
+	localResourceRef := func(token string) string {
+		return fmt.Sprintf("#/resources/%s", token)
+	}
+
+	methodToken := func(name string) string {
+		return fmt.Sprintf("%s/%s", resToken, name)
+	}
+
+	selfProp := schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Ref: localResourceRef(resToken),
+		},
+	}
+
+	return schema.PackageSpec{
+		Name: prov,
+
+		Resources: map[string]schema.ResourceSpec{
+			resToken: {
+				IsComponent: true,
+				Methods: map[string]string{
+					"callEmpty":          methodToken("callEmpty"),
+					"call1Ret1":          methodToken("call1Ret1"),
+					"makeResource":       methodToken("makeResource"),
+					"makeResourceNoArgs": methodToken("makeResourceNoArgs"),
+				},
+			},
+		},
+
+		Functions: map[string]schema.FunctionSpec{
+			methodToken("callEmpty"): {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						self: selfProp,
+					},
+				},
+			},
+			methodToken("call1Ret1"): {
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						self:   selfProp,
+						"arg1": {TypeSpec: stringTS},
+					},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"out1": {TypeSpec: stringTS},
+						},
+					},
+				},
+			},
+			methodToken("makeResource"): {
+				XReturnPlainResource: true,
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						self:   selfProp,
+						"arg1": {TypeSpec: stringTS},
+					},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							self: selfProp,
+							"outRes": {
+								TypeSpec: schema.TypeSpec{Ref: localResourceRef(resToken)},
+							},
+						},
+					},
+				},
+			},
+			methodToken("makeResourceNoArgs"): {
+				XReturnPlainResource: true,
+				Inputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						self: selfProp,
+					},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"outRes": {
+								TypeSpec: schema.TypeSpec{Ref: localResourceRef(resToken)},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+type pkgref struct {
+}
+
+func TestGenMethod(t *testing.T) {
+	pkgSpec := methodTestPackageSpec()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	require.NoError(t, err)
+	t.Logf("%v", diags.Error())
+	require.False(t, diags.HasErrors())
+
+	resName := "Res"
+
+	res := pkg.Resources[0]
+
+	pkgc := &pkgContext{pkg: pkg.Reference()}
+
+	reindent := func(x string) []string {
+		var out []string
+		parts := strings.Split(x, "\n")
+		for _, p := range parts {
+			if strings.TrimSpace(p) != "" {
+				out = append(out, strings.TrimSpace(p))
+			}
+		}
+		return out
+	}
+
+	type testCase struct {
+		methodName             string
+		expect                 string
+		liftSingleValueReturns bool
+	}
+
+	testCases := []testCase{
+		{
+			methodName: "callEmpty",
+			expect: `
+			func (r *Res) CallEmpty(ctx *pulumi.Context) error {
+				_, err := ctx.Call("myprov:index:Res/callEmpty", nil, pulumi.AnyOutput{}, r)
+				return err
+			}
+                        `,
+		},
+		{
+			methodName: "call1Ret1",
+			expect: `
+			func (r *Res) Call1Ret1(ctx *pulumi.Context, args *ResCall1Ret1Args) (ResCall1Ret1ResultOutput, error) {
+				out, err := ctx.Call("myprov:index:Res/call1Ret1", args, ResCall1Ret1ResultOutput{}, r)
+				if err != nil {
+					return ResCall1Ret1ResultOutput{}, err
+				}
+				return out.(ResCall1Ret1ResultOutput), nil
+			}
+
+			type resCall1Ret1Args struct {
+				Arg1 *string ^^pulumi:"arg1"^^
+			}
+
+			// The set of arguments for the Call1Ret1 method of the Res resource.
+			type ResCall1Ret1Args struct {
+				Arg1 pulumi.StringPtrInput
+			}
+
+			func (ResCall1Ret1Args) ElementType() reflect.Type {
+				return reflect.TypeOf((*resCall1Ret1Args)(nil)).Elem()
+			}
+
+			type ResCall1Ret1Result struct {
+				Out1 *string ^^pulumi:"out1"^^
+			}
+
+			type ResCall1Ret1ResultOutput struct{ *pulumi.OutputState }
+
+			func (ResCall1Ret1ResultOutput) ElementType() reflect.Type {
+				return reflect.TypeOf((*ResCall1Ret1Result)(nil)).Elem()
+			}
+
+			func (o ResCall1Ret1ResultOutput) Out1() pulumi.StringPtrOutput {
+				return o.ApplyT(func(v ResCall1Ret1Result) *string { return v.Out1 }).(pulumi.StringPtrOutput)
+			}
+                        `,
+		},
+		{
+			methodName: "call1Ret1",
+			expect: `
+			func (r *Res) Call1Ret1(ctx *pulumi.Context, args *ResCall1Ret1Args) (pulumi.StringPtrOutput, error) {
+				out, err := ctx.Call("myprov:index:Res/call1Ret1", args, resCall1Ret1ResultOutput{}, r)
+				if err != nil {
+					return pulumi.StringPtrOutput{}, err
+				}
+				return out.(resCall1Ret1ResultOutput).Out1(), nil
+			}
+
+			type resCall1Ret1Args struct {
+				Arg1 *string ^^pulumi:"arg1"^^
+			}
+
+			// The set of arguments for the Call1Ret1 method of the Res resource.
+			type ResCall1Ret1Args struct {
+				Arg1 pulumi.StringPtrInput
+			}
+
+			func (ResCall1Ret1Args) ElementType() reflect.Type {
+				return reflect.TypeOf((*resCall1Ret1Args)(nil)).Elem()
+			}
+
+			type resCall1Ret1Result struct {
+				Out1 *string ^^pulumi:"out1"^^
+			}
+
+			type resCall1Ret1ResultOutput struct{ *pulumi.OutputState }
+
+			func (resCall1Ret1ResultOutput) ElementType() reflect.Type {
+				return reflect.TypeOf((*resCall1Ret1Result)(nil)).Elem()
+			}
+
+			func (o resCall1Ret1ResultOutput) Out1() pulumi.StringPtrOutput {
+				return o.ApplyT(func(v resCall1Ret1Result) *string { return v.Out1 }).(pulumi.StringPtrOutput)
+			}
+                        `,
+			liftSingleValueReturns: true,
+		},
+		{
+			methodName: "makeResource",
+			expect: `
+			func (r *Res) MakeResource(ctx *pulumi.Context, args *ResMakeResourceArgs) (ResMakeResourceResultOutput, error) {
+				return pulumi.XCallResource[*Res](ctx, "myprov:index:Res/makeResource", args, ResMakeResourceResultOutput{}, r)
+			}
+
+			type resMakeResourceArgs struct {
+				Arg1 *string ^^pulumi:"arg1"^^
+			}
+
+			// The set of arguments for the MakeResource method of the Res resource.
+			type ResMakeResourceArgs struct {
+				Arg1 pulumi.StringPtrInput
+			}
+
+			func (ResMakeResourceArgs) ElementType() reflect.Type {
+				return reflect.TypeOf((*resMakeResourceArgs)(nil)).Elem()
+			}`,
+		},
+		{
+			methodName: "makeResourceNoArgs",
+			expect: `
+			func (r *Res) MakeResourceNoArgs(ctx *pulumi.Context) (ResMakeResourceNoArgsResultOutput, error) {
+				return pulumi.XCallResource[*Res](ctx, "myprov:index:Res/makeResourceNoArgs", nil, ResMakeResourceNoArgsResultOutput{}, r)
+			}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		var buf bytes.Buffer
+		var method *schema.Method
+		for _, m := range res.Methods {
+			if m.Name == tc.methodName {
+				method = m
+			}
+		}
+		if method == nil {
+			t.Errorf("Method not found: %q", tc.methodName)
+			t.FailNow()
+		}
+		pkgc.liftSingleValueMethodReturns = tc.liftSingleValueReturns
+		pkgc.genMethod(resName, method, &buf)
+		expected := reindent(strings.ReplaceAll(tc.expect, "^^", "`"))
+		actual := reindent(buf.String())
+		if !reflect.DeepEqual(expected, actual) {
+			t.Logf("Generated:\n%s", buf.String())
+		}
+		assert.Equal(t, expected, actual)
 	}
 }
