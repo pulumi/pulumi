@@ -55,6 +55,28 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
+func TestFailIfProjectNameDoesNotMatch(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             "org/projectA/stack",
+		name:              "projectB",
+		templateNameOrURL: "typescript",
+	}
+
+	err := runNew(context.Background(), args)
+	assert.ErrorContains(t, err, "project name (--name projectB) "+
+		"and stack reference project name (--stack projectA) must be the same")
+}
+
+//nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
@@ -959,6 +981,44 @@ func TestProjectExists(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+//nolint:paralleltest // changes directory for process
+func TestGenerateOnlyProjectCheck(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/issues/13527, make sure various combinations of
+	// project name and stack work when generateOnly is set (thus skipping backend checks).
+
+	cases := []struct {
+		name  string
+		stack string
+	}{
+		{name: "mismatched project name", stack: "organization/boom/stack"},
+		{name: "fully qualified stack name", stack: "organization/project/stack"},
+		{name: "org qualified stack name", stack: "organization/stack"},
+		{name: "unqualified stack name", stack: "stack"},
+	}
+
+	for _, tt := range cases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			tempdir := tempProjectDir(t)
+			chdir(t, tempdir)
+
+			args := newArgs{
+				generateOnly:      true,
+				interactive:       false,
+				yes:               true,
+				prompt:            promptForValue,
+				secretsProvider:   "default",
+				stack:             tt.stack,
+				name:              "project",
+				templateNameOrURL: "typescript",
+			}
+
+			err := runNew(context.Background(), args)
+			assert.NoError(t, err)
 		})
 	}
 }

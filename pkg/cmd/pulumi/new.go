@@ -118,17 +118,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	// If we're going to be creating a stack, get the current backend, which
 	// will kick off the login flow (if not already logged-in).
 	var b backend.Backend
-	if !args.generateOnly || (args.stack != "" && strings.Count(args.stack, "/") == 2) {
+	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
 		b, err = currentBackend(ctx, nil, opts)
 		if err != nil {
 			return err
 		}
-	}
 
-	// Check project name and stack reference project name are the same.
-	if err := compareStackProjectName(b, args.stack, args.name); err != nil {
-		return err
+		// Check project name and stack reference project name are the same, we skip this check if
+		// --generate-only is set because we're not going to actually use the --stack argument given.
+		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
+			return err
+		}
 	}
 
 	// Retrieve the template repo.
@@ -177,7 +178,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// created via the web app.
 	var s backend.Stack
 	var orgName string
-	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
+	if !args.generateOnly && args.stack != "" && strings.Count(args.stack, "/") == 2 {
 		parts := strings.SplitN(args.stack, "/", 3)
 
 		// Set the org name for future use.
