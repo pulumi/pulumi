@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Add a missing lock that could cause a concurrent map read/write panic.
