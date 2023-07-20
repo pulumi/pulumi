@@ -571,7 +571,7 @@ func XCallResource[T Resource](
 	output Output,
 	self Resource,
 	opts ...InvokeOption,
-) (*T, error) {
+) (T, error) {
 	resultType := reflect.TypeOf(new(T)).Elem()
 	predictedType := output.ElementType()
 
@@ -581,12 +581,14 @@ func XCallResource[T Resource](
 
 	o, err := ctx.Call(tok, args, output, self, opts...)
 	if err != nil {
-		return nil, err
+		var empty T
+		return empty, err
 	}
 
 	value, known, _ /*secret*/, _ /*deps*/, err := awaitWithContext(ctx.Context(), o)
 	if err != nil {
-		return nil, err
+		var empty T
+		return empty, err
 	}
 
 	// Ignoring deps; would be better to attach them to the *T resource.
@@ -599,7 +601,7 @@ func XCallResource[T Resource](
 	tValue, castOK := value.(T)
 	contract.Assertf(castOK, "Failed to cast the return value to the expected type %v", resultType)
 
-	return &tValue, nil
+	return tValue, nil
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
