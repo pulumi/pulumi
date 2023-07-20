@@ -557,6 +557,51 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 	return output, nil
 }
 
+// This experimental version of Call assumes that the Call output is a single-valued type that is a subtype of a
+// Resource, in particular it may be a provider resource; the implementation force-awaits the output and casts it back
+// to the desired type to provide the optimal developer experience when consuming a resource with this method.
+//
+// The function is expected to be called from the generated code and not to be used directly.
+//
+// - output: this will be passed in an instance of an output struct such as AwsProviderResultOutput{}
+func XCallResource[T Resource](
+	ctx *Context,
+	tok string,
+	args Input,
+	output Output,
+	self Resource,
+	opts ...InvokeOption,
+) (*T, error) {
+	resultType := reflect.TypeOf(new(T)).Elem()
+	predictedType := output.ElementType()
+
+	contract.Assertf(predictedType.AssignableTo(resultType),
+		"Incorrect arguments to XCallResource, the output arg implies that the return type is %v, but it is "+
+			"not assignable to the generic argument T=%v", predictedType, resultType)
+
+	o, err := ctx.Call(tok, args, output, self, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	value, known, _ /*secret*/, _ /*deps*/, err := awaitWithContext(ctx.Context(), o)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ignoring deps; would be better to attach them to the *T resource.
+
+	// Ignoring secret; perhaps would be better to mark all outputs in the *T resource as secret.
+
+	contract.Assertf(known, "Plain resource method %q incorrectly returned an unknown Resource value. "+
+		"This is an error in the provider, please report this to the provider developer.", tok)
+
+	tValue, castOK := value.(T)
+	contract.Assertf(castOK, "Failed to cast the return value to the expected type %v", resultType)
+
+	return &tValue, nil
+}
+
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
 // token and name is the "name" part to use in creating a stable and globally unique URN for the object. id is the ID
 // of the resource to read, and props contains any state necessary to perform the read (typically props will be nil).
