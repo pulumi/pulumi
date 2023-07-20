@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/go
-  description: Fix panic in GenerateProject when version is not set in schema

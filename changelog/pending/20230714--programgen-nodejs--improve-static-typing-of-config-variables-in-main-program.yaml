@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/nodejs
-  description: Improve static typing of config variables in main program
