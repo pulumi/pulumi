@@ -1,5 +1,70 @@
 # Changelog
 
+## 3.76.0 (2023-07-20)
+
+
+### Features
+
+- [cli/state] Adds `pulumi state edit` an experimental developer utility for manually editing state files.
+  [#13462](https://github.com/pulumi/pulumi/pull/13462)
+
+- [programgen] Allow binding unsupported range and collection types in non-strict mode for pulumi convert
+  [#13459](https://github.com/pulumi/pulumi/pull/13459)
+
+- [programgen/nodejs] Improve static typing of config variables in main program
+  [#13496](https://github.com/pulumi/pulumi/pull/13496)
+
+- [sdk/{go,nodejs,python}] Add support for reporting resource source positions
+  [#13449](https://github.com/pulumi/pulumi/pull/13449)
+
+- [sdk/{nodejs,python}] Support explicit providers for packaged components
+  [#13282](https://github.com/pulumi/pulumi/pull/13282)
+
+
+### Bug Fixes
+
+- [cli/config] Pulumi no longer falls back on old config when config resolution fails (except for `pulumi destroy --stack <stack-name>` where the config may be unavailable).
+  [#13511](https://github.com/pulumi/pulumi/pull/13511)
+
+- [cli/new] Fix the use of uninitalized backend when running `new` with --generate-only. When --generate-only is set `new` will skip all checks that require the backend.
+  [#13530](https://github.com/pulumi/pulumi/pull/13530)
+
+- [engine] Fix alias resoloution when parent alieses where also aliased.
+  [#13480](https://github.com/pulumi/pulumi/pull/13480)
+
+- [engine] Validate URNs passed via ResourceOptions are valid.
+  [#13531](https://github.com/pulumi/pulumi/pull/13531)
+
+- [engine] Add a missing lock that could cause a concurrent map read/write panic.
+  [#13532](https://github.com/pulumi/pulumi/pull/13532)
+
+- [programgen/go] Fix panic in GenerateProject when version is not set in schema
+  [#13488](https://github.com/pulumi/pulumi/pull/13488)
+
+- [sdkgen/{go,nodejs}] Fix ReplaceOnChanges being dropped in Go and NodeJS codegen.
+  [#13519](https://github.com/pulumi/pulumi/pull/13519)
+
+- [programgen/nodejs] Fix interpolated strings used as keys of maps
+  [#13514](https://github.com/pulumi/pulumi/pull/13514)
+
+- [cli/plugin] Automatically install pulumiverse provider plugins during convert.
+  [#13486](https://github.com/pulumi/pulumi/pull/13486)
+
+- [cli/plugin] Fix lookup of side-by-side binaries when PULUMI_IGNORE_AMBIENT_PLUGINS is set.
+  [#13521](https://github.com/pulumi/pulumi/pull/13521)
+
+- [sdk/python] Move some global state to context state for parallel updates.
+  [#13458](https://github.com/pulumi/pulumi/pull/13458)
+
+
+### Miscellaneous
+
+- [programgen] Consistently use the same non-strict bind options when applicable
+  [#13479](https://github.com/pulumi/pulumi/pull/13479)
+
+- [programgen] Propagate SkipRangeTypechecking option down to program components
+  [#13493](https://github.com/pulumi/pulumi/pull/13493)
+
 ## 3.75.0 (2023-07-12)
 
 

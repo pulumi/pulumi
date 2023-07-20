@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Pulumi no longer falls back on old config when config resolution fails (except for `pulumi destroy --stack <stack-name>` where the config may be unavailable).

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/state
-  description: Adds `pulumi state edit` an experimental developer utility for manually editing state files.

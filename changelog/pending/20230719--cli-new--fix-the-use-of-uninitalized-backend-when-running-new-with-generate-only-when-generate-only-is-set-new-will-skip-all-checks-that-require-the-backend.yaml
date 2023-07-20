@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/new
-  description: Fix the use of uninitalized backend when running `new` with --generate-only. When --generate-only is set `new` will skip all checks that require the backend.

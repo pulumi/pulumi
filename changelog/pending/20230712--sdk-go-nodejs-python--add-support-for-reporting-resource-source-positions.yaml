@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/go,nodejs,python
-  description: Add support for reporting resource source positions

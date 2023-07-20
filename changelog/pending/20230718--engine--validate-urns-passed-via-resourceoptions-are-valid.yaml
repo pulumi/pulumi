@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Validate URNs passed via ResourceOptions are valid.

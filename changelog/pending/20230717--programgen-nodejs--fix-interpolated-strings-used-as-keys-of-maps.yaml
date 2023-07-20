@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs
-  description: Fix interpolated strings used as keys of maps
