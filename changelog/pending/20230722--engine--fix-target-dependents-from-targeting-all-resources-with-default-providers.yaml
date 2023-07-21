@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix --target-dependents from targeting all resources with default providers.

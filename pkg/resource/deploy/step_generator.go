@@ -81,9 +81,13 @@ func (sg *stepGenerator) isTargetedForUpdate(res *resource.State) bool {
 	}
 
 	if ref := res.Provider; ref != "" {
-		res, err := providers.ParseReference(ref)
+		proivderRef, err := providers.ParseReference(ref)
 		contract.AssertNoErrorf(err, "failed to parse provider reference: %v", ref)
-		if sg.opts.Targets.Contains(res.URN()) {
+		providerURN := proivderRef.URN()
+		// We don't follow default provider dependents, as default providers are internally managed and are
+		// always targeted. See https://github.com/pulumi/pulumi/issues/13557 for context of what happens if
+		// we do follow these.
+		if !providers.IsDefaultProvider(providerURN) && sg.opts.Targets.Contains(providerURN) {
 			return true
 		}
 	}
