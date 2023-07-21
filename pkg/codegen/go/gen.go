@@ -2021,6 +2021,9 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 	var retty string
 	if objectReturnType == nil {
 		retty = "error"
+	} else if f.XReturnPlainResource {
+		t := pkg.typeString(codegen.ResolvedType(objectReturnType.Properties[0].Type))
+		retty = fmt.Sprintf("(o %s, e error)", t)
 	} else if liftReturn {
 		retty = fmt.Sprintf("(%s, error)", pkg.outputType(objectReturnType.Properties[0].Type))
 	} else {
@@ -2056,9 +2059,9 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 	}
 
 	if f.XReturnPlainResource {
-		fmt.Fprintf(w, "\treturn pulumi.XCallResource[%s](ctx, %q, %s, %s{}, r)\n",
-			pkg.typeString(codegen.ResolvedType(objectReturnType.Properties[0].Type)),
+		fmt.Fprintf(w, "\tctx.XCallReturnPlainResource(%q, %s, %s{}, r, reflect.ValueOf(&o), &e)\n",
 			f.Token, inputsVar, outputsType)
+		fmt.Fprintf(w, "\treturn\n")
 	} else if objectReturnType == nil {
 		fmt.Fprintf(w, "\treturn err\n")
 	} else if liftReturn {
@@ -2103,7 +2106,7 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s%sArgs)(nil)).Elem()\n", cgstrings.Camel(name), methodName)
 		fmt.Fprintf(w, "}\n\n")
 	}
-	if objectReturnType != nil && !f.XReturnPlainResource {
+	if objectReturnType != nil {
 		outputStructName := name
 
 		// Don't export the result struct if we're lifting the value

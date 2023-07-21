@@ -596,7 +596,6 @@ func methodTestPackageSpec() schema.PackageSpec {
 				ReturnType: &schema.ReturnTypeSpec{
 					ObjectTypeSpec: &schema.ObjectTypeSpec{
 						Properties: map[string]schema.PropertySpec{
-							self: selfProp,
 							"outRes": {
 								TypeSpec: schema.TypeSpec{Ref: localResourceRef(resToken)},
 							},
@@ -751,10 +750,10 @@ func TestGenMethod(t *testing.T) {
 		{
 			methodName: "makeResource",
 			expect: `
-			func (r *Res) MakeResource(ctx *pulumi.Context, args *ResMakeResourceArgs) (ResMakeResourceResultOutput, error) {
-				return pulumi.XCallResource[*Res](ctx, "myprov:index:Res/makeResource", args, ResMakeResourceResultOutput{}, r)
+			func (r *Res) MakeResource(ctx *pulumi.Context, args *ResMakeResourceArgs) (o *Res, e error) {
+				ctx.XCallReturnPlainResource("myprov:index:Res/makeResource", args, ResMakeResourceResultOutput{}, r, reflect.ValueOf(&o), &e)
+				return
 			}
-
 			type resMakeResourceArgs struct {
 				Arg1 *string ^^pulumi:"arg1"^^
 			}
@@ -766,13 +765,42 @@ func TestGenMethod(t *testing.T) {
 
 			func (ResMakeResourceArgs) ElementType() reflect.Type {
 				return reflect.TypeOf((*resMakeResourceArgs)(nil)).Elem()
+			}
+
+			type ResMakeResourceResult struct {
+				OutRes *Res ^^pulumi:"outRes"^^
+			}
+
+			type ResMakeResourceResultOutput struct{ *pulumi.OutputState }
+
+			func (ResMakeResourceResultOutput) ElementType() reflect.Type {
+				return reflect.TypeOf((*ResMakeResourceResult)(nil)).Elem()
+			}
+
+			func (o ResMakeResourceResultOutput) OutRes() ResOutput {
+				return o.ApplyT(func(v ResMakeResourceResult) *Res { return v.OutRes }).(ResOutput)
 			}`,
 		},
 		{
 			methodName: "makeResourceNoArgs",
 			expect: `
-			func (r *Res) MakeResourceNoArgs(ctx *pulumi.Context) (ResMakeResourceNoArgsResultOutput, error) {
-				return pulumi.XCallResource[*Res](ctx, "myprov:index:Res/makeResourceNoArgs", nil, ResMakeResourceNoArgsResultOutput{}, r)
+			func (r *Res) MakeResourceNoArgs(ctx *pulumi.Context) (o *Res, e error) {
+				ctx.XCallReturnPlainResource("myprov:index:Res/makeResourceNoArgs", nil, ResMakeResourceNoArgsResultOutput{}, r, reflect.ValueOf(&o), &e)
+				return
+			}
+
+			type ResMakeResourceNoArgsResult struct {
+				OutRes *Res ^^pulumi:"outRes"^^
+			}
+
+			type ResMakeResourceNoArgsResultOutput struct{ *pulumi.OutputState }
+
+			func (ResMakeResourceNoArgsResultOutput) ElementType() reflect.Type {
+				return reflect.TypeOf((*ResMakeResourceNoArgsResult)(nil)).Elem()
+			}
+
+			func (o ResMakeResourceNoArgsResultOutput) OutRes() ResOutput {
+				return o.ApplyT(func(v ResMakeResourceNoArgsResult) *Res { return v.OutRes }).(ResOutput)
 			}`,
 		},
 	}

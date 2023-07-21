@@ -557,51 +557,49 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 	return output, nil
 }
 
-// This experimental version of Call assumes that the Call output is a single-valued type that is a subtype of a
-// Resource, in particular it may be a provider resource; the implementation force-awaits the output and casts it back
-// to the desired type to provide the optimal developer experience when consuming a resource with this method.
-//
-// The function is expected to be called from the generated code and not to be used directly.
-//
-// - output: this will be passed in an instance of an output struct such as AwsProviderResultOutput{}
-func XCallResource[T Resource](
-	ctx *Context,
+// Not to be used directly, but is exposed to support code-generated methods marked with XReturnPlainResource.
+func (ctx *Context) XCallReturnPlainResource(
 	tok string,
 	args Input,
 	output Output,
 	self Resource,
+	resultPtr reflect.Value,
+	errorPtr *error,
 	opts ...InvokeOption,
-) (T, error) {
-	resultType := reflect.TypeOf(new(T)).Elem()
-	predictedType := output.ElementType()
+) {
+	res, err := func() (any, error) {
+		o, err := ctx.Call(tok, args, output, self, opts...)
+		if err != nil {
+			return nil, err
+		}
 
-	contract.Assertf(predictedType.AssignableTo(resultType),
-		"Incorrect arguments to XCallResource, the output arg implies that the return type is %v, but it is "+
-			"not assignable to the generic argument T=%v", predictedType, resultType)
+		value, known, _ /*secret*/, _ /*deps*/, err := awaitWithContext(ctx.Context(), o)
+		if err != nil {
+			return nil, err
+		}
 
-	o, err := ctx.Call(tok, args, output, self, opts...)
+		// Ignoring deps; would be better to attach them to the *T resource.
+		// Ignoring secret; perhaps would be better to mark all outputs in the *T resource as secret.
+
+		contract.Assertf(known, "Plain resource method %q incorrectly returned an unknown Resource value. "+
+			"This is an error in the provider, please report this to the provider developer.", tok)
+
+		return value, nil
+
+	}()
+
 	if err != nil {
-		var empty T
-		return empty, err
+		*errorPtr = err
+		return
 	}
 
-	value, known, _ /*secret*/, _ /*deps*/, err := awaitWithContext(ctx.Context(), o)
-	if err != nil {
-		var empty T
-		return empty, err
-	}
+	// res is of type struct {Foo: *Res} with a single field; extract it here.
+	firstFieldValue := reflect.ValueOf(res).Field(0)
 
-	// Ignoring deps; would be better to attach them to the *T resource.
-
-	// Ignoring secret; perhaps would be better to mark all outputs in the *T resource as secret.
-
-	contract.Assertf(known, "Plain resource method %q incorrectly returned an unknown Resource value. "+
-		"This is an error in the provider, please report this to the provider developer.", tok)
-
-	tValue, castOK := value.(T)
-	contract.Assertf(castOK, "Failed to cast the return value to the expected type %v", resultType)
-
-	return tValue, nil
+	// return by setting the result pointer; this style of returns shortens the generated code a bit without
+	// assuming generics are available.
+	resultPtr.Elem().Set(firstFieldValue)
+	return
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type

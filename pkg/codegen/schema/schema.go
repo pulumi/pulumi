@@ -1690,6 +1690,12 @@ func unmarshalFunctionSpec(funcSpec *FunctionSpec, data map[string]RawMessage) e
 		}
 	}
 
+	if isRetPR, ok := data["returnPlainResource"]; ok {
+		if err := json.Unmarshal(isRetPR, &funcSpec.XReturnPlainResource); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1749,6 +1755,11 @@ func (funcSpec FunctionSpec) marshalFunctionSpec() (map[string]interface{}, erro
 	if funcSpec.IsOverlay {
 		// the default is false, so only write the property when it is true
 		data["isOverlay"] = true
+	}
+
+	if funcSpec.XReturnPlainResource {
+		// the default is false, so only write the property when it is true
+		data["returnPlainResource"] = true
 	}
 
 	if funcSpec.Language != nil && len(funcSpec.Language) > 0 {
