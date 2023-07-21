@@ -311,5 +311,7 @@ async def _force_output_async(o: "Output[Any]") -> Any:
     is_known = await o._is_known
     if not is_known:
         return None
+    # TODO dependencies and the secret bit are discarded here; push to call site and explain that while they are
+    # currently discarded, in the future they can be propagated through the returned prompt Resource value.
     value = await o._future
     return value
