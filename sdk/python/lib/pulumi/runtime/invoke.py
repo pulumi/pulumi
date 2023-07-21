@@ -304,15 +304,12 @@ def call(
 
 
 def _force_output(o: "Output[Any]") -> Any:
-    res, error = _sync_await(asyncio.ensure_future(_force_output_async(o)))
-    if error:
-        raise error
-    return res
+    return _sync_await(asyncio.ensure_future(_force_output_async(o)))
 
 
 async def _force_output_async(o: "Output[Any]") -> Any:
-    is_known = await output._is_known
+    is_known = await o._is_known
     if not is_known:
         return None
-    value = await output._future
+    value = await o._future
     return value
