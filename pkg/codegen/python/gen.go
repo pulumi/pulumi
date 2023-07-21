@@ -1584,6 +1584,8 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 			if shouldLiftReturn {
 				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(returnType.Properties[0].Type))
+			} else if fun.XReturnPlainResource {
+				methodRetType = mod.pyType(returnType.Properties[0].Type)
 			} else {
 				methodRetType = retTypeNameQualifiedOutput
 			}
@@ -1677,6 +1679,9 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			// Store the return in a variable and return the property output
 			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 			fmt.Fprintf(w, "        return __result__.%s\n", PyName(returnType.Properties[0].Name))
+		} else if fun.XReturnPlainResource {
+			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s, plainResourceField='%s')\n",
+				fun.Token, typ, PyName(returnType.Properties[0].Name))
 		} else {
 			// Otherwise return the call directly
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)

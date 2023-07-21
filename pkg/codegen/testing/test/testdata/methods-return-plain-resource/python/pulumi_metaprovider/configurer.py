@@ -116,8 +116,8 @@ class Configurer(pulumi.ComponentResource):
         def aws_provider(self) -> 'pulumi_aws.Provider':
             return pulumi.get(self, "aws_provider")
 
-    def aws_provider(__self__) -> pulumi.Output['Configurer.AwsProviderResult']:
+    def aws_provider(__self__) -> pulumi_aws.Provider:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return pulumi.runtime.call('metaprovider:index:Configurer/awsProvider', __args__, res=__self__, typ=Configurer.AwsProviderResult)
+        return pulumi.runtime.call('metaprovider:index:Configurer/awsProvider', __args__, res=__self__, typ=Configurer.AwsProviderResult, plainResourceField='aws_provider')
 
