@@ -26,6 +26,12 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
 		return false
 	}
 
+	// Zaid's bicep converter so that `pulumi convert --from bicep` just works.
+	if spec.Kind == workspace.ConverterPlugin && spec.Name == "bicep" {
+		spec.PluginDownloadURL = "github://api.github.com/Zaid-Ajaj"
+		return true
+	}
+
 	pulumiversePlugins := []string{
 		"acme",
 		"aquasec",
