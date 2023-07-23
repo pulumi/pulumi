@@ -488,7 +488,7 @@ function outputRec(val: any): any {
         const promisedArray = Promise.all(allValues.map((v) => getAwaitableValue(v)));
         const [syncResources, isKnown, isSecret, allResources] = getResourcesAndDetails(allValues);
         return new Output(syncResources, promisedArray, isKnown, isSecret, allResources);
-    } else {
+    } else if (Object.getPrototypeOf(val) === Object.prototype) {
         const promisedValues: { key: string; value: any }[] = [];
         let hasOutputs = false;
         for (const k of Object.keys(val)) {
@@ -515,6 +515,9 @@ function outputRec(val: any): any {
             promisedValues.map((kvp) => kvp.value),
         );
         return new Output(syncResources, promisedObject, isKnown, isSecret, allResources);
+    } else {
+        // This is some complex object, just return it as is we can't deeply unwrap outputs within it.
+        return val;
     }
 }
 

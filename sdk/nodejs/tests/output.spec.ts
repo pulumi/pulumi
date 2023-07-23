@@ -1033,6 +1033,31 @@ describe("output", () => {
         });
     });
 
+    describe("output", () => {
+        it("deeply unwraps arrays", async () => {
+            const o = output([output(0), output(1)]);
+            const result = await o.promise();
+            assert.deepStrictEqual(result, [0, 1]);
+        });
+
+        it("deeply unwraps objects", async () => {
+            const o = output({ a: output(0), b: output(1) });
+            const result = await o.promise();
+            assert.deepStrictEqual(result, { a: 0, b: 1 });
+        });
+
+        it("does not unwrap classes", async () => {
+            // Regression test for https://github.com/pulumi/pulumi/issues/13561
+            const o = output(new URL("https://example.com"));
+            const host = o.apply(url => {
+                return url.host;
+            });
+            assert.strictEqual(await host.isKnown, true);
+            const result = await host.promise();
+            assert.strictEqual(result, "example.com");
+        });
+    });
+
     describe("concat", () => {
         it("handles no args", async () => {
             const result = concat();
