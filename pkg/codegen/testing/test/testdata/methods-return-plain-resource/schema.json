@@ -42,5 +42,12 @@
       },
       "returnPlainResource": true
     }
+  },
+  "language": {
+    "nodejs": {
+        "dependencies": {
+            "@pulumi/aws": "^5.16"
+        }
+     }
   }
 }
