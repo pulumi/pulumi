@@ -1536,6 +1536,9 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 		for _, method := range member.Methods {
 			if method.Function.Inputs != nil {
 				for _, p := range method.Function.Inputs.Properties {
+					if p.Name == "__self__" {
+						continue
+					}
 					needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}

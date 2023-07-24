@@ -6,8 +6,6 @@ import * as utilities from "./utilities";
 
 import * as pulumiAws from "@pulumi/aws";
 
-import {Configurer} from "./index";
-
 export class Configurer extends pulumi.ComponentResource {
     /** @internal */
     public static readonly __pulumiType = 'metaprovider:index:Configurer';
