@@ -264,16 +264,22 @@ export function callAsync<T>(tok: string, props: Inputs, res: Resource, callAsyn
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
     return debuggablePromise(new Promise<T>((resolve, reject) => {
-        const resolver = (v: T, _isKnown: boolean, _isSecret: boolean, _deps?: Resource[], err?: Error | undefined) => {
+        const resolver = (v: T, isKnown: boolean, _isSecret: boolean, _deps?: Resource[], err?: Error | undefined) => {
             if (err) {
                 return reject(err);
             }
 
-            const extractedResource = (<any>v)[callAsyncOpts.plainResourceField];
+            if (!isKnown) {
+                reject(new Error(`Plain resource method "${tok}" incorrectly returned an unknown Resource value.` +
+                    " This is an error in the provider, please report this to the provider developer."));
+            }
 
-            console.log("resolving", extractedResource, typeof(extractedResource));
+            const extracted = (<any>v)[callAsyncOpts.plainResourceField];
 
-            resolve(extractedResource);
+            // TODO _isSecret is currently ignored; it would be better to propagate that through the extracted resource.
+            // TODO _deps is currently ignored, similarly.
+
+            resolve(extracted);
         };
         callInner<T>(label, resolver, tok, props, res);
     }), label);
