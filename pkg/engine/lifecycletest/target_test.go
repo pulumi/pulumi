@@ -1296,3 +1296,120 @@ func TestReplaceSpecificTargetsPlan(t *testing.T) {
 		assert.True(t, foundResB, "resB should be in the plan")
 	})
 }
+
+func TestTargetDependents(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/pull/13560. This test ensures that when
+	// --target-dependents is set we don't start creating untargted resources.
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Target only resA and check only A is created
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:             host,
+		Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+		TargetDependents: false,
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+	// Check we only have three resources, stack, provider, and resA
+	require.Equal(t, 3, len(snap.Resources))
+
+	// Run another fresh update (note we're starting from a nil snapshot again), and target only resA and check
+	// only A is created but also turn on --target-dependents.
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:             host,
+		Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+		TargetDependents: true,
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+	// Check we still only have three resources, stack, provider, and resA
+	require.Equal(t, 3, len(snap.Resources))
+}
+
+func TestTargetDependentsExplicitProvider(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/pull/13560. This test ensures that when
+	// --target-dependents is set we still target explicit providers resources.
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		provURN, provID, _, err := monitor.RegisterResource(
+			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Target only the explicit provider and check that only the provider is created
+	snap, res := TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:             host,
+		Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
+		TargetDependents: false,
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+	// Check we only have two resources, stack, and provider
+	require.Equal(t, 2, len(snap.Resources))
+
+	// Run another fresh update (note we're starting from a nil snapshot again), and target only the provider
+	// but turn on  --target-dependents and check the provider, A, and B are created
+	snap, res = TestOp(Update).Run(project, p.GetTarget(t, nil), UpdateOptions{
+		Host:             host,
+		Targets:          deploy.NewUrnTargets([]string{"urn:pulumi:test::test::pulumi:providers:pkgA::provider"}),
+		TargetDependents: true,
+	}, false, p.BackendClient, nil)
+	require.Nil(t, res)
+	// Check we still only have four resources, stack, provider, resA, and resB.
+	require.Equal(t, 4, len(snap.Resources))
+}
