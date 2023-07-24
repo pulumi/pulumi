@@ -18,7 +18,7 @@ import { AsyncIterable } from "@pulumi/query/interfaces";
 
 import { InvokeOptions } from "../invoke";
 import * as log from "../log";
-import { Inputs, Output, output } from "../output";
+import { Inputs, Output, isUnknown } from "../output";
 import { debuggablePromise } from "./debuggable";
 import {
     deserializeProperties,
@@ -269,12 +269,12 @@ export function callAsync<T>(tok: string, props: Inputs, res: Resource, callAsyn
                 return reject(err);
             }
 
-            if (!isKnown) {
-                reject(new Error(`Plain resource method "${tok}" incorrectly returned an unknown Resource value.` +
-                    " This is an error in the provider, please report this to the provider developer."));
-            }
-
             const extracted = (<any>v)[callAsyncOpts.plainResourceField];
+
+            if (isUnknown(extracted)) {
+                return reject(new Error(`Plain resource method "${tok}" incorrectly returned an unknown` +
+                    " Resource value. This is an error in the provider, please report this to the provider developer."));
+            }
 
             // TODO _isSecret is currently ignored; it would be better to propagate that through the extracted resource.
             // TODO _deps is currently ignored, similarly.
