@@ -381,8 +381,6 @@ function callInner<T>(
                 // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
                 // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
                 // present during previews (i.e. isDryRun() will be true).
-
-                //console.log("resolver", deserialized, true, isSecret, deps);
                 resolver(deserialized, true, isSecret, deps);
             } catch (e) {
                 resolver(<any>undefined, true, false, undefined, e);
