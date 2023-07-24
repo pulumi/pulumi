@@ -986,6 +986,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
+		} else if fun.XReturnPlainResource {
+			innerType := mod.typeString(objectReturnType.Properties[0].Type, false, nil)
+			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
 		} else {
@@ -1007,11 +1010,19 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnType != nil {
 			if liftReturn {
 				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
+			} else if fun.XReturnPlainResource {
+				ret = fmt.Sprintf("const result: Promise<%s.%sResult> = ", name, title(method.Name))
 			} else {
 				ret = "return "
 			}
 		}
-		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+
+		runtimeFn := "call"
+		if fun.XReturnPlainResource {
+			runtimeFn = "callAsync"
+		}
+
+		fmt.Fprintf(w, "        %spulumi.runtime.%s(\"%s\", {\n", ret, runtimeFn, fun.Token)
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1025,6 +1036,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        }, this);\n")
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
+		} else if fun.XReturnPlainResource {
+			prop := camel(objectReturnType.Properties[0].Name)
+			fmt.Fprintf(w, "        return result.then(x => x.%s);\n", prop)
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
