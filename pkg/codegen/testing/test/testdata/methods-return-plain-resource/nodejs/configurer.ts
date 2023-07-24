@@ -48,10 +48,9 @@ export class Configurer extends pulumi.ComponentResource {
     }
 
     awsProvider(): Promise<pulumiAws.Provider> {
-        const result: Promise<Configurer.AwsProviderResult> = pulumi.runtime.callAsync("metaprovider:index:Configurer/awsProvider", {
+        return pulumi.runtime.callAsync("metaprovider:index:Configurer/awsProvider", {
             "__self__": this,
-        }, this);
-        return result.then(x => x.awsProvider);
+        }, this, {plainResourceField: "awsProvider"});
     }
 }
 

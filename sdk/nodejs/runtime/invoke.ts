@@ -251,11 +251,15 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
 }
 
 /**
- * Behaves exactly like `call` but returns a Promise instead. Unknowns are not allowed in the response, and an exception
- * will be thrown blaming the provider for violating the contract if the provider returns any unknown values. Secret
- * bits and dependencies returned from the provider are similarly discarded.
+ * Behaves exactly like `call` but returns a Promise instead, to support code generated calls for methods with
+ * XReturnPlainResource. After awaiting the output, extract the resource by field name specified in plainResourceField.
+ * Unknowns are not allowed in the response, and an exception will be thrown blaming the provider for violating the
+ * contract if the provider returns any unknown values. Secret bits and dependencies returned from the provider are
+ * similarly discarded at the moment.
  */
-export function callAsync<T>(tok: string, props: Inputs, res?: Resource): Promise<T> {
+export function callAsync<T>(tok: string, props: Inputs, res: Resource, callAsyncOpts: {
+    plainResourceField: string,
+}): Promise<T> {
     const label = `Calling function: tok=${tok} (callAsync)`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
@@ -265,14 +269,11 @@ export function callAsync<T>(tok: string, props: Inputs, res?: Resource): Promis
                 return reject(err);
             }
 
-            // For objects we recur into each field and transform it into an Output, which recursively flattens any
-            // nested Output. This is necessary for type safety, since the expected return types from Call methods
-            // expose properties as prompt values, but the runtime values such as v.foo here are Outputs.
-            //
-            // Unlike call, callAsync does not just transform v into an Output at top level to avoid unkown poisoning,
-            // the situation when any output field being unknown results in the entire result being unknown and
-            // corresponding loss of information. Instead, unknown values are discarded.
-            unsafeUnwrapProperties(v).then(resolve);
+            const extractedResource = (<any>v)[callAsyncOpts.plainResourceField];
+
+            console.log("resolving", extractedResource, typeof(extractedResource));
+
+            resolve(extractedResource);
         };
         callInner<T>(label, resolver, tok, props, res);
     }), label);
@@ -482,29 +483,4 @@ async function createCallRequest(
     }
 
     return req;
-}
-
-// Transform objects by resolving any Output-type properties to their values, replacing unknowns with undefined and
-// discarding isSecret bits and dependencies.
-function unsafeUnwrapProperties(obj: any): Promise<any> {
-    if (typeof(obj) !== "object") {
-        return obj;
-    }
-
-    const unwrapped: any = {};
-
-    for (const k of Object.keys(obj)) {
-        let v = obj[k];
-
-        // if something is not an output, such as a plain Undefined marker or a plain value, promote it to an output.
-        if (!Output.isInstance(v)) {
-            v = output(v);
-        }
-
-        // discard isSecret, deps; unknown values become undefined
-        unwrapped[k] = output(v.promise());
-    }
-
-    // nested outputs are flattened out; the resulting value is never unknown/undefined but is an object.
-    return output(unwrapped).promise();
 }

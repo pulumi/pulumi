@@ -1010,19 +1010,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if fun.ReturnType != nil {
 			if liftReturn {
 				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
-			} else if fun.XReturnPlainResource {
-				ret = fmt.Sprintf("const result: Promise<%s.%sResult> = ", name, title(method.Name))
 			} else {
 				ret = "return "
 			}
 		}
 
-		runtimeFn := "call"
 		if fun.XReturnPlainResource {
-			runtimeFn = "callAsync"
+			fmt.Fprintf(w, "        %spulumi.runtime.callAsync(\"%s\", {\n", ret, fun.Token)
+		} else {
+			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
 		}
 
-		fmt.Fprintf(w, "        %spulumi.runtime.%s(\"%s\", {\n", ret, runtimeFn, fun.Token)
 		if fun.Inputs != nil {
 			for _, p := range fun.Inputs.InputShape.Properties {
 				// Pass the argument to the invocation.
@@ -1033,12 +1031,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				}
 			}
 		}
-		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "        }, this")
+
+		if fun.XReturnPlainResource {
+			prop := camel(objectReturnType.Properties[0].Name)
+			fmt.Fprintf(w, ", {plainResourceField: %q}", prop)
+		}
+
+		fmt.Fprintf(w, ");\n")
+
 		if liftReturn {
 			fmt.Fprintf(w, "        return result.%s;\n", camel(objectReturnType.Properties[0].Name))
-		} else if fun.XReturnPlainResource {
-			prop := camel(objectReturnType.Properties[0].Name)
-			fmt.Fprintf(w, "        return result.then(x => x.%s);\n", prop)
 		}
 		fmt.Fprintf(w, "    }\n")
 	}
