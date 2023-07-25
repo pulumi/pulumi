@@ -32,8 +32,8 @@ no_edit_this_page: true
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[_local.MyEnum]</span> = None<span class="p">,</span>
-              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[_accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
+              <span class="nx">local_enum</span><span class="p">:</span> <span class="nx">Optional[local.MyEnum]</span> = None<span class="p">,</span>
+              <span class="nx">remote_enum</span><span class="p">:</span> <span class="nx">Optional[pulumi_google_native.accesscontextmanager.v1.DevicePolicyAllowedDeviceManagementLevelsItem]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
