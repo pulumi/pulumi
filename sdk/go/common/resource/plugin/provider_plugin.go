@@ -1241,6 +1241,9 @@ func (p *provider) Delete(urn resource.URN, id resource.ID, props resource.Prope
 		return resource.StatusOK, err
 	}
 
+	// We should never call delete at preview time, so we should never see unknowns here
+	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
+
 	mprops, err := MarshalProperties(props, MarshalOptions{
 		Label:              label,
 		ElideAssetContents: true,
