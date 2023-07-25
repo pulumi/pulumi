@@ -258,6 +258,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Multiline string literals",
 	},
 	{
+		Directory:   "regress-11176",
+		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
+		Skip:        allProgLanguages.Except("go"),
+	},
+	{
 		Directory:   "throw-not-implemented",
 		Description: "Function notImplemented is compiled to a runtime error at call-site",
 	},
