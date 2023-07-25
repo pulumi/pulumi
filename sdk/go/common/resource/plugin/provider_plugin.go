@@ -1291,8 +1291,12 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 		return ConstructResult{}, err
 	}
 
-	// We should only be calling Construct if the provider is fully configured.
-	contract.Assertf(pcfg.known, "Construct cannot be called if the configuration is unknown")
+	// If the provider is not fully configured, we need to error. We can't support unknown URNs but if the
+	// provider isn't configured we can't call into it to get the URN.
+	if !pcfg.known {
+		return ConstructResult{}, fmt.Errorf(
+			"cannot construct components if the provider is configured with unknown values")
+	}
 
 	if !pcfg.acceptSecrets {
 		return ConstructResult{}, fmt.Errorf("plugins that can construct components must support secrets")
