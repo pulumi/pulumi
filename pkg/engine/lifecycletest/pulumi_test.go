@@ -2061,6 +2061,19 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		// providers is specific to the gRPC layer.
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
+				InvokeF: func(
+					tok tokens.ModuleMember, inputs resource.PropertyMap,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					name := inputs["name"]
+					ret := "unexpected"
+					if name.IsString() {
+						ret = "Hello, " + name.StringValue() + "!"
+					}
+
+					return resource.NewPropertyMapFromMap(map[string]interface{}{
+						"message": ret,
+					}), nil, nil
+				},
 				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
 					preview bool,
 				) (resource.ID, resource.PropertyMap, resource.Status, error) {
@@ -2079,6 +2092,24 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return newInputs, resource.StatusOK, nil
+				},
+				CallF: func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember,
+					args resource.PropertyMap, info plugin.CallInfo, options plugin.CallOptions,
+				) (plugin.CallResult, error) {
+					if info.DryRun {
+						sawPreview = true
+					}
+
+					ret := "unexpected"
+					if args["name"].IsString() {
+						ret = "Hello, " + args["name"].StringValue() + "!"
+					}
+
+					return plugin.CallResult{
+						Return: resource.NewPropertyMapFromMap(map[string]interface{}{
+							"message": ret,
+						}),
+					}, nil
 				},
 				ConstructF: func(monitor *deploytest.ResourceMonitor,
 					typ string, name string, parent resource.URN,
@@ -2173,6 +2204,30 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, cstate.DeepEquals(resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			}))
+		}
+
+		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
+			"name": cstate["foo"],
+		}, provRef.String(), "")
+		assert.NoError(t, err)
+		if preview {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
+		} else {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{
+				"message": resource.NewStringProperty("Hello, bar!"),
+			}), "outs was %v", outs)
+		}
+
+		outs, _, err = monitor.Invoke("pkgA:m:invokeA", resource.PropertyMap{
+			"name": cstate["foo"],
+		}, provRef.String(), "")
+		assert.NoError(t, err)
+		if preview {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
+		} else {
+			assert.True(t, outs.DeepEquals(resource.PropertyMap{
+				"message": resource.NewStringProperty("Hello, bar!"),
+			}), "outs was %v", outs)
 		}
 
 		return nil
