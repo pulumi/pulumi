@@ -1973,7 +1973,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 	sawPreview := false
 	loaders := []*deploytest.ProviderLoader{
-		// NOTE: it is important that this test uses a gRPC-wraped provider. The code that handles previews for unconfigured
+		// NOTE: it is important that this test uses a gRPC-wrapped provider. The code that handles previews for unconfigured
 		// providers is specific to the gRPC layer.
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1996,6 +1996,36 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 					return newInputs, resource.StatusOK, nil
 				},
+				ConstructF: func(monitor *deploytest.ResourceMonitor,
+					typ string, name string, parent resource.URN,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
+				) (plugin.ConstructResult, error) {
+					if info.DryRun {
+						sawPreview = true
+					}
+
+					var err error
+					urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+						Parent:  parent,
+						Aliases: options.Aliases,
+						Protect: options.Protect,
+					})
+					assert.NoError(t, err)
+
+					_, _, _, err = monitor.RegisterResource("pkgA:m:typB", name+"-resB", true, deploytest.ResourceOptions{
+						Parent: urn,
+					})
+					assert.NoError(t, err)
+
+					outs := resource.PropertyMap{"foo": inputs["name"]}
+					err = monitor.RegisterResourceOutputs(urn, outs)
+					assert.NoError(t, err)
+
+					return plugin.ConstructResult{
+						URN:     urn,
+						Outputs: outs,
+					}, nil
+				},
 			}, nil
 		}, deploytest.WithGrpc),
 	}
@@ -2013,6 +2043,13 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			})
 		require.NoError(t, err)
 
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
 		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
 			"foo": "bar",
 			"baz": map[string]interface{}{
@@ -2025,7 +2062,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   ins,
-			Provider: fmt.Sprintf("%v::%v", provURN, provID),
+			Provider: provRef.String(),
 		})
 		require.NoError(t, err)
 
@@ -2033,6 +2070,25 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			assert.True(t, state.DeepEquals(resource.PropertyMap{}))
 		} else {
 			assert.True(t, state.DeepEquals(ins))
+		}
+
+		_, _, cstate, err := monitor.RegisterResource("pkgA:m:typB", "resB", false, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"name": state["foo"],
+			},
+			Remote:   true,
+			Provider: provRef.String(),
+		})
+		if preview {
+			// We expect construction of remote component resources to fail during previews if the provider is
+			// configured with unknowns.
+			assert.ErrorContains(t, err, "cannot construct components if the provider is configured with unknown values")
+			assert.True(t, cstate.DeepEquals(resource.PropertyMap{}))
+		} else {
+			assert.NoError(t, err)
+			assert.True(t, cstate.DeepEquals(resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			}))
 		}
 
 		return nil

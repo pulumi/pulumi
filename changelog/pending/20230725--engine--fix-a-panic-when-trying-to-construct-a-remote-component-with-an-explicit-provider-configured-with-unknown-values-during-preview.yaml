@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix a panic when trying to construct a remote component with an explicit provider configured with unknown values during preview.
