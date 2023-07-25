@@ -57,7 +57,7 @@ type Provider struct {
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
 
 	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
-		options plugin.ConstructOptions) (plugin.ConstructResult, error)
+		info plugin.ConstructInfo, options plugin.ConstructOptions) (plugin.ConstructResult, error)
 
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
@@ -203,7 +203,7 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}
-	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, options)
+	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, info, options)
 }
 
 func (prov *Provider) Invoke(tok tokens.ModuleMember,

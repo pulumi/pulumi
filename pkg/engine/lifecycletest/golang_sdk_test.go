@@ -871,7 +871,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-					inputs resource.PropertyMap, options plugin.ConstructOptions,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
 				) (plugin.ConstructResult, error) {
 					_, ok := inputs["bar"]
 					assert.False(t, ok)

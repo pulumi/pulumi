@@ -1560,7 +1560,8 @@ func TestDeletedWithOptionInheritanceMLC(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string,
-					parent resource.URN, inputs resource.PropertyMap, options plugin.ConstructOptions,
+					parent resource.URN, inputs resource.PropertyMap,
+					info plugin.ConstructInfo, options plugin.ConstructOptions,
 				) (plugin.ConstructResult, error) {
 					require.Equal(t, "resA", name)
 					require.Equal(t, "pkgA:m:typComponent", typ)

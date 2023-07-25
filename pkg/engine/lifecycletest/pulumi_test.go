@@ -2073,7 +2073,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions,
+				info plugin.ConstructInfo, options plugin.ConstructOptions,
 			) (plugin.ConstructResult, error) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:  parent,
@@ -2254,7 +2254,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-				inputs resource.PropertyMap, options plugin.ConstructOptions,
+				inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
 			) (plugin.ConstructResult, error) {
 				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
 					Parent:       parent,
@@ -2406,7 +2406,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions,
+				info plugin.ConstructInfo, options plugin.ConstructOptions,
 			) (plugin.ConstructResult, error) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
@@ -2499,7 +2499,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			construct := func(monitor *deploytest.ResourceMonitor,
 				typ, name string, parent resource.URN, inputs resource.PropertyMap,
-				options plugin.ConstructOptions,
+				info plugin.ConstructInfo, options plugin.ConstructOptions,
 			) (plugin.ConstructResult, error) {
 				var err error
 				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
@@ -2586,7 +2586,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
-					inputs resource.PropertyMap, options plugin.ConstructOptions,
+					inputs resource.PropertyMap, info plugin.ConstructInfo, options plugin.ConstructOptions,
 				) (plugin.ConstructResult, error) {
 					switch typ {
 					case "pkgB:m:first":

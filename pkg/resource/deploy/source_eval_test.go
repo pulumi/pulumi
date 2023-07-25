@@ -870,6 +870,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 					typ, name string,
 					parent resource.URN,
 					inputs resource.PropertyMap,
+					info plugin.ConstructInfo,
 					options plugin.ConstructOptions,
 				) (plugin.ConstructResult, error) {
 					// To keep test cases above simple,
