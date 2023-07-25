@@ -383,6 +383,7 @@ func newImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+	var leaseAcquireTimeout string
 
 	var from string
 
@@ -590,7 +591,7 @@ func newImportCmd() *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(leaseAcquireTimeout, interactive, skipPreview, yes)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -819,6 +820,9 @@ func newImportCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&from, "from", "",
 		"Invoke a converter to import the resources")
+	cmd.PersistentFlags().StringVarP(
+		&leaseAcquireTimeout, "lease-acquire-timeout", "l", "0s",
+		"Specified duration that the backend should wait to acquire a lease for a stack")
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

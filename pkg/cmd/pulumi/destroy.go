@@ -67,6 +67,7 @@ func newDestroyCmd() *cobra.Command {
 	var targets *[]string
 	var targetDependents bool
 	var excludeProtected bool
+	var leaseAcquireTimeout string
 
 	use, cmdArgs := "destroy", cmdutil.NoArgs
 	if remoteSupported() {
@@ -104,7 +105,7 @@ func newDestroyCmd() *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(leaseAcquireTimeout, interactive, skipPreview, yes)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -365,6 +366,9 @@ func newDestroyCmd() *cobra.Command {
 		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
+	cmd.PersistentFlags().StringVarP(
+		&leaseAcquireTimeout, "lease-acquire-timeout", "l", "0s",
+		"Specified duration that the backend should wait to acquire a lease for a stack")
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,

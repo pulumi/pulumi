@@ -62,6 +62,7 @@ func newRefreshCmd() *cobra.Command {
 	var suppressPermalink string
 	var yes bool
 	var targets *[]string
+	var leaseAcquireTimeout string
 
 	// Flags for handling pending creates
 	var skipPendingCreates bool
@@ -101,7 +102,7 @@ func newRefreshCmd() *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(leaseAcquireTimeout, interactive, skipPreview, yes)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -328,6 +329,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the refresh after previewing it")
+	cmd.PersistentFlags().StringVarP(
+		&leaseAcquireTimeout, "lease-acquire-timeout", "l", "0s",
+		"Specified duration that the backend should wait to acquire a lease for a stack")
 
 	// Flags for pending creates
 	cmd.PersistentFlags().BoolVar(

@@ -28,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -919,15 +920,25 @@ func fprintJSON(w io.Writer, v interface{}) error {
 
 // updateFlagsToOptions ensures that the given update flags represent a valid combination.  If so, an UpdateOptions
 // is returned with a nil-error; otherwise, the non-nil error contains information about why the combination is invalid.
-func updateFlagsToOptions(interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
+func updateFlagsToOptions(leaseAcquireTimeout string, interactive, skipPreview, yes bool) (backend.UpdateOptions, error) {
 	if !interactive && !yes {
 		return backend.UpdateOptions{},
 			errors.New("--yes must be passed in non-interactive mode")
 	}
 
+	leaseAcquireTimeoutDuration, err := time.ParseDuration(leaseAcquireTimeout)
+	if err != nil && strings.HasPrefix(err.Error(), "missing unit in duration") {
+		leaseAcquireTimeoutDuration, err = time.ParseDuration(fmt.Sprintf("%ss", leaseAcquireTimeout))
+	}
+
+	if err != nil {
+		return backend.UpdateOptions{}, fmt.Errorf("--lease-acquire-timeout invalid: %w", err)
+	}
+
 	return backend.UpdateOptions{
-		AutoApprove: yes,
-		SkipPreview: skipPreview,
+		AutoApprove:         yes,
+		SkipPreview:         skipPreview,
+		LeaseAcquireTimeout: leaseAcquireTimeoutDuration,
 	}, nil
 }
 

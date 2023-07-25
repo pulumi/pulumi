@@ -81,6 +81,7 @@ func newUpCmd() *cobra.Command {
 	var targetReplaces []string
 	var targetDependents bool
 	var planFilePath string
+	var leaseAcquireTimeout string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(ctx context.Context, opts backend.UpdateOptions, cmd *cobra.Command) result.Result {
@@ -133,6 +134,7 @@ func newUpCmd() *cobra.Command {
 		if err != nil {
 			return result.FromError(err)
 		}
+
 		opts.Engine = engine.UpdateOptions{
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -420,7 +422,7 @@ func newUpCmd() *cobra.Command {
 					errors.New("--yes or --skip-preview must be passed in to proceed when running in non-interactive mode"))
 			}
 
-			opts, err := updateFlagsToOptions(interactive, skipPreview, yes)
+			opts, err := updateFlagsToOptions(leaseAcquireTimeout, interactive, skipPreview, yes)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -566,6 +568,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
+	cmd.PersistentFlags().StringVarP(
+		&leaseAcquireTimeout, "lease-acquire-timeout", "l", "0s",
+		"Specified duration that the backend should wait to acquire a lease for a stack")
 
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,

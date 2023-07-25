@@ -986,12 +986,20 @@ func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	if op.Opts.LeaseAcquireTimeout > 0 {
+		b.d.Infoerrf(diag.Message("", "--lease-acquire-timeout is not supported for httpstate backends yet."))
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	if op.Opts.LeaseAcquireTimeout > 0 {
+		b.d.Infoerrf(diag.Message("", "--lease-acquire-timeout is not supported for httpstate backends yet."))
+	}
+
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
@@ -999,18 +1007,30 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	if op.Opts.LeaseAcquireTimeout > 0 {
+		b.d.Infoerrf(diag.Message("", "--lease-acquire-timeout is not supported for httpstate backends yet."))
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, result.Result) {
+	if op.Opts.LeaseAcquireTimeout > 0 {
+		b.d.Infoerrf(diag.Message("", "--lease-acquire-timeout is not supported for httpstate backends yet."))
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
 	op backend.UpdateOperation, paths []string,
 ) result.Result {
+	if op.Opts.LeaseAcquireTimeout > 0 {
+		b.d.Infoerrf(diag.Message("", "--lease-acquire-timeout is not supported for httpstate backends yet."))
+	}
+
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 

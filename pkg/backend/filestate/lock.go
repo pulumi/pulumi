@@ -57,12 +57,12 @@ func newLockContent() (*lockContent, error) {
 	}, nil
 }
 
-// checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
-func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
+// getLockKeys returns the existing locks for a given stackRef
+func (b *localBackend) getLockKeys(ctx context.Context, stackRef backend.StackReference) ([]string, error) {
 	stackName := stackRef.FullyQualifiedName()
 	allFiles, err := listBucket(ctx, b.bucket, stackLockDir(stackName))
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 
 	// lockPath may return a path with backslashes (\) on Windows.
@@ -76,6 +76,43 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 		}
 		if file.Key != wantLock {
 			lockKeys = append(lockKeys, file.Key)
+		}
+	}
+
+	return lockKeys, nil
+}
+
+// checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
+func (b *localBackend) checkForLock(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	leaseAcquireTimeout time.Duration,
+) error {
+	lockKeys, err := b.getLockKeys(ctx, stackRef)
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	lastLogTime := time.Now().Add(time.Duration(-1) * time.Second)
+
+	for len(lockKeys) > 0 && (time.Since(start) < leaseAcquireTimeout || leaseAcquireTimeout < 0) {
+		if time.Since(lastLogTime) >= time.Second {
+			lastLogTime = time.Now()
+			timeLeft := leaseAcquireTimeout - time.Since(start)
+			var msg string
+			if leaseAcquireTimeout < 0 {
+				msg = "State is locked, waiting for lock..."
+			} else {
+				msg = fmt.Sprintf("State is locked, waiting for lock... %s left", timeLeft.Truncate(time.Second))
+			}
+
+			b.d.Infof(diag.Message("", msg))
+		}
+
+		lockKeys, err = b.getLockKeys(ctx, stackRef)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -105,12 +142,13 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 
 		return errors.New(errorString)
 	}
+
 	return nil
 }
 
-func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference) error {
+func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference, leaseAcquireTimeout time.Duration) error {
 	//
-	err := b.checkForLock(ctx, stackRef)
+	err := b.checkForLock(ctx, stackRef, leaseAcquireTimeout)
 	if err != nil {
 		return err
 	}
@@ -126,7 +164,7 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		return err
 	}
-	err = b.checkForLock(ctx, stackRef)
+	err = b.checkForLock(ctx, stackRef, 0)
 	if err != nil {
 		b.Unlock(ctx, stackRef)
 		return err

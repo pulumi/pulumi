@@ -266,6 +266,9 @@ type UpdateOptions struct {
 	// Display contains all of the backend display options.
 	Display display.Options
 
+	// LeaseAcquireTimeout, when provided will indicate that the backend should
+	// wait for the specified duration to acquire a stack lock or lease.
+	LeaseAcquireTimeout time.Duration
 	// AutoApprove, when true, will automatically approve previews.
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
