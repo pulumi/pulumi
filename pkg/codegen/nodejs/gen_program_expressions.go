@@ -301,24 +301,22 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 }
 
 func enumName(enum *model.EnumType) (string, error) {
-	components := strings.Split(enum.Token, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", enum.Token)
-	name := tokenToName(enum.Token)
-	pkg := makeValidIdentifier(components[0])
 	e, ok := pcl.GetSchemaForType(enum)
 	if !ok {
 		return "", fmt.Errorf("Could not get associated enum")
 	}
-	def, err := e.(*schema.EnumType).PackageReference.Definition()
-	if err != nil {
-		return "", err
-	}
-	if name := def.Language["nodejs"].(NodePackageInfo).PackageName; name != "" {
-		pkg = name
-	}
+	pkgRef := e.(*schema.EnumType).PackageReference
+	return enumNameWithPackage(enum.Token, pkgRef)
+}
+
+func enumNameWithPackage(enumToken string, pkgRef schema.PackageReference) (string, error) {
+	components := strings.Split(enumToken, ":")
+	contract.Assertf(len(components) == 3, "malformed token %v", enumToken)
+	name := tokenToName(enumToken)
+	pkg := makeValidIdentifier(components[0])
 	if mod := components[1]; mod != "" && mod != "index" {
-		if pkg := e.(*schema.EnumType).PackageReference; pkg != nil {
-			mod = moduleName(mod, pkg)
+		if pkgRef != nil {
+			mod = moduleName(mod, pkgRef)
 		}
 		pkg += "." + mod
 	}
@@ -584,7 +582,6 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 				break
 			}
 		}
-
 		return "", false
 	default:
 		return "", false

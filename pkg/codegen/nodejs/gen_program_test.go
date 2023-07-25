@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateProgramVersionSelection(t *testing.T) {
@@ -46,4 +48,23 @@ func TestGenerateProgramVersionSelection(t *testing.T) {
 			ExpectedVersion: expectedVersion,
 			DependencyFile:  "package.json",
 		})
+}
+
+func TestEnumReferencesCorrectIdentifier(t *testing.T) {
+	t.Parallel()
+	s := &schema.Package{
+		Name: "pulumiservice",
+		Language: map[string]interface{}{
+			"nodejs": NodePackageInfo{
+				PackageName: "@pulumi/bar",
+			},
+		},
+	}
+	result, err := enumNameWithPackage("pulumiservice:index:WebhookFilters", s.Reference())
+	assert.NoError(t, err)
+	assert.Equal(t, "pulumiservice.WebhookFilters", result)
+
+	// These are redundant, but serve to clarify our expectations around package alias names.
+	assert.NotEqual(t, "bar.WebhookFilters", result)
+	assert.NotEqual(t, "@pulumi/bar.WebhookFilters", result)
 }
