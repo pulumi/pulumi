@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.76.1 (2023-07-25)
+
+
+### Bug Fixes
+
+- [engine] Fix --target-dependents from targeting all resources with default providers.
+  [#13560](https://github.com/pulumi/pulumi/pull/13560)
+
+- [engine] Fix a panic when trying to construct a remote component with an explicit provider configured with unknown values during preview.
+  [#13579](https://github.com/pulumi/pulumi/pull/13579)
+
+- [programgen/go] Fix conflicting imports generated when two imported packages have the same name.
+  [#13289](https://github.com/pulumi/pulumi/pull/13289)
+
+- [programgen/nodejs] Fixes issue with javascript program generation where enums would incorrectly reference the package rather than the import alias.
+  [#13546](https://github.com/pulumi/pulumi/pull/13546)
+
 ## 3.76.0 (2023-07-20)
 
 
