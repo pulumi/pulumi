@@ -2061,7 +2061,7 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 	}
 
 	if retPlainRes {
-		fmt.Fprintf(w, "\tctx.XCallReturnPlainResource(%q, %s, %s{}, r, reflect.ValueOf(&o), &e)\n",
+		fmt.Fprintf(w, "\tctx.CallReturnPlainResource(%q, %s, %s{}, r, reflect.ValueOf(&o), &e)\n",
 			f.Token, inputsVar, outputsType)
 		fmt.Fprintf(w, "\treturn\n")
 	} else if objectReturnType == nil {
