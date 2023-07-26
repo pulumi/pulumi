@@ -68,6 +68,16 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 	}{
 		// --- pulumix.Input[string] ---
 		{
+			desc: "pux.String/pu.String",
+			give: &testResourceInputs{PuxString: pulumi.String("a")},
+			want: resource.PropertyMap{"puxString": resource.NewStringProperty("a")},
+		},
+		{
+			desc: "pux.String/pu.StringOutput",
+			give: &testResourceInputs{PuxString: pulumi.String("b").ToStringOutput()},
+			want: resource.PropertyMap{"puxString": resource.NewStringProperty("b")},
+		},
+		{
 			desc: "pux.String/pux.Output[string]",
 			give: &testResourceInputs{PuxString: pulumix.Val("c")},
 			want: resource.PropertyMap{"puxString": resource.NewStringProperty("c")},
@@ -92,6 +102,11 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 
 		// --- pulumix.Input[*string] ---
 		{
+			desc: "pux.StringPtr/pu.StringPtrOutput",
+			give: &testResourceInputs{PuxStringPtr: pulumi.String("h").ToStringPtrOutput()},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("h")},
+		},
+		{
 			desc: "pux.StringPtr/pux.Output[*string]",
 			give: &testResourceInputs{PuxStringPtr: pulumix.Val[*string](&j)},
 			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("j")},
@@ -115,6 +130,44 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		},
 
 		// --- pulumix.Input[[]int] ---
+		{
+			desc: "pux.IntArray/pu.IntArray",
+			give: &testResourceInputs{
+				PuxIntArray: pulumi.IntArray{
+					pulumi.Int(1),
+					pulumi.Int(2),
+					pulumi.Int(3),
+				},
+			},
+			want: resource.PropertyMap{
+				"puxIntArray": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewNumberProperty(1),
+						resource.NewNumberProperty(2),
+						resource.NewNumberProperty(3),
+					},
+				),
+			},
+		},
+		{
+			desc: "pux.IntArray/pu.IntArrayOutput",
+			give: &testResourceInputs{
+				PuxIntArray: pulumi.IntArray{
+					pulumi.Int(4),
+					pulumi.Int(5),
+					pulumi.Int(6),
+				}.ToIntArrayOutput(),
+			},
+			want: resource.PropertyMap{
+				"puxIntArray": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewNumberProperty(4),
+						resource.NewNumberProperty(5),
+						resource.NewNumberProperty(6),
+					},
+				),
+			},
+		},
 		{
 			desc: "pux.IntArray/pux.Output[[]int]",
 			give: &testResourceInputs{
@@ -149,6 +202,34 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		},
 
 		// --- pulumix.Input[map[string]int] ---
+		{
+			desc: "pux.IntMap/pu.IntMap",
+			give: &testResourceInputs{
+				PuxIntMap: pulumi.IntMap{"a": pulumi.Int(1), "b": pulumi.Int(2)},
+			},
+			want: resource.PropertyMap{
+				"puxIntMap": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"a": resource.NewNumberProperty(1),
+						"b": resource.NewNumberProperty(2),
+					},
+				),
+			},
+		},
+		{
+			desc: "pux.IntMap/pu.IntMapOutput",
+			give: &testResourceInputs{
+				PuxIntMap: pulumi.IntMap{"c": pulumi.Int(3), "d": pulumi.Int(4)}.ToIntMapOutput(),
+			},
+			want: resource.PropertyMap{
+				"puxIntMap": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"c": resource.NewNumberProperty(3),
+						"d": resource.NewNumberProperty(4),
+					},
+				),
+			},
+		},
 		{
 			desc: "pux.IntMap/pux.Output[map[string]int]",
 			give: &testResourceInputs{
