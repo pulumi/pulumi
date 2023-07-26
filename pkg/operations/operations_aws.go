@@ -120,7 +120,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
-		logResult, err := ops.awsConnection.getLogsForLogGroupsConcurrently(
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
 			query.StartTime,
@@ -128,10 +128,10 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
-		return &logResult, err
+		return &logResult, nil
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
-		logResult, err := ops.awsConnection.getLogsForLogGroupsConcurrently(
+		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{name},
 			[]string{name},
 			query.StartTime,
@@ -139,7 +139,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
-		return &logResult, err
+		return &logResult, nil
 	default:
 		// Else this resource kind does not produce any logs.
 		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
@@ -199,7 +199,7 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	logGroups []string,
 	startTime *time.Time,
 	endTime *time.Time,
-) ([]LogEntry, error) {
+) []LogEntry {
 	// Create a channel for collecting log event outputs
 	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
 
@@ -247,5 +247,5 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 		}
 	}
 
-	return logs, nil
+	return logs
 }
