@@ -279,6 +279,11 @@ func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, [
 }
 
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	// For type-unsafe await, we'll unwrap nested outputs.
+	return o.awaitWithOptions(ctx, true /* unwrapNested */)
+}
+
+func (o *OutputState) awaitWithOptions(ctx context.Context, unwrapNested bool) (interface{}, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
@@ -293,15 +298,18 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			return nil, known, secret, deps, err
 		}
 
-		// If the result is an Output, await it in turn.
-		//
-		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
-		// the element type of the outer output. We should reconsider this.
-		if ov, ok := value.(Output); ok {
-			o = ov.getState()
-		} else {
-			return value, known, secret, deps, nil
+		if unwrapNested {
+			// If the result is an Output, await it in turn.
+			//
+			// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
+			// the element type of the outer output. We should reconsider this.
+			if ov, ok := value.(Output); ok {
+				o = ov.getState()
+				continue
+			}
 		}
+
+		return value, known, secret, deps, nil
 	}
 }
 

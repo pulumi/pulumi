@@ -1,0 +1,279 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package pulumix_test // to avoid import cycles
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
+	"github.com/stretchr/testify/require"
+)
+
+type testResourceInputs struct {
+	PuxString pulumix.Input[string]
+	PuString  pulumi.StringInput
+
+	PuxStringPtr pulumix.Input[*string]
+	PuStringPtr  pulumi.StringPtrInput
+
+	PuxIntArray pulumix.Input[[]int]
+	PuIntArray  pulumi.IntArrayInput
+
+	PuxIntMap pulumix.Input[map[string]int]
+	PuIntMap  pulumi.IntMapInput
+}
+
+func (*testResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testResourceArgs)(nil))
+}
+
+type testResourceArgs struct {
+	PuxString string `pulumi:"puxString"`
+	PuString  string `pulumi:"puString"`
+
+	PuxStringPtr *string `pulumi:"puxStringPtr"`
+	PuStringPtr  *string `pulumi:"puStringPtr"`
+
+	PuxIntArray []int `pulumi:"puxIntArray"`
+	PuIntArray  []int `pulumi:"puIntArray"`
+
+	PuxIntMap map[string]int `pulumi:"puxIntMap"`
+	PuIntMap  map[string]int `pulumi:"puIntMap"`
+}
+
+func TestRegisterResource_inputSerialization(t *testing.T) {
+	t.Parallel()
+
+	j := "j"
+
+	tests := []struct {
+		desc string
+		give pulumi.Input
+		want resource.PropertyMap
+	}{
+		// --- pulumix.Input[string] ---
+		{
+			desc: "pux.String/pux.Output[string]",
+			give: &testResourceInputs{PuxString: pulumix.Val("c")},
+			want: resource.PropertyMap{"puxString": resource.NewStringProperty("c")},
+		},
+
+		// --- pulumi.StringInput ---
+		{
+			desc: "pu.String/pu.String",
+			give: &testResourceInputs{PuString: pulumi.String("d")},
+			want: resource.PropertyMap{"puString": resource.NewStringProperty("d")},
+		},
+		{
+			desc: "pu.String/pu.StringOutput",
+			give: &testResourceInputs{PuString: pulumi.String("e").ToStringOutput()},
+			want: resource.PropertyMap{"puString": resource.NewStringProperty("e")},
+		},
+		{
+			desc: "pu.String/pux.Output[string] untyped",
+			give: &testResourceInputs{PuString: pulumix.Val("f").Untyped().(pulumi.StringOutput)},
+			want: resource.PropertyMap{"puString": resource.NewStringProperty("f")},
+		},
+
+		// --- pulumix.Input[*string] ---
+		{
+			desc: "pux.StringPtr/pux.Output[*string]",
+			give: &testResourceInputs{PuxStringPtr: pulumix.Val[*string](&j)},
+			want: resource.PropertyMap{"puxStringPtr": resource.NewStringProperty("j")},
+		},
+
+		// --- pulumi.StringPtrInput ---
+		{
+			desc: "pu.StringPtr/pu.StringPtr",
+			give: &testResourceInputs{PuStringPtr: pulumi.StringPtr("j")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("j")},
+		},
+		{
+			desc: "pu.StringPtr/pu.String",
+			give: &testResourceInputs{PuStringPtr: pulumi.String("k")},
+			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("k")},
+		},
+		{
+			desc: "pu.StringPtr/pu.StringPtrOutput",
+			give: &testResourceInputs{PuStringPtr: pulumi.String("l").ToStringPtrOutput()},
+			want: resource.PropertyMap{"puStringPtr": resource.NewStringProperty("l")},
+		},
+
+		// --- pulumix.Input[[]int] ---
+		{
+			desc: "pux.IntArray/pux.Output[[]int]",
+			give: &testResourceInputs{
+				PuxIntArray: pulumix.Val([]int{7, 8, 9}),
+			},
+			want: resource.PropertyMap{
+				"puxIntArray": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewNumberProperty(7),
+						resource.NewNumberProperty(8),
+						resource.NewNumberProperty(9),
+					},
+				),
+			},
+		},
+
+		// --- pulumi.IntArrayInput ---
+		{
+			desc: "pu.IntArray/pux.Output[[]int] untyped",
+			give: &testResourceInputs{
+				PuIntArray: pulumix.Val([]int{1, 2, 3}).Untyped().(pulumi.IntArrayOutput),
+			},
+			want: resource.PropertyMap{
+				"puIntArray": resource.NewArrayProperty(
+					[]resource.PropertyValue{
+						resource.NewNumberProperty(1),
+						resource.NewNumberProperty(2),
+						resource.NewNumberProperty(3),
+					},
+				),
+			},
+		},
+
+		// --- pulumix.Input[map[string]int] ---
+		{
+			desc: "pux.IntMap/pux.Output[map[string]int]",
+			give: &testResourceInputs{
+				PuxIntMap: pulumix.Val(map[string]int{"e": 5, "f": 6}),
+			},
+			want: resource.PropertyMap{
+				"puxIntMap": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"e": resource.NewNumberProperty(5),
+						"f": resource.NewNumberProperty(6),
+					},
+				),
+			},
+		},
+
+		// --- pulumi.IntMapInput ---
+		{
+			desc: "pu.IntMap/pu.IntMap",
+			give: &testResourceInputs{
+				PuIntMap: pulumi.IntMap{"a": pulumi.Int(1), "b": pulumi.Int(2)},
+			},
+			want: resource.PropertyMap{
+				"puIntMap": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"a": resource.NewNumberProperty(1),
+						"b": resource.NewNumberProperty(2),
+					},
+				),
+			},
+		},
+		{
+			desc: "pu.IntMap/pux.Output[map[string]int] untyped",
+			give: &testResourceInputs{
+				PuIntMap: pulumix.Val(map[string]int{"c": 3, "d": 4}).Untyped().(pulumi.IntMapOutput),
+			},
+			want: resource.PropertyMap{
+				"puIntMap": resource.NewObjectProperty(
+					resource.PropertyMap{
+						"c": resource.NewNumberProperty(3),
+						"d": resource.NewNumberProperty(4),
+					},
+				),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				got resource.PropertyMap
+				ok  bool
+			)
+			err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+				var res pulumi.CustomResourceState
+				require.NoError(t,
+					ctx.RegisterResource("test:index:MyResource", "testResource", tt.give, &res))
+				return nil
+			}, pulumi.WithMocks("project", "stack", &mockResourceMonitor{
+				CallF: func(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+					t.Fatalf("unexpected Call(%#v)", args)
+					return nil, nil
+				},
+				NewResourceF: func(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+					if args.TypeToken == "test:index:MyResource" {
+						got = args.Inputs
+						ok = true
+					} else {
+						t.Fatalf("unexpected NewResource(%#v)", args)
+					}
+					return args.Name + "_id", nil, nil
+				},
+			}))
+			require.NoError(t, err)
+			require.True(t, ok)
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRegisterResourceOutputs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give pulumi.Input
+		// TODO: find a way to intercept RegisterResourceOutput calls.
+	}{
+		{"pu.String", pulumi.String("a")},
+		{"pu.StringOutput", pulumi.String("b").ToStringOutput()},
+		{"pux.Output[string]", pulumix.Val("c")},
+		{"pux.Output[string]/untyped", pulumix.Val("c").Untyped()},
+		{"pu.StringPtr", pulumi.StringPtr("e")},
+		{"pu.StringPtrOutput", pulumi.String("f").ToStringPtrOutput()},
+		{"pux.Output[[]int]", pulumix.Val([]int{1, 2, 3})},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+				ctx.Export("x", tt.give)
+				return nil
+			}, pulumi.WithMocks("project", "stack", &mockResourceMonitor{}))
+			require.NoError(t, err)
+		})
+	}
+}
+
+type mockResourceMonitor struct {
+	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
+}
+
+var _ pulumi.MockResourceMonitor = (*mockResourceMonitor)(nil)
+
+func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return m.CallF(args)
+}
+
+func (m *mockResourceMonitor) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+	return m.NewResourceF(args)
+}

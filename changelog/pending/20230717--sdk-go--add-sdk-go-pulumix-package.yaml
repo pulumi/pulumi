@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Add sdk/go/pulumix package with type-safe generics-based APIs to interact with Pulumi's core functionality.
