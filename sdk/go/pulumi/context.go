@@ -561,7 +561,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 }
 
 // Not to be used directly; exposed to support code-generated methods that return a plain (not Output-wrapped) Resource.
-func (ctx *Context) CallReturnPlaingResource(
+func (ctx *Context) CallReturnPlainResource(
 	tok string,
 	args Input,
 	output Output,
