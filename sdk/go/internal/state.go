@@ -72,6 +72,12 @@ func GetOutputState(o OutputOrState) *OutputState {
 	return o.getState()
 }
 
+// OutputJoinGroup returns the WorkGroup for the given output.
+// Use this when constructing new connected outputs.
+func OutputJoinGroup(o OutputOrState) *WorkGroup {
+	return o.getState().join
+}
+
 // ConcreteTypeToOutputType maps the given concrete type
 // to the corresponding output type.
 // The returned type implements Output.
