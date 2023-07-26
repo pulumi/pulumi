@@ -55,7 +55,7 @@ func (ConfigurerArgs) ElementType() reflect.Type {
 }
 
 func (r *Configurer) AwsProvider(ctx *pulumi.Context) (o *aws.Provider, e error) {
-	ctx.XCallReturnPlainResource("metaprovider:index:Configurer/awsProvider", nil, ConfigurerAwsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
+	ctx.CallReturnPlainResource("metaprovider:index:Configurer/awsProvider", nil, ConfigurerAwsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
 	return
 }
 
