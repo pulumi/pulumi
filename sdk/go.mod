@@ -28,9 +28,9 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	golang.org/x/crypto v0.3.1-0.20221117191849-2c476679df9a
 	golang.org/x/mod v0.10.0
-	golang.org/x/net v0.9.0
-	golang.org/x/sys v0.7.0
-	google.golang.org/grpc v1.56.1
+	golang.org/x/net v0.10.0
+	golang.org/x/sys v0.8.0
+	google.golang.org/grpc v1.57.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v0.5.5
@@ -42,7 +42,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.16.1
 	github.com/pkg/term v1.1.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
-	golang.org/x/term v0.7.0
+	golang.org/x/term v0.8.0
 	lukechampine.com/frand v1.4.2
 )
 
@@ -62,6 +62,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/zclconf/go-cty v1.12.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230706204954-ccb25ca9f130 // indirect
 )
 
 require (
@@ -85,8 +86,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
