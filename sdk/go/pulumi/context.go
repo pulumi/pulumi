@@ -561,7 +561,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 }
 
 // Not to be used directly; exposed to support code-generated methods that return a plain (not Output-wrapped) Resource.
-func (ctx *Context) CallReturnPlainResource(
+func (ctx *Context) CallReturnPlaingResource(
 	tok string,
 	args Input,
 	output Output,
@@ -588,9 +588,7 @@ func (ctx *Context) CallReturnPlainResource(
 			"This is an error in the provider, please report this to the provider developer.", tok)
 
 		return value, nil
-
 	}()
-
 	if err != nil {
 		*errorPtr = err
 		return
@@ -602,7 +600,6 @@ func (ctx *Context) CallReturnPlainResource(
 	// return by setting the result pointer; this style of returns shortens the generated code a bit without
 	// assuming generics are available.
 	resultPtr.Elem().Set(firstFieldValue)
-	return
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
