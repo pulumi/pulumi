@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go/service/sts"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -66,6 +67,13 @@ func AWSOperationsProvider(
 	}
 
 	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make a call to STS to ensure the session is valid and fail early if not
+	stsSvc := sts.New(sess)
+	_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, err
 	}
@@ -179,12 +187,6 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*sessio
 	return awsDefaultSession.Copy(extraConfig), nil
 }
 
-type logsOrError struct {
-	logGroup  string
-	logEvents []*cloudwatchlogs.FilteredLogEvent
-	err       error
-}
-
 func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	names []string,
 	logGroups []string,
@@ -192,7 +194,7 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	endTime *time.Time,
 ) ([]LogEntry, error) {
 	// Create a channel for collecting log event outputs
-	ch := make(chan logsOrError, len(logGroups))
+	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
 
 	var startMilli *int64
 	if startTime != nil {
@@ -220,20 +222,16 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 			})
 			if err != nil {
 				logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
-				ch <- logsOrError{err: err, logGroup: logGroup}
 			}
-			ch <- logsOrError{logEvents: ret, logGroup: logGroup}
+			ch <- ret
 		}(logGroup)
 	}
 
 	// Collect responses on the channel and append logs into combined log array
 	var logs []LogEntry
 	for i := 0; i < len(logGroups); i++ {
-		elem := <-ch
-		if elem.err != nil {
-			return logs, elem.err
-		}
-		for _, event := range elem.logEvents {
+		logEvents := <-ch
+		for _, event := range logEvents {
 			logs = append(logs, LogEntry{
 				ID:        names[i],
 				Message:   aws.StringValue(event.Message),
