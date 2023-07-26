@@ -1153,6 +1153,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		returnType := returnTypeObject(method.Function)
 		if returnType != nil {
 			mod.collectImportsForResource(returnType.Properties, imports, false /*input*/, res)
+		} else if t, ok := method.Function.ReturnsPlainResource(); ok {
+			imports.addResource(mod, t)
 		}
 	}
 

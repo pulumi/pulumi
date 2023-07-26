@@ -8,6 +8,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
+import pulumi_aws
 
 __all__ = ['ConfigurerArgs', 'Configurer']
 
