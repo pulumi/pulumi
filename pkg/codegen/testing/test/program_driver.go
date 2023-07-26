@@ -337,8 +337,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "optional-complex-config",
 		Description: "Tests generating code for optional and complex config values",
-		Skip:        allProgLanguages.Except("nodejs"),
-		SkipCompile: allProgLanguages.Except("nodejs"),
+		Skip:        allProgLanguages.Except("nodejs").Except("dotnet"),
+		SkipCompile: allProgLanguages.Except("nodejs").Except("dotnet"),
 	},
 	{
 		Directory:   "interpolated-string-keys",
