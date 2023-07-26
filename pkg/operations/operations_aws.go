@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -55,6 +56,15 @@ func AWSOperationsProvider(
 	awsSecretKey := config[secretKey]
 	awsToken := config[token]
 
+	// If there is an explicit provider - instead use the configuration on that provider
+	if component.Provider != nil {
+		outputs := component.Provider.State.Outputs
+		awsRegion = getPropertyMapStringValue(outputs, "region")
+		awsAccessKey = getPropertyMapStringValue(outputs, "accessKey")
+		awsSecretKey = getPropertyMapStringValue(outputs, "secretKey")
+		awsToken = getPropertyMapStringValue(outputs, "token")
+	}
+
 	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken)
 	if err != nil {
 		return nil, err
@@ -69,6 +79,14 @@ func AWSOperationsProvider(
 		component:     component,
 	}
 	return prov, nil
+}
+
+func getPropertyMapStringValue(m resource.PropertyMap, k resource.PropertyKey) string {
+	v, ok := m[k]
+	if !ok {
+		return ""
+	}
+	return v.StringValue()
 }
 
 type awsOpsProvider struct {
