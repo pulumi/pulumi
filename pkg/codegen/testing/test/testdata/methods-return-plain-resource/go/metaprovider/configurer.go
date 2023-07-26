@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"errors"
+	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"methods-return-plain-resource/metaprovider/internal"
 )
@@ -53,9 +54,23 @@ func (ConfigurerArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*configurerArgs)(nil)).Elem()
 }
 
-func (r *Configurer) AwsProvider(ctx *pulumi.Context) error {
-	_, err := ctx.Call("metaprovider:index:Configurer/awsProvider", nil, pulumi.AnyOutput{}, r)
-	return err
+func (r *Configurer) AwsProvider(ctx *pulumi.Context) (o *aws.Provider, e error) {
+	ctx.XCallReturnPlainResource("metaprovider:index:Configurer/awsProvider", nil, ConfigurerAwsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
+	return
+}
+
+type ConfigurerAwsProviderResult struct {
+	Resource *aws.Provider `pulumi:"resource"`
+}
+
+type ConfigurerAwsProviderResultOutput struct{ *pulumi.OutputState }
+
+func (ConfigurerAwsProviderResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ConfigurerAwsProviderResult)(nil)).Elem()
+}
+
+func (o ConfigurerAwsProviderResultOutput) Resource() aws.ProviderOutput {
+	return o.ApplyT(func(v ConfigurerAwsProviderResult) *aws.Provider { return v.Resource }).(aws.ProviderOutput)
 }
 
 type ConfigurerInput interface {
