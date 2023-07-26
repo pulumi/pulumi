@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: Fix bug binding provider schema where type default int values could not take integers.
