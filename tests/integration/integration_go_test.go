@@ -758,6 +758,38 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
+func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+
+	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
+
+	localProvider := integration.LocalDependency{
+		Package: "metaprovider", Path: filepath.Join(testDir, "testcomponent-go"),
+	}
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "go"),
+		Config: map[string]string{
+			"region":  "us-west-2",
+			"profile": "devsandbox",
+		},
+		Dependencies: []string{
+			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			fmt.Sprintf("methods-return-plain-resource=%s", componentSDK),
+		},
+		LocalProviders: []integration.LocalDependency{localProvider},
+		Quick:          true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.True(t, strings.HasPrefix(stackInfo.Outputs["bucketID"].(string), "my-bucket-"))
+		},
+	})
+}
+
 func TestGetResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{
