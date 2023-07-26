@@ -251,11 +251,11 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
 }
 
 /**
- * Behaves exactly like `call` but returns a Promise instead, to support code generated calls for methods with
- * XReturnPlainResource. After awaiting the output, extract the resource by field name specified in plainResourceField.
- * Unknowns are not allowed in the response, and an exception will be thrown blaming the provider for violating the
- * contract if the provider returns any unknown values. Secret bits and dependencies returned from the provider are
- * similarly discarded at the moment.
+ * Behaves exactly like `call` but returns a Promise instead, to support code generated calls for methods with that
+ * return a plain resource. After awaiting the output, extract the resource by field name specified in
+ * plainResourceField. Unknowns are not allowed in the response, and an exception will be thrown blaming the provider
+ * for violating the contract if the provider returns any unknown values. Secret bits and dependencies returned from the
+ * provider are similarly discarded at the moment.
  */
 export function callAsync<T>(tok: string, props: Inputs, res: Resource, callAsyncOpts: {
     plainResourceField: string,

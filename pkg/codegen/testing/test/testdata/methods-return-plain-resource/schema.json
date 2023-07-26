@@ -31,16 +31,9 @@
         }
       },
       "outputs": {
-        "properties": {
-          "awsProvider": {
-            "$ref": "/aws/v5.16.2/schema.json#/provider"
-          }
-        },
-        "required": [
-          "awsProvider"
-        ]
-      },
-      "returnPlainResource": true
+         "$ref": "/aws/v5.16.2/schema.json#/provider",
+         "plain": true
+      }
     }
   },
   "language": {
