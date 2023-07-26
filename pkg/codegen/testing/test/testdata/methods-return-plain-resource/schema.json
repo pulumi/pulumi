@@ -41,6 +41,9 @@
         "dependencies": {
             "@pulumi/aws": "^5.16"
         }
-     }
+    },
+    "go": {
+      "importBasePath": "methods-return-plain-resource/metaprovider"
+    }
   }
 }

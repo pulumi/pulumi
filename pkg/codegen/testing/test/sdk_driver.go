@@ -158,7 +158,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "methods-return-plain-resource",
 		Description: "Test returning plain Resource objects from methods",
-		Skip:        codegen.NewStringSet("go/any", "dotnet/any"),
+		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
 		Directory:   "simple-yaml-schema",
