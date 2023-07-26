@@ -8,7 +8,6 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_aws
 
 __all__ = ['ConfigurerArgs', 'Configurer']
 
@@ -106,18 +105,18 @@ class Configurer(pulumi.ComponentResource):
 
     @pulumi.output_type
     class AwsProviderResult:
-        def __init__(__self__, aws_provider=None):
-            if aws_provider and not isinstance(aws_provider, pulumi_aws.Provider):
-                raise TypeError("Expected argument 'aws_provider' to be a pulumi_aws.Provider")
-            pulumi.set(__self__, "aws_provider", aws_provider)
+        def __init__(__self__, resource=None):
+            if resource and not isinstance(resource, pulumi_aws.Provider):
+                raise TypeError("Expected argument 'resource' to be a pulumi_aws.Provider")
+            pulumi.set(__self__, "resource", resource)
 
         @property
-        @pulumi.getter(name="awsProvider")
-        def aws_provider(self) -> 'pulumi_aws.Provider':
-            return pulumi.get(self, "aws_provider")
+        @pulumi.getter
+        def resource(self) -> 'pulumi_aws.Provider':
+            return pulumi.get(self, "resource")
 
     def aws_provider(__self__) -> pulumi_aws.Provider:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return pulumi.runtime.call('metaprovider:index:Configurer/awsProvider', __args__, res=__self__, typ=Configurer.AwsProviderResult, plainResourceField='aws_provider')
+        return pulumi.runtime.call('metaprovider:index:Configurer/awsProvider', __args__, res=__self__, typ=Configurer.AwsProviderResult, plainResourceField='resource')
 

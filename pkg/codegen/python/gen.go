@@ -1530,62 +1530,84 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 	}
 }
 
-func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
-	genReturnType := func(method *schema.Method) string {
+func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) string {
+	var properties []*schema.Property
+	var comment string
+
+	if t, ok := method.Function.ReturnsPlainResource(); ok {
+		comment = ""
+		properties = []*schema.Property{
+			{
+				Name:  "resource",
+				Type:  t,
+				Plain: true,
+			},
+		}
+	} else {
 		obj := returnTypeObject(method.Function)
-		name := pyClassName(title(method.Name)) + "Result"
-
-		// Produce a class definition with optional """ comment.
-		fmt.Fprintf(w, "    @pulumi.output_type\n")
-		fmt.Fprintf(w, "    class %s:\n", name)
-		printComment(w, obj.Comment, "        ")
-
-		// Now generate an initializer with properties for all inputs.
-		fmt.Fprintf(w, "        def __init__(__self__")
-		for _, prop := range obj.Properties {
-			fmt.Fprintf(w, ", %s=None", PyName(prop.Name))
-		}
-		fmt.Fprintf(w, "):\n")
-		for _, prop := range obj.Properties {
-			// Check that required arguments are present.  Also check that types are as expected.
-			pname := PyName(prop.Name)
-			ptype := mod.pyType(prop.Type)
-			fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
-			fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
-
-			// Now perform the assignment.
-			fmt.Fprintf(w, "            pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
-		}
-		fmt.Fprintf(w, "\n")
-
-		// Write out Python property getters for each property.
-		// Note that deprecation messages will be emitted on access to the property, rather than initialization.
-		// This avoids spamming end users with irrelevant deprecation messages.
-		mod.genProperties(w, obj.Properties, false /*setters*/, "    ", func(prop *schema.Property) string {
-			return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
-		})
-
-		return name
+		properties = obj.Properties
+		comment = obj.Comment
 	}
 
+	name := pyClassName(title(method.Name)) + "Result"
+
+	// Produce a class definition with optional """ comment.
+	fmt.Fprintf(w, "    @pulumi.output_type\n")
+	fmt.Fprintf(w, "    class %s:\n", name)
+	printComment(w, comment, "        ")
+
+	// Now generate an initializer with properties for all inputs.
+	fmt.Fprintf(w, "        def __init__(__self__")
+	for _, prop := range properties {
+		fmt.Fprintf(w, ", %s=None", PyName(prop.Name))
+	}
+	fmt.Fprintf(w, "):\n")
+	for _, prop := range properties {
+		// Check that required arguments are present.  Also check that types are as expected.
+		pname := PyName(prop.Name)
+		ptype := mod.pyType(prop.Type)
+		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
+
+		// Now perform the assignment.
+		fmt.Fprintf(w, "            pulumi.set(__self__, \"%[1]s\", %[1]s)\n", pname)
+	}
+	fmt.Fprintf(w, "\n")
+
+	// Write out Python property getters for each property.
+	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
+	// This avoids spamming end users with irrelevant deprecation messages.
+	mod.genProperties(w, properties, false /*setters*/, "    ", func(prop *schema.Property) string {
+		return mod.typeString(prop.Type, false /*input*/, false /*acceptMapping*/)
+	})
+
+	return name
+}
+
+func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 	genMethod := func(method *schema.Method) {
 		methodName := PyName(method.Name)
 		fun := method.Function
-		returnType := returnTypeObject(fun)
+
+		// Either returnType is set or returnResourceType is set, not both.
+		var returnType *schema.ObjectType
+		returnResourceType, retPlainRes := fun.ReturnsPlainResource()
+		if !retPlainRes {
+			returnType = returnTypeObject(fun)
+		}
 
 		shouldLiftReturn := mod.liftSingleValueMethodReturns && returnType != nil && len(returnType.Properties) == 1
 
 		// If there is a return type, emit it.
 		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string
-		if returnType != nil {
-			retTypeName = genReturnType(method)
+		if returnType != nil || retPlainRes {
+			retTypeName = mod.genMethodReturnType(w, method)
 			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
 			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
-
 			if shouldLiftReturn {
 				methodRetType = fmt.Sprintf("pulumi.Output['%s']", mod.pyType(returnType.Properties[0].Type))
-			} else if 1 == 3 /* TODO replace fun.XReturnPlainResource */ {
-				methodRetType = mod.pyType(returnType.Properties[0].Type)
+			} else if retPlainRes {
+				methodRetType = mod.pyType(returnResourceType)
 			} else {
 				methodRetType = retTypeNameQualifiedOutput
 			}
@@ -1673,15 +1695,15 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 			typ = fmt.Sprintf(", typ=%s", retTypeNameQualified)
 		}
 
-		if returnType == nil {
+		if retPlainRes {
+			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s, plainResourceField='%s')\n",
+				fun.Token, typ, PyName("resource"))
+		} else if returnType == nil {
 			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 		} else if shouldLiftReturn {
 			// Store the return in a variable and return the property output
 			fmt.Fprintf(w, "        __result__ = pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 			fmt.Fprintf(w, "        return __result__.%s\n", PyName(returnType.Properties[0].Name))
-		} else if 1 == 3 /* TODO replace fun.XReturnPlainResource */ {
-			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s, plainResourceField='%s')\n",
-				fun.Token, typ, PyName(returnType.Properties[0].Name))
 		} else {
 			// Otherwise return the call directly
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
