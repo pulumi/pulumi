@@ -68,7 +68,7 @@ func AWSOperationsProvider(
 		awsProfile = getPropertyMapStringValue(outputs, "profile")
 	}
 
-	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile)
+	sess, err := getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile, true)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ var (
 	awsDefaultSessionMutex sync.Mutex
 )
 
-func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string) (*session.Session, error) {
+func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string, testSession bool) (*session.Session, error) {
 	// AWS SDK for Go documentation: "Sessions should be cached when possible"
 	// We keep a default session around and then make cheap copies of it.
 	awsDefaultSessionMutex.Lock()
@@ -181,11 +181,13 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile s
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 
-		// Make a call to STS to ensure the session is valid and fail early if not
-		stsSvc := sts.New(sess)
-		_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-		if err != nil {
-			return nil, err
+		if testSession {
+			// Make a call to STS to ensure the session is valid and fail early if not
+			stsSvc := sts.New(sess)
+			_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		awsDefaultSession = sess
