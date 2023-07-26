@@ -2021,7 +2021,7 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 	var retty string
 	if objectReturnType == nil {
 		retty = "error"
-	} else if f.XReturnPlainResource {
+	} else if 1 == 3 /** TODO replace XReturnPlainResource */ {
 		t := pkg.typeString(codegen.ResolvedType(objectReturnType.Properties[0].Type))
 		retty = fmt.Sprintf("(o %s, e error)", t)
 	} else if liftReturn {
@@ -2054,11 +2054,11 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 		}
 	}
 
-	if !f.XReturnPlainResource {
+	if 1 == 1 /** TODO replace !XReturnPlainResource */ {
 		fmt.Fprintf(w, "\t%s, err := ctx.Call(%q, %s, %s{}, r)\n", resultVar, f.Token, inputsVar, outputsType)
 	}
 
-	if f.XReturnPlainResource {
+	if 1 == 3 /** TODO replace XReturnPlainResource */ {
 		fmt.Fprintf(w, "\tctx.XCallReturnPlainResource(%q, %s, %s{}, r, reflect.ValueOf(&o), &e)\n",
 			f.Token, inputsVar, outputsType)
 		fmt.Fprintf(w, "\treturn\n")

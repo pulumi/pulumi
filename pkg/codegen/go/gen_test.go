@@ -586,7 +586,7 @@ func methodTestPackageSpec() schema.PackageSpec {
 				},
 			},
 			methodToken("makeResource"): {
-				XReturnPlainResource: true,
+				// TODO replace XReturnPlainResource: true,
 				Inputs: &schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
 						self:   selfProp,
@@ -604,7 +604,7 @@ func methodTestPackageSpec() schema.PackageSpec {
 				},
 			},
 			methodToken("makeResourceNoArgs"): {
-				XReturnPlainResource: true,
+				// TODO replace XReturnPlainResource: true,
 				Inputs: &schema.ObjectTypeSpec{
 					Properties: map[string]schema.PropertySpec{
 						self: selfProp,
