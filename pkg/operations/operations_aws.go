@@ -98,7 +98,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	switch state.Type {
 	case awsFunctionType:
 		functionName := state.Outputs["name"].StringValue()
-		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+		logResult, err := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{functionName},
 			[]string{"/aws/lambda/" + functionName},
 			query.StartTime,
@@ -106,10 +106,10 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
-		return &logResult, nil
+		return &logResult, err
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
-		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
+		logResult, err := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			[]string{name},
 			[]string{name},
 			query.StartTime,
@@ -117,7 +117,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		)
 		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
-		return &logResult, nil
+		return &logResult, err
 	default:
 		// Else this resource kind does not produce any logs.
 		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
@@ -141,7 +141,9 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*sessio
 	defer awsDefaultSessionMutex.Unlock()
 
 	if awsDefaultSession == nil {
-		sess, err := session.NewSession()
+		sess, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
@@ -159,14 +161,20 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, token string) (*sessio
 	return awsDefaultSession.Copy(extraConfig), nil
 }
 
+type logsOrError struct {
+	logGroup  string
+	logEvents []*cloudwatchlogs.FilteredLogEvent
+	err       error
+}
+
 func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	names []string,
 	logGroups []string,
 	startTime *time.Time,
 	endTime *time.Time,
-) []LogEntry {
+) ([]LogEntry, error) {
 	// Create a channel for collecting log event outputs
-	ch := make(chan []*cloudwatchlogs.FilteredLogEvent, len(logGroups))
+	ch := make(chan logsOrError, len(logGroups))
 
 	var startMilli *int64
 	if startTime != nil {
@@ -194,16 +202,20 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 			})
 			if err != nil {
 				logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+				ch <- logsOrError{err: err, logGroup: logGroup}
 			}
-			ch <- ret
+			ch <- logsOrError{logEvents: ret, logGroup: logGroup}
 		}(logGroup)
 	}
 
 	// Collect responses on the channel and append logs into combined log array
 	var logs []LogEntry
 	for i := 0; i < len(logGroups); i++ {
-		logEvents := <-ch
-		for _, event := range logEvents {
+		elem := <-ch
+		if elem.err != nil {
+			return logs, elem.err
+		}
+		for _, event := range elem.logEvents {
 			logs = append(logs, LogEntry{
 				ID:        names[i],
 				Message:   aws.StringValue(event.Message),
@@ -212,5 +224,5 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 		}
 	}
 
-	return logs
+	return logs, nil
 }
