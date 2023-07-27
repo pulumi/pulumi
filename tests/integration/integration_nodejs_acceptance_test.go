@@ -17,13 +17,16 @@
 package ints
 
 import (
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestEmptyNodeJS simply tests that we can run an empty NodeJS project.
@@ -145,4 +148,34 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, localProvider
 			}
 		},
 	}
+}
+
+func TestConstructComponentConfigureProviderNode(t *testing.T) {
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/nodejs")
+
+	t.Logf("yarn run tsc # precompile @pulumi/metaprovider")
+	cmd := exec.Command("yarn", "run", "tsc")
+	cmd.Dir = filepath.Join(componentSDK)
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	t.Logf("yarn link # prelink @pulumi/metaprovider")
+	cmd2 := exec.Command("yarn", "link")
+	cmd2.Dir = filepath.Join(componentSDK, "bin")
+	err = cmd2.Run()
+	require.NoError(t, err)
+
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "nodejs"),
+		Dependencies: []string{
+			"@pulumi/pulumi",
+			"@pulumi/metaprovider",
+		},
+	})
+	integration.ProgramTest(t, &opts)
 }

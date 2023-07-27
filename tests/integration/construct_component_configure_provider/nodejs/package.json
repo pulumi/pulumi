@@ -1,0 +1,12 @@
+{
+    "name": "construct_component_configure_provider",
+    "license": "Apache-2.0",
+    "main": "index.ts",
+    "dependencies": {
+       "@pulumi/pulumi": "latest",
+       "@pulumi/tls": "^4.10.0"
+    },
+    "devDependencies": {
+        "@types/node": "^16"
+    }
+}

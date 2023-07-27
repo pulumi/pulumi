@@ -1,9 +1,9 @@
 {
     "name": "@pulumi/metaprovider",
-    "version": "${VERSION}",
+    "version": "0.0.1",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource metaprovider ${VERSION}"
+        "install": "node scripts/install-pulumi-plugin.js resource metaprovider 0.0.1"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.42.0",
@@ -15,6 +15,7 @@
     },
     "pulumi": {
         "resource": true,
-        "name": "metaprovider"
+        "name": "metaprovider",
+        "version": "0.0.1"
     }
 }
