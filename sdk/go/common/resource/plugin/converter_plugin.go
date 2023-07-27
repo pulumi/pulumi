@@ -109,7 +109,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
-		MapperTarget: req.MapperAddress,
+		MapperTarget: req.MapperTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -139,7 +139,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
-		MapperTarget:    req.MapperAddress,
+		MapperTarget:    req.MapperTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

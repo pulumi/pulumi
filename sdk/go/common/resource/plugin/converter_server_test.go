@@ -35,8 +35,8 @@ func (c *testConverter) Close() error {
 func (c *testConverter) ConvertState(
 	ctx context.Context, req *ConvertStateRequest,
 ) (*ConvertStateResponse, error) {
-	if req.MapperAddress != "localhost:1234" {
-		return nil, fmt.Errorf("unexpected MapperAddress: %s", req.MapperAddress)
+	if req.MapperTarget != "localhost:1234" {
+		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
 
 	return &ConvertStateResponse{
@@ -55,8 +55,8 @@ func (c *testConverter) ConvertState(
 func (c *testConverter) ConvertProgram(
 	ctx context.Context, req *ConvertProgramRequest,
 ) (*ConvertProgramResponse, error) {
-	if req.MapperAddress != "localhost:1234" {
-		return nil, fmt.Errorf("unexpected MapperAddress: %s", req.MapperAddress)
+	if req.MapperTarget != "localhost:1234" {
+		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
 	if req.SourceDirectory != "src" {
 		return nil, fmt.Errorf("unexpected SourceDirectory: %s", req.SourceDirectory)

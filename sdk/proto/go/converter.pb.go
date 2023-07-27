@@ -42,7 +42,7 @@ type ConvertStateRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// the gRPC address of the mapper service.
+	// the gRPC target of the mapper service.
 	MapperTarget string `protobuf:"bytes,1,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 }
 
@@ -227,7 +227,7 @@ type ConvertProgramRequest struct {
 	SourceDirectory string `protobuf:"bytes,1,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
 	// a target directory to write the resulting PCL code and project file to.
 	TargetDirectory string `protobuf:"bytes,2,opt,name=target_directory,json=targetDirectory,proto3" json:"target_directory,omitempty"`
-	// the gRPC address of the mapper service.
+	// the gRPC target of the mapper service.
 	MapperTarget string `protobuf:"bytes,3,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 }
 

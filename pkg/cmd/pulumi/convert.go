@@ -371,7 +371,7 @@ func runConvert(
 		resp, err := converter.ConvertProgram(pCtx.Request(), &plugin.ConvertProgramRequest{
 			SourceDirectory: cwd,
 			TargetDirectory: pclDirectory,
-			MapperAddress:   grpcServer.Addr(),
+			MapperTarget:    grpcServer.Addr(),
 		})
 		if err != nil {
 			return result.FromError(err)

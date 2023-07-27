@@ -78,7 +78,7 @@ func TestConverterPlugin_State(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
-		MapperAddress: "localhost:1234",
+		MapperTarget: "localhost:1234",
 	})
 
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperAddress:   "localhost:1234",
+		MapperTarget:    "localhost:1234",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
 	})
@@ -136,7 +136,7 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 	}
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
-		MapperAddress:   "localhost:1234",
+		MapperTarget:    "localhost:1234",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
 	})

@@ -31,7 +31,7 @@ type ResourceImport struct {
 }
 
 type ConvertStateRequest struct {
-	MapperAddress string
+	MapperTarget string
 }
 
 type ConvertStateResponse struct {
@@ -41,7 +41,7 @@ type ConvertStateResponse struct {
 type ConvertProgramRequest struct {
 	SourceDirectory string
 	TargetDirectory string
-	MapperAddress   string
+	MapperTarget    string
 }
 
 type ConvertProgramResponse struct {
