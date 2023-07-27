@@ -250,21 +250,34 @@ func (mod *modContext) objectType(t *schema.ObjectType, input bool) string {
 	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
 }
 
-func (mod *modContext) tokenToEnum(tok string) string {
-	modName, name := mod.tokenToModule(tok), tokenToName(tok)
+func (mod *modContext) enumType(enum *schema.EnumType) string {
+	tok := enum.Token
+	pkgName, modName, name := enum.PackageReference.Name(), mod.tokenToModule(tok), tokenToName(tok)
 
-	if modName == "" && modName != mod.mod {
+	if pkgName == mod.pkg.Name() && modName == "" && mod.mod != "" {
 		return fmt.Sprintf("'_root_enums.%s'", name)
 	}
 
-	if modName == mod.mod {
-		modName = ""
-	}
-	if modName != "" {
-		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
+	parts := []string{}
+
+	// Add package name if needed.
+	if pkgName != mod.pkg.Name() {
+		// Foreign reference. Add package import alias.
+		parts = append(parts, pyPack(pkgName))
 	}
 
-	return fmt.Sprintf("'%s%s'", modName, name)
+	// Add module name if needed.
+	if modName != "" {
+		if pkgName == mod.pkg.Name() && modName == mod.mod {
+			// Enum is in the same module, don't add the module name.
+		} else {
+			// Add the module name because it's referencing a different module.
+			parts = append(parts, strings.ReplaceAll(modName, "/", "."))
+		}
+	}
+	parts = append(parts, name)
+
+	return fmt.Sprintf("'%s'", strings.Join(parts, "."))
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
@@ -2340,7 +2353,7 @@ func (mod *modContext) typeString(t schema.Type, input, acceptMapping bool) stri
 		}
 		return fmt.Sprintf("pulumi.Input[%s]", typ)
 	case *schema.EnumType:
-		return mod.tokenToEnum(t.Token)
+		return mod.enumType(t)
 	case *schema.ArrayType:
 		return fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, acceptMapping))
 	case *schema.MapType:
