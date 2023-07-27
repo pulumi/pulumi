@@ -5,24 +5,17 @@
     "metaprovider:index:Configurer": {
       "isComponent": true,
       "inputProperties": {
-        "awsProfile": {
-          "type": "string"
-        },
-        "awsRegion": {
+        "tlsProxy": {
           "type": "string"
         }
       },
-      "requiredInputs": [
-        "awsRegion",
-        "awsProfile"
-      ],
       "methods": {
-        "awsProvider": "metaprovider:index:Configurer/awsProvider"
+        "tlsProvider": "metaprovider:index:Configurer/tlsProvider"
       }
     }
   },
   "functions": {
-    "metaprovider:index:Configurer/awsProvider": {
+    "metaprovider:index:Configurer/tlsProvider": {
       "inputs": {
         "properties": {
           "__self__": {
@@ -31,7 +24,7 @@
         }
       },
       "outputs": {
-         "$ref": "/aws/v5.16.2/schema.json#/provider",
+         "$ref": "/tls/v4.10.0/schema.json#/provider",
          "plain": true
       }
     }
@@ -39,7 +32,7 @@
   "language": {
     "nodejs": {
         "dependencies": {
-            "@pulumi/aws": "^5.16"
+            "@pulumi/tls": "^4.10"
         }
     },
     "go": {

@@ -7,8 +7,7 @@ import (
 	"context"
 	"reflect"
 
-	"errors"
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
+	"github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
 	"github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -21,15 +20,9 @@ type Configurer struct {
 func NewConfigurer(ctx *pulumi.Context,
 	name string, args *ConfigurerArgs, opts ...pulumi.ResourceOption) (*Configurer, error) {
 	if args == nil {
-		return nil, errors.New("missing one or more required arguments")
+		args = &ConfigurerArgs{}
 	}
 
-	if args.AwsProfile == nil {
-		return nil, errors.New("invalid value for required argument 'AwsProfile'")
-	}
-	if args.AwsRegion == nil {
-		return nil, errors.New("invalid value for required argument 'AwsRegion'")
-	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource Configurer
 	err := ctx.RegisterRemoteComponentResource("metaprovider:index:Configurer", name, args, &resource, opts...)
@@ -40,37 +33,35 @@ func NewConfigurer(ctx *pulumi.Context,
 }
 
 type configurerArgs struct {
-	AwsProfile string `pulumi:"awsProfile"`
-	AwsRegion  string `pulumi:"awsRegion"`
+	TlsProxy *string `pulumi:"tlsProxy"`
 }
 
 // The set of arguments for constructing a Configurer resource.
 type ConfigurerArgs struct {
-	AwsProfile pulumi.StringInput
-	AwsRegion  pulumi.StringInput
+	TlsProxy pulumi.StringPtrInput
 }
 
 func (ConfigurerArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*configurerArgs)(nil)).Elem()
 }
 
-func (r *Configurer) AwsProvider(ctx *pulumi.Context) (o *aws.Provider, e error) {
-	ctx.CallReturnPlainResource("metaprovider:index:Configurer/awsProvider", nil, ConfigurerAwsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
+func (r *Configurer) TlsProvider(ctx *pulumi.Context) (o *tls.Provider, e error) {
+	ctx.CallReturnPlainResource("metaprovider:index:Configurer/tlsProvider", nil, ConfigurerTlsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
 	return
 }
 
-type ConfigurerAwsProviderResult struct {
-	Resource *aws.Provider `pulumi:"resource"`
+type ConfigurerTlsProviderResult struct {
+	Resource *tls.Provider `pulumi:"resource"`
 }
 
-type ConfigurerAwsProviderResultOutput struct{ *pulumi.OutputState }
+type ConfigurerTlsProviderResultOutput struct{ *pulumi.OutputState }
 
-func (ConfigurerAwsProviderResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ConfigurerAwsProviderResult)(nil)).Elem()
+func (ConfigurerTlsProviderResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ConfigurerTlsProviderResult)(nil)).Elem()
 }
 
-func (o ConfigurerAwsProviderResultOutput) Resource() aws.ProviderOutput {
-	return o.ApplyT(func(v ConfigurerAwsProviderResult) *aws.Provider { return v.Resource }).(aws.ProviderOutput)
+func (o ConfigurerTlsProviderResultOutput) Resource() tls.ProviderOutput {
+	return o.ApplyT(func(v ConfigurerTlsProviderResult) *tls.Provider { return v.Resource }).(tls.ProviderOutput)
 }
 
 type ConfigurerInput interface {

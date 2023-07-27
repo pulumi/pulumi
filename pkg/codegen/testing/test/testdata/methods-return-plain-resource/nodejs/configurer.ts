@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiAws from "@pulumi/aws";
+import * as pulumiTls from "@pulumi/tls";
 
 export class Configurer extends pulumi.ComponentResource {
     /** @internal */
@@ -29,26 +29,19 @@ export class Configurer extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: ConfigurerArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ConfigurerArgs, opts?: pulumi.ComponentResourceOptions) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.awsProfile === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'awsProfile'");
-            }
-            if ((!args || args.awsRegion === undefined) && !opts.urn) {
-                throw new Error("Missing required property 'awsRegion'");
-            }
-            resourceInputs["awsProfile"] = args ? args.awsProfile : undefined;
-            resourceInputs["awsRegion"] = args ? args.awsRegion : undefined;
+            resourceInputs["tlsProxy"] = args ? args.tlsProxy : undefined;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(Configurer.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 
-    awsProvider(): Promise<pulumiAws.Provider> {
-        return pulumi.runtime.callAsync("metaprovider:index:Configurer/awsProvider", {
+    tlsProvider(): Promise<pulumiTls.Provider> {
+        return pulumi.runtime.callAsync("metaprovider:index:Configurer/tlsProvider", {
             "__self__": this,
         }, this, {plainResourceField: "resource"});
     }
@@ -58,16 +51,15 @@ export class Configurer extends pulumi.ComponentResource {
  * The set of arguments for constructing a Configurer resource.
  */
 export interface ConfigurerArgs {
-    awsProfile: pulumi.Input<string>;
-    awsRegion: pulumi.Input<string>;
+    tlsProxy?: pulumi.Input<string>;
 }
 
 export namespace Configurer {
     /**
-     * The results of the Configurer.awsProvider method.
+     * The results of the Configurer.tlsProvider method.
      */
-    export interface AwsProviderResult {
-        readonly resource: pulumiAws.Provider;
+    export interface TlsProviderResult {
+        readonly resource: pulumiTls.Provider;
     }
 
 }
