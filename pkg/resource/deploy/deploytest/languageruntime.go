@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -99,4 +100,8 @@ func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, str
 
 func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, fmt.Errorf("GenerateProgram is not supported")
+}
+
+func (p *languageRuntime) Pack(string, semver.Version, string) (string, error) {
+	return "", fmt.Errorf("Pack is not supported")
 }

@@ -65,6 +65,9 @@ type LanguageRuntime interface {
 	// GenerateProgram is similar to GenerateProject but doesn't include any metadata files, just the program
 	// source code.
 	GenerateProgram(program map[string]string, loaderTarget string) (map[string][]byte, hcl.Diagnostics, error)
+
+	// Pack packs a library package into a language specific artifact in the given destination directory.
+	Pack(packageDirectory string, version semver.Version, destinationDirectory string) (string, error)
 }
 
 type DependencyInfo struct {

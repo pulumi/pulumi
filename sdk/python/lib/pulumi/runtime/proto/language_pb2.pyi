@@ -583,3 +583,43 @@ class GeneratePackageResponse(google.protobuf.message.Message):
     ) -> None: ...
 
 global___GeneratePackageResponse = GeneratePackageResponse
+
+@typing_extensions.final
+class PackRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_DIRECTORY_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    DESTINATION_DIRECTORY_FIELD_NUMBER: builtins.int
+    package_directory: builtins.str
+    """the directory of a package to pack."""
+    version: builtins.str
+    """the version to tag the artifact with."""
+    destination_directory: builtins.str
+    """the directory to write the packed artifact to."""
+    def __init__(
+        self,
+        *,
+        package_directory: builtins.str = ...,
+        version: builtins.str = ...,
+        destination_directory: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["destination_directory", b"destination_directory", "package_directory", b"package_directory", "version", b"version"]) -> None: ...
+
+global___PackRequest = PackRequest
+
+@typing_extensions.final
+class PackResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ARTIFACT_PATH_FIELD_NUMBER: builtins.int
+    artifact_path: builtins.str
+    """the full path of the packed artifact."""
+    def __init__(
+        self,
+        *,
+        artifact_path: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["artifact_path", b"artifact_path"]) -> None: ...
+
+global___PackResponse = PackResponse

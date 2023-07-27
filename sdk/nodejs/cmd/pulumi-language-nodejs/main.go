@@ -28,6 +28,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -54,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -1165,4 +1167,176 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}
 
 	return &pulumirpc.GeneratePackageResponse{}, nil
+}
+
+func readPackageJSON(packageJSONPath string) (map[string]interface{}, error) {
+	packageJSONData, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return nil, fmt.Errorf("read package.json: %w", err)
+	}
+	var packageJSON map[string]interface{}
+	err = json.Unmarshal(packageJSONData, &packageJSON)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal package.json: %w", err)
+	}
+	return packageJSON, nil
+}
+
+func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	// Verify npm exists and is set up: npm, user login
+	npm, err := executable.FindExecutable("npm")
+	if err != nil {
+		return nil, fmt.Errorf("find npm: %w", err)
+	}
+
+	// Annoyingly the engine will call Pack for the core SDK which is not setup in at all the same way as the
+	// generated sdks, so we have to detect that and do a big branch to pack it totally differently.
+	packageJSON, err := readPackageJSON(filepath.Join(req.PackageDirectory, "package.json"))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: We're just going to write to stderr for now, but we should probably have a way to return this
+	// directly to the engine hosting us. That's a bit awkward because we need the subprocesses to write to
+	// this as well, and the host side of this pipe might be a tty and if it is we want the subprocesses to
+	// think they're connected to a tty as well. We've solved this problem before in two slightly different
+	// ways for InstallDependencies and RunPlugin, it would be good to come up with a clean way to do this for
+	// all these cases.
+	writeString := func(s string) error {
+		_, err = os.Stderr.Write([]byte(s))
+		return err
+	}
+
+	if packageJSON["name"] == "@pulumi/pulumi" {
+		// This is pretty much a copy of the makefiles build_package. Short term we should see about changing
+		// the makefile to just build the nodejs plugin first and then simply invoke "pulumi package
+		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
+		// so we don't need this special case.
+
+		yarn, err := executable.FindExecutable("yarn")
+		if err != nil {
+			return nil, fmt.Errorf("find yarn: %w", err)
+		}
+
+		err = writeString("$ yarn install --frozen-lockfile\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
+		yarnInstallCmd.Dir = req.PackageDirectory
+		yarnInstallCmd.Stdout = os.Stdout
+		yarnInstallCmd.Stderr = os.Stderr
+		err = yarnInstallCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("yarn install: %w", err)
+		}
+
+		err = writeString("$ yarn run tsc\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		yarnTscCmd := exec.Command(yarn, "run", "tsc")
+		yarnTscCmd.Dir = req.PackageDirectory
+		yarnTscCmd.Stdout = os.Stdout
+		yarnTscCmd.Stderr = os.Stderr
+		err = yarnTscCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("yarn run tsc: %w", err)
+		}
+	} else {
+		// Before we can build the package we need to install it's dependencies.
+		err = writeString("$ npm install\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		npmInstallCmd := exec.Command(npm, "install")
+		npmInstallCmd.Dir = req.PackageDirectory
+		npmInstallCmd.Stdout = os.Stdout
+		npmInstallCmd.Stderr = os.Stderr
+		err = npmInstallCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("npm install: %w", err)
+		}
+
+		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
+		// So we can run that, then edit the package.json in that directory, and then pack it.
+		err = writeString("$ npm run build\n")
+		if err != nil {
+			return nil, fmt.Errorf("write to output: %w", err)
+		}
+		npmBuildCmd := exec.Command(npm, "run", "build")
+		npmBuildCmd.Dir = req.PackageDirectory
+		npmBuildCmd.Stdout = os.Stdout
+		npmBuildCmd.Stderr = os.Stderr
+		err = npmBuildCmd.Run()
+		if err != nil {
+			return nil, fmt.Errorf("npm run build: %w", err)
+		}
+
+		// "build" in SDKs isn't setup to copy the package.json to ./bin/
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "package.json"),
+			filepath.Join(req.PackageDirectory, "package.json"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy package.json: %w", err)
+		}
+
+		// "build" also doesn't copy in the scripts directory and the install-pulumi-plugin.js script, so we
+		// need to do that manually.
+		err = fsutil.CopyFile(
+			filepath.Join(req.PackageDirectory, "bin", "scripts"),
+			filepath.Join(req.PackageDirectory, "scripts"),
+			nil)
+		if err != nil {
+			return nil, fmt.Errorf("copy scripts: %w", err)
+		}
+	}
+
+	// Mutate the package.json to replace version with the version we've been given.
+	packageJSONPath := filepath.Join(req.PackageDirectory, "bin", "package.json")
+	packageJSON, err = readPackageJSON(packageJSONPath)
+	if err != nil {
+		return nil, err
+	}
+	packageJSON["version"] = req.Version
+	// If we've got an install script, update that as well
+	scripts, ok := packageJSON["scripts"].(map[string]interface{})
+	if ok {
+		install, ok := scripts["install"].(string)
+		if ok {
+			install = strings.ReplaceAll(install, "${VERSION}", req.Version)
+			scripts["install"] = install
+		}
+	}
+	packageJSONData, err := json.Marshal(packageJSON)
+	if err != nil {
+		return nil, fmt.Errorf("marshal package.json: %w", err)
+	}
+	err = os.WriteFile(packageJSONPath, packageJSONData, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("write package.json: %w", err)
+	}
+
+	err = writeString("$ npm pack\n")
+	if err != nil {
+		return nil, fmt.Errorf("write to output: %w", err)
+	}
+	var stdoutBuffer bytes.Buffer
+	npmPackCmd := exec.Command(npm,
+		"pack",
+		filepath.Join(req.PackageDirectory, "bin"),
+		"--pack-destination", req.DestinationDirectory)
+	npmPackCmd.Stdout = &stdoutBuffer
+	npmPackCmd.Stderr = os.Stderr
+	err = npmPackCmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("npm pack: %w", err)
+	}
+
+	artifactName := strings.TrimSpace(stdoutBuffer.String())
+
+	return &pulumirpc.PackResponse{
+		ArtifactPath: filepath.Join(req.DestinationDirectory, artifactName),
+	}, nil
 }
