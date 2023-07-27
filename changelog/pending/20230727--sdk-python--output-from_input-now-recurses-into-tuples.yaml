@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: `Output.from_input` now recurses into tuples.

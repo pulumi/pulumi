@@ -124,6 +124,24 @@ class OutputFromInputTests(unittest.TestCase):
         x_val = await x.future()
         self.assertEqual(x_val, o2)
 
+    @pulumi_test
+    async def test_unwrap_empty_tuple(self):
+        x = Output.from_input(())
+        x_val = await x.future()
+        self.assertEqual(x_val, ())
+
+    @pulumi_test
+    async def test_unwrap_tuple(self):
+        x = Output.from_input(("hello", Output.from_input("world")))
+        x_val = await x.future()
+        self.assertEqual(x_val, ("hello", "world"))
+
+    @pulumi_test
+    async def test_unwrap_tuple_tuple(self):
+        x = Output.from_input(("hello", ("foo", Output.from_input("bar"))))
+        x_val = await x.future()
+        self.assertEqual(x_val, ("hello", ("foo", "bar")))
+
     @pulumi.input_type
     class FooArgs:
         def __init__(self, *,
