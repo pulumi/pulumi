@@ -776,8 +776,7 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "go"),
 		Config: map[string]string{
-			"region":  "us-west-2",
-			"profile": "devsandbox",
+			"proxy": "FromEnv",
 		},
 		Dependencies: []string{
 			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
@@ -786,7 +785,26 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 		LocalProviders: []integration.LocalDependency{localProvider},
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.True(t, strings.HasPrefix(stackInfo.Outputs["bucketID"].(string), "my-bucket-"))
+			assert.Contains(t, stackInfo.Outputs, "keyAlgo")
+			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo"])
+			var providerURNID string
+			for _, r := range stackInfo.Deployment.Resources {
+				if strings.Contains(string(r.URN), "PrivateKey") {
+					providerURNID = r.Provider
+				}
+			}
+			require.NotEmptyf(t, providerURNID, "Did not find the provider of PrivateKey resource")
+			var providerFromEnvSetting *bool
+			for _, r := range stackInfo.Deployment.Resources {
+				if fmt.Sprintf("%s::%s", r.URN, r.ID) == providerURNID {
+					providerFromEnvSetting = new(bool)
+					*providerFromEnvSetting = r.Inputs["proxy"].(map[string]any)["fromEnv"].(bool)
+				}
+			}
+			require.NotNilf(t, providerFromEnvSetting,
+				"Did not find the inputs of the provider PrivateKey was provisioned with")
+			require.Truef(t, *providerFromEnvSetting,
+				"Expected PrivateKey to be provisioned with a provider with fromEnv=true")
 		},
 	})
 }

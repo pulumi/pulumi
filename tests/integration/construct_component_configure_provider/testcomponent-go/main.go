@@ -33,7 +33,7 @@ const (
 	version                 = "0.0.1"
 	mainModule              = "index"
 	configurerResourceToken = "metaprovider:index:Configurer"
-	awsProviderMethodToken  = "metaprovider:index:Configurer/awsProvider"
+	tlsProviderMethodToken  = "metaprovider:index:Configurer/tlsProvider"
 )
 
 type module struct {
@@ -57,18 +57,18 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 }
 
 func call(ctx *pulumi.Context, tok string, args pulumiprovider.CallArgs) (*pulumiprovider.CallResult, error) {
-	if tok != awsProviderMethodToken {
+	if tok != tlsProviderMethodToken {
 		return nil, fmt.Errorf("unknown method %s", tok)
 	}
 
-	methodArgs := &AwsProviderArgs{}
+	methodArgs := &TlsProviderArgs{}
 	res, err := args.CopyTo(methodArgs)
 	if err != nil {
 		return nil, fmt.Errorf("setting args: %w", err)
 	}
 	component := res.(*Configurer)
 
-	result, err := component.AwsProvider(ctx, methodArgs)
+	result, err := component.TlsProvider(ctx, methodArgs)
 	if err != nil {
 		return nil, fmt.Errorf("calling method: %w", err)
 	}

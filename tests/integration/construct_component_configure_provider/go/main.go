@@ -15,39 +15,47 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
-	awsconf "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
+	tls "github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
+	metaprovider "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		conf := config.New(ctx, "")
-		profile := conf.Require("profile")
-		region := conf.Require("region")
+		cfg := config.New(ctx, "")
+		proxy := cfg.Require("proxy")
 
-		configurer, err := awsconf.NewConfigurer(ctx, "configurer", &awsconf.ConfigurerArgs{
-			AwsRegion:  pulumi.String(region),
-			AwsProfile: pulumi.String(profile),
+		configurer, err := metaprovider.NewConfigurer(ctx, "configurer", &metaprovider.ConfigurerArgs{
+			TlsProxy: unknownIfDryRun(ctx, proxy),
 		})
 		if err != nil {
 			return err
 		}
 
-		awsProv, err := configurer.AwsProvider(ctx)
+		prov, err := configurer.TlsProvider(ctx)
 		if err != nil {
 			return err
 		}
 
-		// Create an AWS resource (S3 Bucket)
-		bucket, err := s3.NewBucket(ctx, "my-bucket-12709", nil, pulumi.Provider(awsProv))
+		key, err := tls.NewPrivateKey(ctx, "my-private-key", &tls.PrivateKeyArgs{
+			Algorithm:  pulumi.String("ECDSA"),
+			EcdsaCurve: pulumi.String("P384"),
+		}, pulumi.Provider(prov))
 		if err != nil {
 			return err
 		}
 
-		ctx.Export("bucketID", bucket.ID())
-
+		ctx.Export("keyAlgo", key.Algorithm)
 		return nil
 	})
+}
+
+func unknownIfDryRun(ctx *pulumi.Context, value string) pulumi.StringOutput {
+	if ctx.DryRun() {
+		return pulumi.UnsafeUnknownOutput(nil).ApplyT(func(_ any) string {
+			panic("impossible")
+		}).(pulumi.StringOutput)
+	}
+	return pulumi.String(value).ToStringOutput()
 }
