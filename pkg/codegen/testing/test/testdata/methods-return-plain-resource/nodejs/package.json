@@ -6,8 +6,8 @@
         "install": "node scripts/install-pulumi-plugin.js resource metaprovider ${VERSION}"
     },
     "dependencies": {
-        "@pulumi/aws": "^5.16",
-        "@pulumi/pulumi": "^3.42.0"
+        "@pulumi/pulumi": "^3.42.0",
+        "@pulumi/tls": "^4.10"
     },
     "devDependencies": {
         "@types/node": "^14",

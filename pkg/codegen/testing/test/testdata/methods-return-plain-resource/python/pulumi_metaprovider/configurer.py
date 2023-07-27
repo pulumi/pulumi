@@ -8,38 +8,28 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_aws
+import pulumi_tls
 
 __all__ = ['ConfigurerArgs', 'Configurer']
 
 @pulumi.input_type
 class ConfigurerArgs:
     def __init__(__self__, *,
-                 aws_profile: pulumi.Input[str],
-                 aws_region: pulumi.Input[str]):
+                 tls_proxy: Optional[pulumi.Input[str]] = None):
         """
         The set of arguments for constructing a Configurer resource.
         """
-        pulumi.set(__self__, "aws_profile", aws_profile)
-        pulumi.set(__self__, "aws_region", aws_region)
+        if tls_proxy is not None:
+            pulumi.set(__self__, "tls_proxy", tls_proxy)
 
     @property
-    @pulumi.getter(name="awsProfile")
-    def aws_profile(self) -> pulumi.Input[str]:
-        return pulumi.get(self, "aws_profile")
+    @pulumi.getter(name="tlsProxy")
+    def tls_proxy(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "tls_proxy")
 
-    @aws_profile.setter
-    def aws_profile(self, value: pulumi.Input[str]):
-        pulumi.set(self, "aws_profile", value)
-
-    @property
-    @pulumi.getter(name="awsRegion")
-    def aws_region(self) -> pulumi.Input[str]:
-        return pulumi.get(self, "aws_region")
-
-    @aws_region.setter
-    def aws_region(self, value: pulumi.Input[str]):
-        pulumi.set(self, "aws_region", value)
+    @tls_proxy.setter
+    def tls_proxy(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "tls_proxy", value)
 
 
 class Configurer(pulumi.ComponentResource):
@@ -47,8 +37,7 @@ class Configurer(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 aws_profile: Optional[pulumi.Input[str]] = None,
-                 aws_region: Optional[pulumi.Input[str]] = None,
+                 tls_proxy: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         """
         Create a Configurer resource with the given unique name, props, and options.
@@ -59,7 +48,7 @@ class Configurer(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: ConfigurerArgs,
+                 args: Optional[ConfigurerArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a Configurer resource with the given unique name, props, and options.
@@ -78,8 +67,7 @@ class Configurer(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 aws_profile: Optional[pulumi.Input[str]] = None,
-                 aws_region: Optional[pulumi.Input[str]] = None,
+                 tls_proxy: Optional[pulumi.Input[str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -91,12 +79,7 @@ class Configurer(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ConfigurerArgs.__new__(ConfigurerArgs)
 
-            if aws_profile is None and not opts.urn:
-                raise TypeError("Missing required property 'aws_profile'")
-            __props__.__dict__["aws_profile"] = aws_profile
-            if aws_region is None and not opts.urn:
-                raise TypeError("Missing required property 'aws_region'")
-            __props__.__dict__["aws_region"] = aws_region
+            __props__.__dict__["tls_proxy"] = tls_proxy
         super(Configurer, __self__).__init__(
             'metaprovider:index:Configurer',
             resource_name,
@@ -105,19 +88,19 @@ class Configurer(pulumi.ComponentResource):
             remote=True)
 
     @pulumi.output_type
-    class AwsProviderResult:
+    class TlsProviderResult:
         def __init__(__self__, resource=None):
-            if resource and not isinstance(resource, pulumi_aws.Provider):
-                raise TypeError("Expected argument 'resource' to be a pulumi_aws.Provider")
+            if resource and not isinstance(resource, pulumi_tls.Provider):
+                raise TypeError("Expected argument 'resource' to be a pulumi_tls.Provider")
             pulumi.set(__self__, "resource", resource)
 
         @property
         @pulumi.getter
-        def resource(self) -> 'pulumi_aws.Provider':
+        def resource(self) -> 'pulumi_tls.Provider':
             return pulumi.get(self, "resource")
 
-    def aws_provider(__self__) -> pulumi_aws.Provider:
+    def tls_provider(__self__) -> pulumi_tls.Provider:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return pulumi.runtime.call('metaprovider:index:Configurer/awsProvider', __args__, res=__self__, typ=Configurer.AwsProviderResult, plainResourceField='resource')
+        return pulumi.runtime.call('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__, typ=Configurer.TlsProviderResult, plainResourceField='resource')
 
