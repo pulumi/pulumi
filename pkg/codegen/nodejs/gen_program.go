@@ -149,7 +149,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := filepath.Base(componentDir)
+		componentFilename := filepath.Base(componentDir)
+		componentName := component.DeclarationName()
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
@@ -159,7 +160,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 
 		var componentBuffer bytes.Buffer
 		componentGenerator.genComponentResourceDefinition(&componentBuffer, componentName, component)
-		files[componentName+".ts"] = componentBuffer.Bytes()
+		files[componentFilename+".ts"] = componentBuffer.Bytes()
 	}
 
 	return files, g.diagnostics, nil
@@ -346,7 +347,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			importSet.Add(pkgName)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
-			componentName := title(componentDir)
+			componentName := n.DeclarationName()
 			importStatement := fmt.Sprintf("import { %s } from \"./%s\";", componentName, componentDir)
 			componentImports = append(componentImports, importStatement)
 		}
@@ -495,7 +496,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	configVars := component.Program.ConfigVariables()
 
 	if len(configVars) > 0 {
-		g.Fgenf(w, "interface %sArgs {\n", title(componentName))
+		g.Fgenf(w, "interface %sArgs {\n", componentName)
 		g.Indented(func() {
 			for _, configVar := range configVars {
 				optional := "?"
@@ -550,7 +551,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 
 	outputs := component.Program.OutputVariables()
 
-	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", title(componentName))
+	g.Fgenf(w, "export class %s extends pulumi.ComponentResource {\n", componentName)
 	g.Indented(func() {
 		for _, output := range outputs {
 			var outputType string
@@ -578,7 +579,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			g.Fgenf(w, "public %s: %s;\n", output.Name(), outputType)
 		}
 
-		token := fmt.Sprintf("components:index:%s", title(componentName))
+		token := fmt.Sprintf("components:index:%s", componentName)
 
 		if len(configVars) == 0 {
 			g.Fgenf(w, "%s", g.Indent)
@@ -589,7 +590,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			})
 		} else {
 			g.Fgenf(w, "%s", g.Indent)
-			argsTypeName := title(componentName) + "Args"
+			argsTypeName := componentName + "Args"
 			g.Fgenf(w, "constructor(name: string, args: %s, opts?: pulumi.ComponentResourceOptions) {\n",
 				argsTypeName)
 			g.Indented(func() {
@@ -1018,7 +1019,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
-	componentName := title(filepath.Base(component.DirPath()))
+	componentName := component.DeclarationName()
 
 	optionsBag := g.genResourceOptions(component.Options)
 

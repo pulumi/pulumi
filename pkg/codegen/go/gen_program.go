@@ -422,7 +422,8 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 	for componentDir, component := range program.CollectComponents() {
 		g.importer.Reset()
 
-		componentName := filepath.Base(componentDir)
+		componentFilename := filepath.Base(componentDir)
+		componentName := component.DeclarationName()
 		componentGenerator, err := newGenerator(component.Program, opts)
 		componentGenerator.isComponent = true
 		componentHelperse := componentGenerator.collectImports(component.Program)
@@ -447,12 +448,12 @@ func GenerateProgramWithOptions(program *pcl.Program, opts GenerateProgramOption
 			// add a warning diagnostic when there is a formatting error
 			componentGenerator.diagnostics = componentGenerator.diagnostics.Append(&hcl.Diagnostic{
 				Severity: hcl.DiagWarning,
-				Subject:  &hcl.Range{Filename: componentName + ".go"},
+				Subject:  &hcl.Range{Filename: componentFilename + ".go"},
 				Summary:  "could not format go code",
 				Detail:   err.Error(),
 			})
 		}
-		files[componentName+".go"] = componentContent
+		files[componentFilename+".go"] = componentContent
 	}
 	return files, g.diagnostics, nil
 }
@@ -1180,7 +1181,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		}
 	}
 
-	componentName := Title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
 		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
