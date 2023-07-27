@@ -101,16 +101,67 @@ func newSearchCmd() *cobra.Command {
 }
 
 func newAISearchCmd() *cobra.Command {
+	var queryString *string
+	var orgName string
 	cmd := &cobra.Command{
 		Use:   "ai",
 		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
 		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+			ctx := commandContext()
+			interactive := cmdutil.Interactive()
+
+			opts := backend.QueryOptions{}
+			opts.Display = display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
+				IsInteractive: interactive,
+				Type:          display.DisplayQuery,
+			}
+			// Try to read the current project
+			project, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
+			b, err := currentBackend(ctx, project, opts.Display)
+			if err != nil {
+				return err
+			}
+			fmt.Println(queryString)
+			userName, orgs, err := b.CurrentUser()
+			if err != nil {
+				return err
+			}
+			var filterName string
+			if orgName == "" {
+				filterName = userName
+			} else {
+				filterName = orgName
+			}
+			if !sliceContains(orgs, orgName) && orgName != "" {
+				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
+			}
+
+			res, err := b.NaturalLanguageSearch(ctx, filterName, *queryString)
+			if err != nil {
+				return err
+			}
+			for _, r := range res.Resources {
+				fmt.Printf("%s - %s\n", *r.Name, *r.Type)
+			}
+			return nil
 		},
 		),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&orgName, "org", "o", "",
+		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.",
+	)
+	queryString = cmd.PersistentFlags().StringP(
+		"query", "q", "",
+		"Plaintext natural language query",
+	)
 
 	return cmd
 }
