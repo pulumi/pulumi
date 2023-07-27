@@ -1018,6 +1018,11 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 	return b.query(ctx, op, nil /*events*/)
 }
 
+func (b *cloudBackend) Search(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error) {
+	results, err := b.Client().GetSearchQueryResults(ctx, orgName, queryParams)
+	return results, err
+}
+
 type updateMetadata struct {
 	version    int
 	leaseToken string

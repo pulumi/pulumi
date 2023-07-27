@@ -102,6 +102,7 @@ func (pc *Client) URL() string {
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
+	fmt.Println(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken)
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
 		httpCallOptions{})
 }
@@ -1137,6 +1138,23 @@ func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesRes
 	}
 	return &resp, nil
 }
+
+func getSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources", orgName)
+}
+
+// Pulumi Cloud Search Functions
+func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error) {
+	var resp apitype.ResourceSearchResponse
+	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), queryParams, nil, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("querying search failed: %w", err)
+	}
+	return &resp, nil
+}
+
+// func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, query string) (*apitype.PulumiQueryResponse, error) {
+// }
 
 func is404(err error) bool {
 	if err == nil {

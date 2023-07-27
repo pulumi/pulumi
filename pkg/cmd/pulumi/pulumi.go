@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -358,6 +358,7 @@ func NewPulumiCmd() *cobra.Command {
 				newWatchCmd(),
 				newLogsCmd(),
 				newEnvCmd(),
+				newSearchCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
