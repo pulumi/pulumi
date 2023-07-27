@@ -531,7 +531,7 @@ func newImportCmd() *cobra.Command {
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperAddress: grpcServer.Addr(),
+					MapperTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					return result.FromError(err)

@@ -36,7 +36,7 @@ class ConvertStateRequest(google.protobuf.message.Message):
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
-    """the gRPC address of the mapper service."""
+    """the gRPC target of the mapper service."""
     def __init__(
         self,
         *,
@@ -109,7 +109,7 @@ class ConvertProgramRequest(google.protobuf.message.Message):
     target_directory: builtins.str
     """a target directory to write the resulting PCL code and project file to."""
     mapper_target: builtins.str
-    """the gRPC address of the mapper service."""
+    """the gRPC target of the mapper service."""
     def __init__(
         self,
         *,

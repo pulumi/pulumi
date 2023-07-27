@@ -36,7 +36,7 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	req *pulumirpc.ConvertStateRequest,
 ) (*pulumirpc.ConvertStateResponse, error) {
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
-		MapperAddress: req.MapperTarget,
+		MapperTarget: req.MapperTarget,
 	})
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 	resp, err := c.converter.ConvertProgram(ctx, &ConvertProgramRequest{
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
-		MapperAddress:   req.MapperTarget,
+		MapperTarget:    req.MapperTarget,
 	})
 	if err != nil {
 		return nil, err
