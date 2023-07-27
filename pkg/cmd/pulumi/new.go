@@ -1020,7 +1020,7 @@ func promptForValue(
 			var prompt string
 			if defaultValue == "" {
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s ", colors.SpecPrompt, valueType, colors.Reset))
+					fmt.Sprintf("%s%s%s", colors.SpecPrompt, valueType, colors.Reset))
 			} else {
 				defaultValuePrompt := defaultValue
 				if secret {
@@ -1028,19 +1028,18 @@ func promptForValue(
 				}
 
 				prompt = opts.Color.Colorize(
-					fmt.Sprintf("%s%s:%s (%s) ", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
+					fmt.Sprintf("%s%s%s (%s)", colors.SpecPrompt, valueType, colors.Reset, defaultValuePrompt))
 			}
-			fmt.Print(prompt)
 
 			// Read the value.
 			var err error
 			if secret {
-				value, err = cmdutil.ReadConsoleNoEcho("")
+				value, err = cmdutil.ReadConsoleNoEcho(prompt)
 				if err != nil {
 					return "", err
 				}
 			} else {
-				value, err = cmdutil.ReadConsole("")
+				value, err = cmdutil.ReadConsole(prompt)
 				if err != nil {
 					return "", err
 				}

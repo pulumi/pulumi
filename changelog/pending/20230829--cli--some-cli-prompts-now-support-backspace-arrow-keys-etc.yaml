@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Some CLI prompts now support backspace, arrow keys, etc.

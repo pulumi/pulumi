@@ -15,7 +15,6 @@
 package cmdutil
 
 import (
-	"fmt"
 	"os"
 
 	"golang.org/x/term"
@@ -28,16 +27,8 @@ func ReadConsoleNoEcho(prompt string) (string, error) {
 	//
 	// In this case, just read normally
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return ReadConsole(prompt)
+		return readConsolePlain(os.Stdout, os.Stdin, prompt)
 	}
 
-	if prompt != "" {
-		fmt.Print(prompt + ": ")
-	}
-
-	b, err := term.ReadPassword(int(os.Stdin.Fd()))
-
-	fmt.Println() // echo a newline, since the user's keypress did not generate one
-
-	return string(b), err
+	return readConsoleFancy(os.Stdout, os.Stdin, prompt, true /* secret */)
 }
