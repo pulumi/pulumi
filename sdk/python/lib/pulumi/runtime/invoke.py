@@ -166,8 +166,10 @@ def call(
         output = call(tok, props, res, typ)
         result = _force_output(output)
         if result is None:
-            raise AssertionError(f"Plain resource method '{tok}' incorrectly returned an unknown Resource value. "+
- 		        "This is an error in the provider, please report this to the provider developer.")
+            raise AssertionError(
+                f"Plain resource method '{tok}' incorrectly returned an unknown Resource value. "
+                + "This is an error in the provider, please report this to the provider developer."
+            )
         return getattr(result, plainResourceField)
 
     log.debug(f"Calling function: tok={tok}")
