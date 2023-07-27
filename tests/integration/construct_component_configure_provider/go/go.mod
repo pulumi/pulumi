@@ -3,7 +3,7 @@ module github.com/pulumi/pulumi/tests/integration/construct_component_configure_
 go 1.20
 
 require (
-	github.com/pulumi/pulumi-aws/sdk/v5 v5.42.0
+	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
 	github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go v0.0.0
 	github.com/pulumi/pulumi/sdk/v3 v3.75.0
 )
@@ -47,7 +47,6 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
-	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
