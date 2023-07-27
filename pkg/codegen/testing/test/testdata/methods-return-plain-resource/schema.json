@@ -33,7 +33,8 @@
     "nodejs": {
         "dependencies": {
             "@pulumi/tls": "^4.10"
-        }
+        },
+        "respectSchemaVersion": true
     },
     "go": {
         "modulePath": "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go",
