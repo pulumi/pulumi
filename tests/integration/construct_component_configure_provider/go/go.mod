@@ -4,8 +4,13 @@ go 1.20
 
 require (
 	github.com/pulumi/pulumi-aws/sdk/v5 v5.42.0
+	github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go v0.0.0
 	github.com/pulumi/pulumi/sdk/v3 v3.75.0
-	methods-return-plain-resource v0.0.0-00010101000000-000000000000
+)
+
+replace (
+	github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go => ../../../../pkg/codegen/testing/test/testdata/methods-return-plain-resource/go
+	github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 )
 
 require (
