@@ -24,7 +24,7 @@ import (
 type Configurer struct {
 	pulumi.ResourceState
 
-	TlsProxy pulumi.StringOutput `pulumi:"tlsProxy"`
+	TlsProviderOutput tls.ProviderOutput `pulumi:"tlsProvider"`
 }
 
 type ConfigurerArgs struct {
@@ -46,10 +46,25 @@ func NewConfigurer(
 		return nil, err
 	}
 
-	component.TlsProxy = args.TlsProxy.ToStringOutput()
+	prov, err := tls.NewProvider(ctx, "tls-p", &tls.ProviderArgs{
+		// Due to pulumi/pulumi-tls#160 cannot yet set URL here, but can test setting FromEnv.
+		Proxy: &tls.ProviderProxyArgs{
+			FromEnv: args.TlsProxy.ToStringOutput().ApplyT(func(proxy string) bool {
+				if proxy == "FromEnv" {
+					return true
+				}
+				return false
+			}).(pulumi.BoolOutput),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	component.TlsProviderOutput = prov.ToProviderOutput()
 
 	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
-		"tlsProxy": component.TlsProxy,
+		"tlsProvider": component.TlsProviderOutput,
 	}); err != nil {
 		return nil, err
 	}
@@ -63,22 +78,7 @@ type TlsProviderResult struct {
 }
 
 func (c *Configurer) TlsProvider(ctx *pulumi.Context, args *TlsProviderArgs) (*TlsProviderResult, error) {
-	prov, err := tls.NewProvider(ctx, "tls-p", &tls.ProviderArgs{
-		// Due to pulumi/pulumi-tls#160 cannot yet set URL here, but can test setting FromEnv.
-		Proxy: &tls.ProviderProxyArgs{
-			FromEnv: c.TlsProxy.ApplyT(func(proxy string) bool {
-				if proxy == "FromEnv" {
-					return true
-				}
-				return false
-			}).(pulumi.BoolOutput),
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	return &TlsProviderResult{
-		Resource: prov.ToProviderOutput(),
+		Resource: c.TlsProviderOutput,
 	}, nil
 }
