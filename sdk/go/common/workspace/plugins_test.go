@@ -29,6 +29,9 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1080,15 +1083,79 @@ func TestBundledPluginSearch(t *testing.T) {
 	err = os.WriteFile(ambientPath, []byte{}, 0o700) //nolint: gosec
 	require.NoError(t, err)
 
+	d := diagtest.LogSink(t)
+
 	// Lookup the plugin with ambient search turned on
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
-	path, err := GetPluginPath(LanguagePlugin, "mock", nil, nil)
+	path, err := GetPluginPath(d, LanguagePlugin, "mock", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, ambientPath, path)
 
 	// Lookup the plugin with ambient search turned off
 	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "true")
-	path, err = GetPluginPath(LanguagePlugin, "mock", nil, nil)
+	path, err = GetPluginPath(d, LanguagePlugin, "mock", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, bundledPath, path)
+}
+
+//nolint:paralleltest // modifies environment variables
+func TestAmbientPluginsWarn(t *testing.T) {
+	// Create a fake plugin in the path
+	pathDir := t.TempDir()
+	t.Setenv("PATH", pathDir)
+	ambientPath := filepath.Join(pathDir, "pulumi-resource-mock")
+	err := os.WriteFile(ambientPath, []byte{}, 0o700) //nolint: gosec
+	require.NoError(t, err)
+
+	var stderr bytes.Buffer
+	d := diag.DefaultSink(
+		iotest.LogWriter(t), // stdout
+		&stderr,
+		diag.FormatOptions{Color: "never"},
+	)
+
+	// Lookup the plugin with ambient search turned on
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(d, ResourcePlugin, "mock", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, ambientPath, path)
+
+	// Check we get a warning about loading this plugin
+	expectedMessage := fmt.Sprintf("warning: using pulumi-resource-mock from $PATH at %s\n", ambientPath)
+	assert.Equal(t, expectedMessage, stderr.String())
+}
+
+//nolint:paralleltest // modifies environment variables
+func TestBundledPluginsDoNotWarn(t *testing.T) {
+	// Get the path of this executable
+	exe, err := os.Executable()
+	require.NoError(t, err)
+
+	// Create a fake side-by-side plugin next to this executable
+	bundledPath := filepath.Join(filepath.Dir(exe), "pulumi-language-mock")
+	err = os.WriteFile(bundledPath, []byte{}, 0o700) //nolint: gosec // we intended to write an executable file here
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Remove(bundledPath)
+		require.NoError(t, err)
+	})
+
+	// Add the executable directory to PATH
+	t.Setenv("PATH", filepath.Dir(exe))
+
+	var stderr bytes.Buffer
+	d := diag.DefaultSink(
+		iotest.LogWriter(t), // stdout
+		&stderr,
+		diag.FormatOptions{Color: "never"},
+	)
+
+	// Lookup the plugin with ambient search turned on
+	t.Setenv("PULUMI_IGNORE_AMBIENT_PLUGINS", "false")
+	path, err := GetPluginPath(d, LanguagePlugin, "mock", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, bundledPath, path)
+
+	// Check we don't get a warning about loading this plugin, because it's the bundled one _even_ though it's also on PATH
+	assert.Empty(t, stderr)
 }
