@@ -1,8 +1,10 @@
 import * as pulumi from "@pulumi/pulumi";
+import { AnotherComponent } from "./another-component";
 import { ExampleComponent } from "./exampleComponent";
 import { SimpleComponent } from "./simpleComponent";
 
 const simpleComponent = new SimpleComponent("simpleComponent");
+const anotherComponent = new AnotherComponent("anotherComponent");
 const exampleComponent = new ExampleComponent("exampleComponent", {
     input: "doggo",
     ipAddress: [

@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -152,8 +151,8 @@ func GenerateProgramWithOptions(
 		"Program.cs": index.Bytes(),
 	}
 
-	for componentDir, component := range program.CollectComponents() {
-		componentName := Title(filepath.Base(componentDir))
+	for _, component := range program.CollectComponents() {
+		componentName := component.DeclarationName()
 		componentNodes := pcl.Linearize(component.Program)
 
 		componentGenerator := &generator{
@@ -524,7 +523,7 @@ func annotateObjectTypedConfig(componentName string, typeName string, objectType
 func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*model.ObjectType {
 	objectTypes := map[string]*model.ObjectType{}
 	for _, config := range component.Program.ConfigVariables() {
-		componentName := Title(component.Name())
+		componentName := component.DeclarationName()
 		typeName := configObjectTypeName(config.Name())
 		switch configType := config.Type().(type) {
 		case *model.ObjectType:
@@ -1070,7 +1069,7 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, resourceOption
 }
 
 func AnnotateComponentInputs(component *pcl.Component) {
-	componentName := Title(component.Name())
+	componentName := component.DeclarationName()
 	configVars := component.Program.ConfigVariables()
 
 	for index := range component.Inputs {
@@ -1225,7 +1224,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
-	componentName := Title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 	qualifiedMemberName := fmt.Sprintf("Components.%s", componentName)
 
 	name := r.LogicalName()

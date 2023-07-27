@@ -6,6 +6,8 @@ return await Deployment.RunAsync(() =>
 {
     var simpleComponent = new Components.SimpleComponent("simpleComponent");
 
+    var anotherComponent = new Components.AnotherComponent("anotherComponent");
+
     var exampleComponent = new Components.ExampleComponent("exampleComponent", new()
     {
         Input = "doggo",

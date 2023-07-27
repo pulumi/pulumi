@@ -75,7 +75,8 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	}
 
 	for componentDir, component := range program.CollectComponents() {
-		componentName := title(filepath.Base(componentDir))
+		componentFilename := strings.ReplaceAll(filepath.Base(componentDir), "-", "_")
+		componentName := component.DeclarationName()
 		componentGenerator, err := newGenerator(component.Program)
 		if err != nil {
 			return files, componentGenerator.diagnostics, err
@@ -89,7 +90,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		// generate imports for the component
 		componentGenerator.genPreamble(&componentBuffer, component.Program, componentPreambleMethods)
 		componentGenerator.genComponentDefinition(&componentBuffer, component, componentName)
-		files[filepath.Base(componentDir)+".py"] = componentBuffer.Bytes()
+		files[componentFilename+".py"] = componentBuffer.Bytes()
 	}
 	return files, g.diagnostics, nil
 }
@@ -527,8 +528,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 
 	for _, node := range program.Nodes {
 		if component, ok := node.(*pcl.Component); ok {
-			componentPath := filepath.Base(component.DirPath())
-			componentName := title(componentPath)
+			componentPath := strings.ReplaceAll(filepath.Base(component.DirPath()), "-", "_")
+			componentName := component.DeclarationName()
 			imports = append(imports, fmt.Sprintf("from .%s import %s", componentPath, componentName))
 		}
 	}
@@ -923,7 +924,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 
 // genComponent handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
-	componentName := title(filepath.Base(r.DirPath()))
+	componentName := r.DeclarationName()
 	optionsBag, temps := g.lowerResourceOptions(r.Options)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())

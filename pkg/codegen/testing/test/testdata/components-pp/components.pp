@@ -1,5 +1,7 @@
 component simpleComponent "./simpleComponent" {}
 
+component anotherComponent "./another-component" {}
+
 component exampleComponent "./exampleComponent" {
     input = "doggo"
     ipAddress = [127, 0, 0, 1]
