@@ -227,7 +227,7 @@ func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) s
 	}
 	if !mod.isTFCompatMode() && !mod.isK8sCompatMode() {
 		if args {
-			return name + "Args"
+			return name + "Argsfoo"
 		}
 		return name
 	}

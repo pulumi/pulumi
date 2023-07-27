@@ -675,7 +675,7 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 	if !isExternal {
 		name := pkg.tokenToType(t.Token)
 		if t.IsInputShape() {
-			return name + "Args"
+			return name + "Argsfoo"
 		}
 		return name
 	}
@@ -2602,7 +2602,7 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
 	}
-	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
+	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Argsfoo")
 }
 
 func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.ObjectType, types ...string) {

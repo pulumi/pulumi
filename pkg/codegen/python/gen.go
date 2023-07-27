@@ -204,7 +204,7 @@ func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input boo
 
 	if mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		if t.IsInputShape() {
-			return name + "Args"
+			return name + "Argsfoo"
 		}
 		return name
 	}

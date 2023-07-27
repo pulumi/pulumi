@@ -234,7 +234,7 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
 		name += "Args"
 	} else if args && namingCtx.compatibility != tfbridge20 && namingCtx.compatibility != kubernetes20 {
-		name += "Args"
+		name += "Argsfoo"
 	}
 
 	return pkgName + root + modName + title(name)
