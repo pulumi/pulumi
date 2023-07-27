@@ -374,7 +374,11 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 }
 
 func (be *MockBackend) Search(_ context.Context, _ string, _ interface{}) (*apitype.ResourceSearchResponse, error) {
-	return nil, fmt.Errorf("search is not supported for the cloud backend")
+	return nil, fmt.Errorf("search is not supported for the mock backend")
+}
+
+func (be *MockBackend) NaturalLanguageSearch(_ context.Context, _ string, _ string) (*apitype.ResourceSearchResponse, error) {
+	return nil, fmt.Errorf("search is not supported for the mock backend")
 }
 
 //

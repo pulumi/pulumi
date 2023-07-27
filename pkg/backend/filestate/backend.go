@@ -981,7 +981,11 @@ func (b *localBackend) Watch(ctx context.Context, stk backend.Stack,
 }
 
 func (b *localBackend) Search(_ context.Context, _ string, _ interface{}) (*apitype.ResourceSearchResponse, error) {
-	return nil, fmt.Errorf("search is not supported for the cloud backend")
+	return nil, fmt.Errorf("search is not supported for the local backend")
+}
+
+func (b *localBackend) NaturalLanguageSearch(_ context.Context, _ string, _ string) (*apitype.ResourceSearchResponse, error) {
+	return nil, fmt.Errorf("search is not supported for the local backend")
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
