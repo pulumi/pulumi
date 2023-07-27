@@ -216,6 +216,9 @@ type Backend interface {
 
 	// Cancel the current update for the given stack.
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
+
+	// Queries the backend for resources based on the given query parameters.
+	Search(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

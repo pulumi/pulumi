@@ -358,6 +358,7 @@ func NewPulumiCmd() *cobra.Command {
 				newWatchCmd(),
 				newLogsCmd(),
 				newEnvCmd(),
+				newSearchCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
