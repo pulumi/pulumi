@@ -201,7 +201,8 @@ var (
 )
 
 // extractLambdaLogMessage extracts out only the log messages associated with user logs, skipping Lambda-specific
-// metadata.  In particular, only the second and third line below is extracted, and it is extracted with the recorded timestamp.
+// metadata.  In particular, only the second and third line below is extracted, and it is extracted with the
+// recorded timestamp.
 //
 // ```
 //

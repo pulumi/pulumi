@@ -89,6 +89,9 @@ func getPropertyMapStringValue(m resource.PropertyMap, k resource.PropertyKey) s
 	if !ok {
 		return ""
 	}
+	if !v.IsString() {
+		return ""
+	}
 	return v.StringValue()
 }
 
@@ -126,7 +129,9 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.StartTime,
 			query.EndTime,
 		)
-		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		sort.SliceStable(logResult, func(i, j int) bool {
+			return logResult[i].Timestamp < logResult[j].Timestamp
+		})
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
@@ -137,7 +142,9 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			query.StartTime,
 			query.EndTime,
 		)
-		sort.SliceStable(logResult, func(i, j int) bool { return logResult[i].Timestamp < logResult[j].Timestamp })
+		sort.SliceStable(logResult, func(i, j int) bool {
+			return logResult[i].Timestamp < logResult[j].Timestamp
+		})
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	default:
@@ -156,7 +163,13 @@ var (
 	awsDefaultSessionMutex sync.Mutex
 )
 
-func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string, testSession bool) (*session.Session, error) {
+// getSession gets or creates a Session instance to use for making AWS SDK calls using the provided credentials
+// and configuration.  If `validated` is true, it also uses the credentials to make an AWS call to get the caller
+// identity to ensure they are valid, and return an error if not.
+func getAWSSession(
+	awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile string,
+	validate bool,
+) (*session.Session, error) {
 	// AWS SDK for Go documentation: "Sessions should be cached when possible"
 	// We keep a default session around and then make cheap copies of it.
 	awsDefaultSessionMutex.Lock()
@@ -181,7 +194,7 @@ func getAWSSession(awsRegion, awsAccessKey, awsSecretKey, awsToken, awsProfile s
 			return nil, fmt.Errorf("failed to create AWS session: %w", err)
 		}
 
-		if testSession {
+		if validate {
 			// Make a call to STS to ensure the session is valid and fail early if not
 			stsSvc := sts.New(sess)
 			_, err = stsSvc.GetCallerIdentity(&sts.GetCallerIdentityInput{})
