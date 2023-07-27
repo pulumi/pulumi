@@ -49,7 +49,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1019,20 +1018,11 @@ func (host *nodeLanguageHost) RunPlugin(
 func (host *nodeLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	cwd, err := os.Getwd()
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	extraOptions := make([]pcl.BindOption, 0)
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
@@ -1079,15 +1069,7 @@ func (host *nodeLanguageHost) GenerateProject(
 func (host *nodeLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,7 +1087,6 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	program, pdiags, err := pcl.BindProgram(parser.Files,
 		pcl.Loader(loader),
 		pcl.PreferOutputVersionedInvokes)
@@ -1145,15 +1126,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 func (host *nodeLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1164,7 +1137,6 @@ func (host *nodeLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	pkg, diags, err := schema.BindSpec(spec, loader)
 	if err != nil {
 		return nil, err

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -148,7 +149,15 @@ func genSDK(language, out string, pkg *schema.Package, overlays string) error {
 				return err
 			}
 
-			err = languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles)
+			loader := schema.NewPluginLoader(pCtx.Host)
+			loaderServer := schema.NewLoaderServer(loader)
+			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(grpcServer)
+
+			err = languagePlugin.GeneratePackage(directory, string(jsonBytes), extraFiles, grpcServer.Addr())
 			if err != nil {
 				return err
 			}

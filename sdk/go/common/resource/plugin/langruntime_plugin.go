@@ -422,7 +422,7 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	sourceDirectory, targetDirectory, project string, strict bool,
+	sourceDirectory, targetDirectory, project string, strict bool, loaderTarget string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
@@ -430,6 +430,7 @@ func (h *langhost) GenerateProject(
 		TargetDirectory: targetDirectory,
 		Project:         project,
 		Strict:          strict,
+		LoaderTarget:    loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -448,13 +449,14 @@ func (h *langhost) GenerateProject(
 }
 
 func (h *langhost) GeneratePackage(
-	directory string, schema string, extraFiles map[string][]byte,
+	directory string, schema string, extraFiles map[string][]byte, loaderTarget string,
 ) error {
 	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
 	_, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
-		Directory:  directory,
-		Schema:     schema,
-		ExtraFiles: extraFiles,
+		Directory:    directory,
+		Schema:       schema,
+		ExtraFiles:   extraFiles,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -466,10 +468,12 @@ func (h *langhost) GeneratePackage(
 	return nil
 }
 
-func (h *langhost) GenerateProgram(program map[string]string) (map[string][]byte, hcl.Diagnostics, error) {
+func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
-		Source: program,
+		Source:       program,
+		LoaderTarget: loaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

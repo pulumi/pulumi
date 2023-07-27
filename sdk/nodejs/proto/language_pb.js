@@ -3153,7 +3153,8 @@ proto.pulumirpc.GenerateProgramRequest.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.GenerateProgramRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : []
+    sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : [],
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -3196,6 +3197,10 @@ proto.pulumirpc.GenerateProgramRequest.deserializeBinaryFromReader = function(ms
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3229,6 +3234,13 @@ proto.pulumirpc.GenerateProgramRequest.serializeBinaryToWriter = function(messag
   if (f && f.getLength() > 0) {
     f.serializeBinary(1, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -3252,6 +3264,24 @@ proto.pulumirpc.GenerateProgramRequest.prototype.getSourceMap = function(opt_noL
 proto.pulumirpc.GenerateProgramRequest.prototype.clearSourceMap = function() {
   this.getSourceMap().clear();
   return this;};
+
+
+/**
+ * optional string loader_target = 2;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateProgramRequest} returns this
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
+};
 
 
 
@@ -3482,7 +3512,8 @@ proto.pulumirpc.GenerateProjectRequest.toObject = function(includeInstance, msg)
     sourceDirectory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
     project: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    strict: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+    strict: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -3534,6 +3565,10 @@ proto.pulumirpc.GenerateProjectRequest.deserializeBinaryFromReader = function(ms
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setStrict(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
       break;
     default:
       reader.skipField();
@@ -3589,6 +3624,13 @@ proto.pulumirpc.GenerateProjectRequest.serializeBinaryToWriter = function(messag
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -3664,6 +3706,24 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getStrict = function() {
  */
 proto.pulumirpc.GenerateProjectRequest.prototype.setStrict = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional string loader_target = 5;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -3861,7 +3921,8 @@ proto.pulumirpc.GeneratePackageRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
     schema: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    extraFilesMap: (f = msg.getExtraFilesMap()) ? f.toObject(includeInstance, undefined) : []
+    extraFilesMap: (f = msg.getExtraFilesMap()) ? f.toObject(includeInstance, undefined) : [],
+    loaderTarget: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -3912,6 +3973,10 @@ proto.pulumirpc.GeneratePackageRequest.deserializeBinaryFromReader = function(ms
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
          });
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setLoaderTarget(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3958,6 +4023,13 @@ proto.pulumirpc.GeneratePackageRequest.serializeBinaryToWriter = function(messag
   f = message.getExtraFilesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
+  }
+  f = message.getLoaderTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
   }
 };
 
@@ -4018,6 +4090,24 @@ proto.pulumirpc.GeneratePackageRequest.prototype.getExtraFilesMap = function(opt
 proto.pulumirpc.GeneratePackageRequest.prototype.clearExtraFilesMap = function() {
   this.getExtraFilesMap().clear();
   return this;};
+
+
+/**
+ * optional string loader_target = 4;
+ * @return {string}
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.getLoaderTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GeneratePackageRequest} returns this
+ */
+proto.pulumirpc.GeneratePackageRequest.prototype.setLoaderTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
+};
 
 
 

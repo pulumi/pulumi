@@ -293,7 +293,10 @@ func getCurrentDeploymentForStack(
 	return snap, err
 }
 
-type programGeneratorFunc func(p *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
+type programGeneratorFunc func(
+	p *pcl.Program,
+	loader schema.ReferenceLoader,
+) (map[string][]byte, hcl.Diagnostics, error)
 
 func generateImportedDefinitions(ctx *plugin.Context,
 	out io.Writer, stackName tokens.Name, projectName tokens.PackageName,
@@ -342,7 +345,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 
 	loader := schema.NewPluginLoader(ctx.Host)
 	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *pcl.Program) error {
-		files, _, err := programGenerator(p)
+		files, _, err := programGenerator(p, loader)
 		if err != nil {
 			return err
 		}
@@ -635,18 +638,28 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
+			wrapper := func(
+				f func(*pcl.Program) (map[string][]byte, hcl.Diagnostics, error),
+			) func(*pcl.Program, schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
+				return func(p *pcl.Program, loader schema.ReferenceLoader) (map[string][]byte, hcl.Diagnostics, error) {
+					return f(p)
+				}
+			}
+
 			var programGenerator programGeneratorFunc
 			switch proj.Runtime.Name() {
 			case "dotnet":
-				programGenerator = dotnet.GenerateProgram
+				programGenerator = wrapper(dotnet.GenerateProgram)
 			case "python":
-				programGenerator = python.GenerateProgram
+				programGenerator = wrapper(python.GenerateProgram)
 			case "java":
-				programGenerator = javagen.GenerateProgram
+				programGenerator = wrapper(javagen.GenerateProgram)
 			case "yaml":
-				programGenerator = yamlgen.GenerateProgram
+				programGenerator = wrapper(yamlgen.GenerateProgram)
 			default:
-				programGenerator = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+				programGenerator = func(
+					program *pcl.Program, loader schema.ReferenceLoader,
+				) (map[string][]byte, hcl.Diagnostics, error) {
 					cwd, err := os.Getwd()
 					if err != nil {
 						return nil, nil, err
@@ -664,7 +677,14 @@ func newImportCmd() *cobra.Command {
 						return nil, nil, err
 					}
 
-					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source())
+					loaderServer := schema.NewLoaderServer(loader)
+					grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+					if err != nil {
+						return nil, nil, err
+					}
+					defer contract.IgnoreClose(grpcServer)
+
+					files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr())
 					if err != nil {
 						return nil, nil, err
 					}
