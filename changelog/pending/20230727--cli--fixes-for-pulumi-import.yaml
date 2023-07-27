@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Several fixes for `pulumi logs` including support for first-class providers, support for ambient credentials and improved error reporting.

@@ -1,3 +1,6 @@
+// This file is named 'go.mod.bad' to prevent it from being picked up by
+// the Go toolchain and tools searching for 'go.mod' files.
+
 module repro-plugin-install
 
 go 1.20
