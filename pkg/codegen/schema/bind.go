@@ -958,26 +958,39 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 
 	switch typ = plainType(typ); typ {
 	case BoolType:
-		if _, ok := value.(bool); !ok {
+		v, ok := value.(bool)
+		if !ok {
 			return false, typeError("boolean")
 		}
+		return v, nil
 	case IntType:
+		v, ok := value.(int)
+		if !ok {
+			v, ok := value.(float64)
+			if !ok {
+				return 0, typeError("integer")
+			}
+			if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, typeError("integer")
+			}
+			return int32(v), nil
+		}
+		if v < math.MinInt32 || v > math.MaxInt32 {
+			return 0, typeError("integer")
+		}
+		return int32(v), nil
+	case NumberType:
 		v, ok := value.(float64)
 		if !ok {
-			return 0, typeError("integer")
-		}
-		if math.Trunc(v) != v || v < math.MinInt32 || v > math.MaxInt32 {
-			return 0, typeError("integer")
-		}
-		value = int32(v)
-	case NumberType:
-		if _, ok := value.(float64); !ok {
 			return 0.0, typeError("number")
 		}
+		return v, nil
 	case StringType:
-		if _, ok := value.(string); !ok {
+		v, ok := value.(string)
+		if !ok {
 			return 0.0, typeError("string")
 		}
+		return v, nil
 	default:
 		if _, isInvalid := typ.(*InvalidType); isInvalid {
 			return nil, nil
@@ -985,8 +998,6 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 		return nil, hcl.Diagnostics{errorf(path, "type %v cannot have a constant value; only booleans, integers, "+
 			"numbers and strings may have constant values", typ)}
 	}
-
-	return value, nil
 }
 
 func bindDefaultValue(path string, value interface{}, spec *DefaultSpec, typ Type) (*DefaultValue, hcl.Diagnostics) {

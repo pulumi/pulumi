@@ -18,6 +18,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -955,5 +956,23 @@ func TestPackageIdentity(t *testing.T) {
 				assert.False(t, pkgA.Equals(pkgB))
 			}
 		})
+	}
+}
+
+func TestBindDefaultInt(t *testing.T) {
+	t.Parallel()
+	dv, diag := bindDefaultValue("fake-path", int(32), nil, IntType)
+	if diag.HasErrors() {
+		t.Fail()
+	}
+	assert.Equal(t, int32(32), dv.Value)
+
+	// Check that we error on overflow/underflow when casting int to int32.
+	if _, diag := bindDefaultValue("fake-path", int(math.MaxInt64), nil, IntType); !diag.HasErrors() {
+		assert.Fail(t, "did not catch oveflow")
+		t.Fail()
+	}
+	if _, diag := bindDefaultValue("fake-path", int(math.MinInt64), nil, IntType); !diag.HasErrors() {
+		assert.Fail(t, "did not catch underflow")
 	}
 }
