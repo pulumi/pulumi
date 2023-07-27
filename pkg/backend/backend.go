@@ -219,6 +219,7 @@ type Backend interface {
 
 	// Queries the backend for resources based on the given query parameters.
 	Search(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error)
+	NaturalLanguageSearch(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the

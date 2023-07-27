@@ -1148,6 +1148,10 @@ func getNaturalLanguageSearchPath(orgName string) string {
 	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", url.PathEscape(orgName))
 }
 
+func getNaturalLanguageSearchPath(orgName string) string {
+	return fmt.Sprintf("/api/orgs/%s/search/resources/parse", orgName)
+}
+
 // Pulumi Cloud Search Functions
 func (pc *Client) GetSearchQueryResults(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
