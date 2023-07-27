@@ -84,8 +84,8 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
-func readGoPackageInfo(schemaJsonPath string) (*GoPackageInfo, error) {
-	f, err := os.Open(schemaJsonPath)
+func readGoPackageInfo(schemaPath string) (*GoPackageInfo, error) {
+	f, err := os.Open(schemaPath)
 	if err != nil {
 		return nil, err
 	}
