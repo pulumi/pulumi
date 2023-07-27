@@ -16,9 +16,9 @@ package main
 
 import (
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
+	awsconf "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
-	awsconf "methods-return-plain-resource/metaprovider"
 )
 
 func main() {

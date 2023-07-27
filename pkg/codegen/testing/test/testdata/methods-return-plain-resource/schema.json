@@ -43,7 +43,8 @@
         }
     },
     "go": {
-      "importBasePath": "methods-return-plain-resource/metaprovider"
+        "modulePath": "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go",
+        "importBasePath": "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider"
     }
   }
 }

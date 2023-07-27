@@ -7,8 +7,8 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go/metaprovider/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"methods-return-plain-resource/metaprovider/internal"
 )
 
 type Provider struct {

@@ -84,14 +84,46 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
+func readGoPackageInfo(schemaJsonPath string) (*GoPackageInfo, error) {
+	f, err := os.Open(schemaJsonPath)
+	if err != nil {
+		return nil, err
+	}
+	type language struct {
+		Go GoPackageInfo `json:"go"`
+	}
+	type model struct {
+		Language language `json:"language"`
+	}
+	var m model
+	if err := json.NewDecoder(f).Decode(&m); err != nil {
+		return nil, err
+	}
+	return &m.Language.Go, nil
+}
+
+// Decide the name of the Go module for a generated test.
+//
+// For example for this path:
+//
+// codeDir = "../testing/test/testdata/external-resource-schema/go/"
+//
+// We will generate "$codeDir/go.mod" using `external-resource-schema` as the module name so that it can compile
+// independently.
+//
+// This can be overwritten by setting ModulePath in GoPackageInfo in
+//
+//	jq .language.go.modulePath ${codeDir}../schema.json
 func inferModuleName(codeDir string) string {
-	// For example for this path:
-	//
-	// codeDir = "../testing/test/testdata/external-resource-schema/go/"
-	//
-	// We will generate "$codeDir/go.mod" using
-	// `external-resource-schema` as the module name so that it
-	// can compile independently.
+	schemaPath := filepath.Join(filepath.Dir(codeDir), "schema.json")
+	if gotSchema, err := test.PathExists(schemaPath); err == nil && gotSchema {
+		if info, err := readGoPackageInfo(schemaPath); err == nil {
+			if info.ModulePath != "" {
+				return info.ModulePath
+			}
+		}
+	}
+
 	return filepath.Base(filepath.Dir(codeDir))
 }
 
