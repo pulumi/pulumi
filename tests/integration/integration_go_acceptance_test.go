@@ -17,11 +17,13 @@
 package ints
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -171,4 +173,23 @@ func optsForConstructGo(t *testing.T, dir string, expectedResourceCount int, loc
 			}
 		},
 	}
+}
+
+func TestConstructComponentConfigureProviderGo(t *testing.T) {
+	const testDir = "construct_component_configure_provider"
+	runComponentSetup(t, testDir)
+	pulumiRoot, err := filepath.Abs("../..")
+	require.NoError(t, err)
+	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
+	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
+	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+	opts := testConstructComponentConfigureProviderCommonOptions()
+	opts = opts.With(integration.ProgramTestOptions{
+		Dir: filepath.Join(testDir, "go"),
+		Dependencies: []string{
+			fmt.Sprintf("github.com/pulumi/pulumi/sdk/v3=%s", pulumiGoSDK),
+			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
+		},
+	})
+	integration.ProgramTest(t, &opts)
 }
