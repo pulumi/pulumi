@@ -17,19 +17,18 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
+	"github.com/pulumi/pulumi-tls/sdk/v4/go/tls"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Configurer struct {
 	pulumi.ResourceState
-	AwsRegion  pulumi.StringOutput `pulumi:"awsRegion"`
-	AwsProfile pulumi.StringOutput `pulumi:"awsProfile"`
+
+	TlsProxy pulumi.StringOutput `pulumi:"tlsProxy"`
 }
 
 type ConfigurerArgs struct {
-	AwsRegion  pulumi.StringInput `pulumi:"awsRegion"`
-	AwsProfile pulumi.StringInput `pulumi:"awsProfile"`
+	TlsProxy pulumi.StringInput `pulumi:"tlsProxy"`
 }
 
 func NewConfigurer(
@@ -47,34 +46,39 @@ func NewConfigurer(
 		return nil, err
 	}
 
-	component.AwsRegion = args.AwsRegion.ToStringOutput()
-	component.AwsProfile = args.AwsProfile.ToStringOutput()
+	component.TlsProxy = args.TlsProxy.ToStringOutput()
 
 	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
-		"awsRegion":  component.AwsRegion,
-		"awsProfile": component.AwsProfile,
+		"tlsProxy": component.TlsProxy,
 	}); err != nil {
 		return nil, err
 	}
 	return component, nil
 }
 
-type AwsProviderArgs struct{}
+type TlsProviderArgs struct{}
 
-type AwsProviderResult struct {
-	Resource aws.ProviderOutput `pulumi:"resource"`
+type TlsProviderResult struct {
+	Resource tls.ProviderOutput `pulumi:"resource"`
 }
 
-func (c *Configurer) AwsProvider(ctx *pulumi.Context, args *AwsProviderArgs) (*AwsProviderResult, error) {
-	awsProv, err := aws.NewProvider(ctx, "aws-p", &aws.ProviderArgs{
-		Region:  c.AwsRegion,
-		Profile: c.AwsProfile,
+func (c *Configurer) TlsProvider(ctx *pulumi.Context, args *TlsProviderArgs) (*TlsProviderResult, error) {
+	prov, err := tls.NewProvider(ctx, "tls-p", &tls.ProviderArgs{
+		// Due to pulumi/pulumi-tls#160 cannot yet set URL here, but can test setting FromEnv.
+		Proxy: &tls.ProviderProxyArgs{
+			FromEnv: c.TlsProxy.ApplyT(func(proxy string) bool {
+				if proxy == "FromEnv" {
+					return true
+				}
+				return false
+			}).(pulumi.BoolOutput),
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &AwsProviderResult{
-		Resource: awsProv.ToProviderOutput(),
+	return &TlsProviderResult{
+		Resource: prov.ToProviderOutput(),
 	}, nil
 }

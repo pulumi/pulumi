@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/pulumi/pulumi-aws/sdk/v5 v5.42.0
+	github.com/pulumi/pulumi-tls/sdk/v4 v4.10.0
 	github.com/pulumi/pulumi/pkg/v3 v3.76.1
 	github.com/pulumi/pulumi/sdk/v3 v3.76.1
 )
