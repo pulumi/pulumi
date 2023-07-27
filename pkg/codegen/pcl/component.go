@@ -15,11 +15,12 @@
 package pcl
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"path/filepath"
-	"strings"
 )
 
 // Component represents a component reference in a program.
