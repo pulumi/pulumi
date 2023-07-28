@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
@@ -1007,15 +1006,10 @@ func (host *goLanguageHost) RunPlugin(
 func (host *goLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
-
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 
 	extraOptions := make([]pcl.BindOption, 0)
 	if !req.Strict {
@@ -1059,10 +1053,7 @@ func (host *goLanguageHost) GenerateProject(
 func (host *goLanguageHost) GenerateProgram(
 	ctx context.Context, req *pulumirpc.GenerateProgramRequest,
 ) (*pulumirpc.GenerateProgramResponse, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1080,7 +1071,6 @@ func (host *goLanguageHost) GenerateProgram(
 		}
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	program, pdiags, err := pcl.BindProgram(parser.Files, pcl.Loader(loader))
 	if err != nil {
 		return nil, err
@@ -1122,10 +1112,7 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, errors.New("overlays are not supported for Go")
 	}
 
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
-		Color: cmdutil.GetGlobalColorization(),
-	})
-	pluginCtx, err := plugin.NewContext(sink, sink, nil, nil, host.cwd, nil, true, nil)
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -1136,7 +1123,6 @@ func (host *goLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(pluginCtx.Host)
 	pkg, diags, err := schema.BindSpec(spec, loader)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Language plugins now defer schema loading to the engine via a gRPC interface.

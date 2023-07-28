@@ -1454,3 +1454,34 @@ func TestConstructProviderExplicitNode(t *testing.T) {
 
 	testConstructProviderExplicit(t, "nodejs", []string{"@pulumi/pulumi"})
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/7376
+func TestUndefinedStackOutputNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "undefined-stack-output"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.Equal(t, nil, stack.Outputs["nil"])
+			assert.Equal(t, []interface{}{0.0, nil, nil}, stack.Outputs["list"])
+			assert.Equal(t, map[string]interface{}{
+				"nil2":    nil,
+				"number2": 0.0,
+			}, stack.Outputs["map"])
+
+			var found bool
+			for _, event := range stack.Events {
+				if event.DiagnosticEvent != nil {
+					if event.DiagnosticEvent.Severity == "warning" &&
+						strings.Contains(event.DiagnosticEvent.Message, "will not show as a stack output") {
+
+						assert.Equal(t,
+							"Undefined value (undef) will not show as a stack output.\n",
+							event.DiagnosticEvent.Message)
+						found = true
+					}
+				}
+			}
+			assert.True(t, found, "Did not see undef warning")
+		},
+	})
+}

@@ -142,6 +142,8 @@ message RunPluginResponse {
 message GenerateProgramRequest {
     // the PCL source of the project.
     map<string, string> source = 1;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 2;
 }
 
 message GenerateProgramResponse {
@@ -160,6 +162,8 @@ message GenerateProjectRequest {
     string project = 3;
     // if PCL binding should be strict or not.
     bool strict = 4;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 5;
 }
 
 message GenerateProjectResponse {
@@ -174,6 +178,8 @@ message GeneratePackageRequest {
     string schema = 2;
     // extra files to copy to the package output.
     map<string, bytes> extra_files = 3;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 4;
 }
 
 message GeneratePackageResponse {

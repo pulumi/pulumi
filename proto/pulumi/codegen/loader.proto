@@ -1,0 +1,43 @@
+// Copyright 2016-2023, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+package codegen;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+
+// Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
+// This is currently unstable and experimental.
+service Loader {
+    // GetSchema tries to find a schema for the given package and version.
+    rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse) {}
+}
+
+// GetSchemaRequest allows the engine to return a schema for a given package and version.
+message GetSchemaRequest {
+    // the package name for the schema being requested.
+    string package = 1;
+    // the version for the schema being requested, must be a valid semver or empty.
+    string version = 2;
+}
+
+// GetSchemaResponse returns the schema data for the requested package.
+message GetSchemaResponse {
+    // the JSON encoded schema.
+    bytes schema = 1;
+}

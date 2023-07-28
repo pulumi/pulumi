@@ -262,13 +262,22 @@ func runConvert(
 				return nil, err
 			}
 
+			loaderServer := schema.NewLoaderServer(loader)
+			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+			if err != nil {
+				return nil, err
+			}
+			defer contract.IgnoreClose(grpcServer)
+
 			projectBytes, err := encoding.JSON.Marshal(proj)
 			if err != nil {
 				return nil, err
 			}
 			projectJSON := string(projectBytes)
 
-			diagnostics, err := languagePlugin.GenerateProject(sourceDirectory, targetDirectory, projectJSON, strict)
+			diagnostics, err := languagePlugin.GenerateProject(
+				sourceDirectory, targetDirectory, projectJSON,
+				strict, grpcServer.Addr())
 			if err != nil {
 				return diagnostics, err
 			}

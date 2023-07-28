@@ -87,14 +87,14 @@ func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Re
 	return nil, nil, nil, fmt.Errorf("inline plugins are not currently supported")
 }
 
-func (p *languageRuntime) GenerateProject(string, string, string, bool) (hcl.Diagnostics, error) {
+func (p *languageRuntime) GenerateProject(string, string, string, bool, string) (hcl.Diagnostics, error) {
 	return nil, fmt.Errorf("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte) error {
+func (p *languageRuntime) GeneratePackage(string, string, map[string][]byte, string) error {
 	return fmt.Errorf("GeneratePackage is not supported")
 }
 
-func (p *languageRuntime) GenerateProgram(map[string]string) (map[string][]byte, hcl.Diagnostics, error) {
+func (p *languageRuntime) GenerateProgram(map[string]string, string) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, fmt.Errorf("GenerateProgram is not supported")
 }
