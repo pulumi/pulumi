@@ -980,7 +980,7 @@ func (b *localBackend) Watch(ctx context.Context, stk backend.Stack,
 	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
-func (b *localBackend) Search(_ context.Context, _ string, _ interface{}) (*apitype.ResourceSearchResponse, error) {
+func (b *localBackend) Search(_ context.Context, _ string, _ *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 	return nil, fmt.Errorf("search is not supported for the local backend")
 }
 
