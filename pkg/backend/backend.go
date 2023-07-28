@@ -218,7 +218,7 @@ type Backend interface {
 	CancelCurrentUpdate(ctx context.Context, stackRef StackReference) error
 
 	// Queries the backend for resources based on the given query parameters.
-	Search(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error)
+	Search(ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearch(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 }
 

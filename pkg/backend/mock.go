@@ -373,7 +373,7 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
-func (be *MockBackend) Search(_ context.Context, _ string, _ interface{}) (*apitype.ResourceSearchResponse, error) {
+func (be *MockBackend) Search(_ context.Context, _ string, _ *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 	return nil, fmt.Errorf("search is not supported for the mock backend")
 }
 
