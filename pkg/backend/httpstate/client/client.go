@@ -25,6 +25,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/blang/semver"
@@ -102,7 +103,6 @@ func (pc *Client) URL() string {
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj interface{}) error {
-	fmt.Println(pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken)
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
 		httpCallOptions{})
 }
@@ -1148,9 +1148,9 @@ func getNaturalLanguageSearchPath(orgName string) string {
 }
 
 // Pulumi Cloud Search Functions
-func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, queryParams interface{}) (*apitype.ResourceSearchResponse, error) {
+func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 	var resp apitype.ResourceSearchResponse
-	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), queryParams, nil, &resp)
+	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), *queryParams, nil, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
@@ -1159,6 +1159,7 @@ func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, que
 
 func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, orgName string, queryString string) (*apitype.PulumiQueryResponse, error) {
 	var resp apitype.PulumiQueryResponse
+	var cleanedResponse apitype.PulumiQueryResponse
 	queryParamObject := apitype.PulumiQueryRequest{
 		Query: queryString,
 	}
@@ -1166,7 +1167,9 @@ func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, orgName st
 	if err != nil {
 		return nil, fmt.Errorf("querying search failed: %w", err)
 	}
-	return &resp, nil
+	cleanedResponse.Query = strings.ReplaceAll(resp.Query, "\"", "")
+
+	return &cleanedResponse, nil
 }
 
 // func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, query string) (*apitype.PulumiQueryResponse, error) {

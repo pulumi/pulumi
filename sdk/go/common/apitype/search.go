@@ -17,6 +17,7 @@ package apitype
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type ResourceSearchResponse struct {
@@ -103,4 +104,17 @@ type PulumiQueryResponse struct {
 
 type PulumiQueryRequest struct {
 	Query string `url:"query"`
+}
+
+func ParseQueryParams(rawParams *[]string) *PulumiQueryRequest {
+	queryString := ""
+	for _, param := range *rawParams {
+		paramElements := strings.Split(param, "=")
+		if len(paramElements) != 2 {
+			queryString = fmt.Sprintf("%s%s ", queryString, param)
+		} else {
+			queryString = fmt.Sprintf("%s%s ", queryString, fmt.Sprintf("%s:%s", paramElements[0], paramElements[1]))
+		}
+	}
+	return &PulumiQueryRequest{Query: queryString}
 }
