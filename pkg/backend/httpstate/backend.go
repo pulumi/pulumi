@@ -1047,7 +1047,6 @@ func (b *cloudBackend) NaturalLanguageSearch(
 
 func (b *cloudBackend) NaturalLanguageSearch(ctx context.Context, orgName string, queryString string) (*apitype.ResourceSearchResponse, error) {
 	parsedResults, err := b.Client().GetNaturalLanguageQueryResults(ctx, orgName, queryString)
-	fmt.Println(*parsedResults)
 	if err != nil {
 		return nil, err
 	}
