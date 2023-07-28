@@ -11,12 +11,12 @@ return await Deployment.RunAsync(() =>
         3,
     }.Select((v, k) => new { Key = k, Value = v }).Select(entry => 
     {
-        return new Dictionary<string, object?>  
+        return 
         {
             { "usingKey", entry.Key },
             { "usingValue", entry.Value },
         };
-    });
+    }).ToList();
 
 });
 

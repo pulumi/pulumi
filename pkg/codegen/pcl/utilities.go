@@ -263,3 +263,19 @@ func UnwrapOption(exprType model.Type) model.Type {
 		return exprType
 	}
 }
+
+// VariableAccessed returns whether the given variable name is accessed in the given expression.
+func VariableAccessed(variableName string, expr model.Expression) bool {
+	accessed := false
+	visitor := func(subExpr model.Expression) (model.Expression, hcl.Diagnostics) {
+		if traversal, ok := subExpr.(*model.ScopeTraversalExpression); ok {
+			if traversal.RootName == variableName {
+				accessed = true
+			}
+		}
+		return subExpr, nil
+	}
+
+	model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	return accessed
+}

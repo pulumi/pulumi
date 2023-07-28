@@ -53,6 +53,17 @@ func ProgramTestBatch(k, n int) []ProgramTest {
 	return PulumiPulumiProgramTests[start:end]
 }
 
+// Useful when debugging a single test case.
+func SingleTestCase(directoryName string) []ProgramTest {
+	output := make([]ProgramTest, 0)
+	for _, t := range PulumiPulumiProgramTests {
+		if t.Directory == directoryName {
+			output = append(output, t)
+		}
+	}
+	return output
+}
+
 var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "assets-archives",
@@ -349,6 +360,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Directory:   "interpolated-string-keys",
 		Description: "Tests that interpolated string keys are supported in maps. ",
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
+	},
+	{
+		Directory:   "csharp-typed-for-expressions",
+		Description: "Testing for expressions with typed target expressions in csharp",
+		Skip:        allProgLanguages.Except("dotnet"),
 	},
 }
 
