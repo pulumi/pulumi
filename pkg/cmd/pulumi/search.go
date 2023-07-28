@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -55,8 +54,7 @@ func newSearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println(queryParams)
-			parsedQueryParams := parseQueryParams(queryParams)
+			parsedQueryParams := apitype.ParseQueryParams(queryParams)
 			userName, orgs, err := b.CurrentUser()
 			if err != nil {
 				return err
@@ -128,7 +126,6 @@ func newAISearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println(queryString)
 			userName, orgs, err := b.CurrentUser()
 			if err != nil {
 				return err
@@ -156,7 +153,7 @@ func newAISearchCmd() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringVarP(
 		&orgName, "org", "o", "",
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.",
+		"Organization name to search within",
 	)
 	queryString = cmd.PersistentFlags().StringP(
 		"query", "q", "",
@@ -164,10 +161,6 @@ func newAISearchCmd() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func parseQueryParams(rawParams *[]string) interface{} {
-	return apitype.PulumiQueryRequest{Query: strings.Join(*rawParams, "&")}
 }
 
 func sliceContains(slice []string, search string) bool {
