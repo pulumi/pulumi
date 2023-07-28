@@ -21,6 +21,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -276,6 +278,7 @@ func VariableAccessed(variableName string, expr model.Expression) bool {
 		return subExpr, nil
 	}
 
-	model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	_, diags := model.VisitExpression(expr, model.IdentityVisitor, visitor)
+	contract.Assertf(len(diags) == 0, "expected no diagnostics from VisitExpression")
 	return accessed
 }
