@@ -226,6 +226,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.pennock.tech/tabular v1.1.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
