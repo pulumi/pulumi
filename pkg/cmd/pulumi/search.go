@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/spf13/cobra"
+	auto_table "go.pennock.tech/tabular/auto"
 )
 
 func newSearchCmd() *cobra.Command {
@@ -73,8 +75,9 @@ func newSearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for _, r := range res.Resources {
-				fmt.Printf("%s - %s\n", *r.Name, *r.Type)
+			err = renderTable(res.Resources)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 			}
 			return nil
 		},
@@ -144,8 +147,9 @@ func newAISearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for _, r := range res.Resources {
-				fmt.Printf("%s - %s\n", *r.Name, *r.Type)
+			err = renderTable(res.Resources)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 			}
 			return nil
 		},
@@ -170,4 +174,18 @@ func sliceContains(slice []string, search string) bool {
 		}
 	}
 	return false
+}
+
+func renderTable(results []apitype.ResourceResult) error {
+	table := auto_table.New("utf8-heavy")
+	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
+	for _, r := range results {
+		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
+	}
+	if errs := table.Errors(); errs != nil {
+		for _, err := range errs {
+			fmt.Fprintf(os.Stderr, "table error: %s\n", err)
+		}
+	}
+	return table.RenderTo(os.Stdout)
 }
