@@ -702,8 +702,8 @@ func installDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	}
 
 	if err = lang.InstallDependencies(directory); err != nil {
-		return fmt.Errorf("installing dependencies failed; rerun manually to try again, "+
-			"then run `pulumi up` to perform an initial deployment: %w", err)
+		return fmt.Errorf("Your project has been created but dependency installation has failed. \n" +
+		"%w\n Once correction is performed, run `pulumi up` to perform an initial deployment.", err)
 	}
 
 	return nil
