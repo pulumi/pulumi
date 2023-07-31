@@ -32,7 +32,7 @@ import (
 
 func newSearchCmd() *cobra.Command {
 	var orgName string
-	var queryParams *[]string
+	var queryParams []string
 	cmd := &cobra.Command{
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
@@ -76,7 +76,7 @@ func newSearchCmd() *cobra.Command {
 				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
 			}
 
-			parsedQueryParams := apitype.ParseQueryParams(queryParams)
+			parsedQueryParams := apitype.ParseQueryParams(&queryParams)
 			res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
 			if err != nil {
 				return err
@@ -99,8 +99,8 @@ func newSearchCmd() *cobra.Command {
 		&orgName, "org", "o", "",
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.",
 	)
-	queryParams = cmd.PersistentFlags().StringArrayP(
-		"query", "q", []string{},
+	cmd.PersistentFlags().StringArrayVarP(
+		&queryParams, "query", "q", []string{},
 		"Key-value pairs to use as query parameters. Must be formatted like: -q key1=value1 -q key2=value2",
 	)
 

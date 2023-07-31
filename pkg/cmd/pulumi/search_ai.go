@@ -27,7 +27,7 @@ import (
 )
 
 func newAISearchCmd() *cobra.Command {
-	var queryString *string
+	var queryString string
 	var orgName string
 	cmd := &cobra.Command{
 		Use:   "ai",
@@ -72,7 +72,7 @@ func newAISearchCmd() *cobra.Command {
 				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
 			}
 
-			res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, *queryString)
+			res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, queryString)
 			if err != nil {
 				return err
 			}
@@ -88,8 +88,8 @@ func newAISearchCmd() *cobra.Command {
 		&orgName, "org", "o", "",
 		"Organization name to search within",
 	)
-	queryString = cmd.PersistentFlags().StringP(
-		"query", "q", "",
+	cmd.PersistentFlags().StringVarP(
+		&queryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
 
