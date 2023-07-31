@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -30,9 +31,62 @@ import (
 	auto_table "go.pennock.tech/tabular/auto"
 )
 
+type searchCmd struct {
+	orgName     string
+	queryParams []string
+}
+
+func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
+	interactive := cmdutil.Interactive()
+
+	opts := backend.QueryOptions{}
+	opts.Display = display.Options{
+		Color:         cmdutil.GetGlobalColorization(),
+		IsInteractive: interactive,
+		Type:          display.DisplayQuery,
+	}
+	// Try to read the current project
+	project, _, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	backend, err := currentBackend(ctx, project, opts.Display)
+	if err != nil {
+		return err
+	}
+	cloudBackend, isCloud := backend.(httpstate.Backend)
+	if !isCloud {
+		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
+	}
+	userName, orgs, err := cloudBackend.CurrentUser()
+	if err != nil {
+		return err
+	}
+	var filterName string
+	if cmd.orgName == "" {
+		filterName = userName
+	} else {
+		filterName = cmd.orgName
+	}
+	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
+		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
+	}
+
+	parsedQueryParams := apitype.ParseQueryParams(&cmd.queryParams)
+	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
+	if err != nil {
+		return err
+	}
+	err = renderTable(res.Resources)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
+	}
+	return nil
+}
+
 func newSearchCmd() *cobra.Command {
-	var orgName string
-	var queryParams []string
+	var scmd searchCmd
 	cmd := &cobra.Command{
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
@@ -40,52 +94,7 @@ func newSearchCmd() *cobra.Command {
 		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
-			interactive := cmdutil.Interactive()
-
-			opts := backend.QueryOptions{}
-			opts.Display = display.Options{
-				Color:         cmdutil.GetGlobalColorization(),
-				IsInteractive: interactive,
-				Type:          display.DisplayQuery,
-			}
-			// Try to read the current project
-			project, _, err := readProject()
-			if err != nil {
-				return err
-			}
-
-			backend, err := currentBackend(ctx, project, opts.Display)
-			if err != nil {
-				return err
-			}
-			cloudBackend, isCloud := backend.(httpstate.Backend)
-			if !isCloud {
-				return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
-			}
-			userName, orgs, err := cloudBackend.CurrentUser()
-			if err != nil {
-				return err
-			}
-			var filterName string
-			if orgName == "" {
-				filterName = userName
-			} else {
-				filterName = orgName
-			}
-			if !sliceContains(orgs, orgName) && orgName != "" {
-				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
-			}
-
-			parsedQueryParams := apitype.ParseQueryParams(&queryParams)
-			res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
-			if err != nil {
-				return err
-			}
-			err = renderTable(res.Resources)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
-			}
-			return nil
+			return scmd.Run(ctx, args)
 		},
 		),
 	}
@@ -96,11 +105,11 @@ func newSearchCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&orgName, "org", "o", "",
+		&scmd.orgName, "org", "o", "",
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.",
 	)
 	cmd.PersistentFlags().StringArrayVarP(
-		&queryParams, "query", "q", []string{},
+		&scmd.queryParams, "query", "q", []string{},
 		"Key-value pairs to use as query parameters. Must be formatted like: -q key1=value1 -q key2=value2",
 	)
 
