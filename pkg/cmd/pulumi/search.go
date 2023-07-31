@@ -15,11 +15,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,12 +54,15 @@ func newSearchCmd() *cobra.Command {
 				return err
 			}
 
-			b, err := currentBackend(ctx, project, opts.Display)
+			backend, err := currentBackend(ctx, project, opts.Display)
 			if err != nil {
 				return err
 			}
-			parsedQueryParams := apitype.ParseQueryParams(queryParams)
-			userName, orgs, err := b.CurrentUser()
+			cloudBackend, isCloud := backend.(httpstate.Backend)
+			if !isCloud {
+				return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
+			}
+			userName, orgs, err := cloudBackend.CurrentUser()
 			if err != nil {
 				return err
 			}
@@ -71,7 +76,8 @@ func newSearchCmd() *cobra.Command {
 				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
 			}
 
-			res, err := b.Search(ctx, filterName, parsedQueryParams)
+			parsedQueryParams := apitype.ParseQueryParams(queryParams)
+			res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
 			if err != nil {
 				return err
 			}
@@ -125,11 +131,15 @@ func newAISearchCmd() *cobra.Command {
 				return err
 			}
 
-			b, err := currentBackend(ctx, project, opts.Display)
+			backend, err := currentBackend(ctx, project, opts.Display)
 			if err != nil {
 				return err
 			}
-			userName, orgs, err := b.CurrentUser()
+			cloudBackend, isCloud := backend.(httpstate.Backend)
+			if !isCloud {
+				return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
+			}
+			userName, orgs, err := cloudBackend.CurrentUser()
 			if err != nil {
 				return err
 			}
@@ -143,7 +153,7 @@ func newAISearchCmd() *cobra.Command {
 				return fmt.Errorf("user %s is not a member of org %s", userName, orgName)
 			}
 
-			res, err := b.NaturalLanguageSearch(ctx, filterName, *queryString)
+			res, err := cloudBackend.NaturalLanguageSearch(ctx, filterName, *queryString)
 			if err != nil {
 				return err
 			}

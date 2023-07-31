@@ -113,6 +113,10 @@ type Backend interface {
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
 		opts display.Options) error
+
+	// Queries the backend for resources based on the given query parameters.
+	Search(ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
+	NaturalLanguageSearch(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
 }
 
 type cloudBackend struct {

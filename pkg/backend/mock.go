@@ -16,7 +16,6 @@ package backend
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -371,14 +370,6 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 		return be.CancelCurrentUpdateF(ctx, stackRef)
 	}
 	panic("not implemented")
-}
-
-func (be *MockBackend) Search(_ context.Context, _ string, _ *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
-	return nil, fmt.Errorf("search is not supported for the mock backend")
-}
-
-func (be *MockBackend) NaturalLanguageSearch(_ context.Context, _ string, _ string) (*apitype.ResourceSearchResponse, error) {
-	return nil, fmt.Errorf("search is not supported for the mock backend")
 }
 
 //
