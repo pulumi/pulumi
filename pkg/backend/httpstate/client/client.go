@@ -1148,7 +1148,9 @@ func getNaturalLanguageSearchPath(orgName string) string {
 }
 
 // Pulumi Cloud Search Functions
-func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+func (pc *Client) GetSearchQueryResults(
+	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
+) (*apitype.ResourceSearchResponse, error) {
 	var resp apitype.ResourceSearchResponse
 	err := pc.restCall(ctx, http.MethodGet, getSearchPath(orgName), *queryParams, nil, &resp)
 	if err != nil {
@@ -1157,7 +1159,9 @@ func (pc *Client) GetSearchQueryResults(ctx context.Context, orgName string, que
 	return &resp, nil
 }
 
-func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, orgName string, queryString string) (*apitype.PulumiQueryResponse, error) {
+func (pc *Client) GetNaturalLanguageQueryResults(
+	ctx context.Context, orgName string, queryString string,
+) (*apitype.PulumiQueryResponse, error) {
 	var resp apitype.PulumiQueryResponse
 	var cleanedResponse apitype.PulumiQueryResponse
 	queryParamObject := apitype.PulumiQueryRequest{
@@ -1171,9 +1175,6 @@ func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, orgName st
 
 	return &cleanedResponse, nil
 }
-
-// func (pc *Client) GetNaturalLanguageQueryResults(ctx context.Context, query string) (*apitype.PulumiQueryResponse, error) {
-// }
 
 func is404(err error) bool {
 	if err == nil {
