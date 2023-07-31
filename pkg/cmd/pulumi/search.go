@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
 )
@@ -100,7 +99,7 @@ func newSearchCmd() *cobra.Command {
 	}
 
 	// TODO: Remove this branch once we release this feature fully.
-	if envutil.BoolValue(env.Dev).Value() {
+	if env.Dev.Value() {
 		cmd.AddCommand(newAISearchCmd())
 	}
 
