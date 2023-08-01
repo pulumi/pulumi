@@ -37,7 +37,6 @@ goog.exportSymbol('proto.pulumirpc.InstallDependenciesRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.InstallDependenciesResponse', null, global);
 goog.exportSymbol('proto.pulumirpc.RunPluginRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RunPluginResponse', null, global);
-goog.exportSymbol('proto.pulumirpc.RunPluginResponse.OutputCase', null, global);
 goog.exportSymbol('proto.pulumirpc.RunRequest', null, global);
 goog.exportSymbol('proto.pulumirpc.RunResponse', null, global);
 /**
@@ -282,7 +281,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.RunPluginResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, proto.pulumirpc.RunPluginResponse.oneofGroups_);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
 goog.inherits(proto.pulumirpc.RunPluginResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -2202,7 +2201,7 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.toObject = function(opt_inc
 proto.pulumirpc.InstallDependenciesRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     directory: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    isTerminal: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+    outputTarget: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -2244,8 +2243,8 @@ proto.pulumirpc.InstallDependenciesRequest.deserializeBinaryFromReader = functio
       msg.setDirectory(value);
       break;
     case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setIsTerminal(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOutputTarget(value);
       break;
     default:
       reader.skipField();
@@ -2283,9 +2282,9 @@ proto.pulumirpc.InstallDependenciesRequest.serializeBinaryToWriter = function(me
       f
     );
   }
-  f = message.getIsTerminal();
-  if (f) {
-    writer.writeBool(
+  f = message.getOutputTarget();
+  if (f.length > 0) {
+    writer.writeString(
       2,
       f
     );
@@ -2312,20 +2311,20 @@ proto.pulumirpc.InstallDependenciesRequest.prototype.setDirectory = function(val
 
 
 /**
- * optional bool is_terminal = 2;
- * @return {boolean}
+ * optional string output_target = 2;
+ * @return {string}
  */
-proto.pulumirpc.InstallDependenciesRequest.prototype.getIsTerminal = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 2, false));
+proto.pulumirpc.InstallDependenciesRequest.prototype.getOutputTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /**
- * @param {boolean} value
+ * @param {string} value
  * @return {!proto.pulumirpc.InstallDependenciesRequest} returns this
  */
-proto.pulumirpc.InstallDependenciesRequest.prototype.setIsTerminal = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 2, value);
+proto.pulumirpc.InstallDependenciesRequest.prototype.setOutputTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -2361,8 +2360,7 @@ proto.pulumirpc.InstallDependenciesResponse.prototype.toObject = function(opt_in
  */
 proto.pulumirpc.InstallDependenciesResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    stdout: msg.getStdout_asB64(),
-    stderr: msg.getStderr_asB64()
+
   };
 
   if (includeInstance) {
@@ -2399,14 +2397,6 @@ proto.pulumirpc.InstallDependenciesResponse.deserializeBinaryFromReader = functi
     }
     var field = reader.getFieldNumber();
     switch (field) {
-    case 1:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStdout(value);
-      break;
-    case 2:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStderr(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -2436,104 +2426,6 @@ proto.pulumirpc.InstallDependenciesResponse.prototype.serializeBinary = function
  */
 proto.pulumirpc.InstallDependenciesResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getStdout_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      1,
-      f
-    );
-  }
-  f = message.getStderr_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      2,
-      f
-    );
-  }
-};
-
-
-/**
- * optional bytes stdout = 1;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * This is a type-conversion wrapper around `getStdout()`
- * @return {string}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStdout()));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStdout()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStdout_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStdout()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.InstallDependenciesResponse} returns this
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.setStdout = function(value) {
-  return jspb.Message.setProto3BytesField(this, 1, value);
-};
-
-
-/**
- * optional bytes stderr = 2;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * This is a type-conversion wrapper around `getStderr()`
- * @return {string}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStderr()));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStderr()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.getStderr_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStderr()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.InstallDependenciesResponse} returns this
- */
-proto.pulumirpc.InstallDependenciesResponse.prototype.setStderr = function(value) {
-  return jspb.Message.setProto3BytesField(this, 2, value);
 };
 
 
@@ -2579,7 +2471,8 @@ proto.pulumirpc.RunPluginRequest.toObject = function(includeInstance, msg) {
     pwd: jspb.Message.getFieldWithDefault(msg, 1, ""),
     program: jspb.Message.getFieldWithDefault(msg, 2, ""),
     argsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
-    envList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f
+    envList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
+    outputTarget: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -2631,6 +2524,10 @@ proto.pulumirpc.RunPluginRequest.deserializeBinaryFromReader = function(msg, rea
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.addEnv(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOutputTarget(value);
       break;
     default:
       reader.skipField();
@@ -2686,6 +2583,13 @@ proto.pulumirpc.RunPluginRequest.serializeBinaryToWriter = function(message, wri
   if (f.length > 0) {
     writer.writeRepeatedString(
       4,
+      f
+    );
+  }
+  f = message.getOutputTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -2802,33 +2706,24 @@ proto.pulumirpc.RunPluginRequest.prototype.clearEnvList = function() {
 };
 
 
-
 /**
- * Oneof group definitions for this message. Each group defines the field
- * numbers belonging to that group. When of these fields' value is set, all
- * other fields in the group are cleared. During deserialization, if multiple
- * fields are encountered for a group, only the last value seen will be kept.
- * @private {!Array<!Array<number>>}
- * @const
+ * optional string output_target = 5;
+ * @return {string}
  */
-proto.pulumirpc.RunPluginResponse.oneofGroups_ = [[1,2,3]];
-
-/**
- * @enum {number}
- */
-proto.pulumirpc.RunPluginResponse.OutputCase = {
-  OUTPUT_NOT_SET: 0,
-  STDOUT: 1,
-  STDERR: 2,
-  EXITCODE: 3
+proto.pulumirpc.RunPluginRequest.prototype.getOutputTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
+
 /**
- * @return {proto.pulumirpc.RunPluginResponse.OutputCase}
+ * @param {string} value
+ * @return {!proto.pulumirpc.RunPluginRequest} returns this
  */
-proto.pulumirpc.RunPluginResponse.prototype.getOutputCase = function() {
-  return /** @type {proto.pulumirpc.RunPluginResponse.OutputCase} */(jspb.Message.computeOneofCase(this, proto.pulumirpc.RunPluginResponse.oneofGroups_[0]));
+proto.pulumirpc.RunPluginRequest.prototype.setOutputTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
+
+
 
 
 
@@ -2861,9 +2756,7 @@ proto.pulumirpc.RunPluginResponse.prototype.toObject = function(opt_includeInsta
  */
 proto.pulumirpc.RunPluginResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    stdout: msg.getStdout_asB64(),
-    stderr: msg.getStderr_asB64(),
-    exitcode: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    exitcode: jspb.Message.getFieldWithDefault(msg, 1, 0)
   };
 
   if (includeInstance) {
@@ -2901,14 +2794,6 @@ proto.pulumirpc.RunPluginResponse.deserializeBinaryFromReader = function(msg, re
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStdout(value);
-      break;
-    case 2:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setStderr(value);
-      break;
-    case 3:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setExitcode(value);
       break;
@@ -2941,156 +2826,22 @@ proto.pulumirpc.RunPluginResponse.prototype.serializeBinary = function() {
  */
 proto.pulumirpc.RunPluginResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = /** @type {!(string|Uint8Array)} */ (jspb.Message.getField(message, 1));
-  if (f != null) {
-    writer.writeBytes(
+  f = message.getExitcode();
+  if (f !== 0) {
+    writer.writeInt32(
       1,
       f
     );
   }
-  f = /** @type {!(string|Uint8Array)} */ (jspb.Message.getField(message, 2));
-  if (f != null) {
-    writer.writeBytes(
-      2,
-      f
-    );
-  }
-  f = /** @type {number} */ (jspb.Message.getField(message, 3));
-  if (f != null) {
-    writer.writeInt32(
-      3,
-      f
-    );
-  }
 };
 
 
 /**
- * optional bytes stdout = 1;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStdout = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * This is a type-conversion wrapper around `getStdout()`
- * @return {string}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStdout_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStdout()));
-};
-
-
-/**
- * optional bytes stdout = 1;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStdout()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStdout_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStdout()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.RunPluginResponse} returns this
- */
-proto.pulumirpc.RunPluginResponse.prototype.setStdout = function(value) {
-  return jspb.Message.setOneofField(this, 1, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], value);
-};
-
-
-/**
- * Clears the field making it undefined.
- * @return {!proto.pulumirpc.RunPluginResponse} returns this
- */
-proto.pulumirpc.RunPluginResponse.prototype.clearStdout = function() {
-  return jspb.Message.setOneofField(this, 1, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.RunPluginResponse.prototype.hasStdout = function() {
-  return jspb.Message.getField(this, 1) != null;
-};
-
-
-/**
- * optional bytes stderr = 2;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStderr = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * This is a type-conversion wrapper around `getStderr()`
- * @return {string}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStderr_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getStderr()));
-};
-
-
-/**
- * optional bytes stderr = 2;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getStderr()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.RunPluginResponse.prototype.getStderr_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getStderr()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.RunPluginResponse} returns this
- */
-proto.pulumirpc.RunPluginResponse.prototype.setStderr = function(value) {
-  return jspb.Message.setOneofField(this, 2, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], value);
-};
-
-
-/**
- * Clears the field making it undefined.
- * @return {!proto.pulumirpc.RunPluginResponse} returns this
- */
-proto.pulumirpc.RunPluginResponse.prototype.clearStderr = function() {
-  return jspb.Message.setOneofField(this, 2, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.RunPluginResponse.prototype.hasStderr = function() {
-  return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * optional int32 exitcode = 3;
+ * optional int32 exitcode = 1;
  * @return {number}
  */
 proto.pulumirpc.RunPluginResponse.prototype.getExitcode = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
@@ -3099,25 +2850,7 @@ proto.pulumirpc.RunPluginResponse.prototype.getExitcode = function() {
  * @return {!proto.pulumirpc.RunPluginResponse} returns this
  */
 proto.pulumirpc.RunPluginResponse.prototype.setExitcode = function(value) {
-  return jspb.Message.setOneofField(this, 3, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], value);
-};
-
-
-/**
- * Clears the field making it undefined.
- * @return {!proto.pulumirpc.RunPluginResponse} returns this
- */
-proto.pulumirpc.RunPluginResponse.prototype.clearExitcode = function() {
-  return jspb.Message.setOneofField(this, 3, proto.pulumirpc.RunPluginResponse.oneofGroups_[0], undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.RunPluginResponse.prototype.hasExitcode = function() {
-  return jspb.Message.getField(this, 3) != null;
+  return jspb.Message.setProto3IntField(this, 1, value);
 };
 
 

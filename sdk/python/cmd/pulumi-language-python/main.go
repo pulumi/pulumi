@@ -843,25 +843,35 @@ func validateVersion(ctx context.Context, virtualEnvPath string) {
 }
 
 func (host *pythonLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
+	ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	outputClient, err := rpcutil.DialOutputClient(ctx, req.OutputTarget)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	closer, stdout, stderr, err := rpcutil.BindOutputClient(ctx, outputClient)
+	if err != nil {
+		return nil, err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	if err := python.InstallDependenciesWithWriters(server.Context(),
+	if err := python.InstallDependenciesWithWriters(ctx,
 		req.Directory, host.virtualenvPath, true /*showOutput*/, stdout, stderr); err != nil {
-		return err
+		return nil, err
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	err = closer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *pythonLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
@@ -955,8 +965,9 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 }
 
 func (host *pythonLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+	ctx context.Context,
+	req *pulumirpc.RunPluginRequest,
+) (*pulumirpc.RunPluginResponse, error) {
 	logging.V(5).Infof("Attempting to run python plugin in %s", req.Program)
 
 	args := []string{req.Program}
@@ -967,20 +978,24 @@ func (host *pythonLanguageHost) RunPlugin(
 	if host.virtualenv != "" {
 		virtualenv = host.virtualenvPath
 		if !python.IsVirtualEnv(virtualenv) {
-			return python.NewVirtualEnvError(host.virtualenv, virtualenv)
+			return nil, python.NewVirtualEnvError(host.virtualenv, virtualenv)
 		}
 		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
 	} else {
 		var err error
-		cmd, err = python.Command(server.Context(), args...)
+		cmd, err = python.Command(ctx, args...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	outputClient, err := rpcutil.DialOutputClient(ctx, req.OutputTarget)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	closer, stdout, stderr, err := rpcutil.BindOutputClient(ctx, outputClient)
+	if err != nil {
+		return nil, err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
@@ -996,14 +1011,19 @@ func (host *pythonLanguageHost) RunPlugin(
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				return server.Send(&pulumirpc.RunPluginResponse{
-					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
-				})
+				return &pulumirpc.RunPluginResponse{
+					Exitcode: int32(status.ExitStatus()),
+				}, nil
 			}
-			return fmt.Errorf("program exited unexpectedly: %w", exiterr)
+			return nil, fmt.Errorf("program exited unexpectedly: %w", exiterr)
 		}
-		return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
+		return nil, fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
 	}
 
-	return closer.Close()
+	err = closer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.RunPluginResponse{Exitcode: 0}, nil
 }

@@ -33,7 +33,7 @@ service LanguageRuntime {
     rpc GetPluginInfo(google.protobuf.Empty) returns (PluginInfo) {}
 
     // InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-    rpc InstallDependencies(InstallDependenciesRequest) returns (stream  InstallDependenciesResponse) {}
+    rpc InstallDependencies(InstallDependenciesRequest) returns (InstallDependenciesResponse) {}
 
     // About returns information about the runtime for this language.
     rpc About(google.protobuf.Empty) returns (AboutResponse) {}
@@ -42,7 +42,7 @@ service LanguageRuntime {
     rpc GetProgramDependencies(GetProgramDependenciesRequest) returns (GetProgramDependenciesResponse) {}
 
     // RunPlugin executes a plugin program and returns its result asynchronously.
-    rpc RunPlugin(RunPluginRequest) returns (stream RunPluginResponse) {}
+    rpc RunPlugin(RunPluginRequest) returns (RunPluginResponse) {}
 
     // GenerateProgram generates a given PCL program into a program for this language.
     rpc GenerateProgram(GenerateProgramRequest) returns (GenerateProgramResponse) {}
@@ -115,28 +115,30 @@ message RunResponse {
 }
 
 message InstallDependenciesRequest {
-    string directory = 1; // the program's working directory.
-    bool is_terminal = 2; // if we are running in a terminal and should use ANSI codes
+    // the program's working directory.
+    string directory = 1;
+    // the target of a OutputServer to use for displaying output.
+    string output_target = 2;
 }
 
-message InstallDependenciesResponse {
-    bytes stdout = 1; // a line of stdout text.
-    bytes stderr = 2; // a line of stderr text.
-}
+message InstallDependenciesResponse {}
 
 message RunPluginRequest{
-    string pwd = 1; // the program's working directory.
-    string program = 2; // the path to the program to execute.
-    repeated string args = 3; // any arguments to pass to the program.
-    repeated string env = 4; // any environment variables to set as part of the program.
+    // the program's working directory.
+    string pwd = 1;
+    // the path to the program to execute.
+    string program = 2;
+     // any arguments to pass to the program.
+    repeated string args = 3;
+    // any environment variables to set as part of the program.
+    repeated string env = 4;
+    // the target of a OutputServer to use for displaying output.
+    string output_target = 5;
 }
 
 message RunPluginResponse {
-    oneof output {
-        bytes stdout = 1; // a line of stdout text.
-        bytes stderr = 2; // a line of stderr text.
-        int32 exitcode = 3; // the exit code of the provider.
-    }
+    // the exit code of the plugin.
+    int32 exitcode = 1;
 }
 
 message GenerateProgramRequest {

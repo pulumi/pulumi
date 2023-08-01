@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import abc
-import collections.abc
 import google.protobuf.empty_pb2
 import grpc
 import grpc.aio
@@ -45,7 +44,7 @@ class LanguageRuntimeStub:
         pulumi.plugin_pb2.PluginInfo,
     ]
     """GetPluginInfo returns generic information about this plugin, like its version."""
-    InstallDependencies: grpc.UnaryStreamMultiCallable[
+    InstallDependencies: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.InstallDependenciesRequest,
         pulumi.language_pb2.InstallDependenciesResponse,
     ]
@@ -60,7 +59,7 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GetProgramDependenciesResponse,
     ]
     """GetProgramDependencies returns the set of dependencies required by the program."""
-    RunPlugin: grpc.UnaryStreamMultiCallable[
+    RunPlugin: grpc.UnaryUnaryMultiCallable[
         pulumi.language_pb2.RunPluginRequest,
         pulumi.language_pb2.RunPluginResponse,
     ]
@@ -112,7 +111,7 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.language_pb2.InstallDependenciesRequest,
         context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.language_pb2.InstallDependenciesResponse]:
+    ) -> pulumi.language_pb2.InstallDependenciesResponse:
         """InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects."""
     
     def About(
@@ -133,7 +132,7 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.language_pb2.RunPluginRequest,
         context: grpc.ServicerContext,
-    ) -> collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse]:
+    ) -> pulumi.language_pb2.RunPluginResponse:
         """RunPlugin executes a plugin program and returns its result asynchronously."""
     
     def GenerateProgram(

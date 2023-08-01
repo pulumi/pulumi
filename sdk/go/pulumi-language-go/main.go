@@ -867,11 +867,16 @@ func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empt
 }
 
 func (host *goLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
+	ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	outputClient, err := rpcutil.DialOutputClient(ctx, req.OutputTarget)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	closer, stdout, stderr, err := rpcutil.BindOutputClient(ctx, outputClient)
+	if err != nil {
+		return nil, err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
@@ -880,11 +885,11 @@ func (host *goLanguageHost) InstallDependencies(
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
-		return err
+		return nil, err
 	}
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
@@ -893,12 +898,17 @@ func (host *goLanguageHost) InstallDependencies(
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
+		return nil, fmt.Errorf("`go mod tidy` failed to install dependencies: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	err = closer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *goLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
@@ -960,19 +970,24 @@ func (host *goLanguageHost) GetProgramDependencies(
 }
 
 func (host *goLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
+	ctx context.Context,
+	req *pulumirpc.RunPluginRequest,
+) (*pulumirpc.RunPluginResponse, error) {
 	logging.V(5).Infof("Attempting to run go plugin in %s", req.Program)
 
 	program, err := compileProgram(req.Program, "")
 	if err != nil {
-		return fmt.Errorf("error in compiling Go: %w", err)
+		return nil, fmt.Errorf("error in compiling Go: %w", err)
 	}
 	defer os.Remove(program)
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	outputClient, err := rpcutil.DialOutputClient(ctx, req.OutputTarget)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	closer, stdout, stderr, err := rpcutil.BindOutputClient(ctx, outputClient)
+	if err != nil {
+		return nil, err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
@@ -985,22 +1000,26 @@ func (host *goLanguageHost) RunPlugin(
 	if err = cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				err = server.Send(&pulumirpc.RunPluginResponse{
-					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
-				})
-			} else {
-				err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
+				return &pulumirpc.RunPluginResponse{
+					Exitcode: int32(status.ExitStatus()),
+				}, nil
 			}
+			err = fmt.Errorf("program exited unexpectedly: %w", exiterr)
 		} else {
-			return fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
+			return nil, fmt.Errorf("problem executing plugin program (could not run language executor): %w", err)
 		}
 	}
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return closer.Close()
+	err = closer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.RunPluginResponse{Exitcode: 0}, nil
 }
 
 func (host *goLanguageHost) GenerateProject(

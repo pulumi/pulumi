@@ -265,9 +265,18 @@ func (h *langhost) Close() error {
 func (h *langhost) InstallDependencies(directory string) error {
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) executing",
 		h.runtime, directory)
-	resp, err := h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
-		Directory:  directory,
-		IsTerminal: cmdutil.GetGlobalColorization() != colors.Never,
+
+	// Start an output server
+	outputServer := rpcutil.NewOutputServer(os.Stdout, os.Stderr, cmdutil.GetGlobalColorization() != colors.Never)
+	grpcServer, err := NewServer(h.ctx, rpcutil.OutputRegistration(outputServer))
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(grpcServer)
+
+	_, err = h.client.InstallDependencies(h.ctx.Request(), &pulumirpc.InstallDependenciesRequest{
+		Directory:    directory,
+		OutputTarget: grpcServer.Addr(),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -281,27 +290,6 @@ func (h *langhost) InstallDependencies(directory string) error {
 		}
 
 		return rpcError
-	}
-
-	for {
-		output, err := resp.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) failed: err=%v",
-				h.runtime, directory, rpcError)
-			return rpcError
-		}
-
-		if len(output.Stdout) != 0 {
-			os.Stdout.Write(output.Stdout)
-		}
-
-		if len(output.Stderr) != 0 {
-			os.Stderr.Write(output.Stderr)
-		}
 	}
 
 	logging.V(7).Infof("langhost[%v].InstallDependencies(directory=%s) success",
@@ -368,53 +356,36 @@ func (h *langhost) GetProgramDependencies(info ProgInfo, transitiveDependencies 
 }
 
 func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
-	logging.V(7).Infof("langhost[%v].RunPlugin(pwd=%s,program=%s) executing",
-		h.runtime, info.Pwd, info.Program)
-
-	ctx, kill := context.WithCancel(h.ctx.Request())
-
-	resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
-		Pwd:     info.Pwd,
-		Program: info.Program,
-		Args:    info.Args,
-		Env:     info.Env,
-	})
-	if err != nil {
-		// If there was an error starting the plugin kill the context for this request to ensure any lingering
-		// connection terminates.
-		kill()
-		return nil, nil, nil, err
-	}
+	label := fmt.Sprintf("langhost[%v].RunPlugin(pwd=%s,program=%s)", h.runtime, info.Pwd, info.Program)
+	logging.V(7).Infof("%s executing", label)
 
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
 
+	// Start an output server
+	outputServer := rpcutil.NewOutputServer(outw, errw, cmdutil.GetGlobalColorization() != colors.Never)
+	grpcServer, err := NewServer(h.ctx, rpcutil.OutputRegistration(outputServer))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer contract.IgnoreClose(grpcServer)
+
+	ctx, kill := context.WithCancel(h.ctx.Request())
 	go func() {
-		for {
-			logging.V(10).Infoln("Waiting for plugin message")
-			msg, err := resp.Recv()
-			if err != nil {
-				contract.IgnoreError(outw.CloseWithError(err))
-				contract.IgnoreError(errw.CloseWithError(err))
-				break
-			}
-
-			logging.V(10).Infoln("Got plugin response: ", msg)
-
-			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
-				n, err := outw.Write(value.Stdout)
-				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
-				contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
-			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
-				n, err := errw.Write(value.Stderr)
-				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
-				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
-			} else if _, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
-				// If stdout and stderr are empty we've flushed and are returning the exit code
-				outw.Close()
-				errw.Close()
-				break
-			}
+		resp, err := h.client.RunPlugin(ctx, &pulumirpc.RunPluginRequest{
+			Pwd:     info.Pwd,
+			Program: info.Program,
+			Args:    info.Args,
+			Env:     info.Env,
+		})
+		if err != nil {
+			// If there was an error starting the plugin kill the context for this request to ensure any lingering
+			// connection terminates.
+			kill()
+			rpcError := rpcerror.Convert(err)
+			logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		} else {
+			logging.V(7).Infof("%s success: exitcode=%d", label, resp.Exitcode)
 		}
 	}()
 

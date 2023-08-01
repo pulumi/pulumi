@@ -1216,13 +1216,6 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func (s *languageRuntimeServer) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest,
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	return nil
-}
-
 type fileWatcher struct {
 	Filename  string
 	tail      *tail.Tail

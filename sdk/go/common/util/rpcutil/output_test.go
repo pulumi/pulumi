@@ -18,81 +18,103 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
+
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
+	"github.com/stretchr/testify/require"
 
 	"golang.org/x/term"
 )
 
-func makeStreamMock() *streamMock {
-	return &streamMock{
-		ctx: context.Background(),
+func makeMockSetup(t *testing.T, stdout, stderr io.WriteCloser, isTerminal bool) pulumirpc.OutputClient {
+	lis := bufconn.Listen(1024 * 1024)
+	outputServer := NewOutputServer(stdout, stderr, isTerminal)
+	grpcServer := grpc.NewServer()
+	pulumirpc.RegisterOutputServer(grpcServer, outputServer)
+	errChan := make(chan error)
+	go func() {
+		errChan <- grpcServer.Serve(lis)
+	}()
+	t.Cleanup(func() {
+		grpcServer.Stop()
+		err := <-errChan
+		if err != nil {
+			t.Fatalf("grpc server failed: %v", err)
+		}
+	})
+
+	bufDialer := func(context.Context, string) (net.Conn, error) {
+		return lis.Dial()
 	}
+
+	conn, err := grpc.DialContext(
+		context.Background(),
+		"bufnet",
+		grpc.WithContextDialer(bufDialer),
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("failed to dial bufnet: %v", err)
+	}
+	t.Cleanup(func() {
+		conn.Close()
+	})
+
+	return pulumirpc.NewOutputClient(conn)
 }
 
-type streamMock struct {
-	grpc.ServerStream
-	ctx    context.Context
-	stdout bytes.Buffer
-	stderr bytes.Buffer
+type mockBuffer struct {
+	bytes.Buffer
 }
 
-func (m *streamMock) Context() context.Context {
-	return m.ctx
-}
-
-func (m *streamMock) Send(resp *pulumirpc.InstallDependenciesResponse) error {
-	if _, err := m.stdout.Write(resp.Stdout); err != nil {
-		return err
-	}
-	if _, err := m.stderr.Write(resp.Stderr); err != nil {
-		return err
-	}
-	return nil
-}
+func (*mockBuffer) Close() error { return nil }
 
 func TestWriter_NoTerminal(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	var stdoutBuffer, stderrBuffer mockBuffer
+	client := makeMockSetup(t, &stdoutBuffer, &stderrBuffer, false)
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, false)
-	assert.NoError(t, err)
+	closer, stdout, stderr, err := BindOutputClient(context.Background(), client)
+	require.NoError(t, err)
 
 	// stdout and stderr should just write to server
 	l, err := stdout.Write([]byte("hello"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 5, l)
 
 	l, err = stderr.Write([]byte("world"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 5, l)
 
 	err = closer.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	outBytes, err := io.ReadAll(&server.stdout)
-	assert.NoError(t, err)
+	outBytes, err := io.ReadAll(&stdoutBuffer)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("hello"), outBytes)
 
-	errBytes, err := io.ReadAll(&server.stderr)
-	assert.NoError(t, err)
+	errBytes, err := io.ReadAll(&stderrBuffer)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("world"), errBytes)
 }
 
 func TestWriter_Terminal(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	var stdoutBuffer, stderrBuffer mockBuffer
+	client := makeMockSetup(t, &stdoutBuffer, &stderrBuffer, true)
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
-	assert.NoError(t, err)
+	closer, stdout, stderr, err := BindOutputClient(context.Background(), client)
+	require.NoError(t, err)
 
 	// We _may_ have made a pty and stdout and stderr are the same and both send to the server as stdout
 	if stdout == stderr {
@@ -107,7 +129,7 @@ func TestWriter_Terminal(t *testing.T) {
 		cmd.Stderr = stdout
 
 		err := cmd.Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		exitcode := cmd.ProcessState.ExitCode()
 		assert.Equal(t, 0, exitcode)
@@ -124,42 +146,42 @@ func TestWriter_Terminal(t *testing.T) {
 		cmd.Stderr = stdout
 
 		err = cmd.Run()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		exitcode = cmd.ProcessState.ExitCode()
 		assert.Equal(t, 0, exitcode)
 
 		err = closer.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		outBytes, err := io.ReadAll(&server.stdout)
-		assert.NoError(t, err)
+		outBytes, err := io.ReadAll(&stdoutBuffer)
+		require.NoError(t, err)
 		// echo adds an extra \n at the end, and line discipline will cause \n to come back as \r\n
 		expected := strings.ReplaceAll(text+"\n", "\n", "\r\n")
 		assert.Equal(t, []byte(expected), outBytes)
 
-		errBytes, err := io.ReadAll(&server.stderr)
-		assert.NoError(t, err)
+		errBytes, err := io.ReadAll(&stderrBuffer)
+		require.NoError(t, err)
 		assert.Equal(t, []byte{}, errBytes)
 	} else {
 		// else they are separate and should behave just like the NoTerminal case
 		l, err := stdout.Write([]byte("hello"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 5, l)
 
 		l, err = stderr.Write([]byte("world"))
-		assert.NoError(t, err)
-		assert.Equal(t, 5, l)
+		require.NoError(t, err)
+		require.Equal(t, 5, l)
 
 		err = closer.Close()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		outBytes, err := io.ReadAll(&server.stdout)
-		assert.NoError(t, err)
+		outBytes, err := io.ReadAll(&stdoutBuffer)
+		require.NoError(t, err)
 		assert.Equal(t, []byte("hello"), outBytes)
 
-		errBytes, err := io.ReadAll(&server.stderr)
-		assert.NoError(t, err)
+		errBytes, err := io.ReadAll(&stderrBuffer)
+		require.NoError(t, err)
 		assert.Equal(t, []byte("world"), errBytes)
 	}
 }
@@ -167,10 +189,11 @@ func TestWriter_Terminal(t *testing.T) {
 func TestWriter_IsPTY(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	var stdoutBuffer, stderrBuffer mockBuffer
+	client := makeMockSetup(t, &stdoutBuffer, &stderrBuffer, true)
 
-	closer, stdout, stderr, err := MakeInstallDependenciesStreams(server, true)
-	assert.NoError(t, err)
+	closer, stdout, stderr, err := BindOutputClient(context.Background(), client)
+	require.NoError(t, err)
 
 	// We _may_ have made a pty, check IsTerminal returns true
 	if stdout == stderr {
@@ -181,20 +204,21 @@ func TestWriter_IsPTY(t *testing.T) {
 	}
 
 	err = closer.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestWriter_SafeToCloseTwice(t *testing.T) {
 	t.Parallel()
 
-	server := makeStreamMock()
+	var stdoutBuffer, stderrBuffer mockBuffer
+	client := makeMockSetup(t, &stdoutBuffer, &stderrBuffer, false)
 
-	closer, _, _, err := MakeInstallDependenciesStreams(server, true)
-	assert.NoError(t, err)
-
-	err = closer.Close()
-	assert.NoError(t, err)
+	closer, _, _, err := BindOutputClient(context.Background(), client)
+	require.NoError(t, err)
 
 	err = closer.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	err = closer.Close()
+	require.NoError(t, err)
 }

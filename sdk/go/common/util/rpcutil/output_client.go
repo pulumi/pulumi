@@ -15,6 +15,8 @@
 package rpcutil
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -25,6 +27,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type ptyCloser struct {
@@ -63,87 +68,90 @@ func (w *ptyCloser) Close() error {
 	return multierror.Append(err, terr, perr).ErrorOrNil()
 }
 
-type nullCloser struct{}
+type nopCloser struct{}
 
-func (c *nullCloser) Close() error { return nil }
+func (w *nopCloser) Close() error { return nil }
 
-type pipeWriter struct {
-	send func([]byte) error
+type clientWriter struct {
+	client  pulumirpc.OutputClient
+	isError bool
 }
 
-func (w *pipeWriter) Write(p []byte) (int, error) {
-	err := w.send(p)
+func (w *clientWriter) Write(p []byte) (int, error) {
+	var request pulumirpc.WriteRequest
+	if w.isError {
+		request.Data = &pulumirpc.WriteRequest_Stderr{Stderr: p}
+	} else {
+		request.Data = &pulumirpc.WriteRequest_Stdout{Stdout: p}
+	}
+
+	_, err := w.client.Write(context.Background(), &request)
 	if err != nil {
 		return 0, err
 	}
 	return len(p), nil
 }
 
-func makeStreams(
-	sendStdout func([]byte) error, sendStderr func([]byte) error,
-	isTerminal bool,
-) (io.Closer, io.Writer, io.Writer, error) {
-	stderr := &pipeWriter{send: sendStderr}
-	stdout := &pipeWriter{send: sendStdout}
+func DialOutputClient(ctx context.Context, target string) (pulumirpc.OutputClient, error) {
+	conn, err := grpc.Dial(
+		target,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	if isTerminal {
+	return pulumirpc.NewOutputClient(conn), nil
+}
+
+func BindOutputClient(ctx context.Context, client pulumirpc.OutputClient) (io.Closer, io.Writer, io.Writer, error) {
+	contract.Requiref(client != nil, "client", "must not be nil")
+
+	// Check capabilities to see if we should spawn a pty for this client
+	capabilities, err := client.GetCapabilities(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("get capabilities: %w", err)
+	}
+
+	stdout := &clientWriter{client: client, isError: false}
+	stderr := &clientWriter{client: client, isError: true}
+
+	var pt, tt *os.File
+	if capabilities.IsTerminal {
 		logging.V(11).Infoln("Opening pseudo terminal")
-		pt, tt, err := openPty()
+		pt, tt, err = openPty()
 		if err == errUnsupported {
 			logging.V(11).Infoln("Pseudo terminal not supported")
 			// Fall through, just return plain stdout/err pipes
 		} else if err != nil {
 			// Fall through, just return plain stdout/err pipes but warn that we tried and failed to make a
 			// pty (with coloring because isTerminal means the other side understands ANSI codes)
-			stderr.Write([]byte(colors.Always.Colorize(
+			_, err := stderr.Write([]byte(colors.Always.Colorize(
 				colors.SpecWarning + "warning: could not open pty: " + err.Error() + colors.Reset + "\n")))
-		} else {
-			ptyDone := make(chan error, 1)
-			closer := &ptyCloser{
-				pty:  pt,
-				tty:  tt,
-				done: ptyDone,
+			// We couldn't write to stderr, just fail somethings gone very wrong
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("write to stderr: %w", err)
 			}
-
-			go func() {
-				_, err = io.Copy(stdout, pt)
-				ptyDone <- err
-			}()
-
-			// stdout == stderr if we're acting as a terminal
-			return closer, tt, tt, nil
 		}
 	}
 
-	return &nullCloser{}, stdout, stderr, nil
-}
+	if tt != nil {
+		// tt is not nil, so we need to return it _directly_ so that later code can see this is an io.File.
+		ptyDone := make(chan error, 1)
+		ptyCloser := &ptyCloser{
+			pty:  pt,
+			tty:  tt,
+			done: ptyDone,
+		}
 
-// Returns a pair of streams for use with the language runtimes InstallDependencies method
-func MakeInstallDependenciesStreams(
-	server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-	isTerminal bool,
-) (io.Closer, io.Writer, io.Writer, error) {
-	return makeStreams(
-		func(b []byte) error {
-			return server.Send(&pulumirpc.InstallDependenciesResponse{Stdout: b})
-		},
-		func(b []byte) error {
-			return server.Send(&pulumirpc.InstallDependenciesResponse{Stderr: b})
-		},
-		isTerminal)
-}
+		go func() {
+			_, err = io.Copy(stdout, pt)
+			ptyDone <- err
+		}()
 
-// Returns a pair of streams for use with the language runtimes RunPlugin method
-func MakeRunPluginStreams(
-	server pulumirpc.LanguageRuntime_RunPluginServer,
-	isTerminal bool,
-) (io.Closer, io.Writer, io.Writer, error) {
-	return makeStreams(
-		func(b []byte) error {
-			return server.Send(&pulumirpc.RunPluginResponse{Output: &pulumirpc.RunPluginResponse_Stdout{Stdout: b}})
-		},
-		func(b []byte) error {
-			return server.Send(&pulumirpc.RunPluginResponse{Output: &pulumirpc.RunPluginResponse_Stderr{Stderr: b}})
-		},
-		isTerminal)
+		return ptyCloser, tt, tt, nil
+	}
+
+	return &nopCloser{}, stdout, stderr, nil
 }

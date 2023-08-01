@@ -30,13 +30,13 @@ type LanguageRuntimeClient interface {
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error)
+	InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (*InstallDependenciesResponse, error)
 	// About returns information about the runtime for this language.
 	About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
 	GetProgramDependencies(ctx context.Context, in *GetProgramDependenciesRequest, opts ...grpc.CallOption) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error)
+	RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (*RunPluginResponse, error)
 	// GenerateProgram generates a given PCL program into a program for this language.
 	GenerateProgram(ctx context.Context, in *GenerateProgramRequest, opts ...grpc.CallOption) (*GenerateProgramResponse, error)
 	// GenerateProject generates a given PCL program into a project for this language.
@@ -80,36 +80,13 @@ func (c *languageRuntimeClient) GetPluginInfo(ctx context.Context, in *emptypb.E
 	return out, nil
 }
 
-func (c *languageRuntimeClient) InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (LanguageRuntime_InstallDependenciesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[0], "/pulumirpc.LanguageRuntime/InstallDependencies", opts...)
+func (c *languageRuntimeClient) InstallDependencies(ctx context.Context, in *InstallDependenciesRequest, opts ...grpc.CallOption) (*InstallDependenciesResponse, error) {
+	out := new(InstallDependenciesResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/InstallDependencies", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &languageRuntimeInstallDependenciesClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type LanguageRuntime_InstallDependenciesClient interface {
-	Recv() (*InstallDependenciesResponse, error)
-	grpc.ClientStream
-}
-
-type languageRuntimeInstallDependenciesClient struct {
-	grpc.ClientStream
-}
-
-func (x *languageRuntimeInstallDependenciesClient) Recv() (*InstallDependenciesResponse, error) {
-	m := new(InstallDependenciesResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *languageRuntimeClient) About(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*AboutResponse, error) {
@@ -130,36 +107,13 @@ func (c *languageRuntimeClient) GetProgramDependencies(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *languageRuntimeClient) RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (LanguageRuntime_RunPluginClient, error) {
-	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[1], "/pulumirpc.LanguageRuntime/RunPlugin", opts...)
+func (c *languageRuntimeClient) RunPlugin(ctx context.Context, in *RunPluginRequest, opts ...grpc.CallOption) (*RunPluginResponse, error) {
+	out := new(RunPluginResponse)
+	err := c.cc.Invoke(ctx, "/pulumirpc.LanguageRuntime/RunPlugin", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &languageRuntimeRunPluginClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type LanguageRuntime_RunPluginClient interface {
-	Recv() (*RunPluginResponse, error)
-	grpc.ClientStream
-}
-
-type languageRuntimeRunPluginClient struct {
-	grpc.ClientStream
-}
-
-func (x *languageRuntimeRunPluginClient) Recv() (*RunPluginResponse, error) {
-	m := new(RunPluginResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *languageRuntimeClient) GenerateProgram(ctx context.Context, in *GenerateProgramRequest, opts ...grpc.CallOption) (*GenerateProgramResponse, error) {
@@ -200,13 +154,13 @@ type LanguageRuntimeServer interface {
 	// GetPluginInfo returns generic information about this plugin, like its version.
 	GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error)
 	// InstallDependencies will install dependencies for the project, e.g. by running `npm install` for nodejs projects.
-	InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error
+	InstallDependencies(context.Context, *InstallDependenciesRequest) (*InstallDependenciesResponse, error)
 	// About returns information about the runtime for this language.
 	About(context.Context, *emptypb.Empty) (*AboutResponse, error)
 	// GetProgramDependencies returns the set of dependencies required by the program.
 	GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error)
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error
+	RunPlugin(context.Context, *RunPluginRequest) (*RunPluginResponse, error)
 	// GenerateProgram generates a given PCL program into a program for this language.
 	GenerateProgram(context.Context, *GenerateProgramRequest) (*GenerateProgramResponse, error)
 	// GenerateProject generates a given PCL program into a project for this language.
@@ -229,8 +183,8 @@ func (UnimplementedLanguageRuntimeServer) Run(context.Context, *RunRequest) (*Ru
 func (UnimplementedLanguageRuntimeServer) GetPluginInfo(context.Context, *emptypb.Empty) (*PluginInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPluginInfo not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) InstallDependencies(*InstallDependenciesRequest, LanguageRuntime_InstallDependenciesServer) error {
-	return status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
+func (UnimplementedLanguageRuntimeServer) InstallDependencies(context.Context, *InstallDependenciesRequest) (*InstallDependenciesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallDependencies not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) About(context.Context, *emptypb.Empty) (*AboutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method About not implemented")
@@ -238,8 +192,8 @@ func (UnimplementedLanguageRuntimeServer) About(context.Context, *emptypb.Empty)
 func (UnimplementedLanguageRuntimeServer) GetProgramDependencies(context.Context, *GetProgramDependenciesRequest) (*GetProgramDependenciesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProgramDependencies not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) RunPlugin(*RunPluginRequest, LanguageRuntime_RunPluginServer) error {
-	return status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
+func (UnimplementedLanguageRuntimeServer) RunPlugin(context.Context, *RunPluginRequest) (*RunPluginResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunPlugin not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) GenerateProgram(context.Context, *GenerateProgramRequest) (*GenerateProgramResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateProgram not implemented")
@@ -317,25 +271,22 @@ func _LanguageRuntime_GetPluginInfo_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LanguageRuntime_InstallDependencies_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(InstallDependenciesRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _LanguageRuntime_InstallDependencies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallDependenciesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(LanguageRuntimeServer).InstallDependencies(m, &languageRuntimeInstallDependenciesServer{stream})
-}
-
-type LanguageRuntime_InstallDependenciesServer interface {
-	Send(*InstallDependenciesResponse) error
-	grpc.ServerStream
-}
-
-type languageRuntimeInstallDependenciesServer struct {
-	grpc.ServerStream
-}
-
-func (x *languageRuntimeInstallDependenciesServer) Send(m *InstallDependenciesResponse) error {
-	return x.ServerStream.SendMsg(m)
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).InstallDependencies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/InstallDependencies",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).InstallDependencies(ctx, req.(*InstallDependenciesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LanguageRuntime_About_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -374,25 +325,22 @@ func _LanguageRuntime_GetProgramDependencies_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LanguageRuntime_RunPlugin_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(RunPluginRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _LanguageRuntime_RunPlugin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunPluginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(LanguageRuntimeServer).RunPlugin(m, &languageRuntimeRunPluginServer{stream})
-}
-
-type LanguageRuntime_RunPluginServer interface {
-	Send(*RunPluginResponse) error
-	grpc.ServerStream
-}
-
-type languageRuntimeRunPluginServer struct {
-	grpc.ServerStream
-}
-
-func (x *languageRuntimeRunPluginServer) Send(m *RunPluginResponse) error {
-	return x.ServerStream.SendMsg(m)
+	if interceptor == nil {
+		return srv.(LanguageRuntimeServer).RunPlugin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pulumirpc.LanguageRuntime/RunPlugin",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LanguageRuntimeServer).RunPlugin(ctx, req.(*RunPluginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _LanguageRuntime_GenerateProgram_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -469,12 +417,20 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LanguageRuntime_GetPluginInfo_Handler,
 		},
 		{
+			MethodName: "InstallDependencies",
+			Handler:    _LanguageRuntime_InstallDependencies_Handler,
+		},
+		{
 			MethodName: "About",
 			Handler:    _LanguageRuntime_About_Handler,
 		},
 		{
 			MethodName: "GetProgramDependencies",
 			Handler:    _LanguageRuntime_GetProgramDependencies_Handler,
+		},
+		{
+			MethodName: "RunPlugin",
+			Handler:    _LanguageRuntime_RunPlugin_Handler,
 		},
 		{
 			MethodName: "GenerateProgram",
@@ -489,17 +445,6 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LanguageRuntime_GeneratePackage_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "InstallDependencies",
-			Handler:       _LanguageRuntime_InstallDependencies_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "RunPlugin",
-			Handler:       _LanguageRuntime_RunPlugin_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "pulumi/language.proto",
 }

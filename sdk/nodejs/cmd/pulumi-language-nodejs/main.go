@@ -762,28 +762,38 @@ func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Em
 }
 
 func (host *nodeLanguageHost) InstallDependencies(
-	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
-) error {
-	closer, stdout, stderr, err := rpcutil.MakeInstallDependenciesStreams(server, req.IsTerminal)
+	ctx context.Context,
+	req *pulumirpc.InstallDependenciesRequest,
+) (*pulumirpc.InstallDependenciesResponse, error) {
+	outputClient, err := rpcutil.DialOutputClient(ctx, req.OutputTarget)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	closer, stdout, stderr, err := rpcutil.BindOutputClient(ctx, outputClient)
+	if err != nil {
+		return nil, err
 	}
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	tracingSpan, ctx := opentracing.StartSpanFromContext(server.Context(), "npm-install")
+	tracingSpan, ctx := opentracing.StartSpanFromContext(ctx, "npm-install")
 	defer tracingSpan.Finish()
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
 	if err != nil {
-		return fmt.Errorf("npm install failed: %w", err)
+		return nil, fmt.Errorf("npm install failed: %w", err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))
 
-	return closer.Close()
+	err = closer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.InstallDependenciesResponse{}, nil
 }
 
 func (host *nodeLanguageHost) About(ctx context.Context, req *pbempty.Empty) (*pulumirpc.AboutResponse, error) {
@@ -1010,9 +1020,10 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 }
 
 func (host *nodeLanguageHost) RunPlugin(
-	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
-) error {
-	return errors.New("not supported")
+	ctx context.Context,
+	req *pulumirpc.RunPluginRequest,
+) (*pulumirpc.RunPluginResponse, error) {
+	return nil, errors.New("not supported")
 }
 
 func (host *nodeLanguageHost) GenerateProject(
