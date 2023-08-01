@@ -1,17 +1,13 @@
 {
     "name": "Pulumi",
     "build": {
-        "dockerfile": "Dockerfile",
-        "args": {
-            "USER_NAME": "user",
-            "USER_UID": "1000"
-        }
+        "dockerfile": "Dockerfile"
     },
     "containerEnv": {
         "PULUMI_ACCESS_TOKEN": "${localEnv:PULUMI_ACCESS_TOKEN}",
         "PULUMI_TEST_ORG": "${localEnv:PULUMI_TEST_ORG}"
     },
-    "remoteUser": "user",
+    "remoteUser": "vscode",
     "postCreateCommand": "make ensure",
     "customizations": {
         "vscode": {
@@ -33,13 +29,33 @@
             "installOhMyZsh": true,
             "configureZshAsDefaultShell": false,
             "upgradePackages": true,
-            "username": "user"
+            "username": "vscode"
         },
+        "ghcr.io/devcontainers/features/aws-cli:1": {},
+        "ghcr.io/devcontainers/features/azure-cli:1": {},
+        "ghcr.io/devcontainers/features/git:1": {},
         "ghcr.io/devcontainers/features/github-cli:1": {},
-        // The /root/.dotnet directory is not available to "user"
+        "ghcr.io/dhoeric/features/google-cloud-cli:1": {
+            "installGkeGcloudAuthPlugin": true
+        },
+        "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        // "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
         "ghcr.io/devcontainers/features/dotnet:1": {
             "version": "6.0.412",
             "installUsingApt": false
-        }
+        },
+        "ghcr.io/devcontainers/features/go:1": {
+            "version": "1.20"
+        },
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "16"
+        },
+        "ghcr.io/devcontainers/features/python:1": {},
+        "ghcr.io/devcontainers/features/java:1": {
+            "installGradle": true,
+            "installMaven": true
+        },
+        "./pulumi/features/pulumictl": {}
     }
 }

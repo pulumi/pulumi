@@ -1,0 +1,8 @@
+{
+    "id": "pulumictl",
+    "name": "pulumictl",
+    "description": "Install the pulumictl tool.",
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}
