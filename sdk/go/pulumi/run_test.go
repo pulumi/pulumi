@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
@@ -743,8 +744,8 @@ func TestWaitOrphanedResource(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint32(outputResolved), res.urn.state)
-	assert.Equal(t, uint32(outputResolved), res.id.state)
+	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(res.urn))
+	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(res.id))
 }
 
 func TestWaitResourceInsideApply(t *testing.T) {
@@ -774,8 +775,8 @@ func TestWaitResourceInsideApply(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	assert.Equal(t, uint32(outputResolved), innerRes.urn.state)
-	assert.Equal(t, uint32(outputResolved), innerRes.id.state)
+	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(innerRes.urn))
+	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(innerRes.id))
 }
 
 func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
@@ -883,13 +884,13 @@ func TestWaitOrphanedManualOutput(t *testing.T) {
 		close(done)
 	}()
 
-	state := (<-output).getState()
-	assert.Equal(t, uint32(outputPending), state.state)
+	state := internal.GetOutputState(<-output)
+	assert.Equal(t, internal.OutputPending, internal.GetOutputStatus(state))
 	close(doResolve)
 
 	<-done
-	assert.Equal(t, uint32(outputResolved), state.state)
-	assert.Equal(t, "foo", state.value)
+	assert.Equal(t, internal.OutputResolved, internal.GetOutputStatus(state))
+	assert.Equal(t, "foo", internal.GetOutputValue(state))
 }
 
 func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
@@ -909,8 +910,8 @@ func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	state := output.getState()
-	assert.Equal(t, uint32(outputPending), state.state)
+	status := internal.GetOutputStatus(output)
+	assert.Equal(t, internal.OutputPending, status)
 }
 
 func TestExportResource(t *testing.T) {
@@ -937,8 +938,7 @@ func TestExportResource(t *testing.T) {
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
 
-	state := anyout.getState()
-	assert.NotNil(t, state.value)
+	assert.NotNil(t, internal.GetOutputValue(anyout))
 }
 
 type testResource2Input interface {

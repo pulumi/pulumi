@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
 type (
@@ -39,8 +40,16 @@ var (
 	providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
 )
 
+// This type alias is a hack to embed the internal.ResourceState type
+// into pulumi.ResourceState without exporting the field to the public API.
+type internalResourceState = internal.ResourceState
+
 // ResourceState is the base
 type ResourceState struct {
+	// internalResourceState marks this ResourceState as a resource
+	// recognized by the internal package.
+	internalResourceState
+
 	m sync.RWMutex
 
 	urn URNOutput `pulumi:"urn"`
@@ -57,6 +66,8 @@ type ResourceState struct {
 
 	keepDep bool
 }
+
+var _ Resource = (*ResourceState)(nil)
 
 func (s *ResourceState) URN() URNOutput {
 	return s.urn
@@ -139,12 +150,10 @@ func (s *ResourceState) keepDependency() bool {
 	return s.keepDep
 }
 
-func (*ResourceState) isResource() {}
-
 func (ctx *Context) newDependencyResource(urn URN) Resource {
 	var res ResourceState
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
 	res.keepDep = true
 	return &res
 }
@@ -164,9 +173,9 @@ func (*CustomResourceState) isCustomResource() {}
 func (ctx *Context) newDependencyCustomResource(urn URN, id ID) CustomResource {
 	var res CustomResourceState
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.id.resolve(id, id != "", false, nil)
+	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	return &res
 }
 
@@ -184,14 +193,16 @@ func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResour
 	var res ProviderResourceState
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
-	res.urn.resolve(urn, true, false, nil)
-	res.id.resolve(id, id != "", false, nil)
+	internal.ResolveOutput(res.urn, urn, true, false, resourcesToInternal(nil))
+	internal.ResolveOutput(res.id, id, id != "", false, resourcesToInternal(nil))
 	res.pkg = string(resource.URN(urn).Type().Name())
 	return &res
 }
 
 // Resource represents a cloud resource managed by Pulumi.
 type Resource interface {
+	internal.Resource
+
 	// URN is this resource's stable logical URN used to distinctly address it before, during, and after deployments.
 	URN() URNOutput
 
@@ -219,9 +230,6 @@ type Resource interface {
 	// getName returns the name of the resource
 	getName() string
 
-	// isResource() is a marker method used to ensure that all Resource types embed a ResourceState.
-	isResource()
-
 	// getTransformations returns the transformations for the resource.
 	getTransformations() []ResourceTransformation
 
@@ -236,6 +244,8 @@ type Resource interface {
 	// remote component resources, dependency resources, and rehydrated component resources.
 	keepDependency() bool
 }
+
+var _ internal.Resource = (Resource)(nil)
 
 // CustomResource is a cloud resource whose create, read, update, and delete (CRUD) operations are managed by performing
 // external operations on some physical entity.  The engine understands how to diff and perform partial updates of them,
@@ -661,7 +671,7 @@ var _ dependencySet = (*resourceArrayInputDependencySet)(nil)
 func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urnSet, from Resource) error {
 	out := ra.input.ToResourceArrayOutput()
 
-	value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
+	value, known, _ /* secret */, _ /* deps */, err := internal.AwaitOutput(ctx, out)
 	if err != nil || !known {
 		return err
 	}
@@ -673,7 +683,7 @@ func (ra *resourceArrayInputDependencySet) addURNs(ctx context.Context, urns urn
 	}
 
 	// For some reason, deps returned above are incorrect; instead:
-	toplevelDeps := out.dependencies()
+	toplevelDeps := getOutputDeps(out)
 
 	for _, r := range append(resources, toplevelDeps...) {
 		if err := addDependency(ctx, urns, r, from); err != nil {
