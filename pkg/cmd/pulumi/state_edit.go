@@ -56,6 +56,7 @@ a preview showing a diff of the altered state.`,
 				return result.Error("pulumi state edit must be run in interactive mode")
 			}
 			s, err := requireStack(commandContext(), stackName, stackLoadOnly, display.Options{
+				Color:         cmdutil.GetGlobalColorization(),
 				IsInteractive: true,
 			})
 			if err != nil {
