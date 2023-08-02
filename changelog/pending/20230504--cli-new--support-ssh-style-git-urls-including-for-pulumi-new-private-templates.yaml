@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/new
+  description: Support SSH-style Git URLs, including private template repositories for `pulumi new`
