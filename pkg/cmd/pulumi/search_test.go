@@ -76,7 +76,7 @@ type stubHttpBackend struct {
 	httpstate.Backend
 
 	SearchF                func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
-	NaturalLanguageSearchF func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
+	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
 	CurrentUserF           func() (string, []string, error)
 }
 
