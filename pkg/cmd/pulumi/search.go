@@ -126,7 +126,9 @@ func newSearchCmd() *cobra.Command {
 	)
 	cmd.PersistentFlags().StringArrayVarP(
 		&scmd.queryParams, "query", "q", []string{},
-		"Key-value pairs to use as query parameters. Must be formatted like: -q key1=value1 -q key2=value2. Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
+		"Key-value pairs to use as query parameters. "+
+			"Must be formatted like: -q key1=value1 -q key2=value2. "+
+			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
 	)
 
 	return cmd
