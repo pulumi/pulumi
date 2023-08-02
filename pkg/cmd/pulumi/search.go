@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
 )
@@ -33,10 +35,25 @@ import (
 type searchCmd struct {
 	orgName     string
 	queryParams []string
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
+
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = currentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow the top-level function
 
 	opts := backend.QueryOptions{}
 	opts.Display = display.Options{
@@ -46,7 +63,7 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	}
 	// Try to read the current project
 	project, _, err := readProject()
-	if err != nil {
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
@@ -77,7 +94,7 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = renderTable(res.Resources)
+	err = cmd.RenderTable(res.Resources)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 	}
@@ -103,13 +120,13 @@ func newSearchCmd() *cobra.Command {
 		cmd.AddCommand(newAISearchCmd())
 	}
 
-	cmd.PersistentFlags().StringVarP(
-		&scmd.orgName, "org", "o", "",
-		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.",
+	cmd.PersistentFlags().StringVar(
+		&scmd.orgName, "org", "",
+		"Name of the organization to search. Defaults to the current user's organization.",
 	)
 	cmd.PersistentFlags().StringArrayVarP(
 		&scmd.queryParams, "query", "q", []string{},
-		"Key-value pairs to use as query parameters. Must be formatted like: -q key1=value1 -q key2=value2",
+		"Key-value pairs to use as query parameters. Must be formatted like: -q key1=value1 -q key2=value2. Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
 	)
 
 	return cmd
@@ -124,7 +141,7 @@ func sliceContains(slice []string, search string) bool {
 	return false
 }
 
-func renderTable(results []apitype.ResourceResult) error {
+func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
 	table := auto_table.New("utf8-heavy")
 	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
 	for _, r := range results {
@@ -135,5 +152,5 @@ func renderTable(results []apitype.ResourceResult) error {
 			fmt.Fprintf(os.Stderr, "table error: %s\n", err)
 		}
 	}
-	return table.RenderTo(os.Stdout)
+	return table.RenderTo(cmd.Stdout)
 }

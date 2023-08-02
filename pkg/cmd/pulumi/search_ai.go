@@ -18,18 +18,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	auto_table "go.pennock.tech/tabular/auto"
 )
 
 type aISearchCmd struct {
 	orgName     string
 	queryString string
+
+	Stdout io.Writer // defaults to os.Stdout
+
+	// currentBackend is a reference to the top-level currentBackend function.
+	// This is used to override the default implementation for testing purposes.
+	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
 func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
@@ -73,7 +83,7 @@ func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = renderTable(res.Resources)
+	err = cmd.RenderTable(res.Resources)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 	}
@@ -103,4 +113,18 @@ func newAISearchCmd() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func (cmd *aISearchCmd) RenderTable(results []apitype.ResourceResult) error {
+	table := auto_table.New("utf8-heavy")
+	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
+	for _, r := range results {
+		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
+	}
+	if errs := table.Errors(); errs != nil {
+		for _, err := range errs {
+			fmt.Fprintf(os.Stderr, "table error: %s\n", err)
+		}
+	}
+	return table.RenderTo(cmd.Stdout)
 }
