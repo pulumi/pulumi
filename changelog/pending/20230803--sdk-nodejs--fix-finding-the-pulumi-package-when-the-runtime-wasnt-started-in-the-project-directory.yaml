@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Fix finding the pulumi package when the runtime wasn't started in the project directory.
