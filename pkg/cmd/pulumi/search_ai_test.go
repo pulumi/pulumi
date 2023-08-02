@@ -40,7 +40,7 @@ func TestSearchAI_cmd(t *testing.T) {
 	cmd := aISearchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubHttpBackend{
+			return &stubHTTPBackend{
 				NaturalLanguageSearchF: func(context.Context, string, string) (*apitype.ResourceSearchResponse, error) {
 					return &apitype.ResourceSearchResponse{
 						Resources: []apitype.ResourceResult{
@@ -71,7 +71,7 @@ func TestSearchAI_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), program)
 }
 
-func (f *stubHttpBackend) NaturalLanguageSearch(
+func (f *stubHTTPBackend) NaturalLanguageSearch(
 	ctx context.Context, orgName, query string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.NaturalLanguageSearchF(ctx, orgName, query)
