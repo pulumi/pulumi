@@ -41,7 +41,7 @@ func TestSearch_cmd(t *testing.T) {
 	cmd := searchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubHttpBackend{
+			return &stubHTTPBackend{
 				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 					return &apitype.ResourceSearchResponse{
 						Resources: []apitype.ResourceResult{
@@ -72,22 +72,24 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), program)
 }
 
-type stubHttpBackend struct {
+type stubHTTPBackend struct {
 	httpstate.Backend
 
-	SearchF                func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
+	SearchF func(
+		context.Context, string, *apitype.PulumiQueryRequest,
+	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
 	CurrentUserF           func() (string, []string, error)
 }
 
-var _ httpstate.Backend = (*stubHttpBackend)(nil)
+var _ httpstate.Backend = (*stubHTTPBackend)(nil)
 
-func (f *stubHttpBackend) Search(
+func (f *stubHTTPBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
 	return f.SearchF(ctx, orgName, queryParams)
 }
 
-func (f *stubHttpBackend) CurrentUser() (string, []string, error) {
+func (f *stubHTTPBackend) CurrentUser() (string, []string, error) {
 	return f.CurrentUserF()
 }
