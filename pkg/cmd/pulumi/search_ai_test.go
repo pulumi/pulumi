@@ -21,14 +21,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSearch_cmd(t *testing.T) {
+func TestSearchAI_cmd(t *testing.T) {
 	t.Parallel()
 	var buff bytes.Buffer
 	name := "foo"
@@ -38,11 +37,11 @@ func TestSearch_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
-	cmd := searchCmd{
+	cmd := aISearchCmd{
 		Stdout: &buff,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &stubHttpBackend{
-				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
+				NaturalLanguageSearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
 					return &apitype.ResourceSearchResponse{
 						Resources: []apitype.ResourceResult{
 							{
@@ -72,22 +71,8 @@ func TestSearch_cmd(t *testing.T) {
 	assert.Contains(t, buff.String(), program)
 }
 
-type stubHttpBackend struct {
-	httpstate.Backend
-
-	SearchF                func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
-	NaturalLanguageSearchF func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error)
-	CurrentUserF           func() (string, []string, error)
-}
-
-var _ httpstate.Backend = (*stubHttpBackend)(nil)
-
-func (f *stubHttpBackend) Search(
+func (f *stubHttpBackend) NaturalLanguageSearchSearch(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
-	return f.SearchF(ctx, orgName, queryParams)
-}
-
-func (f *stubHttpBackend) CurrentUser() (string, []string, error) {
-	return f.CurrentUserF()
+	return f.NaturalLanguageSearchF(ctx, orgName, queryParams)
 }
