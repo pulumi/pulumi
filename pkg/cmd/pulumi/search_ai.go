@@ -45,6 +45,15 @@ type aISearchCmd struct {
 func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
+
+	if cmd.currentBackend == nil {
+		cmd.currentBackend = currentBackend
+	}
+	currentBackend := cmd.currentBackend // shadow the top-level function
+
 	opts := backend.QueryOptions{}
 	opts.Display = display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
@@ -53,7 +62,7 @@ func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
 	}
 	// Try to read the current project
 	project, _, err := readProject()
-	if err != nil {
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
