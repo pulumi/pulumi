@@ -31,6 +31,17 @@ func Check(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath stri
 		[]string{ex, "mod", "init", "main"},
 		dir, &integration.ProgramTestOptions{})
 	require.NoError(t, err)
+
+	// TODO: DELETE ME
+	// Pin to https://github.com/pulumi/pulumi-awsx/pull/1066
+	err = integration.RunCommand(t, "go mod replace",
+		[]string{
+			ex, "mod", "edit", "-replace",
+			"github.com/pulumi/pulumi-awsx/sdk=github.com/pulumi/pulumi-awsx/sdk@ad46f67c6f9de51a14afbce7de303e44444fee3d",
+		},
+		dir, &integration.ProgramTestOptions{})
+	require.NoError(t, err)
+
 	err = integration.RunCommand(t, "go tidy",
 		[]string{ex, "mod", "tidy"},
 		dir, &integration.ProgramTestOptions{})
