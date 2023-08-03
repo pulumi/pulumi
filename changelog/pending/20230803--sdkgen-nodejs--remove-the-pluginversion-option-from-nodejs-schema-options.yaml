@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdkgen/nodejs
+  description: Remove the pluginVersion and pluginName options from nodejs schema options.

@@ -3,7 +3,7 @@
     "version": "${VERSION}",
     "scripts": {
         "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource example 3.2.1"
+        "install": "node scripts/install-pulumi-plugin.js resource example ${VERSION}"
     },
     "dependencies": {
         "@pulumi/google-native": "^0.20.0",
@@ -15,7 +15,6 @@
     },
     "pulumi": {
         "resource": true,
-        "name": "example",
-        "version": "3.2.1"
+        "name": "example"
     }
 }
