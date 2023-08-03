@@ -197,7 +197,7 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
 	err = cmd.Run()
 	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
-		" test has generated the schema:\n%s\n%s\n",
+		" test has generated the Go SDK:\n%s\n%s\n",
 		stdout.String(), stderr.String())
 
 	opts := testConstructComponentConfigureProviderCommonOptions()

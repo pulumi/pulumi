@@ -17,6 +17,8 @@
 package ints
 
 import (
+	"bytes"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -157,16 +159,30 @@ func TestConstructComponentConfigureProviderNode(t *testing.T) {
 	require.NoError(t, err)
 	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/nodejs")
 
-	t.Logf("yarn run tsc # precompile @pulumi/metaprovider")
-	cmd := exec.Command("yarn", "run", "tsc")
-	cmd.Dir = filepath.Join(componentSDK)
+	// The test relies on artifacts (Node package) from a codegen test. Ensure the SDK is generated.
+	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "nodejs")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
 	err = cmd.Run()
+	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
+		" test has generated the Node SDK:\n%s\n%s\n",
+		stdout.String(), stderr.String())
+
+	t.Logf("yarn run tsc # precompile @pulumi/metaprovider")
+	cmd2 := exec.Command("yarn", "run", "tsc")
+	cmd2.Dir = filepath.Join(componentSDK)
+	err = cmd2.Run()
 	require.NoError(t, err)
 
 	t.Logf("yarn link # prelink @pulumi/metaprovider")
-	cmd2 := exec.Command("yarn", "link")
-	cmd2.Dir = filepath.Join(componentSDK, "bin")
-	err = cmd2.Run()
+	cmd3 := exec.Command("yarn", "link")
+	cmd3.Dir = filepath.Join(componentSDK, "bin")
+	err = cmd3.Run()
 	require.NoError(t, err)
 
 	opts := testConstructComponentConfigureProviderCommonOptions()
