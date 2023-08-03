@@ -1040,7 +1040,7 @@ func (host *goLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}

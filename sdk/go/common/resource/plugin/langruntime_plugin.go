@@ -422,15 +422,17 @@ func (h *langhost) RunPlugin(info RunPluginInfo) (io.Reader, io.Reader, context.
 }
 
 func (h *langhost) GenerateProject(
-	sourceDirectory, targetDirectory, project string, strict bool, loaderTarget string,
+	sourceDirectory, targetDirectory, project string, strict bool,
+	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
-		SourceDirectory: sourceDirectory,
-		TargetDirectory: targetDirectory,
-		Project:         project,
-		Strict:          strict,
-		LoaderTarget:    loaderTarget,
+		SourceDirectory:   sourceDirectory,
+		TargetDirectory:   targetDirectory,
+		Project:           project,
+		Strict:            strict,
+		LoaderTarget:      loaderTarget,
+		LocalDependencies: localDependencies,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

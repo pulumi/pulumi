@@ -237,9 +237,15 @@ func runConvert(
 	var projectGenerator projectGeneratorFunction
 	switch language {
 	case "dotnet":
-		projectGenerator = generatorWrapper(dotnet.GenerateProject, language)
+		projectGenerator = generatorWrapper(
+			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
+				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+			}, language)
 	case "python":
-		projectGenerator = generatorWrapper(python.GenerateProject, language)
+		projectGenerator = generatorWrapper(
+			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
+				return python.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
+			}, language)
 	case "java":
 		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
 	case "yaml":
@@ -277,7 +283,7 @@ func runConvert(
 
 			diagnostics, err := languagePlugin.GenerateProject(
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr())
+				strict, grpcServer.Addr(), nil /*localDependencies*/)
 			if err != nil {
 				return diagnostics, err
 			}

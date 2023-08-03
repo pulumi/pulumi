@@ -477,7 +477,10 @@ type CheckProgramOutput = func(*testing.T, string, codegen.StringSet)
 type GenProgram = func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error)
 
 // Generates a project from a pcl.Program
-type GenProject = func(directory string, project workspace.Project, program *pcl.Program) error
+type GenProject = func(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error
 
 type ProgramCodegenOptions struct {
 	Language   string
@@ -604,7 +607,7 @@ func TestProgramCodegen(
 					Name:    "test",
 					Runtime: workspace.NewProjectRuntimeInfo(testcase.Language, nil),
 				}
-				err = testcase.GenProject(testDir, project, program)
+				err = testcase.GenProject(testDir, project, program, nil /*localDependencies*/)
 				assert.NoError(t, err)
 
 				depFilePath := filepath.Join(testDir, testcase.DependencyFile)
