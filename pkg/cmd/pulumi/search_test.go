@@ -90,6 +90,12 @@ func (f *stubHTTPBackend) Search(
 	return f.SearchF(ctx, orgName, queryParams)
 }
 
+func (f *stubHTTPBackend) NaturalLanguageSearch(
+	ctx context.Context, orgName, query string,
+) (*apitype.ResourceSearchResponse, error) {
+	return f.NaturalLanguageSearchF(ctx, orgName, query)
+}
+
 func (f *stubHTTPBackend) CurrentUser() (string, []string, error) {
 	return f.CurrentUserF()
 }
