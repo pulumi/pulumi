@@ -28,10 +28,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
-	auto_table "go.pennock.tech/tabular/auto"
 )
 
-type aISearchCmd struct {
+type searchAICmd struct {
 	orgName     string
 	queryString string
 
@@ -42,7 +41,7 @@ type aISearchCmd struct {
 	currentBackend func(context.Context, *workspace.Project, display.Options) (backend.Backend, error)
 }
 
-func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
+func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
 	if cmd.Stdout == nil {
@@ -99,8 +98,8 @@ func (cmd *aISearchCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-func newAISearchCmd() *cobra.Command {
-	var scmd aISearchCmd
+func newSearchAICmd() *cobra.Command {
+	var scmd searchAICmd
 	cmd := &cobra.Command{
 		Use:   "ai",
 		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
@@ -124,16 +123,6 @@ func newAISearchCmd() *cobra.Command {
 	return cmd
 }
 
-func (cmd *aISearchCmd) RenderTable(results []apitype.ResourceResult) error {
-	table := auto_table.New("utf8-heavy")
-	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
-	for _, r := range results {
-		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
-	}
-	if errs := table.Errors(); errs != nil {
-		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "table error: %s\n", err)
-		}
-	}
-	return table.RenderTo(cmd.Stdout)
+func (cmd *searchAICmd) RenderTable(results []apitype.ResourceResult) error {
+	return renderSearchTable(cmd.Stdout, results)
 }
