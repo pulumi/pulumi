@@ -1045,21 +1045,6 @@ func (b *cloudBackend) NaturalLanguageSearch(
 	return results, err
 }
 
-func (b *cloudBackend) NaturalLanguageSearch(
-	ctx context.Context, orgName string, queryString string,
-) (*apitype.ResourceSearchResponse, error) {
-	parsedResults, err := b.Client().GetNaturalLanguageQueryResults(ctx, orgName, queryString)
-	if err != nil {
-		return nil, err
-	}
-	requestBody := apitype.PulumiQueryRequest{Query: parsedResults.Query}
-	results, err := b.Client().GetSearchQueryResults(ctx, orgName, &requestBody)
-	if err != nil {
-		return nil, err
-	}
-	return results, err
-}
-
 type updateMetadata struct {
 	version    int
 	leaseToken string
