@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
+	"go.uber.org/multierr"
 )
 
 type searchCmd struct {
@@ -79,24 +80,22 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	var filterName string
-	if cmd.orgName == "" {
-		filterName = userName
-	} else {
+	filterName := userName
+	if cmd.orgName != "" {
+		if !sliceContains(orgs, cmd.orgName) {
+			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
+		}
 		filterName = cmd.orgName
 	}
-	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
-		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
-	}
 
-	parsedQueryParams := apitype.ParseQueryParams(&cmd.queryParams)
+	parsedQueryParams := apitype.ParseQueryParams(cmd.queryParams)
 	res, err := cloudBackend.Search(ctx, filterName, parsedQueryParams)
 	if err != nil {
 		return err
 	}
 	err = cmd.RenderTable(res.Resources)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
+		return fmt.Errorf("table rendering error: %s", err)
 	}
 	return nil
 }
@@ -117,7 +116,7 @@ func newSearchCmd() *cobra.Command {
 
 	// TODO: Remove this branch once we release this feature fully.
 	if env.Dev.Value() {
-		cmd.AddCommand(newAISearchCmd())
+		cmd.AddCommand(newSearchAICmd())
 	}
 
 	cmd.PersistentFlags().StringVar(
@@ -125,7 +124,7 @@ func newSearchCmd() *cobra.Command {
 		"Name of the organization to search. Defaults to the current user's organization.",
 	)
 	cmd.PersistentFlags().StringArrayVarP(
-		&scmd.queryParams, "query", "q", []string{},
+		&scmd.queryParams, "query", "q", nil,
 		"Key-value pairs to use as query parameters. "+
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
 			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
@@ -143,16 +142,22 @@ func sliceContains(slice []string, search string) bool {
 	return false
 }
 
-func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
+func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 	table := auto_table.New("utf8-heavy")
 	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
 	for _, r := range results {
 		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
 	}
+	var err error
 	if errs := table.Errors(); errs != nil {
-		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "table error: %s\n", err)
+		for _, tableErr := range errs {
+			err = multierr.Append(err, tableErr)
 		}
+		return err
 	}
-	return table.RenderTo(cmd.Stdout)
+	return table.RenderTo(w)
+}
+
+func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
+	return renderSearchTable(cmd.Stdout, results)
 }
