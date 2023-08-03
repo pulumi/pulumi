@@ -17,8 +17,10 @@
 package ints
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -183,6 +185,21 @@ func TestConstructComponentConfigureProviderGo(t *testing.T) {
 	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
 	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/go")
 	sdkPkg := "github.com/pulumi/pulumi/pkg/codegen/testing/test/testdata/methods-return-plain-resource/go"
+
+	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
+	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "go")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
+	err = cmd.Run()
+	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
+		" test has generated the schema:\n%s\n%s\n",
+		stdout.String(), stderr.String())
+
 	opts := testConstructComponentConfigureProviderCommonOptions()
 	opts = opts.With(integration.ProgramTestOptions{
 		Dir: filepath.Join(testDir, "go"),
