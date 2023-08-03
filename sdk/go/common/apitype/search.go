@@ -27,10 +27,6 @@ type ResourceSearchResponse struct {
 	Pagination   *ResourceSearchPagination `json:"pagination,omitempty"`
 }
 
-func (r *ResourceSearchResponse) Error() error {
-	return fmt.Errorf("just a normal error")
-}
-
 // ResourceResult is the user-facing type for our indexed resources.
 //
 // If you add a property here, don't forget to update fieldMappings to make it
@@ -46,16 +42,21 @@ type ResourceResult struct {
 	Module       *string                      `json:"module" csv:"module"`
 	Name         *string                      `json:"name,omitempty" csv:"name"`
 	Package      *string                      `json:"package" csv:"package"`
-	Parent       *string                      `json:"parent.urn,omitempty" csv:"parent_urn"`
-	Pending      *string                      `json:"pending,omitempty" csv:"pending"`
-	Program      *string                      `json:"project,omitempty" csv:"project"`
-	Protected    *bool                        `json:"protected,omitempty" csv:"protected"`
-	ProviderURN  *string                      `json:"provider.urn,omitempty" csv:"provider_urn"`
-	Stack        *string                      `json:"stack,omitempty" csv:"stack"`
-	Type         *string                      `json:"type,omitempty" csv:"type"`
-	URN          *string                      `json:"urn,omitempty" csv:"urn"`
-	Teams        teamNameSlice                `json:"teams,omitempty" csv:"teams"`
-	Properties   *RawProperty                 `json:"properties,omitempty" csv:"properties"`
+	Parent       struct {
+		URN string `json:"urn"`
+	} `json:"parent"`
+	Pending   *string `json:"pending,omitempty" csv:"pending"`
+	Program   *string `json:"project,omitempty" csv:"project"`
+	Protected *bool   `json:"protected,omitempty" csv:"protected"`
+	Provider  struct {
+		URN string `json:"urn"`
+	} `json:"provider"`
+	ProviderURN *string       `json:"provider.urn,omitempty" csv:"provider_urn"`
+	Stack       *string       `json:"stack,omitempty" csv:"stack"`
+	Type        *string       `json:"type,omitempty" csv:"type"`
+	URN         *string       `json:"urn,omitempty" csv:"urn"`
+	Teams       teamNameSlice `json:"teams,omitempty" csv:"teams"`
+	Properties  *RawProperty  `json:"properties,omitempty" csv:"properties"`
 }
 
 // Aggregation collects the top 5 aggregated values for the requested dimension.
@@ -81,16 +82,12 @@ type ResourceSearchPagination struct {
 type teamNameSlice []string
 
 func (teams *teamNameSlice) MarshalCSV() (string, error) {
-	if teams == nil || len(*teams) == 0 {
+	if *teams == nil {
 		return "", nil
 	}
 
-	json, err := json.Marshal(*teams)
-	if err != nil {
-		return "", err
-	}
-
-	return string(json), nil
+	output, err := json.Marshal(*teams)
+	return string(output), err
 }
 
 // RawProperty wraps a json.RawProperty for JSON or CSV export.
@@ -106,15 +103,20 @@ type PulumiQueryRequest struct {
 	Query string `url:"query"`
 }
 
-func ParseQueryParams(rawParams *[]string) *PulumiQueryRequest {
-	queryString := ""
-	for _, param := range *rawParams {
-		paramElements := strings.Split(param, "=")
-		if len(paramElements) != 2 {
-			queryString = fmt.Sprintf("%s%s ", queryString, param)
+// ParseQueryParams takes a list of parameters passed into the CLI
+// Search commands (either in the form of `key=value` or a bare Pulumi query)
+// and returns a PulumiQueryRequest struct that can be used to make a request
+// to the Pulumi API.
+//
+// See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for reference
+func ParseQueryParams(rawParams []string) *PulumiQueryRequest {
+	var queryString strings.Builder
+	for _, param := range rawParams {
+		if key, value, ok := strings.Cut(param, "="); ok {
+			fmt.Fprintf(&queryString, "%s:%s", key, value)
 		} else {
-			queryString = fmt.Sprintf("%s%s ", queryString, fmt.Sprintf("%s:%s", paramElements[0], paramElements[1]))
+			queryString.WriteString(param)
 		}
 	}
-	return &PulumiQueryRequest{Query: queryString}
+	return &PulumiQueryRequest{Query: queryString.String()}
 }

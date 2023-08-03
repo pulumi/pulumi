@@ -37,42 +37,37 @@ func TestSearchAI_cmd(t *testing.T) {
 	pack := "pack1"
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
-	cmd := aISearchCmd{
-		Stdout: &buff,
-		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
-			return &stubHTTPBackend{
-				NaturalLanguageSearchF: func(context.Context, string, string) (*apitype.ResourceSearchResponse, error) {
-					return &apitype.ResourceSearchResponse{
-						Resources: []apitype.ResourceResult{
-							{
-								Name:     &name,
-								Type:     &typ,
-								Program:  &program,
-								Stack:    &stack,
-								Package:  &pack,
-								Module:   &mod,
-								Modified: &modified,
-							},
-						},
-					}, nil
-				},
-				CurrentUserF: func() (string, []string, error) {
-					return "user", []string{"org1", "org2"}, nil
+	b := &stubHTTPBackend{
+		NaturalLanguageSearchF: func(context.Context, string, string) (*apitype.ResourceSearchResponse, error) {
+			return &apitype.ResourceSearchResponse{
+				Resources: []apitype.ResourceResult{
+					{
+						Name:     &name,
+						Type:     &typ,
+						Program:  &program,
+						Stack:    &stack,
+						Package:  &pack,
+						Module:   &mod,
+						Modified: &modified,
+					},
 				},
 			}, nil
 		},
+		CurrentUserF: func() (string, []string, error) {
+			return "user", []string{"org1", "org2"}, nil
+		},
+	}
+	cmd := searchAICmd{
+		Stdout: &buff,
+		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
+			return b, nil
+		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(context.Background(), nil /* args */)
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
 	assert.Contains(t, buff.String(), typ)
 	assert.Contains(t, buff.String(), program)
-}
-
-func (f *stubHTTPBackend) NaturalLanguageSearch(
-	ctx context.Context, orgName, query string,
-) (*apitype.ResourceSearchResponse, error) {
-	return f.NaturalLanguageSearchF(ctx, orgName, query)
 }

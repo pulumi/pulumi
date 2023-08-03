@@ -1027,8 +1027,7 @@ func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) res
 func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
-	results, err := b.Client().GetSearchQueryResults(ctx, orgName, queryParams)
-	return results, err
+	return b.Client().GetSearchQueryResults(ctx, orgName, queryParams)
 }
 
 func (b *cloudBackend) NaturalLanguageSearch(
