@@ -25,6 +25,7 @@ export = async () => {
     provider: await configurer.tlsProvider()
   });
   return {
-    keyAlgo: key.algorithm
+    keyAlgo: key.algorithm,
+    meaningOfLife: (await configurer.meaningOfLife() + 1 - 1)
   }
 };

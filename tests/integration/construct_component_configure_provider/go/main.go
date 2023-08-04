@@ -46,6 +46,13 @@ func main() {
 			return err
 		}
 
+		var n int
+		n, err = configurer.MeaningOfLife(ctx)
+		if err != nil {
+			return err
+		}
+
+		ctx.Export("meaningOfLife", pulumi.Int(n))
 		ctx.Export("keyAlgo", key.Algorithm)
 		return nil
 	})

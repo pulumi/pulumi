@@ -89,15 +89,15 @@ class Configurer(pulumi.ComponentResource):
 
     @pulumi.output_type
     class MeaningOfLifeResult:
-        def __init__(__self__, resource=None):
-            if resource and not isinstance(resource, int):
-                raise TypeError("Expected argument 'resource' to be a int")
-            pulumi.set(__self__, "resource", resource)
+        def __init__(__self__, res=None):
+            if res and not isinstance(res, int):
+                raise TypeError("Expected argument 'res' to be a int")
+            pulumi.set(__self__, "res", res)
 
         @property
         @pulumi.getter
-        def resource(self) -> int:
-            return pulumi.get(self, "resource")
+        def res(self) -> int:
+            return pulumi.get(self, "res")
 
     def meaning_of_life(__self__) -> int:
         __args__ = dict()
@@ -106,15 +106,15 @@ class Configurer(pulumi.ComponentResource):
 
     @pulumi.output_type
     class TlsProviderResult:
-        def __init__(__self__, resource=None):
-            if resource and not isinstance(resource, pulumi_tls.Provider):
-                raise TypeError("Expected argument 'resource' to be a pulumi_tls.Provider")
-            pulumi.set(__self__, "resource", resource)
+        def __init__(__self__, res=None):
+            if res and not isinstance(res, pulumi_tls.Provider):
+                raise TypeError("Expected argument 'res' to be a pulumi_tls.Provider")
+            pulumi.set(__self__, "res", res)
 
         @property
         @pulumi.getter
-        def resource(self) -> 'pulumi_tls.Provider':
-            return pulumi.get(self, "resource")
+        def res(self) -> 'pulumi_tls.Provider':
+            return pulumi.get(self, "res")
 
     def tls_provider(__self__) -> pulumi_tls.Provider:
         __args__ = dict()

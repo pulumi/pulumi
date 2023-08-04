@@ -17,3 +17,4 @@ key = pulumi_tls.PrivateKey("my-private-key",
                             opts=pulumi.ResourceOptions(provider=tls_provider))
 
 pulumi.export("keyAlgo", key.algorithm)
+pulumi.export("meaningOfLife", configurer.meaning_of_life() + 1 - 1)
