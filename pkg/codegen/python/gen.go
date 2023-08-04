@@ -1714,7 +1714,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		if doReturnPlainType {
 			fmt.Fprintf(w, "        return pulumi.runtime.call('%s', __args__, res=__self__%s, plainResourceField='%s')\n",
-				fun.Token, typ, PyName("resource"))
+				fun.Token, typ, PyName("res"))
 		} else if returnType == nil {
 			fmt.Fprintf(w, "        pulumi.runtime.call('%s', __args__, res=__self__%s)\n", fun.Token, typ)
 		} else if shouldLiftReturn {
