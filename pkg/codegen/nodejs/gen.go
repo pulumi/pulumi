@@ -1038,7 +1038,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        }, this")
 
 		if doReturnPlainType {
-			prop := camel("resource")
+			prop := camel("res")
 			fmt.Fprintf(w, ", {plainResourceField: %q}", prop)
 		}
 

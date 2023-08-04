@@ -2116,7 +2116,7 @@ func (pkg *pkgContext) genMethod(resourceName string, method *schema.Method, w i
 		if doReturnPlainType {
 			properties = []*schema.Property{
 				{
-					Name:  "resource",
+					Name:  "res",
 					Type:  returnPlainType,
 					Plain: true,
 				},
