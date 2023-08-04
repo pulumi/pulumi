@@ -88,6 +88,23 @@ class Configurer(pulumi.ComponentResource):
             remote=True)
 
     @pulumi.output_type
+    class MeaningOfLifeResult:
+        def __init__(__self__, resource=None):
+            if resource and not isinstance(resource, int):
+                raise TypeError("Expected argument 'resource' to be a int")
+            pulumi.set(__self__, "resource", resource)
+
+        @property
+        @pulumi.getter
+        def resource(self) -> int:
+            return pulumi.get(self, "resource")
+
+    def meaning_of_life(__self__) -> int:
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        return pulumi.runtime.call('metaprovider:index:Configurer/meaningOfLife', __args__, res=__self__, typ=Configurer.MeaningOfLifeResult, plainResourceField='res')
+
+    @pulumi.output_type
     class TlsProviderResult:
         def __init__(__self__, resource=None):
             if resource and not isinstance(resource, pulumi_tls.Provider):
@@ -102,5 +119,5 @@ class Configurer(pulumi.ComponentResource):
     def tls_provider(__self__) -> pulumi_tls.Provider:
         __args__ = dict()
         __args__['__self__'] = __self__
-        return pulumi.runtime.call('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__, typ=Configurer.TlsProviderResult, plainResourceField='resource')
+        return pulumi.runtime.call('metaprovider:index:Configurer/tlsProvider', __args__, res=__self__, typ=Configurer.TlsProviderResult, plainResourceField='res')
 
