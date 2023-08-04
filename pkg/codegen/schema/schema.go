@@ -535,7 +535,7 @@ type Function struct {
 	Outputs *ObjectType
 	// The return type of the function, if any.
 	ReturnType Type
-	// The return type is plain and not wrapped in an Output. This is only supported for resources.
+	// The return type is plain and not wrapped in an Output.
 	ReturnTypePlain bool
 	// When InlineObjectAsReturnType is true, it means that the return type definition is defined inline
 	// as an object type that should be generated as a separate type and it is not
@@ -552,10 +552,10 @@ type Function struct {
 	IsOverlay bool
 }
 
-// Detects if a function returns a single plain value and that value is a Resource or a Provider type.
-func (fun *Function) ReturnsPlainResource() (*ResourceType, bool) {
-	if resTy, ok := fun.ReturnType.(*ResourceType); ok && fun.ReturnTypePlain {
-		return resTy, true
+// Detects if a function returns a single plain value and that is not wrapped in an Output.
+func (fun *Function) ReturnsPlainType() (Type, bool) {
+	if fun.ReturnType != nil && fun.ReturnTypePlain {
+		return fun.ReturnType, true
 	}
 	return nil, false
 }

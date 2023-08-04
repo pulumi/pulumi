@@ -943,15 +943,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		methodName := camel(method.Name)
 		fun := method.Function
 
-		plainResReturnType, returnsPlainRes := fun.ReturnsPlainResource()
+		returnPlainType, doReturnPlainType := fun.ReturnsPlainType()
 		var objectReturnType *schema.ObjectType
 		if fun.ReturnType != nil {
 			if objectType, ok := fun.ReturnType.(*schema.ObjectType); ok && objectType != nil {
 				objectReturnType = objectType
-			} else if !returnsPlainRes {
+			} else if !doReturnPlainType {
 				// Currently the code only knows how to generate code for methods returning an
-				// ObjectType (objectReturnType!=nil) or methods returning a plain resource
-				// (returnsPlainRes==true). All other methods are simply skipped; bail here.
+				// ObjectType or methods returning a plain resource All other methods are simply
+				// skipped; bail here.
 				return
 			}
 		}
@@ -990,8 +990,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		var retty string
 		if fun.ReturnType == nil {
 			retty = "void"
-		} else if returnsPlainRes {
-			innerType := mod.typeString(plainResReturnType, false, nil)
+		} else if doReturnPlainType {
+			innerType := mod.typeString(returnPlainType, false, nil)
 			retty = fmt.Sprintf("Promise<%s>", innerType)
 		} else if liftReturn {
 			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(objectReturnType.Properties[0].Type, false, nil))
@@ -1019,7 +1019,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			}
 		}
 
-		if returnsPlainRes {
+		if doReturnPlainType {
 			fmt.Fprintf(w, "        %spulumi.runtime.callAsync(\"%s\", {\n", ret, fun.Token)
 		} else {
 			fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
@@ -1037,7 +1037,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 		fmt.Fprintf(w, "        }, this")
 
-		if returnsPlainRes {
+		if doReturnPlainType {
 			prop := camel("resource")
 			fmt.Fprintf(w, ", {plainResourceField: %q}", prop)
 		}
@@ -1116,7 +1116,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 					return err
 				}
 			}
-			if resTy, ok := fun.ReturnsPlainResource(); ok {
+			if resTy, ok := fun.ReturnsPlainType(); ok {
 				props := []*schema.Property{
 					{
 						Name:  "resource",
@@ -1603,7 +1603,7 @@ func (mod *modContext) getImportsForResource(member interface{}, externalImports
 						needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 					}
 				}
-				if resTy, ok := method.Function.ReturnsPlainResource(); ok {
+				if resTy, ok := method.Function.ReturnsPlainType(); ok {
 					needsTypes = mod.getTypeImportsForResource(resTy, false, externalImports, imports, seen, res) || needsTypes
 				}
 			}
