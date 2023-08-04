@@ -1555,7 +1555,7 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 		comment = ""
 		properties = []*schema.Property{
 			{
-				Name:  "resource",
+				Name:  "res",
 				Type:  t,
 				Plain: true,
 			},

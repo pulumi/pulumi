@@ -558,6 +558,9 @@ func testConstructComponentConfigureProviderCommonOptions() integration.ProgramT
 				"Did not find the inputs of the provider PrivateKey was provisioned with")
 			require.Truef(t, *providerFromEnvSetting,
 				"Expected PrivateKey to be provisioned with a provider with fromEnv=true")
+
+			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife"],
+				"Expectead meaningOfLife output to be set to the integer 42")
 		},
 	}
 }
