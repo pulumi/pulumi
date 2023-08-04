@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.77.0 (2023-08-04)
+
+
+### Features
+
+- [programgen/dotnet] Fix typing for optional and complex config variables in main program
+  [#13590](https://github.com/pulumi/pulumi/pull/13590)
+
+- [cli/new] Support SSH-style Git URLs, including private template repositories for `pulumi new`
+  [#13515](https://github.com/pulumi/pulumi/pull/13515)
+
+- [sdk/nodejs] NodeJS programs will now warn that undefined values will not show as stack outputs.
+  [#13608](https://github.com/pulumi/pulumi/pull/13608)
+
+- [cli/plugin] CLI will now warn when loading ambient plugins from $PATH.
+  [#13607](https://github.com/pulumi/pulumi/pull/13607)
+
+
+### Bug Fixes
+
+- [cli] Several fixes for `pulumi logs` including support for first-class providers, support for ambient credentials and improved error reporting.
+  [#13588](https://github.com/pulumi/pulumi/pull/13588)
+
+- [cli/state] Fix panic in `pulumi state edit` when no stack is selected.
+  [#13638](https://github.com/pulumi/pulumi/pull/13638)
+
+- [engine] Language plugins now defer schema loading to the engine via a gRPC interface.
+  [#13605](https://github.com/pulumi/pulumi/pull/13605)
+
+- [programgen/{dotnet,go,nodejs,python}] Normalize the declaration name of generated resource components
+  [#13606](https://github.com/pulumi/pulumi/pull/13606)
+
+- [sdk/python] `Output.from_input` now recurses into tuples.
+  [#13603](https://github.com/pulumi/pulumi/pull/13603)
+
+- [sdkgen] Fix bug binding provider schema where type default int values could not take integers.
+  [#13599](https://github.com/pulumi/pulumi/pull/13599)
+
+- [sdkgen/python] Fixes python external enum types missing the import reference to the external package.
+  [#13584](https://github.com/pulumi/pulumi/pull/13584)
+
+
+### Miscellaneous
+
+- [sdk/go] Move some types to an internal package, re-exporting them from sdk/go/pulumi. This should have no meaningful effect on users of these APIs.
+  [#13495](https://github.com/pulumi/pulumi/pull/13495)
+
+- [sdk/go] Bump the minimum required versions of google.golang.org/genproto and google.golang.org/grpc.
+  [#13593](https://github.com/pulumi/pulumi/pull/13593)
+
 ## 3.76.1 (2023-07-25)
 
 
