@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/go
-  description: Bump the minimum required versions of google.golang.org/genproto and google.golang.org/grpc.
