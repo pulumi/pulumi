@@ -45,13 +45,32 @@ func (ConfigurerArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*configurerArgs)(nil)).Elem()
 }
 
+func (r *Configurer) MeaningOfLife(ctx *pulumi.Context) (o int, e error) {
+	ctx.CallReturnPlainResource("metaprovider:index:Configurer/meaningOfLife", nil, ConfigurerMeaningOfLifeResultOutput{}, r, reflect.ValueOf(&o), &e)
+	return
+}
+
+type ConfigurerMeaningOfLifeResult struct {
+	Res int `pulumi:"res"`
+}
+
+type ConfigurerMeaningOfLifeResultOutput struct{ *pulumi.OutputState }
+
+func (ConfigurerMeaningOfLifeResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ConfigurerMeaningOfLifeResult)(nil)).Elem()
+}
+
+func (o ConfigurerMeaningOfLifeResultOutput) Res() pulumi.IntOutput {
+	return o.ApplyT(func(v ConfigurerMeaningOfLifeResult) int { return v.Res }).(pulumi.IntOutput)
+}
+
 func (r *Configurer) TlsProvider(ctx *pulumi.Context) (o *tls.Provider, e error) {
 	ctx.CallReturnPlainResource("metaprovider:index:Configurer/tlsProvider", nil, ConfigurerTlsProviderResultOutput{}, r, reflect.ValueOf(&o), &e)
 	return
 }
 
 type ConfigurerTlsProviderResult struct {
-	Resource *tls.Provider `pulumi:"resource"`
+	Res *tls.Provider `pulumi:"res"`
 }
 
 type ConfigurerTlsProviderResultOutput struct{ *pulumi.OutputState }
@@ -60,8 +79,8 @@ func (ConfigurerTlsProviderResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*ConfigurerTlsProviderResult)(nil)).Elem()
 }
 
-func (o ConfigurerTlsProviderResultOutput) Resource() tls.ProviderOutput {
-	return o.ApplyT(func(v ConfigurerTlsProviderResult) *tls.Provider { return v.Resource }).(tls.ProviderOutput)
+func (o ConfigurerTlsProviderResultOutput) Res() tls.ProviderOutput {
+	return o.ApplyT(func(v ConfigurerTlsProviderResult) *tls.Provider { return v.Res }).(tls.ProviderOutput)
 }
 
 type ConfigurerInput interface {

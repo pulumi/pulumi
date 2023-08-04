@@ -10,7 +10,8 @@
         }
       },
       "methods": {
-        "tlsProvider": "metaprovider:index:Configurer/tlsProvider"
+        "tlsProvider": "metaprovider:index:Configurer/tlsProvider",
+        "meaningOfLife":   "metaprovider:index:Configurer/meaningOfLife"
       }
     }
   },
@@ -25,6 +26,19 @@
       },
       "outputs": {
          "$ref": "/tls/v4.10.0/schema.json#/provider",
+         "plain": true
+      }
+    },
+    "metaprovider:index:Configurer/meaningOfLife": {
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/metaprovider:index:Configurer"
+          }
+        }
+      },
+      "outputs": {
+         "type": "integer",
          "plain": true
       }
     }

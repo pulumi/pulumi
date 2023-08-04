@@ -40,10 +40,16 @@ export class Configurer extends pulumi.ComponentResource {
         super(Configurer.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 
+    meaningOfLife(): Promise<number> {
+        return pulumi.runtime.callAsync("metaprovider:index:Configurer/meaningOfLife", {
+            "__self__": this,
+        }, this, {plainResourceField: "res"});
+    }
+
     tlsProvider(): Promise<pulumiTls.Provider> {
         return pulumi.runtime.callAsync("metaprovider:index:Configurer/tlsProvider", {
             "__self__": this,
-        }, this, {plainResourceField: "resource"});
+        }, this, {plainResourceField: "res"});
     }
 }
 
@@ -55,6 +61,13 @@ export interface ConfigurerArgs {
 }
 
 export namespace Configurer {
+    /**
+     * The results of the Configurer.meaningOfLife method.
+     */
+    export interface MeaningOfLifeResult {
+        readonly resource: number;
+    }
+
     /**
      * The results of the Configurer.tlsProvider method.
      */
