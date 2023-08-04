@@ -29,11 +29,12 @@ import (
 )
 
 const (
-	providerName            = "metaprovider"
-	version                 = "0.0.1"
-	mainModule              = "index"
-	configurerResourceToken = "metaprovider:index:Configurer"
-	tlsProviderMethodToken  = "metaprovider:index:Configurer/tlsProvider"
+	providerName             = "metaprovider"
+	version                  = "0.0.1"
+	mainModule               = "index"
+	configurerResourceToken  = "metaprovider:index:Configurer"
+	tlsProviderMethodToken   = "metaprovider:index:Configurer/tlsProvider"
+	meaningOfLifeMethodToken = "metaprovider:index:Configurer/meaningOfLife"
 )
 
 type module struct {
@@ -57,23 +58,34 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 }
 
 func call(ctx *pulumi.Context, tok string, args pulumiprovider.CallArgs) (*pulumiprovider.CallResult, error) {
-	if tok != tlsProviderMethodToken {
+	switch tok {
+	case tlsProviderMethodToken:
+		methodArgs := &TlsProviderArgs{}
+		res, err := args.CopyTo(methodArgs)
+		if err != nil {
+			return nil, fmt.Errorf("setting args: %w", err)
+		}
+		component := res.(*Configurer)
+		result, err := component.TlsProvider(ctx, methodArgs)
+		if err != nil {
+			return nil, fmt.Errorf("calling method: %w", err)
+		}
+		return pulumiprovider.NewCallResult(result)
+	case meaningOfLifeMethodToken:
+		methodArgs := &MeaningOfLifeArgs{}
+		res, err := args.CopyTo(methodArgs)
+		if err != nil {
+			return nil, fmt.Errorf("setting args: %w", err)
+		}
+		component := res.(*Configurer)
+		result, err := component.MeaningOfLife(ctx, methodArgs)
+		if err != nil {
+			return nil, fmt.Errorf("calling method: %w", err)
+		}
+		return pulumiprovider.NewCallResult(result)
+	default:
 		return nil, fmt.Errorf("unknown method %s", tok)
 	}
-
-	methodArgs := &TlsProviderArgs{}
-	res, err := args.CopyTo(methodArgs)
-	if err != nil {
-		return nil, fmt.Errorf("setting args: %w", err)
-	}
-	component := res.(*Configurer)
-
-	result, err := component.TlsProvider(ctx, methodArgs)
-	if err != nil {
-		return nil, fmt.Errorf("calling method: %w", err)
-	}
-
-	return pulumiprovider.NewCallResult(result)
 }
 
 func construct(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs,

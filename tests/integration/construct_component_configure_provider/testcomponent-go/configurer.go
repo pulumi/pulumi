@@ -74,11 +74,23 @@ func NewConfigurer(
 type TlsProviderArgs struct{}
 
 type TlsProviderResult struct {
-	Resource tls.ProviderOutput `pulumi:"resource"`
+	Result tls.ProviderOutput `pulumi:"res"`
 }
 
 func (c *Configurer) TlsProvider(ctx *pulumi.Context, args *TlsProviderArgs) (*TlsProviderResult, error) {
 	return &TlsProviderResult{
-		Resource: c.TlsProviderOutput,
+		Result: c.TlsProviderOutput,
+	}, nil
+}
+
+type MeaningOfLifeArgs struct{}
+
+type MeaningOfLifeResult struct {
+	Result pulumi.IntOutput `pulumi:"res"`
+}
+
+func (c *Configurer) MeaningOfLife(ctx *pulumi.Context, args *MeaningOfLifeArgs) (*MeaningOfLifeResult, error) {
+	return &MeaningOfLifeResult{
+		Result: pulumi.Int(42).ToIntOutputWithContext(ctx.Context()),
 	}, nil
 }
