@@ -778,8 +778,9 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	_, err = npm.Install(ctx, req.Directory, false /*production*/, stdout, stderr)
 	if err != nil {
-		return fmt.Errorf("npm install failure message: %w \n "+
-		"Suggestion: Install npm and then run npm install in this directory", err)
+		return fmt.Errorf(`npm install failure message: 
+		%w 
+		Suggestion: Install npm and then run npm install in this directory`, err)
 	}
 
 	stdout.Write([]byte("Finished installing dependencies\n\n"))

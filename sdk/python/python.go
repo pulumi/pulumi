@@ -262,7 +262,7 @@ func InstallDependenciesWithWriters(ctx context.Context,
 			return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
 		}
 
-		pipCheckCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip"})...)
+		pipCheckCmd := VirtualEnvCommand(venvDir, "python", []string{"-m", "pip"}...)
 		pipCheckCmd.Dir = root
 		pipCheckCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
