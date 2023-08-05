@@ -15,13 +15,25 @@
 package gitutil
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/nettest"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func TestParseGitRepoURL(t *testing.T) {
@@ -107,13 +119,43 @@ func TestParseGitRepoURL(t *testing.T) {
 	test(exp, "", pre)
 	test(exp, "foobar", pre+"/foobar")
 
+	// SSH URLs.
+	pre = "git@github.com:acmecorp/templates"
+	exp = "ssh://git@github.com/acmecorp/templates.git"
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
+	pre = "ssh://git@github.com/acmecorp/templates"
+	exp = "ssh://git@github.com/acmecorp/templates.git"
+	test(exp, "", pre)
+	test(exp, "", pre+"/")
+	pre = "git@github.com:acmecorp/templates/website"
+	exp = "ssh://git@github.com/acmecorp/templates.git"
+	test(exp, "website", pre)
+	test(exp, "website", pre+"/")
+	pre = "git@github.com:acmecorp/templates/somewhere/in/there/is/a/website"
+	exp = "ssh://git@github.com/acmecorp/templates.git"
+	test(exp, "somewhere/in/there/is/a/website", pre)
+	test(exp, "somewhere/in/there/is/a/website", pre+"/")
+	pre = "gitolite@acmecorp.com:acmecorp/templates/somewhere/in/there/is/a/website"
+	exp = "ssh://gitolite@acmecorp.com/acmecorp/templates.git"
+	test(exp, "somewhere/in/there/is/a/website", pre)
+	test(exp, "somewhere/in/there/is/a/website", pre+"/")
+
 	// No owner.
 	testError("https://github.com")
 	testError("https://github.com/")
+	testError("git@github.com")
+	testError("git@github.com/")
+	testError("ssh://git@github.com")
+	testError("ssh://git@github.com/")
 
 	// No repo.
 	testError("https://github.com/pulumi")
 	testError("https://github.com/pulumi/")
+	testError("git@github.com:pulumi")
+	testError("git@github.com:pulumi/")
+	testError("ssh://git@github.com/pulumi")
+	testError("ssh://git@github.com/pulumi/")
 
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git")
@@ -329,7 +371,9 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		// Unknown or bad remotes
 		{"", nil},
 		{"asdf", nil},
+		{"invalid ://../remote-url", nil},
 		{"svn:something.com/owner/repo", nil},
+		{"https://bitbucket.org/foo.git", nil},
 		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
 	}
 
@@ -341,4 +385,155 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		}
 		assert.Equal(t, test.WantVCSInfo, got)
 	}
+}
+
+// mockSSHConfig allows tests to mock SSH key paths.
+type mockSSHConfig struct {
+	path string
+	err  error
+}
+
+// GetKeyPath returns a canned response for SSH config.
+func (c *mockSSHConfig) GetStrict(host, key string) (string, error) {
+	return c.path, c.err
+}
+
+func TestParseAuthURL(t *testing.T) {
+	t.Parallel()
+
+	//nolint: gosec
+	generateSSHKey := func(t *testing.T, passphrase string) string {
+		r := rand.New(rand.NewSource(0))
+		key, err := rsa.GenerateKey(r, 256)
+		require.NoError(t, err)
+
+		block := &pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: x509.MarshalPKCS1PrivateKey(key),
+		}
+
+		if passphrase != "" {
+			//nolint: staticcheck
+			block, err = x509.EncryptPEMBlock(r, block.Type, block.Bytes, []byte(passphrase), x509.PEMCipherAES256)
+			require.NoError(t, err)
+		}
+
+		path := filepath.Join(t.TempDir(), "test-key")
+		err = os.WriteFile(path, pem.EncodeToMemory(block), 0o600)
+		require.NoError(t, err)
+
+		return path
+	}
+
+	t.Run("with no auth", func(t *testing.T) {
+		t.Parallel()
+		_, auth, err := parseAuthURL("http://github.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with basic auth user", func(t *testing.T) {
+		t.Parallel()
+		url, auth, err := parseAuthURL("http://user@github.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
+		assert.Equal(t, "http://github.com/pulumi/templates", url)
+	})
+
+	t.Run("with basic auth user/password", func(t *testing.T) {
+		t.Parallel()
+		url, auth, err := parseAuthURL("http://user:password@github.com/pulumi/templates")
+		assert.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+		assert.Equal(t, "http://github.com/pulumi/templates", url)
+	})
+
+	//nolint:paralleltest // global environment variables
+	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
+		original := os.Getenv(env.GitSSHPassphrase.Var().Name())
+		defer func() { _ = os.Setenv(env.GitSSHPassphrase.Var().Name(), original) }()
+
+		passphrase := "foobar"
+		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), passphrase)
+		require.NoError(t, err)
+
+		parser := urlAuthParser{
+			sshConfig: &mockSSHConfig{path: generateSSHKey(t, passphrase)},
+		}
+
+		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
+		assert.NoError(t, err)
+		assert.NotNil(t, auth)
+		assert.Equal(t, "user: git, name: ssh-public-keys", auth.String())
+		assert.Contains(t, parser.sshKeys, "github.com")
+	})
+
+	//nolint:paralleltest // global environment variables
+	t.Run("with passphrase-protected key and wrong environment variable (agent available)", func(t *testing.T) {
+		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
+		originalSocket := os.Getenv("SSH_AUTH_SOCK")
+		defer func() {
+			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
+			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
+		}()
+
+		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		require.NoError(t, err)
+
+		l, err := nettest.NewLocalListener("unix")
+		defer contract.IgnoreClose(l)
+		require.NoError(t, err)
+
+		err = os.Setenv("SSH_AUTH_SOCK", l.Addr().String())
+		require.NoError(t, err)
+
+		parser := urlAuthParser{
+			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
+		}
+
+		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
+		// This isn't an error because the connection should fall back to the
+		// SSH agent for auth.
+		assert.NoError(t, err)
+		assert.NotNil(t, auth)
+	})
+
+	//nolint:paralleltest // global environment variables
+	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
+		originalPassphrase := os.Getenv(env.GitSSHPassphrase.Var().Name())
+		originalSocket := os.Getenv("SSH_AUTH_SOCK")
+		defer func() {
+			_ = os.Setenv(env.GitSSHPassphrase.Var().Name(), originalPassphrase)
+			_ = os.Setenv("SSH_AUTH_SOCK", originalSocket)
+		}()
+
+		err := os.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
+		require.NoError(t, err)
+
+		err = os.Unsetenv("SSH_AUTH_SOCK")
+		require.NoError(t, err)
+
+		parser := urlAuthParser{
+			sshConfig: &mockSSHConfig{path: generateSSHKey(t, "correct passphrase")},
+		}
+
+		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
+		assert.ErrorContains(t, err, "SSH_AUTH_SOCK not-specified")
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with memoized auth", func(t *testing.T) {
+		t.Parallel()
+		parser := urlAuthParser{
+			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
+			sshKeys: map[string]transport.AuthMethod{
+				"github.com": &http.BasicAuth{Username: "foo"},
+			},
+		}
+
+		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
+		assert.NoError(t, err)
+		assert.NotNil(t, auth)
+		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
+	})
 }

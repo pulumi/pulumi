@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: NodeJS programs will now warn that undefined values will not show as stack outputs.

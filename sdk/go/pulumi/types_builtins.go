@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 )
 
 var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
@@ -5332,13 +5334,9 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
-func getResolvedValue(input Input) (reflect.Value, bool) {
-	switch input := input.(type) {
-	case *asset, *archive:
-		return reflect.ValueOf(input), true
-	default:
-		return reflect.Value{}, false
-	}
+func init() {
+	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
 }
 
 // AsArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is

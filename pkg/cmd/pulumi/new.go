@@ -443,7 +443,14 @@ func newNewCmd() *cobra.Command {
 			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
 			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
 			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
-			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n" +
+			"\n" +
+			"To use a private repository as a template source, provide an HTTPS or SSH URL with relevant credentials.\n" +
+			"Ensure your SSH agent has the correct identity (ssh-add) or you may be prompted for your key's passphrase.\n" +
+			"* `pulumi new git@github.com:<user>/<private-repo>`\n" +
+			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
+			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
+			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := commandContext()

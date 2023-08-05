@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: programgen/dotnet
-  description: Fix typing for optional and complex config variables in main program
