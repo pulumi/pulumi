@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.77.1 (2023-08-05)
+
+
+### Bug Fixes
+
+- [cli] Revert warning about ambient plugins loaded from $PATH #13607.
+  [#13657](https://github.com/pulumi/pulumi/pull/13657)
+
 ## 3.77.0 (2023-08-04)
 
 
