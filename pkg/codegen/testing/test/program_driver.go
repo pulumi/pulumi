@@ -362,6 +362,12 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 	},
 	{
+		Directory:   "regress-node-12507",
+		Description: "Regression test for https://github.com/pulumi/pulumi/issues/12507",
+		Skip:        allProgLanguages.Except("nodejs"),
+		BindOptions: []pcl.BindOption{pcl.PreferOutputVersionedInvokes},
+	},
+	{
 		Directory:   "csharp-plain-lists",
 		Description: "Tests that plain lists are supported in C#",
 		Skip:        allProgLanguages.Except("dotnet"),
