@@ -250,23 +250,53 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		}
 	}
 
-	if expr.Condition != nil {
-		g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
-	}
-
-	g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
-	g.Fgenf(w, "%s{\n", g.Indent)
-	g.Indented(func() {
-		typeName := ""
-		switch expr.Value.(type) {
-		case *model.ObjectConsExpression:
-			// TODO: handle typed objects
-			typeName = "new Dictionary<string, object?> "
+	switch expr.Type().(type) {
+	case *model.ListType:
+		// the result of the expression is a list
+		if expr.Condition != nil {
+			g.Fgenf(w, ".Where(%s => %.v)", expr.ValueVariable.Name, expr.Condition)
 		}
-		g.Fgenf(w, "%sreturn %s %v;", g.Indent, typeName, expr.Value)
-	})
-	g.Fgen(w, "\n")
-	g.Fgenf(w, "%s})", g.Indent)
+
+		g.Fgenf(w, ".Select(%s => \n", expr.ValueVariable.Name)
+
+		g.Fgenf(w, "%s{\n", g.Indent)
+		g.Indented(func() {
+			g.Fgenf(w, "%sreturn %v;", g.Indent, expr.Value)
+		})
+		g.Fgen(w, "\n")
+		// .ToList() is added so that the expressions returns `List<T>
+		// which can be implicitly converted to InputList<T>
+		g.Fgenf(w, "%s}).ToList()", g.Indent)
+	case *model.MapType:
+		// the result of the expression is a dictionary
+		g.Fgen(w, ".ToDictionary(item => {\n")
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Key) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %s;\n", g.Indent, expr.Key)
+		})
+
+		g.Fgenf(w, "%s}, item => {\n", g.Indent)
+		g.Indented(func() {
+			if expr.KeyVariable != nil && pcl.VariableAccessed(expr.KeyVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Key;\n", g.Indent, expr.KeyVariable.Name)
+			}
+
+			if expr.ValueVariable != nil && pcl.VariableAccessed(expr.ValueVariable.Name, expr.Value) {
+				g.Fgenf(w, "%svar %s = item.Value;\n", g.Indent, expr.ValueVariable.Name)
+			}
+
+			g.Fgenf(w, "%sreturn %v;\n", g.Indent, expr.Value)
+		})
+
+		g.Fgenf(w, "%s})", g.Indent)
+	}
 }
 
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
