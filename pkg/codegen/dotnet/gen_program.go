@@ -73,6 +73,15 @@ type generator struct {
 	// Program generation options
 	generateOptions GenerateProgramOptions
 	isComponent     bool
+	// when creating a list of items, we need to know the type of the list
+	// if is it a plain list, then `new()` should be used because we are creating List<T>
+	// however if we have InputList<T> or anything else, we use `new[]` because InputList<T> can be implicitly casted
+	// from an array
+	listInitializer string
+}
+
+func (g *generator) resetListInitializer() {
+	g.listInitializer = "new[]"
 }
 
 const (
@@ -126,6 +135,7 @@ func GenerateProgramWithOptions(
 		functionArgs:    functionArgs,
 		functionInvokes: map[string]*schema.Function{},
 		generateOptions: options,
+		listInitializer: "new[]",
 	}
 
 	g.Formatter = format.NewFormatter(g)
@@ -164,6 +174,7 @@ func GenerateProgramWithOptions(
 			functionInvokes: map[string]*schema.Function{},
 			generateOptions: options,
 			isComponent:     true,
+			listInitializer: "new[]",
 		}
 
 		componentGenerator.Formatter = format.NewFormatter(componentGenerator)
@@ -1205,6 +1216,19 @@ func AnnotateComponentInputs(component *pcl.Component) {
 	}
 }
 
+func isPlainResourceProperty(r *pcl.Resource, name string) bool {
+	if r.Schema == nil {
+		return false
+	}
+
+	for _, property := range r.Schema.InputProperties {
+		if property.Name == name {
+			return property.Plain
+		}
+	}
+	return false
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	qualifiedMemberName := g.resourceTypeName(r)
@@ -1247,7 +1271,12 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			g.Indented(func() {
 				for _, attr := range r.Inputs {
 					g.Fgenf(w, "%s%s =", g.Indent, propertyName(attr.Name))
+					if isPlainResourceProperty(r, attr.Name) {
+						g.listInitializer = "new()"
+					}
+
 					g.Fgenf(w, " %.v,\n", attr.Value)
+					g.resetListInitializer()
 				}
 			})
 			g.Fgenf(w, "%s}%s)", g.Indent, g.genResourceOptions(r.Options, "CustomResourceOptions"))

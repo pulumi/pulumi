@@ -1032,14 +1032,14 @@ func (g *generator) isListOfDifferentTypes(expr *model.TupleConsExpression) bool
 func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExpression) {
 	switch len(expr.Expressions) {
 	case 0:
-		g.Fgen(w, "new[] {}")
+		g.Fgenf(w, "%s {}", g.listInitializer)
 	default:
 		if !g.isListOfDifferentTypes(expr) {
-			// only generate this when we don't have a list of union types
-			// list of a union is mapped to InputList<object>
+			// only generate a list initializer when we don't have a list of union types
+			// because list of a union is mapped to InputList<object>
 			// which means new[] will not work because type-inference won't
-			// know the type of the array before hand
-			g.Fgen(w, "new[]")
+			// know the type of the array beforehand
+			g.Fgenf(w, "%s", g.listInitializer)
 		}
 
 		g.Fgenf(w, "\n%s{", g.Indent)
