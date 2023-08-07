@@ -348,6 +348,49 @@ All [input](#inputs) properties are implicitly available as output properties. A
 ## Configurer Resource Methods {#methods}
 
 
+### MeaningOfLife Method {#method_MeaningOfLife}
+
+
+
+#### Using MeaningOfLife
+
+<div>
+<pulumi-chooser type="language" options="typescript,python,go,csharp,java,yaml"></pulumi-chooser>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="javascript,typescript">
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript">meaningOfLife<span class="p">(</span><span class="p">): Output&lt;<span class="nx"><a href="#method_MeaningOfLife_result">number</a></span>&gt;</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="python">
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>meaning_of_life(</span><span class="p">) -&gt;</span> Output[<span class="nx"><a href="#method_MeaningOfLife_result">Configurer.Meaning_of_lifeResult</a></span>]</code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="go">
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="k">func</span> <span class="p">(r *Configurer)</span> MeaningOfLife<span class="p">(</span><span class="p">) (<span class="nx"><a href="#method_MeaningOfLife_result">ConfigurerMeaningOfLifeResultOutput</a></span>, error)</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+<div>
+<pulumi-choosable type="language" values="csharp">
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>Output&lt;<span class="nx"><a href="#method_MeaningOfLife_result">int</a></span>&gt; <span class="nx">MeaningOfLife</span><span class="p">()</span></code></pre></div>
+</pulumi-choosable>
+</div>
+
+
+
+
+
+
 ### TlsProvider Method {#method_TlsProvider}
 
 
