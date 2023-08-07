@@ -362,6 +362,11 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except("nodejs").Except("python"),
 	},
 	{
+		Directory:   "csharp-plain-lists",
+		Description: "Tests that plain lists are supported in C#",
+		Skip:        allProgLanguages.Except("dotnet"),
+	},
+	{
 		Directory:   "csharp-typed-for-expressions",
 		Description: "Testing for expressions with typed target expressions in csharp",
 		Skip:        allProgLanguages.Except("dotnet"),
