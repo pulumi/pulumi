@@ -1272,7 +1272,7 @@ func (mod *modContext) genFunctionOutputVersion(
 	fun *schema.Function,
 	info functionFileInfo,
 ) (functionFileInfo, error) {
-	if !fun.NeedsOutputVersion() {
+	if fun.ReturnType == nil {
 		return info, nil
 	}
 
@@ -1282,13 +1282,15 @@ func (mod *modContext) genFunctionOutputVersion(
 	info.functionOutputVersionName = fnOutput
 	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
-	var argsig string
-	argsOptional := functionArgsOptional(fun)
-	optFlag := ""
-	if argsOptional {
-		optFlag = "?"
+	argsig := ""
+	if fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
+		argsOptional := functionArgsOptional(fun)
+		optFlag := ""
+		if argsOptional {
+			optFlag = "?"
+		}
+		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 	}
-	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
 	// Write the TypeDoc/JSDoc for the data source function.
 	printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), "", "")
@@ -1297,13 +1299,25 @@ func (mod *modContext) genFunctionOutputVersion(
 		fmt.Fprintf(w, "/** @deprecated %s */\n", fun.DeprecationMessage)
 	}
 	if !fun.MultiArgumentInputs {
-		fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+		if argsig != "" {
+			fmt.Fprintf(w, `export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply((a: any) => %s(a, opts))
 }
 `, fnOutput, argsig, returnType, originalName)
+		} else {
+			fmt.Fprintf(w, `export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
+    return pulumi.output(%s(opts))
+}
+`, fnOutput, returnType, originalName)
+		}
 	} else {
 		fmt.Fprintf(w, "export function %s(", fnOutput)
-		for _, prop := range fun.Inputs.Properties {
+		var properties []*schema.Property
+		if fun.Inputs != nil {
+			properties = fun.Inputs.Properties
+		}
+
+		for _, prop := range properties {
 			paramDeclaration := ""
 			propertyType := &schema.InputType{ElementType: prop.Type}
 			argumentType := mod.typeString(propertyType, true /* input */, nil)
@@ -1318,12 +1332,12 @@ func (mod *modContext) genFunctionOutputVersion(
 
 		fmt.Fprintf(w, "opts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", returnType)
 		fmt.Fprint(w, "    var args = {\n")
-		for _, p := range fun.Inputs.Properties {
+		for _, p := range properties {
 			fmt.Fprintf(w, "        \"%s\": %s,\n", p.Name, p.Name)
 		}
 		fmt.Fprint(w, "    };\n")
 		fmt.Fprintf(w, "    return pulumi.output(args).apply((resolvedArgs: any) => %s(", originalName)
-		for _, p := range fun.Inputs.Properties {
+		for _, p := range properties {
 			// Pass the argument to the invocation.
 			fmt.Fprintf(w, "resolvedArgs.%s, ", p.Name)
 		}
@@ -1331,7 +1345,7 @@ func (mod *modContext) genFunctionOutputVersion(
 		fmt.Fprint(w, "}\n")
 	}
 
-	if !fun.MultiArgumentInputs {
+	if !fun.MultiArgumentInputs && fun.Inputs != nil && len(fun.Inputs.Properties) > 0 {
 		fmt.Fprintf(w, "\n")
 		info.functionOutputVersionArgsInterfaceName = argTypeName
 		if err := mod.genPlainType(w,
