@@ -151,7 +151,7 @@ func main() {
 }
 
 // locateModule resolves a node module name to a file path that can be loaded
-func locateModule(ctx context.Context, mod string, nodeBin string) (string, error) {
+func locateModule(ctx context.Context, mod, programDir, nodeBin string) (string, error) {
 	args := []string{"-e", fmt.Sprintf("console.log(require.resolve('%s'));", mod)}
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
@@ -164,6 +164,7 @@ func locateModule(ctx context.Context, mod string, nodeBin string) (string, erro
 	defer tracingSpan.Finish()
 
 	cmd := exec.Command(nodeBin, args...)
+	cmd.Dir = programDir
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -554,7 +555,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		runPath = defaultRunPath
 	}
 
-	runPath, err = locateModule(ctx, runPath, nodeBin)
+	runPath, err = locateModule(ctx, runPath, req.Pwd, nodeBin)
 	if err != nil {
 		cmdutil.ExitError(
 			"It looks like the Pulumi SDK has not been installed. Have you run npm install or yarn install?")
@@ -1051,7 +1052,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program)
+	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies)
 	if err != nil {
 		return nil, err
 	}

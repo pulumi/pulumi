@@ -1992,15 +1992,19 @@ async function createMockEngineAsync(
 function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
-    // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible
-    // for setting up some state and then running the actual user program.  However, in this case, we don't
-    // have a folder structure like the above because we are seting the package as we've built it, not it installed
-    // in another application.
+    // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is
+    // responsible for setting up some state and then running the actual user program.  However, in this case,
+    // we don't have a folder structure like the above because we are setting the package as we've built it,
+    // not it installed in another application.
     //
-    // `pulumi-language-nodejs` allows us to set `PULUMI_LANGUAGE_NODEJS_RUN_PATH` in the environment, and when
-    // set, it will use that path instead of the default value. For our tests here, we set it and point at the
-    // just built version of run.
-    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = "./bin/cmd/run";
+    // `pulumi-language-nodejs` allows us to set `PULUMI_LANGUAGE_NODEJS_RUN_PATH` in the environment, and
+    // when set, it will use that path instead of the default value. For our tests here, we set it and point
+    // at the just built version of run.
+    //
+    // We set this to an absolute path because the runtime will search for the module from the programs
+    // directory which is changed by by the pwd option.
+
+    process.env.PULUMI_LANGUAGE_NODEJS_RUN_PATH = path.normalize(path.join(__dirname, "..", "..", "..", "cmd", "run"));
     const proc = childProcess.spawn("pulumi-language-nodejs", [engineAddr]);
 
     // Hook the first line so we can parse the address.  Then we hook the rest to print for debugging purposes, and

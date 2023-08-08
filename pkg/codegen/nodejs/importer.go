@@ -54,10 +54,6 @@ type NodePackageInfo struct {
 	ContainsEnums bool `json:"containsEnums,omitempty"`
 	// A map allowing you to map the name of a provider to the name of the module encapsulating the provider.
 	ProviderNameToModuleName map[string]string `json:"providerNameToModuleName,omitempty"`
-	// The name of the plugin, which might be different from the package name.
-	PluginName string `json:"pluginName,omitempty"`
-	// The version of the plugin, which might be different from the version of the package..
-	PluginVersion string `json:"pluginVersion,omitempty"`
 	// Additional files to include in TypeScript compilation.
 	// These paths are added to the `files` section of the
 	// generated `tsconfig.json`. A typical use case for this is

@@ -569,7 +569,10 @@ require (
 	return files, diagnostics, nil
 }
 
-func GenerateProject(directory string, project workspace.Project, program *pcl.Program) error {
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+) error {
 	files, diagnostics, err := GenerateProjectFiles(project, program)
 	if err != nil {
 		return err

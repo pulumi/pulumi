@@ -269,8 +269,7 @@
       "extraTypeScriptFiles": [
         "tests/codegen.spec.ts"
       ],
-      "respectSchemaVersion": true,
-      "pluginVersion": "3.2.1"
+      "respectSchemaVersion": true
     },
     "python": {
       "respectSchemaVersion": true
