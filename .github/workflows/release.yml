@@ -152,8 +152,6 @@ jobs:
         job:
           - name: Update Templates Version
             run-command: pulumictl dispatch -r pulumi/templates -c update-templates "${PULUMI_VERSION}"
-          - name: Examples Templates Version
-            run-command: pulumictl dispatch -r pulumi/examples -c smoke-test-cli "${PULUMI_VERSION}"
           - name: Chocolatey Update
             run-command: pulumictl create choco-deploy "${PULUMI_VERSION}"
           - name: Winget Update
