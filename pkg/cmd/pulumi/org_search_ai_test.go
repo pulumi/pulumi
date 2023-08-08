@@ -62,6 +62,7 @@ func TestSearchAI_cmd(t *testing.T) {
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return b, nil
 		},
+		outputFormat: outputFormatTable,
 	}
 
 	err := cmd.Run(context.Background(), nil /* args */)

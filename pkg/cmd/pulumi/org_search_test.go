@@ -39,7 +39,8 @@ func TestSearch_cmd(t *testing.T) {
 	mod := "mod1"
 	modified := "2023-01-01T00:00:00.000Z"
 	cmd := searchCmd{
-		Stdout: &buff,
+		Stdout:       &buff,
+		outputFormat: outputFormatTable,
 		currentBackend: func(context.Context, *workspace.Project, display.Options) (backend.Backend, error) {
 			return &stubHTTPBackend{
 				SearchF: func(context.Context, string, *apitype.PulumiQueryRequest) (*apitype.ResourceSearchResponse, error) {
