@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg/testing
+  description: ProgramTest now writes output to the `testing.T` log, allowing for easier correlation of error messages to tests that caused them.

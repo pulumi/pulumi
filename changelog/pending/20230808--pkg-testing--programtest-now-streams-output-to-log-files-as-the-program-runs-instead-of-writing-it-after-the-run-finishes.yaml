@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg/testing
+  description: ProgramTest now streams output to log files as the program runs instead of writing it after the run finishes.

@@ -15,31 +15,37 @@
 package integration
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the
 // specialized test output streams that list the location the test is running in.
-func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
+func RunCommand(t testing.TB, name string, args []string, wd string, opts *ProgramTestOptions) (err error) {
+	if opts == nil {
+		opts = &ProgramTestOptions{}
+	}
+
 	path := args[0]
 	command := strings.Join(args, " ")
 	t.Logf("**** Invoke '%v' in '%v'", command, wd)
 
-	env := os.Environ()
-	if opts.Env != nil {
-		env = append(env, opts.Env...)
-	}
-	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
-	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
-	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	env := append(os.Environ(), opts.Env...)
+	env = append(env,
+		"PULUMI_DEBUG_COMMANDS=true",
+		"PULUMI_RETAIN_CHECKPOINTS=true",
+		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 
 	cmd := exec.Cmd{
 		Path: path,
@@ -48,18 +54,93 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		Env:  env,
 	}
 
-	startTime := time.Now()
+	var logFile io.Writer
+	{
+		f, err := openLogFile(name, wd)
+		if err != nil {
+			return fmt.Errorf("opening log file: %v", err)
+		}
+		t.Logf("**** Logging to %v", f.Name())
+		defer func() {
+			if err := f.Close(); err != nil {
+				t.Errorf("Error closing log file: %v", err)
+			}
+		}()
 
-	var runout []byte
-	var runerr error
-	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
-		cmd.Stdout = opts.Stdout
-		cmd.Stderr = opts.Stderr
-		runerr = cmd.Run()
-	} else {
-		runout, runerr = cmd.CombinedOutput()
+		// os.File is not safe for concurrent writes, so we need to guard it
+		// because we may be writing to it from multiple goroutines.
+		logFile = &lockedWriter{W: f}
 	}
 
+	// Note that testWriter is safe for concurrent use.
+	testWriter := iotest.LogWriterPrefixed(t, fmt.Sprintf("[%v] ", name))
+
+	// We want to make sure no command output is lost.
+	// Output *always* goes to the log file.
+	// On top of that, we have two modes:
+	//
+	// 1. Verbose mode:
+	//    output goes to stdout/stderr if specified,
+	//    or the test log if not.
+	// 2. Non-verbose mode:
+	//    output goes to the test log only by default.
+	//    If stdout/stderr are specified *and* the command failed,
+	//    output is also written to them.
+	if opts.Verbose || os.Getenv("PULUMI_VERBOSE_TEST") != "" {
+		stdout := opts.Stdout
+		if stdout == nil {
+			stdout = testWriter
+		}
+
+		stderr := opts.Stderr
+		if stderr == nil {
+			stderr = testWriter
+		}
+
+		cmd.Stdout = io.MultiWriter(logFile, stdout)
+		cmd.Stderr = io.MultiWriter(logFile, stderr)
+	} else {
+		// Stdout and stderr always go to log file and the test writer.
+		w := io.MultiWriter(logFile, testWriter)
+		stdout, stderr := w, w
+
+		// If opts.Stdout or opts.Stderr are set,
+		// also buffer that stream and flush to that writer
+		// if the command fails.
+		if opts.Stdout != nil {
+			var buf bytes.Buffer
+			stdout = io.MultiWriter(stdout, &buf)
+			defer func() {
+				if err == nil {
+					return
+				}
+
+				if _, werr := opts.Stdout.Write(buf.Bytes()); werr != nil {
+					t.Errorf("Error writing stdout: %v", werr)
+				}
+			}()
+		}
+		if opts.Stderr != nil {
+			var buf bytes.Buffer
+			stderr = io.MultiWriter(stderr, &buf)
+			defer func() {
+				if err == nil {
+					return
+				}
+
+				if _, werr := opts.Stderr.Write(buf.Bytes()); werr != nil {
+					t.Errorf("Error writing stderr: %v", werr)
+				}
+			}()
+		}
+
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
+		// Same stdout/stderr, no synchronization needed.
+	}
+
+	startTime := time.Now()
+	runerr := cmd.Run()
 	endTime := time.Now()
 
 	if opts.ReportStats != nil {
@@ -81,29 +162,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	if runerr != nil {
 		t.Logf("Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-
-		if !opts.Verbose {
-			stderr := opts.Stderr
-
-			if stderr == nil {
-				stderr = os.Stderr
-			}
-
-			// Make sure we write the output in case of a failure to stderr so
-			// tests can assert the shape of the error message.
-			_, _ = fmt.Fprintf(stderr, "%s\n", string(runout))
-		}
-	}
-
-	// If we collected any program output, write it to a log file -- success or failure.
-	if len(runout) > 0 {
-		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
-			t.Logf("Failed to write output: %v", err)
-		} else {
-			t.Logf("Wrote output to %s", logFile)
-		}
-	} else {
-		t.Log("Command completed without output")
 	}
 
 	return runerr
@@ -125,4 +183,19 @@ func addFlagIfNonNil(args []string, flag, flagValue string) []string {
 		args = append(args, flag, flagValue)
 	}
 	return args
+}
+
+// lockedWriter adds thread-safety to any writer
+// by serializing all writes to it.
+type lockedWriter struct {
+	W io.Writer // underlying writer
+
+	mu sync.Mutex
+}
+
+func (lw *lockedWriter) Write(p []byte) (n int, err error) {
+	lw.mu.Lock()
+	defer lw.mu.Unlock()
+
+	return lw.W.Write(p)
 }

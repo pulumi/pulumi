@@ -91,16 +91,17 @@ const (
 	commandOutputFolderName = "command-output"
 )
 
-func writeCommandOutput(commandName, runDir string, output []byte) (string, error) {
+// Opens a log file for the output of the given command.
+// The caller must close the file when done.
+func openLogFile(commandName, runDir string) (*os.File, error) {
 	logFileDir := filepath.Join(runDir, commandOutputFolderName)
 	if err := os.MkdirAll(logFileDir, 0o700); err != nil {
-		return "", fmt.Errorf("Failed to create '%s': %w", logFileDir, err)
+		return nil, fmt.Errorf("create log directory: %w", err)
 	}
 
-	logFile := filepath.Join(logFileDir, commandName+uniqueSuffix()+".log")
-
-	if err := os.WriteFile(logFile, output, 0o600); err != nil {
-		return "", fmt.Errorf("Failed to write '%s': %w", logFile, err)
+	logFile, err := os.Create(filepath.Join(logFileDir, commandName+uniqueSuffix()+".log"))
+	if err != nil {
+		return nil, fmt.Errorf("create log file: %w", err)
 	}
 
 	return logFile, nil
