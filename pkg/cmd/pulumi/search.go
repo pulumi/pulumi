@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/goccy/go-json"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -31,11 +32,42 @@ import (
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
 	"go.uber.org/multierr"
+	"gopkg.in/yaml.v3"
 )
+
+type outputFormat string
+
+const (
+	outputFormatTable outputFormat = "table"
+	outputFormatJSON  outputFormat = "json"
+	outputFormatYAML  outputFormat = "yaml"
+)
+
+// String is used both by fmt.Print and by Cobra in help text
+func (e *outputFormat) String() string {
+	return string(*e)
+}
+
+// Set must have pointer receiver so it doesn't change the value of a copy
+func (e *outputFormat) Set(v string) error {
+	switch v {
+	case "table", "json", "yaml":
+		*e = outputFormat(v)
+		return nil
+	default:
+		return errors.New(`must be one of "table", "json", or "yaml"`)
+	}
+}
+
+// Type is only used in help text
+func (e *outputFormat) Type() string {
+	return "outputFormat"
+}
 
 type searchCmd struct {
 	orgName     string
 	queryParams []string
+	outputFormat
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -93,7 +125,14 @@ func (cmd *searchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
+	switch cmd.outputFormat {
+	case outputFormatJSON:
+		err = cmd.RenderJSON(res.Resources)
+	case outputFormatTable:
+		err = cmd.RenderTable(res.Resources)
+	case outputFormatYAML:
+		err = cmd.RenderYAML(res.Resources)
+	}
 	if err != nil {
 		return fmt.Errorf("table rendering error: %s", err)
 	}
@@ -129,6 +168,10 @@ func newSearchCmd() *cobra.Command {
 			"Must be formatted like: -q key1=value1 -q key2=value2. "+
 			"Alternately, each parameter provided here can be in raw Pulumi query syntax form.",
 	)
+	cmd.PersistentFlags().VarP(
+		&scmd.outputFormat, "output", "o",
+		"Output format. Supported formats are 'table', 'json', and 'yaml'.",
+	)
 
 	return cmd
 }
@@ -160,4 +203,30 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 
 func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
 	return renderSearchTable(cmd.Stdout, results)
+}
+
+func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
+	output, err := json.MarshalIndent(results, "", "    ")
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(output)
+	return err
+}
+
+func (cmd *searchCmd) RenderJSON(results []apitype.ResourceResult) error {
+	return renderSearchJSON(cmd.Stdout, results)
+}
+
+func renderSearchYAML(w io.Writer, results []apitype.ResourceResult) error {
+	output, err := yaml.Marshal(results)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(output)
+	return err
+}
+
+func (cmd *searchCmd) RenderYAML(results []apitype.ResourceResult) error {
+	return renderSearchYAML(cmd.Stdout, results)
 }
