@@ -55,7 +55,7 @@ type langhost struct {
 func NewLanguageRuntime(host Host, ctx *Context, root, pwd, runtime string,
 	options map[string]interface{},
 ) (LanguageRuntime, error) {
-	path, err := workspace.GetPluginPath(
+	path, err := workspace.GetPluginPath(ctx.Diag,
 		workspace.LanguagePlugin, strings.ReplaceAll(runtime, tokens.QNameDelimiter, "_"), nil, host.GetProjectPlugins())
 	if err != nil {
 		return nil, err
