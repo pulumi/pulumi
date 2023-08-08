@@ -1544,9 +1544,11 @@ func functionOutputVersionArgsTypeName(fun *schema.Function) string {
 // Generates `${fn}Output(..)` version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
-	if !fun.NeedsOutputVersion() {
+	if fun.ReturnType == nil {
+		// no need to generate an output version if the function doesn't return anything
 		return nil
 	}
+
 	var argsDefault, sigil string
 	if allOptionalInputs(fun) {
 		// If the number of required input properties was zero, we can make the args object optional.
@@ -1558,6 +1560,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	argsTypeName := functionOutputVersionArgsTypeName(fun)
 	outputArgsParamDef := fmt.Sprintf("%s%s args%s, ", argsTypeName, sigil, argsDefault)
 	outputArgsParamRef := fmt.Sprintf("args ?? new %s()", argsTypeName)
+
+	if fun.Inputs == nil || len(fun.Inputs.Properties) == 0 {
+		outputArgsParamDef = ""
+		outputArgsParamRef = "InvokeArgs.Empty"
+	}
 
 	fmt.Fprintf(w, "\n")
 	// Emit the doc comment, if any.
@@ -1590,9 +1597,11 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		// now the function body
 		fmt.Fprint(w, "        {\n")
 		fmt.Fprint(w, "            var builder = ImmutableDictionary.CreateBuilder<string, object?>();\n")
-		for _, prop := range fun.Inputs.Properties {
-			argumentName := LowerCamelCase(prop.Name)
-			fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
+		if fun.Inputs != nil {
+			for _, prop := range fun.Inputs.Properties {
+				argumentName := LowerCamelCase(prop.Name)
+				fmt.Fprintf(w, "            builder[\"%s\"] = %s;\n", prop.Name, argumentName)
+			}
 		}
 		fmt.Fprint(w, "            var args = new global::Pulumi.DictionaryInvokeArgs(builder.ToImmutableDictionary());\n")
 		fmt.Fprintf(w, "            return global::Pulumi.Deployment.Instance.%s%s(\"%s\", args, invokeOptions.WithDefaults());\n",
@@ -1605,7 +1614,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 
 // Generate helper type definitions referred to in `genFunctionOutputVersion`.
 func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Function) error {
-	if !fun.NeedsOutputVersion() || fun.Inputs == nil {
+	if fun.Inputs == nil || fun.ReturnType == nil || len(fun.Inputs.Properties) == 0 {
 		return nil
 	}
 
