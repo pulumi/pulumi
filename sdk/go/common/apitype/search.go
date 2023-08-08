@@ -32,31 +32,31 @@ type ResourceSearchResponse struct {
 // If you add a property here, don't forget to update fieldMappings to make it
 // queryable!
 type ResourceResult struct {
-	Created      *string                      `json:"created,omitempty" csv:"created"`
-	Custom       *bool                        `json:"custom,omitempty" csv:"custom"`
-	Delete       *bool                        `json:"delete,omitempty" csv:"delete"`
-	Dependencies []string                     `json:"dependencies,omitempty" csv:"-"`
-	ID           *string                      `json:"id,omitempty" csv:"id"`
-	Matches      map[string][]json.RawMessage `json:"matches,omitempty" csv:"-"`
-	Modified     *string                      `json:"modified,omitempty" csv:"modified"`
-	Module       *string                      `json:"module" csv:"module"`
-	Name         *string                      `json:"name,omitempty" csv:"name"`
-	Package      *string                      `json:"package" csv:"package"`
+	Created      *string                      `json:"created,omitempty"`
+	Custom       *bool                        `json:"custom,omitempty"`
+	Delete       *bool                        `json:"delete,omitempty"`
+	Dependencies []string                     `json:"dependencies,omitempty"`
+	ID           *string                      `json:"id,omitempty"`
+	Matches      map[string][]json.RawMessage `json:"matches,omitempty"`
+	Modified     *string                      `json:"modified,omitempty"`
+	Module       *string                      `json:"module"`
+	Name         *string                      `json:"name,omitempty"`
+	Package      *string                      `json:"package"`
 	Parent       struct {
 		URN string `json:"urn"`
 	} `json:"parent"`
-	Pending   *string `json:"pending,omitempty" csv:"pending"`
-	Program   *string `json:"project,omitempty" csv:"project"`
-	Protected *bool   `json:"protected,omitempty" csv:"protected"`
+	Pending   *string `json:"pending,omitempty"`
+	Program   *string `json:"project,omitempty"`
+	Protected *bool   `json:"protected,omitempty"`
 	Provider  struct {
 		URN string `json:"urn"`
 	} `json:"provider"`
-	ProviderURN *string       `json:"provider.urn,omitempty" csv:"provider_urn"`
-	Stack       *string       `json:"stack,omitempty" csv:"stack"`
-	Type        *string       `json:"type,omitempty" csv:"type"`
-	URN         *string       `json:"urn,omitempty" csv:"urn"`
-	Teams       teamNameSlice `json:"teams,omitempty" csv:"teams"`
-	Properties  *RawProperty  `json:"properties,omitempty" csv:"properties"`
+	ProviderURN *string       `json:"provider.urn,omitempty"`
+	Stack       *string       `json:"stack,omitempty"`
+	Type        *string       `json:"type,omitempty"`
+	URN         *string       `json:"urn,omitempty"`
+	Teams       teamNameSlice `json:"teams,omitempty"`
+	Properties  *RawProperty  `json:"properties,omitempty"`
 }
 
 // Aggregation collects the top 5 aggregated values for the requested dimension.
