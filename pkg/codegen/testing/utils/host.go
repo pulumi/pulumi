@@ -88,5 +88,6 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		SchemaProvider{"snowflake", "0.66.1"},
 		SchemaProvider{"using-dashes", "1.0.0"},
 		SchemaProvider{"auto-deploy", "0.0.1"},
+		SchemaProvider{"localref", "1.0.0"},
 	)
 }

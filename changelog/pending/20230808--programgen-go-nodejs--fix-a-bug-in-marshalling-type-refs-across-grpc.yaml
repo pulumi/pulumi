@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go,nodejs
+  description: Fix a bug in marshalling type refs across gRPC.
