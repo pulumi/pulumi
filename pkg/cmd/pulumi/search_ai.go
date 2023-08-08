@@ -33,6 +33,7 @@ import (
 type searchAICmd struct {
 	orgName     string
 	queryString string
+	outputFormat
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -91,7 +92,14 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.RenderTable(res.Resources)
+	switch cmd.outputFormat {
+	case outputFormatTable:
+		err = cmd.RenderTable(res.Resources)
+	case outputFormatJSON:
+		err = cmd.RenderJSON(res.Resources)
+	case outputFormatYAML:
+		err = cmd.RenderYAML(res.Resources)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "table rendering error: %s\n", err)
 	}
@@ -111,13 +119,17 @@ func newSearchAICmd() *cobra.Command {
 		},
 		),
 	}
-	cmd.PersistentFlags().StringVarP(
-		&scmd.orgName, "org", "o", "",
+	cmd.PersistentFlags().StringVar(
+		&scmd.orgName, "org", "",
 		"Organization name to search within",
 	)
 	cmd.PersistentFlags().StringVarP(
 		&scmd.queryString, "query", "q", "",
 		"Plaintext natural language query",
+	)
+	cmd.PersistentFlags().VarP(
+		&scmd.outputFormat, "output", "o",
+		"Output format. Supported formats are 'table', 'json', and 'yaml'.",
 	)
 
 	return cmd
@@ -125,4 +137,12 @@ func newSearchAICmd() *cobra.Command {
 
 func (cmd *searchAICmd) RenderTable(results []apitype.ResourceResult) error {
 	return renderSearchTable(cmd.Stdout, results)
+}
+
+func (cmd *searchAICmd) RenderJSON(results []apitype.ResourceResult) error {
+	return renderSearchJSON(cmd.Stdout, results)
+}
+
+func (cmd *searchAICmd) RenderYAML(results []apitype.ResourceResult) error {
+	return renderSearchYAML(cmd.Stdout, results)
 }
