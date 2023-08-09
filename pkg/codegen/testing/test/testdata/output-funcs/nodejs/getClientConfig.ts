@@ -35,3 +35,9 @@ export interface GetClientConfigResult {
      */
     readonly tenantId: string;
 }
+/**
+ * Failing example taken from azure-native. Original doc: Use this function to access the current configuration of the native Azure provider.
+ */
+export function getClientConfigOutput(opts?: pulumi.InvokeOptions): pulumi.Output<GetClientConfigResult> {
+    return pulumi.output(getClientConfig(opts))
+}
