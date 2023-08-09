@@ -63,7 +63,8 @@ jobs:
       test-version-sets: current
       integration-test-platforms: ubuntu-latest
       acceptance-test-platforms: ''
-      enable-coverage: true
+      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
+      enable-coverage: false
     secrets:
       # Scope secrets to the minimum required:
       PULUMI_BOT_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
