@@ -303,7 +303,9 @@ Only the first 200 types are included in this documentation.
 
 {{ range $index, $elem := .NestedTypes }}
 {{ if lt $index 200 }}
-<h4 id="{{ $elem.AnchorID }}">{{ htmlSafe $elem.Name }}</h4>
+<h4 id="{{ $elem.AnchorID }}">
+{{ htmlSafe $elem.Name }}<pulumi-choosable type="language" values="python,go" class="inline">, {{ htmlSafe $elem.Name }}<wbr>Args</pulumi-choosable>
+</h4>
 
 {{- if $elem.Properties }}{{template "properties" $elem.Properties -}}{{ end -}}
 {{- if $elem.EnumValues }}{{- template "enums" $elem.EnumValues -}}{{ end -}}
