@@ -1,0 +1,4 @@
+changes:
+  - type: chore
+    scope: ci
+    description: Add preliminary support for GitHub's native merge queues
