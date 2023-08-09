@@ -28,35 +28,26 @@ type ResourceSearchResponse struct {
 }
 
 // ResourceResult is the user-facing type for our indexed resources.
-//
-// If you add a property here, don't forget to update fieldMappings to make it
-// queryable!
 type ResourceResult struct {
-	Created      *string                      `json:"created,omitempty"`
-	Custom       *bool                        `json:"custom,omitempty"`
-	Delete       *bool                        `json:"delete,omitempty"`
-	Dependencies []string                     `json:"dependencies,omitempty"`
-	ID           *string                      `json:"id,omitempty"`
-	Matches      map[string][]json.RawMessage `json:"matches,omitempty"`
-	Modified     *string                      `json:"modified,omitempty"`
-	Module       *string                      `json:"module"`
-	Name         *string                      `json:"name,omitempty"`
-	Package      *string                      `json:"package"`
-	Parent       struct {
-		URN string `json:"urn"`
-	} `json:"parent"`
-	Pending   *string `json:"pending,omitempty"`
-	Program   *string `json:"project,omitempty"`
-	Protected *bool   `json:"protected,omitempty"`
-	Provider  struct {
-		URN string `json:"urn"`
-	} `json:"provider"`
-	ProviderURN *string       `json:"provider.urn,omitempty"`
-	Stack       *string       `json:"stack,omitempty"`
-	Type        *string       `json:"type,omitempty"`
-	URN         *string       `json:"urn,omitempty"`
-	Teams       teamNameSlice `json:"teams,omitempty"`
-	Properties  *RawProperty  `json:"properties,omitempty"`
+	Created      *string          `json:"created,omitempty"`
+	Custom       *bool            `json:"custom,omitempty"`
+	Delete       *bool            `json:"delete,omitempty"`
+	Dependencies []string         `json:"dependencies,omitempty"`
+	ID           *string          `json:"id,omitempty"`
+	Modified     *string          `json:"modified,omitempty"`
+	Module       *string          `json:"module"`
+	Name         *string          `json:"name,omitempty"`
+	Package      *string          `json:"package"`
+	ParentURN    *string          `json:"parent.urn"`
+	Pending      *string          `json:"pending,omitempty"`
+	Program      *string          `json:"project,omitempty"`
+	Protected    *bool            `json:"protected,omitempty"`
+	ProviderURN  *string          `json:"provider.urn"`
+	Stack        *string          `json:"stack,omitempty"`
+	Type         *string          `json:"type,omitempty"`
+	URN          *string          `json:"urn,omitempty"`
+	Teams        []string         `json:"teams,omitempty"`
+	Properties   *json.RawMessage `json:"properties,omitempty"`
 }
 
 // Aggregation collects the top 5 aggregated values for the requested dimension.
@@ -77,22 +68,6 @@ type ResourceSearchPagination struct {
 	Previous *string `json:"previous,omitempty"`
 	Next     *string `json:"next,omitempty"`
 	Cursor   *string `json:"cursor,omitempty"`
-}
-
-type teamNameSlice []string
-
-func (teams *teamNameSlice) MarshalCSV() (string, error) {
-	if *teams == nil {
-		return "", nil
-	}
-
-	output, err := json.Marshal(*teams)
-	return string(output), err
-}
-
-// RawProperty wraps a json.RawProperty for JSON or CSV export.
-type RawProperty struct {
-	json.RawMessage
 }
 
 type PulumiQueryResponse struct {
