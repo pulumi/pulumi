@@ -106,7 +106,8 @@ jobs:
           && 'macos-latest windows-latest'
           || ''
         }}
-      enable-coverage: true
+      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
+      enable-coverage: false
     secrets: inherit
 
   prepare-release:
