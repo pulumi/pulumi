@@ -105,6 +105,7 @@ func TestConverterServer_Program(t *testing.T) {
 
 	resp, err := server.ConvertProgram(context.Background(), &pulumirpc.ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
 	})

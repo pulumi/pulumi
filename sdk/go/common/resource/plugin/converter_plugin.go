@@ -140,6 +140,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
 		MapperTarget:    req.MapperTarget,
+		LoaderTarget:    req.LoaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: engine
+  description: Pass Loader gRPC target to converter plugins.

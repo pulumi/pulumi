@@ -66,6 +66,7 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 		SourceDirectory: req.SourceDirectory,
 		TargetDirectory: req.TargetDirectory,
 		MapperTarget:    req.MapperTarget,
+		LoaderTarget:    req.LoaderTarget,
 	})
 	if err != nil {
 		return nil, err
