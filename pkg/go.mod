@@ -12,7 +12,7 @@ replace github.com/xanzy/ssh-agent => github.com/pulumi/ssh-agent v0.5.1
 require (
 	cloud.google.com/go/logging v1.7.0
 	cloud.google.com/go/storage v1.30.1
-	github.com/aws/aws-sdk-go v1.44.122
+	github.com/aws/aws-sdk-go v1.44.298
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/djherbis/times v1.5.0
