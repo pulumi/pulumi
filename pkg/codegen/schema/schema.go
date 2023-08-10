@@ -1185,6 +1185,9 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 		} else {
 			typeSpec := pkg.marshalType(f.ReturnType, true)
 			returnType.TypeSpec = &typeSpec
+			if f.ReturnTypePlain {
+				returnType.TypeSpec.Plain = true
+			}
 		}
 	}
 
