@@ -223,7 +223,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
-          repo: t0yv0/goteststats
+          repo: pulumi/goteststats
           tag: v0.0.7
           cache: enable
       - name: Generate artifact name
