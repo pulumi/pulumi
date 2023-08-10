@@ -377,7 +377,10 @@ func runConvert(
 		defer contract.IgnoreClose(converter)
 
 		mapperServer := convert.NewMapperServer(mapper)
-		grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+		loaderServer := schema.NewLoaderServer(loader)
+		grpcServer, err := plugin.NewServer(pCtx,
+			convert.MapperRegistration(mapperServer),
+			schema.LoaderRegistration(loaderServer))
 		if err != nil {
 			return result.FromError(err)
 		}
@@ -387,6 +390,7 @@ func runConvert(
 			SourceDirectory: cwd,
 			TargetDirectory: pclDirectory,
 			MapperTarget:    grpcServer.Addr(),
+			LoaderTarget:    grpcServer.Addr(),
 		})
 		if err != nil {
 			return result.FromError(err)

@@ -42,6 +42,7 @@ type ConvertProgramRequest struct {
 	SourceDirectory string
 	TargetDirectory string
 	MapperTarget    string
+	LoaderTarget    string
 }
 
 type ConvertProgramResponse struct {
