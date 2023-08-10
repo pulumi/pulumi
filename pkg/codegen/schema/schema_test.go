@@ -996,3 +996,61 @@ func TestBindDefaultInt(t *testing.T) {
 		assert.Fail(t, "did not catch underflow")
 	}
 }
+
+func TestFunctionToFunctionSpecTurnaround(t *testing.T) {
+	type testCase struct {
+		name  string
+		fn    *Function
+		fspec FunctionSpec
+	}
+
+	testCases := []testCase{
+		{
+			name: "return-type-plain",
+			fn: &Function{
+				PackageReference: packageDefRef{},
+				Token:            "token",
+				ReturnType:       IntType,
+				ReturnTypePlain:  true,
+				Language:         map[string]interface{}{},
+			},
+			fspec: FunctionSpec{
+				ReturnType: &ReturnTypeSpec{
+					TypeSpec: &TypeSpec{
+						Type: "integer",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name+"/marshalFunction", func(t *testing.T) {
+			pkg := Package{}
+			fspec, err := pkg.marshalFunction(tc.fn)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.fspec, fspec)
+
+		})
+
+		t.Run(tc.name+"/bindFunctionDef", func(t *testing.T) {
+			ts := types{
+				spec: packageSpecSource{
+					&PackageSpec{
+						Functions: map[string]FunctionSpec{
+							"token": tc.fspec,
+						},
+					},
+				},
+				functionDefs: map[string]*Function{},
+			}
+			fn, diags, err := ts.bindFunctionDef("token")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors())
+			require.Equal(t, tc.fn, fn)
+		})
+	}
+}
