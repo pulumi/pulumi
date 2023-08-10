@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet
-  description: Fixes code generation of ForExpressions, both when creating a list or a dictionary 

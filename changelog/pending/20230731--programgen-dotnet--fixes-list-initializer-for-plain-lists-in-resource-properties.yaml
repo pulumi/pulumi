@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/dotnet
-  description: Fixes list initializer for plain lists in resource properties

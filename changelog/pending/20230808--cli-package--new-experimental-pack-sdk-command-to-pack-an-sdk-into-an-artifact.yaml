@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: New experimental "pack-sdk" command to pack an SDK into an artifact.
