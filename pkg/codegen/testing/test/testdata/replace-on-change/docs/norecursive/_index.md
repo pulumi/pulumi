@@ -455,7 +455,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="rec">Rec</h4>
+<h4 id="rec">
+Rec<pulumi-choosable type="language" values="python,go" class="inline">, Rec<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

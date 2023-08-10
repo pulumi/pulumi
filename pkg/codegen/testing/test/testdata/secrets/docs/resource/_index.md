@@ -230,7 +230,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_csharp" style="color: inherit; text-decoration: inherit;">Config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config">Config</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -238,7 +238,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_csharp" style="color: inherit; text-decoration: inherit;">Config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">List&lt;Config<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#config">List&lt;Config&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -338,7 +338,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_java" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config">Config</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -346,7 +346,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_java" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">List&lt;Config<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#config">List&lt;Config&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -392,7 +392,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#config_nodejs" style="color: inherit; text-decoration: inherit;">config</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args</a></span>
+        <span class="property-type"><a href="#config">Config</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -400,7 +400,7 @@ The Resource resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#configarray_nodejs" style="color: inherit; text-decoration: inherit;">config<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#config">Config<wbr>Args[]</a></span>
+        <span class="property-type"><a href="#config">Config[]</a></span>
     </dt>
     <dd></dd><dt class="property-required"
             title="Required">
@@ -653,7 +653,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="config">Config</h4>
+<h4 id="config">
+Config<pulumi-choosable type="language" values="python,go" class="inline">, Config<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

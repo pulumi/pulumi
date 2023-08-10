@@ -234,7 +234,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_csharp" style="color: inherit; text-decoration: inherit;">Pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Core.<wbr>V1.<wbr>Pod<wbr>Args</a></span>
+        <span class="property-type"><a href="#pod">Pulumi.<wbr>Kubernetes.<wbr>Types.<wbr>Inputs.<wbr>Core.<wbr>V1.<wbr>Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -278,7 +278,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#pod_java" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">Pod<wbr>Args</a></span>
+        <span class="property-type"><a href="#pod">Pod</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -403,7 +403,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="eniconfigspec">ENIConfig<wbr>Spec</h4>
+<h4 id="eniconfigspec">
+ENIConfig<wbr>Spec<pulumi-choosable type="language" values="python,go" class="inline">, ENIConfig<wbr>Spec<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

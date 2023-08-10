@@ -235,7 +235,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -281,7 +281,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -304,7 +304,7 @@ The StaticPage resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -517,7 +517,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="foo">Foo</h4>
+<h4 id="foo">
+Foo<pulumi-choosable type="language" values="python,go" class="inline">, Foo<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

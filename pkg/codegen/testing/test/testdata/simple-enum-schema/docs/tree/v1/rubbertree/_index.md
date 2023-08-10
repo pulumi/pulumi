@@ -245,7 +245,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_csharp" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container<wbr>Args</a></span>
+        <span class="property-type"><a href="#container">Pulumi.<wbr>Plant.<wbr>Inputs.<wbr>Container</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -337,7 +337,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_java" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+        <span class="property-type"><a href="#container">Container</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -383,7 +383,7 @@ The RubberTree resource accepts the following [input](/docs/intro/concepts/input
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
+        <span class="property-type"><a href="#container">Container</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -876,7 +876,9 @@ The following state arguments are supported:
 
 
 
-<h4 id="container">Container</h4>
+<h4 id="container">
+Container<pulumi-choosable type="language" values="python,go" class="inline">, Container<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1106,7 +1108,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="containerbrightness">Container<wbr>Brightness</h4>
+<h4 id="containerbrightness">
+Container<wbr>Brightness<pulumi-choosable type="language" values="python,go" class="inline">, Container<wbr>Brightness<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1156,7 +1160,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="containercolor">Container<wbr>Color</h4>
+<h4 id="containercolor">
+Container<wbr>Color<pulumi-choosable type="language" values="python,go" class="inline">, Container<wbr>Color<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1212,7 +1218,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="containersize">Container<wbr>Size</h4>
+<h4 id="containersize">
+Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline">, Container<wbr>Size<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1274,7 +1282,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="diameter">Diameter</h4>
+<h4 id="diameter">
+Diameter<pulumi-choosable type="language" values="python,go" class="inline">, Diameter<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1324,7 +1334,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="farm">Farm</h4>
+<h4 id="farm">
+Farm<pulumi-choosable type="language" values="python,go" class="inline">, Farm<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1374,7 +1386,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</h4>
+<h4 id="rubbertreevariety">
+Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" class="inline">, Rubber<wbr>Tree<wbr>Variety<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -1448,7 +1462,9 @@ The following state arguments are supported:
 </pulumi-choosable>
 </div>
 
-<h4 id="treesize">Tree<wbr>Size</h4>
+<h4 id="treesize">
+Tree<wbr>Size<pulumi-choosable type="language" values="python,go" class="inline">, Tree<wbr>Size<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

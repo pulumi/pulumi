@@ -227,7 +227,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_csharp" style="color: inherit; text-decoration: inherit;">Helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -257,7 +257,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_java" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -272,7 +272,7 @@ The Provider resource accepts the following [input](/docs/intro/concepts/inputs-
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#helmreleasesettings_nodejs" style="color: inherit; text-decoration: inherit;">helm<wbr>Release<wbr>Settings</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings<wbr>Args</a></span>
+        <span class="property-type"><a href="#helmreleasesettings">Helm<wbr>Release<wbr>Settings</a></span>
     </dt>
     <dd><p>BETA FEATURE - Options to configure the Helm Release resource.</p>
 </dd></dl>
@@ -416,7 +416,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="helmreleasesettings">Helm<wbr>Release<wbr>Settings</h4>
+<h4 id="helmreleasesettings">
+Helm<wbr>Release<wbr>Settings<pulumi-choosable type="language" values="python,go" class="inline">, Helm<wbr>Release<wbr>Settings<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

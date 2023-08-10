@@ -266,7 +266,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -274,7 +274,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_csharp" style="color: inherit; text-decoration: inherit;">Baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">List&lt;Foo<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#foo">List&lt;Foo&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -306,7 +306,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -438,7 +438,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -446,7 +446,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_java" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">List&lt;Foo<wbr>Args&gt;</a></span>
+        <span class="property-type"><a href="#foo">List&lt;Foo&gt;</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -478,7 +478,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -524,7 +524,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -532,7 +532,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#baz_nodejs" style="color: inherit; text-decoration: inherit;">baz</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args[]</a></span>
+        <span class="property-type"><a href="#foo">Foo[]</a></span>
     </dt>
     <dd></dd><dt class="property-optional"
             title="Optional">
@@ -564,7 +564,7 @@ The Component resource accepts the following [input](/docs/intro/concepts/inputs
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
+        <span class="property-type"><a href="#foo">Foo</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -795,7 +795,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="foo">Foo</h4>
+<h4 id="foo">
+Foo<pulumi-choosable type="language" values="python,go" class="inline">, Foo<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
