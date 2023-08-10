@@ -1,5 +1,52 @@
 # Changelog
 
+## 3.78.0 (2023-08-09)
+
+
+### Features
+
+- [yaml] Update pulumi-yaml to 1.2.0.
+  [#13674](https://github.com/pulumi/pulumi/pull/13674)
+
+- [sdkgen/dotnet] Generate output-versioned invokes for functions without inputs.
+  [#13669](https://github.com/pulumi/pulumi/pull/13669)
+
+- [sdkgen/nodejs] Generate output-versioned invokes for functions without inputs.
+  [#13678](https://github.com/pulumi/pulumi/pull/13678)
+
+- [cli/package] New experimental "pack-sdk" command to pack an SDK into an artifact.
+  [#13675](https://github.com/pulumi/pulumi/pull/13675)
+
+- [cli/plugin] CLI will now warn when loading ambient plugins from $PATH.
+  [#13670](https://github.com/pulumi/pulumi/pull/13670)
+
+
+### Bug Fixes
+
+- [programgen/dotnet] Fixes code generation of ForExpressions, both when creating a list or a dictionary.
+  [#13620](https://github.com/pulumi/pulumi/pull/13620)
+
+- [programgen/dotnet] Fixes list initializer for plain lists in resource properties.
+  [#13630](https://github.com/pulumi/pulumi/pull/13630)
+
+- [programgen/{go,nodejs}] Fix a bug in marshalling type refs across gRPC.
+  [#13676](https://github.com/pulumi/pulumi/pull/13676)
+
+- [programgen/nodejs] Fixes parseProxyApply to handle nested outputs within index expressions.
+  [#13629](https://github.com/pulumi/pulumi/pull/13629)
+
+- [sdk/nodejs] Fix finding the pulumi package when the runtime wasn't started in the project directory.
+  [#13639](https://github.com/pulumi/pulumi/pull/13639)
+
+- [cli/plugin] Improve error message during `pulumi plugin install` if the plugin is bundled with Pulumi.
+  [#12575](https://github.com/pulumi/pulumi/pull/12575)
+
+
+### Miscellaneous
+
+- [sdkgen/nodejs] Remove the pluginVersion and pluginName options from nodejs schema options.
+  [#13646](https://github.com/pulumi/pulumi/pull/13646)
+
 ## 3.77.1 (2023-08-05)
 
 

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/plugin
-  description: Improve error message during `pulumi plugin install` if the plugin is bundled with Pulumi
