@@ -14,14 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// WithDryRun is an internal, test-only option
-// that controls whether a Context is in dryRun mode.
-func WithDryRun(dryRun bool) RunOption {
-	return func(r *RunInfo) {
-		r.DryRun = dryRun
-	}
-}
-
 // WrapResourceMonitorClient is an internal, test-only option
 // that wraps the ResourceMonitorClient used by Context.
 func WrapResourceMonitorClient(
@@ -1029,5 +1021,67 @@ func TestResourceInput(t *testing.T) {
 		ctx.Export("outprop", myremotecomponent.Outprop)
 		return nil
 	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+func TestRegisterResourceDryRun(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			switch args.TypeToken {
+			case "test:resource:type":
+				assert.Equal(t, "resA", args.Name)
+				assert.True(t, args.Inputs.DeepEquals(resource.PropertyMap{
+					"foo":  resource.NewStringProperty("oof"),
+					"bar":  resource.NewStringProperty("rab"),
+					"baz":  resource.NewStringProperty("zab"),
+					"bang": resource.MakeComputed(resource.NewStringProperty("")),
+				}))
+				assert.Equal(t, "", args.Provider)
+				assert.Equal(t, "", args.ID)
+
+				return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			default:
+				assert.Fail(t, "Expected a valid resource type, got %v", args.TypeToken)
+				return "someID", nil, nil
+			}
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		// Test struct-tag-based marshaling.
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo:  String("oof"),
+			Bar:  String("rab"),
+			Baz:  String("zab"),
+			Bang: UnsafeUnknownOutput(nil).(AnyOutput).AsStringOutput(),
+		}, &res)
+		assert.NoError(t, err)
+
+		id, known, secret, deps, err := await(res.ID())
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
+		assert.Equal(t, ID("someID"), id)
+
+		urn, known, secret, deps, err := await(res.URN())
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
+		assert.NotEqual(t, "", urn)
+
+		foo, known, secret, deps, err := await(res.Foo)
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res}, deps)
+		assert.Equal(t, "qux", foo)
+
+		return nil
+	}, WithMocks("project", "stack", mocks), WithDryRun(true))
 	assert.NoError(t, err)
 }

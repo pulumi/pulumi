@@ -20,6 +20,14 @@ type MockResourceMonitor interface {
 	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
+// WithDryRun can set the pulumi context to run in "preview" mode. This is useful for testing that unknown
+// values are handled correctly.
+func WithDryRun(dryRun bool) RunOption {
+	return func(r *RunInfo) {
+		r.DryRun = dryRun
+	}
+}
+
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	return func(info *RunInfo) {
 		info.Project, info.Stack, info.Mocks = project, stack, mocks
@@ -100,6 +108,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -115,6 +124,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
 			KeepSecrets:   true,
 			KeepResources: true,
+			KeepUnknowns:  true,
 		})
 		if err != nil {
 			return nil, err
@@ -135,6 +145,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 	result, err := plugin.MarshalProperties(resultV, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: in.GetAcceptResources(),
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -163,6 +174,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	stateIn, err := plugin.UnmarshalProperties(in.GetProperties(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -192,6 +204,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -215,6 +228,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	inputs, err := plugin.UnmarshalProperties(in.GetObject(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -244,6 +258,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, err
