@@ -21,6 +21,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Make sure that TestingT never diverges from testing.T.
+var _ TestingT = (*testing.T)(nil)
+
 // Ensure that every language test starts with a standard prefix.
 func TestTestNames(t *testing.T) {
 	t.Parallel()

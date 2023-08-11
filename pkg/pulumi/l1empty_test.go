@@ -333,7 +333,6 @@ func TestL1Empty_MissingStack(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t,
-		"expected at least 1 StepOp, got map[]",
-		runResponse.Message)
+	assert.Contains(t, runResponse.Message,
+		"expected at least 1 StepOp")
 }

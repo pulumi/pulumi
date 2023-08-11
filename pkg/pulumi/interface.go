@@ -24,8 +24,10 @@ import (
 	iofs "io/fs"
 	"os"
 	"path/filepath"
-	"reflect"
+	"runtime"
+	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -51,6 +53,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
 	"github.com/segmentio/encoding/json"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -120,23 +124,171 @@ type languageTest struct {
 	// TODO: This should be a function so we don't have to load all providers in memory all the time.
 	providers []plugin.Provider
 	// TODO: This should just return "string", if == "" then ok, else fail
-	assert func(result.Result, *deploy.Snapshot, display.ResourceChanges) (bool, string)
+	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
 }
 
-func expectStackResource(res result.Result, changes display.ResourceChanges) (bool, string) {
-	if res != nil {
-		return false, fmt.Sprintf("expected no error, got %v", res)
+// L holds the state for the current language test.
+//
+// It provides an interface similar to testing.T,
+// allowing its use with testing libraries like Testify.
+type L struct {
+	mu     sync.RWMutex // guards the fields below
+	logs   []string
+	failed bool
+}
+
+// FailNow marks this test as having failed and halts execution.
+func (l *L) FailNow() {
+	l.Fail()
+	runtime.Goexit()
+}
+
+// Fail marks this test as failed but keeps executing.
+func (l *L) Fail() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.failed = true
+}
+
+// Failed returns whether this test has failed.
+func (l *L) Failed() bool {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	return l.failed
+}
+
+// Errorf records the given error message and marks this test as failed.
+func (l *L) Errorf(format string, args ...interface{}) {
+	l.log(1, fmt.Sprintf(format, args...))
+	l.Fail()
+}
+
+// Logf records the given message in the L's logs.
+func (l *L) Logf(format string, args ...interface{}) {
+	l.log(1, fmt.Sprintf(format, args...))
+}
+
+// log records the given message in the L's logs.
+//
+// Skip specifies the number of stack frames to skip
+// when recording the caller's location.
+// 0 refers to the immediate caller of log.
+//
+// Typically, when used from an exported method on L,
+// most callers will want to pass skip=1 to skip themselves
+// and record the location of their caller.
+func (l *L) log(skip int, msg string) {
+	// TODO: When Helper() is added, we'll want to skip those too.
+	// We can use runtime.Callers to iterate over the stack
+	// and exclude uintptrs for helper functions to do that.
+	_, file, line, ok := runtime.Caller(skip + 1)
+	if !ok {
+		file = "???"
+		line = 1
 	}
 
-	if len(changes) == 0 {
-		return false, fmt.Sprintf("expected at least 1 StepOp, got %v", changes)
+	msg = fmt.Sprintf("%s:%d: %s", filepath.Base(file), line, msg)
+	l.mu.Lock()
+	l.logs = append(l.logs, msg)
+	l.mu.Unlock()
+}
+
+// WithL runs the given function with a new L,
+// blocking until the function returns.
+//
+// It returns the information recorded by the L.
+func WithL(f func(*L)) LResult {
+	// To be able to implement FailNow in the L,
+	// we need to run it in a separate goroutine
+	// so that we can call runtime.Goexit.
+	done := make(chan struct{})
+	var l L
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				l.failed = true
+				l.logs = append(l.logs,
+					fmt.Sprintf("panic: %v\n\n%s", r, debug.Stack()))
+			}
+
+			close(done)
+		}()
+
+		f(&l)
+	}()
+	<-done
+
+	return LResult{
+		Failed:   l.failed,
+		Messages: l.logs,
+	}
+}
+
+// LResult is the result of running a language test.
+type LResult struct {
+	// Failed is true if the test failed.
+	Failed bool
+
+	// Messages contains the messages logged by the test.
+	//
+	// This doesn't necessarily mean that the test failed.
+	// For example, a test may log debugging information
+	// that is only useful when the test fails.
+	Messages []string
+}
+
+// TestingT is a subset of the testing.T interface.
+// [L] implements this interface.
+type TestingT interface {
+	// TODO: Helper()
+
+	FailNow()
+	Fail()
+	Failed() bool
+	Errorf(string, ...interface{})
+	Logf(string, ...interface{})
+}
+
+var (
+	_ TestingT         = (*L)(nil)
+	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
+)
+
+func assertStackResource(t TestingT, res result.Result, changes display.ResourceChanges) (ok bool) {
+	// TODO: t.Helper()
+
+	ok = true
+	ok = ok && assert.Nil(t, res, "expected no error, got %v", res)
+	ok = ok && assert.NotEmpty(t, changes, "expected at least 1 StepOp")
+	ok = ok && assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
+	return ok
+}
+
+func requireStackResource(t TestingT, res result.Result, changes display.ResourceChanges) {
+	// TODO: t.Helper()
+
+	if !assertStackResource(t, res, changes) {
+		t.FailNow()
+	}
+}
+
+// assertPropertyMapMember asserts that the given property map has a member with the given key and value.
+func assertPropertyMapMember(
+	t TestingT,
+	props resource.PropertyMap,
+	key string,
+	want resource.PropertyValue,
+) (ok bool) {
+	// TODO: t.Helper()
+
+	got, ok := props[resource.PropertyKey(key)]
+	if !assert.True(t, ok, "expected property %q", key) {
+		return false
 	}
 
-	if changes[deploy.OpCreate] == 0 {
-		return false, fmt.Sprintf("expected at least 1 Create, got %v", changes[deploy.OpCreate])
-	}
-
-	return true, ""
+	return assert.Equal(t, want, got, "expected property %q to be %v", key, want)
 }
 
 //go:embed testdata
@@ -144,75 +296,42 @@ var languageTestdata embed.FS
 
 var languageTests = map[string]languageTest{
 	"l1-empty": {
-		assert: func(res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) (bool, string) {
-			return expectStackResource(res, changes)
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			assertStackResource(l, res, changes)
 		},
 	},
 	"l1-output-bool": {
-		assert: func(res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) (bool, string) {
-			ok, msg := expectStackResource(res, changes)
-			if !ok {
-				return ok, msg
-			}
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			requireStackResource(l, res, changes)
 
 			// Check we have two outputs in the stack for true and false
+			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
 			stack := snap.Resources[0]
-			if stack.Type != resource.RootStackType {
-				return false, "expected a stack resource"
-			}
+			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
+
 			outputs := stack.Outputs
-			var trueOut, falseOut resource.PropertyValue
-			var has bool
-			if trueOut, has = outputs[resource.PropertyKey("output_true")]; !has {
-				return false, "expected output_true to be in stack outputs"
-			}
-			if falseOut, has = outputs[resource.PropertyKey("output_false")]; !has {
-				return false, "expected output_false to be in stack outputs"
-			}
 
-			if trueOut != resource.NewBoolProperty(true) {
-				return false, "expected output_true to be true"
-			}
-
-			if falseOut != resource.NewBoolProperty(false) {
-				return false, "expected output_false to be false"
-			}
-
-			return true, ""
+			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
+			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
 		},
 	},
 	"l2-resource-simple": {
 		providers: []plugin.Provider{&simpleProvider{}},
-		assert: func(res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) (bool, string) {
-			ok, msg := expectStackResource(res, changes)
-			if !ok {
-				return ok, msg
-			}
+		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
+			requireStackResource(l, res, changes)
 
 			// Check we have the one simple resource in the snapshot, it's provider and the stack.
-			if len(snap.Resources) != 3 {
-				return false, fmt.Sprintf("expected 3 resources in snapshot, got %v", len(snap.Resources))
-			}
+			require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 			provider := snap.Resources[1]
-			if provider.Type != "pulumi:providers:simple" {
-				return false, fmt.Sprintf("expected simple provider, got %s", provider.Type)
-			}
+			assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
 
 			simple := snap.Resources[2]
-			if simple.Type != "simple:index:Resource" {
-				return false, fmt.Sprintf("expected simple resource, got %s", simple.Type)
-			}
-			if !reflect.DeepEqual(simple.Inputs, resource.NewPropertyMapFromMap(map[string]interface{}{
-				"value": true,
-			})) {
-				return false, fmt.Sprintf("expected inputs to be {value: true}, got %v", simple.Inputs)
-			}
-			if !reflect.DeepEqual(simple.Inputs, simple.Outputs) {
-				return false, fmt.Sprintf("expected inputs and outputs to match, got %v and %v", simple.Inputs, simple.Outputs)
-			}
+			assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
 
-			return true, ""
+			want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
+			assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+			assert.Equal(l, simple.Inputs, simple.Outputs, "expected inptus and outputs to match")
 		},
 	},
 }
@@ -675,6 +794,10 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	return *info.Version, nil
 }
 
+// TODO: We need a RunLanguageTest(t *testing.T) function
+// that handles the machinery of plugging the language test logs
+// into the testing.T.
+
 func (eng *engineServer) RunLanguageTest(
 	ctx context.Context, req *enginerpc.RunLanguageTestRequest,
 ) (*enginerpc.RunLanguageTestResponse, error) {
@@ -925,11 +1048,18 @@ func (eng *engineServer) RunLanguageTest(
 		}
 	}
 
-	success, message := test.assert(res, snap, changes)
+	// TODO:
+	// Consider makign res, snap, and changes available to the test
+	// as methods on some object with internal state.
+	result := WithL(func(l *L) {
+		test.assert(l, res, snap, changes)
+	})
 
 	return &enginerpc.RunLanguageTestResponse{
-		Success: success,
-		Message: message,
+		Success: !result.Failed,
+		// TODO: Send back as a list instead of a string.
+		// TODO: Consider streaming messages back instead.
+		Message: strings.Join(result.Messages, "\n"),
 		Stdout:  stdout.String(),
 		Stderr:  stderr.String(),
 	}, nil

@@ -226,8 +226,8 @@ func TestL2ResourceSimple(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
+	t.Log(runResponse.Message)
 	assert.True(t, runResponse.Success)
-	assert.Equal(t, "", runResponse.Message)
 }
 
 // Run a simple failing test because of a bad sdk snapshot with a mocked runtime.
@@ -306,9 +306,9 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t,
-		"expected 3 resources in snapshot, got 1",
-		runResponse.Message)
+	t.Log(runResponse.Message)
+	assert.Contains(t, runResponse.Message,
+		"expected 3 resources in snapshot")
 }
 
 // Run a simple failing test because GetRequiredPlugins doesn't return the right plugins.
@@ -348,8 +348,8 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t,
+	t.Log(runResponse.Message)
+	assert.Contains(t, runResponse.Message,
 		"expected no error, got Error: unexpected required plugins: "+
-			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@1.0.0]",
-		runResponse.Message)
+			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@1.0.0]")
 }
