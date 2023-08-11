@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fixes some synchronization in plugin shutdown to prevent panics on Ctrl-C.

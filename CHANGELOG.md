@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.78.1 (2023-08-11)
+
+
+### Features
+
+- [yaml] Update pulumi-yaml to 1.2.1.
+  [#13712](https://github.com/pulumi/pulumi/pull/13712)
+
+
+### Bug Fixes
+
+- [engine] Fixes some synchronization in plugin shutdown to prevent panics on Ctrl-C.
+  [#13682](https://github.com/pulumi/pulumi/pull/13682)
+
+- [sdkgen/python] Fixes rendering v1.2.3-alpha.8 style of versions to valid PyPI versions when respectSchemaVersions option is set in sdkgen.
+  [#13707](https://github.com/pulumi/pulumi/pull/13707)
+
+
+### Miscellaneous
+
+- [ci] Add preliminary support for GitHub's native merge queues.
+  [#13681](https://github.com/pulumi/pulumi/pull/13681)
+
+- [engine] Pass Loader gRPC target to converter plugins.
+  [#13696](https://github.com/pulumi/pulumi/pull/13696)
+
+- [sdk/go] Updates aws-sdk-go to 1.44.298 to enable support for sso-session link AWS profiles.
+  [#13619](https://github.com/pulumi/pulumi/pull/13619)
+
 ## 3.78.0 (2023-08-09)
 
 
