@@ -551,7 +551,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="chew">Chew</h4>
+<h4 id="chew">
+Chew<pulumi-choosable type="language" values="python,go" class="inline">, Chew<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -637,7 +639,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="laser">Laser</h4>
+<h4 id="laser">
+Laser<pulumi-choosable type="language" values="python,go" class="inline">, Laser<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -819,7 +823,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="toy">Toy</h4>
+<h4 id="toy">
+Toy<pulumi-choosable type="language" values="python,go" class="inline">, Toy<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

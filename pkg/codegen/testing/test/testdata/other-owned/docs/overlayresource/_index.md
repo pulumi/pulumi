@@ -234,7 +234,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_csharp" style="color: inherit; text-decoration: inherit;">Foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Other.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay">Other.<wbr>Example.<wbr>Inputs.<wbr>Config<wbr>Map<wbr>Overlay</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -278,7 +278,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_java" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -300,7 +300,7 @@ The OverlayResource resource accepts the following [input](/docs/intro/concepts/
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay<wbr>Args</a></span>
+        <span class="property-type"><a href="#configmapoverlay">Config<wbr>Map<wbr>Overlay</a></span>
     </dt>
     <dd></dd></dl>
 </pulumi-choosable>
@@ -457,7 +457,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="configmapoverlay">Config<wbr>Map<wbr>Overlay</h4>
+<h4 id="configmapoverlay">
+Config<wbr>Map<wbr>Overlay<pulumi-choosable type="language" values="python,go" class="inline">, Config<wbr>Map<wbr>Overlay<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -543,7 +545,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="enumoverlay">Enum<wbr>Overlay</h4>
+<h4 id="enumoverlay">
+Enum<wbr>Overlay<pulumi-choosable type="language" values="python,go" class="inline">, Enum<wbr>Overlay<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

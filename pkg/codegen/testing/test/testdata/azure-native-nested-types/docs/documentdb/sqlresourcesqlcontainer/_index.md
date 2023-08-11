@@ -739,7 +739,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 
 
 
-<h4 id="compositepathresponse">Composite<wbr>Path<wbr>Response</h4>
+<h4 id="compositepathresponse">
+Composite<wbr>Path<wbr>Response<pulumi-choosable type="language" values="python,go" class="inline">, Composite<wbr>Path<wbr>Response<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -885,7 +887,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="indexingpolicyresponse">Indexing<wbr>Policy<wbr>Response</h4>
+<h4 id="indexingpolicyresponse">
+Indexing<wbr>Policy<wbr>Response<pulumi-choosable type="language" values="python,go" class="inline">, Indexing<wbr>Policy<wbr>Response<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
@@ -977,7 +981,9 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </pulumi-choosable>
 </div>
 
-<h4 id="sqlcontainergetpropertiesresponseresource">Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource</h4>
+<h4 id="sqlcontainergetpropertiesresponseresource">
+Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource<pulumi-choosable type="language" values="python,go" class="inline">, Sql<wbr>Container<wbr>Get<wbr>Properties<wbr>Response<wbr>Resource<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">

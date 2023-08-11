@@ -1332,7 +1332,9 @@ The following arguments are supported:
 
 
 
-<h4 id="baz">Baz</h4>
+<h4 id="baz">
+Baz<pulumi-choosable type="language" values="python,go" class="inline">, Baz<wbr>Args</pulumi-choosable>
+</h4>
 
 <div>
 <pulumi-choosable type="language" values="csharp">
