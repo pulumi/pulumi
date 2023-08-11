@@ -78,5 +78,5 @@ jobs:
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}")
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
-            gh merge --auto "${PR}"
+            gh pr merge --auto "${PR}"
           fi
