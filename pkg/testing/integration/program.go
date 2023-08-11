@@ -39,6 +39,7 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
+	_ "bou.ke/monkey" // just testing, please don't use
 	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"

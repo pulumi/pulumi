@@ -61,6 +61,7 @@ require (
 )
 
 require (
+	bou.ke/monkey v1.0.2
 	github.com/AlecAivazis/survey/v2 v2.0.5
 	github.com/BurntSushi/toml v1.2.1
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
