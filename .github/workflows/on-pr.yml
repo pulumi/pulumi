@@ -134,7 +134,7 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    needs: [prepare-release]
+    needs: [ci]
     runs-on: ubuntu-latest
     steps:
       - name: CI succeeded
