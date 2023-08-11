@@ -11,7 +11,7 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - '.version'
+      - ".version"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -88,7 +88,7 @@ jobs:
       # codegen tests take quite a while to run.
       # Run them only if ci/test is set,
       # or if one of the codegen files changed.
-      test-codegen:  >- # No newlines or trailing newline.
+      test-codegen: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test') ||
           (needs.inspect.outputs.test-codegen == 'true')
@@ -131,6 +131,14 @@ jobs:
       draft: true
       prerelease: true
     secrets: inherit
+
+  ci-ok:
+    name: ci-ok
+    needs: [prepare-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
 
   # release:
   #   name: release
