@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: ci
+  description: Remove Bors from CI pipelines
