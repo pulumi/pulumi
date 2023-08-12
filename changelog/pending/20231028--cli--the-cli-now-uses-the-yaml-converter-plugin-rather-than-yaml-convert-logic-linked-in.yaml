@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: The CLI now uses the yaml converter plugin rather than yaml convert logic linked in.

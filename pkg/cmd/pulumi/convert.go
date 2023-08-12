@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -54,8 +55,19 @@ func loadConverterPlugin(
 	name string,
 	log func(sev diag.Severity, msg string),
 ) (plugin.Converter, error) {
+	// Default to the known version of the plugin, this ensures we use the version of the yaml-converter
+	// that aligns with the yaml codegen we've linked to for this CLI release.
+	pluginSpec := workspace.PluginSpec{
+		Kind: workspace.ConverterPlugin,
+		Name: name,
+	}
+	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
+		ctx.Diag.Infof(
+			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
+	}
+
 	// Try and load the converter plugin for this
-	converter, err := plugin.NewConverter(ctx, name, nil)
+	converter, err := plugin.NewConverter(ctx, name, pluginSpec.Version)
 	if err != nil {
 		// If NewConverter returns a MissingError, we can try and install the plugin if it was missing and try again,
 		// unless auto plugin installs are turned off.
@@ -69,17 +81,12 @@ func loadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		pluginSpec := workspace.PluginSpec{
-			Kind: workspace.ConverterPlugin,
-			Name: name,
-		}
-
 		_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}
 
-		converter, err = plugin.NewConverter(ctx, name, nil)
+		converter, err = plugin.NewConverter(ctx, name, pluginSpec.Version)
 		if err != nil {
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
@@ -149,30 +156,6 @@ func printDiagnostics(sink diag.Sink, diagnostics hcl.Diagnostics) {
 			sink.Warningf(diag.Message("", "%s"), diagnostic)
 		}
 	}
-}
-
-// writeProgram writes a project and pcl program to the given directory
-func writeProgram(directory string, proj *workspace.Project, program *pcl.Program) error {
-	fs := afero.NewOsFs()
-	err := program.WriteSource(afero.NewBasePathFs(fs, directory))
-	if err != nil {
-		return fmt.Errorf("writing program: %w", err)
-	}
-
-	// Write out the Pulumi.yaml file if we've got one
-	if proj != nil {
-		projBytes, err := encoding.YAML.Marshal(proj)
-		if err != nil {
-			return fmt.Errorf("marshaling project: %w", err)
-		}
-
-		err = afero.WriteFile(fs, filepath.Join(directory, "Pulumi.yaml"), projBytes, 0o644)
-		if err != nil {
-			return fmt.Errorf("writing project: %w", err)
-		}
-	}
-
-	return nil
 }
 
 // Same pcl.BindDirectory but recovers from panics
@@ -360,16 +343,7 @@ func runConvert(
 	defer os.RemoveAll(pclDirectory)
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
-	if from == "yaml" {
-		proj, program, err := yamlgen.Eject(cwd, loader)
-		if err != nil {
-			return fmt.Errorf("load yaml program: %w", err)
-		}
-		err = writeProgram(pclDirectory, proj, program)
-		if err != nil {
-			return fmt.Errorf("write program to intermediate directory: %w", err)
-		}
-	} else if from == "pcl" {
+	if from == "pcl" {
 		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it, but
 		// remove the temp dir we just created first
 		err = os.RemoveAll(pclDirectory)
