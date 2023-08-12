@@ -8,12 +8,6 @@ permissions:
 
 on:
   merge_group:
-  push:
-    branches:
-      - staging
-      - trying
-    tags-ignore:
-      - "*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,7 +43,6 @@ jobs:
 
   prepare-release:
     name: prepare
-    if: github.ref_name == 'staging' || github.event_name == 'merge_group' # only on real merges
     needs: [info, ci]
     uses: ./.github/workflows/ci-prepare-release.yml
     permissions:
@@ -62,14 +55,6 @@ jobs:
       release-notes: ${{ needs.info.outputs.release-notes }}
       project: ${{ github.repository }}
     secrets: inherit
-
-  bors-ok:
-    name: bors-ok
-    needs: [prepare-release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: CI succeeded
-        run: exit 0
 
   ci-ok:
     name: ci-ok

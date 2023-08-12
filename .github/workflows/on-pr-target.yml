@@ -22,5 +22,3 @@ jobs:
           # This should be the merge commit of the PR or candidate merge commit in the staging branch for `bors`.
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
-      - name: Check for non-linear history
-        run: ./scripts/git-linear-history-check.sh
