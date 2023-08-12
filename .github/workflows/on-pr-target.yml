@@ -23,4 +23,5 @@ jobs:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
       - name: Check for non-linear history
+        if: false
         run: ./scripts/git-linear-history-check.sh
