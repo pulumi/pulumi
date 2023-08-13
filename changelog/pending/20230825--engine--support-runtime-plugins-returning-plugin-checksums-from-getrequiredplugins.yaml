@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Support runtime plugins returning plugin checksums from GetRequiredPlugins.

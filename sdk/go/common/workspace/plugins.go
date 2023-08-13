@@ -683,10 +683,14 @@ func (source *checksumSource) Download(
 	version semver.Version, opSy string, arch string,
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
-	checksum := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
+	checksum, ok := source.checksum[fmt.Sprintf("%s-%s", opSy, arch)]
 	response, length, err := source.source.Download(version, opSy, arch, getHTTPResponse)
 	if err != nil {
 		return nil, -1, err
+	}
+	// If there's no checksum for this platform then skip validation.
+	if !ok {
+		return response, length, nil
 	}
 
 	return &checksumReader{
