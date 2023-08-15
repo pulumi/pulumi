@@ -479,7 +479,7 @@ func GenerateProjectFiles(project workspace.Project, program *pcl.Program) (map[
 	var gomod bytes.Buffer
 	gomod.WriteString("module " + project.Name.String() + "\n")
 	gomod.WriteString(`
-go 1.17
+go 1.20
 
 require (
 	github.com/pulumi/pulumi/sdk/v3 v3.30.0
