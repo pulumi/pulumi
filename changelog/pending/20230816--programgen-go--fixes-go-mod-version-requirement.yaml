@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fixes go.mod version requirement
