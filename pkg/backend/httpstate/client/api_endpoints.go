@@ -117,6 +117,6 @@ func init() {
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
 
 	// APIs for managing Search capabilities
-	addEndpoint("GET", "/api/orgs/{orgName}/search/resources?source=cli", "getSearchResources")
-	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse?source=cli", "getSearchResourcesParse")
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
 }
