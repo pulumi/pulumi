@@ -46,8 +46,7 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
-  # Determines which files have changed
-  # so we can avoid running expensive tests
+  # Determines which files have changed so we can avoid running expensive tests
   # if they're not necessary.
   inspect:
     name: Inspect changed files
@@ -131,6 +130,14 @@ jobs:
       draft: true
       prerelease: true
     secrets: inherit
+
+  ci-ok:
+    name: ci-ok
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
 
   # release:
   #   name: release
