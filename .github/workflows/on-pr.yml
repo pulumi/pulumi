@@ -46,8 +46,7 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
-  # Determines which files have changed
-  # so we can avoid running expensive tests
+  # Determines which files have changed so we can avoid running expensive tests
   # if they're not necessary.
   inspect:
     name: Inspect changed files
