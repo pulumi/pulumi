@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	auto_table "go.pennock.tech/tabular/auto"
-	"go.uber.org/multierr"
 )
 
 type searchCmd struct {
@@ -151,7 +151,7 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 	var err error
 	if errs := table.Errors(); errs != nil {
 		for _, tableErr := range errs {
-			err = multierr.Append(err, tableErr)
+			err = multierror.Append(err, tableErr)
 		}
 		return err
 	}
