@@ -59,7 +59,12 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [prepare-release]
+    if: always() # always report a status
     runs-on: ubuntu-latest
     steps:
       - name: CI succeeded
+        if: ${{ success() }}
         run: exit 0
+      - name: CI failed
+        if: ${{ !success() }}
+        run: exit 1
