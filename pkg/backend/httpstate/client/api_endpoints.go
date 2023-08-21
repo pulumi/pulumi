@@ -115,4 +115,8 @@ func init() {
 
 	// APIs for managing `PolicyPack`s.
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
+
+	// APIs for managing Search capabilities
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
 }
