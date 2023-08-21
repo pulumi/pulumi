@@ -132,14 +132,6 @@ jobs:
       prerelease: true
     secrets: inherit
 
-  ci-ok:
-    name: ci-ok
-    needs: [ci]
-    runs-on: ubuntu-latest
-    steps:
-      - name: CI succeeded
-        run: exit 0
-
   # release:
   #   name: release
   #   if: ${{ contains(github.event.pull_request.labels.*.name, 'ci/test') }}
