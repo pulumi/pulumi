@@ -132,9 +132,40 @@ type languageTest struct {
 // It provides an interface similar to testing.T,
 // allowing its use with testing libraries like Testify.
 type L struct {
-	mu     sync.RWMutex // guards the fields below
-	logs   []string
+	mu sync.RWMutex // guards the fields below
+
+	// Whether this test has already failed.
 	failed bool
+
+	// Messages logged to l.Errorf or l.Logf.
+	logs []string
+
+	// Functions marked helpers with L.Helper().
+
+	// These names are from the runtime.Frame.Function field.
+	// They're fully qualified with package names.
+	helpers map[string]struct{}
+}
+
+// Helper marks the calling function as a test helper function.
+// When printing file and line information, that function will be skipped.
+func (l *L) Helper() {
+	pc, _, _, ok := runtime.Caller(1) // skip this function
+	if !ok {
+		return // unlikely but not worth panicking over
+	}
+
+	frame, _ := runtime.CallersFrames([]uintptr{pc}).Next()
+	if frame.Function == "" {
+		return
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.helpers == nil {
+		l.helpers = make(map[string]struct{})
+	}
+	l.helpers[frame.Function] = struct{}{}
 }
 
 // FailNow marks this test as having failed and halts execution.
@@ -180,19 +211,47 @@ func (l *L) Logf(format string, args ...interface{}) {
 // most callers will want to pass skip=1 to skip themselves
 // and record the location of their caller.
 func (l *L) log(skip int, msg string) {
-	// TODO: When Helper() is added, we'll want to skip those too.
-	// We can use runtime.Callers to iterate over the stack
-	// and exclude uintptrs for helper functions to do that.
-	_, file, line, ok := runtime.Caller(skip + 1)
-	if !ok {
-		file = "???"
-		line = 1
+	file, line := "???", 1
+	if frame, ok := l.callerFrame(skip + 1); ok {
+		file, line = frame.File, frame.Line
 	}
 
 	msg = fmt.Sprintf("%s:%d: %s", filepath.Base(file), line, msg)
 	l.mu.Lock()
 	l.logs = append(l.logs, msg)
 	l.mu.Unlock()
+}
+
+// Maximal stack depth to search for the caller's frame.
+const _maxStackDepth = 50
+
+// callerFrame searches the call stack for the first frame
+// that isn't a helper function.
+//
+// skip specifies the initial number of frames to skip
+// with 0 referring to the immediate caller of callerFrame.
+func (l *L) callerFrame(skip int) (frame runtime.Frame, ok bool) {
+	var pc [_maxStackDepth]uintptr
+	n := runtime.Callers(skip+2, pc[:]) // skip runtime.Callers and callerFrame
+	if n == 0 {
+		return frame, false
+	}
+
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	frames := runtime.CallersFrames(pc[:n])
+	for {
+		frame, more := frames.Next()
+		if _, ok := l.helpers[frame.Function]; !ok {
+			// Not a helper. Use this frame.
+			return frame, true
+		}
+		if !more {
+			break
+		}
+	}
+	return frame, false // no non-helper frames found
 }
 
 // WithL runs the given function with a new L,
@@ -242,8 +301,7 @@ type LResult struct {
 // TestingT is a subset of the testing.T interface.
 // [L] implements this interface.
 type TestingT interface {
-	// TODO: Helper()
-
+	Helper()
 	FailNow()
 	Fail()
 	Failed() bool
@@ -257,7 +315,7 @@ var (
 )
 
 func assertStackResource(t TestingT, res result.Result, changes display.ResourceChanges) (ok bool) {
-	// TODO: t.Helper()
+	t.Helper()
 
 	ok = true
 	ok = ok && assert.Nil(t, res, "expected no error, got %v", res)
@@ -267,7 +325,7 @@ func assertStackResource(t TestingT, res result.Result, changes display.Resource
 }
 
 func requireStackResource(t TestingT, res result.Result, changes display.ResourceChanges) {
-	// TODO: t.Helper()
+	t.Helper()
 
 	if !assertStackResource(t, res, changes) {
 		t.FailNow()
@@ -281,7 +339,7 @@ func assertPropertyMapMember(
 	key string,
 	want resource.PropertyValue,
 ) (ok bool) {
-	// TODO: t.Helper()
+	t.Helper()
 
 	got, ok := props[resource.PropertyKey(key)]
 	if !assert.True(t, ok, "expected property %q", key) {
