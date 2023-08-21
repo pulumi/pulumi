@@ -1592,7 +1592,8 @@ func GetPolicyPath(orgName, name, version string) (string, bool, error) {
 
 // GetPluginDir returns the directory in which plugins on the current machine are managed.
 func GetPluginDir() (string, error) {
-	return GetPulumiPath(PluginDir)
+	cache := env.PluginCache.Value()
+	return filepath.Abs(cache)
 }
 
 // GetPlugins returns a list of installed plugins without size info and last accessed metadata.

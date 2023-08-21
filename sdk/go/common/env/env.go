@@ -18,7 +18,14 @@
 
 package env
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+import (
+	"fmt"
+	"path/filepath"
+
+	user "github.com/tweekmonster/luser"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+)
 
 // Re-export some types and functions from the env library.
 
@@ -58,6 +65,26 @@ var DisableOutputValues = env.Bool("DISABLE_OUTPUT_VALUES", "")
 
 var IgnoreAmbientPlugins = env.Bool("IGNORE_AMBIENT_PLUGINS",
 	"Discover additional plugins by examining $PATH.")
+
+var PluginCache = env.String("PLUGIN_CACHE",
+	"The location where plugins are installed to and stored",
+	env.DefaultF(func() (string, error) {
+		return filepath.Join(PulumiHomeDiretory.Value(), "plugins"), nil
+	}), env.Needs(Dev))
+
+// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
+const BookkeepingDir = ".pulumi"
+
+var PulumiHomeDiretory = env.String("HOME",
+	"The path to the .pulumi folder with plugins, access tokens, etc.",
+	env.DefaultF(func() (string, error) {
+		user, err := user.Current()
+		if err != nil {
+			return "", fmt.Errorf("getting current user: %w", err)
+		}
+
+		return filepath.Join(user.HomeDir, BookkeepingDir), nil
+	}))
 
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement

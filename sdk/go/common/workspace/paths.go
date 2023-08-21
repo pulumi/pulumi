@@ -22,9 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	user "github.com/tweekmonster/luser"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
@@ -33,7 +32,7 @@ const (
 	// BackupDir is the name of the folder where backup stack information is stored.
 	BackupDir = "backups"
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
-	BookkeepingDir = ".pulumi"
+	BookkeepingDir = env.BookkeepingDir
 	// ConfigDir is the name of the folder that holds local configuration information.
 	ConfigDir = "config"
 	// GitDir is the name of the folder git uses to store information.
@@ -242,28 +241,13 @@ func GetCachedVersionFilePath() (string, error) {
 
 // GetPulumiHomeDir returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
 func GetPulumiHomeDir() (string, error) {
-	// Allow the folder we use to be overridden by an environment variable
-	dir := os.Getenv(PulumiHomeEnvVar)
-	if dir != "" {
-		return dir, nil
-	}
-
-	// Otherwise, use the current user's home dir + .pulumi
-	user, err := user.Current()
-	if err != nil {
-		return "", fmt.Errorf("getting current user: %w", err)
-	}
-
-	return filepath.Join(user.HomeDir, BookkeepingDir), nil
+	return env.PulumiHomeDiretory.Value(), nil
 }
 
 // GetPulumiPath returns the path to a file or directory under the '.pulumi' folder. It joins the path of
 // the '.pulumi' folder with elements passed as arguments.
 func GetPulumiPath(elem ...string) (string, error) {
-	homeDir, err := GetPulumiHomeDir()
-	if err != nil {
-		return "", err
-	}
+	homeDir := env.PulumiHomeDiretory.Value()
 
 	return filepath.Join(append([]string{homeDir}, elem...)...), nil
 }
