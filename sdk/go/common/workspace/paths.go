@@ -66,14 +66,14 @@ const (
 	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
 	CachedVersionFile = ".cachedVersionInfo"
 
-	// PulumiHomeEnvVar is a path to the '.pulumi' folder with plugins, access token, etc.
-	// The folder can have any name, not necessarily '.pulumi'.
-	// It defaults to the '<user's home>/.pulumi' if not specified.
-	PulumiHomeEnvVar = "PULUMI_HOME"
-
 	// PolicyPackFile is the base name of a Pulumi policy pack file.
 	PolicyPackFile = "PulumiPolicy"
 )
+
+// PulumiHomeEnvVar is a path to the '.pulumi' folder with plugins, access token, etc.
+// The folder can have any name, not necessarily '.pulumi'.
+// It defaults to the '<user's home>/.pulumi' if not specified.
+var PulumiHomeEnvVar = env.PulumiHomeDiretory.Var().Name
 
 // DetectProjectPath locates the closest project from the current working directory, or an error if not found.
 func DetectProjectPath() (string, error) {
