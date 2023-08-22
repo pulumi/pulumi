@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"simple-resource-schema/example/utilities"
+	"go-overridden-internal-module-name/example/utilities"
 )
 
 type OtherResource struct {

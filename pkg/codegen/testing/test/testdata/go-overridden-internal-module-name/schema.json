@@ -255,21 +255,12 @@
       "respectSchemaVersion": true
     },
     "go": {
-      "importBasePath": "simple-resource-schema/example",
+      "importBasePath": "go-overridden-internal-module-name/example",
       "generateExtraInputTypes": true,
       "respectSchemaVersion": true,
       "internalModuleName": "utilities"
     },
     "nodejs": {
-      "devDependencies": {
-        "@types/mocha": "latest",
-        "@types/node": "ts4.3",
-        "mocha": "latest",
-        "ts-node": "latest"
-      },
-      "extraTypeScriptFiles": [
-        "tests/codegen.spec.ts"
-      ],
       "respectSchemaVersion": true
     },
     "python": {
