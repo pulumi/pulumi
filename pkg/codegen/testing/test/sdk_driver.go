@@ -315,6 +315,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
+		Directory:   "go-overridden-internal-module-name",
+		Description: "Go SDK where the internal module name is overridden to be 'utilities'",
+		Skip:        allLanguages.Except("go/any"),
+	},
+	{
 		Directory:   "go-plain-ref-repro",
 		Description: "Generate a resource that accepts a plain input type",
 		Skip:        allLanguages.Except("go/any"),
