@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -33,6 +34,14 @@ func KillChildren(pid int) error {
 	// "If pid is less than -1, then sig is sent to every process in the
 	// process group whose ID is -pid. "
 	return syscall.Kill(-pid, syscall.SIGKILL)
+}
+
+// killProcessGroup sends SIGKILL to the process group for the given process.
+//
+// This is a helper function for TerminateProcessGroup;
+// a Windows version with the same signature exists in child_windows.go.
+func killProcessGroup(proc *os.Process) error {
+	return KillChildren(proc.Pid)
 }
 
 // RegisterProcessGroup informs the OS that it needs to call `setpgid` on this

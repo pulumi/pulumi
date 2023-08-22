@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Add cmdutil.TerminateProcessGroup to terminate processes gracefully.
