@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/plugin
+  description: Give plugins a chance to clean up before they exit. Plugins will receive SIGINT on Unix systems or CTRL_BREAK on Windows before termination.
