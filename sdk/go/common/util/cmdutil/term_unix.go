@@ -17,8 +17,12 @@
 
 package cmdutil
 
-import "os"
+import (
+	"os"
+
+	"golang.org/x/sys/unix"
+)
 
 func shutdownProcess(proc *os.Process) error {
-	return proc.Signal(os.Interrupt)
+	return proc.Signal(unix.SIGTERM)
 }

@@ -20,7 +20,8 @@ package cmdutil
 import (
 	"fmt"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
 func shutdownProcess(proc *os.Process) error {
@@ -28,7 +29,7 @@ func shutdownProcess(proc *os.Process) error {
 	// return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
 	// from golang.org/x/sys/windows
 
-	kernel32, err := syscall.LoadDLL("kernel32.dll")
+	kernel32, err := windows.LoadDLL("kernel32.dll")
 	if err != nil {
 		return fmt.Errorf("load kernel32.dll: %w", err)
 	}
@@ -43,7 +44,7 @@ func shutdownProcess(proc *os.Process) error {
 		return fmt.Errorf("find GenerateConsoleCtrlEvent: %w", err)
 	}
 
-	if r, _, err := generateConsoleCtrlEvent.Call(syscall.CTRL_BREAK_EVENT, uintptr(pid)); r == 0 {
+	if r, _, err := generateConsoleCtrlEvent.Call(windows.CTRL_BREAK_EVENT, uintptr(pid)); r == 0 {
 		return fmt.Errorf("generate console ctrl event: %w", err)
 	}
 
