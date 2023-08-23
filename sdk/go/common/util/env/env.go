@@ -25,11 +25,9 @@ package env
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
-	"strconv"
-	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"sync"
 )
 
 // Store holds a collection of key, value? pairs.
@@ -42,29 +40,53 @@ type Store interface {
 }
 
 // A strongly typed environment.
+//
+// Env must be comparable.
 type Env interface {
 	GetString(val StringValue) string
 	GetBool(val BoolValue) bool
 	GetInt(val IntValue) int
+
+	// Set the underlying environment of the value to the caller.
+	String(StringValue) StringValue
+	// Set the underlying environment of the value to the caller.
+	Bool(BoolValue) BoolValue
+	// Set the underlying environment of the value to the caller.
+	Int(IntValue) IntValue
 }
 
 // Create a new strongly typed Env from an untyped Store.
 func NewEnv(store Store) Env {
-	return env{store}
+	if reflect.TypeOf(store).Comparable() {
+		return env{store}
+	}
+	return &env{store}
 }
 
 type env struct{ s Store }
 
+func (e env) String(val StringValue) StringValue {
+	return StringValue{val.withStore(e.s)}
+}
+
+func (e env) Bool(val BoolValue) BoolValue {
+	return BoolValue{val.withStore(e.s)}
+}
+
+func (e env) Int(val IntValue) IntValue {
+	return IntValue{val.withStore(e.s)}
+}
+
 func (e env) GetString(val StringValue) string {
-	return StringValue{val.withStore(e.s)}.Value()
+	return e.String(val).Value()
 }
 
 func (e env) GetBool(val BoolValue) bool {
-	return BoolValue{val.withStore(e.s)}.Value()
+	return e.Bool(val).Value()
 }
 
 func (e env) GetInt(val IntValue) int {
-	return IntValue{val.withStore(e.s)}.Value()
+	return e.Int(val).Value()
 }
 
 type envStore struct{}
@@ -124,6 +146,51 @@ type options struct {
 	prerequs []BoolValue
 	noPrefix bool
 	secret   bool
+	// The default value to read in. It will be parsed as if it was provided from a
+	// Store.
+	defaultValue *defaultValue
+}
+
+// A per-store default value.
+//
+// To access a field inside the defaultValue, you must hold m.
+type defaultValue struct {
+	m         *sync.Mutex
+	generator func(Env) (string, error)
+	// Results that have already been computed.
+	//
+	// Results are computed once per store and on demand.
+	results map[Env]struct {
+		result string
+		err    error
+	}
+}
+
+// Turn a function into a default value.
+func deferF(f func(Env) (string, error)) *defaultValue {
+	return &defaultValue{generator: f, m: new(sync.Mutex)}
+}
+
+// Retrieve the value on a store.
+func (d *defaultValue) get(s Env) (string, error) {
+	// The default default value is the empty string.
+	if d == nil {
+		return "", nil
+	}
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.results == nil {
+		d.results = map[Env]struct {
+			result string
+			err    error
+		}{}
+	}
+	v, computed := d.results[s]
+	if !computed {
+		v.result, v.err = d.generator(s)
+		d.results[s] = v
+	}
+	return v.result, v.err
 }
 
 func (o options) name(underlying string) string {
@@ -150,10 +217,28 @@ func Secret(opts *options) {
 	opts.secret = true
 }
 
+// DefaultF allows the user to specify a default value for the variable, if unset.
+//
+// Because default values can depend on other default values, all accesses should use the
+// parameterized store.
+//
+// If f returns a non-nil error, then the variable will fail validation and have a zero
+// value.
+func DefaultF(f func(Env) (string, error)) Option {
+	return func(opts *options) {
+		opts.defaultValue = deferF(f)
+	}
+}
+
+// Set a static default value.
+func Default(value string) Option {
+	return DefaultF(func(Env) (string, error) { return value, nil })
+}
+
 // The value of a environmental variable.
 //
 // In general, `Value`s should only be used in collections. For specific values, used the
-// typed version (StringValue, BoolValue).
+// typed version (StringValue, BoolValue, IntValue).
 //
 // Every implementer of Value also includes a `Value() T` method that returns a typed
 // representation of the value.
@@ -164,17 +249,37 @@ type Value interface {
 	//
 	// If the variable was not set, ("", false) is returned.
 	Underlying() (string, bool)
+
 	// Retrieve the Var associated with this value.
 	Var() Var
 
+	// A string describing the type of the value.
+	//
+	// This should be used for display purposes.
+	Type() string
+
+	// Validate that a Value was configured with a type appropriate input.
+	//
+	// STRING_IN="123" is fine for a StringValue.
+	// INT_INT="abc" will fail validation on a IntValue.
 	Validate() ValidateError
 
 	// set the associated variable for the value. This is necessary since Value and Var
 	// are inherently cyclical.
 	setVar(Var)
-	// A type correct formatting for the value. This is used for display purposes and
-	// should not be quoted.
-	formattedValue() string
+}
+
+// Encode type specific information about a value.
+type valueT[T any] interface {
+	// Format a value of T for user display.
+	format(T) string
+	// Validate that a string can be converted to T.
+	validate(string) ValidateError
+	// Parse a string to a T. If unable to parse, then an appropriate zero value
+	// should be used.
+	parse(string) T
+	// Return a type string that describes T.
+	Type() string
 }
 
 type ValidateError struct {
@@ -183,217 +288,131 @@ type ValidateError struct {
 }
 
 // An implementation helper for Value. New Values should be a typed wrapper around *value.
-type value struct {
+type value[L any, T valueT[L]] struct {
+	valueT   T
 	variable Var
 	store    Store
 }
 
-func (v value) withStore(store Store) *value {
+func (v value[L, T]) Value() L {
+	return v.valueT.parse(v.get())
+}
+
+func (v value[L, T]) Type() string {
+	return v.valueT.Type()
+}
+
+func (v value[L, T]) Validate() ValidateError {
+	value := v.get()
+	_, specified := v.Underlying()
+	var warn error
+	if m := v.missingPrerequs(); m != "" && specified {
+		warn = fmt.Errorf("cannot set because %q required %q", v.variable.name, m)
+	}
+
+	// We validate if the user specified a value, or if we set a default value.
+	var validation ValidateError
+	if specified || value != "" {
+		validation = v.valueT.validate(value)
+	}
+	if validation.Warning == nil && warn != nil {
+		validation.Warning = warn
+	}
+	return validation
+}
+
+func (v value[L, T]) withStore(store Store) *value[L, T] {
 	v.store = store // This is non-mutating since `v` is taken by value.
 	return &v
 }
 
-func (v value) String() string {
+func (v value[L, T]) hasDefault() bool { return v.variable.options.defaultValue != nil }
+
+func (v value[L, T]) String() string {
 	_, present := v.Underlying()
 	if !present {
-		return "unset"
+		msg := "unset"
+		if v.hasDefault() {
+			msg = "default " + v.format()
+		}
+		return msg
 	}
+
 	if m := v.missingPrerequs(); m != "" {
-		return fmt.Sprintf("need %s (%s)", m, v.Var().Value.formattedValue())
+		return fmt.Sprintf("needs %s (%s)", m, v.format())
 	}
-	return v.Var().Value.formattedValue()
+	return v.format()
 }
 
-func (v *value) setVar(variable Var) {
+func (v value[L, T]) format() string {
+	if v.variable.options.secret {
+		return "[secret]"
+	}
+	return v.valueT.format(v.Value())
+}
+
+func (v *value[L, T]) setVar(variable Var) {
 	v.variable = variable
 }
 
-func (v value) Var() Var {
+func (v value[L, T]) Var() Var {
 	return v.variable
 }
 
-func (v value) Underlying() (string, bool) {
-	s := v.store
-	if s == nil {
-		s = Global
+// Get the value that will be used.
+func (v value[L, T]) get() string {
+	defValue := v.variable.options.defaultValue
+	if v.missingPrerequs() != "" {
+		s, _ := defValue.get(NewEnv(v.getStore()))
+		return s
 	}
+	val, ok := v.Underlying()
+	if ok {
+		return val
+	}
+	s, _ := defValue.get(NewEnv(v.getStore()))
+	return s
+}
+
+func (v value[L, T]) getStore() Store {
+	if v.store == nil {
+		return Global
+	}
+	return v.store
+}
+
+// Return the value from the underlying store.
+func (v value[L, T]) Underlying() (string, bool) {
+	s := v.getStore()
 	return s.Raw(v.Var().Name())
 }
 
-func (v value) missingPrerequs() string {
+func (v value[L, T]) missingPrerequs() string {
 	for _, p := range v.variable.options.prerequs {
-		if !p.Value() {
+		// We need to be careful to get the associated value in the context that
+		// we are executing in, and not the global context.
+		if !p.withStore(v.getStore()).Value() {
 			return p.Var().Name()
 		}
 	}
 	return ""
 }
 
-// A string retrieved from the environment.
-type StringValue struct{ *value }
-
-func (StringValue) Type() string { return "string" }
-
-func (s StringValue) formattedValue() string {
-	if s.variable.options.secret {
-		return "[secret]"
+// Create a new value from a V already equipped with an inner value.
+func newValue[V Value](name, description string, opts []Option, value V) V {
+	var options options
+	for _, opt := range opts {
+		opt(&options)
 	}
-	return fmt.Sprintf("%#v", s.Value())
-}
-
-func (StringValue) Validate() ValidateError { return ValidateError{} }
-
-// The string value of the variable.
-//
-// If the variable is unset, "" is returned.
-func (s StringValue) Value() string {
-	if s.missingPrerequs() != "" {
-		return ""
+	variable := Var{
+		name:        name,
+		Description: description,
+		options:     options,
 	}
-	v, ok := s.Underlying()
-	if !ok {
-		return ""
-	}
-	return v
-}
 
-// A boolean retrieved from the environment.
-type BoolValue struct{ *value }
-
-func (BoolValue) Type() string { return "bool" }
-
-func (b BoolValue) formattedValue() string {
-	return fmt.Sprintf("%#v", b.Value())
-}
-
-func (b BoolValue) Validate() ValidateError {
-	v, ok := b.Underlying()
-	if !ok || b.Value() || v == "0" || strings.EqualFold(v, "false") {
-		return ValidateError{}
-	}
-	return ValidateError{
-		Warning: fmt.Errorf("%#v is falsy, but doesn't look like a boolean", v),
-	}
-}
-
-// The boolean value of the variable.
-//
-// If the variable is unset, false is returned.
-func (b BoolValue) Value() bool {
-	if b.missingPrerequs() != "" {
-		return false
-	}
-	v, ok := b.Underlying()
-	if !ok {
-		return false
-	}
-	return cmdutil.IsTruthy(v)
-}
-
-// An integer retrieved from the environment.
-type IntValue struct{ *value }
-
-func (IntValue) Type() string { return "int" }
-
-func (i IntValue) Validate() ValidateError {
-	v, ok := i.Underlying()
-	if !ok {
-		return ValidateError{}
-	}
-	_, err := strconv.ParseInt(v, 10, 64)
-	return ValidateError{
-		Error: err,
-	}
-}
-
-// The integer value of the variable.
-//
-// If the variable is unset or not parsable, 0 is returned.
-func (i IntValue) Value() int {
-	if i.missingPrerequs() != "" {
-		return 0
-	}
-	v, ok := i.Underlying()
-	if !ok {
-		return 0
-	}
-	parsed, err := strconv.ParseInt(v, 10, 64)
-	if err != nil {
-		return 0
-	}
-	return int(parsed)
-}
-
-func (i IntValue) formattedValue() string {
-	return fmt.Sprintf("%#v", i.Value())
-}
-
-func setVar(val Value, variable Var) Value {
-	variable.Value = val
-	val.setVar(variable)
+	// Make the cyclical connection between a value and a variable.
+	variable.Value = value
+	value.setVar(variable)
 	envVars = append(envVars, variable)
-	return val
-}
-
-// Declare a new environmental value.
-//
-// `name` is the runtime name of the variable. Unless `NoPrefix` is passed, name is
-// pre-appended with `Prefix`. For example, a variable named "FOO" would be set by
-// declaring "PULUMI_FOO=val" in the enclosing environment.
-//
-// `description` is the string description of what the variable does.
-func String(name, description string, opts ...Option) StringValue {
-	var options options
-	for _, opt := range opts {
-		opt(&options)
-	}
-	val := StringValue{&value{}}
-	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
-	}
-	return setVar(val, variable).(StringValue)
-}
-
-// Declare a new environmental value of type bool.
-//
-// `name` is the runtime name of the variable. Unless `NoPrefix` is passed, name is
-// pre-appended with `Prefix`. For example, a variable named "FOO" would be set by
-// declaring "PULUMI_FOO=1" in the enclosing environment.
-//
-// `description` is the string description of what the variable does.
-func Bool(name, description string, opts ...Option) BoolValue {
-	var options options
-	for _, opt := range opts {
-		opt(&options)
-	}
-	val := BoolValue{&value{}}
-	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
-	}
-	return setVar(val, variable).(BoolValue)
-}
-
-// Declare a new environmental value of type integer.
-//
-// `name` is the runtime name of the variable. Unless `NoPrefix` is passed, name is
-// pre-appended with `Prefix`. For example, a variable named "FOO" would be set by
-// declaring "PULUMI_FOO=1" in the enclosing environment.
-//
-// `description` is the string description of what the variable does.
-func Int(name, description string, opts ...Option) IntValue {
-	var options options
-	for _, opt := range opts {
-		opt(&options)
-	}
-	val := IntValue{&value{}}
-	variable := Var{
-		name:        name,
-		Description: description,
-		options:     options,
-	}
-	return setVar(val, variable).(IntValue)
+	return value
 }
