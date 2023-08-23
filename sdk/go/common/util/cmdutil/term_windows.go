@@ -24,5 +24,5 @@ import (
 )
 
 func shutdownProcess(proc *os.Process) error {
-	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
+	return windows.GenerateConsoleCtrlEvent(windows.CTRL_C_EVENT, uint32(proc.Pid))
 }

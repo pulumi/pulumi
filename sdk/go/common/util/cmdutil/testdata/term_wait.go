@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
 	"time"
 )
 
 func main() {
 	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, syscall.SIGTERM, syscall.SIGINT)
-	// On Linux, we send SIGTERM.
-	// On Windows, CTRL_BREAK_EVENT is treated as SIGINT.
+	signal.Notify(sigch, os.Interrupt)
 
 	fmt.Println("ready")
 	select {

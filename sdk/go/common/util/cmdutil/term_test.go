@@ -88,7 +88,7 @@ func TestTerminateGraceful_python(t *testing.T) {
 //   - It MUST print something to stdout
 //     when it is ready to receive signals.
 //     This is used to synchronize with the child process.
-//   - It MUST exit with a zero code if it receives a SIGTERM.
+//   - It MUST exit with a zero code if it receives a SIGINT.
 //   - It MUST exit with a non-zero code
 //     if the signal wasn't received within a reasonable time.
 //   - It MAY print diagnostic messages to stderr.

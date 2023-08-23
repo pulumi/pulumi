@@ -24,5 +24,5 @@ import (
 )
 
 func shutdownProcess(proc *os.Process) error {
-	return proc.Signal(unix.SIGTERM)
+	return proc.Signal(unix.SIGINT)
 }
