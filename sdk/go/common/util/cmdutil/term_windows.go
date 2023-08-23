@@ -18,35 +18,11 @@
 package cmdutil
 
 import (
-	"fmt"
 	"os"
 
 	"golang.org/x/sys/windows"
 )
 
 func shutdownProcess(proc *os.Process) error {
-	// TODO: Can we just use:
-	// return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
-	// from golang.org/x/sys/windows
-
-	kernel32, err := windows.LoadDLL("kernel32.dll")
-	if err != nil {
-		return fmt.Errorf("load kernel32.dll: %w", err)
-	}
-	defer func() {
-		_ = kernel32.Release()
-	}()
-
-	pid := proc.Pid
-
-	generateConsoleCtrlEvent, err := kernel32.FindProc("GenerateConsoleCtrlEvent")
-	if err != nil {
-		return fmt.Errorf("find GenerateConsoleCtrlEvent: %w", err)
-	}
-
-	if r, _, err := generateConsoleCtrlEvent.Call(windows.CTRL_BREAK_EVENT, uintptr(pid)); r == 0 {
-		return fmt.Errorf("generate console ctrl event: %w", err)
-	}
-
-	return nil
+	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
 }

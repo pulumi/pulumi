@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTerminate_go(t *testing.T) {
+func TestTerminateGraceful_go(t *testing.T) {
 	t.Parallel()
 
 	goBin, err := exec.LookPath("go")
@@ -44,10 +44,10 @@ func TestTerminate_go(t *testing.T) {
 	require.NoError(t, buildCmd.Run())
 
 	cmd := exec.Command(bin)
-	testTerminate(t, cmd)
+	testTerminateGraceful(t, cmd)
 }
 
-func TestTerminate_nodeJS(t *testing.T) {
+func TestTerminateGraceful_node(t *testing.T) {
 	t.Parallel()
 
 	nodeBin, err := exec.LookPath("node")
@@ -57,10 +57,10 @@ func TestTerminate_nodeJS(t *testing.T) {
 
 	src := filepath.Join("testdata", "term_wait.js")
 	cmd := exec.Command(nodeBin, src)
-	testTerminate(t, cmd)
+	testTerminateGraceful(t, cmd)
 }
 
-func TestTerminate_python(t *testing.T) {
+func TestTerminateGraceful_python(t *testing.T) {
 	t.Parallel()
 
 	pythonBin, err := exec.LookPath("python")
@@ -70,10 +70,10 @@ func TestTerminate_python(t *testing.T) {
 
 	src := filepath.Join("testdata", "term_wait.py")
 	cmd := exec.Command(pythonBin, src)
-	testTerminate(t, cmd)
+	testTerminateGraceful(t, cmd)
 }
 
-func testTerminate(t *testing.T, cmd *exec.Cmd) {
+func testTerminateGraceful(t *testing.T, cmd *exec.Cmd) {
 	RegisterProcessGroup(cmd)
 	cmd.Stdout = iotest.LogWriterPrefixed(t, "child(stdout): ")
 	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
