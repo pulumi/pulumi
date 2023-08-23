@@ -15,9 +15,12 @@
 package cmdutil
 
 import (
+	"bytes"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,24 +80,56 @@ func TestTerminateGraceful_python(t *testing.T) {
 	testTerminateGraceful(t, cmd)
 }
 
+// testTerminateGraceful runs the given command
+// and expects it to shutdown gracefully.
+//
+// The contract for the given command is:
+//
+//   - It MUST print something to stdout
+//     when it is ready to receive signals.
+//     This is used to synchronize with the child process.
+//   - It MUST exit with a zero code if it receives a SIGTERM.
+//   - It MUST exit with a non-zero code
+//     if the signal wasn't received within a reasonable time.
+//   - It MAY print diagnostic messages to stderr.
 func testTerminateGraceful(t *testing.T, cmd *exec.Cmd) {
 	RegisterProcessGroup(cmd)
-	cmd.Stdout = iotest.LogWriterPrefixed(t, "child(stdout): ")
+
+	var stdout lockedBuffer
+	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "child(stdout): "))
 	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
+	require.NoError(t, cmd.Start(), "error starting child process")
 
-	t.Log("Starting child process")
-	require.NoError(t, cmd.Start())
-
+	done := make(chan struct{})
 	go func() {
-		// TODO: instead of sleeping,
-		// read stdout until we see "Waiting for SIGINT"
-		time.Sleep(1 * time.Second)
-		t.Log("Sending SIGINT")
-		assert.NoError(t, TerminateProcess(cmd.Process, 5*time.Second))
+		defer close(done)
+
+		// Wait until the child process is ready to receive signals.
+		for stdout.Len() == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		assert.NoError(t, TerminateProcess(cmd.Process, 1*time.Second),
+			"error terminating child process")
 	}()
 
-	t.Log("Waiting for child process to exit")
-	require.NoError(t, cmd.Wait())
+	assert.NoError(t, cmd.Wait(), "child did not exit cleanly")
+	<-done
+}
 
-	t.Log("Child process exited")
+type lockedBuffer struct {
+	mu sync.RWMutex
+	b  bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.b.Write(p)
+}
+
+func (b *lockedBuffer) Len() int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.b.Len()
 }

@@ -12,14 +12,14 @@ func main() {
 	sigch := make(chan os.Signal, 2)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Println("Waiting for SIGINT...")
+	fmt.Println("ready")
 	select {
 	case <-sigch:
-		fmt.Println("SIGINT received, cleaning up...")
-		time.Sleep(1 * time.Second)
+		fmt.Println("exiting cleanly")
+		os.Exit(0)
 
 	case <-time.After(3 * time.Second):
-		fmt.Println("Timed out waiting for SIGINT, exiting...")
+		fmt.Fprintln(os.Stderr, "error: did not receive signal")
 		os.Exit(1)
 	}
 }

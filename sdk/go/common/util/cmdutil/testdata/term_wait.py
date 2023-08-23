@@ -3,14 +3,13 @@ import sys
 import time
 
 def signal_handler(signal, frame):
-    print("Got SIGINT, cleaning up...")
-    time.sleep(1)
+    print("exiting cleanly")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
-print("Waiting for SIGINT...")
+print("ready", flush=True)
 
 time.sleep(3)
-print("No SIGINT received.")
+print("error: signal not received", file=sys.stderr)
 sys.exit(1)
