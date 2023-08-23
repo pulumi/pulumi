@@ -36,7 +36,12 @@ func TestTerminate_go(t *testing.T) {
 	// Build a Go program that waits for SIGINT.
 	src := filepath.Join("testdata", "term_wait.go")
 	bin := filepath.Join(t.TempDir(), "main")
-	require.NoError(t, exec.Command(goBin, "build", "-o", bin, src).Run())
+
+	buildOutput := iotest.LogWriterPrefixed(t, "go build: ")
+	buildCmd := exec.Command(goBin, "build", "-o", bin, src)
+	buildCmd.Stdout = buildOutput
+	buildCmd.Stderr = buildOutput
+	require.NoError(t, buildCmd.Run())
 
 	cmd := exec.Command(bin)
 	testTerminate(t, cmd)
