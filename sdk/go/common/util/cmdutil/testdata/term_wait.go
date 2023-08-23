@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	sigch := make(chan os.Signal, 2)
-	signal.Notify(sigch, syscall.SIGINT, syscall.SIGTERM)
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, syscall.SIGTERM)
 
 	fmt.Println("ready")
 	select {

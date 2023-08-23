@@ -3,8 +3,8 @@ function handleSignal() {
 	process.exit(0);
 }
 
-process.on('SIGINT', handleSignal);
 process.on('SIGTERM', handleSignal);
+process.on('SIGBREAK', handleSignal);
 console.log('ready');
 
 setTimeout(function() {
