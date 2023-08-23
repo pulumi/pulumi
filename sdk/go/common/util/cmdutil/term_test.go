@@ -15,11 +15,8 @@
 package cmdutil
 
 import (
-	"fmt"
-	"os"
 	"os/exec"
-	"os/signal"
-	"syscall"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,33 +25,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMain(m *testing.M) {
-	if os.Getenv("INSIDE_TEST") == "" {
-		os.Exit(m.Run())
+func TestTerminate_go(t *testing.T) {
+	t.Parallel()
+
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skipf("Skipping test: %v", err)
 	}
 
-	sigch := make(chan os.Signal, 2)
-	signal.Notify(sigch, os.Interrupt, syscall.SIGTERM)
+	// Build a Go program that waits for SIGINT.
+	src := filepath.Join("testdata", "term_wait.go")
+	bin := filepath.Join(t.TempDir(), "main")
+	require.NoError(t, exec.Command(goBin, "build", "-o", bin, src).Run())
 
-	fmt.Println("Waiting for SIGINT...")
-	select {
-	case <-sigch:
-		fmt.Println("SIGINT received, cleaning up...")
-		time.Sleep(1 * time.Second)
-
-	case <-time.After(3 * time.Second):
-		fmt.Println("Timed out waiting for SIGINT, exiting...")
-		os.Exit(1)
-	}
+	cmd := exec.Command(bin)
+	testTerminate(t, cmd)
 }
 
-func TestTerminate(t *testing.T) {
-	exe, err := os.Executable()
-	require.NoError(t, err)
+func TestTerminate_nodeJS(t *testing.T) {
+	t.Parallel()
 
-	// Don't run tests, just the TestMain.
-	cmd := exec.Command(exe, "-test.run=^$")
-	cmd.Env = []string{"INSIDE_TEST=1"}
+	nodeBin, err := exec.LookPath("node")
+	if err != nil {
+		t.Skipf("Skipping test: %v", err)
+	}
+
+	src := filepath.Join("testdata", "term_wait.js")
+	cmd := exec.Command(nodeBin, src)
+	testTerminate(t, cmd)
+}
+
+func TestTerminate_python(t *testing.T) {
+	t.Parallel()
+
+	pythonBin, err := exec.LookPath("python")
+	if err != nil {
+		t.Skipf("Skipping test: %v", err)
+	}
+
+	src := filepath.Join("testdata", "term_wait.py")
+	cmd := exec.Command(pythonBin, src)
+	testTerminate(t, cmd)
+}
+
+func testTerminate(t *testing.T, cmd *exec.Cmd) {
 	RegisterProcessGroup(cmd)
 	cmd.Stdout = iotest.LogWriterPrefixed(t, "child(stdout): ")
 	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
@@ -63,6 +77,8 @@ func TestTerminate(t *testing.T) {
 	require.NoError(t, cmd.Start())
 
 	go func() {
+		// TODO: instead of sleeping,
+		// read stdout until we see "Waiting for SIGINT"
 		time.Sleep(1 * time.Second)
 		t.Log("Sending SIGINT")
 		assert.NoError(t, TerminateProcess(cmd.Process, 5*time.Second))
