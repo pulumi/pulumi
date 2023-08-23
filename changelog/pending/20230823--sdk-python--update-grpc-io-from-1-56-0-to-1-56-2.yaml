@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/python
+  description: Update grpc-io from 1.56.0 to 1.56.2
