@@ -17,6 +17,7 @@ package cmdutil
 import (
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -36,6 +37,9 @@ func TestTerminateGraceful_go(t *testing.T) {
 	// Build a Go program that waits for SIGINT.
 	src := filepath.Join("testdata", "term_wait.go")
 	bin := filepath.Join(t.TempDir(), "main")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
 
 	buildOutput := iotest.LogWriterPrefixed(t, "go build: ")
 	buildCmd := exec.Command(goBin, "build", "-o", bin, src)
