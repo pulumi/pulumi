@@ -35,7 +35,6 @@ resource workspace "azure-native:operationalinsights:Workspace" {
 resource kubeEnv "azure-native:web:KubeEnvironment" {
 	__logicalName = "kubeEnv"
 	resourceGroupName = resourceGroup.name
-	environmentType = "Managed"
 	appLogsConfiguration = {
 		destination = "log-analytics",
 		logAnalyticsConfiguration = {
