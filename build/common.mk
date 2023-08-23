@@ -111,7 +111,7 @@ GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests withi
 GO_TEST_TAGS            ?= all
 GO_TEST_RACE            ?= true
 
-GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
+GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 10m \
 	-parallel=${GO_TEST_PARALLELISM} \
 	-shuffle=${GO_TEST_SHUFFLE} \
 	-p=${GO_TEST_PKG_PARALLELISM} \

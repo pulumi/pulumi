@@ -71,10 +71,10 @@ env:
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   PULUMI_TEST_PYTHON_SHARED_VENV: "true"
   PYTHON: python
-  GO_TEST_PARALLELISM: 8
-  GO_TEST_PKG_PARALLELISM: 2
+  GO_TEST_PARALLELISM: 1
+  GO_TEST_PKG_PARALLELISM: 1
   GO_TEST_SHUFFLE: off
-  PULUMI_TEST_RETRIES: 2
+  PULUMI_TEST_RETRIES: 1
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
@@ -88,7 +88,7 @@ jobs:
 
     runs-on: ${{ inputs.platform }}
 
-    timeout-minutes: 60
+    timeout-minutes: 10
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
       - name: "Windows cache workaround"
@@ -109,7 +109,7 @@ jobs:
         if: ${{ runner.os == 'Windows' }}
         run: |
           {
-            echo "GO_TEST_PARALLELISM=4"
+            echo "GO_TEST_PARALLELISM=1"
             echo "GO_TEST_PKG_PARALLELISM=1"
             echo "GO_TEST_RACE=false"
           } >> "$GITHUB_ENV"
@@ -156,32 +156,6 @@ jobs:
         run: |
           ( cd sdk && go test -run "_________" ./... )
           ( cd pkg && go test -run "_________" ./... )
-      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ fromJson(inputs.version-set).python }}
-          cache: pip
-          cache-dependency-path: sdk/python/requirements.txt
-      - name: Set up DotNet ${{ fromJson(inputs.version-set).dotnet }}
-        uses: actions/setup-dotnet@607fce577a46308457984d59e4954e075820f10a # v3.0.3
-        with:
-          dotnet-version: ${{ fromJson(inputs.version-set).dotnet }}
-          dotnet-quality: ga
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2.4.2
-        with:
-          gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -189,12 +163,6 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn
-        run: |
-          npm install -g yarn
-      - name: Install Python deps
-        run: |
-          python -m pip install --upgrade pip requests wheel urllib3 chardet
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -288,38 +256,12 @@ jobs:
         run: |
           command -v pulumi || echo "no pulumi"
           pulumi version    || echo "no pulumi"
-      - name: Ensure dependencies for the Node SDK
-        run: |
-          cd sdk/nodejs
-          make ensure
-      - name: Build the Node SDK
-        run: |
-          cd sdk/nodejs
-          make build_package
-          cd bin
-          yarn link
-      - name: Ensure dependencies for the Python SDK
-        run: |
-          cd sdk/python
-          make ensure
-      - name: Install Python SDK
-        run: |
-          cd sdk/python
-          make build_package
-      - name: Set PULUMI_ACCEPT if version-set is not current
-        if: ${{ fromJson(inputs.version-set).name != 'current' }}
-        run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: run tests
         id: test
         run: ${{ inputs.test-command }}
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Convert Node coverage data
-        if: ${{ inputs.platform != 'windows-latest' }}
-        run: |
-          cd sdk/nodejs
-          if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir "$PULUMI_TEST_COVERAGE_PATH"; fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
         run: |

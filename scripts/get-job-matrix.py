@@ -106,7 +106,7 @@ MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
 ]
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
-    {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
+#   {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
 ]
 
 ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]

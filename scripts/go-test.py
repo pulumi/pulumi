@@ -76,22 +76,7 @@ timer = RepeatTimer(10, heartbeat)
 timer.daemon = True
 timer.start()
 
-
-if shutil.which('gotestsum') is not None:
-    test_run = str(uuid.uuid4())
-
-    opts = options(args)
-    pkgs = " ".join(packages(args))
-
-    test_results_dir = root.joinpath('test-results')
-    if not test_results_dir.is_dir():
-        os.mkdir(str(test_results_dir))
-
-    json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
-    args = ['gotestsum', '--jsonfile', json_file, '--rerun-fails=1', '--packages', pkgs, '--'] + \
-        opts
-else:
-    args = ['go', 'test'] + args
+args = ['go', 'test', '-v'] + args
 
 if not dryrun:
     print("Running: " + ' '.join(args))
