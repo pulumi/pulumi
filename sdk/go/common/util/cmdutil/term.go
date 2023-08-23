@@ -19,15 +19,14 @@ import (
 	"time"
 )
 
-// TerminateProcess terminates the process with the given PID,
-// waiting up to the given duration for it to exit gracefully.
+// TerminateProcess terminates the given process.
+// It does so by sending a termination signal to the process.
+//
+//   - On Linux and macOS, it sends a SIGTERM
+//   - On Windows, it sends a CTRL_BREAK_EVENT
+//
 // If the process does not exit gracefully within the given duration,
 // it will be forcibly terminated.
-//
-// The behavior of this function is platform-specific:
-//
-//   - On Linux and macOS, it sends a SIGINT for graceful termination
-//   - On Windows, it sends a CTRL_BREAK_EVENT
 func TerminateProcess(proc *os.Process, cooldown time.Duration) error {
 	if err := shutdownProcess(proc); err != nil {
 		return err
