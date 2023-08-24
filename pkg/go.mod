@@ -81,8 +81,8 @@ require (
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e
 	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi-java/pkg v0.9.0
-	github.com/pulumi/pulumi-yaml v1.2.1
+	github.com/pulumi/pulumi-java/pkg v0.9.6
+	github.com/pulumi/pulumi-yaml v1.2.2
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3
 	github.com/spf13/afero v1.9.5
