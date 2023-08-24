@@ -155,14 +155,14 @@ func Val[T any](v T) Output[T] {
 	return Output[T]{OutputState: state}
 }
 
-// Cast builds an [Output] with the given untyped pulumi.Output,
+// ConvertTyped builds an [Output] with the given untyped pulumi.Output,
 // which must produce a value assignable to type T.
 //
 // Returns an error if o does not produce a compatible value.
-func Cast[T any](o internal.Output) (Output[T], error) {
+func ConvertTyped[T any](o internal.Output) (Output[T], error) {
 	typ := typeOf[T]()
 	if elt := o.ElementType(); !elt.AssignableTo(typ) {
-		return Output[T]{}, fmt.Errorf("cannot cast %v to %v", elt, typ)
+		return Output[T]{}, fmt.Errorf("cannot convert %v to %v", elt, typ)
 	}
 
 	return Output[T]{
@@ -170,10 +170,10 @@ func Cast[T any](o internal.Output) (Output[T], error) {
 	}, nil
 }
 
-// MustCast is a variant of [Cast] that panics if the type of value
+// MustConvertTyped is a variant of [ConvertTyped] that panics if the type of value
 // returned by o is not assignable to T.
-func MustCast[T any](o internal.Output) Output[T] {
-	v, err := Cast[T](o)
+func MustConvertTyped[T any](o internal.Output) Output[T] {
+	v, err := ConvertTyped[T](o)
 	if err != nil {
 		panic(err)
 	}

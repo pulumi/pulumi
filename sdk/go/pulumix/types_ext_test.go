@@ -57,23 +57,45 @@ func TestOutput_AsAny(t *testing.T) {
 	assert.Equal(t, "foo", v)
 }
 
-func TestOutput_MustCast(t *testing.T) {
+func TestOutput_ConvertTyped(t *testing.T) {
 	t.Parallel()
 
 	stringOut := pulumi.String("bar").ToStringOutput()
-	out := pulumix.MustCast[string](stringOut)
+	out, err := pulumix.ConvertTyped[string](stringOut)
+	require.NoError(t, err)
 
 	v, _, _, _, err := internal.AwaitOutput(context.Background(), out)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", v)
 }
 
-func TestOutput_MustCast_error(t *testing.T) {
+func TestOutput_ConvertTyped_error(t *testing.T) {
 	t.Parallel()
 
 	stringOut := pulumi.String("bar").ToStringOutput()
 
-	assert.PanicsWithError(t, "cannot cast string to int", func() {
-		pulumix.MustCast[int](stringOut)
+	_, err := pulumix.ConvertTyped[int](stringOut)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "cannot convert string to int")
+}
+
+func TestOutput_MustConvertTyped(t *testing.T) {
+	t.Parallel()
+
+	stringOut := pulumi.String("bar").ToStringOutput()
+	out := pulumix.MustConvertTyped[string](stringOut)
+
+	v, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	require.NoError(t, err)
+	assert.Equal(t, "bar", v)
+}
+
+func TestOutput_MustConvertTyped_error(t *testing.T) {
+	t.Parallel()
+
+	stringOut := pulumi.String("bar").ToStringOutput()
+
+	assert.PanicsWithError(t, "cannot convert string to int", func() {
+		pulumix.MustConvertTyped[int](stringOut)
 	})
 }
