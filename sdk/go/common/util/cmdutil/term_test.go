@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,58 +29,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTerminateGraceful_go(t *testing.T) {
+func TestTerminateProcessGracefulShutdown(t *testing.T) {
 	t.Parallel()
 
-	goBin, err := exec.LookPath("go")
-	if err != nil {
-		t.Skipf("Skipping test: %v", err)
+	lookPathOrSkip := func(name string) string {
+		path, err := exec.LookPath(name)
+		if err != nil {
+			t.Skipf("Skipping test: %q not found: %v", name, err)
+		}
+		return path
 	}
 
-	// Build a Go program that waits for SIGINT.
-	src := filepath.Join("testdata", "term_wait.go")
-	bin := filepath.Join(t.TempDir(), "main")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
+	t.Run("go", func(t *testing.T) {
+		t.Parallel()
 
-	buildOutput := iotest.LogWriterPrefixed(t, "go build: ")
-	buildCmd := exec.Command(goBin, "build", "-o", bin, src)
-	buildCmd.Stdout = buildOutput
-	buildCmd.Stderr = buildOutput
-	require.NoError(t, buildCmd.Run())
+		goBin := lookPathOrSkip("go")
 
-	cmd := exec.Command(bin)
-	testTerminateGraceful(t, cmd)
+		src := filepath.Join("testdata", "term_graceful.go")
+		bin := filepath.Join(t.TempDir(), "main")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+
+		require.NoError(t,
+			exec.Command(goBin, "build", "-o", bin, src).Run(),
+			"error building test program")
+
+		cmd := exec.Command(bin)
+		testTerminateProcessGracefulShutdown(t, cmd)
+	})
+
+	t.Run("node", func(t *testing.T) {
+		t.Parallel()
+
+		nodeBin := lookPathOrSkip("node")
+
+		src := filepath.Join("testdata", "term_graceful.js")
+		cmd := exec.Command(nodeBin, src)
+		testTerminateProcessGracefulShutdown(t, cmd)
+	})
+
+	t.Run("python", func(t *testing.T) {
+		t.Parallel()
+
+		pythonBin := lookPathOrSkip("python")
+
+		src := filepath.Join("testdata", "term_graceful.py")
+		cmd := exec.Command(pythonBin, src)
+		testTerminateProcessGracefulShutdown(t, cmd)
+	})
 }
 
-func TestTerminateGraceful_node(t *testing.T) {
-	t.Parallel()
-
-	nodeBin, err := exec.LookPath("node")
-	if err != nil {
-		t.Skipf("Skipping test: %v", err)
-	}
-
-	src := filepath.Join("testdata", "term_wait.js")
-	cmd := exec.Command(nodeBin, src)
-	testTerminateGraceful(t, cmd)
-}
-
-func TestTerminateGraceful_python(t *testing.T) {
-	t.Parallel()
-
-	pythonBin, err := exec.LookPath("python")
-	if err != nil {
-		t.Skipf("Skipping test: %v", err)
-	}
-
-	src := filepath.Join("testdata", "term_wait.py")
-	cmd := exec.Command(pythonBin, src)
-	testTerminateGraceful(t, cmd)
-}
-
-// testTerminateGraceful runs the given command
+// testTerminateProcessGracefulShutdown runs the given command
 // and expects it to shutdown gracefully.
 //
 // The contract for the given command is:
@@ -92,7 +92,7 @@ func TestTerminateGraceful_python(t *testing.T) {
 //   - It MUST exit with a non-zero code
 //     if the signal wasn't received within a reasonable time.
 //   - It MAY print diagnostic messages to stderr.
-func testTerminateGraceful(t *testing.T, cmd *exec.Cmd) {
+func testTerminateProcessGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
 	RegisterProcessGroup(cmd)
 
 	var stdout lockedBuffer
