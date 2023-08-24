@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"errors"
 	"os"
 
 	"golang.org/x/sys/windows"
@@ -27,4 +28,12 @@ import (
 // It returns immediately, and does not wait for the process to exit.
 func shutdownProcess(proc *os.Process) error {
 	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
+}
+
+// isWaitAlreadyExited returns true
+// if the error is due to the process already having exited.
+//
+// On Windows, this is indicated by the process handle being invalid.
+func isWaitAlreadyExited(err error) bool {
+	return errors.Is(err, windows.ERROR_INVALID_HANDLE)
 }

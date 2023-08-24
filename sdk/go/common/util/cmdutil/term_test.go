@@ -17,10 +17,12 @@ package cmdutil
 import (
 	"bytes"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -29,21 +31,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTerminateProcessGracefulShutdown(t *testing.T) {
-	t.Parallel()
-
-	lookPathOrSkip := func(name string) string {
-		path, err := exec.LookPath(name)
-		if err != nil {
-			t.Skipf("Skipping test: %q not found: %v", name, err)
-		}
-		return path
+func lookPathOrSkip(t *testing.T, name string) string {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		t.Skipf("Skipping test: %q not found: %v", name, err)
 	}
+	return path
+}
+
+func TestTerminate_gracefulShutdown(t *testing.T) {
+	t.Parallel()
 
 	t.Run("go", func(t *testing.T) {
 		t.Parallel()
 
-		goBin := lookPathOrSkip("go")
+		goBin := lookPathOrSkip(t, "go")
 
 		src := filepath.Join("testdata", "term_graceful.go")
 		bin := filepath.Join(t.TempDir(), "main")
@@ -56,31 +58,31 @@ func TestTerminateProcessGracefulShutdown(t *testing.T) {
 			"error building test program")
 
 		cmd := exec.Command(bin)
-		testTerminateProcessGracefulShutdown(t, cmd)
+		testTerminateGracefulShutdown(t, cmd)
 	})
 
 	t.Run("node", func(t *testing.T) {
 		t.Parallel()
 
-		nodeBin := lookPathOrSkip("node")
+		nodeBin := lookPathOrSkip(t, "node")
 
 		src := filepath.Join("testdata", "term_graceful.js")
 		cmd := exec.Command(nodeBin, src)
-		testTerminateProcessGracefulShutdown(t, cmd)
+		testTerminateGracefulShutdown(t, cmd)
 	})
 
 	t.Run("python", func(t *testing.T) {
 		t.Parallel()
 
-		pythonBin := lookPathOrSkip("python")
+		pythonBin := lookPathOrSkip(t, "python")
 
 		src := filepath.Join("testdata", "term_graceful.py")
 		cmd := exec.Command(pythonBin, src)
-		testTerminateProcessGracefulShutdown(t, cmd)
+		testTerminateGracefulShutdown(t, cmd)
 	})
 }
 
-// testTerminateProcessGracefulShutdown runs the given command
+// testTerminateGracefulShutdown runs the given command
 // and expects it to shutdown gracefully.
 //
 // The contract for the given command is:
@@ -90,9 +92,9 @@ func TestTerminateProcessGracefulShutdown(t *testing.T) {
 //     This is used to synchronize with the child process.
 //   - It MUST exit with a zero code if it receives a SIGINT.
 //   - It MUST exit with a non-zero code
-//     if the signal wasn't received within a reasonable time.
+//     if the signal wasn't received within 3 seconds.
 //   - It MAY print diagnostic messages to stderr.
-func testTerminateProcessGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
+func testTerminateGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
 	RegisterProcessGroup(cmd)
 
 	var stdout lockedBuffer
@@ -109,12 +111,107 @@ func testTerminateProcessGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		assert.NoError(t, TerminateProcess(cmd.Process, 1*time.Second),
-			"error terminating child process")
+		ok, err := TerminateProcess(cmd.Process, 1*time.Second)
+		assert.True(t, ok, "child process did not exit gracefully")
+		assert.NoError(t, err, "error terminating child process")
 	}()
 
-	assert.NoError(t, cmd.Wait(), "child did not exit cleanly")
+	err := cmd.Wait()
+	if isWaitAlreadyExited(err) {
+		err = nil
+	}
+	assert.NoError(t, err, "child did not exit cleanly")
 	<-done
+}
+
+func TestTerminate_forceKill(t *testing.T) {
+	t.Parallel()
+
+	t.Run("go", func(t *testing.T) {
+		t.Parallel()
+
+		goBin := lookPathOrSkip(t, "go")
+
+		src := filepath.Join("testdata", "term_frozen.go")
+		bin := filepath.Join(t.TempDir(), "main")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+
+		require.NoError(t,
+			exec.Command(goBin, "build", "-o", bin, src).Run(),
+			"error building test program")
+
+		cmd := exec.Command(bin)
+		testTerminateForceKill(t, cmd)
+	})
+
+	t.Run("node", func(t *testing.T) {
+		t.Parallel()
+
+		nodeBin := lookPathOrSkip(t, "node")
+
+		src := filepath.Join("testdata", "term_frozen.js")
+		cmd := exec.Command(nodeBin, src)
+		testTerminateForceKill(t, cmd)
+	})
+
+	t.Run("python", func(t *testing.T) {
+		t.Parallel()
+
+		pythonBin := lookPathOrSkip(t, "python")
+
+		src := filepath.Join("testdata", "term_frozen.py")
+		cmd := exec.Command(pythonBin, src)
+		testTerminateForceKill(t, cmd)
+	})
+}
+
+// testTerminateForceKill runs the given command
+// and expects it to be force-killed.
+//
+// The contract for the given command is similar to
+// testTerminateGracefulShutdown, except:
+//
+//   - It MUST freeze for at least 1 second after it receives a SIGINT.
+//   - It MAY exit with a non-zero code if it receives a SIGINT.
+func testTerminateForceKill(t *testing.T, cmd *exec.Cmd) {
+	RegisterProcessGroup(cmd)
+
+	var stdout lockedBuffer
+	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "child(stdout): "))
+	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
+	require.NoError(t, cmd.Start(), "error starting child process")
+
+	pid := cmd.Process.Pid
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		// Wait until the child process is ready to receive signals.
+		for stdout.Len() == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		ok, err := TerminateProcess(cmd.Process, time.Millisecond)
+		assert.False(t, ok, "child process should not exit gracefully")
+		assert.NoError(t, err, "error terminating child process")
+	}()
+
+	// cmd.Wait() will fail if we kill the child process.
+	// We can't rely on that to test if the process was SIGKILLed.
+	// Instead, we check if the process is still alive.
+	_ = cmd.Wait()
+	<-done
+
+	proc, err := os.FindProcess(pid)
+	if err == nil {
+		// On Unix systems, FindProcess is a no-op.
+		// We have to send a signal 0 to check if the process is alive.
+		err = proc.Signal(syscall.Signal(0))
+	}
+	assert.Error(t, err, "child process should be dead")
 }
 
 type lockedBuffer struct {

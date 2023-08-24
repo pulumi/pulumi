@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"errors"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -27,4 +28,13 @@ import (
 // It returns immediately, and does not wait for the process to exit.
 func shutdownProcess(proc *os.Process) error {
 	return proc.Signal(unix.SIGINT)
+}
+
+// isWaitAlreadyExited returns true
+// if the error is due to the process already having exited.
+//
+// On Linux, this is indicated by ESRCH or ECHILD.
+func isWaitAlreadyExited(err error) bool {
+	return errors.Is(err, unix.ESRCH) || //  no such process
+		errors.Is(err, unix.ECHILD) //  no child processes
 }

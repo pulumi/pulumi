@@ -15,7 +15,10 @@
 package cmdutil
 
 import (
+	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"time"
 )
 
@@ -27,7 +30,12 @@ import (
 //
 // If the process does not exit gracefully within the given duration,
 // it will be forcibly terminated.
-func TerminateProcess(proc *os.Process, cooldown time.Duration) error {
+//
+// Returns true if the process exited gracefully, false otherwise.
+//
+// Returns an error if the process could not be terminated,
+// or if the process exited with a non-zero exit code.
+func TerminateProcess(proc *os.Process, cooldown time.Duration) (ok bool, err error) {
 	// The choice to use SIGINT and CTRL_BREAK_EVENT
 	// merits some explanation.
 	//
@@ -92,9 +100,38 @@ func TerminateProcess(proc *os.Process, cooldown time.Duration) error {
 	//   because they'll want to be able to press Ctrl+C in the terminal.
 
 	if err := shutdownProcess(proc); err != nil {
-		return err
-		// TODO: if this failed, log it and force kill the process.
+		// Couldn't shut down the process gracefully.
+		// Let's just kill it.
+		return false, proc.Kill()
 	}
 
-	return nil
+	var waitErr error
+	ctx, cancel := context.WithTimeout(context.Background(), cooldown)
+	go func() {
+		defer cancel()
+
+		state, err := proc.Wait()
+		switch {
+		case err == nil && !state.Success():
+			// Non-zero exit code.
+			err = &exec.ExitError{ProcessState: state}
+
+		case isWaitAlreadyExited(err):
+			err = nil
+		}
+
+		waitErr = err
+	}()
+
+	// The context will be canceled when the timeout expires,
+	// or when the process exits, whichever happens first.
+	<-ctx.Done()
+
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		// The process didn't exit within the given duration.
+		// Kill it.
+		return false, proc.Kill()
+	}
+
+	return true, waitErr
 }

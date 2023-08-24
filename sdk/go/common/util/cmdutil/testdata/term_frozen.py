@@ -3,8 +3,9 @@ import sys
 import time
 
 def signal_handler(signal, frame):
-    print("exiting cleanly", flush=True)
-    sys.exit(0)
+    time.sleep(3)
+    print("error: was not forced to exit", file=sys.stderr)
+    sys.exit(2)
 
 signal.signal(signal.SIGINT, signal_handler)
 if hasattr(signal, "SIGBREAK"):
