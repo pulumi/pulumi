@@ -76,7 +76,7 @@ func (o GArrayOutput[T, O]) Untyped() internal.Output {
 // the returned Output holds the zero value of T.
 func (o GArrayOutput[T, O]) Index(idx Input[int]) O {
 	result := ArrayOutput[T](o).Index(idx)
-	return SpecializeOutput[O, T](result)
+	return Cast[O, T](result)
 }
 
 // ArrayOutput is an Output value holding a slice of type T.

@@ -146,7 +146,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pu.StringPtr/pux.GPtrOutput[string] untyped",
 			give: &testResourceInputs{
-				PuStringPtr: pulumix.SpecializeOutput[pulumix.GPtrOutput[string, pulumi.StringOutput], *string](
+				PuStringPtr: pulumix.Cast[pulumix.GPtrOutput[string, pulumi.StringOutput], *string](
 					pulumix.Ptr("n"),
 				).Untyped().(pulumi.StringPtrOutput),
 			},
@@ -210,7 +210,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pux.IntArray/pux.ArrayOutput[int]",
 			give: &testResourceInputs{
-				PuxIntArray: pulumix.SpecializeOutput[pulumix.ArrayOutput[int], []int](
+				PuxIntArray: pulumix.Cast[pulumix.ArrayOutput[int], []int](
 					pulumix.Val([]int{10, 11, 12}),
 				),
 			},
@@ -227,7 +227,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pux.IntArray/pux.GArrayOutput",
 			give: &testResourceInputs{
-				PuxIntArray: pulumix.SpecializeOutput[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
+				PuxIntArray: pulumix.Cast[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
 					pulumix.Val([]int{13, 14, 15}),
 				),
 			},
@@ -261,7 +261,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pu.IntArray/pux.ArrayOutput[int] untyped",
 			give: &testResourceInputs{
-				PuIntArray: pulumix.SpecializeOutput[pulumix.ArrayOutput[int], []int](
+				PuIntArray: pulumix.Cast[pulumix.ArrayOutput[int], []int](
 					pulumix.Val([]int{4, 5, 6}),
 				).Untyped().(pulumi.IntArrayOutput),
 			},
@@ -278,7 +278,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pu.IntArray/pux.GArrayOutput untyped",
 			give: &testResourceInputs{
-				PuIntArray: pulumix.SpecializeOutput[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
+				PuIntArray: pulumix.Cast[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
 					pulumix.Val([]int{7, 8, 9}),
 				).Untyped().(pulumi.IntArrayOutput),
 			},
@@ -339,7 +339,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pux.IntMap/pux.MapOutput[int]",
 			give: &testResourceInputs{
-				PuxIntMap: pulumix.SpecializeOutput[pulumix.MapOutput[int], map[string]int](
+				PuxIntMap: pulumix.Cast[pulumix.MapOutput[int], map[string]int](
 					pulumix.Val(map[string]int{"g": 7, "h": 8}),
 				),
 			},
@@ -355,7 +355,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pux.IntMap/pux.GMapOutput",
 			give: &testResourceInputs{
-				PuxIntMap: pulumix.SpecializeOutput[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
+				PuxIntMap: pulumix.Cast[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
 					pulumix.Val(map[string]int{"i": 9, "j": 10}),
 				),
 			},
@@ -401,7 +401,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pu.IntMap/pux.MapOutput[int] untyped",
 			give: &testResourceInputs{
-				PuIntMap: pulumix.SpecializeOutput[pulumix.MapOutput[int], map[string]int](
+				PuIntMap: pulumix.Cast[pulumix.MapOutput[int], map[string]int](
 					pulumix.Val(map[string]int{"e": 5, "f": 6}),
 				).Untyped().(pulumi.IntMapOutput),
 			},
@@ -417,7 +417,7 @@ func TestRegisterResource_inputSerialization(t *testing.T) {
 		{
 			desc: "pu.IntMap/pux.GMapOutput untyped",
 			give: &testResourceInputs{
-				PuIntMap: pulumix.SpecializeOutput[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
+				PuIntMap: pulumix.Cast[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
 					pulumix.Val(map[string]int{"g": 7, "h": 8}),
 				).Untyped().(pulumi.IntMapOutput),
 			},
@@ -489,13 +489,13 @@ func TestRegisterResourceOutputs(t *testing.T) {
 		{"pux.Output[[]int]", pulumix.Val([]int{1, 2, 3})},
 		{
 			"pux.ArrayOutput[int]",
-			pulumix.SpecializeOutput[pulumix.ArrayOutput[int], []int](
+			pulumix.Cast[pulumix.ArrayOutput[int], []int](
 				pulumix.Val([]int{4, 5, 6}),
 			),
 		},
 		{
 			"pux.GArrayOutput",
-			pulumix.SpecializeOutput[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
+			pulumix.Cast[pulumix.GArrayOutput[int, pulumi.IntOutput], []int](
 				pulumix.Val([]int{7, 8, 9}),
 			),
 		},

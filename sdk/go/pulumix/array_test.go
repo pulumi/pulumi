@@ -48,7 +48,7 @@ func TestGArrayOutput(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	o := pulumix.SpecializeOutput[pulumix.GArrayOutput[string, pulumi.StringOutput], []string](
+	o := pulumix.Cast[pulumix.GArrayOutput[string, pulumi.StringOutput], []string](
 		pulumix.Array[string]{
 			pulumi.String("foo"),
 			pulumix.Val("bar"),

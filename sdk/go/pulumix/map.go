@@ -76,7 +76,7 @@ func (o GMapOutput[T, O]) ToOutput(ctx context.Context) Output[map[string]T] {
 // the returned Output holds the zero value of T.
 func (o GMapOutput[T, O]) MapIndex(key Input[string]) O {
 	result := MapOutput[T](o).MapIndex(key)
-	return SpecializeOutput[O, T](result)
+	return Cast[O, T](result)
 }
 
 // MapOutput is an Output value holding a map[string]T.

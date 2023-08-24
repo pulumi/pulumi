@@ -50,7 +50,7 @@ func (o GPtrOutput[T, O]) ToOutput(ctx context.Context) Output[*T] {
 // If the pointer is nil, the returned Output holds the zero value of T.
 func (o GPtrOutput[T, O]) Elem() O {
 	result := PtrOutput[T](o).Elem()
-	return SpecializeOutput[O, T](result)
+	return Cast[O, T](result)
 }
 
 // PtrOutput is an Output value holding a pointer of type T.
@@ -74,7 +74,7 @@ func Ptr[T any](v T) PtrOutput[T] {
 //	ps := PtrOf(s)                  // implements Input[*string]
 func PtrOf[T any, I Input[T]](i I) PtrOutput[T] {
 	po := Apply[T](i, func(v T) *T { return &v })
-	return SpecializeOutput[PtrOutput[T], *T](po)
+	return Cast[PtrOutput[T], *T](po)
 }
 
 // ElementType returns the reflected type of *T.
