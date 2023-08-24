@@ -162,6 +162,21 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
     return false;
 }
 
+// parentDirectory searches for and returns the parent directory path 
+// starting from a given directory that contains the given file to find.
+// recursively searches up the directory tree until it finds the file or returns null
+// when it can't find anything.
+function parentDirectory(currentDir: string, fileToFind: string): string | null {
+  if (fs.existsSync(upath.join(currentDir, fileToFind))) {
+      return currentDir;
+  }
+  const parentDir = upath.resolve(currentDir, '..');
+  if (currentDir === parentDir) {
+      return null;
+  }
+  return parentDirectory(parentDir, fileToFind);
+}
+
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
 function allFoldersForPackages(
@@ -170,7 +185,15 @@ function allFoldersForPackages(
     logResource: Resource | undefined,
 ): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
-        readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
+        // the working directory is the directory containing the package.json file
+        const workingDir = parentDirectory(".", "package.json");
+        if (workingDir === null) {
+            // we couldn't find a directory containing package.json
+            // searching up from the current directory
+            throw new ResourceError("Failed to find package.json.", logResource);
+        }
+        
+        readPackageTree(workingDir, <any>undefined, (err: any, root: readPackageTree.Node) => {
             try {
                 if (err) {
                     return reject(err);
@@ -191,7 +214,7 @@ function allFoldersForPackages(
 
                     // From: https://github.com/npm/read-package-tree/blob/5245c6e50d7f46ae65191782622ec75bbe80561d/rpt.js#L121
                     root.package = computeDependenciesDirectlyFromPackageFile(
-                        upath.join(root.realpath, "package.json"),
+                        upath.join(workingDir, "package.json"),
                         logResource,
                     );
                 }
