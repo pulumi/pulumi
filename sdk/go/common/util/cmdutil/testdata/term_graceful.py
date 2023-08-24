@@ -12,6 +12,13 @@ if hasattr(signal, "SIGBREAK"):
     signal.signal(signal.SIGBREAK, signal_handler)
 print("ready", flush=True)
 
-time.sleep(3)
+# HACK:
+# time.sleep on Windows doesn't seem to be interruptible by signals
+# so we'll sleep in small increments.
+timeout = 3.0
+while timeout > 0:
+    time.sleep(0.05)
+    timeout -= 0.05
+
 print("error: signal not received", file=sys.stderr)
 sys.exit(1)
