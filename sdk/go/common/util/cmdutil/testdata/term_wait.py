@@ -7,6 +7,9 @@ def signal_handler(signal, frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
+if hasattr(signal, "SIGBREAK"):
+    # SIGBREAK is only available on Windows
+    signal.signal(signal.SIGBREAK, signal_handler)
 print("ready", flush=True)
 
 time.sleep(3)

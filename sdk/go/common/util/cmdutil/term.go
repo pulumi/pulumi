@@ -23,14 +23,15 @@ import (
 // It does so by sending a termination signal to the process.
 //
 //   - On Linux and macOS, it sends a SIGINT
-//   - On Windows, it sends a CTRL_C_EVENT
+//   - On Windows, it sends a CTRL_BREAK_EVENT
 //
 // If the process does not exit gracefully within the given duration,
 // it will be forcibly terminated.
 func TerminateProcess(proc *os.Process, cooldown time.Duration) error {
-	// The choice to use SIGINT and CTRL_C_EVENT bears some explanation.
+	// The choice to use SIGINT and CTRL_BREAK_EVENT
+	// merits some explanation.
 	//
-	// First, for context, typically on Unix systems,
+	// On *nix, typically,
 	// SIGTERM is used for programmatic graceful shutdown,
 	// and SIGINT is used when the user presses Ctrl+C.
 	// e.g. Kubernetes sends SIGTERM to signal shutdown.
@@ -42,40 +43,53 @@ func TerminateProcess(proc *os.Process, cooldown time.Duration) error {
 	// But there's also CTRL_BREAK_EVENT which is special to Windows,
 	// but we can decide it's analogous to SIGTERM.
 	//
-	// So SIGTERM and CTRL_BREAK_EVENT would be the obvious choices here
-	// except when you bring cross-language support into the picture.
-	//
-	// When writing a signal handler on Windows in different langauges,
+	// However, when writing a signal handler on Windows,
+	// different languages map these signals differently.
 	// Go maps both, CTRL_BREAK_EVENT and CTRL_C_EVENT to SIGINT,
-	// Node and Python map CTRL_BREAK_EVENT to SIGBREAK*,
-	// and Node and Python map CTRL_C_EVENT to SIGINT.
+	// Node and Python map CTRL_BREAK_EVENT to SIGBREAK,
+	// and CTRL_C_EVENT to SIGINT.
 	//
-	//     *SIGBREAK is a special, Windows-only signal.
+	// (SIGBREAK is a special, Windows-only signal.)
 	//
 	// In short:
 	//
-	//    |  OS  | Signal sent      | Language | Handled as      |
-	//    |------|------------------|----------|-----------------|
-	//    | *nix | SIGTERM          | Go       | SIGTERM         |
-	//    |      |                  | Node     | SIGTERM         |
-	//    |      |                  | Python   | SIGTERM         |
-	//    |      |------------------|----------|-----------------|
-	//    |      | SIGINT           | Go       | SIGINT          |
-	//    |      |                  | Node     | SIGINT          |
-	//    |      |                  | Python   | SIGINT          |
-	//    |------|------------------|----------|-----------------|
-	//    | Win  | CTRL_BREAK_EVENT | Go       | SIGINT          |
-	//    |      |                  | Node     | SIGBREAK        |
-	//    |      |                  | Python   | SIGBREAK        |
-	//    |      |------------------|----------|-----------------|
-	//    |      | CTRL_C_EVENT     | Go       | SIGINT          |
-	//    |      |                  | Node     | SIGINT          |
-	//    |      |                  | Python   | SIGINT          |
+	//    |  OS  | Signal sent      | Language | Handled as |
+	//    |------|------------------|----------|------------|
+	//    | *nix | SIGTERM          | Go       | SIGTERM    |
+	//    |      |                  | Node     | SIGTERM    |
+	//    |      |                  | Python   | SIGTERM    |
+	//    |      |------------------|----------|------------|
+	//    |      | SIGINT           | Go       | SIGINT     |
+	//    |      |                  | Node     | SIGINT     |
+	//    |      |                  | Python   | SIGINT     |
+	//    |------|------------------|----------|------------|
+	//    | Win  | CTRL_BREAK_EVENT | Go       | SIGINT     |
+	//    |      |                  | Node     | SIGBREAK   |
+	//    |      |                  | Python   | SIGBREAK   |
+	//    |      |------------------|----------|------------|
+	//    |      | CTRL_C_EVENT     | Go       | SIGINT     |
+	//    |      |                  | Node     | SIGINT     |
+	//    |      |                  | Python   | SIGINT     |
 	//
-	// So the SIGINT+CTRL_C_EVENT combo is the only one that works
-	// consistently across these languages and platforms.
-	// That is, we can say that a process should only handle SIGINT
-	// and that'll be handled correctly in all cases.
+	// So the SIGINT+CTRL_C_EVENT combo would be the obvious choice here
+	// since it's consistent across languages and platforms;
+	// plugins would define a single SIGINT handler
+	// and it would work in all cases.
+	//
+	// Unfortunately, Winodws does not support sending CTRL_C_EVENT
+	// to a specific child process.
+	// It's "current process and all child processes" or nothing.
+	/// Per the docs [1], the CTRL_C_EVENT
+	// "cannot be limited to a specific process group."
+	//
+	// [1]: https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent
+	//
+	// So we have to use CTRL_BREAK_EVENT for Windows instead.
+	// At that point, using SIGINT for *nix makes sense because:
+	//
+	// - It'll at least simplify the Go plugins.
+	// - Users will want to handle SIGINT anyway
+	//   because they'll want to be able to press Ctrl+C in the terminal.
 
 	if err := shutdownProcess(proc); err != nil {
 		return err

@@ -4,6 +4,7 @@ function handleSignal() {
 }
 
 process.on('SIGINT', handleSignal);
+process.on('SIGBREAK', handleSignal); // ctrl-break on windows
 console.log('ready');
 
 setTimeout(function() {

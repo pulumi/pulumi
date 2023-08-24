@@ -23,6 +23,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// shutdownProcess sends a SIGINT to the given process.
+// It returns immediately, and does not wait for the process to exit.
 func shutdownProcess(proc *os.Process) error {
 	return proc.Signal(unix.SIGINT)
 }

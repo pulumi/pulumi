@@ -10,6 +10,7 @@ import (
 func main() {
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
+	// os.Interrupt handles SIGINT and CTRL_BREAK_EVENT.
 
 	fmt.Println("ready")
 	select {
