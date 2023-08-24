@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -33,11 +34,16 @@ func shutdownProcess(proc *os.Process) error {
 		_ = kernel32.Release()
 	}()
 
-	// attachConsole, err := kernel32.FindProc("AttachConsole")
-	// if err != nil {
-	// 	return fmt.Errorf("find AttachConsole: %w", err)
-	// }
-	//
+	attachConsole, err := kernel32.FindProc("AttachConsole")
+	if err != nil {
+		return fmt.Errorf("find AttachConsole: %w", err)
+	}
+
+	freeConsole, err := kernel32.FindProc("FreeConsole")
+	if err != nil {
+		return fmt.Errorf("find FreeConsole: %w", err)
+	}
+
 	// setConsoleCtrlHandler, err := kernel32.FindProc("SetConsoleCtrlHandler")
 	// if err != nil {
 	// 	return fmt.Errorf("find SetConsoleCtrlHandler: %w", err)
@@ -49,10 +55,23 @@ func shutdownProcess(proc *os.Process) error {
 	}
 
 	pid := proc.Pid
-	// if r, _, err := attachConsole.Call(uintptr(pid)); r == 0 && !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
-	// 	return fmt.Errorf("attach console: %w", err)
-	// }
-	//
+	if r, _, err := attachConsole.Call(uintptr(pid)); r == 0 {
+		// If we're already attached to the console,
+		// we'll get an access denied error.
+		// We can ignore it and let the rest of the
+		// shutdown process continue.
+		//
+		// Worst case, we can't send the Ctrl-C event.
+		if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+			return fmt.Errorf("attach console: %w", err)
+		}
+	} else {
+		// Schedule a freeConsole only if attachConsole succeeded.
+		defer func() {
+			_, _, _ = freeConsole.Call()
+		}()
+	}
+
 	// // Disable Ctrl-C handling for our program.
 	// if r, _, err := setConsoleCtrlHandler.Call(0, 0); r == 0 {
 	// 	return fmt.Errorf("set console ctrl handler: %w", err)
