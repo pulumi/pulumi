@@ -17,15 +17,14 @@ package cmdutil
 import (
 	"bytes"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
+	ps "github.com/mitchellh/go-ps"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,13 +204,9 @@ func testTerminateForceKill(t *testing.T, cmd *exec.Cmd) {
 	_ = cmd.Wait()
 	<-done
 
-	proc, err := os.FindProcess(pid)
-	if err == nil {
-		// On Unix systems, FindProcess is a no-op.
-		// We have to send a signal 0 to check if the process is alive.
-		err = proc.Signal(syscall.Signal(0))
-	}
-	assert.Error(t, err, "child process should be dead")
+	proc, err := ps.FindProcess(pid)
+	assert.NoError(t, err, "error finding process")
+	assert.Nil(t, proc, "child process should be dead")
 }
 
 type lockedBuffer struct {
