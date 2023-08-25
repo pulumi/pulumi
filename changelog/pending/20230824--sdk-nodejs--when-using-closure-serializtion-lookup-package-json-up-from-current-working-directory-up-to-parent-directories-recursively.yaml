@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: When using closure serializtion, lookup package.json up from current working directory up to parent directories recursively
