@@ -110,7 +110,7 @@ func testTerminateGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		ok, err := TerminateProcess(cmd.Process, 1*time.Second)
+		ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 		assert.True(t, ok, "child process did not exit gracefully")
 		assert.NoError(t, err, "error terminating child process")
 	}()
@@ -193,7 +193,7 @@ func testTerminateForceKill(t *testing.T, cmd *exec.Cmd) {
 			time.Sleep(10 * time.Millisecond)
 		}
 
-		ok, err := TerminateProcess(cmd.Process, time.Millisecond)
+		ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
 		assert.False(t, ok, "child process should not exit gracefully")
 		assert.NoError(t, err, "error terminating child process")
 	}()
@@ -213,7 +213,7 @@ func TestTerminateChildren_gracefulShutdown(t *testing.T) {
 	t.Parallel()
 
 	// We've already verified signal handling cross-language
-	// so this test won't bother with that.
+	// so this test won't bother with other languages.
 
 	goBin := lookPathOrSkip(t, "go")
 
@@ -228,33 +228,7 @@ func TestTerminateChildren_gracefulShutdown(t *testing.T) {
 		"error building test program")
 
 	cmd := exec.Command(bin)
-	RegisterProcessGroup(cmd)
-
-	var stdout lockedBuffer
-	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
-	cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
-	require.NoError(t, cmd.Start(), "error starting child process")
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		// Wait until the child process is ready to receive signals.
-		for stdout.Len() == 0 {
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		assert.NoError(t,
-			TerminateProcessChildren(cmd.Process, 1*time.Second),
-			"error terminating child process")
-	}()
-
-	err := cmd.Wait()
-	// if isWaitAlreadyExited(err) {
-	// 	err = nil
-	// }
-	assert.NoError(t, err, "child did not exit cleanly")
-	<-done
+	testTerminateGracefulShutdown(t, cmd)
 }
 
 type lockedBuffer struct {

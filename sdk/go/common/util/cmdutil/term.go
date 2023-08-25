@@ -22,11 +22,14 @@ import (
 	"time"
 )
 
-// TerminateProcess terminates the given process.
-// It does so by sending a termination signal to the process.
+// TerminateProcessGroup terminates the process group
+// of the given process by sending a termination signal to it.
 //
 //   - On Linux and macOS, it sends a SIGINT
 //   - On Windows, it sends a CTRL_BREAK_EVENT
+//
+// The process group is the given process and all its child processes
+// that were registered with RegisterProcessGroup.
 //
 // If the process does not exit gracefully within the given duration,
 // it will be forcibly terminated.
@@ -35,7 +38,7 @@ import (
 //
 // Returns an error if the process could not be terminated,
 // or if the process exited with a non-zero exit code.
-func TerminateProcess(proc *os.Process, cooldown time.Duration) (ok bool, err error) {
+func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, err error) {
 	// The choice to use SIGINT and CTRL_BREAK_EVENT
 	// merits some explanation.
 	//
@@ -99,7 +102,7 @@ func TerminateProcess(proc *os.Process, cooldown time.Duration) (ok bool, err er
 	// - Users will want to handle SIGINT anyway
 	//   because they'll want to be able to press Ctrl+C in the terminal.
 
-	if err := shutdownProcess(proc); err != nil {
+	if err := shutdownProcessGroup(proc.Pid); err != nil {
 		// Couldn't shut down the process gracefully.
 		// Let's just kill it.
 		return false, proc.Kill()
@@ -134,18 +137,4 @@ func TerminateProcess(proc *os.Process, cooldown time.Duration) (ok bool, err er
 	}
 
 	return true, waitErr
-}
-
-// TerminateProcessChildren terminates the given process
-// and all its child processes.
-//
-// It does so by sending a termination signal to the process.
-// See [TerminateProcess] for more details.
-//
-// If the processes do not exit gracefully within the given duration,
-// they will be forcibly terminated.
-func TerminateProcessChildren(proc *os.Process, cooldown time.Duration) error {
-	// TODO: Capture list of children before sending the signal,
-	//      and then wait for all of them to exit.
-	return shutdownChildren(proc)
 }

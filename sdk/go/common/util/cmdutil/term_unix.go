@@ -19,15 +19,20 @@ package cmdutil
 
 import (
 	"errors"
-	"os"
 
 	"golang.org/x/sys/unix"
 )
 
-// shutdownProcess sends a SIGINT to the given process.
+// shutdownProcessGroup sends a SIGINT to the given process group.
 // It returns immediately, and does not wait for the process to exit.
-func shutdownProcess(proc *os.Process) error {
-	return proc.Signal(unix.SIGINT)
+func shutdownProcessGroup(pid int) error {
+	// Processes spawned after calling RegisterProcessGroup
+	// will be part of the same process group as the parent.
+	//
+	// -pid means send the signal to the entire process group.
+	//
+	// See: https://linux.die.net/man/2/kill
+	return unix.Kill(-pid, unix.SIGINT)
 }
 
 // isWaitAlreadyExited returns true

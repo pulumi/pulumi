@@ -394,7 +394,7 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 			result = multierror.Append(result, err)
 		}
 
-		if _, err := cmdutil.TerminateProcess(cmd.Process, time.Second); err != nil {
+		if _, err := cmdutil.TerminateProcessGroup(cmd.Process, time.Second); err != nil {
 			result = multierror.Append(result, err)
 		}
 

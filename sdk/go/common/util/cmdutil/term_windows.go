@@ -19,15 +19,14 @@ package cmdutil
 
 import (
 	"errors"
-	"os"
 
 	"golang.org/x/sys/windows"
 )
 
-// shutdownProcess sends a CTRL_BREAK_EVENT to the given process.
+// shutdownProcessGroup sends a CTRL_BREAK_EVENT to the given process group.
 // It returns immediately, and does not wait for the process to exit.
-func shutdownProcess(proc *os.Process) error {
-	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
+func shutdownProcessGroup(pid int) error {
+	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(pid))
 }
 
 // isWaitAlreadyExited returns true
