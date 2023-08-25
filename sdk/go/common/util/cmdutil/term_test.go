@@ -153,16 +153,15 @@ func TestTerminate_forceKill(t *testing.T) {
 			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
 			require.NoError(t, cmd.Start(), "error starting child process")
 
-			pid := cmd.Process.Pid
+			// Wait until the child process is ready to receive signals.
+			for stdout.Len() == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
 
+			pid := cmd.Process.Pid
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-
-				// Wait until the child process is ready to receive signals.
-				for stdout.Len() == 0 {
-					time.Sleep(10 * time.Millisecond)
-				}
 
 				ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
 				assert.False(t, ok, "child process should not exit gracefully")
@@ -290,16 +289,15 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
 			require.NoError(t, cmd.Start(), "error starting child process")
 
-			pid := cmd.Process.Pid
+			// Wait until the child process is ready to receive signals.
+			for stdout.Len() == 0 {
+				time.Sleep(10 * time.Millisecond)
+			}
 
+			pid := cmd.Process.Pid
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-
-				// Wait until the child process is ready to receive signals.
-				for stdout.Len() == 0 {
-					time.Sleep(10 * time.Millisecond)
-				}
 
 				ok, err := TerminateProcessGroup(cmd.Process, 100*time.Millisecond)
 				assert.True(t, ok, "child process did not exit gracefully")
