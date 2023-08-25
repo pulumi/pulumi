@@ -209,6 +209,54 @@ func testTerminateForceKill(t *testing.T, cmd *exec.Cmd) {
 	assert.Nil(t, proc, "child process should be dead")
 }
 
+func TestTerminateChildren_gracefulShutdown(t *testing.T) {
+	t.Parallel()
+
+	// We've already verified signal handling cross-language
+	// so this test won't bother with that.
+
+	goBin := lookPathOrSkip(t, "go")
+
+	src := filepath.Join("testdata", "term_graceful_with_child.go")
+	bin := filepath.Join(t.TempDir(), "main")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+
+	require.NoError(t,
+		exec.Command(goBin, "build", "-o", bin, src).Run(),
+		"error building test program")
+
+	cmd := exec.Command(bin)
+	RegisterProcessGroup(cmd)
+
+	var stdout lockedBuffer
+	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+	cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+	require.NoError(t, cmd.Start(), "error starting child process")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		// Wait until the child process is ready to receive signals.
+		for stdout.Len() == 0 {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		assert.NoError(t,
+			TerminateProcessChildren(cmd.Process, 1*time.Second),
+			"error terminating child process")
+	}()
+
+	err := cmd.Wait()
+	// if isWaitAlreadyExited(err) {
+	// 	err = nil
+	// }
+	assert.NoError(t, err, "child did not exit cleanly")
+	<-done
+}
+
 type lockedBuffer struct {
 	mu sync.RWMutex
 	b  bytes.Buffer

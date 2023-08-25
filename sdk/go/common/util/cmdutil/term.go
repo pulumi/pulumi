@@ -135,3 +135,17 @@ func TerminateProcess(proc *os.Process, cooldown time.Duration) (ok bool, err er
 
 	return true, waitErr
 }
+
+// TerminateProcessChildren terminates the given process
+// and all its child processes.
+//
+// It does so by sending a termination signal to the process.
+// See [TerminateProcess] for more details.
+//
+// If the processes do not exit gracefully within the given duration,
+// they will be forcibly terminated.
+func TerminateProcessChildren(proc *os.Process, cooldown time.Duration) error {
+	// TODO: Capture list of children before sending the signal,
+	//      and then wait for all of them to exit.
+	return shutdownChildren(proc)
+}
