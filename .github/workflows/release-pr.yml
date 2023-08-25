@@ -75,7 +75,7 @@ jobs:
           git push origin "pkg/v${PULUMI_VERSION}"
           git push -u origin HEAD
 
-          PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}")
+          PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
             gh pr merge --auto "${PR}"
