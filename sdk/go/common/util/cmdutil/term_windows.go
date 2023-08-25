@@ -26,6 +26,11 @@ import (
 // shutdownProcessGroup sends a CTRL_BREAK_EVENT to the given process group.
 // It returns immediately, and does not wait for the process to exit.
 func shutdownProcessGroup(pid int) error {
+	// If the child processes used RegisterProcessGroup,
+	// the CTRL_BREAK_EVENT signal will be sent to all processes
+	// in the group.
+	//
+	// See: https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent
 	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(pid))
 }
 

@@ -18,6 +18,7 @@
 package cmdutil
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -33,6 +34,11 @@ func KillChildren(pid int) error {
 	// "If pid is less than -1, then sig is sent to every process in the
 	// process group whose ID is -pid. "
 	return syscall.Kill(-pid, syscall.SIGKILL)
+}
+
+// Sends SIGKILL to a process group.
+func killProcessGroup(proc *os.Process) error {
+	return KillChildren(proc.Pid)
 }
 
 // RegisterProcessGroup informs the OS that it needs to call `setpgid` on this

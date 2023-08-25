@@ -105,7 +105,7 @@ func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, e
 	if err := shutdownProcessGroup(proc.Pid); err != nil {
 		// Couldn't shut down the process gracefully.
 		// Let's just kill it.
-		return false, proc.Kill()
+		return false, killProcessGroup(proc)
 	}
 
 	var waitErr error
@@ -133,7 +133,7 @@ func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, e
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		// The process didn't exit within the given duration.
 		// Kill it.
-		return false, proc.Kill()
+		return false, killProcessGroup(proc)
 	}
 
 	return true, waitErr

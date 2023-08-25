@@ -24,8 +24,17 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	ps "github.com/mitchellh/go-ps"
-	"golang.org/x/sys/windows"
 )
+
+// Terminates a process group, including all child processes.
+func killProcessGroup(proc *os.Process) error {
+	if err := KillChildren(proc.Pid); err != nil {
+		return err
+	}
+
+	// Kill the root process since KillChildren only kills child processes.
+	return proc.Kill()
+}
 
 // KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
 // also only kills direct child process, not any children they may have. This function is only implemented on Windows.
@@ -59,15 +68,6 @@ func KillChildren(pid int) error {
 	}
 
 	return result
-}
-
-func shutdownChildren(proc *os.Process) error {
-	// If the child processes used RegisterProcessGroup,
-	// the CTRL_BREAK_EVENT signal will be sent to all processes
-	// in the group.
-	//
-	// See: https://learn.microsoft.com/en-us/windows/console/generateconsolectrlevent
-	return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(proc.Pid))
 }
 
 func processExistsWithParent(pid int, ppid int) (bool, error) {

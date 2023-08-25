@@ -61,7 +61,7 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 			prog: pythonTestProgram.From("term_graceful.py"),
 		},
 		{
-			desc: "go/child",
+			desc: "with child",
 			prog: goTestProgram.From("term_graceful_with_child.go"),
 		},
 	}
@@ -187,6 +187,68 @@ func TestTerminate_forceKill(t *testing.T) {
 			assert.NoError(t, err, "error finding process")
 			assert.Nil(t, proc, "child process should be dead")
 		})
+	}
+}
+
+func TestTerminate_forceKill_processGroup(t *testing.T) {
+	t.Parallel()
+
+	// This is a variant of TestTerminate_forceKill
+	// that verifies that a child process of the test process
+	// is also killed.
+
+	cmd := goTestProgram.From("term_frozen_with_child.go").Build(t)
+
+	var stdout lockedBuffer
+	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+	cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+	require.NoError(t, cmd.Start(), "error starting child process")
+
+	// Wait until the child process is ready to receive signals.
+	for stdout.Len() == 0 {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	pid := cmd.Process.Pid
+	childPid := -1
+
+	procs, err := ps.Processes()
+	require.NoError(t, err, "error listing processes")
+	for _, proc := range procs {
+		if proc.PPid() == pid {
+			childPid = proc.Pid()
+			break
+		}
+	}
+
+	require.NotEqual(t, -1, childPid, "child process not found")
+
+	t.Logf("Terminating pid = %d, childPid = %d", pid, childPid)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
+		assert.False(t, ok, "child process should not exit gracefully")
+		assert.NoError(t, err, "error terminating child process")
+
+		_ = cmd.Wait()
+	}()
+
+	select {
+	case <-done:
+
+	case <-time.After(100 * time.Millisecond):
+		// If the child process is not killed,
+		// cmd.Wait() will block until it exits.
+		t.Fatal("Took too long to kill child process")
+	}
+
+	for _, pid := range []int{pid, childPid} {
+		proc, err := ps.FindProcess(pid)
+		assert.NoError(t, err, "error finding process")
+		assert.Nil(t, proc, "process should be dead")
 	}
 }
 
