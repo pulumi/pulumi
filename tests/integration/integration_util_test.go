@@ -440,6 +440,49 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 	}
 }
 
+// Tests methods work when there is an explicit provider for another provider set on the component.
+func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
+	t.Parallel()
+
+	const testDir = "construct_component_methods_provider"
+	runComponentSetup(t, testDir)
+
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.componentDir, func(t *testing.T) {
+			localProvider := integration.LocalDependency{
+				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
+			}
+			testProvider := integration.LocalDependency{
+				Package: "testprovider", Path: filepath.Join("..", "testprovider"),
+			}
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Dir:            filepath.Join(testDir, lang),
+				Dependencies:   dependencies,
+				LocalProviders: []integration.LocalDependency{localProvider, testProvider},
+				Quick:          true,
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message1"])
+					assert.Equal(t, "Hi There, Bob!", stackInfo.Outputs["message2"])
+				},
+			})
+		})
+	}
+}
+
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
 	t.Parallel()
 
