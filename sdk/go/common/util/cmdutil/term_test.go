@@ -220,10 +220,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 			break
 		}
 	}
-
 	require.NotEqual(t, -1, childPid, "child process not found")
-
-	t.Logf("Terminating pid = %d, childPid = %d", pid, childPid)
 
 	done := make(chan struct{})
 	go func() {
@@ -238,6 +235,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 
 	select {
 	case <-done:
+		// continue
 
 	case <-time.After(100 * time.Millisecond):
 		// If the child process is not killed,
@@ -246,7 +244,18 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 	}
 
 	for _, pid := range []int{pid, childPid} {
-		proc, err := ps.FindProcess(pid)
+		// Sometimes, the SIGKILL takes some time to be delivered.
+		// We retry a few times to make sure the process is dead.
+
+		var proc ps.Process
+		for attempt := 0; attempt < 3; attempt++ {
+			proc, err = ps.FindProcess(pid)
+			if err == nil && proc == nil {
+				break // success
+			}
+			time.Sleep(25 * time.Millisecond)
+
+		}
 		assert.NoError(t, err, "error finding process")
 		assert.Nil(t, proc, "process should be dead")
 	}
