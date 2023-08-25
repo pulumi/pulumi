@@ -142,7 +142,7 @@ jobs:
         env:
           CACHE_KEY: "${{ fromJson(inputs.version-set).go }}-${{ runner.os }}-${{ runner.arch }}"
         run: echo "$CACHE_KEY" > .gocache.tmp
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         id: setup-go
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
@@ -150,12 +150,6 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - name: Prime Go cache
-        if: ${{ steps.setup-go.outputs.cache-hit != 'true' }}
-        # Compile every test to ensure we populate a good cache entry.
-        run: |
-          ( cd sdk && go test -run "_________" ./... )
-          ( cd pkg && go test -run "_________" ./... )
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
