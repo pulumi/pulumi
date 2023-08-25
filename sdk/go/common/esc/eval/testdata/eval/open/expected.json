@@ -1,0 +1,1202 @@
+{
+    "environment": {
+        "exprs": {
+            "referent": {
+                "range": {
+                    "environment": "open",
+                    "begin": {
+                        "line": 14,
+                        "column": 5,
+                        "byte": 197
+                    },
+                    "end": {
+                        "line": 17,
+                        "column": 31,
+                        "byte": 288
+                    }
+                },
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "list": {
+                            "type": "string",
+                            "const": "a"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "value"
+                        },
+                        "test": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                },
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                },
+                                "list": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "a"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "list"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "object": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "const": "value"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "key"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz",
+                                "foo",
+                                "list",
+                                "object"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo",
+                        "list",
+                        "object",
+                        "test"
+                    ]
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "open",
+                            "begin": {
+                                "line": 15,
+                                "column": 10,
+                                "byte": 220
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 21,
+                                "byte": 231
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "test",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "list": {
+                        "range": {
+                            "environment": "open",
+                            "begin": {
+                                "line": 16,
+                                "column": 11,
+                                "byte": 242
+                            },
+                            "end": {
+                                "line": 16,
+                                "column": 26,
+                                "byte": 257
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "a"
+                        },
+                        "symbol": [
+                            {
+                                "key": "test",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            },
+                            {
+                                "key": "list",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            },
+                            {
+                                "index": 0,
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "object": {
+                        "range": {
+                            "environment": "open",
+                            "begin": {
+                                "line": 17,
+                                "column": 13,
+                                "byte": 270
+                            },
+                            "end": {
+                                "line": 17,
+                                "column": 31,
+                                "byte": 288
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "value"
+                        },
+                        "symbol": [
+                            {
+                                "key": "test",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            },
+                            {
+                                "key": "object",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            },
+                            {
+                                "key": "key",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "test": {
+                        "range": {
+                            "environment": "open",
+                            "begin": {
+                                "line": 14,
+                                "column": 11,
+                                "byte": 203
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 18,
+                                "byte": 210
+                            }
+                        },
+                        "schema": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                },
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                },
+                                "list": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "a"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "list"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "object": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "const": "value"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "key"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz",
+                                "foo",
+                                "list",
+                                "object"
+                            ]
+                        },
+                        "symbol": [
+                            {
+                                "key": "test",
+                                "value": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "test": {
+                "range": {
+                    "environment": "open",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 20
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 21,
+                        "byte": 180
+                    }
+                },
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "list": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "list"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "object": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "const": "value"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "key"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo",
+                        "list",
+                        "object"
+                    ]
+                },
+                "builtin": {
+                    "name": "",
+                    "argSchema": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "inputs": true,
+                            "provider": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "inputs",
+                            "provider"
+                        ]
+                    },
+                    "arg": {
+                        "range": {
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        },
+                        "object": {
+                            "inputs": {
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 9,
+                                        "byte": 73
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 21,
+                                        "byte": 180
+                                    }
+                                },
+                                "schema": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "baz": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        },
+                                        "foo": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        },
+                                        "list": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "list"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "object": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "key": {
+                                                    "type": "string",
+                                                    "const": "value"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "key"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "baz",
+                                        "foo",
+                                        "list",
+                                        "object"
+                                    ]
+                                },
+                                "object": {
+                                    "baz": {
+                                        "range": {
+                                            "environment": "open",
+                                            "begin": {
+                                                "line": 7,
+                                                "column": 14,
+                                                "byte": 95
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 17,
+                                                "byte": 98
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "qux"
+                                        },
+                                        "literal": "qux"
+                                    },
+                                    "foo": {
+                                        "range": {
+                                            "environment": "open",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 14,
+                                                "byte": 78
+                                            },
+                                            "end": {
+                                                "line": 6,
+                                                "column": 17,
+                                                "byte": 81
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "string",
+                                            "const": "bar"
+                                        },
+                                        "literal": "bar"
+                                    },
+                                    "list": {
+                                        "range": {
+                                            "environment": "open",
+                                            "begin": {
+                                                "line": 9,
+                                                "column": 11,
+                                                "byte": 123
+                                            },
+                                            "end": {
+                                                "line": 10,
+                                                "column": 17,
+                                                "byte": 143
+                                            }
+                                        },
+                                        "schema": {
+                                            "prefixItems": [
+                                                {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "const": "list"
+                                                }
+                                            ],
+                                            "items": false,
+                                            "type": "array"
+                                        },
+                                        "list": [
+                                            {
+                                                "range": {
+                                                    "environment": "open",
+                                                    "begin": {
+                                                        "line": 9,
+                                                        "column": 13,
+                                                        "byte": 125
+                                                    },
+                                                    "end": {
+                                                        "line": 9,
+                                                        "column": 14,
+                                                        "byte": 126
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            {
+                                                "range": {
+                                                    "environment": "open",
+                                                    "begin": {
+                                                        "line": 10,
+                                                        "column": 13,
+                                                        "byte": 139
+                                                    },
+                                                    "end": {
+                                                        "line": 10,
+                                                        "column": 17,
+                                                        "byte": 143
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "list"
+                                                },
+                                                "literal": "list"
+                                            }
+                                        ]
+                                    },
+                                    "object": {
+                                        "range": {
+                                            "environment": "open",
+                                            "begin": {
+                                                "line": 12,
+                                                "column": 11,
+                                                "byte": 170
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 21,
+                                                "byte": 180
+                                            }
+                                        },
+                                        "schema": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "key": {
+                                                    "type": "string",
+                                                    "const": "value"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "key"
+                                            ]
+                                        },
+                                        "object": {
+                                            "key": {
+                                                "range": {
+                                                    "environment": "open",
+                                                    "begin": {
+                                                        "line": 12,
+                                                        "column": 16,
+                                                        "byte": 175
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 21,
+                                                        "byte": 180
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "value"
+                                                },
+                                                "literal": "value"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "provider": {
+                                "range": {
+                                    "environment": "open",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 17,
+                                        "byte": 46
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 21,
+                                        "byte": 50
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "test"
+                                },
+                                "literal": "test"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "referent": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 10,
+                                    "byte": 220
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 21,
+                                    "byte": 231
+                                }
+                            }
+                        }
+                    },
+                    "list": {
+                        "value": "a",
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 11,
+                                    "byte": 242
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 26,
+                                    "byte": 257
+                                }
+                            }
+                        }
+                    },
+                    "object": {
+                        "value": "value",
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 13,
+                                    "byte": 270
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 31,
+                                    "byte": 288
+                                }
+                            }
+                        }
+                    },
+                    "test": {
+                        "value": {
+                            "baz": {
+                                "value": "qux",
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            },
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            },
+                            "list": {
+                                "value": [
+                                    {
+                                        "value": "a",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "open",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 5,
+                                                    "byte": 20
+                                                },
+                                                "end": {
+                                                    "line": 12,
+                                                    "column": 21,
+                                                    "byte": 180
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "value": "list",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "open",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 5,
+                                                    "byte": 20
+                                                },
+                                                "end": {
+                                                    "line": 12,
+                                                    "column": 21,
+                                                    "byte": 180
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            },
+                            "object": {
+                                "value": {
+                                    "key": {
+                                        "value": "value",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "open",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 5,
+                                                    "byte": 20
+                                                },
+                                                "end": {
+                                                    "line": 12,
+                                                    "column": 21,
+                                                    "byte": 180
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 11,
+                                    "byte": 203
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 18,
+                                    "byte": 210
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "open",
+                        "begin": {
+                            "line": 14,
+                            "column": 5,
+                            "byte": 197
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 31,
+                            "byte": 288
+                        }
+                    }
+                }
+            },
+            "test": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            }
+                        }
+                    },
+                    "list": {
+                        "value": [
+                            {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "value": "list",
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            }
+                        ],
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            }
+                        }
+                    },
+                    "object": {
+                        "value": {
+                            "key": {
+                                "value": "value",
+                                "trace": {
+                                    "def": {
+                                        "environment": "open",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 20
+                                        },
+                                        "end": {
+                                            "line": 12,
+                                            "column": 21,
+                                            "byte": 180
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "open",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 21,
+                                    "byte": 180
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "open",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 20
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 21,
+                            "byte": 180
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "additionalProperties": false,
+            "properties": {
+                "referent": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "list": {
+                            "type": "string",
+                            "const": "a"
+                        },
+                        "object": {
+                            "type": "string",
+                            "const": "value"
+                        },
+                        "test": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "baz": {
+                                    "type": "string",
+                                    "const": "qux"
+                                },
+                                "foo": {
+                                    "type": "string",
+                                    "const": "bar"
+                                },
+                                "list": {
+                                    "prefixItems": [
+                                        {
+                                            "type": "string",
+                                            "const": "a"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "const": "list"
+                                        }
+                                    ],
+                                    "items": false,
+                                    "type": "array"
+                                },
+                                "object": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "key": {
+                                            "type": "string",
+                                            "const": "value"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "key"
+                                    ]
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "baz",
+                                "foo",
+                                "list",
+                                "object"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo",
+                        "list",
+                        "object",
+                        "test"
+                    ]
+                },
+                "test": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "list": {
+                            "prefixItems": [
+                                {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                {
+                                    "type": "string",
+                                    "const": "list"
+                                }
+                            ],
+                            "items": false,
+                            "type": "array"
+                        },
+                        "object": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "const": "value"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "key"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "foo",
+                        "list",
+                        "object"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "referent",
+                "test"
+            ]
+        }
+    }
+}
