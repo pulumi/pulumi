@@ -553,6 +553,31 @@ func TestPluginDownload(t *testing.T) {
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
 		})
+
+		t.Run("Missing Checksum", func(t *testing.T) {
+			// In this test the specification has checksums, but is missing the checksum for the current platform.
+			// There are two sensible ways to handle this:
+			// 1. Behave as if no checksums were specified at all, and simply fall back to not checking anything.
+			// 2. Error that the checksum for the current platform is missing.
+			// We choose to do the former, for now as that's more lenient.
+			spec := PluginSpec{
+				PluginDownloadURL: "",
+				Name:              "mockdl",
+				Version:           &version,
+				Kind:              PluginKind("resource"),
+				Checksums: map[string][]byte{
+					"windows-amd64": {0},
+				},
+			}
+			source, err := spec.GetSource()
+			require.NoError(t, err)
+			r, l, err := source.Download(*spec.Version, "darwin", "amd64", getHTTPResponse)
+			require.NoError(t, err)
+			readBytes, err := io.ReadAll(r)
+			require.NoError(t, err)
+			assert.Equal(t, int(l), len(readBytes))
+			assert.Equal(t, expectedBytes, readBytes)
+		})
 	})
 	t.Run("GitLab Releases", func(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", token)

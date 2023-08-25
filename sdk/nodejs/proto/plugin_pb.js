@@ -246,7 +246,8 @@ proto.pulumirpc.PluginDependency.toObject = function(includeInstance, msg) {
     name: jspb.Message.getFieldWithDefault(msg, 1, ""),
     kind: jspb.Message.getFieldWithDefault(msg, 2, ""),
     version: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    server: jspb.Message.getFieldWithDefault(msg, 4, "")
+    server: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    checksumsMap: (f = msg.getChecksumsMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -298,6 +299,12 @@ proto.pulumirpc.PluginDependency.deserializeBinaryFromReader = function(msg, rea
     case 4:
       var value = /** @type {string} */ (reader.readString());
       msg.setServer(value);
+      break;
+    case 5:
+      var value = msg.getChecksumsMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBytes, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -355,6 +362,10 @@ proto.pulumirpc.PluginDependency.serializeBinaryToWriter = function(message, wri
       4,
       f
     );
+  }
+  f = message.getChecksumsMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBytes);
   }
 };
 
@@ -429,6 +440,28 @@ proto.pulumirpc.PluginDependency.prototype.getServer = function() {
 proto.pulumirpc.PluginDependency.prototype.setServer = function(value) {
   return jspb.Message.setProto3StringField(this, 4, value);
 };
+
+
+/**
+ * map<string, bytes> checksums = 5;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,!(string|Uint8Array)>}
+ */
+proto.pulumirpc.PluginDependency.prototype.getChecksumsMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,!(string|Uint8Array)>} */ (
+      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.PluginDependency} returns this
+ */
+proto.pulumirpc.PluginDependency.prototype.clearChecksumsMap = function() {
+  this.getChecksumsMap().clear();
+  return this;};
 
 
 

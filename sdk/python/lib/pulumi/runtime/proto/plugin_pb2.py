@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/plugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"O\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13pulumi/plugin.proto\x12\tpulumirpc\"\x1d\n\nPluginInfo\x12\x0f\n\x07version\x18\x01 \x01(\t\"\xc0\x01\n\x10PluginDependency\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t\x12\x0e\n\x06server\x18\x04 \x01(\t\x12=\n\tchecksums\x18\x05 \x03(\x0b\x32*.pulumirpc.PluginDependency.ChecksumsEntry\x1a\x30\n\x0e\x43hecksumsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x0c:\x02\x38\x01\"\x1f\n\x0cPluginAttach\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\tB4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.plugin_pb2', globals())
@@ -21,10 +21,14 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
+  _PLUGINDEPENDENCY_CHECKSUMSENTRY._options = None
+  _PLUGINDEPENDENCY_CHECKSUMSENTRY._serialized_options = b'8\001'
   _PLUGININFO._serialized_start=34
   _PLUGININFO._serialized_end=63
-  _PLUGINDEPENDENCY._serialized_start=65
-  _PLUGINDEPENDENCY._serialized_end=144
-  _PLUGINATTACH._serialized_start=146
-  _PLUGINATTACH._serialized_end=177
+  _PLUGINDEPENDENCY._serialized_start=66
+  _PLUGINDEPENDENCY._serialized_end=258
+  _PLUGINDEPENDENCY_CHECKSUMSENTRY._serialized_start=210
+  _PLUGINDEPENDENCY_CHECKSUMSENTRY._serialized_end=258
+  _PLUGINATTACH._serialized_start=260
+  _PLUGINATTACH._serialized_end=291
 # @@protoc_insertion_point(module_scope)

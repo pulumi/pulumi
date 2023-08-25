@@ -16,7 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import builtins
+import collections.abc
 import google.protobuf.descriptor
+import google.protobuf.internal.containers
 import google.protobuf.message
 import sys
 
@@ -51,10 +53,27 @@ class PluginDependency(google.protobuf.message.Message):
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing_extensions.final
+    class ChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing_extensions.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     NAME_FIELD_NUMBER: builtins.int
     KIND_FIELD_NUMBER: builtins.int
     VERSION_FIELD_NUMBER: builtins.int
     SERVER_FIELD_NUMBER: builtins.int
+    CHECKSUMS_FIELD_NUMBER: builtins.int
     name: builtins.str
     """the name of the plugin."""
     kind: builtins.str
@@ -63,6 +82,11 @@ class PluginDependency(google.protobuf.message.Message):
     """the semver for this plugin."""
     server: builtins.str
     """the URL of a server that can be used to download this plugin, if needed."""
+    @property
+    def checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of the checksums for the plugin, will be empty from old language runtimes. The keys should match
+        the os and architecture names used in pulumi releases, e.g. "darwin-amd64", "windows-arm64".
+        """
     def __init__(
         self,
         *,
@@ -70,8 +94,9 @@ class PluginDependency(google.protobuf.message.Message):
         kind: builtins.str = ...,
         version: builtins.str = ...,
         server: builtins.str = ...,
+        checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["kind", b"kind", "name", b"name", "server", b"server", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["checksums", b"checksums", "kind", b"kind", "name", b"name", "server", b"server", "version", b"version"]) -> None: ...
 
 global___PluginDependency = PluginDependency
 
