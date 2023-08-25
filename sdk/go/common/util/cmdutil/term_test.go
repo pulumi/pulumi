@@ -48,22 +48,10 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 		desc string
 		prog testProgram
 	}{
-		{
-			desc: "go",
-			prog: goTestProgram.From("graceful.go"),
-		},
-		{
-			desc: "node",
-			prog: nodeTestProgram.From("graceful.js"),
-		},
-		{
-			desc: "python",
-			prog: pythonTestProgram.From("graceful.py"),
-		},
-		{
-			desc: "with child",
-			prog: goTestProgram.From("graceful_with_child.go"),
-		},
+		{desc: "go", prog: goTestProgram.From("graceful.go")},
+		{desc: "node", prog: nodeTestProgram.From("graceful.js")},
+		{desc: "python", prog: pythonTestProgram.From("graceful.py")},
+		{desc: "with child", prog: goTestProgram.From("graceful_with_child.go")},
 	}
 
 	for _, tt := range tests {
@@ -148,18 +136,9 @@ func TestTerminate_forceKill(t *testing.T) {
 		desc string
 		prog testProgram
 	}{
-		{
-			desc: "go",
-			prog: goTestProgram.From("frozen.go"),
-		},
-		{
-			desc: "node",
-			prog: nodeTestProgram.From("frozen.js"),
-		},
-		{
-			desc: "python",
-			prog: pythonTestProgram.From("frozen.py"),
-		},
+		{desc: "go", prog: goTestProgram.From("frozen.go")},
+		{desc: "node", prog: nodeTestProgram.From("frozen.js")},
+		{desc: "python", prog: pythonTestProgram.From("frozen.py")},
 	}
 
 	for _, tt := range tests {
@@ -278,6 +257,70 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 		}
 		assert.NoError(t, err, "error finding process")
 		assert.Nil(t, proc, "process should be dead")
+	}
+}
+
+func TestTerminate_unhandledInterrupt(t *testing.T) {
+	t.Parallel()
+
+	// This test runs programs that do not have an interrupt handler.
+	// Contract for child process:
+	//
+	// - It MUST print to stdout when it's ready.
+	// - It MUST exit with a non-zero code if it does not get terminated within 3 seconds.
+
+	tests := []struct {
+		desc string
+		prog testProgram
+	}{
+		{desc: "go", prog: goTestProgram.From("unhandled.go")},
+		{desc: "node", prog: nodeTestProgram.From("unhandled.js")},
+		{desc: "python", prog: pythonTestProgram.From("unhandled.py")},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := tt.prog.Build(t)
+
+			var stdout lockedBuffer
+			cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+			require.NoError(t, cmd.Start(), "error starting child process")
+
+			pid := cmd.Process.Pid
+
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+
+				// Wait until the child process is ready to receive signals.
+				for stdout.Len() == 0 {
+					time.Sleep(10 * time.Millisecond)
+				}
+
+				ok, err := TerminateProcessGroup(cmd.Process, 100*time.Millisecond)
+				assert.True(t, ok, "child process did not exit gracefully")
+				assert.Error(t, err, "child process should have exited with an error")
+
+				_ = cmd.Wait()
+			}()
+
+			select {
+			case <-done:
+				// continue
+
+			case <-time.After(200 * time.Millisecond):
+				// Took too long to kill the child process.
+				t.Fatal("Took too long to kill child process")
+			}
+
+			proc, err := ps.FindProcess(pid)
+			assert.NoError(t, err, "error finding process")
+			assert.Nil(t, proc, "child process should be dead")
+		})
 	}
 }
 
