@@ -162,11 +162,13 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
     return false;
 }
 
-// parentDirectory searches for and returns the parent directory path
-// starting from a given directory that contains the given file to find.
-// recursively searches up the directory tree until it finds the file or returns null
-// when it can't find anything.
-function parentDirectory(currentDir: string, fileToFind: string): string | null {
+/**
+ * searchUp searches for and returns the parent directory path
+ * starting from a given directory that contains the given file to find.
+ * Recursively searches up the directory tree until it finds the file or returns null
+ * when it can't find anything.
+ * */
+function searchUp(currentDir: string, fileToFind: string): string | null {
     if (fs.existsSync(upath.join(currentDir, fileToFind))) {
         return currentDir;
     }
@@ -174,7 +176,7 @@ function parentDirectory(currentDir: string, fileToFind: string): string | null 
     if (currentDir === parentDir) {
         return null;
     }
-    return parentDirectory(parentDir, fileToFind);
+    return searchUp(parentDir, fileToFind);
 }
 
 // allFolders computes the set of package folders that are transitively required by the root
@@ -186,7 +188,7 @@ function allFoldersForPackages(
 ): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         // the working directory is the directory containing the package.json file
-        const workingDir = parentDirectory(".", "package.json");
+        const workingDir = searchUp(".", "package.json");
         if (workingDir === null) {
             // we couldn't find a directory containing package.json
             // searching up from the current directory
