@@ -16,6 +16,8 @@ package cmdutil
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -163,27 +165,24 @@ func TestTerminate_forceKill(t *testing.T) {
 			go func() {
 				defer close(done)
 
-				ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
+				ok, err := TerminateProcessGroup(cmd.Process, 50*time.Millisecond)
 				assert.False(t, ok, "child process should not exit gracefully")
 				assert.NoError(t, err, "error terminating child process")
-
-				// cmd.Wait() will fail if we kill the child process.
-				_ = cmd.Wait()
 			}()
 
 			select {
 			case <-done:
 				// continue
 
-			case <-time.After(100 * time.Millisecond):
+			case <-time.After(200 * time.Millisecond):
 				// If the process is not killed,
 				// cmd.Wait() will block until it exits.
 				t.Fatal("Took too long to kill child process")
 			}
 
-			proc, err := ps.FindProcess(pid)
-			assert.NoError(t, err, "error finding process")
-			assert.Nil(t, proc, "child process should be dead")
+			assert.NoError(t,
+				waitPidDead(pid, 100*time.Millisecond),
+				"error waiting for process to die")
 		})
 	}
 }
@@ -227,8 +226,6 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 		ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
 		assert.False(t, ok, "child process should not exit gracefully")
 		assert.NoError(t, err, "error terminating child process")
-
-		_ = cmd.Wait()
 	}()
 
 	select {
@@ -242,20 +239,9 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 	}
 
 	for _, pid := range []int{pid, childPid} {
-		// Sometimes, the SIGKILL takes some time to be delivered.
-		// We retry a few times to make sure the process is dead.
-
-		var proc ps.Process
-		for attempt := 0; attempt < 3; attempt++ {
-			proc, err = ps.FindProcess(pid)
-			if err == nil && proc == nil {
-				break // success
-			}
-			time.Sleep(25 * time.Millisecond)
-
-		}
-		assert.NoError(t, err, "error finding process")
-		assert.Nil(t, proc, "process should be dead")
+		assert.NoError(t,
+			waitPidDead(pid, 100*time.Millisecond),
+			"error waiting for process to die")
 	}
 }
 
@@ -299,11 +285,9 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			go func() {
 				defer close(done)
 
-				ok, err := TerminateProcessGroup(cmd.Process, 100*time.Millisecond)
+				ok, err := TerminateProcessGroup(cmd.Process, 200*time.Millisecond)
 				assert.True(t, ok, "child process did not exit gracefully")
 				assert.Error(t, err, "child process should have exited with an error")
-
-				_ = cmd.Wait()
 			}()
 
 			select {
@@ -315,9 +299,9 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 				t.Fatal("Took too long to kill child process")
 			}
 
-			proc, err := ps.FindProcess(pid)
-			assert.NoError(t, err, "error finding process")
-			assert.Nil(t, proc, "child process should be dead")
+			assert.NoError(t,
+				waitPidDead(pid, 100*time.Millisecond),
+				"error waiting for process to die")
 		})
 	}
 }
@@ -443,4 +427,39 @@ func (b *lockedBuffer) Len() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.b.Len()
+}
+
+// Waits until the process with the given pid doesn't exist anymore
+// or the given timeout has elapsed.
+//
+// Returns an error if the timeout has elapsed.
+func waitPidDead(pid int, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var (
+		proc ps.Process
+		err  error
+	)
+	for {
+		select {
+		case <-ctx.Done():
+			var errs []error
+			if proc != nil {
+				errs = append(errs, fmt.Errorf("process %d still exists: %v", pid, proc))
+			}
+			if err != nil {
+				errs = append(errs, fmt.Errorf("find process: %w", err))
+			}
+
+			return fmt.Errorf("waitPidDead %v: %w", pid, errors.Join(errs...))
+
+		default:
+			proc, err = ps.FindProcess(pid)
+			if err == nil && proc == nil {
+				return nil
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 }
