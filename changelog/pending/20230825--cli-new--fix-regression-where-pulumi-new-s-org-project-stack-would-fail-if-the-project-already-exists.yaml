@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Fix regression where `pulumi new -s org/project/stack` would fail if the project already exists.

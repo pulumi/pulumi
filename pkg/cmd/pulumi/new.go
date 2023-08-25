@@ -132,6 +132,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
+	// Ensure the project doesn't already exist.
+	if args.name != "" {
+		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
+			return err
+		}
+	}
+
 	// Retrieve the template repo.
 	repo, err := workspace.RetrieveTemplates(args.templateNameOrURL, args.offline, workspace.TemplateKindPulumiProject)
 	if err != nil {
@@ -183,27 +191,24 @@ func runNew(ctx context.Context, args newArgs) error {
 
 		// Set the org name for future use.
 		orgName = parts[0]
-
 		projectName := parts[1]
-		if err := validateProjectName(ctx, b, orgName, projectName, args.generateOnly, opts); err != nil {
-			return err
-		}
 
 		stackName, err := buildStackName(args.stack)
 		if err != nil {
 			return err
 		}
-		existingStack, existingName, existingDesc, err := getStack(ctx, b, stackName, opts)
+
+		existingStack, _, existingDesc, err := getStack(ctx, b, stackName, opts)
 		if err != nil {
 			return err
 		}
-		s = existingStack
-		if args.name == "" {
-			args.name = existingName
+		if existingStack != nil {
+			s = existingStack
+			if args.description == "" {
+				args.description = existingDesc
+			}
 		}
-		if args.description == "" {
-			args.description = existingDesc
-		}
+		args.name = projectName
 	}
 
 	// Show instructions, if we're going to show at least one prompt.
@@ -238,11 +243,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		validate := func(s string) error { return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts) }
 		args.name, err = args.prompt(args.yes, "project name", defaultValue, false, validate, opts)
 		if err != nil {
-			return err
-		}
-	} else {
-		// Ensure the project doesn't already exist.
-		if err := validateProjectName(ctx, b, orgName, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
 	}
