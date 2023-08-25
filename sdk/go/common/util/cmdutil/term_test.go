@@ -16,6 +16,7 @@ package cmdutil
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os/exec"
 	"path/filepath"
@@ -30,6 +31,231 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTerminate_gracefulShutdown(t *testing.T) {
+	t.Parallel()
+
+	// This test runs commands in a child process, signals them,
+	// and expects them to shutdown gracefully.
+	//
+	// The contract for the child process is as follows:
+	//
+	//   - It MUST print something to stdout when it is ready to receive signals.
+	//   - It MUST exit with a zero code if it receives a SIGINT.
+	//   - It MUST exit with a non-zero code if the signal wasn't received within 3 seconds.
+	//   - It MAY print diagnostic messages to stderr.
+
+	tests := []struct {
+		desc string
+		prog testProgram
+	}{
+		{
+			desc: "go",
+			prog: goTestProgram.From("term_graceful.go"),
+		},
+		{
+			desc: "node",
+			prog: nodeTestProgram.From("term_graceful.js"),
+		},
+		{
+			desc: "python",
+			prog: pythonTestProgram.From("term_graceful.py"),
+		},
+		{
+			desc: "go/child",
+			prog: goTestProgram.From("term_graceful_with_child.go"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := tt.prog.Build(t)
+			RegisterProcessGroup(cmd)
+
+			var stdout lockedBuffer
+			cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+			require.NoError(t, cmd.Start(), "error starting child process")
+
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+
+				// Wait until the child process is ready to receive signals.
+				for stdout.Len() == 0 {
+					time.Sleep(10 * time.Millisecond)
+				}
+
+				ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
+				assert.True(t, ok, "child process did not exit gracefully")
+				assert.NoError(t, err, "error terminating child process")
+			}()
+
+			err := cmd.Wait()
+			if isWaitAlreadyExited(err) {
+				err = nil
+			}
+			assert.NoError(t, err, "child did not exit cleanly")
+			<-done
+		})
+	}
+}
+
+func TestTerminate_forceKill(t *testing.T) {
+	t.Parallel()
+
+	// This test runs commands in a child process, signals them,
+	// and expects them to not exit in a timely manner.
+	//
+	// The contract for the child process is the same as gracefulShutdown,
+	// except:
+	//
+	//   - It MUST freeze for at least 1 second after it receives a SIGINT.
+	//   - It MAY exit with a non-zero code if it receives a SIGINT.
+
+	tests := []struct {
+		desc string
+		prog testProgram
+	}{
+		{
+			desc: "go",
+			prog: goTestProgram.From("term_frozen.go"),
+		},
+		{
+			desc: "node",
+			prog: nodeTestProgram.From("term_frozen.js"),
+		},
+		{
+			desc: "python",
+			prog: pythonTestProgram.From("term_frozen.py"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := tt.prog.Build(t)
+			RegisterProcessGroup(cmd)
+
+			var stdout lockedBuffer
+			cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
+			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
+			require.NoError(t, cmd.Start(), "error starting child process")
+
+			pid := cmd.Process.Pid
+
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+
+				// Wait until the child process is ready to receive signals.
+				for stdout.Len() == 0 {
+					time.Sleep(10 * time.Millisecond)
+				}
+
+				ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
+				assert.False(t, ok, "child process should not exit gracefully")
+				assert.NoError(t, err, "error terminating child process")
+			}()
+
+			// cmd.Wait() will fail if we kill the child process.
+			// We can't rely on that to test if the process was SIGKILLed.
+			// Instead, we check if the process is still alive.
+			_ = cmd.Wait()
+			<-done
+
+			proc, err := ps.FindProcess(pid)
+			assert.NoError(t, err, "error finding process")
+			assert.Nil(t, proc, "child process should be dead")
+		})
+	}
+}
+
+type testProgramKind int
+
+const (
+	goTestProgram testProgramKind = iota
+	nodeTestProgram
+	pythonTestProgram
+)
+
+func (k testProgramKind) String() string {
+	switch k {
+	case goTestProgram:
+		return "go"
+	case nodeTestProgram:
+		return "node"
+	case pythonTestProgram:
+		return "python"
+	default:
+		return fmt.Sprintf("testProgramKind(%d)", int(k))
+	}
+}
+
+// From builds a testProgram of this kind
+// with the given source file.
+//
+// Usage:
+//
+//	goTestProgram.From("main.go")
+func (k testProgramKind) From(path string) testProgram {
+	return testProgram{
+		Kind:   k,
+		Source: path,
+	}
+}
+
+// testProgram is a test program inside the testdata directory.
+type testProgram struct {
+	// Kind is the kind of test program.
+	Kind testProgramKind
+
+	// Source is the path to the source file
+	// relative to the testdata directory.
+	Source string
+}
+
+// Build builds an exec.Cmd for the test program.
+// It skips the test if the program runner is not found.
+func (p *testProgram) Build(t *testing.T) *exec.Cmd {
+	t.Helper()
+
+	src := filepath.Join("testdata", p.Source)
+
+	switch p.Kind {
+	case goTestProgram:
+		goBin := lookPathOrSkip(t, "go")
+		bin := filepath.Join(t.TempDir(), "main")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+
+		buildCmd := exec.Command(goBin, "build", "-o", bin, src)
+		buildOutput := iotest.LogWriterPrefixed(t, "build: ")
+		buildCmd.Stdout = buildOutput
+		buildCmd.Stderr = buildOutput
+		require.NoError(t, buildCmd.Run(), "error building test program")
+
+		return exec.Command(bin)
+
+	case nodeTestProgram:
+		nodeBin := lookPathOrSkip(t, "node")
+		return exec.Command(nodeBin, src)
+
+	case pythonTestProgram:
+		pythonBin := lookPathOrSkip(t, "python")
+		return exec.Command(pythonBin, src)
+
+	default:
+		t.Fatalf("unknown test program kind: %v", p.Kind)
+		return nil
+	}
+}
+
 func lookPathOrSkip(t *testing.T, name string) string {
 	path, err := exec.LookPath(name)
 	if err != nil {
@@ -38,199 +264,8 @@ func lookPathOrSkip(t *testing.T, name string) string {
 	return path
 }
 
-func TestTerminate_gracefulShutdown(t *testing.T) {
-	t.Parallel()
-
-	t.Run("go", func(t *testing.T) {
-		t.Parallel()
-
-		goBin := lookPathOrSkip(t, "go")
-
-		src := filepath.Join("testdata", "term_graceful.go")
-		bin := filepath.Join(t.TempDir(), "main")
-		if runtime.GOOS == "windows" {
-			bin += ".exe"
-		}
-
-		require.NoError(t,
-			exec.Command(goBin, "build", "-o", bin, src).Run(),
-			"error building test program")
-
-		cmd := exec.Command(bin)
-		testTerminateGracefulShutdown(t, cmd)
-	})
-
-	t.Run("node", func(t *testing.T) {
-		t.Parallel()
-
-		nodeBin := lookPathOrSkip(t, "node")
-
-		src := filepath.Join("testdata", "term_graceful.js")
-		cmd := exec.Command(nodeBin, src)
-		testTerminateGracefulShutdown(t, cmd)
-	})
-
-	t.Run("python", func(t *testing.T) {
-		t.Parallel()
-
-		pythonBin := lookPathOrSkip(t, "python")
-
-		src := filepath.Join("testdata", "term_graceful.py")
-		cmd := exec.Command(pythonBin, src)
-		testTerminateGracefulShutdown(t, cmd)
-	})
-}
-
-// testTerminateGracefulShutdown runs the given command
-// and expects it to shutdown gracefully.
-//
-// The contract for the given command is:
-//
-//   - It MUST print something to stdout
-//     when it is ready to receive signals.
-//     This is used to synchronize with the child process.
-//   - It MUST exit with a zero code if it receives a SIGINT.
-//   - It MUST exit with a non-zero code
-//     if the signal wasn't received within 3 seconds.
-//   - It MAY print diagnostic messages to stderr.
-func testTerminateGracefulShutdown(t *testing.T, cmd *exec.Cmd) {
-	RegisterProcessGroup(cmd)
-
-	var stdout lockedBuffer
-	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "child(stdout): "))
-	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
-	require.NoError(t, cmd.Start(), "error starting child process")
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		// Wait until the child process is ready to receive signals.
-		for stdout.Len() == 0 {
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
-		assert.True(t, ok, "child process did not exit gracefully")
-		assert.NoError(t, err, "error terminating child process")
-	}()
-
-	err := cmd.Wait()
-	if isWaitAlreadyExited(err) {
-		err = nil
-	}
-	assert.NoError(t, err, "child did not exit cleanly")
-	<-done
-}
-
-func TestTerminate_forceKill(t *testing.T) {
-	t.Parallel()
-
-	t.Run("go", func(t *testing.T) {
-		t.Parallel()
-
-		goBin := lookPathOrSkip(t, "go")
-
-		src := filepath.Join("testdata", "term_frozen.go")
-		bin := filepath.Join(t.TempDir(), "main")
-		if runtime.GOOS == "windows" {
-			bin += ".exe"
-		}
-
-		require.NoError(t,
-			exec.Command(goBin, "build", "-o", bin, src).Run(),
-			"error building test program")
-
-		cmd := exec.Command(bin)
-		testTerminateForceKill(t, cmd)
-	})
-
-	t.Run("node", func(t *testing.T) {
-		t.Parallel()
-
-		nodeBin := lookPathOrSkip(t, "node")
-
-		src := filepath.Join("testdata", "term_frozen.js")
-		cmd := exec.Command(nodeBin, src)
-		testTerminateForceKill(t, cmd)
-	})
-
-	t.Run("python", func(t *testing.T) {
-		t.Parallel()
-
-		pythonBin := lookPathOrSkip(t, "python")
-
-		src := filepath.Join("testdata", "term_frozen.py")
-		cmd := exec.Command(pythonBin, src)
-		testTerminateForceKill(t, cmd)
-	})
-}
-
-// testTerminateForceKill runs the given command
-// and expects it to be force-killed.
-//
-// The contract for the given command is similar to
-// testTerminateGracefulShutdown, except:
-//
-//   - It MUST freeze for at least 1 second after it receives a SIGINT.
-//   - It MAY exit with a non-zero code if it receives a SIGINT.
-func testTerminateForceKill(t *testing.T, cmd *exec.Cmd) {
-	RegisterProcessGroup(cmd)
-
-	var stdout lockedBuffer
-	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "child(stdout): "))
-	cmd.Stderr = iotest.LogWriterPrefixed(t, "child(stderr): ")
-	require.NoError(t, cmd.Start(), "error starting child process")
-
-	pid := cmd.Process.Pid
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-
-		// Wait until the child process is ready to receive signals.
-		for stdout.Len() == 0 {
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
-		assert.False(t, ok, "child process should not exit gracefully")
-		assert.NoError(t, err, "error terminating child process")
-	}()
-
-	// cmd.Wait() will fail if we kill the child process.
-	// We can't rely on that to test if the process was SIGKILLed.
-	// Instead, we check if the process is still alive.
-	_ = cmd.Wait()
-	<-done
-
-	proc, err := ps.FindProcess(pid)
-	assert.NoError(t, err, "error finding process")
-	assert.Nil(t, proc, "child process should be dead")
-}
-
-func TestTerminateChildren_gracefulShutdown(t *testing.T) {
-	t.Parallel()
-
-	// We've already verified signal handling cross-language
-	// so this test won't bother with other languages.
-
-	goBin := lookPathOrSkip(t, "go")
-
-	src := filepath.Join("testdata", "term_graceful_with_child.go")
-	bin := filepath.Join(t.TempDir(), "main")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-
-	require.NoError(t,
-		exec.Command(goBin, "build", "-o", bin, src).Run(),
-		"error building test program")
-
-	cmd := exec.Command(bin)
-	testTerminateGracefulShutdown(t, cmd)
-}
-
+// lockedBuffer is a thread-safe bytes.Buffer
+// that can be used to capture stdout/stderr of a command.
 type lockedBuffer struct {
 	mu sync.RWMutex
 	b  bytes.Buffer
