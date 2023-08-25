@@ -5,12 +5,15 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"time"
 )
 
 func main() {
+	log.SetFlags(0)
+
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
 	// os.Interrupt handles SIGINT and CTRL_BREAK_EVENT.
@@ -18,11 +21,10 @@ func main() {
 	fmt.Println("ready")
 	select {
 	case <-sigch:
-		fmt.Println("exiting cleanly")
+		log.Println("exiting cleanly")
 		os.Exit(0)
 
 	case <-time.After(3 * time.Second):
-		fmt.Fprintln(os.Stderr, "error: did not receive signal")
-		os.Exit(1)
+		log.Fatal("error: did not receive signal")
 	}
 }
