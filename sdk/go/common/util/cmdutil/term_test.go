@@ -78,20 +78,27 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 			cmd.Stderr = iotest.LogWriterPrefixed(t, "stderr: ")
 			require.NoError(t, cmd.Start(), "error starting child process")
 
-			// Wait until the child process is ready to receive signals.
-			for stdout.Len() == 0 {
-				time.Sleep(10 * time.Millisecond)
-			}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
 
-			ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
-			assert.True(t, ok, "child process did not exit gracefully")
-			assert.NoError(t, err, "error terminating child process")
+				// Wait until the child process is ready to receive signals.
+				for stdout.Len() == 0 {
+					time.Sleep(10 * time.Millisecond)
+				}
 
-			err = cmd.Wait()
+				ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
+				assert.True(t, ok, "child process did not exit gracefully")
+				assert.NoError(t, err, "error terminating child process")
+			}()
+
+			err := cmd.Wait()
 			if isWaitAlreadyExited(err) {
 				err = nil
 			}
 			assert.NoError(t, err, "child did not exit cleanly")
+
+			<-done
 		})
 	}
 }
@@ -169,19 +176,32 @@ func TestTerminate_forceKill(t *testing.T) {
 
 			pid := cmd.Process.Pid
 
-			// Wait until the child process is ready to receive signals.
-			for stdout.Len() == 0 {
-				time.Sleep(10 * time.Millisecond)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+
+				// Wait until the child process is ready to receive signals.
+				for stdout.Len() == 0 {
+					time.Sleep(10 * time.Millisecond)
+				}
+
+				ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
+				assert.False(t, ok, "child process should not exit gracefully")
+				assert.NoError(t, err, "error terminating child process")
+
+				// cmd.Wait() will fail if we kill the child process.
+				_ = cmd.Wait()
+			}()
+
+			select {
+			case <-done:
+				// continue
+
+			case <-time.After(100 * time.Millisecond):
+				// If the process is not killed,
+				// cmd.Wait() will block until it exits.
+				t.Fatal("Took too long to kill child process")
 			}
-
-			ok, err := TerminateProcessGroup(cmd.Process, time.Millisecond)
-			assert.False(t, ok, "child process should not exit gracefully")
-			assert.NoError(t, err, "error terminating child process")
-
-			// cmd.Wait() will fail if we kill the child process.
-			// We can't rely on that to test if the process was SIGKILLed.
-			// Instead, we check if the process is still alive.
-			_ = cmd.Wait()
 
 			proc, err := ps.FindProcess(pid)
 			assert.NoError(t, err, "error finding process")
