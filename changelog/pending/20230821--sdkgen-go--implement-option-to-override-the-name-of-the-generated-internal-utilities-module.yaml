@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen/go
-  description: Implement option to override the name of the generated internal/utilities module

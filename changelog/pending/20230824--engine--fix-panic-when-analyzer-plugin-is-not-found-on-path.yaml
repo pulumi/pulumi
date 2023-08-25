@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Fix panic when analyzer plugin is not found on PATH.
