@@ -50,19 +50,19 @@ func TestTerminate_gracefulShutdown(t *testing.T) {
 	}{
 		{
 			desc: "go",
-			prog: goTestProgram.From("term_graceful.go"),
+			prog: goTestProgram.From("graceful.go"),
 		},
 		{
 			desc: "node",
-			prog: nodeTestProgram.From("term_graceful.js"),
+			prog: nodeTestProgram.From("graceful.js"),
 		},
 		{
 			desc: "python",
-			prog: pythonTestProgram.From("term_graceful.py"),
+			prog: pythonTestProgram.From("graceful.py"),
 		},
 		{
 			desc: "with child",
-			prog: goTestProgram.From("term_graceful_with_child.go"),
+			prog: goTestProgram.From("graceful_with_child.go"),
 		},
 	}
 
@@ -103,7 +103,7 @@ func TestTerminate_gracefulShutdown_exitError(t *testing.T) {
 	// and expects them to shutdown gracefully
 	// but with a non-zero exit code.
 
-	cmd := goTestProgram.From("term_graceful.go").Args("-exit-code", "1").Build(t)
+	cmd := goTestProgram.From("graceful.go").Args("-exit-code", "1").Build(t)
 
 	var stdout lockedBuffer
 	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
@@ -143,15 +143,15 @@ func TestTerminate_forceKill(t *testing.T) {
 	}{
 		{
 			desc: "go",
-			prog: goTestProgram.From("term_frozen.go"),
+			prog: goTestProgram.From("frozen.go"),
 		},
 		{
 			desc: "node",
-			prog: nodeTestProgram.From("term_frozen.js"),
+			prog: nodeTestProgram.From("frozen.js"),
 		},
 		{
 			desc: "python",
-			prog: pythonTestProgram.From("term_frozen.py"),
+			prog: pythonTestProgram.From("frozen.py"),
 		},
 	}
 
@@ -197,7 +197,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 	// that verifies that a child process of the test process
 	// is also killed.
 
-	cmd := goTestProgram.From("term_frozen_with_child.go").Build(t)
+	cmd := goTestProgram.From("frozen_with_child.go").Build(t)
 
 	var stdout lockedBuffer
 	cmd.Stdout = io.MultiWriter(&stdout, iotest.LogWriterPrefixed(t, "stdout: "))
