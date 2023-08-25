@@ -167,14 +167,14 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
 // recursively searches up the directory tree until it finds the file or returns null
 // when it can't find anything.
 function parentDirectory(currentDir: string, fileToFind: string): string | null {
-  if (fs.existsSync(upath.join(currentDir, fileToFind))) {
-      return currentDir;
-  }
-  const parentDir = upath.resolve(currentDir, "..");
-  if (currentDir === parentDir) {
-      return null;
-  }
-  return parentDirectory(parentDir, fileToFind);
+    if (fs.existsSync(upath.join(currentDir, fileToFind))) {
+        return currentDir;
+    }
+    const parentDir = upath.resolve(currentDir, "..");
+    if (currentDir === parentDir) {
+        return null;
+    }
+    return parentDirectory(parentDir, fileToFind);
 }
 
 // allFolders computes the set of package folders that are transitively required by the root
