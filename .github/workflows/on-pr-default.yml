@@ -19,5 +19,10 @@ jobs:
     steps:
       - name: Skip CI on .version changes
         run: echo 'No need to run CI tests when only .version changes'
-      - name: ci-ok
+
+  ci-ok:
+    name: ci-ok
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
         run: exit 0
