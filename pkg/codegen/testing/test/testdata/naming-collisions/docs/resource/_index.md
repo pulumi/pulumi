@@ -269,8 +269,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_csharp" style="color: inherit; text-decoration: inherit;">Bar</a>
@@ -292,8 +291,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_go" style="color: inherit; text-decoration: inherit;">Bar</a>
@@ -315,8 +313,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_java" style="color: inherit; text-decoration: inherit;">bar</a>
@@ -338,8 +335,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
@@ -361,8 +357,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
@@ -384,8 +379,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd><dt class="property-"
+    <dd>The provider-assigned unique ID for this managed resource.</dd><dt class="property-"
             title="">
         <span id="bar_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#bar_yaml" style="color: inherit; text-decoration: inherit;">bar</a>
