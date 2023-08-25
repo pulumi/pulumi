@@ -163,7 +163,7 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
 }
 
 /**
- * searchUp searches for and returns the parent directory path
+ * searchUp searches for and returns the first directory path
  * starting from a given directory that contains the given file to find.
  * Recursively searches up the directory tree until it finds the file or returns null
  * when it can't find anything.
