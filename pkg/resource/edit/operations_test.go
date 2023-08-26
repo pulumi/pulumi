@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -465,11 +466,70 @@ func TestLocateResourceExact(t *testing.T) {
 func TestRenameStack(t *testing.T) {
 	t.Parallel()
 
-	pA := NewProviderResource("a", "p1", "0")
-	a := NewResource("a", pA)
-	b := NewResource("b", pA)
-	c := NewResource("c", pA)
-	snap := NewSnapshot([]*resource.State{
+	locateResource := func(deployment *apitype.DeploymentV3, urn resource.URN) []apitype.ResourceV3 {
+		if deployment == nil {
+			return nil
+		}
+
+		var resources []apitype.ResourceV3
+		for _, res := range deployment.Resources {
+			if res.URN == urn {
+				resources = append(resources, res)
+			}
+		}
+
+		return resources
+	}
+
+	newResource := func(name string, provider *apitype.ResourceV3, deps ...resource.URN) apitype.ResourceV3 {
+		prov := ""
+		if provider != nil {
+			p, err := providers.NewReference(provider.URN, provider.ID)
+			if err != nil {
+				panic(err)
+			}
+			prov = p.String()
+		}
+
+		t := tokens.Type("a:b:c")
+		return apitype.ResourceV3{
+			Type:         t,
+			URN:          resource.NewURN("test", "test", "", t, name),
+			Inputs:       map[string]interface{}{},
+			Outputs:      map[string]interface{}{},
+			Dependencies: deps,
+			Provider:     prov,
+		}
+	}
+
+	newProviderResource := func(pkg, name, id string, deps ...resource.URN) apitype.ResourceV3 {
+		t := providers.MakeProviderType(tokens.Package(pkg))
+		return apitype.ResourceV3{
+			Type:         t,
+			URN:          resource.NewURN("test", "test", "", t, name),
+			ID:           resource.ID(id),
+			Inputs:       map[string]interface{}{},
+			Outputs:      map[string]interface{}{},
+			Dependencies: deps,
+		}
+	}
+
+	newDeployment := func(resources []apitype.ResourceV3) *apitype.DeploymentV3 {
+		return &apitype.DeploymentV3{
+			Manifest: apitype.ManifestV1{
+				Time:    time.Now(),
+				Version: version.Version,
+				Plugins: nil,
+			},
+			Resources: resources,
+		}
+	}
+
+	pA := newProviderResource("a", "p1", "0")
+	a := newResource("a", &pA)
+	b := newResource("b", &pA)
+	c := newResource("c", &pA)
+	deployment := newDeployment([]apitype.ResourceV3{
 		pA,
 		a,
 		b,
@@ -477,11 +537,11 @@ func TestRenameStack(t *testing.T) {
 	})
 
 	// Baseline. Can locate resource A.
-	resList := LocateResource(snap, a.URN)
+	resList := locateResource(deployment, a.URN)
 	assert.Len(t, resList, 1)
 	assert.Contains(t, resList, a)
 	if t.Failed() {
-		t.Fatal("Unable to find expected resource in initial snapshot.")
+		t.Fatal("Unable to find expected resource in initial checkpoint.")
 	}
 	baselineResourceURN := resList[0].URN
 
@@ -492,13 +552,13 @@ func TestRenameStack(t *testing.T) {
 	// Rename just the stack.
 	//nolint:paralleltest // uses shared stack
 	t.Run("JustTheStack", func(t *testing.T) {
-		err := RenameStack(snap, tokens.MustParseStackName("new-stack"), tokens.PackageName(""))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack"), tokens.PackageName(""))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
 
 		// Confirm the previous resource by URN isn't found.
-		assert.Len(t, LocateResource(snap, baselineResourceURN), 0)
+		assert.Len(t, locateResource(deployment, baselineResourceURN), 0)
 
 		// Confirm the resource has been renamed.
 		updatedResourceURN := resource.NewURN(
@@ -506,13 +566,13 @@ func TestRenameStack(t *testing.T) {
 			"test", // project name stayed the same
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, LocateResource(snap, updatedResourceURN), 1)
+		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 
 	// Rename the stack and project.
 	//nolint:paralleltest // uses shared stack
 	t.Run("StackAndProject", func(t *testing.T) {
-		err := RenameStack(snap, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"))
+		err := RenameStack(deployment, tokens.MustParseStackName("new-stack2"), tokens.PackageName("new-project"))
 		if err != nil {
 			t.Fatalf("Error renaming stack: %v", err)
 		}
@@ -523,6 +583,6 @@ func TestRenameStack(t *testing.T) {
 			"new-project",
 			"" /*parent type*/, baselineResourceURN.Type(),
 			baselineResourceURN.Name())
-		assert.Len(t, LocateResource(snap, updatedResourceURN), 1)
+		assert.Len(t, locateResource(deployment, updatedResourceURN), 1)
 	})
 }
