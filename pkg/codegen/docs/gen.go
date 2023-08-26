@@ -2153,8 +2153,21 @@ func (dctx *docGenContext) initialize(tool string, pkg *schema.Package) {
 			if err := goldmark.Convert([]byte(html), &buf); err != nil {
 				glog.Fatalf("rendering Markdown: %v", err)
 			}
+			rendered := buf.String()
+
+			// Trim surrounding <p></p> tags.
+			result := strings.TrimSpace(rendered)
+			result = strings.TrimPrefix(result, "<p>")
+			result = strings.TrimSuffix(result, "</p>")
+
+			// If there are still <p> tags, there are multiple paragraphs,
+			// in which case use the original rendered string (untrimmed).
+			if strings.Contains(result, "<p>") {
+				result = rendered
+			}
+
 			//nolint:gosec
-			return template.HTML(buf.String())
+			return template.HTML(result)
 		},
 	})
 

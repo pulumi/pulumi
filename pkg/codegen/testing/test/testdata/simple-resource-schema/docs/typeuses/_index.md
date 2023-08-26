@@ -416,8 +416,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -431,8 +430,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -446,8 +444,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -461,8 +458,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -476,8 +472,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -491,8 +486,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -632,8 +626,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_csharp" style="color: inherit; text-decoration: inherit;">Still<wbr>Others</a>
@@ -641,8 +634,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">Dictionary&lt;string, Immutable<wbr>Array&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -680,8 +672,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">[][]Some<wbr>Other<wbr>Object</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_go" style="color: inherit; text-decoration: inherit;">Still<wbr>Others</a>
@@ -689,8 +680,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">map[string][]Some<wbr>Other<wbr>Object</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -728,8 +718,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_java" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -737,8 +726,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;String,List&lt;Some<wbr>Other<wbr>Object&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -776,8 +764,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">Some<wbr>Other<wbr>Object[][]</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_nodejs" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -785,8 +772,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">{[key: string]: Some<wbr>Other<wbr>Object[]}</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -824,8 +810,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">Sequence[Sequence[Some<wbr>Other<wbr>Object]]</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="still_others_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#still_others_python" style="color: inherit; text-decoration: inherit;">still_<wbr>others</a>
@@ -833,8 +818,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">Mapping[str, Sequence[Some<wbr>Other<wbr>Object]]</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -872,8 +856,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#someotherobject">List&lt;List&lt;Property Map&gt;&gt;</a></span>
     </dt>
-    <dd><p>List of lists of other objects</p>
-</dd><dt class="property-optional"
+    <dd>List of lists of other objects</dd><dt class="property-optional"
             title="Optional">
         <span id="stillothers_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#stillothers_yaml" style="color: inherit; text-decoration: inherit;">still<wbr>Others</a>
@@ -881,8 +864,7 @@ Object<pulumi-choosable type="language" values="python,go" class="inline">, Obje
         <span class="property-indicator"></span>
         <span class="property-type">Map&lt;List&lt;Property Map&gt;&gt;</span>
     </dt>
-    <dd><p>Mapping from string to list of some other object</p>
-</dd></dl>
+    <dd>Mapping from string to list of some other object</dd></dl>
 </pulumi-choosable>
 </div>
 

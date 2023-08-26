@@ -514,8 +514,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -529,8 +528,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -544,8 +542,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -559,8 +556,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -574,8 +570,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -589,8 +584,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The provider-assigned unique ID for this managed resource.</p>
-</dd></dl>
+    <dd>The provider-assigned unique ID for this managed resource.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1227,8 +1221,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1237,8 +1230,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>Container<wbr>Size<wbr>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Container<wbr>Size<wbr>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Container<wbr>Size<wbr>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1247,8 +1239,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1257,8 +1248,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>Four<wbr>Inch</dt>
     <dd>4</dd><dt>Six<wbr>Inch</dt>
     <dd>6</dd><dt>Eight<wbr>Inch</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1267,8 +1257,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>FOUR_INCH</dt>
     <dd>4</dd><dt>SIX_INCH</dt>
     <dd>6</dd><dt>EIGHT_INCH</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1277,8 +1266,7 @@ Container<wbr>Size<pulumi-choosable type="language" values="python,go" class="in
 <dl class="tabular"><dt>'\x04'</dt>
     <dd>4</dd><dt>'\x06'</dt>
     <dd>6</dd><dt>'\b'</dt>
-    <dd>8<p class="property-message">Deprecated:<p>Eight inch pots are no longer supported.</p>
-</p></dd></dl>
+    <dd>8<p class="property-message">Deprecated:Eight inch pots are no longer supported.</p></dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -1393,72 +1381,54 @@ Rubber<wbr>Tree<wbr>Variety<pulumi-choosable type="language" values="python,go" 
 <div>
 <pulumi-choosable type="language" values="csharp">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="go">
 <dl class="tabular"><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Rubber<wbr>Tree<wbr>Variety<wbr>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="java">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="nodejs">
 <dl class="tabular"><dt>Burgundy</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>Ruby</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>Tineke</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>Ruby</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>Tineke</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="python">
 <dl class="tabular"><dt>BURGUNDY</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>RUBY</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>TINEKE</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>RUBY</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>TINEKE</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
 <div>
 <pulumi-choosable type="language" values="yaml">
 <dl class="tabular"><dt>"Burgundy"</dt>
-    <dd>Burgundy<p>A burgundy rubber tree.</p>
-</dd><dt>"Ruby"</dt>
-    <dd>Ruby<p>A ruby rubber tree.</p>
-</dd><dt>"Tineke"</dt>
-    <dd>Tineke<p>A tineke rubber tree.</p>
-</dd></dl>
+    <dd>BurgundyA burgundy rubber tree.</dd><dt>"Ruby"</dt>
+    <dd>RubyA ruby rubber tree.</dd><dt>"Tineke"</dt>
+    <dd>TinekeA tineke rubber tree.</dd></dl>
 </pulumi-choosable>
 </div>
 
