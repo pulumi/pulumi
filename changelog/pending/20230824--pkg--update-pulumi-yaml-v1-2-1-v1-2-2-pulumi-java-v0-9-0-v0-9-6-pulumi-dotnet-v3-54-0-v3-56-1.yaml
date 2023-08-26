@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: pkg
-  description: Update pulumi-yaml (v1.2.1 -> v1.2.2) pulumi-java (v0.9.0 -> v0.9.6) pulumi-dotnet (v3.54.0 -> v3.56.1)

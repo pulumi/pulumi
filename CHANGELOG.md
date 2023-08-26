@@ -1,5 +1,40 @@
 # Changelog
 
+## 3.79.0 (2023-08-25)
+
+
+### Features
+
+- [cli] Adds basic Search and AI-assisted Search functionality
+  [#13611](https://github.com/pulumi/pulumi/pull/13611)
+
+- [engine] Support runtime plugins returning plugin checksums from GetRequiredPlugins.
+  [#13776](https://github.com/pulumi/pulumi/pull/13776)
+
+- [sdkgen/go] Implement option to override the name of the generated internal/utilities module
+  [#13749](https://github.com/pulumi/pulumi/pull/13749)
+
+
+### Bug Fixes
+
+- [engine] Fix panic when analyzer plugin is not found on PATH.
+  [#13767](https://github.com/pulumi/pulumi/pull/13767)
+
+- [programgen/go] Fixes go.mod version requirement
+  [#13729](https://github.com/pulumi/pulumi/pull/13729)
+
+- [sdk/nodejs] When using closure serializtion, lookup package.json up from current working directory up to parent directories recursively
+  [#13770](https://github.com/pulumi/pulumi/pull/13770)
+
+
+### Miscellaneous
+
+- [pkg] Update pulumi-yaml (v1.2.1 -> v1.2.2) pulumi-java (v0.9.0 -> v0.9.6) pulumi-dotnet (v3.54.0 -> v3.56.1)
+  [#13763](https://github.com/pulumi/pulumi/pull/13763)
+
+- [sdk/python] Update grpc-io from 1.56.0 to 1.56.2
+  [#13759](https://github.com/pulumi/pulumi/pull/13759)
+
 ## 3.78.1 (2023-08-11)
 
 
