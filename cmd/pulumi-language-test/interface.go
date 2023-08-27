@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pulumi
+package main
 
 import (
 	"bytes"
@@ -51,7 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,30 +59,30 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type EngineServer interface {
-	enginerpc.EngineServer
+type LanguageTestServer interface {
+	testingrpc.LanguageTestServer
 
-	// Address returns the address at which the engine's RPC server may be reached.
+	// Address returns the address at which the test RPC server may be reached.
 	Address() string
 
-	// Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
-	Cancel() error
+	// Cancel signals that the test server should be terminated.
+	Cancel()
 
-	// Done awaits the engines termination, and returns any errors that result.
+	// Done awaits the test servers termination, and returns any errors that result.
 	Done() error
 }
 
-func Start(ctx context.Context) (EngineServer, error) {
+func Start(ctx context.Context) (LanguageTestServer, error) {
 	// New up an engine RPC server.
-	engine := &engineServer{
+	server := &languageTestServer{
 		ctx:    ctx,
 		cancel: make(chan bool),
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
-	port, done, err := rpcutil.Serve(0, engine.cancel, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, server.cancel, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			enginerpc.RegisterEngineServer(srv, engine)
+			testingrpc.RegisterLanguageTestServer(srv, server)
 			return nil
 		},
 	}, nil)
@@ -90,15 +90,15 @@ func Start(ctx context.Context) (EngineServer, error) {
 		return nil, err
 	}
 
-	engine.addr = fmt.Sprintf("127.0.0.1:%d", port)
-	engine.done = done
+	server.addr = fmt.Sprintf("127.0.0.1:%d", port)
+	server.done = done
 
-	return engine, nil
+	return server, nil
 }
 
-// engineServer is the server side of the engine RPC machinery.
-type engineServer struct {
-	enginerpc.UnsafeEngineServer
+// languageTestServer is the server side of the language testing RPC machinery.
+type languageTestServer struct {
+	testingrpc.UnsafeLanguageTestServer
 
 	ctx    context.Context
 	cancel chan bool
@@ -106,16 +106,15 @@ type engineServer struct {
 	addr   string
 }
 
-func (eng *engineServer) Address() string {
+func (eng *languageTestServer) Address() string {
 	return eng.addr
 }
 
-func (eng *engineServer) Cancel() error {
+func (eng *languageTestServer) Cancel() {
 	eng.cancel <- true
-	return <-eng.done
 }
 
-func (eng *engineServer) Done() error {
+func (eng *languageTestServer) Done() error {
 	return <-eng.done
 }
 
@@ -446,22 +445,22 @@ func (l *providerLoader) LoadPackage(pkg string, version *semver.Version) (*sche
 	return ref.Definition()
 }
 
-func (eng *engineServer) GetLanguageTests(
+func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
-	req *enginerpc.GetLanguageTestsRequest,
-) (*enginerpc.GetLanguageTestsResponse, error) {
+	req *testingrpc.GetLanguageTestsRequest,
+) (*testingrpc.GetLanguageTestsResponse, error) {
 	tests := make([]string, 0, len(languageTests))
 	for testName := range languageTests {
 		tests = append(tests, testName)
 	}
 
-	return &enginerpc.GetLanguageTestsResponse{
+	return &testingrpc.GetLanguageTestsResponse{
 		Tests: tests,
 	}, nil
 }
 
-func makeTestResponse(msg string) *enginerpc.RunLanguageTestResponse {
-	return &enginerpc.RunLanguageTestResponse{
+func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
+	return &testingrpc.RunLanguageTestResponse{
 		Success: false,
 		Message: msg,
 	}
@@ -754,10 +753,10 @@ type testToken struct {
 	CoreArtifact         string
 }
 
-func (eng *engineServer) PrepareLanguageTests(
+func (eng *languageTestServer) PrepareLanguageTests(
 	ctx context.Context,
-	req *enginerpc.PrepareLanguageTestsRequest,
-) (*enginerpc.PrepareLanguageTestsResponse, error) {
+	req *testingrpc.PrepareLanguageTestsRequest,
+) (*testingrpc.PrepareLanguageTestsResponse, error) {
 	if req.LanguagePluginName == "" {
 		return nil, fmt.Errorf("language plugin name must be specified")
 	}
@@ -835,7 +834,7 @@ func (eng *engineServer) PrepareLanguageTests(
 
 	b64token := b64.StdEncoding.EncodeToString(tokenBytes)
 
-	return &enginerpc.PrepareLanguageTestsResponse{
+	return &testingrpc.PrepareLanguageTestsResponse{
 		Token: b64token,
 	}, nil
 }
@@ -856,9 +855,9 @@ func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
 // that handles the machinery of plugging the language test logs
 // into the testing.T.
 
-func (eng *engineServer) RunLanguageTest(
-	ctx context.Context, req *enginerpc.RunLanguageTestRequest,
-) (*enginerpc.RunLanguageTestResponse, error) {
+func (eng *languageTestServer) RunLanguageTest(
+	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
+) (*testingrpc.RunLanguageTestResponse, error) {
 	test, has := languageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
@@ -1107,13 +1106,13 @@ func (eng *engineServer) RunLanguageTest(
 	}
 
 	// TODO:
-	// Consider makign res, snap, and changes available to the test
+	// Consider making res, snap, and changes available to the test
 	// as methods on some object with internal state.
 	result := WithL(func(l *L) {
 		test.assert(l, res, snap, changes)
 	})
 
-	return &enginerpc.RunLanguageTestResponse{
+	return &testingrpc.RunLanguageTestResponse{
 		Success: !result.Failed,
 		// TODO: Send back as a list instead of a string.
 		// TODO: Consider streaming messages back instead.

@@ -16,13 +16,13 @@ syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 
-package pulumirpc.engine;
+package pulumirpc.testing;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/engine";
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing";
 
-// EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-// API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
-service Engine {
+// LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+// currently subject to breaking changes without warning.
+service LanguageTest {
     // GetLanguageTests returns a list of all the language tests.
     rpc GetLanguageTests(GetLanguageTestsRequest) returns (GetLanguageTestsResponse) {}
 

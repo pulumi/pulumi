@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pulumi
+package main
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -140,7 +140,7 @@ func TestL1Empty(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -150,7 +150,7 @@ func TestL1Empty(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -160,7 +160,7 @@ func TestL1Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l1-empty",
 	})
@@ -177,7 +177,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{
 		tempDir:  tempDir,
 		failPack: true,
@@ -193,7 +193,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Run("missing plugin name", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   tempDir,
 			SnapshotDirectory:    "./testdata/snapshots",
@@ -206,7 +206,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Run("missing plugin target", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName: "mock",
 			TemporaryDirectory: tempDir,
 			SnapshotDirectory:  "./testdata/snapshots",
@@ -219,7 +219,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Run("missing temporary directory", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName:   "mock",
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			SnapshotDirectory:    "./testdata/snapshots",
@@ -232,7 +232,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Run("missing snapshot directory", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName:   "mock",
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   tempDir,
@@ -245,7 +245,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 	t.Run("fail packing of core sdk", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+		_, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 			LanguagePluginName:   "mock",
 			LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 			TemporaryDirectory:   tempDir,
@@ -263,7 +263,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -273,7 +273,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -283,7 +283,7 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l1-empty",
 	})
@@ -302,7 +302,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L1EmptyLanguageHost{
 		tempDir:   tempDir,
 		skipStack: true,
@@ -315,7 +315,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -325,7 +325,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l1-empty",
 	})

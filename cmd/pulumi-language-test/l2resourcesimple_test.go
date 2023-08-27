@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pulumi
+package main
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -199,7 +199,7 @@ func TestL2ResourceSimple(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -209,7 +209,7 @@ func TestL2ResourceSimple(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -219,7 +219,7 @@ func TestL2ResourceSimple(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l2-resource-simple",
 	})
@@ -236,7 +236,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -246,7 +246,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -256,7 +256,7 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l2-resource-simple",
 	})
@@ -275,7 +275,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:      tempDir,
 		skipResource: true,
@@ -288,7 +288,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -298,7 +298,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l2-resource-simple",
 	})
@@ -317,7 +317,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 
 	ctx := context.Background()
 	tempDir := t.TempDir()
-	engine := &engineServer{}
+	engine := &languageTestServer{}
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:             tempDir,
 		skipRequiredPlugins: true,
@@ -330,7 +330,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	prepareResponse, err := engine.PrepareLanguageTests(ctx, &enginerpc.PrepareLanguageTestsRequest{
+	prepareResponse, err := engine.PrepareLanguageTests(ctx, &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginName:   "mock",
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   tempDir,
@@ -340,7 +340,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, prepareResponse.Token)
 
-	runResponse, err := engine.RunLanguageTest(ctx, &enginerpc.RunLanguageTestRequest{
+	runResponse, err := engine.RunLanguageTest(ctx, &testingrpc.RunLanguageTestRequest{
 		Token: prepareResponse.Token,
 		Test:  "l2-resource-simple",
 	})

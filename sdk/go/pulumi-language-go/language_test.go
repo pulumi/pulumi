@@ -26,15 +26,15 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	enginerpc "github.com/pulumi/pulumi/sdk/v3/proto/go/engine"
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func runEngine(t *testing.T) (string, enginerpc.EngineClient) {
-	cmd := exec.Command("pulumi", "engine")
+func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	cmd := exec.Command("go", "run", "-C", "../../../cmd/pulumi-language-test", ".")
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -71,7 +71,7 @@ func runEngine(t *testing.T) (string, enginerpc.EngineClient) {
 	)
 	require.NoError(t, err)
 
-	client := enginerpc.NewEngineClient(conn)
+	client := testingrpc.NewLanguageTestClient(conn)
 
 	t.Cleanup(func() {
 		assert.NoError(t, cmd.Process.Kill())
@@ -89,7 +89,7 @@ func TestLanguage(t *testing.T) {
 
 	engineAddress, engine := runEngine(t)
 
-	tests, err := engine.GetLanguageTests(context.Background(), &enginerpc.GetLanguageTestsRequest{})
+	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
 	// Run the language plugin
@@ -107,7 +107,7 @@ func TestLanguage(t *testing.T) {
 	rootDir := t.TempDir()
 
 	// Prepare to run the tests
-	prepare, err := engine.PrepareLanguageTests(context.Background(), &enginerpc.PrepareLanguageTestsRequest{
+	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
 		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		TemporaryDirectory:   rootDir,
 		SnapshotDirectory:    "./testdata/snapshots",
@@ -120,7 +120,7 @@ func TestLanguage(t *testing.T) {
 		t.Run(tt, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := engine.RunLanguageTest(context.Background(), &enginerpc.RunLanguageTestRequest{
+			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,
 			})

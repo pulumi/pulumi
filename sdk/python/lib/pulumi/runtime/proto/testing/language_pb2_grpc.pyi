@@ -17,59 +17,59 @@ limitations under the License.
 """
 import abc
 import grpc
-import pulumi.engine.engine_pb2
+import pulumi.testing.language_pb2
 
-class EngineStub:
-    """EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-    API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
+class LanguageTestStub:
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
     """
 
     def __init__(self, channel: grpc.Channel) -> None: ...
     GetLanguageTests: grpc.UnaryUnaryMultiCallable[
-        pulumi.engine.engine_pb2.GetLanguageTestsRequest,
-        pulumi.engine.engine_pb2.GetLanguageTestsResponse,
+        pulumi.testing.language_pb2.GetLanguageTestsRequest,
+        pulumi.testing.language_pb2.GetLanguageTestsResponse,
     ]
     """GetLanguageTests returns a list of all the language tests."""
     PrepareLanguageTests: grpc.UnaryUnaryMultiCallable[
-        pulumi.engine.engine_pb2.PrepareLanguageTestsRequest,
-        pulumi.engine.engine_pb2.PrepareLanguageTestsResponse,
+        pulumi.testing.language_pb2.PrepareLanguageTestsRequest,
+        pulumi.testing.language_pb2.PrepareLanguageTestsResponse,
     ]
     """PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
     (which should be .gitignore'd) and fills it with the core SDK artifact.
     """
     RunLanguageTest: grpc.UnaryUnaryMultiCallable[
-        pulumi.engine.engine_pb2.RunLanguageTestRequest,
-        pulumi.engine.engine_pb2.RunLanguageTestResponse,
+        pulumi.testing.language_pb2.RunLanguageTestRequest,
+        pulumi.testing.language_pb2.RunLanguageTestResponse,
     ]
     """RunLanguageTest runs a single test of the language plugin."""
 
-class EngineServicer(metaclass=abc.ABCMeta):
-    """EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-    API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
+class LanguageTestServicer(metaclass=abc.ABCMeta):
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
     """
 
     @abc.abstractmethod
     def GetLanguageTests(
         self,
-        request: pulumi.engine.engine_pb2.GetLanguageTestsRequest,
+        request: pulumi.testing.language_pb2.GetLanguageTestsRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.engine.engine_pb2.GetLanguageTestsResponse:
+    ) -> pulumi.testing.language_pb2.GetLanguageTestsResponse:
         """GetLanguageTests returns a list of all the language tests."""
     @abc.abstractmethod
     def PrepareLanguageTests(
         self,
-        request: pulumi.engine.engine_pb2.PrepareLanguageTestsRequest,
+        request: pulumi.testing.language_pb2.PrepareLanguageTestsRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.engine.engine_pb2.PrepareLanguageTestsResponse:
+    ) -> pulumi.testing.language_pb2.PrepareLanguageTestsResponse:
         """PrepareLanguageTests prepares the engine to run language tests. It sets up a stable artifacts folder
         (which should be .gitignore'd) and fills it with the core SDK artifact.
         """
     @abc.abstractmethod
     def RunLanguageTest(
         self,
-        request: pulumi.engine.engine_pb2.RunLanguageTestRequest,
+        request: pulumi.testing.language_pb2.RunLanguageTestRequest,
         context: grpc.ServicerContext,
-    ) -> pulumi.engine.engine_pb2.RunLanguageTestResponse:
+    ) -> pulumi.testing.language_pb2.RunLanguageTestResponse:
         """RunLanguageTest runs a single test of the language plugin."""
 
-def add_EngineServicer_to_server(servicer: EngineServicer, server: grpc.Server) -> None: ...
+def add_LanguageTestServicer_to_server(servicer: LanguageTestServicer, server: grpc.Server) -> None: ...

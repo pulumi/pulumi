@@ -2,12 +2,12 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from pulumi.engine import engine_pb2 as pulumi_dot_engine_dot_engine__pb2
+from pulumi.testing import language_pb2 as pulumi_dot_testing_dot_language__pb2
 
 
-class EngineStub(object):
-    """EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-    API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
+class LanguageTestStub(object):
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
     """
 
     def __init__(self, channel):
@@ -17,25 +17,25 @@ class EngineStub(object):
             channel: A grpc.Channel.
         """
         self.GetLanguageTests = channel.unary_unary(
-                '/pulumirpc.engine.Engine/GetLanguageTests',
-                request_serializer=pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsRequest.SerializeToString,
-                response_deserializer=pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsResponse.FromString,
+                '/pulumirpc.testing.LanguageTest/GetLanguageTests',
+                request_serializer=pulumi_dot_testing_dot_language__pb2.GetLanguageTestsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_testing_dot_language__pb2.GetLanguageTestsResponse.FromString,
                 )
         self.PrepareLanguageTests = channel.unary_unary(
-                '/pulumirpc.engine.Engine/PrepareLanguageTests',
-                request_serializer=pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsRequest.SerializeToString,
-                response_deserializer=pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsResponse.FromString,
+                '/pulumirpc.testing.LanguageTest/PrepareLanguageTests',
+                request_serializer=pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsResponse.FromString,
                 )
         self.RunLanguageTest = channel.unary_unary(
-                '/pulumirpc.engine.Engine/RunLanguageTest',
-                request_serializer=pulumi_dot_engine_dot_engine__pb2.RunLanguageTestRequest.SerializeToString,
-                response_deserializer=pulumi_dot_engine_dot_engine__pb2.RunLanguageTestResponse.FromString,
+                '/pulumirpc.testing.LanguageTest/RunLanguageTest',
+                request_serializer=pulumi_dot_testing_dot_language__pb2.RunLanguageTestRequest.SerializeToString,
+                response_deserializer=pulumi_dot_testing_dot_language__pb2.RunLanguageTestResponse.FromString,
                 )
 
 
-class EngineServicer(object):
-    """EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-    API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
+class LanguageTestServicer(object):
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
     """
 
     def GetLanguageTests(self, request, context):
@@ -61,33 +61,33 @@ class EngineServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_EngineServicer_to_server(servicer, server):
+def add_LanguageTestServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetLanguageTests': grpc.unary_unary_rpc_method_handler(
                     servicer.GetLanguageTests,
-                    request_deserializer=pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsRequest.FromString,
-                    response_serializer=pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_testing_dot_language__pb2.GetLanguageTestsRequest.FromString,
+                    response_serializer=pulumi_dot_testing_dot_language__pb2.GetLanguageTestsResponse.SerializeToString,
             ),
             'PrepareLanguageTests': grpc.unary_unary_rpc_method_handler(
                     servicer.PrepareLanguageTests,
-                    request_deserializer=pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsRequest.FromString,
-                    response_serializer=pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsRequest.FromString,
+                    response_serializer=pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsResponse.SerializeToString,
             ),
             'RunLanguageTest': grpc.unary_unary_rpc_method_handler(
                     servicer.RunLanguageTest,
-                    request_deserializer=pulumi_dot_engine_dot_engine__pb2.RunLanguageTestRequest.FromString,
-                    response_serializer=pulumi_dot_engine_dot_engine__pb2.RunLanguageTestResponse.SerializeToString,
+                    request_deserializer=pulumi_dot_testing_dot_language__pb2.RunLanguageTestRequest.FromString,
+                    response_serializer=pulumi_dot_testing_dot_language__pb2.RunLanguageTestResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'pulumirpc.engine.Engine', rpc_method_handlers)
+            'pulumirpc.testing.LanguageTest', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class Engine(object):
-    """EngineInterface is the interface to the core pulumi engine, it is used by both the CLI and the automation
-    API to run all core commands. This is _highly_ experimental and currently subject to breaking changes without warning.
+class LanguageTest(object):
+    """LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
+    currently subject to breaking changes without warning.
     """
 
     @staticmethod
@@ -101,9 +101,9 @@ class Engine(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.engine.Engine/GetLanguageTests',
-            pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsRequest.SerializeToString,
-            pulumi_dot_engine_dot_engine__pb2.GetLanguageTestsResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.testing.LanguageTest/GetLanguageTests',
+            pulumi_dot_testing_dot_language__pb2.GetLanguageTestsRequest.SerializeToString,
+            pulumi_dot_testing_dot_language__pb2.GetLanguageTestsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -118,9 +118,9 @@ class Engine(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.engine.Engine/PrepareLanguageTests',
-            pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsRequest.SerializeToString,
-            pulumi_dot_engine_dot_engine__pb2.PrepareLanguageTestsResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.testing.LanguageTest/PrepareLanguageTests',
+            pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsRequest.SerializeToString,
+            pulumi_dot_testing_dot_language__pb2.PrepareLanguageTestsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -135,8 +135,8 @@ class Engine(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.engine.Engine/RunLanguageTest',
-            pulumi_dot_engine_dot_engine__pb2.RunLanguageTestRequest.SerializeToString,
-            pulumi_dot_engine_dot_engine__pb2.RunLanguageTestResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.testing.LanguageTest/RunLanguageTest',
+            pulumi_dot_testing_dot_language__pb2.RunLanguageTestRequest.SerializeToString,
+            pulumi_dot_testing_dot_language__pb2.RunLanguageTestResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
