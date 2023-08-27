@@ -87,7 +87,7 @@ func TestLanguage(t *testing.T) {
 
 	os.Setenv("PULUMI_ACCEPT", "true")
 
-	engineAddress, engine := runEngine(t)
+	engineAddress, engine := runTestingHost(t)
 
 	tests, err := engine.GetLanguageTests(context.Background(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
