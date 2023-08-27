@@ -34,7 +34,14 @@ import (
 )
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
-	cmd := exec.Command("go", "run", "-C", "../../../cmd/pulumi-test-language", ".")
+	// We can't just go run the pulumi-test-language package because of
+	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
+	binary := t.TempDir() + "/pulumi-test-language"
+	cmd := exec.Command("go", "build", "-o", binary, "../../../cmd/pulumi-test-language")
+	err := cmd.Run()
+	require.NoError(t, err)
+
+	cmd = exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
