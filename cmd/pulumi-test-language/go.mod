@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/cmd/pulumi-language-test
+module github.com/pulumi/pulumi/cmd/pulumi-test-language
 
 go 1.20
 

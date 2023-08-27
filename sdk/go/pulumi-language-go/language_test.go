@@ -34,7 +34,7 @@ import (
 )
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
-	cmd := exec.Command("go", "run", "-C", "../../../cmd/pulumi-language-test", ".")
+	cmd := exec.Command("go", "run", "-C", "../../../cmd/pulumi-test-language", ".")
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
