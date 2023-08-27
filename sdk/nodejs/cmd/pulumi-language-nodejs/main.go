@@ -1281,16 +1281,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("copy package.json: %w", err)
 		}
-
-		// "build" also doesn't copy in the scripts directory and the install-pulumi-plugin.js script, so we
-		// need to do that manually.
-		err = fsutil.CopyFile(
-			filepath.Join(req.PackageDirectory, "bin", "scripts"),
-			filepath.Join(req.PackageDirectory, "scripts"),
-			nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy scripts: %w", err)
-		}
 	}
 
 	// Mutate the package.json to replace version with the version we've been given.
@@ -1300,15 +1290,6 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		return nil, err
 	}
 	packageJSON["version"] = req.Version
-	// If we've got an install script, update that as well
-	scripts, ok := packageJSON["scripts"].(map[string]interface{})
-	if ok {
-		install, ok := scripts["install"].(string)
-		if ok {
-			install = strings.ReplaceAll(install, "${VERSION}", req.Version)
-			scripts["install"] = install
-		}
-	}
 	packageJSONData, err := json.Marshal(packageJSON)
 	if err != nil {
 		return nil, fmt.Errorf("marshal package.json: %w", err)

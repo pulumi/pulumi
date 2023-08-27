@@ -7,7 +7,6 @@
     "index.ts",
     "package.json",
     "provider.ts",
-    "scripts/install-pulumi-plugin.js",
     "tsconfig.json",
     "types/enums/index.ts",
     "types/index.ts",

@@ -5,7 +5,6 @@
     "package.json",
     "provider.ts",
     "registryGeoReplication.ts",
-    "scripts/install-pulumi-plugin.js",
     "tsconfig.json",
     "utilities.ts"
   ]
