@@ -1428,3 +1428,93 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
 }
+
+func TestTargetDependentsSiblingResources(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/pull/13591. This test ensures that when
+	// --target-dependents is set we don't target sibling resources (that is resources created by the same
+	// provider as the one being targeted).
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		// We're creating 6 resources here (one the implicit default provider). First we create two pkgA:m:typA
+		// resources called "implicitX" and "implicitY" (which will trigger the creation of the default provider for
+		// pkgA) Second we create an explicit provider for pkgA and then create two resources using that ("explicitX"
+		// and "explicitY"). We want to check that if we target the X resources and the explicit provider, the Y
+		// resources aren't created, but the providers still are.
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitX", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitY", true)
+		assert.NoError(t, err)
+
+		provURN, provID, _, err := monitor.RegisterResource(
+			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitX", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitY", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Target implicitX, provider, and explicitX and ensure that those and the providers are created.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::implicitX",
+				"urn:pulumi:test::test::pulumi:providers:pkgA::provider",
+				"urn:pulumi:test::test::pkgA:m:typA::explicitX",
+			}),
+			TargetDependents: false,
+		},
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Check we only have the 5 resources expected, the stack, the two providers and the two X resources.
+	require.Equal(t, 5, len(snap.Resources))
+
+	// Run another fresh update (note we're starting from a nil snapshot again) but turn on
+	// --target-dependents and check we still only get 5 resources.
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::implicitX",
+				"urn:pulumi:test::test::pulumi:providers:pkgA::provider",
+				"urn:pulumi:test::test::pkgA:m:typA::explicitX",
+			}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.Equal(t, 5, len(snap.Resources))
+}
