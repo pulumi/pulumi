@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go,nodejs,python
+  description: Language plugins now clean up resources and exit cleanly on receiving SIGINT or CTRL_BREAK signals.
