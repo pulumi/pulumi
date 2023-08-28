@@ -42,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	aferoUtil "github.com/pulumi/pulumi/pkg/v3/util/afero"
@@ -66,10 +65,10 @@ func newConvertCmd() *cobra.Command {
 		Long: "Convert Pulumi programs from a supported source program into other supported languages.\n" +
 			"\n" +
 			"The source program to convert will default to the current working directory.\n",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
-				return result.FromError(fmt.Errorf("get current working directory: %w", err))
+				return fmt.Errorf("get current working directory: %w", err)
 			}
 
 			return runConvert(env.Global(), cwd, mappings, from, language, outDir, generateOnly, strict)
@@ -211,10 +210,10 @@ func runConvert(
 	e env.Env,
 	cwd string, mappings []string, from string, language string,
 	outDir string, generateOnly bool, strict bool,
-) result.Result {
+) error {
 	pCtx, err := newPluginContext(cwd)
 	if err != nil {
-		return result.FromError(fmt.Errorf("create plugin host: %w", err))
+		return fmt.Errorf("create plugin host: %w", err)
 	}
 	defer contract.IgnoreClose(pCtx.Host)
 
@@ -294,7 +293,7 @@ func runConvert(
 	if outDir != "." {
 		err := os.MkdirAll(outDir, 0o755)
 		if err != nil {
-			return result.FromError(fmt.Errorf("create output directory: %w", err))
+			return fmt.Errorf("create output directory: %w", err)
 		}
 	}
 
@@ -320,12 +319,12 @@ func runConvert(
 		convert.DefaultWorkspace(), convert.ProviderFactoryFromHost(pCtx.Host),
 		from, mappings, installProvider)
 	if err != nil {
-		return result.FromError(fmt.Errorf("create provider mapper: %w", err))
+		return fmt.Errorf("create provider mapper: %w", err)
 	}
 
 	pclDirectory, err := os.MkdirTemp("", "pulumi-convert")
 	if err != nil {
-		return result.FromError(fmt.Errorf("create temporary directory: %w", err))
+		return fmt.Errorf("create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(pclDirectory)
 
@@ -333,18 +332,18 @@ func runConvert(
 	if from == "yaml" {
 		proj, program, err := yamlgen.Eject(cwd, loader)
 		if err != nil {
-			return result.FromError(fmt.Errorf("load yaml program: %w", err))
+			return fmt.Errorf("load yaml program: %w", err)
 		}
 		err = writeProgram(pclDirectory, proj, program)
 		if err != nil {
-			return result.FromError(fmt.Errorf("write program to intermediate directory: %w", err))
+			return fmt.Errorf("write program to intermediate directory: %w", err)
 		}
 	} else if from == "pcl" {
 		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it, but
 		// remove the temp dir we just created first
 		err = os.RemoveAll(pclDirectory)
 		if err != nil {
-			return result.FromError(fmt.Errorf("remove temporary directory: %w", err))
+			return fmt.Errorf("remove temporary directory: %w", err)
 		}
 		pclDirectory = cwd
 	} else {
@@ -356,7 +355,7 @@ func runConvert(
 			var me *workspace.MissingError
 			if !errors.As(err, &me) {
 				// Not a MissingError, return the original error.
-				return result.FromError(fmt.Errorf("load plugin source %q: %w", from, err))
+				return fmt.Errorf("load plugin source %q: %w", from, err)
 			}
 
 			pluginSpec := workspace.PluginSpec{
@@ -366,12 +365,12 @@ func runConvert(
 
 			_, err = pkgWorkspace.InstallPlugin(pluginSpec, log)
 			if err != nil {
-				return result.FromError(fmt.Errorf("install plugin source %q: %w", from, err))
+				return fmt.Errorf("install plugin source %q: %w", from, err)
 			}
 
 			converter, err = plugin.NewConverter(pCtx, from, nil)
 			if err != nil {
-				return result.FromError(fmt.Errorf("load plugin source %q: %w", from, err))
+				return fmt.Errorf("load plugin source %q: %w", from, err)
 			}
 		}
 		defer contract.IgnoreClose(converter)
@@ -382,7 +381,7 @@ func runConvert(
 			convert.MapperRegistration(mapperServer),
 			schema.LoaderRegistration(loaderServer))
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		defer contract.IgnoreClose(grpcServer)
 
@@ -393,7 +392,7 @@ func runConvert(
 			LoaderTarget:    grpcServer.Addr(),
 		})
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		// We're done with the converter plugin now so can close it
@@ -414,7 +413,7 @@ func runConvert(
 		if resp.Diagnostics.HasErrors() {
 			// If we've got error diagnostics then program generation failed, we've printed the error above so
 			// just return a plain message here.
-			return result.FromError(fmt.Errorf("conversion failed"))
+			return fmt.Errorf("conversion failed")
 		}
 	}
 
@@ -425,7 +424,7 @@ func runConvert(
 	if path != "" {
 		proj, err = workspace.LoadProject(path)
 		if err != nil {
-			return result.FromError(fmt.Errorf("load project: %w", err))
+			return fmt.Errorf("load project: %w", err)
 		}
 	}
 
@@ -445,14 +444,14 @@ func runConvert(
 		}
 		printDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
-			return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+			return fmt.Errorf("could not generate output program: %w", err)
 		}
 
-		return result.FromError(fmt.Errorf("could not generate output program"))
+		return fmt.Errorf("could not generate output program")
 	}
 
 	if err != nil {
-		return result.FromError(fmt.Errorf("could not generate output program: %w", err))
+		return fmt.Errorf("could not generate output program: %w", err)
 	}
 
 	// If we've got code generation warnings only print them if we've got PULUMI_DEV set or emitting pcl
@@ -464,23 +463,23 @@ func runConvert(
 	if !generateOnly {
 		// Change the working directory to the specified directory.
 		if err := os.Chdir(outDir); err != nil {
-			return result.FromError(fmt.Errorf("changing the working directory: %w", err))
+			return fmt.Errorf("changing the working directory: %w", err)
 		}
 
 		proj, root, err := readProject()
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 
 		projinfo := &engine.Projinfo{Proj: proj, Root: root}
 		pwd, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 		if err != nil {
-			return result.FromError(err)
+			return err
 		}
 		defer ctx.Close()
 
 		if err := installDependencies(ctx, &proj.Runtime, pwd); err != nil {
-			return result.FromError(err)
+			return err
 		}
 	}
 
