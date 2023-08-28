@@ -279,6 +279,11 @@ func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, [
 }
 
 func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+	// For type-unsafe await, we'll unwrap nested outputs.
+	return o.awaitWithOptions(ctx, true /* unwrapNested */)
+}
+
+func (o *OutputState) awaitWithOptions(ctx context.Context, unwrapNested bool) (interface{}, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
@@ -293,15 +298,18 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Res
 			return nil, known, secret, deps, err
 		}
 
-		// If the result is an Output, await it in turn.
-		//
-		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
-		// the element type of the outer output. We should reconsider this.
-		if ov, ok := value.(Output); ok {
-			o = ov.getState()
-		} else {
-			return value, known, secret, deps, nil
+		if unwrapNested {
+			// If the result is an Output, await it in turn.
+			//
+			// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
+			// the element type of the outer output. We should reconsider this.
+			if ov, ok := value.(Output); ok {
+				o = ov.getState()
+				continue
+			}
 		}
+
+		return value, known, secret, deps, nil
 	}
 }
 
@@ -341,10 +349,10 @@ var (
 	outputTypeToOutputState sync.Map // map[reflect.Type]int
 )
 
-// NewOutput builds a new unresolved output with the given output type.
-// The given type MUST embed a field of type `*OutputState` in order to be valid.
-func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
-	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
+// SetOutputState sets the OutputState field of the given output to the given state.
+// The output must be a pointer to a struct that embeds a field of type `*OutputState`.
+func SetOutputState(output reflect.Value, state *OutputState) {
+	typ := output.Type()
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
 	// `isOutput` method. If we yet haven't recorded the index of this field for the ouptut type `typ`, find and
@@ -364,10 +372,17 @@ func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
 		outputFieldV = outputField
 	}
 
+	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
+}
+
+// NewOutput builds a new unresolved output with the given output type.
+// The given type MUST embed a field of type `*OutputState` in order to be valid.
+func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
+	contract.Requiref(typ.Implements(outputType), "type", "type %v does not implement Output", typ)
 	// Create the new output.
 	output := reflect.New(typ).Elem()
 	state := NewOutputState(wg, output.Interface().(Output).ElementType(), deps...)
-	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
+	SetOutputState(output, state)
 	return output.Interface().(Output)
 }
 

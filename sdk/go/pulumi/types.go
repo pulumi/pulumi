@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // Output helps encode the relationship between resources in a Pulumi application. Specifically an output property
@@ -249,12 +250,20 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 
 type AnyOutput struct{ *OutputState }
 
+var _ pulumix.Input[any] = AnyOutput{}
+
 func (AnyOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("outputs can not be marshaled to JSON")
 }
 
 func (AnyOutput) ElementType() reflect.Type {
 	return anyType
+}
+
+func (o AnyOutput) ToOutput(context.Context) pulumix.Output[any] {
+	return pulumix.Output[any]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (in ID) ToStringPtrOutput() StringPtrOutput {
@@ -317,6 +326,8 @@ func convert(v interface{}, to reflect.Type) interface{} {
 // TODO: ResourceOutput and the init() should probably be code generated.
 type ResourceOutput struct{ *OutputState }
 
+var _ pulumix.Input[Resource] = ResourceOutput{}
+
 func (ResourceOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -324,6 +335,12 @@ func (ResourceOutput) MarshalJSON() ([]byte, error) {
 // ElementType returns the element type of this Output (Resource).
 func (ResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Resource)(nil)).Elem()
+}
+
+func (o ResourceOutput) ToOutput(context.Context) pulumix.Output[Resource] {
+	return pulumix.Output[Resource]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ResourceOutput) ToResourceOutput() ResourceOutput {
@@ -368,9 +385,17 @@ type ResourceArrayInput interface {
 // ResourceArray is an input type for []ResourceInput values.
 type ResourceArray []ResourceInput
 
+var _ pulumix.Input[[]Resource] = ResourceArray{}
+
 // ElementType returns the element type of this Input ([]Resource).
 func (ResourceArray) ElementType() reflect.Type {
 	return resourceArrayType
+}
+
+func (in ResourceArray) ToOutput(ctx context.Context) pulumix.Output[[]Resource] {
+	return pulumix.Output[[]Resource]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
 }
 
 func (in ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
@@ -384,6 +409,8 @@ func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) Re
 // ResourceArrayOutput is an Output that returns []Resource values.
 type ResourceArrayOutput struct{ *OutputState }
 
+var _ pulumix.Input[[]Resource] = ResourceArrayOutput{}
+
 func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("Outputs can not be marshaled to JSON")
 }
@@ -391,6 +418,12 @@ func (ResourceArrayOutput) MarshalJSON() ([]byte, error) {
 // ElementType returns the element type of this Output ([]Resource).
 func (ResourceArrayOutput) ElementType() reflect.Type {
 	return resourceArrayType
+}
+
+func (o ResourceArrayOutput) ToOutput(context.Context) pulumix.Output[[]Resource] {
+	return pulumix.Output[[]Resource]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {

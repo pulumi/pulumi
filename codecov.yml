@@ -42,6 +42,9 @@ ignore:
   # Don't count protobuf-generated code against coverage.
   - "sdk/proto"
 
+  # Ignore code generator for pulumix/applyn.go.
+  - "sdk/go/internal/gen-pux-applyn"
+
   # More generally, none of the test data
   # should count against coverage.
   - "**/testdata"
