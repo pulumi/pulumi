@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"output-funcs/mypkg/internal"
 )
 
@@ -77,6 +78,12 @@ func (o GetBastionShareableLinkResultOutput) ToGetBastionShareableLinkResultOutp
 
 func (o GetBastionShareableLinkResultOutput) ToGetBastionShareableLinkResultOutputWithContext(ctx context.Context) GetBastionShareableLinkResultOutput {
 	return o
+}
+
+func (o GetBastionShareableLinkResultOutput) ToOutput(ctx context.Context) pulumix.Output[GetBastionShareableLinkResult] {
+	return pulumix.Output[GetBastionShareableLinkResult]{
+		OutputState: o.OutputState,
+	}
 }
 
 // The URL to get the next set of results.
