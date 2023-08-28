@@ -65,7 +65,7 @@ func TestPtrOutput_Elem(t *testing.T) {
 func TestPtrOutput_Elem_nil(t *testing.T) {
 	t.Parallel()
 
-	o := pulumix.SpecializeOutput[pulumix.PtrOutput[string], *string](pulumix.Val[*string]((*string)(nil)))
+	o := pulumix.Cast[pulumix.PtrOutput[string], *string](pulumix.Val[*string]((*string)(nil)))
 
 	v, _, _, _, err := internal.AwaitOutput(context.Background(), o.Elem())
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func TestGPtrOutput_Elem(t *testing.T) {
 
 	// Given an Output[*string], we want a pux.GPtrOutput
 	// that will produce a pulumi.StringOutput when Elem is called.
-	o := pulumix.SpecializeOutput[
+	o := pulumix.Cast[
 		pulumix.GPtrOutput[string, pulumi.StringOutput],
 		*string,
 	](pulumix.Ptr("foo"))
