@@ -181,7 +181,7 @@ func TestUpdateTarget(t *testing.T) {
 	// We want to check that targetDependents is respected
 	updateSpecificTargets(t, []string{"C"}, nil, true /*targetDependents*/, -1)
 
-	updateSpecificTargets(t, nil, []string{"**C**"}, false, 1)
+	updateSpecificTargets(t, nil, []string{"**C**"}, false, 3)
 	updateSpecificTargets(t, nil, []string{"**providers:pkgA**"}, false, 3)
 }
 
@@ -523,22 +523,11 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				CheckF: func(urn resource.URN, olds, news resource.PropertyMap, randomSeed []byte,
-				) (resource.PropertyMap, []plugin.CheckFailure, error) {
-					assert.Fail(t, "Check shouldn't be called because the provider shouldn't be created")
-					return nil, nil, fmt.Errorf("should not be called")
-				},
-				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64, preview bool,
-				) (resource.ID, resource.PropertyMap, resource.Status, error) {
-					assert.Fail(t, "Create shouldn't be called because the provider shouldn't be created")
-					return "", nil, resource.StatusUnknown, fmt.Errorf("should not be called")
-				},
-			}, nil
+			return &deploytest.Provider{}, nil
 		}),
 	}
 
-	// Create a resource A with --target but don't create its explicit provider.
+	// Create a resource A with --target but don't target its explicit provider.
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
@@ -567,8 +556,7 @@ func TestCreateDuringTargetedUpdate_UntargetedProviderReferencedByTarget(t *test
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resA})
 	p.Steps = []TestStep{{
-		Op:            Update,
-		ExpectFailure: true,
+		Op: Update,
 	}}
 	p.Run(t, nil)
 }
@@ -1427,4 +1415,103 @@ func TestTargetDependentsExplicitProvider(t *testing.T) {
 	require.Nil(t, err)
 	// Check we still only have four resources, stack, provider, resA, and resB.
 	require.Equal(t, 4, len(snap.Resources))
+}
+
+func TestTargetDependentsSiblingResources(t *testing.T) {
+	// Regression test for https://github.com/pulumi/pulumi/pull/13591. This test ensures that when
+	// --target-dependents is set we don't target sibling resources (that is resources created by the same
+	// provider as the one being targeted).
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
+		assert.NoError(t, err)
+
+		// We're creating 8 resources here (one the implicit default provider). First we create three
+		// pkgA:m:typA resources called "implicitX", "implicitY", and "implicitZ" (which will trigger the
+		// creation of the default provider for pkgA). Second we create an explicit provider for pkgA and then
+		// create three resources using that ("explicitX", "explicitY", and "explicitZ"). We want to check
+		// that if we target the X resources, the Y resources aren't created, but the providers are, and the Z
+		// resources are if --target-dependents is on.
+
+		implicitX, _, _, err := monitor.RegisterResource("pkgA:m:typA", "implicitX", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitY", true)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "implicitZ", true, deploytest.ResourceOptions{
+			Parent: implicitX,
+		})
+		assert.NoError(t, err)
+
+		provURN, provID, _, err := monitor.RegisterResource(
+			providers.MakeProviderType("pkgA"), "provider", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		explicitX, _, _, err := monitor.RegisterResource("pkgA:m:typA", "explicitX", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitY", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "explicitZ", true, deploytest.ResourceOptions{
+			Parent: explicitX,
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &TestPlan{}
+
+	project := p.GetProject()
+
+	// Target implicitX and explicitX and ensure that those, their children and the providers are created.
+	snap, err := TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::implicitX",
+				"urn:pulumi:test::test::pkgA:m:typA::explicitX",
+			}),
+			TargetDependents: false,
+		},
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	// Check we only have the 5 resources expected, the stack, the two providers and the two X resources.
+	require.Equal(t, 5, len(snap.Resources))
+
+	// Run another fresh update (note we're starting from a nil snapshot again) but turn on
+	// --target-dependents and check we get 7 resources, the same set as above plus the two Z resources.
+	snap, err = TestOp(Update).Run(project, p.GetTarget(t, nil), TestUpdateOptions{
+		HostF: hostF,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test::test::pkgA:m:typA::implicitX",
+				"urn:pulumi:test::test::pkgA:m:typA::explicitX",
+			}),
+			TargetDependents: true,
+		},
+	}, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.Equal(t, 7, len(snap.Resources))
 }
