@@ -17,18 +17,22 @@ package main
 import (
 	"context"
 	"io"
+	"net/url"
 	"os"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 type aiBrowserCmd struct {
-	appURL string
+	appURL  string
+	prompt  string
+	autoRun bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -45,8 +49,20 @@ func (cmd *aiBrowserCmd) Run(ctx context.Context, args []string) error {
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = currentBackend
 	}
+	requestURL, err := url.Parse(cmd.appURL)
+	if err != nil {
+		return err
+	}
+	query := requestURL.Query()
+	if cmd.prompt != "" {
+		query.Set("prompt", cmd.prompt)
+	}
+	if cmd.autoRun {
+		query.Set("autoRun", "true")
+	}
 
-	err := browser.OpenURL(cmd.appURL)
+	requestURL.RawQuery = query.Encode()
+	err = browser.OpenURL(requestURL.String())
 	if err != nil {
 		return err
 	}
@@ -56,7 +72,10 @@ func (cmd *aiBrowserCmd) Run(ctx context.Context, args []string) error {
 
 func newAIBrowserCommand() *cobra.Command {
 	var aibcmd aiBrowserCmd
-	aibcmd.appURL = "https://www.pulumi.com/ai/"
+	aibcmd.appURL = env.AIServiceEndpoint.Value()
+	if aibcmd.appURL == "" {
+		aibcmd.appURL = "https://www.pulumi.com/ai"
+	}
 	cmd := &cobra.Command{
 		Use:   "browser",
 		Short: "Opens Pulumi AI in your local browser",
@@ -68,5 +87,13 @@ func newAIBrowserCommand() *cobra.Command {
 		},
 		),
 	}
+	cmd.PersistentFlags().StringVar(
+		&aibcmd.prompt, "prompt", "",
+		"Initial prompt to populate the app with",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&aibcmd.autoRun, "auto-run", false,
+		"Automatically send the prompt",
+	)
 	return cmd
 }
