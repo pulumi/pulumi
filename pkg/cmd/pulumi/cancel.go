@@ -15,15 +15,16 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func newCancelCmd() *cobra.Command {
@@ -41,12 +42,12 @@ func newCancelCmd() *cobra.Command {
 			"\n" +
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			// Use the stack provided or, if missing, default to the current one.
 			if len(args) > 0 {
 				if stack != "" {
-					return result.Error("only one of --stack or argument stack name may be specified, not both")
+					return errors.New("only one of --stack or argument stack name may be specified, not both")
 				}
 
 				stack = args[0]
@@ -58,20 +59,19 @@ func newCancelCmd() *cobra.Command {
 
 			s, err := requireStack(ctx, stack, stackLoadOnly, opts)
 			if err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			// Ensure the user really wants to do this.
 			stackName := string(s.Ref().Name())
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
 			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
-				fmt.Println("confirmation declined")
-				return result.Bail()
+				return result.FprintBailf(os.Stdout, "confirmation declined")
 			}
 
 			// Cancel the update.
 			if err := s.Backend().CancelCurrentUpdate(ctx, s.Ref()); err != nil {
-				return result.FromError(err)
+				return err
 			}
 
 			msg := fmt.Sprintf(

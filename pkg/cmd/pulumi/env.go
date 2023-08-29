@@ -19,6 +19,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func newEnvCmd() *cobra.Command {
@@ -39,7 +39,7 @@ func newEnvCmd() *cobra.Command {
 		// unhide once most existing variables are using the new env var framework and
 		// show up here.
 		Hidden: !env.Experimental.Value(),
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			table := cmdutil.Table{
 				Headers: []string{"Variable", "Description", "Value"},
 			}
@@ -52,7 +52,7 @@ func newEnvCmd() *cobra.Command {
 			}
 			cmdutil.PrintTable(table)
 			if foundError {
-				return result.Error("Invalid environmental variables found")
+				return errors.New("invalid environmental variables found")
 			}
 			return nil
 		}),
