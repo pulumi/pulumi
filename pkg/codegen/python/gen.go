@@ -20,7 +20,6 @@ package python
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -3048,34 +3047,6 @@ func genPyprojectTOML(tool string,
 				},
 			},
 		},
-	}
-
-	// Cross check
-	{
-		var buf bytes.Buffer
-		if err := toml.NewEncoder(&buf).Encode(schema); err != nil {
-			panic(err)
-		}
-
-		res := buf.Bytes()
-
-		var back PyprojectSchema
-		if _, err := toml.Decode(string(res), &back); err != nil {
-			panic(err)
-		}
-
-		toJS := func(x any) string {
-			b, err := json.Marshal(x)
-			if err != nil {
-				panic(err)
-			}
-			return string(b)
-		}
-
-		if toJS(back.Tool) != toJS(schema.Tool) {
-
-			panic(fmt.Sprintf("BACK = %v\n NEQ: %v != %v", back, back.Tool, schema.Tool))
-		}
 	}
 
 	// • Marshal the data into TOML format.
