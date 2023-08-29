@@ -59,6 +59,6 @@ func newAICommand() *cobra.Command {
 		},
 		),
 	}
-	cmd.AddCommand(newAIBrowserCommand())
+	cmd.AddCommand(newAIWebCommand())
 	return cmd
 }
