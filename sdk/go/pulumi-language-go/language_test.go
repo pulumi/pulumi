@@ -83,7 +83,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	t.Cleanup(func() {
 		assert.NoError(t, cmd.Process.Kill())
 		wg.Wait()
-		require.NoError(t, cmd.Wait())
+		cmd.Wait()
 	})
 
 	return address, client

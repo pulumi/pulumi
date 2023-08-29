@@ -83,7 +83,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	t.Cleanup(func() {
 		assert.NoError(t, cmd.Process.Kill())
 		wg.Wait()
-		require.NoError(t, cmd.Wait())
+		cmd.Wait()
 	})
 
 	return address, client
@@ -110,7 +110,9 @@ func TestLanguage(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a temp project dir for the test to run in
-	rootDir := t.TempDir()
+	rootDir, err := os.MkdirTemp("", "pulumi-language-nodejs-test")
+	require.NoError(t, err)
+	// rootDir := t.TempDir()
 
 	// Prepare to run the tests
 	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{

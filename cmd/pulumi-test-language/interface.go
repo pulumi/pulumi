@@ -887,6 +887,8 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
+	// NewContextWithContext will make a default plugin host, but we want to make sure we never actually use that
+	pctx.Host = nil
 
 	// Connect to the language host
 	conn, err := grpc.Dial(token.LanguagePluginTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
