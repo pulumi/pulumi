@@ -6,7 +6,6 @@
     "pulumi_example/provider.py",
     "pulumi_example/pulumi-plugin.json",
     "pulumi_example/py.typed",
-    "pyproject.toml",
-    "setup.py"
+    "pyproject.toml"
   ]
 }

@@ -20,6 +20,7 @@ package python
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -2951,11 +2952,13 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	files.Add(filepath.Join(pkgName, "pulumi-plugin.json"), plugin)
 
 	// Next, emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
-	if err != nil {
-		return nil, err
+	if !info.PyProject.Enabled {
+		setup, err := genPackageMetadata(tool, pkg, pkgName, info.Requires, info.PythonRequires)
+		if err != nil {
+			return nil, err
+		}
+		files.Add("setup.py", []byte(setup))
 	}
-	files.Add("setup.py", []byte(setup))
 
 	// Finally, if pyproject.toml generation is enabled, generate
 	// this file and emit it as well.
@@ -3020,8 +3023,64 @@ func genPyprojectTOML(tool string,
 	readme := "README.md"
 	schema.Project.README = &readme
 
+	// Populate build extensions as follows:
+	//
+	// [build-system]
+	// requires = ["setuptools>=61.0"]
+	// build-backend = "setuptools.build_meta"
+	// [tool.setuptools.package-data]
+	// pulumi_kubernetes = ["py.typed", "pulumi-plugin.json"]
+	//
+	// This ensures that `python -m build` can proceed without `setup.py` present, while still
+	// including the required files `py.typed` and `pulumi-plugin.json` in the distro.
+
+	schema.BuildSystem = &BuildSystem{
+		Requires:     []string{"setuptools>=61.0"},
+		BuildBackend: "setuptools.build_meta",
+	}
+
+	schema.Tool = map[string]interface{}{
+		"setuptools": map[string]interface{}{
+			"package-data": map[string]interface{}{
+				*schema.Project.Name: []string{
+					"py.typed",
+					"pulumi-plugin.json",
+				},
+			},
+		},
+	}
+
+	// Cross check
+	{
+		var buf bytes.Buffer
+		if err := toml.NewEncoder(&buf).Encode(schema); err != nil {
+			panic(err)
+		}
+
+		res := buf.Bytes()
+
+		var back PyprojectSchema
+		if _, err := toml.Decode(string(res), &back); err != nil {
+			panic(err)
+		}
+
+		toJS := func(x any) string {
+			b, err := json.Marshal(x)
+			if err != nil {
+				panic(err)
+			}
+			return string(b)
+		}
+
+		if toJS(back.Tool) != toJS(schema.Tool) {
+
+			panic(fmt.Sprintf("BACK = %v\n NEQ: %v != %v", back, back.Tool, schema.Tool))
+		}
+	}
+
 	// • Marshal the data into TOML format.
 	err = toml.NewEncoder(w).Encode(schema)
+
 	return w.String(), err
 }
 
