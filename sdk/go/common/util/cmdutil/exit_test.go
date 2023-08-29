@@ -2,11 +2,13 @@ package cmdutil
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
 	"testing"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/spf13/cobra"
@@ -67,4 +69,100 @@ func TestFakeCommand(t *testing.T) {
 	err := cmd.Execute()
 	// Unreachable: RunFunc should have called os.Exit.
 	assert.Fail(t, "unreachable", "RunFunc should have called os.Exit: %v", err)
+}
+
+func TestErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc string
+		give error
+		want string
+	}{
+		{
+			desc: "simple error",
+			give: errors.New("great sadness"),
+			want: "great sadness",
+		},
+		{
+			desc: "hashi multi error",
+			give: multierror.Append(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "std errors.Join",
+			give: errors.Join(
+				errors.New("foo"),
+				errors.New("bar"),
+				errors.New("baz"),
+			),
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+		{
+			desc: "empty multi error",
+			// This is technically invalid,
+			// but we guard against it,
+			// so let's test it too.
+			give: &invalidEmptyMultiError{},
+			want: "invalid empty multi error",
+		},
+		{
+			desc: "single wrapped error",
+			give: &multierror.Error{
+				Errors: []error{
+					errors.New("great sadness"),
+				},
+			},
+			want: "great sadness",
+		},
+		{
+			desc: "multi error inside single wrapped error",
+			give: &multierror.Error{
+				Errors: []error{
+					errors.Join(
+						errors.New("foo"),
+						errors.New("bar"),
+						errors.New("baz"),
+					),
+				},
+			},
+			want: "3 errors occurred:" +
+				"\n    1) foo" +
+				"\n    2) bar" +
+				"\n    3) baz",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			got := errorMessage(tt.give)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// invalidEmptyMultiError is an invalid error type
+// that implements Unwrap() []error, but returns an empty slice.
+// This is invalid per the contract for that method.
+type invalidEmptyMultiError struct{}
+
+func (*invalidEmptyMultiError) Error() string {
+	return "invalid empty multi error"
+}
+
+func (*invalidEmptyMultiError) Unwrap() []error {
+	return []error{} // invalid
 }
