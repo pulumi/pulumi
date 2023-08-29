@@ -1,0 +1,18 @@
+decrypt:
+  my:array: '{"inner":"value"}'
+paths:
+  my:array:
+    value:
+      inner: value
+    string: '{"inner":"value"}'
+    redacted: '{"inner":"value"}'
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAb/4IYAAEFaW5uZXIGc3RyaW5nDAcABXZhbHVl
+    secure: false
+    isObject: true
+  my:array.inner:
+    value: value
+    string: value
+    redacted: value
+    object: EhAABnN0cmluZwwHAAV2YWx1ZQ==
+    secure: false
+    isObject: false
