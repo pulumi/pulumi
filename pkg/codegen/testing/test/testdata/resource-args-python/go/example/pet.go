@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"resource-args-python/example/internal"
 )
 
@@ -88,6 +89,12 @@ func (i *Pet) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PetOutput)
 }
 
+func (i *Pet) ToOutput(ctx context.Context) pulumix.Output[*Pet] {
+	return pulumix.Output[*Pet]{
+		OutputState: i.ToPetOutputWithContext(ctx).OutputState,
+	}
+}
+
 // PetArrayInput is an input type that accepts PetArray and PetArrayOutput values.
 // You can construct a concrete instance of `PetArrayInput` via:
 //
@@ -111,6 +118,12 @@ func (i PetArray) ToPetArrayOutput() PetArrayOutput {
 
 func (i PetArray) ToPetArrayOutputWithContext(ctx context.Context) PetArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PetArrayOutput)
+}
+
+func (i PetArray) ToOutput(ctx context.Context) pulumix.Output[[]*Pet] {
+	return pulumix.Output[[]*Pet]{
+		OutputState: i.ToPetArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // PetMapInput is an input type that accepts PetMap and PetMapOutput values.
@@ -138,6 +151,12 @@ func (i PetMap) ToPetMapOutputWithContext(ctx context.Context) PetMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(PetMapOutput)
 }
 
+func (i PetMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*Pet] {
+	return pulumix.Output[map[string]*Pet]{
+		OutputState: i.ToPetMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type PetOutput struct{ *pulumi.OutputState }
 
 func (PetOutput) ElementType() reflect.Type {
@@ -150,6 +169,12 @@ func (o PetOutput) ToPetOutput() PetOutput {
 
 func (o PetOutput) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return o
+}
+
+func (o PetOutput) ToOutput(ctx context.Context) pulumix.Output[*Pet] {
+	return pulumix.Output[*Pet]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o PetOutput) Name() pulumi.StringPtrOutput {
@@ -170,6 +195,12 @@ func (o PetArrayOutput) ToPetArrayOutputWithContext(ctx context.Context) PetArra
 	return o
 }
 
+func (o PetArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*Pet] {
+	return pulumix.Output[[]*Pet]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o PetArrayOutput) Index(i pulumi.IntInput) PetOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *Pet {
 		return vs[0].([]*Pet)[vs[1].(int)]
@@ -188,6 +219,12 @@ func (o PetMapOutput) ToPetMapOutput() PetMapOutput {
 
 func (o PetMapOutput) ToPetMapOutputWithContext(ctx context.Context) PetMapOutput {
 	return o
+}
+
+func (o PetMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*Pet] {
+	return pulumix.Output[map[string]*Pet]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o PetMapOutput) MapIndex(k pulumi.StringInput) PetOutput {

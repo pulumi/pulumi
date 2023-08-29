@@ -227,6 +227,9 @@ type defaultHost struct {
 	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 	config                  map[config.Key]string            // the configuration map for the stack, if any.
 
+	// Used to synchronize shutdown with in-progress plugin loads.
+	pluginLock sync.RWMutex
+
 	closer         *sync.Once
 	projectPlugins []workspace.ProjectPlugin
 }
@@ -261,8 +264,17 @@ func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg stri
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
-func loadPlugin(loadRequestChannel chan pluginLoadRequest, load func() (interface{}, error)) (interface{}, error) {
+func (host *defaultHost) loadPlugin(
+	loadRequestChannel chan pluginLoadRequest, load func() (interface{}, error),
+) (interface{}, error) {
 	var plugin interface{}
+
+	locked := host.pluginLock.TryRLock()
+	if !locked {
+		// If we couldn't get a read lock that must be because we're shutting down, so just return an error.
+		return nil, errors.New("plugin host is shutting down")
+	}
+	defer host.pluginLock.RUnlock()
 
 	result := make(chan error)
 	loadRequestChannel <- pluginLoadRequest{
@@ -277,7 +289,7 @@ func loadPlugin(loadRequestChannel chan pluginLoadRequest, load func() (interfac
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
-	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
@@ -305,7 +317,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 }
 
 func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error) {
-	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[name]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
@@ -341,7 +353,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 }
 
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
-	plugin, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		// Try to load and bind to a plugin.
 
 		result := make(map[string]string)
@@ -405,7 +417,7 @@ func (host *defaultHost) LanguageRuntime(root, pwd, runtime string,
 	options map[string]interface{},
 ) (LanguageRuntime, error) {
 	// Language runtimes use their own loading channel not the main one
-	plugin, err := loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
+	plugin, err := host.loadPlugin(host.languageLoadRequests, func() (interface{}, error) {
 		// Key our cached runtime plugins by the runtime name and the options
 		jsonOptions, err := json.Marshal(options)
 		if err != nil {
@@ -493,7 +505,7 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		var result error
 		for _, plug := range host.resourcePlugins {
 			if err := plug.Plugin.SignalCancellation(); err != nil {
@@ -508,7 +520,7 @@ func (host *defaultHost) SignalCancellation() error {
 
 func (host *defaultHost) CloseProvider(provider Provider) error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
-	_, err := loadPlugin(host.loadRequests, func() (interface{}, error) {
+	_, err := host.loadPlugin(host.loadRequests, func() (interface{}, error) {
 		if err := provider.Close(); err != nil {
 			return nil, err
 		}
@@ -520,6 +532,12 @@ func (host *defaultHost) CloseProvider(provider Provider) error {
 
 func (host *defaultHost) Close() (err error) {
 	host.closer.Do(func() {
+		// Wait for all plugins to finish loading, we do this by taking a Write lock on the pluginLock. This
+		// won't take until all read locks are released (indicating that no plugins are currently loading) and
+		// it will then block further read locks from being taken (preventing any new plugins from loading).
+		host.pluginLock.Lock()
+		// N.B We purposefully do not unlock this.
+
 		// Close all plugins.
 		for _, plug := range host.analyzerPlugins {
 			if err := plug.Plugin.Close(); err != nil {

@@ -30,8 +30,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type stackChangeSecretsProviderCmd struct {
+	stack string
+}
+
 func newStackChangeSecretsProviderCmd() *cobra.Command {
-	var stack string
+	var scspcmd stackChangeSecretsProviderCmd
 	cmd := &cobra.Command{
 		Use:   "change-secrets-provider <new-secrets-provider>",
 		Args:  cmdutil.ExactArgs(1),
@@ -56,66 +60,70 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			project, _, err := readProject()
-			if err != nil {
-				return err
-			}
-
-			// Validate secrets provider type
-			if err := validateSecretsProvider(args[0]); err != nil {
-				return err
-			}
-
-			// Get the current stack and its project
-			currentStack, err := requireStack(ctx, stack, stackLoadOnly, opts)
-			if err != nil {
-				return err
-			}
-			currentProjectStack, err := loadProjectStack(project, currentStack)
-			if err != nil {
-				return err
-			}
-
-			// Build decrypter based on the existing secrets provider
-			var decrypter config.Decrypter
-			if currentProjectStack.Config.HasSecureValue() {
-				dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
-				if decerr != nil {
-					return decerr
-				}
-				contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
-				decrypter = dec
-			} else {
-				decrypter = config.NewPanicCrypter()
-			}
-
-			secretsProvider := args[0]
-			// If we're setting the secrets provider to the same provider then do a rotation.
-			rotateProvider := secretsProvider == currentProjectStack.SecretsProvider ||
-				// passphrase doesn't get saved to stack state, so if we're changing to passphrase see if
-				// the current secrets provider is empty
-				((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
-			// Create the new secrets provider and set to the currentStack
-			if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
-				false /*creatingStack*/); err != nil {
-				return err
-			}
-
-			// Fixup the checkpoint
-			fmt.Printf("Migrating old configuration and state to new secrets provider\n")
-			return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentProjectStack, decrypter)
+			return scspcmd.Run(ctx, args)
 		}),
 	}
 
 	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
+		&scspcmd.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
+}
+
+func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string) error {
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+
+	project, _, err := readProject()
+	if err != nil {
+		return err
+	}
+
+	// Validate secrets provider type
+	if err := validateSecretsProvider(args[0]); err != nil {
+		return err
+	}
+
+	// Get the current stack and its project
+	currentStack, err := requireStack(ctx, cmd.stack, stackLoadOnly, opts)
+	if err != nil {
+		return err
+	}
+	currentProjectStack, err := loadProjectStack(project, currentStack)
+	if err != nil {
+		return err
+	}
+
+	// Build decrypter based on the existing secrets provider
+	var decrypter config.Decrypter
+	if currentProjectStack.Config.HasSecureValue() {
+		dec, needsSave, decerr := getStackDecrypter(currentStack, currentProjectStack)
+		if decerr != nil {
+			return decerr
+		}
+		contract.Assertf(!needsSave, "We're reading a secure value so the encryption information must be present already")
+		decrypter = dec
+	} else {
+		decrypter = config.NewPanicCrypter()
+	}
+
+	secretsProvider := args[0]
+	// If we're setting the secrets provider to the same provider then do a rotation.
+	rotateProvider := secretsProvider == currentProjectStack.SecretsProvider ||
+		// passphrase doesn't get saved to stack state, so if we're changing to passphrase see if
+		// the current secrets provider is empty
+		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
+	// Create the new secrets provider and set to the currentStack
+	if err := createSecretsManager(ctx, currentStack, secretsProvider, rotateProvider,
+		false /*creatingStack*/); err != nil {
+		return err
+	}
+
+	// Fixup the checkpoint
+	fmt.Printf("Migrating old configuration and state to new secrets provider\n")
+	return migrateOldConfigAndCheckpointToNewSecretsProvider(ctx, project, currentStack, currentProjectStack, decrypter)
 }
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(ctx context.Context,

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/plugin
-  description: CLI will now warn when loading ambient plugins from $PATH.

@@ -47,6 +47,15 @@ func AwaitOutput(ctx context.Context, o OutputOrState) (
 	return o.getState().await(ctx)
 }
 
+// AwaitOutputNoUnwrap awaits the given output and returns the resulting state.
+// Unlike [AwaitOutput], this does not unwrap the output value.
+//
+// That is, given an 'Output<Output<string>>', this will return 'Output<string>',
+// while [AwaitOutput] would return 'string'.
+func AwaitOutputNoUnwrap(ctx context.Context, o OutputOrState) (interface{}, bool, bool, []Resource, error) {
+	return o.getState().awaitWithOptions(ctx, false /* unwrapOutputs */)
+}
+
 // FulfillOutput fulfills the given output with the given value and dependencies,
 // or rejects it with the given error.
 func FulfillOutput(o OutputOrState, value interface{}, known, secret bool, deps []Resource, err error) {
@@ -61,6 +70,12 @@ func OutputDependencies(o OutputOrState) []Resource {
 // GetOutputState returns the OutputState for the given output.
 func GetOutputState(o OutputOrState) *OutputState {
 	return o.getState()
+}
+
+// OutputJoinGroup returns the WorkGroup for the given output.
+// Use this when constructing new connected outputs.
+func OutputJoinGroup(o OutputOrState) *WorkGroup {
+	return o.getState().join
 }
 
 // ConcreteTypeToOutputType maps the given concrete type

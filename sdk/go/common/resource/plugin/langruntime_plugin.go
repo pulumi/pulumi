@@ -165,14 +165,15 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginSpec, er
 			}
 			version = &sv
 		}
-		if !workspace.IsPluginKind(info.GetKind()) {
-			return nil, errors.Errorf("unrecognized plugin kind: %s", info.GetKind())
+		if !workspace.IsPluginKind(info.Kind) {
+			return nil, errors.Errorf("unrecognized plugin kind: %s", info.Kind)
 		}
 		results = append(results, workspace.PluginSpec{
-			Name:              info.GetName(),
-			Kind:              workspace.PluginKind(info.GetKind()),
+			Name:              info.Name,
+			Kind:              workspace.PluginKind(info.Kind),
 			Version:           version,
-			PluginDownloadURL: info.GetServer(),
+			PluginDownloadURL: info.Server,
+			Checksums:         info.Checksums,
 		})
 	}
 

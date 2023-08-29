@@ -65,6 +65,8 @@ message ConvertProgramRequest {
     string target_directory = 2;
     // the gRPC target of the mapper service.
     string mapper_target = 3;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 4;
 }
 
 message ConvertProgramResponse {

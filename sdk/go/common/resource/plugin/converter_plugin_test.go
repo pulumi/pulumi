@@ -109,6 +109,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
 	})
@@ -137,6 +138,7 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 
 	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
+		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
 		TargetDirectory: "dst",
 	})

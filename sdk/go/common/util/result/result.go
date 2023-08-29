@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,53 @@ package result
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
+
+type bailError struct {
+	err error
+}
+
+// BailError is the replacement for Result now that Go supports wrapping errors.  It is used to indicate that
+// a computation failed, but that it failed gracefully, i.e. it is not a bug in Pulumi. BailError implements
+// the error interface but will prefix it's error string with BAIL, which if ever seen in user facing messages
+// indicates that a check for bailing was missed. It also blocks `Unwrap` calls, instead to get access to the
+// inner error use the `IsBail` function.
+func BailError(err error) error {
+	contract.Requiref(err != nil, "err", "must not be nil")
+
+	return &bailError{err: err}
+}
+
+func (b *bailError) Error() string {
+	return fmt.Sprintf("BAIL: %v", b.err)
+}
+
+// BailErrorf is a helper for BailError(fmt.Errorf(...)).
+func BailErrorf(format string, args ...interface{}) error {
+	return BailError(fmt.Errorf(format, args...))
+}
+
+// FprintBailf writes a formatted string to the given writer and returns a BailError with the same message.
+func FprintBailf(w io.Writer, msg string, args ...any) error {
+	msg = fmt.Sprintf(msg, args...)
+	fmt.Fprintln(w, msg)
+	return BailError(errors.New(msg))
+}
+
+// IsBail reports whether any error in err's tree is a `BailError`.
+func IsBail(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var bail *bailError
+	ok := errors.As(err, &bail)
+	return ok
+}
 
 // Result represents the result of a computation that can fail. The Result type revolves around two
 // notions of failure:
@@ -87,14 +131,19 @@ func Error(msg string) Result {
 	return FromError(err)
 }
 
-// FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil'
-// error.  A 'nil' error means that there was no problem, and in that case a 'nil' result should be
-// used instead.
+// FromError produces a Result that wraps an internal Pulumi error.  Do not call this with a 'nil' error.  A
+// 'nil' error means that there was no problem, and in that case a 'nil' result should be used instead. If
+// this is called with an error from `BailError` it will discard the inner error of that and return a bail
+// result.
 func FromError(err error) Result {
 	if err == nil {
 		panic("FromError should not be called with a nil-error.  " +
 			"If there is no error, then a nil result should be returned.  " +
 			"Caller should check for this first.")
+	}
+
+	if IsBail(err) {
+		return &simpleResult{err: nil}
 	}
 
 	return &simpleResult{err: err}

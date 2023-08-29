@@ -1,5 +1,116 @@
 # Changelog
 
+## 3.79.0 (2023-08-25)
+
+
+### Features
+
+- [cli] Adds basic Search and AI-assisted Search functionality
+  [#13611](https://github.com/pulumi/pulumi/pull/13611)
+
+- [engine] Support runtime plugins returning plugin checksums from GetRequiredPlugins.
+  [#13776](https://github.com/pulumi/pulumi/pull/13776)
+
+- [sdkgen/go] Implement option to override the name of the generated internal/utilities module
+  [#13749](https://github.com/pulumi/pulumi/pull/13749)
+
+
+### Bug Fixes
+
+- [engine] Fix panic when analyzer plugin is not found on PATH.
+  [#13767](https://github.com/pulumi/pulumi/pull/13767)
+
+- [programgen/go] Fixes go.mod version requirement
+  [#13729](https://github.com/pulumi/pulumi/pull/13729)
+
+- [sdk/nodejs] When using closure serializtion, lookup package.json up from current working directory up to parent directories recursively
+  [#13770](https://github.com/pulumi/pulumi/pull/13770)
+
+
+### Miscellaneous
+
+- [pkg] Update pulumi-yaml (v1.2.1 -> v1.2.2) pulumi-java (v0.9.0 -> v0.9.6) pulumi-dotnet (v3.54.0 -> v3.56.1)
+  [#13763](https://github.com/pulumi/pulumi/pull/13763)
+
+- [sdk/python] Update grpc-io from 1.56.0 to 1.56.2
+  [#13759](https://github.com/pulumi/pulumi/pull/13759)
+
+## 3.78.1 (2023-08-11)
+
+
+### Features
+
+- [yaml] Update pulumi-yaml to 1.2.1.
+  [#13712](https://github.com/pulumi/pulumi/pull/13712)
+
+
+### Bug Fixes
+
+- [engine] Fixes some synchronization in plugin shutdown to prevent panics on Ctrl-C.
+  [#13682](https://github.com/pulumi/pulumi/pull/13682)
+
+- [sdkgen/python] Fixes rendering v1.2.3-alpha.8 style of versions to valid PyPI versions when respectSchemaVersions option is set in sdkgen.
+  [#13707](https://github.com/pulumi/pulumi/pull/13707)
+
+
+### Miscellaneous
+
+- [ci] Add preliminary support for GitHub's native merge queues.
+  [#13681](https://github.com/pulumi/pulumi/pull/13681)
+
+- [engine] Pass Loader gRPC target to converter plugins.
+  [#13696](https://github.com/pulumi/pulumi/pull/13696)
+
+- [sdk/go] Updates aws-sdk-go to 1.44.298 to enable support for sso-session link AWS profiles.
+  [#13619](https://github.com/pulumi/pulumi/pull/13619)
+
+## 3.78.0 (2023-08-09)
+
+
+### Features
+
+- [yaml] Update pulumi-yaml to 1.2.0.
+  [#13674](https://github.com/pulumi/pulumi/pull/13674)
+
+- [sdkgen/dotnet] Generate output-versioned invokes for functions without inputs.
+  [#13669](https://github.com/pulumi/pulumi/pull/13669)
+
+- [sdkgen/nodejs] Generate output-versioned invokes for functions without inputs.
+  [#13678](https://github.com/pulumi/pulumi/pull/13678)
+
+- [cli/package] New experimental "pack-sdk" command to pack an SDK into an artifact.
+  [#13675](https://github.com/pulumi/pulumi/pull/13675)
+
+- [cli/plugin] CLI will now warn when loading ambient plugins from $PATH.
+  [#13670](https://github.com/pulumi/pulumi/pull/13670)
+
+
+### Bug Fixes
+
+- [programgen/dotnet] Fixes code generation of ForExpressions, both when creating a list or a dictionary.
+  [#13620](https://github.com/pulumi/pulumi/pull/13620)
+
+- [programgen/dotnet] Fixes list initializer for plain lists in resource properties.
+  [#13630](https://github.com/pulumi/pulumi/pull/13630)
+
+- [programgen/{go,nodejs}] Fix a bug in marshalling type refs across gRPC.
+  [#13676](https://github.com/pulumi/pulumi/pull/13676)
+
+- [programgen/nodejs] Fixes parseProxyApply to handle nested outputs within index expressions.
+  [#13629](https://github.com/pulumi/pulumi/pull/13629)
+
+- [sdk/nodejs] Fix finding the pulumi package when the runtime wasn't started in the project directory.
+  [#13639](https://github.com/pulumi/pulumi/pull/13639)
+
+- [cli/plugin] Improve error message during `pulumi plugin install` if the plugin is bundled with Pulumi.
+  [#12575](https://github.com/pulumi/pulumi/pull/12575)
+
+
+### Miscellaneous
+
+- [sdkgen/nodejs] Remove the pluginVersion and pluginName options from nodejs schema options.
+  [#13646](https://github.com/pulumi/pulumi/pull/13646)
+
 ## 3.77.1 (2023-08-05)
 
 

@@ -1,14 +1,15 @@
 package main
 
 import (
-	cdn "github.com/pulumi/pulumi-azure-native/sdk/go/azure/cdn"
-	network "github.com/pulumi/pulumi-azure-native/sdk/go/azure/network"
+	"github.com/pulumi/pulumi-azure-native/sdk/go/azure/cdn"
+	"github.com/pulumi/pulumi-azure-native/sdk/go/azure/network"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := network.NewFrontDoor(ctx, "frontDoor", &network.FrontDoorArgs{
+			ResourceGroupName: pulumi.String("someGroupName"),
 			RoutingRules: network.RoutingRuleArray{
 				&network.RoutingRuleArgs{
 					RouteConfiguration: network.ForwardingConfiguration{
@@ -24,31 +25,32 @@ func main() {
 			return err
 		}
 		_, err = cdn.NewEndpoint(ctx, "endpoint", &cdn.EndpointArgs{
+			Origins: cdn.DeepCreatedOriginArray{},
 			DeliveryPolicy: &cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs{
 				Rules: []cdn.DeliveryRuleArgs{
-					&cdn.DeliveryRuleArgs{
+					{
 						Actions: pulumi.AnyArray{
-							cdn.DeliveryRuleCacheExpirationAction{
+							{
 								Name: "CacheExpiration",
-								Parameters: cdn.CacheExpirationActionParameters{
+								Parameters: {
 									CacheBehavior: "Override",
 									CacheDuration: "10:10:09",
 									CacheType:     "All",
 									OdataType:     "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
 								},
 							},
-							cdn.DeliveryRuleResponseHeaderAction{
+							{
 								Name: "ModifyResponseHeader",
-								Parameters: cdn.HeaderActionParameters{
+								Parameters: {
 									HeaderAction: "Overwrite",
 									HeaderName:   "Access-Control-Allow-Origin",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
 									Value:        "*",
 								},
 							},
-							cdn.DeliveryRuleRequestHeaderAction{
+							{
 								Name: "ModifyRequestHeader",
-								Parameters: cdn.HeaderActionParameters{
+								Parameters: {
 									HeaderAction: "Overwrite",
 									HeaderName:   "Accept-Encoding",
 									OdataType:    "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
@@ -57,9 +59,9 @@ func main() {
 							},
 						},
 						Conditions: pulumi.AnyArray{
-							cdn.DeliveryRuleRemoteAddressCondition{
+							{
 								Name: "RemoteAddress",
-								Parameters: cdn.RemoteAddressMatchConditionParameters{
+								Parameters: {
 									MatchValues: []string{
 										"192.168.1.0/24",
 										"10.0.0.0/24",

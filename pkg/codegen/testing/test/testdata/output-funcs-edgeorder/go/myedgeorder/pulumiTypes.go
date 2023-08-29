@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"internal"
 )
 
@@ -56,6 +57,12 @@ func (i AvailabilityInformationResponseArgs) ToAvailabilityInformationResponseOu
 	return pulumi.ToOutputWithContext(ctx, i).(AvailabilityInformationResponseOutput)
 }
 
+func (i AvailabilityInformationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[AvailabilityInformationResponse] {
+	return pulumix.Output[AvailabilityInformationResponse]{
+		OutputState: i.ToAvailabilityInformationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Availability information of a product system.
 type AvailabilityInformationResponseOutput struct{ *pulumi.OutputState }
 
@@ -69,6 +76,12 @@ func (o AvailabilityInformationResponseOutput) ToAvailabilityInformationResponse
 
 func (o AvailabilityInformationResponseOutput) ToAvailabilityInformationResponseOutputWithContext(ctx context.Context) AvailabilityInformationResponseOutput {
 	return o
+}
+
+func (o AvailabilityInformationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[AvailabilityInformationResponse] {
+	return pulumix.Output[AvailabilityInformationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Current availability stage of the product. Availability stage
@@ -133,6 +146,12 @@ func (i BillingMeterDetailsResponseArgs) ToBillingMeterDetailsResponseOutputWith
 	return pulumi.ToOutputWithContext(ctx, i).(BillingMeterDetailsResponseOutput)
 }
 
+func (i BillingMeterDetailsResponseArgs) ToOutput(ctx context.Context) pulumix.Output[BillingMeterDetailsResponse] {
+	return pulumix.Output[BillingMeterDetailsResponse]{
+		OutputState: i.ToBillingMeterDetailsResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // BillingMeterDetailsResponseArrayInput is an input type that accepts BillingMeterDetailsResponseArray and BillingMeterDetailsResponseArrayOutput values.
 // You can construct a concrete instance of `BillingMeterDetailsResponseArrayInput` via:
 //
@@ -158,6 +177,12 @@ func (i BillingMeterDetailsResponseArray) ToBillingMeterDetailsResponseArrayOutp
 	return pulumi.ToOutputWithContext(ctx, i).(BillingMeterDetailsResponseArrayOutput)
 }
 
+func (i BillingMeterDetailsResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]BillingMeterDetailsResponse] {
+	return pulumix.Output[[]BillingMeterDetailsResponse]{
+		OutputState: i.ToBillingMeterDetailsResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Holds billing meter details for each type of billing
 type BillingMeterDetailsResponseOutput struct{ *pulumi.OutputState }
 
@@ -171,6 +196,12 @@ func (o BillingMeterDetailsResponseOutput) ToBillingMeterDetailsResponseOutput()
 
 func (o BillingMeterDetailsResponseOutput) ToBillingMeterDetailsResponseOutputWithContext(ctx context.Context) BillingMeterDetailsResponseOutput {
 	return o
+}
+
+func (o BillingMeterDetailsResponseOutput) ToOutput(ctx context.Context) pulumix.Output[BillingMeterDetailsResponse] {
+	return pulumix.Output[BillingMeterDetailsResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Frequency of recurrence
@@ -205,6 +236,12 @@ func (o BillingMeterDetailsResponseArrayOutput) ToBillingMeterDetailsResponseArr
 
 func (o BillingMeterDetailsResponseArrayOutput) ToBillingMeterDetailsResponseArrayOutputWithContext(ctx context.Context) BillingMeterDetailsResponseArrayOutput {
 	return o
+}
+
+func (o BillingMeterDetailsResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]BillingMeterDetailsResponse] {
+	return pulumix.Output[[]BillingMeterDetailsResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o BillingMeterDetailsResponseArrayOutput) Index(i pulumi.IntInput) BillingMeterDetailsResponseOutput {
@@ -252,6 +289,12 @@ func (i ConfigurationFiltersArgs) ToConfigurationFiltersOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigurationFiltersOutput)
 }
 
+func (i ConfigurationFiltersArgs) ToOutput(ctx context.Context) pulumix.Output[ConfigurationFilters] {
+	return pulumix.Output[ConfigurationFilters]{
+		OutputState: i.ToConfigurationFiltersOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ConfigurationFiltersArrayInput is an input type that accepts ConfigurationFiltersArray and ConfigurationFiltersArrayOutput values.
 // You can construct a concrete instance of `ConfigurationFiltersArrayInput` via:
 //
@@ -277,6 +320,12 @@ func (i ConfigurationFiltersArray) ToConfigurationFiltersArrayOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigurationFiltersArrayOutput)
 }
 
+func (i ConfigurationFiltersArray) ToOutput(ctx context.Context) pulumix.Output[[]ConfigurationFilters] {
+	return pulumix.Output[[]ConfigurationFilters]{
+		OutputState: i.ToConfigurationFiltersArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Configuration filters
 type ConfigurationFiltersOutput struct{ *pulumi.OutputState }
 
@@ -290,6 +339,12 @@ func (o ConfigurationFiltersOutput) ToConfigurationFiltersOutput() Configuration
 
 func (o ConfigurationFiltersOutput) ToConfigurationFiltersOutputWithContext(ctx context.Context) ConfigurationFiltersOutput {
 	return o
+}
+
+func (o ConfigurationFiltersOutput) ToOutput(ctx context.Context) pulumix.Output[ConfigurationFilters] {
+	return pulumix.Output[ConfigurationFilters]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Filters specific to product
@@ -314,6 +369,12 @@ func (o ConfigurationFiltersArrayOutput) ToConfigurationFiltersArrayOutput() Con
 
 func (o ConfigurationFiltersArrayOutput) ToConfigurationFiltersArrayOutputWithContext(ctx context.Context) ConfigurationFiltersArrayOutput {
 	return o
+}
+
+func (o ConfigurationFiltersArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ConfigurationFilters] {
+	return pulumix.Output[[]ConfigurationFilters]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ConfigurationFiltersArrayOutput) Index(i pulumi.IntInput) ConfigurationFiltersOutput {
@@ -389,6 +450,12 @@ func (i ConfigurationResponseArgs) ToConfigurationResponseOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigurationResponseOutput)
 }
 
+func (i ConfigurationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[ConfigurationResponse] {
+	return pulumix.Output[ConfigurationResponse]{
+		OutputState: i.ToConfigurationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ConfigurationResponseArrayInput is an input type that accepts ConfigurationResponseArray and ConfigurationResponseArrayOutput values.
 // You can construct a concrete instance of `ConfigurationResponseArrayInput` via:
 //
@@ -414,6 +481,12 @@ func (i ConfigurationResponseArray) ToConfigurationResponseArrayOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(ConfigurationResponseArrayOutput)
 }
 
+func (i ConfigurationResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]ConfigurationResponse] {
+	return pulumix.Output[[]ConfigurationResponse]{
+		OutputState: i.ToConfigurationResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Configuration object.
 type ConfigurationResponseOutput struct{ *pulumi.OutputState }
 
@@ -427,6 +500,12 @@ func (o ConfigurationResponseOutput) ToConfigurationResponseOutput() Configurati
 
 func (o ConfigurationResponseOutput) ToConfigurationResponseOutputWithContext(ctx context.Context) ConfigurationResponseOutput {
 	return o
+}
+
+func (o ConfigurationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[ConfigurationResponse] {
+	return pulumix.Output[ConfigurationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Availability information of the product system.
@@ -488,6 +567,12 @@ func (o ConfigurationResponseArrayOutput) ToConfigurationResponseArrayOutputWith
 	return o
 }
 
+func (o ConfigurationResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ConfigurationResponse] {
+	return pulumix.Output[[]ConfigurationResponse]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ConfigurationResponseArrayOutput) Index(i pulumi.IntInput) ConfigurationResponseOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) ConfigurationResponse {
 		return vs[0].([]ConfigurationResponse)[vs[1].(int)]
@@ -533,6 +618,12 @@ func (i CostInformationResponseArgs) ToCostInformationResponseOutputWithContext(
 	return pulumi.ToOutputWithContext(ctx, i).(CostInformationResponseOutput)
 }
 
+func (i CostInformationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[CostInformationResponse] {
+	return pulumix.Output[CostInformationResponse]{
+		OutputState: i.ToCostInformationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Cost information for the product system
 type CostInformationResponseOutput struct{ *pulumi.OutputState }
 
@@ -546,6 +637,12 @@ func (o CostInformationResponseOutput) ToCostInformationResponseOutput() CostInf
 
 func (o CostInformationResponseOutput) ToCostInformationResponseOutputWithContext(ctx context.Context) CostInformationResponseOutput {
 	return o
+}
+
+func (o CostInformationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[CostInformationResponse] {
+	return pulumix.Output[CostInformationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Default url to display billing information
@@ -601,6 +698,12 @@ func (i CustomerSubscriptionDetailsArgs) ToCustomerSubscriptionDetailsOutputWith
 	return pulumi.ToOutputWithContext(ctx, i).(CustomerSubscriptionDetailsOutput)
 }
 
+func (i CustomerSubscriptionDetailsArgs) ToOutput(ctx context.Context) pulumix.Output[CustomerSubscriptionDetails] {
+	return pulumix.Output[CustomerSubscriptionDetails]{
+		OutputState: i.ToCustomerSubscriptionDetailsOutputWithContext(ctx).OutputState,
+	}
+}
+
 func (i CustomerSubscriptionDetailsArgs) ToCustomerSubscriptionDetailsPtrOutput() CustomerSubscriptionDetailsPtrOutput {
 	return i.ToCustomerSubscriptionDetailsPtrOutputWithContext(context.Background())
 }
@@ -642,6 +745,12 @@ func (i *customerSubscriptionDetailsPtrType) ToCustomerSubscriptionDetailsPtrOut
 	return pulumi.ToOutputWithContext(ctx, i).(CustomerSubscriptionDetailsPtrOutput)
 }
 
+func (i *customerSubscriptionDetailsPtrType) ToOutput(ctx context.Context) pulumix.Output[*CustomerSubscriptionDetails] {
+	return pulumix.Output[*CustomerSubscriptionDetails]{
+		OutputState: i.ToCustomerSubscriptionDetailsPtrOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Holds Customer subscription details. Clients can display available products to unregistered customers by explicitly passing subscription details
 type CustomerSubscriptionDetailsOutput struct{ *pulumi.OutputState }
 
@@ -665,6 +774,12 @@ func (o CustomerSubscriptionDetailsOutput) ToCustomerSubscriptionDetailsPtrOutpu
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v CustomerSubscriptionDetails) *CustomerSubscriptionDetails {
 		return &v
 	}).(CustomerSubscriptionDetailsPtrOutput)
+}
+
+func (o CustomerSubscriptionDetailsOutput) ToOutput(ctx context.Context) pulumix.Output[CustomerSubscriptionDetails] {
+	return pulumix.Output[CustomerSubscriptionDetails]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Location placement Id of a subscription
@@ -696,6 +811,12 @@ func (o CustomerSubscriptionDetailsPtrOutput) ToCustomerSubscriptionDetailsPtrOu
 
 func (o CustomerSubscriptionDetailsPtrOutput) ToCustomerSubscriptionDetailsPtrOutputWithContext(ctx context.Context) CustomerSubscriptionDetailsPtrOutput {
 	return o
+}
+
+func (o CustomerSubscriptionDetailsPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*CustomerSubscriptionDetails] {
+	return pulumix.Output[*CustomerSubscriptionDetails]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o CustomerSubscriptionDetailsPtrOutput) Elem() CustomerSubscriptionDetailsOutput {
@@ -777,6 +898,12 @@ func (i CustomerSubscriptionRegisteredFeaturesArgs) ToCustomerSubscriptionRegist
 	return pulumi.ToOutputWithContext(ctx, i).(CustomerSubscriptionRegisteredFeaturesOutput)
 }
 
+func (i CustomerSubscriptionRegisteredFeaturesArgs) ToOutput(ctx context.Context) pulumix.Output[CustomerSubscriptionRegisteredFeatures] {
+	return pulumix.Output[CustomerSubscriptionRegisteredFeatures]{
+		OutputState: i.ToCustomerSubscriptionRegisteredFeaturesOutputWithContext(ctx).OutputState,
+	}
+}
+
 // CustomerSubscriptionRegisteredFeaturesArrayInput is an input type that accepts CustomerSubscriptionRegisteredFeaturesArray and CustomerSubscriptionRegisteredFeaturesArrayOutput values.
 // You can construct a concrete instance of `CustomerSubscriptionRegisteredFeaturesArrayInput` via:
 //
@@ -802,6 +929,12 @@ func (i CustomerSubscriptionRegisteredFeaturesArray) ToCustomerSubscriptionRegis
 	return pulumi.ToOutputWithContext(ctx, i).(CustomerSubscriptionRegisteredFeaturesArrayOutput)
 }
 
+func (i CustomerSubscriptionRegisteredFeaturesArray) ToOutput(ctx context.Context) pulumix.Output[[]CustomerSubscriptionRegisteredFeatures] {
+	return pulumix.Output[[]CustomerSubscriptionRegisteredFeatures]{
+		OutputState: i.ToCustomerSubscriptionRegisteredFeaturesArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Represents subscription registered features
 type CustomerSubscriptionRegisteredFeaturesOutput struct{ *pulumi.OutputState }
 
@@ -815,6 +948,12 @@ func (o CustomerSubscriptionRegisteredFeaturesOutput) ToCustomerSubscriptionRegi
 
 func (o CustomerSubscriptionRegisteredFeaturesOutput) ToCustomerSubscriptionRegisteredFeaturesOutputWithContext(ctx context.Context) CustomerSubscriptionRegisteredFeaturesOutput {
 	return o
+}
+
+func (o CustomerSubscriptionRegisteredFeaturesOutput) ToOutput(ctx context.Context) pulumix.Output[CustomerSubscriptionRegisteredFeatures] {
+	return pulumix.Output[CustomerSubscriptionRegisteredFeatures]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Name of subscription registered feature
@@ -839,6 +978,12 @@ func (o CustomerSubscriptionRegisteredFeaturesArrayOutput) ToCustomerSubscriptio
 
 func (o CustomerSubscriptionRegisteredFeaturesArrayOutput) ToCustomerSubscriptionRegisteredFeaturesArrayOutputWithContext(ctx context.Context) CustomerSubscriptionRegisteredFeaturesArrayOutput {
 	return o
+}
+
+func (o CustomerSubscriptionRegisteredFeaturesArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]CustomerSubscriptionRegisteredFeatures] {
+	return pulumix.Output[[]CustomerSubscriptionRegisteredFeatures]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o CustomerSubscriptionRegisteredFeaturesArrayOutput) Index(i pulumi.IntInput) CustomerSubscriptionRegisteredFeaturesOutput {
@@ -902,6 +1047,12 @@ func (i DescriptionResponseArgs) ToDescriptionResponseOutputWithContext(ctx cont
 	return pulumi.ToOutputWithContext(ctx, i).(DescriptionResponseOutput)
 }
 
+func (i DescriptionResponseArgs) ToOutput(ctx context.Context) pulumix.Output[DescriptionResponse] {
+	return pulumix.Output[DescriptionResponse]{
+		OutputState: i.ToDescriptionResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Description related properties of a product system.
 type DescriptionResponseOutput struct{ *pulumi.OutputState }
 
@@ -915,6 +1066,12 @@ func (o DescriptionResponseOutput) ToDescriptionResponseOutput() DescriptionResp
 
 func (o DescriptionResponseOutput) ToDescriptionResponseOutputWithContext(ctx context.Context) DescriptionResponseOutput {
 	return o
+}
+
+func (o DescriptionResponseOutput) ToOutput(ctx context.Context) pulumix.Output[DescriptionResponse] {
+	return pulumix.Output[DescriptionResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Attributes for the product system.
@@ -1006,6 +1163,12 @@ func (i DimensionsResponseArgs) ToDimensionsResponseOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(DimensionsResponseOutput)
 }
 
+func (i DimensionsResponseArgs) ToOutput(ctx context.Context) pulumix.Output[DimensionsResponse] {
+	return pulumix.Output[DimensionsResponse]{
+		OutputState: i.ToDimensionsResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Dimensions of a configuration.
 type DimensionsResponseOutput struct{ *pulumi.OutputState }
 
@@ -1019,6 +1182,12 @@ func (o DimensionsResponseOutput) ToDimensionsResponseOutput() DimensionsRespons
 
 func (o DimensionsResponseOutput) ToDimensionsResponseOutputWithContext(ctx context.Context) DimensionsResponseOutput {
 	return o
+}
+
+func (o DimensionsResponseOutput) ToOutput(ctx context.Context) pulumix.Output[DimensionsResponse] {
+	return pulumix.Output[DimensionsResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Depth of the device.
@@ -1095,6 +1264,12 @@ func (i FilterablePropertyArgs) ToFilterablePropertyOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyOutput)
 }
 
+func (i FilterablePropertyArgs) ToOutput(ctx context.Context) pulumix.Output[FilterableProperty] {
+	return pulumix.Output[FilterableProperty]{
+		OutputState: i.ToFilterablePropertyOutputWithContext(ctx).OutputState,
+	}
+}
+
 // FilterablePropertyArrayInput is an input type that accepts FilterablePropertyArray and FilterablePropertyArrayOutput values.
 // You can construct a concrete instance of `FilterablePropertyArrayInput` via:
 //
@@ -1120,6 +1295,12 @@ func (i FilterablePropertyArray) ToFilterablePropertyArrayOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyArrayOutput)
 }
 
+func (i FilterablePropertyArray) ToOutput(ctx context.Context) pulumix.Output[[]FilterableProperty] {
+	return pulumix.Output[[]FilterableProperty]{
+		OutputState: i.ToFilterablePropertyArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Different types of filters supported and its values.
 type FilterablePropertyOutput struct{ *pulumi.OutputState }
 
@@ -1133,6 +1314,12 @@ func (o FilterablePropertyOutput) ToFilterablePropertyOutput() FilterablePropert
 
 func (o FilterablePropertyOutput) ToFilterablePropertyOutputWithContext(ctx context.Context) FilterablePropertyOutput {
 	return o
+}
+
+func (o FilterablePropertyOutput) ToOutput(ctx context.Context) pulumix.Output[FilterableProperty] {
+	return pulumix.Output[FilterableProperty]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Values to be filtered.
@@ -1157,6 +1344,12 @@ func (o FilterablePropertyArrayOutput) ToFilterablePropertyArrayOutput() Filtera
 
 func (o FilterablePropertyArrayOutput) ToFilterablePropertyArrayOutputWithContext(ctx context.Context) FilterablePropertyArrayOutput {
 	return o
+}
+
+func (o FilterablePropertyArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]FilterableProperty] {
+	return pulumix.Output[[]FilterableProperty]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FilterablePropertyArrayOutput) Index(i pulumi.IntInput) FilterablePropertyOutput {
@@ -1204,6 +1397,12 @@ func (i FilterablePropertyResponseArgs) ToFilterablePropertyResponseOutputWithCo
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyResponseOutput)
 }
 
+func (i FilterablePropertyResponseArgs) ToOutput(ctx context.Context) pulumix.Output[FilterablePropertyResponse] {
+	return pulumix.Output[FilterablePropertyResponse]{
+		OutputState: i.ToFilterablePropertyResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // FilterablePropertyResponseArrayInput is an input type that accepts FilterablePropertyResponseArray and FilterablePropertyResponseArrayOutput values.
 // You can construct a concrete instance of `FilterablePropertyResponseArrayInput` via:
 //
@@ -1229,6 +1428,12 @@ func (i FilterablePropertyResponseArray) ToFilterablePropertyResponseArrayOutput
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyResponseArrayOutput)
 }
 
+func (i FilterablePropertyResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]FilterablePropertyResponse] {
+	return pulumix.Output[[]FilterablePropertyResponse]{
+		OutputState: i.ToFilterablePropertyResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Different types of filters supported and its values.
 type FilterablePropertyResponseOutput struct{ *pulumi.OutputState }
 
@@ -1242,6 +1447,12 @@ func (o FilterablePropertyResponseOutput) ToFilterablePropertyResponseOutput() F
 
 func (o FilterablePropertyResponseOutput) ToFilterablePropertyResponseOutputWithContext(ctx context.Context) FilterablePropertyResponseOutput {
 	return o
+}
+
+func (o FilterablePropertyResponseOutput) ToOutput(ctx context.Context) pulumix.Output[FilterablePropertyResponse] {
+	return pulumix.Output[FilterablePropertyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Values to be filtered.
@@ -1266,6 +1477,12 @@ func (o FilterablePropertyResponseArrayOutput) ToFilterablePropertyResponseArray
 
 func (o FilterablePropertyResponseArrayOutput) ToFilterablePropertyResponseArrayOutputWithContext(ctx context.Context) FilterablePropertyResponseArrayOutput {
 	return o
+}
+
+func (o FilterablePropertyResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]FilterablePropertyResponse] {
+	return pulumix.Output[[]FilterablePropertyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FilterablePropertyResponseArrayOutput) Index(i pulumi.IntInput) FilterablePropertyResponseOutput {
@@ -1321,6 +1538,12 @@ func (i HierarchyInformationArgs) ToHierarchyInformationOutputWithContext(ctx co
 	return pulumi.ToOutputWithContext(ctx, i).(HierarchyInformationOutput)
 }
 
+func (i HierarchyInformationArgs) ToOutput(ctx context.Context) pulumix.Output[HierarchyInformation] {
+	return pulumix.Output[HierarchyInformation]{
+		OutputState: i.ToHierarchyInformationOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Holds details about product hierarchy information
 type HierarchyInformationOutput struct{ *pulumi.OutputState }
 
@@ -1334,6 +1557,12 @@ func (o HierarchyInformationOutput) ToHierarchyInformationOutput() HierarchyInfo
 
 func (o HierarchyInformationOutput) ToHierarchyInformationOutputWithContext(ctx context.Context) HierarchyInformationOutput {
 	return o
+}
+
+func (o HierarchyInformationOutput) ToOutput(ctx context.Context) pulumix.Output[HierarchyInformation] {
+	return pulumix.Output[HierarchyInformation]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Represents configuration name that uniquely identifies configuration
@@ -1403,6 +1632,12 @@ func (i HierarchyInformationResponseArgs) ToHierarchyInformationResponseOutputWi
 	return pulumi.ToOutputWithContext(ctx, i).(HierarchyInformationResponseOutput)
 }
 
+func (i HierarchyInformationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[HierarchyInformationResponse] {
+	return pulumix.Output[HierarchyInformationResponse]{
+		OutputState: i.ToHierarchyInformationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Holds details about product hierarchy information
 type HierarchyInformationResponseOutput struct{ *pulumi.OutputState }
 
@@ -1416,6 +1651,12 @@ func (o HierarchyInformationResponseOutput) ToHierarchyInformationResponseOutput
 
 func (o HierarchyInformationResponseOutput) ToHierarchyInformationResponseOutputWithContext(ctx context.Context) HierarchyInformationResponseOutput {
 	return o
+}
+
+func (o HierarchyInformationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[HierarchyInformationResponse] {
+	return pulumix.Output[HierarchyInformationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Represents configuration name that uniquely identifies configuration
@@ -1477,6 +1718,12 @@ func (i ImageInformationResponseArgs) ToImageInformationResponseOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(ImageInformationResponseOutput)
 }
 
+func (i ImageInformationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[ImageInformationResponse] {
+	return pulumix.Output[ImageInformationResponse]{
+		OutputState: i.ToImageInformationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ImageInformationResponseArrayInput is an input type that accepts ImageInformationResponseArray and ImageInformationResponseArrayOutput values.
 // You can construct a concrete instance of `ImageInformationResponseArrayInput` via:
 //
@@ -1502,6 +1749,12 @@ func (i ImageInformationResponseArray) ToImageInformationResponseArrayOutputWith
 	return pulumi.ToOutputWithContext(ctx, i).(ImageInformationResponseArrayOutput)
 }
 
+func (i ImageInformationResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]ImageInformationResponse] {
+	return pulumix.Output[[]ImageInformationResponse]{
+		OutputState: i.ToImageInformationResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Image for the product
 type ImageInformationResponseOutput struct{ *pulumi.OutputState }
 
@@ -1515,6 +1768,12 @@ func (o ImageInformationResponseOutput) ToImageInformationResponseOutput() Image
 
 func (o ImageInformationResponseOutput) ToImageInformationResponseOutputWithContext(ctx context.Context) ImageInformationResponseOutput {
 	return o
+}
+
+func (o ImageInformationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[ImageInformationResponse] {
+	return pulumix.Output[ImageInformationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Type of the image
@@ -1539,6 +1798,12 @@ func (o ImageInformationResponseArrayOutput) ToImageInformationResponseArrayOutp
 
 func (o ImageInformationResponseArrayOutput) ToImageInformationResponseArrayOutputWithContext(ctx context.Context) ImageInformationResponseArrayOutput {
 	return o
+}
+
+func (o ImageInformationResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ImageInformationResponse] {
+	return pulumix.Output[[]ImageInformationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ImageInformationResponseArrayOutput) Index(i pulumi.IntInput) ImageInformationResponseOutput {
@@ -1586,6 +1851,12 @@ func (i LinkResponseArgs) ToLinkResponseOutputWithContext(ctx context.Context) L
 	return pulumi.ToOutputWithContext(ctx, i).(LinkResponseOutput)
 }
 
+func (i LinkResponseArgs) ToOutput(ctx context.Context) pulumix.Output[LinkResponse] {
+	return pulumix.Output[LinkResponse]{
+		OutputState: i.ToLinkResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // LinkResponseArrayInput is an input type that accepts LinkResponseArray and LinkResponseArrayOutput values.
 // You can construct a concrete instance of `LinkResponseArrayInput` via:
 //
@@ -1611,6 +1882,12 @@ func (i LinkResponseArray) ToLinkResponseArrayOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(LinkResponseArrayOutput)
 }
 
+func (i LinkResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]LinkResponse] {
+	return pulumix.Output[[]LinkResponse]{
+		OutputState: i.ToLinkResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Returns link related to the product
 type LinkResponseOutput struct{ *pulumi.OutputState }
 
@@ -1624,6 +1901,12 @@ func (o LinkResponseOutput) ToLinkResponseOutput() LinkResponseOutput {
 
 func (o LinkResponseOutput) ToLinkResponseOutputWithContext(ctx context.Context) LinkResponseOutput {
 	return o
+}
+
+func (o LinkResponseOutput) ToOutput(ctx context.Context) pulumix.Output[LinkResponse] {
+	return pulumix.Output[LinkResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Type of link
@@ -1648,6 +1931,12 @@ func (o LinkResponseArrayOutput) ToLinkResponseArrayOutput() LinkResponseArrayOu
 
 func (o LinkResponseArrayOutput) ToLinkResponseArrayOutputWithContext(ctx context.Context) LinkResponseArrayOutput {
 	return o
+}
+
+func (o LinkResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]LinkResponse] {
+	return pulumix.Output[[]LinkResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o LinkResponseArrayOutput) Index(i pulumi.IntInput) LinkResponseOutput {
@@ -1705,6 +1994,12 @@ func (i Pav2MeterDetailsResponseArgs) ToPav2MeterDetailsResponseOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(Pav2MeterDetailsResponseOutput)
 }
 
+func (i Pav2MeterDetailsResponseArgs) ToOutput(ctx context.Context) pulumix.Output[Pav2MeterDetailsResponse] {
+	return pulumix.Output[Pav2MeterDetailsResponse]{
+		OutputState: i.ToPav2MeterDetailsResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Billing type PAV2 meter details
 type Pav2MeterDetailsResponseOutput struct{ *pulumi.OutputState }
 
@@ -1718,6 +2013,12 @@ func (o Pav2MeterDetailsResponseOutput) ToPav2MeterDetailsResponseOutput() Pav2M
 
 func (o Pav2MeterDetailsResponseOutput) ToPav2MeterDetailsResponseOutputWithContext(ctx context.Context) Pav2MeterDetailsResponseOutput {
 	return o
+}
+
+func (o Pav2MeterDetailsResponseOutput) ToOutput(ctx context.Context) pulumix.Output[Pav2MeterDetailsResponse] {
+	return pulumix.Output[Pav2MeterDetailsResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Represents billing type.
@@ -1804,6 +2105,12 @@ func (i ProductFamilyResponseArgs) ToProductFamilyResponseOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(ProductFamilyResponseOutput)
 }
 
+func (i ProductFamilyResponseArgs) ToOutput(ctx context.Context) pulumix.Output[ProductFamilyResponse] {
+	return pulumix.Output[ProductFamilyResponse]{
+		OutputState: i.ToProductFamilyResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ProductFamilyResponseArrayInput is an input type that accepts ProductFamilyResponseArray and ProductFamilyResponseArrayOutput values.
 // You can construct a concrete instance of `ProductFamilyResponseArrayInput` via:
 //
@@ -1829,6 +2136,12 @@ func (i ProductFamilyResponseArray) ToProductFamilyResponseArrayOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(ProductFamilyResponseArrayOutput)
 }
 
+func (i ProductFamilyResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]ProductFamilyResponse] {
+	return pulumix.Output[[]ProductFamilyResponse]{
+		OutputState: i.ToProductFamilyResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Product Family
 type ProductFamilyResponseOutput struct{ *pulumi.OutputState }
 
@@ -1842,6 +2155,12 @@ func (o ProductFamilyResponseOutput) ToProductFamilyResponseOutput() ProductFami
 
 func (o ProductFamilyResponseOutput) ToProductFamilyResponseOutputWithContext(ctx context.Context) ProductFamilyResponseOutput {
 	return o
+}
+
+func (o ProductFamilyResponseOutput) ToOutput(ctx context.Context) pulumix.Output[ProductFamilyResponse] {
+	return pulumix.Output[ProductFamilyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Availability information of the product system.
@@ -1896,6 +2215,12 @@ func (o ProductFamilyResponseArrayOutput) ToProductFamilyResponseArrayOutput() P
 
 func (o ProductFamilyResponseArrayOutput) ToProductFamilyResponseArrayOutputWithContext(ctx context.Context) ProductFamilyResponseArrayOutput {
 	return o
+}
+
+func (o ProductFamilyResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ProductFamilyResponse] {
+	return pulumix.Output[[]ProductFamilyResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ProductFamilyResponseArrayOutput) Index(i pulumi.IntInput) ProductFamilyResponseOutput {
@@ -1967,6 +2292,12 @@ func (i ProductLineResponseArgs) ToProductLineResponseOutputWithContext(ctx cont
 	return pulumi.ToOutputWithContext(ctx, i).(ProductLineResponseOutput)
 }
 
+func (i ProductLineResponseArgs) ToOutput(ctx context.Context) pulumix.Output[ProductLineResponse] {
+	return pulumix.Output[ProductLineResponse]{
+		OutputState: i.ToProductLineResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ProductLineResponseArrayInput is an input type that accepts ProductLineResponseArray and ProductLineResponseArrayOutput values.
 // You can construct a concrete instance of `ProductLineResponseArrayInput` via:
 //
@@ -1992,6 +2323,12 @@ func (i ProductLineResponseArray) ToProductLineResponseArrayOutputWithContext(ct
 	return pulumi.ToOutputWithContext(ctx, i).(ProductLineResponseArrayOutput)
 }
 
+func (i ProductLineResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]ProductLineResponse] {
+	return pulumix.Output[[]ProductLineResponse]{
+		OutputState: i.ToProductLineResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Product line
 type ProductLineResponseOutput struct{ *pulumi.OutputState }
 
@@ -2005,6 +2342,12 @@ func (o ProductLineResponseOutput) ToProductLineResponseOutput() ProductLineResp
 
 func (o ProductLineResponseOutput) ToProductLineResponseOutputWithContext(ctx context.Context) ProductLineResponseOutput {
 	return o
+}
+
+func (o ProductLineResponseOutput) ToOutput(ctx context.Context) pulumix.Output[ProductLineResponse] {
+	return pulumix.Output[ProductLineResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Availability information of the product system.
@@ -2059,6 +2402,12 @@ func (o ProductLineResponseArrayOutput) ToProductLineResponseArrayOutput() Produ
 
 func (o ProductLineResponseArrayOutput) ToProductLineResponseArrayOutputWithContext(ctx context.Context) ProductLineResponseArrayOutput {
 	return o
+}
+
+func (o ProductLineResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ProductLineResponse] {
+	return pulumix.Output[[]ProductLineResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ProductLineResponseArrayOutput) Index(i pulumi.IntInput) ProductLineResponseOutput {
@@ -2130,6 +2479,12 @@ func (i ProductResponseArgs) ToProductResponseOutputWithContext(ctx context.Cont
 	return pulumi.ToOutputWithContext(ctx, i).(ProductResponseOutput)
 }
 
+func (i ProductResponseArgs) ToOutput(ctx context.Context) pulumix.Output[ProductResponse] {
+	return pulumix.Output[ProductResponse]{
+		OutputState: i.ToProductResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ProductResponseArrayInput is an input type that accepts ProductResponseArray and ProductResponseArrayOutput values.
 // You can construct a concrete instance of `ProductResponseArrayInput` via:
 //
@@ -2155,6 +2510,12 @@ func (i ProductResponseArray) ToProductResponseArrayOutputWithContext(ctx contex
 	return pulumi.ToOutputWithContext(ctx, i).(ProductResponseArrayOutput)
 }
 
+func (i ProductResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]ProductResponse] {
+	return pulumix.Output[[]ProductResponse]{
+		OutputState: i.ToProductResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // List of Products
 type ProductResponseOutput struct{ *pulumi.OutputState }
 
@@ -2168,6 +2529,12 @@ func (o ProductResponseOutput) ToProductResponseOutput() ProductResponseOutput {
 
 func (o ProductResponseOutput) ToProductResponseOutputWithContext(ctx context.Context) ProductResponseOutput {
 	return o
+}
+
+func (o ProductResponseOutput) ToOutput(ctx context.Context) pulumix.Output[ProductResponse] {
+	return pulumix.Output[ProductResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Availability information of the product system.
@@ -2222,6 +2589,12 @@ func (o ProductResponseArrayOutput) ToProductResponseArrayOutput() ProductRespon
 
 func (o ProductResponseArrayOutput) ToProductResponseArrayOutputWithContext(ctx context.Context) ProductResponseArrayOutput {
 	return o
+}
+
+func (o ProductResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]ProductResponse] {
+	return pulumix.Output[[]ProductResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ProductResponseArrayOutput) Index(i pulumi.IntInput) ProductResponseOutput {
@@ -2287,6 +2660,12 @@ func (i PurchaseMeterDetailsResponseArgs) ToPurchaseMeterDetailsResponseOutputWi
 	return pulumi.ToOutputWithContext(ctx, i).(PurchaseMeterDetailsResponseOutput)
 }
 
+func (i PurchaseMeterDetailsResponseArgs) ToOutput(ctx context.Context) pulumix.Output[PurchaseMeterDetailsResponse] {
+	return pulumix.Output[PurchaseMeterDetailsResponse]{
+		OutputState: i.ToPurchaseMeterDetailsResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Billing type Purchase meter details
 type PurchaseMeterDetailsResponseOutput struct{ *pulumi.OutputState }
 
@@ -2300,6 +2679,12 @@ func (o PurchaseMeterDetailsResponseOutput) ToPurchaseMeterDetailsResponseOutput
 
 func (o PurchaseMeterDetailsResponseOutput) ToPurchaseMeterDetailsResponseOutputWithContext(ctx context.Context) PurchaseMeterDetailsResponseOutput {
 	return o
+}
+
+func (o PurchaseMeterDetailsResponseOutput) ToOutput(ctx context.Context) pulumix.Output[PurchaseMeterDetailsResponse] {
+	return pulumix.Output[PurchaseMeterDetailsResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Represents billing type.
@@ -2372,6 +2757,12 @@ func (i SpecificationResponseArgs) ToSpecificationResponseOutputWithContext(ctx 
 	return pulumi.ToOutputWithContext(ctx, i).(SpecificationResponseOutput)
 }
 
+func (i SpecificationResponseArgs) ToOutput(ctx context.Context) pulumix.Output[SpecificationResponse] {
+	return pulumix.Output[SpecificationResponse]{
+		OutputState: i.ToSpecificationResponseOutputWithContext(ctx).OutputState,
+	}
+}
+
 // SpecificationResponseArrayInput is an input type that accepts SpecificationResponseArray and SpecificationResponseArrayOutput values.
 // You can construct a concrete instance of `SpecificationResponseArrayInput` via:
 //
@@ -2397,6 +2788,12 @@ func (i SpecificationResponseArray) ToSpecificationResponseArrayOutputWithContex
 	return pulumi.ToOutputWithContext(ctx, i).(SpecificationResponseArrayOutput)
 }
 
+func (i SpecificationResponseArray) ToOutput(ctx context.Context) pulumix.Output[[]SpecificationResponse] {
+	return pulumix.Output[[]SpecificationResponse]{
+		OutputState: i.ToSpecificationResponseArrayOutputWithContext(ctx).OutputState,
+	}
+}
+
 // Specifications of the configurations
 type SpecificationResponseOutput struct{ *pulumi.OutputState }
 
@@ -2410,6 +2807,12 @@ func (o SpecificationResponseOutput) ToSpecificationResponseOutput() Specificati
 
 func (o SpecificationResponseOutput) ToSpecificationResponseOutputWithContext(ctx context.Context) SpecificationResponseOutput {
 	return o
+}
+
+func (o SpecificationResponseOutput) ToOutput(ctx context.Context) pulumix.Output[SpecificationResponse] {
+	return pulumix.Output[SpecificationResponse]{
+		OutputState: o.OutputState,
+	}
 }
 
 // Name of the specification
@@ -2436,6 +2839,12 @@ func (o SpecificationResponseArrayOutput) ToSpecificationResponseArrayOutputWith
 	return o
 }
 
+func (o SpecificationResponseArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]SpecificationResponse] {
+	return pulumix.Output[[]SpecificationResponse]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o SpecificationResponseArrayOutput) Index(i pulumi.IntInput) SpecificationResponseOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SpecificationResponse {
 		return vs[0].([]SpecificationResponse)[vs[1].(int)]
@@ -2454,6 +2863,12 @@ func (i FilterablePropertyArrayMap) ToFilterablePropertyArrayMapOutput() Filtera
 
 func (i FilterablePropertyArrayMap) ToFilterablePropertyArrayMapOutputWithContext(ctx context.Context) FilterablePropertyArrayMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(FilterablePropertyArrayMapOutput)
+}
+
+func (i FilterablePropertyArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]FilterableProperty] {
+	return pulumix.Output[map[string][]FilterableProperty]{
+		OutputState: i.ToFilterablePropertyArrayMapOutputWithContext(ctx).OutputState,
+	}
 }
 
 // FilterablePropertyArrayMapInput is an input type that accepts FilterablePropertyArrayMap and FilterablePropertyArrayMapOutput values.
@@ -2479,6 +2894,12 @@ func (o FilterablePropertyArrayMapOutput) ToFilterablePropertyArrayMapOutput() F
 
 func (o FilterablePropertyArrayMapOutput) ToFilterablePropertyArrayMapOutputWithContext(ctx context.Context) FilterablePropertyArrayMapOutput {
 	return o
+}
+
+func (o FilterablePropertyArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]FilterableProperty] {
+	return pulumix.Output[map[string][]FilterableProperty]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o FilterablePropertyArrayMapOutput) MapIndex(k pulumi.StringInput) FilterablePropertyArrayOutput {

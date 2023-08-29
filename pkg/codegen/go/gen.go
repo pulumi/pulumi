@@ -168,6 +168,8 @@ type pkgContext struct {
 	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
 	pkgImportAliases map[string]string // Package name -> import alias
+	// the name used for the internal module, defaults to "internal" if not set by the schema
+	internalModuleName string
 
 	// Determines whether to make single-return-value methods return an output struct or the value
 	liftSingleValueMethodReturns bool
@@ -992,6 +994,7 @@ func genInputImplementationWithArgs(w io.Writer, genArgs genInputImplementationA
 	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
 	fmt.Fprintf(w, "}\n\n")
 
+	var hasToOutput bool
 	if genArgs.toOutputMethods {
 		fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
 		fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
@@ -1000,6 +1003,15 @@ func genInputImplementationWithArgs(w io.Writer, genArgs genInputImplementationA
 		fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
 		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
 		fmt.Fprintf(w, "}\n\n")
+
+		// Generate 'ToOuput(context.Context) pux.Output[T]' method
+		// to satisfy pux.Input[T].
+		fmt.Fprintf(w, "func (i %s) ToOutput(ctx context.Context) pulumix.Output[%s] {\n", receiverType, elementType)
+		fmt.Fprintf(w, "\treturn pulumix.Output[%s]{\n", elementType)
+		fmt.Fprintf(w, "\t\tOutputState: i.To%sOutputWithContext(ctx).OutputState,\n", Title(name))
+		fmt.Fprintf(w, "\t}\n")
+		fmt.Fprintf(w, "}\n\n")
+		hasToOutput = true
 	}
 
 	if genArgs.ptrMethods {
@@ -1014,6 +1026,16 @@ func genInputImplementationWithArgs(w io.Writer, genArgs genInputImplementationA
 			fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sPtrOutput)\n", name)
 		}
 		fmt.Fprintf(w, "}\n\n")
+
+		if !hasToOutput {
+			// Generate 'ToOuput(context.Context) pux.Output[*T]' method
+			// to satisfy pux.Input[*T].
+			fmt.Fprintf(w, "func (i %s) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", receiverType, elementType)
+			fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", elementType)
+			fmt.Fprintf(w, "\t\tOutputState: i.To%sPtrOutputWithContext(ctx).OutputState,\n", Title(name))
+			fmt.Fprintf(w, "\t}\n")
+			fmt.Fprintf(w, "}\n\n")
+		}
 	}
 }
 
@@ -1043,6 +1065,14 @@ func genOutputType(w io.Writer, baseName, elementType string, ptrMethods bool) {
 		fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", baseName)
 		fmt.Fprintf(w, "}\n\n")
 	}
+
+	// Generate 'ToOuput(context.Context) pux.Output[T]' method
+	// to satisfy pux.Input[T].
+	fmt.Fprintf(w, "func (o %sOutput) ToOutput(ctx context.Context) pulumix.Output[%s] {\n", baseName, elementType)
+	fmt.Fprintf(w, "\treturn pulumix.Output[%s]{\n", elementType)
+	fmt.Fprintf(w, "\t\tOutputState: o.OutputState,\n")
+	fmt.Fprintf(w, "\t}\n")
+	fmt.Fprintf(w, "}\n\n")
 }
 
 func genArrayOutput(w io.Writer, baseName, elementType string) {
@@ -1240,6 +1270,13 @@ func (pkg *pkgContext) genEnumInputTypes(w io.Writer, name string, enumType *sch
 	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, in).(%sPtrOutput)\n", name)
 	fmt.Fprintf(w, "}\n")
 	fmt.Fprintln(w)
+
+	// ToOutput implementation for pux.Input.
+	fmt.Fprintf(w, "func (in *%sPtr) ToOutput(ctx context.Context) pulumix.Output[*%s] {\n", typeName, name)
+	fmt.Fprintf(w, "\treturn pulumix.Output[*%s]{\n", name)
+	fmt.Fprintf(w, "\t\tOutputState: in.To%sPtrOutputWithContext(ctx).OutputState,\n", name)
+	fmt.Fprintf(w, "\t}\n")
+	fmt.Fprintf(w, "}\n\n")
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementArgsType, inputType, asFuncName string) {
@@ -1352,7 +1389,7 @@ func (pkg *pkgContext) genObjectDefaultFunc(w io.Writer, name string,
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "if tmp.%s == nil {\n", pkg.fieldName(nil, p))
 			} else {
-				fmt.Fprintf(w, "if internal.IsZero(tmp.%s) {\n", pkg.fieldName(nil, p))
+				fmt.Fprintf(w, "if %s.IsZero(tmp.%s) {\n", pkg.internalModuleName, pkg.fieldName(nil, p))
 			}
 			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
 				pkg.assignProperty(w, p, "tmp", dv, !p.IsRequired())
@@ -1637,15 +1674,15 @@ func (pkg *pkgContext) setDefaultValue(
 	parser, typ := "nil", "string"
 	switch codegen.UnwrapType(t).(type) {
 	case *schema.ArrayType:
-		parser, typ = "internal.ParseEnvStringArray", "pulumi.StringArray"
+		parser, typ = fmt.Sprintf("%s.ParseEnvStringArray", pkg.internalModuleName), "pulumi.StringArray"
 	}
 	switch t {
 	case schema.BoolType:
-		parser, typ = "internal.ParseEnvBool", "bool"
+		parser, typ = fmt.Sprintf("%s.ParseEnvBool", pkg.internalModuleName), "bool"
 	case schema.IntType:
-		parser, typ = "internal.ParseEnvInt", "int"
+		parser, typ = fmt.Sprintf("%s.ParseEnvInt", pkg.internalModuleName), "int"
 	case schema.NumberType:
-		parser, typ = "internal.ParseEnvFloat", "float64"
+		parser, typ = fmt.Sprintf("%s.ParseEnvFloat", pkg.internalModuleName), "float64"
 	}
 
 	if val == "" {
@@ -1665,7 +1702,7 @@ func (pkg *pkgContext) setDefaultValue(
 	//  - if an environment variable was set, read from that
 	//  - if a default value was specified, use that
 	//  - otherwise, leave the variable unset
-	fmt.Fprintf(w, "if d := internal.GetEnvOrDefault(%s, %s", val, parser)
+	fmt.Fprintf(w, "if d := %s.GetEnvOrDefault(%s, %s", pkg.internalModuleName, val, parser)
 	for _, e := range dv.Environment {
 		fmt.Fprintf(w, ", %q", e)
 	}
@@ -1756,7 +1793,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			if isNilType(p.Type) {
 				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
 			} else {
-				fmt.Fprintf(w, "\tif internal.IsZero(args.%s) {\n", pkg.fieldName(r, p))
+				fmt.Fprintf(w, "\tif %s.IsZero(args.%s) {\n", pkg.internalModuleName, pkg.fieldName(r, p))
 			}
 			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
 				assign(w, p, dv)
@@ -2146,12 +2183,13 @@ func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) (string, error) {
 	importsAndAliases := map[string]string{}
 	pkg.getImports(f, importsAndAliases)
 	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
+	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	buffer := &bytes.Buffer{}
 
 	var imports []string
 	if NeedsGoOutputVersion(f) {
 		imports = []string{"context", "reflect"}
+		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 	}
 
 	pkg.genHeader(buffer, imports, importsAndAliases, false /* isUtil */)
@@ -2915,7 +2953,9 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 	if pkg.mod == "" {
 		if isUtil {
 			// we place pulumiVersion and pulumiUtilities in an ./internal folder
-			pkgName = "internal"
+			// the name of the folder can be overridden by the schema
+			// so we use the computed internalModuleName which defaults to "internal" if not set
+			pkgName = pkg.internalModuleName
 		} else {
 			def, err := pkg.pkg.Definition()
 			contract.AssertNoErrorf(err, "Could not retrieve definition")
@@ -2970,11 +3010,11 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi":        "",
 	}
 	pkg.getImports(variables, importsAndAliases)
-	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
+	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	pkg.genHeader(w, nil, importsAndAliases, false /* isUtil */)
 
 	// in case we're not using the internal package, assign to a blank var
-	fmt.Fprintf(w, "var _ = internal.GetEnvOrDefault\n")
+	fmt.Fprintf(w, "var _ = %s.GetEnvOrDefault\n", pkg.internalModuleName)
 
 	for _, p := range variables {
 		getfunc := "Get"
@@ -3043,7 +3083,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 	}
-	imports[path.Join(pkg.importBasePath, "internal")] = ""
+	imports[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 
 	// If there are any internal dependencies, include them as blank imports.
 	def, err := pkg.pkg.Definition()
@@ -3117,7 +3157,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) error {
 
 	fmt.Fprintf(w, "func init() {\n")
 
-	fmt.Fprintf(w, "\tversion, err := internal.PkgVersion()\n")
+	fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkg.internalModuleName)
 	// To avoid breaking compatibility, we don't change the function
 	// signature. We instead just ignore the error.
 	fmt.Fprintf(w, "\tif err != nil {\n")
@@ -3154,6 +3194,10 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 	getPkg := func(mod string) *pkgContext {
 		pack, ok := packages[mod]
 		if !ok {
+			internalModuleName := "internal"
+			if goInfo.InternalModuleName != "" {
+				internalModuleName = goInfo.InternalModuleName
+			}
 			pack = &pkgContext{
 				pkg:                           pkg,
 				mod:                           mod,
@@ -3172,6 +3216,7 @@ func generatePackageContextMap(tool string, pkg schema.PackageReference, goInfo 
 				liftSingleValueMethodReturns:  goInfo.LiftSingleValueMethodReturns,
 				disableInputTypeRegistrations: goInfo.DisableInputTypeRegistrations,
 				disableObjectDefaults:         goInfo.DisableObjectDefaults,
+				internalModuleName:            internalModuleName,
 				externalPackages:              externalPkgs,
 			}
 			packages[mod] = pack
@@ -3758,7 +3803,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, "internal/pulumiVersion.go"), versionBuf.String())
+			versionFilePath := fmt.Sprintf("%s/pulumiVersion.go", pkg.internalModuleName)
+			setFile(path.Join(mod, versionFilePath), versionBuf.String())
 
 		case "config":
 			config, err := pkg.pkg.Config()
@@ -3785,7 +3831,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			importsAndAliases := map[string]string{}
 			pkg.getImports(r, importsAndAliases)
 			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
-			importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
+			importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
+			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases, false /* isUtil */)
 
@@ -3827,6 +3874,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			if hasOutputs {
 				goImports = []string{"context", "reflect"}
 				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+				imports["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 			}
 
 			buffer := &bytes.Buffer{}
@@ -3898,7 +3946,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, "internal/pulumiUtilities.go"), buffer.String())
+			utilFilePath := fmt.Sprintf("%s/pulumiUtilities.go", pkg.internalModuleName)
+			setFile(path.Join(mod, utilFilePath), buffer.String())
 		}
 
 		// If there are resources in this module, register the module with the runtime.
@@ -3937,12 +3986,13 @@ func generateTypes(w io.Writer, pkg *pkgContext, types []*schema.ObjectType, kno
 	if hasOutputs {
 		goImports = []string{"context", "reflect"}
 		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
 	}
 
-	importsAndAliases[path.Join(pkg.importBasePath, "internal")] = ""
+	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
 	pkg.genHeader(w, goImports, importsAndAliases, false /* isUtil */)
 	// in case we're not using the internal package, assign to a blank var
-	fmt.Fprintf(w, "var _ = internal.GetEnvOrDefault\n")
+	fmt.Fprintf(w, "var _ = %s.GetEnvOrDefault\n", pkg.internalModuleName)
 
 	for _, t := range types {
 		if err := pkg.genType(w, t); err != nil {
@@ -4114,7 +4164,7 @@ func (pkg *pkgContext) GenPkgDefaultsOptsCall(w io.Writer, invoke bool) error {
 		typ = "Invoke"
 	}
 
-	_, err := fmt.Fprintf(w, "\topts = internal.Pkg%sDefaultOpts(opts)\n", typ)
+	_, err := fmt.Fprintf(w, "\topts = %s.Pkg%sDefaultOpts(opts)\n", pkg.internalModuleName, typ)
 	if err != nil {
 		return err
 	}

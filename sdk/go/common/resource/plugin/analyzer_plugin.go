@@ -103,13 +103,15 @@ func NewPolicyAnalyzer(
 	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
 	pluginPath, err := workspace.GetPluginPath(ctx.Diag,
 		workspace.AnalyzerPlugin, policyAnalyzerName, nil, host.GetProjectPlugins())
-	if err != nil {
-		return nil, rpcerror.Convert(err)
-	} else if pluginPath == "" {
+
+	var e *workspace.MissingError
+	if errors.As(err, &e) {
 		return nil, fmt.Errorf("could not start policy pack %q because the built-in analyzer "+
 			"plugin that runs policy plugins is missing. This might occur when the plugin "+
 			"directory is not on your $PATH, or when the installed version of the Pulumi SDK "+
 			"does not support resource policies", string(name))
+	} else if err != nil {
+		return nil, err
 	}
 
 	// Create the environment variables from the options.

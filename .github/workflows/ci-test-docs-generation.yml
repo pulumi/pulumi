@@ -122,7 +122,7 @@ jobs:
           go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../../../pulumi/sdk
           popd
 
-          ./scripts/gen_resource_docs.sh aws true
+          ./scripts/gen_resource_docs.sh aws true v5.42.0
           ./scripts/gen_resource_docs.sh kubernetes true
 
           # Undo the changes to the go.mod and go.sum files since we don't want the PR

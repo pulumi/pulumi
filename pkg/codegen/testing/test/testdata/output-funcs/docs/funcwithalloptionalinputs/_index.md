@@ -114,8 +114,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_csharp" style="color: inherit; text-decoration: inherit;">B</a>
@@ -123,8 +122,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -138,8 +136,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_go" style="color: inherit; text-decoration: inherit;">B</a>
@@ -147,8 +144,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -162,8 +158,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_java" style="color: inherit; text-decoration: inherit;">b</a>
@@ -171,8 +166,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -186,8 +180,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
@@ -195,8 +188,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -210,8 +202,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
@@ -219,8 +210,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -234,8 +224,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property A</p>
-</dd><dt class="property-optional"
+    <dd>Property A</dd><dt class="property-optional"
             title="Optional">
         <span id="b_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#b_yaml" style="color: inherit; text-decoration: inherit;">b</a>
@@ -243,8 +232,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Property B</p>
-</dd></dl>
+    <dd>Property B</dd></dl>
 </pulumi-choosable>
 </div>
 

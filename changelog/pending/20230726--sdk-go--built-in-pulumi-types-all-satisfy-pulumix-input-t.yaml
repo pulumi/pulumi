@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Built-in Pulumi types all satisfy `pulumix.Input[T]` for their underlying types.

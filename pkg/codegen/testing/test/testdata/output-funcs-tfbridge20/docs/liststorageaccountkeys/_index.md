@@ -117,8 +117,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_csharp" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -126,8 +125,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_csharp" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -135,8 +133,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -150,8 +147,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_go" style="color: inherit; text-decoration: inherit;">Resource<wbr>Group<wbr>Name</a>
@@ -159,8 +155,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_go" style="color: inherit; text-decoration: inherit;">Expand</a>
@@ -168,8 +163,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -183,8 +177,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_java" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -192,8 +185,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_java" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -201,8 +193,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -216,8 +207,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_nodejs" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -225,8 +215,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_nodejs" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -234,8 +223,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -249,8 +237,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resource_group_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resource_group_name_python" style="color: inherit; text-decoration: inherit;">resource_<wbr>group_<wbr>name</a>
@@ -258,8 +245,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_python" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -267,8 +253,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -282,8 +267,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</p>
-</dd><dt class="property-required"
+    <dd>The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.</dd><dt class="property-required"
             title="Required">
         <span id="resourcegroupname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#resourcegroupname_yaml" style="color: inherit; text-decoration: inherit;">resource<wbr>Group<wbr>Name</a>
@@ -291,8 +275,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>The name of the resource group within the user's subscription. The name is case insensitive.</p>
-</dd><dt class="property-optional"
+    <dd>The name of the resource group within the user's subscription. The name is case insensitive.</dd><dt class="property-optional"
             title="Optional">
         <span id="expand_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#expand_yaml" style="color: inherit; text-decoration: inherit;">expand</a>
@@ -300,8 +283,7 @@ The following arguments are supported:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Specifies type of the key to be listed. Possible value is kerb.</p>
-</dd></dl>
+    <dd>Specifies type of the key to be listed. Possible value is kerb.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -324,8 +306,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -339,8 +320,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">[]Storage<wbr>Account<wbr>Key<wbr>Response</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -354,8 +334,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Storage<wbr>Account<wbr>Key<wbr>Response&gt;</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -369,8 +348,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Storage<wbr>Account<wbr>Key<wbr>Response[]</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -384,8 +362,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">Sequence[Storage<wbr>Account<wbr>Key<wbr>Response]</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -399,8 +376,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#storageaccountkeyresponse">List&lt;Property Map&gt;</a></span>
     </dt>
-    <dd><p>Gets the list of storage account keys and their properties for the specified storage account.</p>
-</dd></dl>
+    <dd>Gets the list of storage account keys and their properties for the specified storage account.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -424,8 +400,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="keyname_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_csharp" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -433,8 +408,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_csharp" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -442,8 +416,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_csharp">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_csharp" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -451,8 +424,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -466,8 +438,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="keyname_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_go" style="color: inherit; text-decoration: inherit;">Key<wbr>Name</a>
@@ -475,8 +446,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_go" style="color: inherit; text-decoration: inherit;">Permissions</a>
@@ -484,8 +454,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_go">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_go" style="color: inherit; text-decoration: inherit;">Value</a>
@@ -493,8 +462,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -508,8 +476,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="keyname_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_java" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
@@ -517,8 +484,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_java" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -526,8 +492,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_java">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_java" style="color: inherit; text-decoration: inherit;">value</a>
@@ -535,8 +500,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -550,8 +514,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="keyname_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_nodejs" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
@@ -559,8 +522,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_nodejs" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -568,8 +530,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_nodejs">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_nodejs" style="color: inherit; text-decoration: inherit;">value</a>
@@ -577,8 +538,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">string</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -592,8 +552,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="key_name_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#key_name_python" style="color: inherit; text-decoration: inherit;">key_<wbr>name</a>
@@ -601,8 +560,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_python" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -610,8 +568,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_python">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_python" style="color: inherit; text-decoration: inherit;">value</a>
@@ -619,8 +576,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">str</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 
@@ -634,8 +590,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Creation time of the key, in round trip date format.</p>
-</dd><dt class="property-required"
+    <dd>Creation time of the key, in round trip date format.</dd><dt class="property-required"
             title="Required">
         <span id="keyname_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#keyname_yaml" style="color: inherit; text-decoration: inherit;">key<wbr>Name</a>
@@ -643,8 +598,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Name of the key.</p>
-</dd><dt class="property-required"
+    <dd>Name of the key.</dd><dt class="property-required"
             title="Required">
         <span id="permissions_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#permissions_yaml" style="color: inherit; text-decoration: inherit;">permissions</a>
@@ -652,8 +606,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Permissions for the key -- read-only or full permissions.</p>
-</dd><dt class="property-required"
+    <dd>Permissions for the key -- read-only or full permissions.</dd><dt class="property-required"
             title="Required">
         <span id="value_yaml">
 <a data-swiftype-name="resource-property" data-swiftype-type="text" href="#value_yaml" style="color: inherit; text-decoration: inherit;">value</a>
@@ -661,8 +614,7 @@ The following output properties are available:
         <span class="property-indicator"></span>
         <span class="property-type">String</span>
     </dt>
-    <dd><p>Base 64-encoded value of the key.</p>
-</dd></dl>
+    <dd>Base 64-encoded value of the key.</dd></dl>
 </pulumi-choosable>
 </div>
 

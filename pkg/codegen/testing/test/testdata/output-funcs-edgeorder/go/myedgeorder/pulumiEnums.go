@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 )
 
 // Type of product filter.
@@ -80,6 +81,12 @@ func (o SupportedFilterTypesOutput) ToSupportedFilterTypesPtrOutputWithContext(c
 	}).(SupportedFilterTypesPtrOutput)
 }
 
+func (o SupportedFilterTypesOutput) ToOutput(ctx context.Context) pulumix.Output[SupportedFilterTypes] {
+	return pulumix.Output[SupportedFilterTypes]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o SupportedFilterTypesOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
@@ -113,6 +120,12 @@ func (o SupportedFilterTypesPtrOutput) ToSupportedFilterTypesPtrOutput() Support
 
 func (o SupportedFilterTypesPtrOutput) ToSupportedFilterTypesPtrOutputWithContext(ctx context.Context) SupportedFilterTypesPtrOutput {
 	return o
+}
+
+func (o SupportedFilterTypesPtrOutput) ToOutput(ctx context.Context) pulumix.Output[*SupportedFilterTypes] {
+	return pulumix.Output[*SupportedFilterTypes]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o SupportedFilterTypesPtrOutput) Elem() SupportedFilterTypesOutput {
@@ -175,6 +188,12 @@ func (in *supportedFilterTypesPtr) ToSupportedFilterTypesPtrOutput() SupportedFi
 
 func (in *supportedFilterTypesPtr) ToSupportedFilterTypesPtrOutputWithContext(ctx context.Context) SupportedFilterTypesPtrOutput {
 	return pulumi.ToOutputWithContext(ctx, in).(SupportedFilterTypesPtrOutput)
+}
+
+func (in *supportedFilterTypesPtr) ToOutput(ctx context.Context) pulumix.Output[*SupportedFilterTypes] {
+	return pulumix.Output[*SupportedFilterTypes]{
+		OutputState: in.ToSupportedFilterTypesPtrOutputWithContext(ctx).OutputState,
+	}
 }
 
 func init() {

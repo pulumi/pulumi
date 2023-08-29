@@ -69,6 +69,10 @@ type GoPackageInfo struct {
 	// space saving measure.
 	DisableInputTypeRegistrations bool `json:"disableInputTypeRegistrations,omitempty"`
 
+	// When set, the code generator will use this name for the generated internal module
+	// instead of "internal" so that functionality within the module can be used by end users.
+	InternalModuleName string `json:"internalModuleName,omitempty"`
+
 	// Feature flag to disable generating Pulumi object default functions. This is a
 	// space saving measure.
 	DisableObjectDefaults bool `json:"disableObjectDefaults,omitempty"`

@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumix"
 	"go-nested-collections/repro/internal"
 )
 
@@ -86,6 +87,12 @@ func (i *ElementType) ToElementTypeOutputWithContext(ctx context.Context) Elemen
 	return pulumi.ToOutputWithContext(ctx, i).(ElementTypeOutput)
 }
 
+func (i *ElementType) ToOutput(ctx context.Context) pulumix.Output[*ElementType] {
+	return pulumix.Output[*ElementType]{
+		OutputState: i.ToElementTypeOutputWithContext(ctx).OutputState,
+	}
+}
+
 // ElementTypeArrayInput is an input type that accepts ElementTypeArray and ElementTypeArrayOutput values.
 // You can construct a concrete instance of `ElementTypeArrayInput` via:
 //
@@ -109,6 +116,12 @@ func (i ElementTypeArray) ToElementTypeArrayOutput() ElementTypeArrayOutput {
 
 func (i ElementTypeArray) ToElementTypeArrayOutputWithContext(ctx context.Context) ElementTypeArrayOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ElementTypeArrayOutput)
+}
+
+func (i ElementTypeArray) ToOutput(ctx context.Context) pulumix.Output[[]*ElementType] {
+	return pulumix.Output[[]*ElementType]{
+		OutputState: i.ToElementTypeArrayOutputWithContext(ctx).OutputState,
+	}
 }
 
 // ElementTypeMapInput is an input type that accepts ElementTypeMap and ElementTypeMapOutput values.
@@ -136,6 +149,12 @@ func (i ElementTypeMap) ToElementTypeMapOutputWithContext(ctx context.Context) E
 	return pulumi.ToOutputWithContext(ctx, i).(ElementTypeMapOutput)
 }
 
+func (i ElementTypeMap) ToOutput(ctx context.Context) pulumix.Output[map[string]*ElementType] {
+	return pulumix.Output[map[string]*ElementType]{
+		OutputState: i.ToElementTypeMapOutputWithContext(ctx).OutputState,
+	}
+}
+
 type ElementTypeOutput struct{ *pulumi.OutputState }
 
 func (ElementTypeOutput) ElementType() reflect.Type {
@@ -148,6 +167,12 @@ func (o ElementTypeOutput) ToElementTypeOutput() ElementTypeOutput {
 
 func (o ElementTypeOutput) ToElementTypeOutputWithContext(ctx context.Context) ElementTypeOutput {
 	return o
+}
+
+func (o ElementTypeOutput) ToOutput(ctx context.Context) pulumix.Output[*ElementType] {
+	return pulumix.Output[*ElementType]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ElementTypeOutput) GetElementType_() ElementTypeTypePtrOutput {
@@ -168,6 +193,12 @@ func (o ElementTypeArrayOutput) ToElementTypeArrayOutputWithContext(ctx context.
 	return o
 }
 
+func (o ElementTypeArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]*ElementType] {
+	return pulumix.Output[[]*ElementType]{
+		OutputState: o.OutputState,
+	}
+}
+
 func (o ElementTypeArrayOutput) Index(i pulumi.IntInput) ElementTypeOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) *ElementType {
 		return vs[0].([]*ElementType)[vs[1].(int)]
@@ -186,6 +217,12 @@ func (o ElementTypeMapOutput) ToElementTypeMapOutput() ElementTypeMapOutput {
 
 func (o ElementTypeMapOutput) ToElementTypeMapOutputWithContext(ctx context.Context) ElementTypeMapOutput {
 	return o
+}
+
+func (o ElementTypeMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]*ElementType] {
+	return pulumix.Output[map[string]*ElementType]{
+		OutputState: o.OutputState,
+	}
 }
 
 func (o ElementTypeMapOutput) MapIndex(k pulumi.StringInput) ElementTypeOutput {

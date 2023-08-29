@@ -11,7 +11,7 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - '.version'
+      - ".version"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,8 +46,7 @@ jobs:
       is-snapshot: true
     secrets: inherit
 
-  # Determines which files have changed
-  # so we can avoid running expensive tests
+  # Determines which files have changed so we can avoid running expensive tests
   # if they're not necessary.
   inspect:
     name: Inspect changed files
@@ -88,7 +87,7 @@ jobs:
       # codegen tests take quite a while to run.
       # Run them only if ci/test is set,
       # or if one of the codegen files changed.
-      test-codegen:  >- # No newlines or trailing newline.
+      test-codegen: >- # No newlines or trailing newline.
         ${{
           contains(github.event.pull_request.labels.*.name, 'ci/test') ||
           (needs.inspect.outputs.test-codegen == 'true')
@@ -106,7 +105,8 @@ jobs:
           && 'macos-latest windows-latest'
           || ''
         }}
-      enable-coverage: true
+      # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
+      enable-coverage: false
     secrets: inherit
 
   prepare-release:
@@ -130,6 +130,14 @@ jobs:
       draft: true
       prerelease: true
     secrets: inherit
+
+  ci-ok:
+    name: ci-ok
+    needs: [ci]
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI succeeded
+        run: exit 0
 
   # release:
   #   name: release
