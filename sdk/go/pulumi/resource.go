@@ -42,6 +42,8 @@ var (
 
 // This type alias is a hack to embed the internal.ResourceState type
 // into pulumi.ResourceState without exporting the field to the public API.
+//
+//nolint:unused
 type internalResourceState = internal.ResourceState
 
 // ResourceState is the base

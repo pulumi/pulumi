@@ -9,7 +9,7 @@ paths:
         secure: securevalue
     string: '[{"host":"example","port":80,"token":{"secure":"securevalue"}}]'
     redacted: '[{"host":"example","port":80,"token":"[secret]"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/5j/hCgAARdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+BBAEC/4IAAQwBEAAAbP+CaQADBGhvc3QGc3RyaW5nDAkAB2V4YW1wbGUEcG9ydAVpbnQ2NAQDAP+gBXRva2VuF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/5j/hCgAARdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+BBAEC/4IAAQwBEAAAbP+CaQADBXRva2VuF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQRob3N0BnN0cmluZwwJAAdleGFtcGxlBHBvcnQFaW50NjQEAwD/oA==
     secure: true
     isObject: true
     secureValues:

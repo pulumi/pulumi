@@ -27,9 +27,9 @@ require (
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	golang.org/x/crypto v0.3.1-0.20221117191849-2c476679df9a
-	golang.org/x/mod v0.10.0
+	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.10.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.11.0
 	google.golang.org/grpc v1.57.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1

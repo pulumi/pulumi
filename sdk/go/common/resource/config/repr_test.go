@@ -31,7 +31,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// mapPaths returns the set of all possible paths in c.
 func mapPaths(t *testing.T, c Map) []Key {
+	//nolint:prealloc
 	var paths []Key
 	for k, v := range c {
 		obj, err := v.ToObject()
@@ -46,6 +48,7 @@ func mapPaths(t *testing.T, c Map) []Key {
 	return paths
 }
 
+// valuePaths returns the set of all possible paths in o.
 func valuePaths(o any) []resource.PropertyPath {
 	switch o := o.(type) {
 	case []any:
@@ -76,6 +79,10 @@ func valuePaths(o any) []resource.PropertyPath {
 	}
 }
 
+// A gobObject is a gob-encoded Go object that marshals into YAML as a base64-encoded string.
+//
+// It is intended to encode the result of Value.ToObject while preserving type information (hence the use of gobs
+// rather than e.g. JSON).
 type gobObject struct {
 	value any
 }
@@ -110,18 +117,18 @@ func TestRepr(t *testing.T) {
 	t.Parallel()
 
 	type expectedValue struct {
-		Value        Value     `yaml:"value"`
-		String       string    `yaml:"string"`
-		Redacted     string    `yaml:"redacted"`
-		Object       gobObject `yaml:"object"`
-		Secure       bool      `yaml:"secure"`
-		IsObject     bool      `yaml:"isObject"`
-		SecureValues []string  `yaml:"secureValues,omitempty"`
+		Value        Value     `yaml:"value"`                  // The raw Value
+		String       string    `yaml:"string"`                 // The result of Value.Value(NopDecrypter)
+		Redacted     string    `yaml:"redacted"`               // The result of Value.Value(NewBlindingDecrypter)
+		Object       gobObject `yaml:"object"`                 // The result of Value.ToObject()
+		Secure       bool      `yaml:"secure"`                 // The result of Value.Secure()
+		IsObject     bool      `yaml:"isObject"`               // The result of Value.Object()
+		SecureValues []string  `yaml:"secureValues,omitempty"` // The result of Value.SecureValues()
 	}
 
 	type expectedRepr struct {
-		Decrypt map[string]string        `yaml:decrypt"`
-		Paths   map[string]expectedValue `yaml:"paths"`
+		Decrypt map[string]string        `yaml:"decrypt"` // The result of Map.Decrypt
+		Paths   map[string]expectedValue `yaml:"paths"`   // Each path in the map and information about its value
 	}
 
 	isAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
@@ -130,6 +137,9 @@ func TestRepr(t *testing.T) {
 	entries, err := os.ReadDir(root)
 	require.NoError(t, err)
 
+	// For each entry in testdata/repr, load the YAML representation and generate the JSON representation and the
+	// actual results of calling most of the Value APIs. Then, either write the results out as the new ground
+	// truth (if PULUMI_ACCEPT is truthy) or load the expected results and validate against the actual results.
 	for _, entry := range entries {
 		id, ok := strings.CutSuffix(entry.Name(), ".yaml")
 		if !ok || strings.HasSuffix(id, ".expected") {
@@ -138,6 +148,8 @@ func TestRepr(t *testing.T) {
 		basePath := filepath.Join(root, id)
 
 		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+
 			expectedYAMLBytes, err := os.ReadFile(basePath + ".yaml")
 			require.NoError(t, err)
 
@@ -195,10 +207,10 @@ func TestRepr(t *testing.T) {
 				expectedBytes, err := yaml.Marshal(actual)
 				require.NoError(t, err)
 
-				err = os.WriteFile(basePath+".json", jsonBytes, 0600)
+				err = os.WriteFile(basePath+".json", jsonBytes, 0o600)
 				require.NoError(t, err)
 
-				err = os.WriteFile(basePath+".expected.yaml", expectedBytes, 0600)
+				err = os.WriteFile(basePath+".expected.yaml", expectedBytes, 0o600)
 				require.NoError(t, err)
 			} else {
 				expectedJSONBytes, err := os.ReadFile(basePath + ".json")

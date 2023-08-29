@@ -10,7 +10,7 @@ paths:
       thing2: 2
     string: '{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}'
     redacted: '{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABx/4JuAAMGb2JqZWN0F21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IoAAIEZml6egZzdHJpbmcMBgAEYnV6egNmb28Gc3RyaW5nDAUAA2JhcgZ0aGluZzEFaW50NjQEAgACBnRoaW5nMgVpbnQ2NAQCAAQ=
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABx/4JuAAMGdGhpbmcxBWludDY0BAIAAgZ0aGluZzIFaW50NjQEAgAEBm9iamVjdBdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CKAACBGZpenoGc3RyaW5nDAYABGJ1enoDZm9vBnN0cmluZwwFAANiYXI=
     secure: false
     isObject: true
   my:special.object:

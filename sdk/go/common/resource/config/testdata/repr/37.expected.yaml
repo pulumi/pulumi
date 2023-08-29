@@ -7,7 +7,7 @@ paths:
       secure: myvalue
     string: '{"bar":"baz","secure":"myvalue"}'
     redacted: '{"bar":"baz","secure":"myvalue"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAw/4ItAAIDYmFyBnN0cmluZwwFAANiYXoGc2VjdXJlBnN0cmluZwwJAAdteXZhbHVl
+    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAw/4ItAAIGc2VjdXJlBnN0cmluZwwJAAdteXZhbHVlA2JhcgZzdHJpbmcMBQADYmF6
     secure: false
     isObject: true
   my:foo.bar:
