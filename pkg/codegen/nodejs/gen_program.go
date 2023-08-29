@@ -288,19 +288,22 @@ func GenerateProject(
 	"files": [
 `)
 
-	fileCounter := 0
+	fileNames := make([]string, 0, len(files))
 	for file := range files {
+		fileNames = append(fileNames, file)
+	}
+	sort.Strings(fileNames)
+
+	for i, file := range fileNames {
 		if strings.HasSuffix(file, ".ts") {
 			tsConfig.WriteString("		\"" + file + "\"")
-			lastFile := fileCounter == len(files)-1
+			lastFile := i == len(files)-1
 			if !lastFile {
 				tsConfig.WriteString(",\n")
 			} else {
 				tsConfig.WriteString("\n")
 			}
 		}
-
-		fileCounter = fileCounter + 1
 	}
 
 	tsConfig.WriteString(`	]
