@@ -887,6 +887,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
+
 	// NewContextWithContext will make a default plugin host, but we want to make sure we never actually use that
 	pctx.Host = nil
 
@@ -897,6 +898,23 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	languageClient := plugin.NewLanguageRuntimeClient(pctx, "uut", pulumirpc.NewLanguageRuntimeClient(conn))
+
+	// And now replace the context host with our own test host
+	providers := make(map[string]plugin.Provider)
+	for _, provider := range test.providers {
+		version, err := getProviderVersion(provider)
+		if err != nil {
+			return nil, err
+		}
+		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
+	}
+
+	pctx.Host = &testHost{
+		host:        pctx.Host,
+		runtime:     languageClient,
+		runtimeName: token.LanguagePluginName,
+		providers:   providers,
+	}
 
 	// Create a source directory for the test
 	sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
@@ -1044,22 +1062,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("create test stack: %w", err)
 	}
 
-	providers := make(map[string]plugin.Provider)
-	for _, provider := range test.providers {
-		version, err := getProviderVersion(provider)
-		if err != nil {
-			return nil, err
-		}
-		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
-	}
-
-	host := &testHost{
-		host:        pctx.Host,
-		runtime:     languageClient,
-		runtimeName: token.LanguagePluginName,
-		providers:   providers,
-	}
-
 	// Set up the stack and engine configuration
 	opts := backend.UpdateOptions{
 		AutoApprove: true,
@@ -1070,7 +1072,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			Stderr: stderr,
 		},
 		Engine: engine.UpdateOptions{
-			Host: host,
+			Host: pctx.Host,
 		},
 	}
 	sm := b64secrets.NewBase64SecretsManager()
