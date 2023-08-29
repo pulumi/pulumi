@@ -24,6 +24,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -83,7 +84,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	t.Cleanup(func() {
 		assert.NoError(t, cmd.Process.Kill())
 		wg.Wait()
-		cmd.Wait()
+		// We expect this to error because we just killed it.
+		contract.IgnoreError(cmd.Wait())
 	})
 
 	return address, client
@@ -110,9 +112,7 @@ func TestLanguage(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a temp project dir for the test to run in
-	rootDir, err := os.MkdirTemp("", "pulumi-language-nodejs-test")
-	require.NoError(t, err)
-	// rootDir := t.TempDir()
+	rootDir := t.TempDir()
 
 	// Prepare to run the tests
 	prepare, err := engine.PrepareLanguageTests(context.Background(), &testingrpc.PrepareLanguageTestsRequest{
@@ -124,11 +124,10 @@ func TestLanguage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	//nolint:paralleltest // These aren't yet safe to run in parallel
 	for _, tt := range tests.Tests {
 		tt := tt
 		t.Run(tt, func(t *testing.T) {
-			t.Parallel()
-
 			result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,

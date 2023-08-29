@@ -242,7 +242,7 @@ func (host *nodeLanguageHost) GetRequiredPlugins(ctx context.Context,
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
 	plugins, err := getPluginsFromDir(
-		req.GetProgram(),
+		filepath.Join(req.Pwd, req.Program),
 		pulumiPackagePathToVersionMap,
 		false, /*inNodeModules*/
 		make(map[string]struct{}))
