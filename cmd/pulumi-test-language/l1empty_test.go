@@ -168,7 +168,7 @@ func TestL1Empty(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.True(t, runResponse.Success)
-	assert.Equal(t, "", runResponse.Message)
+	assert.Empty(t, runResponse.Messages)
 }
 
 // Test simple failure conditions for Prepare.
@@ -291,9 +291,9 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t,
+	assert.Equal(t, []string{
 		"program snapshot validation failed:\nexpected file Pulumi.yaml does not match actual file",
-		runResponse.Message)
+	}, runResponse.Messages)
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
@@ -333,6 +333,6 @@ func TestL1Empty_MissingStack(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Contains(t, runResponse.Message,
+	assert.Contains(t, runResponse.Messages,
 		"expected at least 1 StepOp")
 }

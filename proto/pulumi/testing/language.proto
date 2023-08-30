@@ -61,7 +61,7 @@ message RunLanguageTestRequest {
 
 message RunLanguageTestResponse {
     bool success = 1;
-    string message = 2;
+    repeated string messages = 2;
     string stdout = 3;
     string stderr = 4;
 }

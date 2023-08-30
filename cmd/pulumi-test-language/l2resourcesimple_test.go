@@ -226,7 +226,7 @@ func TestL2ResourceSimple(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
-	t.Log(runResponse.Message)
+	assert.Empty(t, runResponse.Messages)
 	assert.True(t, runResponse.Success)
 }
 
@@ -264,9 +264,9 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Equal(t,
+	assert.Equal(t, []string{
 		"sdk snapshot validation for simple failed:\nexpected file test.txt does not match actual file",
-		runResponse.Message)
+	}, runResponse.Messages)
 }
 
 // Run a simple failing test because of a bad project snapshot with a mocked runtime.
@@ -306,8 +306,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	t.Log(runResponse.Message)
-	assert.Contains(t, runResponse.Message,
+	assert.Contains(t, runResponse.Messages,
 		"expected 3 resources in snapshot")
 }
 
@@ -348,8 +347,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	t.Log(runResponse.Message)
-	assert.Contains(t, runResponse.Message,
+	assert.Contains(t, runResponse.Messages,
 		"expected no error, got Error: unexpected required plugins: "+
 			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@1.0.0]")
 }

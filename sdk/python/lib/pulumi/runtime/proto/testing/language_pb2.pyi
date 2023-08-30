@@ -120,21 +120,22 @@ class RunLanguageTestResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     SUCCESS_FIELD_NUMBER: builtins.int
-    MESSAGE_FIELD_NUMBER: builtins.int
+    MESSAGES_FIELD_NUMBER: builtins.int
     STDOUT_FIELD_NUMBER: builtins.int
     STDERR_FIELD_NUMBER: builtins.int
     success: builtins.bool
-    message: builtins.str
+    @property
+    def messages(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
     stdout: builtins.str
     stderr: builtins.str
     def __init__(
         self,
         *,
         success: builtins.bool = ...,
-        message: builtins.str = ...,
+        messages: collections.abc.Iterable[builtins.str] | None = ...,
         stdout: builtins.str = ...,
         stderr: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["message", b"message", "stderr", b"stderr", "stdout", b"stdout", "success", b"success"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["messages", b"messages", "stderr", b"stderr", "stdout", b"stdout", "success", b"success"]) -> None: ...
 
 global___RunLanguageTestResponse = RunLanguageTestResponse

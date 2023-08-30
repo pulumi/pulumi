@@ -139,7 +139,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.testing.RunLanguageTestResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.testing.RunLanguageTestResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.testing.RunLanguageTestResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -947,6 +947,13 @@ proto.pulumirpc.testing.RunLanguageTestRequest.prototype.setTest = function(valu
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.repeatedFields_ = [2];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -979,7 +986,7 @@ proto.pulumirpc.testing.RunLanguageTestResponse.prototype.toObject = function(op
 proto.pulumirpc.testing.RunLanguageTestResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     success: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
-    message: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    messagesList: (f = jspb.Message.getRepeatedField(msg, 2)) == null ? undefined : f,
     stdout: jspb.Message.getFieldWithDefault(msg, 3, ""),
     stderr: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
@@ -1024,7 +1031,7 @@ proto.pulumirpc.testing.RunLanguageTestResponse.deserializeBinaryFromReader = fu
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setMessage(value);
+      msg.addMessages(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
@@ -1070,9 +1077,9 @@ proto.pulumirpc.testing.RunLanguageTestResponse.serializeBinaryToWriter = functi
       f
     );
   }
-  f = message.getMessage();
+  f = message.getMessagesList();
   if (f.length > 0) {
-    writer.writeString(
+    writer.writeRepeatedString(
       2,
       f
     );
@@ -1113,20 +1120,39 @@ proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setSuccess = function(
 
 
 /**
- * optional string message = 2;
- * @return {string}
+ * repeated string messages = 2;
+ * @return {!Array<string>}
  */
-proto.pulumirpc.testing.RunLanguageTestResponse.prototype.getMessage = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.getMessagesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.testing.RunLanguageTestResponse} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setMessagesList = function(value) {
+  return jspb.Message.setField(this, 2, value || []);
 };
 
 
 /**
  * @param {string} value
+ * @param {number=} opt_index
  * @return {!proto.pulumirpc.testing.RunLanguageTestResponse} returns this
  */
-proto.pulumirpc.testing.RunLanguageTestResponse.prototype.setMessage = function(value) {
-  return jspb.Message.setProto3StringField(this, 2, value);
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.addMessages = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 2, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.testing.RunLanguageTestResponse} returns this
+ */
+proto.pulumirpc.testing.RunLanguageTestResponse.prototype.clearMessagesList = function() {
+  return this.setMessagesList([]);
 };
 
 

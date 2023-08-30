@@ -461,8 +461,8 @@ func (eng *languageTestServer) GetLanguageTests(
 
 func makeTestResponse(msg string) *testingrpc.RunLanguageTestResponse {
 	return &testingrpc.RunLanguageTestResponse{
-		Success: false,
-		Message: msg,
+		Success:  false,
+		Messages: []string{msg},
 	}
 }
 
@@ -1109,19 +1109,14 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
-	// TODO:
-	// Consider making res, snap, and changes available to the test
-	// as methods on some object with internal state.
 	result := WithL(func(l *L) {
 		test.assert(l, res, snap, changes)
 	})
 
 	return &testingrpc.RunLanguageTestResponse{
-		Success: !result.Failed,
-		// TODO: Send back as a list instead of a string.
-		// TODO: Consider streaming messages back instead.
-		Message: strings.Join(result.Messages, "\n"),
-		Stdout:  stdout.String(),
-		Stderr:  stderr.String(),
+		Success:  !result.Failed,
+		Messages: result.Messages,
+		Stdout:   stdout.String(),
+		Stderr:   stderr.String(),
 	}, nil
 }

@@ -135,9 +135,12 @@ func TestLanguage(t *testing.T) {
 			})
 
 			require.NoError(t, err)
+			for _, msg := range result.Messages {
+				t.Log(msg)
+			}
 			t.Logf("stdout: %s", result.Stdout)
 			t.Logf("stderr: %s", result.Stderr)
-			assert.True(t, result.Success, result.Message)
+			assert.True(t, result.Success)
 		})
 	}
 }
