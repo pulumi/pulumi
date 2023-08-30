@@ -310,7 +310,8 @@ var _ tea.Model = readConsoleModel{}
 
 func newReadConsoleModel(prompt string, secret bool) readConsoleModel {
 	input := textinput.New()
-	input.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	input.Cursor.Style = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("205")) // 205 = hot pink cursor
 	if secret {
 		input.EchoMode = textinput.EchoPassword
 	}
