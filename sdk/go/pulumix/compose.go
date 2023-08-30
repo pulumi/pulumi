@@ -181,3 +181,18 @@ func ComposeAwait[T any](c *Composer, o Input[T]) T {
 
 	return v
 }
+
+// await is a type-safe variant of OutputState.await.
+//
+// It disables unwrapping of nested Output values.
+// Otherwise, await `Output[Output[T]]` would return `T`, not `Output[T]`,
+// which will then panic.
+func await[T any](ctx context.Context, o Output[T]) (value T, known, secret bool, deps []internal.Resource, err error) {
+	iface, known, secret, deps, err := internal.AwaitOutputNoUnwrap(ctx, o)
+	if known && err == nil {
+		var ok bool
+		value, ok = iface.(T)
+		contract.Assertf(ok, "await expected %v, got %T", typeOf[T](), iface)
+	}
+	return value, known, secret, deps, err
+}

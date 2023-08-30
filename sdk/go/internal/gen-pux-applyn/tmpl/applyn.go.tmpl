@@ -17,11 +17,7 @@
 //nolint:lll
 package pulumix
 
-import (
-	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-)
+import "context"
 
 {{ range seq .Start .Stop -}}
 	{{ template "applyn" . }}
@@ -48,33 +44,13 @@ func {{ $name }}ContextErr[{{ template "typeParameters" . }}](
 	{{ template "inputParameters" . }}
 	fn func({{ range seq 1 . }} A{{ . }}, {{ end }}) (B, error),
 ) Output[B] {
-	{{ range seq 1 . -}}
-		o{{ . }} := i{{ . }}.ToOutput(ctx);
-	{{- end }}
-
-	var allDeps []internal.Resource
-	{{ range seq 1 . -}}
-		allDeps = append(allDeps, internal.OutputDependencies(o{{ . }})...);
-	{{- end }}
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		{{ range seq 1 . -}}
-			var a{{ . }} A{{ . }}
-		{{ end }}
-
-		applier := newApplyNState[B](state)
-		{{ range seq 1 . -}}
-			applyNStep[A{{ . }}](ctx, &applier, o{{ . }}, &a{{ . }})
-		{{ end }}
-		if applier.ok {
-			b, err := fn({{ range seq 1 . }}a{{ . }}, {{ end }})
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			{{ range seq 1 . -}}
+				ComposeAwait[A{{ . }}](c, i{{ . }}),
+			{{ end }}
+		)
+	})
 }
 
 // {{ $name }}Context applies a function to {{ $inputs }},

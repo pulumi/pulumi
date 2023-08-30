@@ -17,11 +17,7 @@
 //nolint:lll
 package pulumix
 
-import (
-	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-)
+import "context"
 
 // ApplyContextErr applies a function to an input,
 // returning an Output holding the result of the function.
@@ -32,26 +28,11 @@ func ApplyContextErr[A1, B any](
 	i1 Input[A1],
 	fn func(A1) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-
-		if applier.ok {
-			b, err := fn(a1)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+		)
+	})
 }
 
 // ApplyContext applies a function to an input,
@@ -111,30 +92,12 @@ func Apply2ContextErr[A1, A2, B any](
 	i1 Input[A1], i2 Input[A2],
 	fn func(A1, A2) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-
-		if applier.ok {
-			b, err := fn(a1, a2)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+		)
+	})
 }
 
 // Apply2Context applies a function to 2 inputs,
@@ -194,34 +157,13 @@ func Apply3ContextErr[A1, A2, A3, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3],
 	fn func(A1, A2, A3) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+		)
+	})
 }
 
 // Apply3Context applies a function to 3 inputs,
@@ -281,38 +223,14 @@ func Apply4ContextErr[A1, A2, A3, A4, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4],
 	fn func(A1, A2, A3, A4) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-	o4 := i4.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o4)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-		var a4 A4
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-		applyNStep[A4](ctx, &applier, o4, &a4)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3, a4)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+			ComposeAwait[A4](c, i4),
+		)
+	})
 }
 
 // Apply4Context applies a function to 4 inputs,
@@ -372,42 +290,15 @@ func Apply5ContextErr[A1, A2, A3, A4, A5, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5],
 	fn func(A1, A2, A3, A4, A5) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-	o4 := i4.ToOutput(ctx)
-	o5 := i5.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o4)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o5)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-		var a4 A4
-		var a5 A5
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-		applyNStep[A4](ctx, &applier, o4, &a4)
-		applyNStep[A5](ctx, &applier, o5, &a5)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3, a4, a5)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+			ComposeAwait[A4](c, i4),
+			ComposeAwait[A5](c, i5),
+		)
+	})
 }
 
 // Apply5Context applies a function to 5 inputs,
@@ -467,46 +358,16 @@ func Apply6ContextErr[A1, A2, A3, A4, A5, A6, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6],
 	fn func(A1, A2, A3, A4, A5, A6) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-	o4 := i4.ToOutput(ctx)
-	o5 := i5.ToOutput(ctx)
-	o6 := i6.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o4)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o5)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o6)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-		var a4 A4
-		var a5 A5
-		var a6 A6
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-		applyNStep[A4](ctx, &applier, o4, &a4)
-		applyNStep[A5](ctx, &applier, o5, &a5)
-		applyNStep[A6](ctx, &applier, o6, &a6)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3, a4, a5, a6)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+			ComposeAwait[A4](c, i4),
+			ComposeAwait[A5](c, i5),
+			ComposeAwait[A6](c, i6),
+		)
+	})
 }
 
 // Apply6Context applies a function to 6 inputs,
@@ -566,50 +427,17 @@ func Apply7ContextErr[A1, A2, A3, A4, A5, A6, A7, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6], i7 Input[A7],
 	fn func(A1, A2, A3, A4, A5, A6, A7) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-	o4 := i4.ToOutput(ctx)
-	o5 := i5.ToOutput(ctx)
-	o6 := i6.ToOutput(ctx)
-	o7 := i7.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o4)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o5)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o6)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o7)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-		var a4 A4
-		var a5 A5
-		var a6 A6
-		var a7 A7
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-		applyNStep[A4](ctx, &applier, o4, &a4)
-		applyNStep[A5](ctx, &applier, o5, &a5)
-		applyNStep[A6](ctx, &applier, o6, &a6)
-		applyNStep[A7](ctx, &applier, o7, &a7)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3, a4, a5, a6, a7)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+			ComposeAwait[A4](c, i4),
+			ComposeAwait[A5](c, i5),
+			ComposeAwait[A6](c, i6),
+			ComposeAwait[A7](c, i7),
+		)
+	})
 }
 
 // Apply7Context applies a function to 7 inputs,
@@ -669,54 +497,18 @@ func Apply8ContextErr[A1, A2, A3, A4, A5, A6, A7, A8, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6], i7 Input[A7], i8 Input[A8],
 	fn func(A1, A2, A3, A4, A5, A6, A7, A8) (B, error),
 ) Output[B] {
-	o1 := i1.ToOutput(ctx)
-	o2 := i2.ToOutput(ctx)
-	o3 := i3.ToOutput(ctx)
-	o4 := i4.ToOutput(ctx)
-	o5 := i5.ToOutput(ctx)
-	o6 := i6.ToOutput(ctx)
-	o7 := i7.ToOutput(ctx)
-	o8 := i8.ToOutput(ctx)
-
-	var allDeps []internal.Resource
-	allDeps = append(allDeps, internal.OutputDependencies(o1)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o2)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o3)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o4)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o5)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o6)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o7)...)
-	allDeps = append(allDeps, internal.OutputDependencies(o8)...)
-
-	var wg internal.WorkGroup
-	state := internal.NewOutputState(&wg, typeOf[B](), allDeps...)
-	go func() {
-		var a1 A1
-		var a2 A2
-		var a3 A3
-		var a4 A4
-		var a5 A5
-		var a6 A6
-		var a7 A7
-		var a8 A8
-
-		applier := newApplyNState[B](state)
-		applyNStep[A1](ctx, &applier, o1, &a1)
-		applyNStep[A2](ctx, &applier, o2, &a2)
-		applyNStep[A3](ctx, &applier, o3, &a3)
-		applyNStep[A4](ctx, &applier, o4, &a4)
-		applyNStep[A5](ctx, &applier, o5, &a5)
-		applyNStep[A6](ctx, &applier, o6, &a6)
-		applyNStep[A7](ctx, &applier, o7, &a7)
-		applyNStep[A8](ctx, &applier, o8, &a8)
-
-		if applier.ok {
-			b, err := fn(a1, a2, a3, a4, a5, a6, a7, a8)
-			applier.finish(b, err)
-		}
-	}()
-
-	return Output[B]{OutputState: state}
+	return Compose[B](ctx, func(c *Composer) (B, error) {
+		return fn(
+			ComposeAwait[A1](c, i1),
+			ComposeAwait[A2](c, i2),
+			ComposeAwait[A3](c, i3),
+			ComposeAwait[A4](c, i4),
+			ComposeAwait[A5](c, i5),
+			ComposeAwait[A6](c, i6),
+			ComposeAwait[A7](c, i7),
+			ComposeAwait[A8](c, i8),
+		)
+	})
 }
 
 // Apply8Context applies a function to 8 inputs,

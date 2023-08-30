@@ -14,37 +14,16 @@
 
 package pulumix
 
-import (
-	"context"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-)
+import "context"
 
 // JoinContext unpacks an Output stored inside another input,
 // returning an output containing the underlying value.
-func JoinContext[A any, I Input[A]](ctx context.Context, i Input[I]) Output[A] {
-	outputOutputA := i.ToOutput(ctx)
-	stateOutputOutputA := internal.GetOutputState(outputOutputA)
-
-	stateA := internal.NewOutputState(
-		internal.OutputJoinGroup(stateOutputOutputA),
-		typeOf[A](),
-		internal.OutputDependencies(stateOutputOutputA)...,
-	)
-	go func() {
-		var outputA I
-		var a A
-
-		applier := newApplyNState[A](stateA)
-		applyNStep(ctx, &applier, outputOutputA, &outputA)
-		applyNStep(ctx, &applier, outputA.ToOutput(ctx), &a)
-
-		if applier.ok {
-			applier.finish(a, nil /* err */)
-		}
-	}()
-
-	return Output[A]{OutputState: stateA}
+func JoinContext[A any, I Input[A]](ctx context.Context, inputInputA Input[I]) Output[A] {
+	return Compose[A](ctx, func(c *Composer) (A, error) {
+		inputA := ComposeAwait(c, inputInputA)
+		a := ComposeAwait[A](c, inputA)
+		return a, nil
+	})
 }
 
 // Join unpacks the Output stored inside another input,
