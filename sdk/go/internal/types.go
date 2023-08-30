@@ -196,7 +196,7 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 	if o.join != nil {
 		// If this output is being resolved to another output O' with a different wait group, ensure that we
 		// don't decrement the current output's wait group until O' completes.
-		if other, ok := getOutputState(value); ok && other.join != o.join {
+		if other, ok := getOutputState(value); ok && other != nil && other.join != o.join {
 			go func() {
 				//nolint:errcheck
 				other.await(context.Background())
