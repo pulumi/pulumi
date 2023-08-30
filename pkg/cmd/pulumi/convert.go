@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/version"
@@ -189,12 +188,6 @@ func generatorWrapper(generator projectGeneratorFunc, targetLanguage string) pro
 			extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 		}
 
-		if targetLanguage == "python" {
-			// for python, prefer output versioned invokes when possible
-			// also for typescript but that is handled by default in the language plugin
-			extraOptions = append(extraOptions, pcl.PreferOutputVersionedInvokes)
-		}
-
 		program, diagnostics, err := pcl.BindDirectory(sourceDirectory, loader, extraOptions...)
 		if err != nil {
 			return diagnostics, fmt.Errorf("failed to bind program: %w", err)
@@ -239,11 +232,6 @@ func runConvert(
 		projectGenerator = generatorWrapper(
 			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
 				return dotnet.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
-			}, language)
-	case "python":
-		projectGenerator = generatorWrapper(
-			func(targetDirectory string, proj workspace.Project, program *pcl.Program) error {
-				return python.GenerateProject(targetDirectory, proj, program, nil /*localDependencies*/)
 			}, language)
 	case "java":
 		projectGenerator = generatorWrapper(javagen.GenerateProject, language)
