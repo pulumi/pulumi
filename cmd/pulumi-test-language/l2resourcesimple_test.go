@@ -306,8 +306,9 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Contains(t, runResponse.Messages,
-		"expected 3 resources in snapshot")
+	require.Len(t, runResponse.Messages, 1)
+	failureMessage := runResponse.Messages[0]
+	assert.Contains(t, failureMessage, "expected 3 resources in snapshot")
 }
 
 // Run a simple failing test because GetRequiredPlugins doesn't return the right plugins.
@@ -347,7 +348,9 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Contains(t, runResponse.Messages,
+	require.Len(t, runResponse.Messages, 1)
+	failureMessage := runResponse.Messages[0]
+	assert.Contains(t, failureMessage,
 		"expected no error, got Error: unexpected required plugins: "+
 			"actual [language-mock@<nil>], expected [language-mock@<nil> resource-simple@1.0.0]")
 }

@@ -333,6 +333,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 	t.Logf("stdout: %s", runResponse.Stdout)
 	t.Logf("stderr: %s", runResponse.Stderr)
 	assert.False(t, runResponse.Success)
-	assert.Contains(t, runResponse.Messages,
-		"expected at least 1 StepOp")
+	require.Len(t, runResponse.Messages, 1)
+	failureMessage := runResponse.Messages[0]
+	assert.Contains(t, failureMessage, "expected at least 1 StepOp")
 }

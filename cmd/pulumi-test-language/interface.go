@@ -17,17 +17,13 @@ package main
 import (
 	"bytes"
 	"context"
-	"embed"
 	b64 "encoding/base64"
 	"fmt"
 	"io"
 	iofs "io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
-	"runtime/debug"
 	"strings"
-	"sync"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -40,21 +36,16 @@ import (
 	b64secrets "github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -116,281 +107,6 @@ func (eng *languageTestServer) Cancel() {
 
 func (eng *languageTestServer) Done() error {
 	return <-eng.done
-}
-
-type languageTest struct {
-	config config.Map
-	// TODO: This should be a function so we don't have to load all providers in memory all the time.
-	providers []plugin.Provider
-	// TODO: This should just return "string", if == "" then ok, else fail
-	assert func(*L, result.Result, *deploy.Snapshot, display.ResourceChanges)
-}
-
-// L holds the state for the current language test.
-//
-// It provides an interface similar to testing.T,
-// allowing its use with testing libraries like Testify.
-type L struct {
-	mu sync.RWMutex // guards the fields below
-
-	// Whether this test has already failed.
-	failed bool
-
-	// Messages logged to l.Errorf or l.Logf.
-	logs []string
-
-	// Functions marked helpers with L.Helper().
-
-	// These names are from the runtime.Frame.Function field.
-	// They're fully qualified with package names.
-	helpers map[string]struct{}
-}
-
-// Helper marks the calling function as a test helper function.
-// When printing file and line information, that function will be skipped.
-func (l *L) Helper() {
-	pc, _, _, ok := runtime.Caller(1) // skip this function
-	if !ok {
-		return // unlikely but not worth panicking over
-	}
-
-	frame, _ := runtime.CallersFrames([]uintptr{pc}).Next()
-	if frame.Function == "" {
-		return
-	}
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.helpers == nil {
-		l.helpers = make(map[string]struct{})
-	}
-	l.helpers[frame.Function] = struct{}{}
-}
-
-// FailNow marks this test as having failed and halts execution.
-func (l *L) FailNow() {
-	l.Fail()
-	runtime.Goexit()
-}
-
-// Fail marks this test as failed but keeps executing.
-func (l *L) Fail() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	l.failed = true
-}
-
-// Failed returns whether this test has failed.
-func (l *L) Failed() bool {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	return l.failed
-}
-
-// Errorf records the given error message and marks this test as failed.
-func (l *L) Errorf(format string, args ...interface{}) {
-	l.log(1, fmt.Sprintf(format, args...))
-	l.Fail()
-}
-
-// Logf records the given message in the L's logs.
-func (l *L) Logf(format string, args ...interface{}) {
-	l.log(1, fmt.Sprintf(format, args...))
-}
-
-// log records the given message in the L's logs.
-//
-// Skip specifies the number of stack frames to skip
-// when recording the caller's location.
-// 0 refers to the immediate caller of log.
-//
-// Typically, when used from an exported method on L,
-// most callers will want to pass skip=1 to skip themselves
-// and record the location of their caller.
-func (l *L) log(skip int, msg string) {
-	file, line := "???", 1
-	if frame, ok := l.callerFrame(skip + 1); ok {
-		file, line = frame.File, frame.Line
-	}
-
-	msg = fmt.Sprintf("%s:%d: %s", filepath.Base(file), line, msg)
-	l.mu.Lock()
-	l.logs = append(l.logs, msg)
-	l.mu.Unlock()
-}
-
-// Maximal stack depth to search for the caller's frame.
-const _maxStackDepth = 50
-
-// callerFrame searches the call stack for the first frame
-// that isn't a helper function.
-//
-// skip specifies the initial number of frames to skip
-// with 0 referring to the immediate caller of callerFrame.
-func (l *L) callerFrame(skip int) (frame runtime.Frame, ok bool) {
-	var pc [_maxStackDepth]uintptr
-	n := runtime.Callers(skip+2, pc[:]) // skip runtime.Callers and callerFrame
-	if n == 0 {
-		return frame, false
-	}
-
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	frames := runtime.CallersFrames(pc[:n])
-	for {
-		frame, more := frames.Next()
-		if _, ok := l.helpers[frame.Function]; !ok {
-			// Not a helper. Use this frame.
-			return frame, true
-		}
-		if !more {
-			break
-		}
-	}
-	return frame, false // no non-helper frames found
-}
-
-// WithL runs the given function with a new L,
-// blocking until the function returns.
-//
-// It returns the information recorded by the L.
-func WithL(f func(*L)) LResult {
-	// To be able to implement FailNow in the L,
-	// we need to run it in a separate goroutine
-	// so that we can call runtime.Goexit.
-	done := make(chan struct{})
-	var l L
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				l.failed = true
-				l.logs = append(l.logs,
-					fmt.Sprintf("panic: %v\n\n%s", r, debug.Stack()))
-			}
-
-			close(done)
-		}()
-
-		f(&l)
-	}()
-	<-done
-
-	return LResult{
-		Failed:   l.failed,
-		Messages: l.logs,
-	}
-}
-
-// LResult is the result of running a language test.
-type LResult struct {
-	// Failed is true if the test failed.
-	Failed bool
-
-	// Messages contains the messages logged by the test.
-	//
-	// This doesn't necessarily mean that the test failed.
-	// For example, a test may log debugging information
-	// that is only useful when the test fails.
-	Messages []string
-}
-
-// TestingT is a subset of the testing.T interface.
-// [L] implements this interface.
-type TestingT interface {
-	Helper()
-	FailNow()
-	Fail()
-	Failed() bool
-	Errorf(string, ...interface{})
-	Logf(string, ...interface{})
-}
-
-var (
-	_ TestingT         = (*L)(nil)
-	_ require.TestingT = (TestingT)(nil) // ensure testify compatibility
-)
-
-func assertStackResource(t TestingT, res result.Result, changes display.ResourceChanges) (ok bool) {
-	t.Helper()
-
-	ok = true
-	ok = ok && assert.Nil(t, res, "expected no error, got %v", res)
-	ok = ok && assert.NotEmpty(t, changes, "expected at least 1 StepOp")
-	ok = ok && assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
-	return ok
-}
-
-func requireStackResource(t TestingT, res result.Result, changes display.ResourceChanges) {
-	t.Helper()
-
-	if !assertStackResource(t, res, changes) {
-		t.FailNow()
-	}
-}
-
-// assertPropertyMapMember asserts that the given property map has a member with the given key and value.
-func assertPropertyMapMember(
-	t TestingT,
-	props resource.PropertyMap,
-	key string,
-	want resource.PropertyValue,
-) (ok bool) {
-	t.Helper()
-
-	got, ok := props[resource.PropertyKey(key)]
-	if !assert.True(t, ok, "expected property %q", key) {
-		return false
-	}
-
-	return assert.Equal(t, want, got, "expected property %q to be %v", key, want)
-}
-
-//go:embed testdata
-var languageTestdata embed.FS
-
-var languageTests = map[string]languageTest{
-	"l1-empty": {
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			assertStackResource(l, res, changes)
-		},
-	},
-	"l1-output-bool": {
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
-
-			// Check we have two outputs in the stack for true and false
-			require.NotEmpty(l, snap.Resources, "expected at least 1 resource")
-			stack := snap.Resources[0]
-			require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-
-			outputs := stack.Outputs
-
-			assertPropertyMapMember(l, outputs, "output_true", resource.NewBoolProperty(true))
-			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
-		},
-	},
-	"l2-resource-simple": {
-		providers: []plugin.Provider{&simpleProvider{}},
-		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
-			requireStackResource(l, res, changes)
-
-			// Check we have the one simple resource in the snapshot, it's provider and the stack.
-			require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
-
-			provider := snap.Resources[1]
-			assert.Equal(l, "pulumi:providers:simple", provider.Type.String(), "expected simple provider")
-
-			simple := snap.Resources[2]
-			assert.Equal(l, "simple:index:Resource", simple.Type.String(), "expected simple resource")
-
-			want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-			assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
-			assert.Equal(l, simple.Inputs, simple.Outputs, "expected inptus and outputs to match")
-		},
-	},
 }
 
 // A providerLoader is a schema loader that loads schemas from a given set of providers.
