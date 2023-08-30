@@ -986,6 +986,10 @@ func TestConstructMethodsErrorsNode(t *testing.T) {
 	testConstructMethodsErrors(t, "nodejs", "@pulumi/pulumi")
 }
 
+func TestConstructMethodsProviderNode(t *testing.T) {
+	testConstructMethodsProvider(t, "nodejs", "@pulumi/pulumi")
+}
+
 func TestConstructProviderNode(t *testing.T) {
 	t.Parallel()
 

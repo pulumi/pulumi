@@ -731,6 +731,10 @@ func TestConstructMethodsErrorsPython(t *testing.T) {
 	testConstructMethodsErrors(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
+func TestConstructMethodsProviderPython(t *testing.T) {
+	testConstructMethodsProvider(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 func TestConstructProviderPython(t *testing.T) {
 	t.Parallel()
 
