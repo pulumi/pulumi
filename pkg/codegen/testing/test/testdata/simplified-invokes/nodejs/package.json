@@ -4,8 +4,7 @@
     "homepage": "https://github.com/pulumi/pulumi-std",
     "repository": "https://github.com/pulumi/pulumi-std",
     "scripts": {
-        "build": "tsc",
-        "install": "node scripts/install-pulumi-plugin.js resource std 1.0.0"
+        "build": "tsc"
     },
     "dependencies": {
         "@pulumi/pulumi": "^3.0.0"

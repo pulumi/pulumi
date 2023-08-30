@@ -2084,37 +2084,11 @@ func genPackageMetadata(
 
 	// Create a constant for the version number to replace during build
 	version := "0.0.0"
-	pluginVersion := version
 	info, ok := pkg.Language["python"].(PackageInfo)
 	if pkg.Version != nil && ok && info.RespectSchemaVersion {
 		version = pypiVersion(*pkg.Version)
-		pluginVersion = pkg.Version.String()
 	}
 	fmt.Fprintf(w, "VERSION = \"%s\"\n", version)
-	fmt.Fprintf(w, "PLUGIN_VERSION = \"%s\"\n\n", pluginVersion)
-
-	// Create a command that will install the Pulumi plugin for this resource provider.
-	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
-	fmt.Fprintf(w, "    def run(self):\n")
-	fmt.Fprintf(w, "        install.run(self)\n")
-	fmt.Fprintf(w, "        try:\n")
-	if pkg.PluginDownloadURL == "" {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION])\n", pkg.Name)
-	} else {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION, '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
-	}
-	fmt.Fprintf(w, "        except OSError as error:\n")
-	fmt.Fprintf(w, "            if error.errno == errno.ENOENT:\n")
-	fmt.Fprintf(w, "                print(f\"\"\"\n")
-	fmt.Fprintf(w, "                There was an error installing the %s resource provider plugin.\n", pkg.Name)
-	fmt.Fprintf(w, "                It looks like `pulumi` is not installed on your system.\n")
-	fmt.Fprintf(w, "                Please visit https://pulumi.com/ to install the Pulumi CLI.\n")
-	fmt.Fprintf(w, "                You may try manually installing the plugin by running\n")
-	fmt.Fprintf(w, "                `pulumi plugin install resource %s {PLUGIN_VERSION}`\n", pkg.Name)
-	fmt.Fprintf(w, "                \"\"\")\n")
-	fmt.Fprintf(w, "            else:\n")
-	fmt.Fprintf(w, "                raise\n")
-	fmt.Fprintf(w, "\n\n")
 
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
@@ -2140,9 +2114,6 @@ func genPackageMetadata(
 	}
 	fmt.Fprintf(w, "      long_description=readme(),\n")
 	fmt.Fprintf(w, "      long_description_content_type='text/markdown',\n")
-	fmt.Fprintf(w, "      cmdclass={\n")
-	fmt.Fprintf(w, "          'install': InstallPluginCommand,\n")
-	fmt.Fprintf(w, "      },\n")
 	if pkg.Keywords != nil {
 		fmt.Fprintf(w, "      keywords='")
 		for i, kw := range pkg.Keywords {

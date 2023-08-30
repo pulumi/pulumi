@@ -8,7 +8,6 @@
     "index.ts",
     "package.json",
     "provider.ts",
-    "scripts/install-pulumi-plugin.js",
     "tsconfig.json",
     "utilities.ts"
   ]
