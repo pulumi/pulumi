@@ -41,6 +41,41 @@ func chdir(t *testing.T, dir string) {
 	})
 }
 
+// TestRegress13774 checks that you can run `pulumi new` on an existing project as described in the
+// Pulumi Cloud new project instructions.
+
+//nolint:paralleltest // changes directory for process
+func TestRegress13774(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	orgName := ""
+	projectName := genUniqueName(t)
+
+	tempdir := tempProjectDir(t)
+	chdir(t, tempdir)
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		stack:             strings.Join([]string{orgName, projectName, "some-stack"}, "/"),
+		secretsProvider:   "default",
+		description:       "description", // Needs special escaping for YAML
+		templateNameOrURL: "typescript",
+		force:             true,
+	}
+
+	// Create new project.
+	err := runNew(context.Background(), args)
+	defer removeStack(t, tempdir, args.stack)
+	assert.NoError(t, err)
+
+	// Create new stack on an existing project.
+	args.stack = strings.Join([]string{orgName, projectName, "dev"}, "/")
+	err = runNew(context.Background(), args)
+	defer removeStack(t, tempdir, args.stack)
+	assert.NoError(t, err, "should be able to run `pulumi new` successfully on an existing project")
+}
+
 //nolint:paralleltest // changes directory for process
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)

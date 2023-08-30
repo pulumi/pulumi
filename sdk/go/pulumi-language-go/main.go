@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
@@ -172,11 +173,12 @@ func (cmd *mainCmd) Run(p *runParams) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	// map the context Done channel to the rpcutil boolean cancel channel
 	cancelChannel := make(chan bool)
 	go func() {
 		<-ctx.Done()
+		cancel() // deregister handler so we don't catch another interrupt
 		close(cancelChannel)
 	}()
 	err = rpcutil.Healthcheck(ctx, p.engineAddress, 5*time.Minute, cancel)

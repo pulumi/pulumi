@@ -28,7 +28,6 @@ import (
 	"syscall"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -363,9 +362,13 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	if len(env) > 0 {
 		cmd.Env = env
 	}
-	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
-	err, _ := cmd.StderrPipe()
+	stdin, err := cmd.StdinPipe()
+	contract.AssertNoErrorf(err, "could not open stdin pipe for plugin %s", bin)
+	stdout, err := cmd.StdoutPipe()
+	contract.AssertNoErrorf(err, "could not open stdout pipe for plugin %s", bin)
+	stderr, err := cmd.StderrPipe()
+	contract.AssertNoErrorf(err, "could not open stderr pipe for plugin %s", bin)
+
 	if err := cmd.Start(); err != nil {
 		// If we try to run a plugin that isn't found, intercept the error
 		// and instead return a custom one so we can more easily check for
@@ -385,21 +388,12 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 	}
 
 	kill := func() error {
-		var result *multierror.Error
-
-		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
-		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
-		// for the child processes to close.
-		if err := cmdutil.KillChildren(cmd.Process.Pid); err != nil {
-			result = multierror.Append(result, err)
-		}
-
-		// IDEA: consider a more graceful termination than just SIGKILL.
-		if err := cmd.Process.Kill(); err != nil {
-			result = multierror.Append(result, err)
-		}
-
-		return result.ErrorOrNil()
+		// On each platform, plugins are not loaded directly,
+		// instead a shell launches each plugin as a child process,
+		// so instead we need to kill the entire process group.
+		// Otherwise we will block waiting for the child processes to close.
+		_, err := cmdutil.TerminateProcessGroup(cmd.Process, time.Second)
+		return err
 	}
 
 	return &plugin{
@@ -407,9 +401,9 @@ func execPlugin(ctx *Context, bin, prefix string, kind workspace.PluginKind,
 		Args:   args,
 		Env:    env,
 		Kill:   kill,
-		Stdin:  in,
-		Stdout: out,
-		Stderr: err,
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 	}, nil
 }
 
