@@ -8,6 +8,7 @@ builds:
   binary: pulumi
   dir: pkg
   main: ./cmd/pulumi
+  no_main_check: true
   gobinary: ../scripts/go-wrapper.sh
   env:
   - CGO_ENABLED=0
@@ -23,18 +24,21 @@ builds:
   binary: pulumi-language-go
   dir: sdk/go/pulumi-language-go
   main: ./
+  no_main_check: true
   gobinary: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk/nodejs/cmd/pulumi-language-nodejs
   main: ./
+  no_main_check: true
   gobinary: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk
   main: ./python/cmd/pulumi-language-python
+  no_main_check: true
 
 archives:
 - id: pulumi
@@ -42,8 +46,6 @@ archives:
   format_overrides:
     - goos: windows
       format: zip
-  replacements:
-    amd64: x64
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
@@ -53,7 +55,7 @@ archives:
     - src: bin/{{ .Os }}-{{ .Arch }}/*
       dst: '.'
       strip_parent: true
-  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ .Arch }}"
+  name_template: "{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}"
 
 snapshot:
   name_template: "{{ .Version }}-SNAPSHOT"
