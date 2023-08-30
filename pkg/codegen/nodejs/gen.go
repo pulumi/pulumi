@@ -2329,10 +2329,8 @@ func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, fs codegen.Fs
 	// The generator already emitted Pulumi.yaml, so that leaves three more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
-	//     3) install-pulumi-plugin.js: plugin install script
 	fs.Add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
 	fs.Add("tsconfig.json", []byte(genTypeScriptProjectFile(info, fs)))
-	fs.Add("scripts/install-pulumi-plugin.js", []byte(genInstallScript(pkg.PluginDownloadURL)))
 	return nil
 }
 
@@ -2383,8 +2381,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		Repository:  pkg.Repository,
 		License:     pkg.License,
 		Scripts: map[string]string{
-			"build":   "tsc",
-			"install": fmt.Sprintf("node scripts/install-pulumi-plugin.js resource %s %s", pkg.Name, version),
+			"build": "tsc",
 		},
 		DevDependencies: devDependencies,
 		Pulumi: plugin.PulumiPluginJSON{
@@ -2804,41 +2801,6 @@ export function lazyLoad(exports: any, props: string[], loadModule: any) {
 	}
 	_, err = fmt.Fprintf(w, body, pluginDownloadURL)
 	return err
-}
-
-func genInstallScript(pluginDownloadURL string) string {
-	const installScript = `"use strict";
-var childProcess = require("child_process");
-
-var args = process.argv.slice(2);
-
-if (args.indexOf("${VERSION}") !== -1) {
-	process.exit(0);
-}
-
-var res = childProcess.spawnSync("pulumi", ["plugin", "install"%s].concat(args), {
-    stdio: ["ignore", "inherit", "inherit"]
-});
-
-if (res.error && res.error.code === "ENOENT") {
-    console.error("\nThere was an error installing the resource provider plugin. " +
-            "It looks like ` + "`pulumi`" + ` is not installed on your system. " +
-            "Please visit https://pulumi.com/ to install the Pulumi CLI.\n" +
-            "You may try manually installing the plugin by running " +
-            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
-} else if (res.error || res.status !== 0) {
-    console.error("\nThere was an error installing the resource provider plugin. " +
-            "You may try to manually installing the plugin by running " +
-            "` + "`" + `pulumi plugin install " + args.join(" ") + "` + "`" + `");
-}
-
-process.exit(0);
-`
-	server := ""
-	if pluginDownloadURL != "" {
-		server = fmt.Sprintf(`, "--server", %q`, pluginDownloadURL)
-	}
-	return fmt.Sprintf(installScript, server)
 }
 
 // Used to sort ObjectType values.
