@@ -225,21 +225,20 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 }
 
 func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
-	if len(ours) == 0 && len(theirs) == 0 {
+	total := len(ours) + len(theirs)
+	if total == 0 {
 		return nil
-	} else if len(theirs) == 0 {
-		return append(slice.Prealloc[Resource](len(ours)), ours...)
-	} else if len(ours) == 0 {
-		return append(slice.Prealloc[Resource](len(theirs)), theirs...)
 	}
-	depSet := make(map[Resource]struct{})
-	mergedDeps := slice.Prealloc[Resource](len(ours) + len(theirs))
+
+	depSet := make(map[Resource]struct{}, total)
 	for _, d := range ours {
 		depSet[d] = struct{}{}
 	}
 	for _, d := range theirs {
 		depSet[d] = struct{}{}
 	}
+
+	mergedDeps := slice.Prealloc[Resource](total)
 	for d := range depSet {
 		mergedDeps = append(mergedDeps, d)
 	}
