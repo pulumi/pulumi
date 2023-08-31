@@ -53,7 +53,6 @@ import (
 	javagen "github.com/pulumi/pulumi-java/pkg/codegen/java"
 	yamlgen "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -650,8 +649,6 @@ func newImportCmd() *cobra.Command {
 			switch proj.Runtime.Name() {
 			case "dotnet":
 				programGenerator = wrapper(dotnet.GenerateProgram)
-			case "python":
-				programGenerator = wrapper(python.GenerateProgram)
 			case "java":
 				programGenerator = wrapper(javagen.GenerateProgram)
 			case "yaml":
