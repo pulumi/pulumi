@@ -44,8 +44,6 @@ func killProcessGroup(proc *os.Process) error {
 
 // KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
 // also only kills direct child process, not any children they may have. This function is only implemented on Windows.
-//
-// Deprecated: Use [TerminateProcessGroup] instead.
 func KillChildren(pid int) error {
 	procs, err := ps.Processes()
 	if err != nil {

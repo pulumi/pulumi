@@ -25,8 +25,6 @@ import (
 
 // KillChildren calls os.Process.Kill() on every child process of `pid`'s, stoping after the first error (if any). It
 // also only kills direct child process, not any children they may have.
-//
-// Deprecated: Use [TerminateProcessGroup] instead.
 func KillChildren(pid int) error {
 	// A subprocess that was launched after calling `RegisterProcessGroup` below will
 	// belong to a process group whose ID is the same as the PID. Passing the negation
@@ -43,7 +41,7 @@ func KillChildren(pid int) error {
 // This is a helper function for TerminateProcessGroup;
 // a Windows version with the same signature exists in child_windows.go.
 func killProcessGroup(proc *os.Process) error {
-	return KillChildren(proc.Pid) //nolint:staticcheck // deprecated function
+	return KillChildren(proc.Pid)
 }
 
 // RegisterProcessGroup informs the OS that it needs to call `setpgid` on this
