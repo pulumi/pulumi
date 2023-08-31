@@ -58,10 +58,10 @@ func TestNoInternalTests(t *testing.T) {
 	ctx := context.Background()
 	engine := &languageTestServer{}
 
-	reponse, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
+	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	for _, name := range reponse.Tests {
+	for _, name := range response.Tests {
 		if strings.HasPrefix(name, "internal-") {
 			assert.Fail(t, "test name %s must not be returned by GetLanguageTests", name)
 		}
