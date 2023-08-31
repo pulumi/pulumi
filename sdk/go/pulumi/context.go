@@ -151,7 +151,6 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	context := &Context{
-		ctx:                 ctx,
 		info:                info,
 		exports:             make(map[string]Input),
 		monitorConn:         monitorConn,
@@ -163,6 +162,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsDeletedWith: supportsDeletedWith,
 		supportsAliasSpecs:  supportsAliasSpecs,
 	}
+
+	// Track the join group on the context.Context.
+	ctx = internal.WithWorkGroup(ctx, &context.join)
+	context.ctx = ctx
+
 	context.rpcsDone = sync.NewCond(&context.rpcsLock)
 	context.Log = &logState{
 		engine: engine,

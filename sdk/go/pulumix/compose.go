@@ -80,8 +80,8 @@ type C struct {
 //   - f SHOULD NOT spawn new goroutines.
 //     If it does, it MUST NOT use the C in those goroutines.
 func Compose[T any](ctx context.Context, f func(*C) (T, error)) Output[T] {
-	var wg internal.WorkGroup
-	outputState := internal.NewOutputState(&wg, typeOf[T]())
+	wg := internal.GetOrCreateWorkGroup(ctx)
+	outputState := internal.NewOutputState(wg, typeOf[T]())
 	c := C{
 		ctx:         ctx,
 		known:       true,

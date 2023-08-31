@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -255,4 +256,43 @@ func TestCompose_retainReference(t *testing.T) {
 	assert.Panics(t, func() {
 		pulumix.CAwait(c, pulumix.Val(42))
 	})
+}
+
+func TestCompose_contextSideEffect(t *testing.T) {
+	t.Parallel()
+
+	// If we are inside a pulumi.Run and use its context,
+	// and the composition function has side effects,
+	// then we should block the Run function from returning
+	// until the composition function has finished.
+
+	insideCompose := make(chan struct{})
+	doSideEffect := make(chan struct{})
+	var sideEffectDone bool
+
+	go func() {
+		// Wait until we're inside the composition function,
+		// delay just a little and then allow the side effect to happen.
+		// then do the side effect.
+		<-insideCompose
+		time.Sleep(50 * time.Millisecond)
+		close(doSideEffect)
+	}()
+
+	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+		pulumix.Compose(ctx.Context(), func(c *pulumix.C) (int, error) {
+			close(insideCompose)
+
+			// Don't return until we're told to.
+			<-doSideEffect
+			sideEffectDone = true
+
+			return 0, nil
+		})
+		return nil
+	}, pulumi.WithMocks("project", "stack", &mockResourceMonitor{}))
+	require.NoError(t, err)
+
+	assert.True(t, sideEffectDone,
+		"RunErr returned before composition function finished")
 }
