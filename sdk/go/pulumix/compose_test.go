@@ -17,6 +17,8 @@ package pulumix_test
 import (
 	"context"
 	"errors"
+	"os"
+	"os/exec"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -187,16 +189,37 @@ func TestCompsoe_dependencies(t *testing.T) {
 }
 
 func TestCompose_panic(t *testing.T) {
+	// Uncaptured panics in another goroutine terminate the program.
+	// To test this, we need to run the pulumix.Compose call
+	// in another process so as not to terminate the test process.
+
+	if os.Getenv("INSIDE_COMPOSE_TEST") == "1" {
+		// We're inside the subprocess. Run the invalid pulumix.Compose call.
+		ctx := context.Background()
+		o := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
+			panic("great sadness")
+		})
+
+		// Block until the goroutine attempts to fulfill the output,
+		// which should never happen because the pulumix.Compose call panics.
+		_, _, _, _, _ = pulumix.UnsafeAwait(ctx, o)
+		os.Exit(1) // unreachable
+	}
+
 	t.Parallel()
 
-	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		panic("great sadness")
-	})
+	exe, err := os.Executable()
+	require.NoError(t, err)
 
-	_, _, _, _, err := pulumix.UnsafeAwait(ctx, result)
-	assert.Error(t, err)
-	assert.ErrorContains(t, err, "panic: great sadness")
+	cmd := exec.Command(exe, "-test.run=^"+t.Name()+"$")
+	cmd.Env = []string{"INSIDE_COMPOSE_TEST=1"}
+	bs, err := cmd.CombinedOutput()
+	require.Error(t, err)
+
+	out := string(bs)
+	assert.Contains(t, out, "panic: great sadness")
+	assert.Contains(t, out, "TestCompose_panic.func")
+	assert.Contains(t, out, "compose_test.go")
 }
 
 func TestCompose_goexit(t *testing.T) {

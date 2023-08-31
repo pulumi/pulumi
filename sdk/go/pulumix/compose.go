@@ -17,9 +17,7 @@ package pulumix
 import (
 	"context"
 	"errors"
-	"fmt"
 	"runtime"
-	"runtime/debug"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -103,13 +101,12 @@ func Compose[T any](ctx context.Context, f func(*Composer) (T, error)) Output[T]
 			//
 			// For the latter case, to avoid a deadlock
 			// we must fulfill the output state before exiting.
+			// We'll do this by filling it with a sentinel error,
+			// although this wil not be seen by the user
+			// because the panic will take precedence.
 			if !c.fulfilled {
-				var err error
-				if pval := recover(); pval != nil {
-					err = fmt.Errorf("panic: %v\n%s", pval, debug.Stack())
-				} else {
-					err = errors.New("goroutine exited before returning")
-				}
+				err := errors.New("goroutine exited before returning: " +
+					"this was likely caused by a panic")
 				internal.RejectOutput(outputState, err)
 			}
 
