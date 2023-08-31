@@ -167,6 +167,10 @@ func (eng *languageTestServer) GetLanguageTests(
 ) (*testingrpc.GetLanguageTestsResponse, error) {
 	tests := make([]string, 0, len(languageTests))
 	for testName := range languageTests {
+		// Don't return internal tests
+		if strings.HasPrefix(testName, "internal-") {
+			continue
+		}
 		tests = append(tests, testName)
 	}
 
@@ -632,19 +636,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		providers:   providers,
 	}
 
-	// Create a source directory for the test
-	sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-	err = os.MkdirAll(sourceDir, 0o700)
-	if err != nil {
-		return nil, fmt.Errorf("create source dir: %w", err)
-	}
-
-	// Find and copy the tests PCL code to the source dir
-	err = copyDirectory(languageTestdata, filepath.Join("testdata", req.Test), sourceDir)
-	if err != nil {
-		return nil, fmt.Errorf("copy source test data: %w", err)
-	}
-
 	// Generate SDKs for all the providers we need
 	loader := &providerLoader{providers: test.providers}
 	loaderServer := schema.NewLoaderServer(loader)
@@ -675,12 +666,31 @@ func (eng *languageTestServer) RunLanguageTest(
 			return nil, fmt.Errorf("create temp sdks dir: %w", err)
 		}
 
-		schema, err := provider.GetSchema(0)
+		schemaBytes, err := provider.GetSchema(0)
 		if err != nil {
 			return nil, fmt.Errorf("get schema for provider %s: %w", pkg, err)
 		}
 
-		err = languageClient.GeneratePackage(sdkTempDir, string(schema), nil, grpcServer.Addr())
+		// Validate the schema and then remarshal it to JSON
+		var spec schema.PackageSpec
+		err = json.Unmarshal(schemaBytes, &spec)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal schema for provider %s: %w", pkg, err)
+		}
+		boundSpec, diags, err := schema.BindSpec(spec, nil)
+		if err != nil {
+			return nil, fmt.Errorf("bind schema for provider %s: %w", pkg, err)
+		}
+		if diags.HasErrors() {
+			return nil, fmt.Errorf("bind schema for provider %s: %v", pkg, diags)
+		}
+
+		schemaBytes, err = boundSpec.MarshalJSON()
+		if err != nil {
+			return nil, fmt.Errorf("marshal schema for provider %s: %w", pkg, err)
+		}
+
+		err = languageClient.GeneratePackage(sdkTempDir, string(schemaBytes), nil, grpcServer.Addr())
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg, err)), nil
 		}
@@ -714,6 +724,19 @@ func (eng *languageTestServer) RunLanguageTest(
 				fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
 					pkg, strings.Join(validations, "\n"))), nil
 		}
+	}
+
+	// Create a source directory for the test
+	sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+	err = os.MkdirAll(sourceDir, 0o700)
+	if err != nil {
+		return nil, fmt.Errorf("create source dir: %w", err)
+	}
+
+	// Find and copy the tests PCL code to the source dir
+	err = copyDirectory(languageTestdata, filepath.Join("testdata", req.Test), sourceDir)
+	if err != nil {
+		return nil, fmt.Errorf("copy source test data: %w", err)
 	}
 
 	// Create a directory for the project

@@ -39,6 +39,15 @@ type languageTest struct {
 var languageTestdata embed.FS
 
 var languageTests = map[string]languageTest{
+	// ==========
+	// INTERNAL
+	// ==========
+	"internal-bad-schema": {
+		providers: []plugin.Provider{&badProvider{}},
+	},
+	// ==========
+	// L1
+	// ==========
 	"l1-empty": {
 		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {
 			assertStackResource(l, res, changes)
@@ -59,6 +68,9 @@ var languageTests = map[string]languageTest{
 			assertPropertyMapMember(l, outputs, "output_false", resource.NewBoolProperty(false))
 		},
 	},
+	// ==========
+	// L2
+	// ==========
 	"l2-resource-simple": {
 		providers: []plugin.Provider{&simpleProvider{}},
 		assert: func(l *L, res result.Result, snap *deploy.Snapshot, changes display.ResourceChanges) {

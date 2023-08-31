@@ -15,10 +15,13 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Make sure that TestingT never diverges from testing.T.
@@ -29,10 +32,11 @@ func TestTestNames(t *testing.T) {
 	t.Parallel()
 
 	for name := range languageTests {
+		isInternal := strings.HasPrefix(name, "internal-")
 		isl1 := strings.HasPrefix(name, "l1-")
 		isl2 := strings.HasPrefix(name, "l2-")
 		isl3 := strings.HasPrefix(name, "l3-")
-		assert.True(t, isl1 || isl2 || isl3, "test name %s must start with l1-, l2-, or l3-", name)
+		assert.True(t, isInternal || isl1 || isl2 || isl3, "test name %s must start with internal-, l1-, l2-, or l3-", name)
 	}
 }
 
@@ -43,6 +47,23 @@ func TestL1NoProviders(t *testing.T) {
 	for name, test := range languageTests {
 		if strings.HasPrefix(name, "l1-") {
 			assert.Empty(t, test.providers, "test name %s must not use providers", name)
+		}
+	}
+}
+
+// Ensure GetTests doesn't return internal- tests.
+func TestNoInternalTests(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	engine := &languageTestServer{}
+
+	reponse, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
+	require.NoError(t, err)
+
+	for _, name := range reponse.Tests {
+		if strings.HasPrefix(name, "internal-") {
+			assert.Fail(t, "test name %s must not be returned by GetLanguageTests", name)
 		}
 	}
 }
