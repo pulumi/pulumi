@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -118,7 +119,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 func runStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
 	urn resource.URN, operation edit.OperationFunc,
-) result.Result {
+) error {
 	return runTotalStateEdit(ctx, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
 		res, err := locateStackResource(opts, snap, urn)
 		if err != nil {
@@ -134,23 +135,23 @@ func runStateEdit(
 func runTotalStateEdit(
 	ctx context.Context, stackName string, showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) result.Result {
+) error {
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
 	s, err := requireStack(ctx, stackName, stackOfferNew, opts)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	return totalStateEdit(ctx, s, showPrompt, opts, operation)
 }
 
 func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
-) result.Result {
+) error {
 	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	} else if snap == nil {
 		return nil
 	}
@@ -163,8 +164,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, surveyIcons(opts.Color)); err != nil || !confirm {
-			fmt.Println("confirmation declined")
-			return result.Bail()
+			return result.FprintBailf(os.Stdout, "confirmation declined")
 		}
 	}
 
@@ -173,7 +173,7 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 	// before we mutated it, we'll assert that we didn't make it invalid by mutating it.
 	stackIsAlreadyHosed := snap.VerifyIntegrity() != nil
 	if err = operation(opts, snap); err != nil {
-		return result.FromError(err)
+		return err
 	}
 
 	// If the stack is already broken, don't bother verifying the integrity here.
@@ -183,19 +183,19 @@ func totalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 
 	sdep, err := stack.SerializeDeployment(snap, snap.SecretsManager, false /* showSecrets */)
 	if err != nil {
-		return result.FromError(fmt.Errorf("serializing deployment: %w", err))
+		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
 	bytes, err := json.Marshal(sdep)
 	if err != nil {
-		return result.FromError(err)
+		return err
 	}
 	dep := apitype.UntypedDeployment{
 		Version:    apitype.DeploymentSchemaVersionCurrent,
 		Deployment: bytes,
 	}
-	return result.WrapIfNonNil(s.ImportDeployment(ctx, &dep))
+	return s.ImportDeployment(ctx, &dep)
 }
 
 // Prompt the user to select a URN from the passed in state.

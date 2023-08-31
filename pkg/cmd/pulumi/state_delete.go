@@ -15,6 +15,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -22,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
 )
@@ -51,7 +51,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 		Example: "pulumi state delete 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider'",
 		Args:    cmdutil.MaximumNArgs(1),
 
-		Run: cmdutil.RunResultFunc(func(cmd *cobra.Command, args []string) result.Result {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			ctx := commandContext()
 			yes = yes || skipConfirmations()
 			var urn resource.URN
@@ -64,7 +64,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				urn, err = getURNFromState(ctx, stack, nil,
 					"Select the resource to delete")
 				if err != nil {
-					return result.FromError(err)
+					return err
 				}
 			} else {
 				urn = resource.URN(args[0])
@@ -72,7 +72,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			res := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
+			err := runStateEdit(ctx, stack, showPrompt, urn, func(snap *deploy.Snapshot, res *resource.State) error {
 				var handleProtected func(*resource.State) error
 				if force {
 					handleProtected = func(res *resource.State) error {
@@ -83,8 +83,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 				return edit.DeleteResource(snap, res, handleProtected, targetDepenedents)
 			})
-			if res != nil {
-				switch e := res.Error().(type) {
+			if err != nil {
+				switch e := err.(type) {
 				case edit.ResourceHasDependenciesError:
 					message := string(e.Condemned.URN) + " can't be safely deleted because the following resources depend on it:\n"
 					for _, dependentResource := range e.Dependencies {
@@ -93,13 +93,13 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					}
 
 					message += "\nDelete those resources first or pass --target-dependents."
-					return result.Error(message)
+					return errors.New(message)
 				case edit.ResourceProtectedError:
-					return result.Errorf(
+					return fmt.Errorf(
 						"%s can't be safely deleted because it is protected. "+
 							"Re-run this command with --force to force deletion", string(e.Condemned.URN))
 				default:
-					return res
+					return err
 				}
 			}
 			fmt.Println("Resource deleted")

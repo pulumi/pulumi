@@ -718,6 +718,10 @@ func TestConstructMethodsErrorsGo(t *testing.T) {
 	testConstructMethodsErrors(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
+func TestConstructMethodsProviderGo(t *testing.T) {
+	testConstructMethodsProvider(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
