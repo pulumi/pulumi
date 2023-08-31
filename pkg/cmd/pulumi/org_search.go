@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,12 +35,38 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Delimiter rune
+
+func (d *Delimiter) String() string {
+	return string(*d)
+}
+
+func (d *Delimiter) Set(v string) error {
+	if v == "\\t" {
+		*d = Delimiter('\t')
+	} else if len(v) != 1 {
+		return errors.New("delimiter must be a single character")
+	} else {
+		*d = Delimiter(v[0])
+	}
+	return nil
+}
+
+func (d *Delimiter) Type() string {
+	return "Delimiter"
+}
+
+func (d *Delimiter) Rune() rune {
+	return rune(*d)
+}
+
 type outputFormat string
 
 const (
 	outputFormatTable outputFormat = "table"
 	outputFormatJSON  outputFormat = "json"
 	outputFormatYAML  outputFormat = "yaml"
+	outputFormatCSV   outputFormat = "csv"
 )
 
 // String is used both by fmt.Print and by Cobra in help text
@@ -50,11 +77,11 @@ func (o *outputFormat) String() string {
 // Set must have pointer receiver so it doesn't change the value of a copy
 func (o *outputFormat) Set(v string) error {
 	switch v {
-	case "table", "json", "yaml":
+	case "csv", "table", "json", "yaml":
 		*o = outputFormat(v)
 		return nil
 	default:
-		return errors.New(`must be one of "table", "json", or "yaml"`)
+		return errors.New(`must be one of "csv", "table", "json", or "yaml"`)
 	}
 }
 
@@ -65,7 +92,8 @@ func (o *outputFormat) Type() string {
 
 type searchCmd struct {
 	orgName      string
-	outputFormat outputFormat
+	csvDelimiter Delimiter
+	outputFormat
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -166,7 +194,11 @@ func newSearchCmd() *cobra.Command {
 	)
 	cmd.PersistentFlags().VarP(
 		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', and 'yaml'.",
+		"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.",
+	)
+	cmd.PersistentFlags().Var(
+		&scmd.csvDelimiter, "delimiter",
+		"Delimiter to use when rendering CSV output.",
 	)
 
 	return cmd
@@ -195,6 +227,31 @@ func renderSearchTable(w io.Writer, results []apitype.ResourceResult) error {
 
 func (cmd *searchCmd) RenderTable(results []apitype.ResourceResult) error {
 	return renderSearchTable(cmd.Stdout, results)
+}
+
+func renderSearchCSV(w io.Writer, results []apitype.ResourceResult, delimiter rune) error {
+	data := make([][]string, 0, len(results)+1)
+	writer := csv.NewWriter(w)
+	if delimiter != 0 {
+		writer.Comma = delimiter
+	}
+	data = append(data, []string{"Project", "Stack", "Name", "Type", "Package", "Module", "Modified"})
+	for _, result := range results {
+		data = append(data, []string{
+			*result.Program,
+			*result.Stack,
+			*result.Name,
+			*result.Type,
+			*result.Package,
+			*result.Module,
+			*result.Modified,
+		})
+	}
+	return writer.WriteAll(data)
+}
+
+func (cmd *searchCmd) RenderCSV(results []apitype.ResourceResult, delimiter rune) error {
+	return renderSearchCSV(cmd.Stdout, results, delimiter)
 }
 
 func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {

@@ -109,7 +109,11 @@ func newSearchAICmd() *cobra.Command {
 	)
 	cmd.PersistentFlags().VarP(
 		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', and 'yaml'.",
+		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
+	)
+	cmd.PersistentFlags().Var(
+		&scmd.csvDelimiter, "delimiter",
+		"Delimiter to use when rendering CSV output.",
 	)
 
 	return cmd
