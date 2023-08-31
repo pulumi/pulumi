@@ -1,5 +1,5 @@
 PROJECT_NAME     := Pulumi Python SDK
-LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
+LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh))
 PYPI_VERSION 	   := $(if ${PYPI_VERSION},${PYPI_VERSION},$(shell ../../scripts/pulumi-version.sh python))
 
@@ -38,7 +38,8 @@ build_package:: ensure
 	. venv/*/activate && python -m pip install -e $(PYENVSRC)
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -C cmd/pulumi-language-python \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
@@ -60,7 +61,7 @@ install_package:: build_package
 	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
 install_plugin:: build_plugin
-	GOBIN=$(PULUMI_BIN) go install \
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
