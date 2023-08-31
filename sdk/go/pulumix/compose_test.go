@@ -201,9 +201,12 @@ func TestCompose_panic(t *testing.T) {
 			panic("great sadness")
 		})
 
-		// Block until the goroutine attempts to fulfill the output,
-		// which should never happen because the pulumix.Compose call panics.
+		// Block until the goroutine attempts to fulfill the output
+		// and give it some more spare time after that to panic.
+		// The sleep won't actually affect test runtime
+		// because the panic will terminate the process.
 		_, _, _, _, _ = pulumix.UnsafeAwait(ctx, o)
+		time.Sleep(1 * time.Second)
 		os.Exit(1) // unreachable
 	}
 
