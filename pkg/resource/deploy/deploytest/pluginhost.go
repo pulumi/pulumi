@@ -433,6 +433,7 @@ func (host *pluginHost) ResolvePlugin(
 	plugins := slice.Prealloc[workspace.PluginInfo](len(host.pluginLoaders))
 
 	for _, v := range host.pluginLoaders {
+		v := v
 		p := workspace.PluginInfo{
 			Kind:       v.kind,
 			Name:       v.name,

@@ -51,6 +51,7 @@ type Resource struct {
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
 	for _, r := range resources {
+		r := r
 		_, _, _, err := monitor.RegisterResource(r.t, r.name, true, deploytest.ResourceOptions{
 			Parent:              r.parent,
 			Dependencies:        r.dependencies,
