@@ -159,7 +159,7 @@ func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*mod
 			parent.children = append(parent.children, mod)
 		}
 
-		modules[modName] = mod + "k8s-test"
+		modules[modName] = mod
 	}
 	return mod
 }
