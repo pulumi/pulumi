@@ -13,7 +13,7 @@ PYENVSRC := $(PYENV)/src
 
 BLACK_FLAGS := ./lib/pulumi --exclude lib/pulumi/runtime/proto
 
-PROJECT_PKGS    := $(shell go list ./cmd/...)
+PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
 
 include ../../build/common.mk
 
@@ -67,7 +67,8 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_go:: $(TEST_ALL_DEPS)
-	@$(GO_TEST) ${PROJECT_PKGS}
+	@cd cmd/pulumi-language-python && \
+		$(GO_TEST) ${PROJECT_PKGS}
 
 test_fast:: $(TEST_ALL_DEPS)
 	. venv/*/activate && ./scripts/test_fast.sh
@@ -78,14 +79,16 @@ test_auto:: $(TEST_ALL_DEPS)
 test_all:: test_fast test_auto test_go
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -C cmd/pulumi-language-python \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+	go install -C cmd/pulumi-language-python \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
