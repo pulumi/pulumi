@@ -38,7 +38,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -63,7 +62,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -1024,7 +1022,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	extraOptions := make([]pcl.BindOption, 0)
+	var extraOptions []pcl.BindOption
 	if !req.Strict {
 		extraOptions = append(extraOptions, pcl.NonStrictBindOptions()...)
 	}
@@ -1037,10 +1035,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 	if diags.HasErrors() {
-		rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-		for _, diag := range diags {
-			rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-		}
+		rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 
 		return &pulumirpc.GenerateProjectResponse{
 			Diagnostics: rpcDiagnostics,
@@ -1057,10 +1052,7 @@ func (host *nodeLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
 
 	return &pulumirpc.GenerateProjectResponse{
 		Diagnostics: rpcDiagnostics,
@@ -1088,19 +1080,15 @@ func (host *nodeLanguageHost) GenerateProgram(
 		}
 	}
 
-	program, pdiags, err := pcl.BindProgram(parser.Files,
+	program, diags, err := pcl.BindProgram(parser.Files,
 		pcl.Loader(loader),
 		pcl.PreferOutputVersionedInvokes)
 	if err != nil {
 		return nil, err
 	}
 
-	rpcDiagnostics := make([]*codegenrpc.Diagnostic, 0)
-	for _, diag := range pdiags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
-
-	if pdiags.HasErrors() {
+	rpcDiagnostics := plugin.HclDiagnosticsToRPCDiagnostics(diags)
+	if diags.HasErrors() {
 		return &pulumirpc.GenerateProgramResponse{
 			Diagnostics: rpcDiagnostics,
 		}, nil
@@ -1113,10 +1101,7 @@ func (host *nodeLanguageHost) GenerateProgram(
 	if err != nil {
 		return nil, err
 	}
-
-	for _, diag := range diags {
-		rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticToRPCDiagnostic(diag))
-	}
+	rpcDiagnostics = append(rpcDiagnostics, plugin.HclDiagnosticsToRPCDiagnostics(diags)...)
 
 	return &pulumirpc.GenerateProgramResponse{
 		Source:      files,
@@ -1151,7 +1136,7 @@ func (host *nodeLanguageHost) GeneratePackage(
 	}
 
 	for filename, data := range files {
-		outPath := path.Join(req.Directory, filename)
+		outPath := filepath.Join(req.Directory, filename)
 
 		err := os.MkdirAll(filepath.Dir(outPath), 0o700)
 		if err != nil {

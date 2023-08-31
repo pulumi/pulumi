@@ -17,6 +17,7 @@ package plugin
 import (
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -54,6 +55,14 @@ func HclDiagnosticToRPCDiagnostic(diag *hcl.Diagnostic) *codegenrpc.Diagnostic {
 		Subject:  subject,
 		Context:  context,
 	}
+}
+
+func HclDiagnosticsToRPCDiagnostics(diags []*hcl.Diagnostic) []*codegenrpc.Diagnostic {
+	rpcDiagnostics := slice.Prealloc[*codegenrpc.Diagnostic](len(diags))
+	for _, diag := range diags {
+		rpcDiagnostics = append(rpcDiagnostics, HclDiagnosticToRPCDiagnostic(diag))
+	}
+	return rpcDiagnostics
 }
 
 func RPCDiagnosticToHclDiagnostic(diag *codegenrpc.Diagnostic) *hcl.Diagnostic {

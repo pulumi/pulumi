@@ -128,7 +128,7 @@ func makeUntypedDeploymentTimestamp(
 	phrase, state string,
 	created, modified *time.Time,
 ) (*apitype.UntypedDeployment, error) {
-	sm, err := passphrase.NewPassphraseSecretsManager(phrase, state)
+	sm, err := passphrase.GetPassphraseSecretsManager(phrase, state)
 	if err != nil {
 		return nil, err
 	}
