@@ -145,20 +145,50 @@ func setCachedSecretsManager(state string, sm secrets.Manager) {
 	cache[state] = sm
 }
 
-func NewPassphraseSecretsManager(phrase string, salt string) (secrets.Manager, error) {
+func NewPassphraseSecretsManager(phrase string) (string, secrets.Manager, error) {
+	// Produce a new salt.
+	salt := make([]byte, 8)
+	_, err := cryptorand.Read(salt)
+	contract.AssertNoErrorf(err, "could not read from system random")
+
+	// Encrypt a message and store it with the salt so we can test if the password is correct later.
+	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
+
+	// symmetricCrypter does not use ctx, safe to use context.Background()
+	ignoredCtx := context.Background()
+	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
+	contract.AssertNoErrorf(err, "could not encrypt message")
+
+	// Encode the salt as the passphrase secrets manager state.
+	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
+	jsonState, err := json.Marshal(localSecretsManagerState{
+		Salt: state,
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("marshalling state: %w", err)
+	}
+
+	sm := &localSecretsManager{
+		crypter: crypter,
+		state:   jsonState,
+	}
+	return state, sm, nil
+}
+
+func GetPassphraseSecretsManager(phrase string, state string) (secrets.Manager, error) {
 	// Check the cache first, if we have already seen this state before, return a cached value.
-	if cached, ok := getCachedSecretsManager(salt); ok {
+	if cached, ok := getCachedSecretsManager(state); ok {
 		return cached, nil
 	}
 
 	// Wasn't in the cache so try to construct it and add it if there's no error.
-	crypter, err := symmetricCrypterFromPhraseAndState(phrase, salt)
+	crypter, err := symmetricCrypterFromPhraseAndState(phrase, state)
 	if err != nil {
 		return nil, err
 	}
 
-	state, err := json.Marshal(localSecretsManagerState{
-		Salt: salt,
+	jsonState, err := json.Marshal(localSecretsManagerState{
+		Salt: state,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshalling state: %w", err)
@@ -166,9 +196,9 @@ func NewPassphraseSecretsManager(phrase string, salt string) (secrets.Manager, e
 
 	sm := &localSecretsManager{
 		crypter: crypter,
-		state:   state,
+		state:   jsonState,
 	}
-	setCachedSecretsManager(salt, sm)
+	setCachedSecretsManager(state, sm)
 	return sm, nil
 }
 
@@ -190,7 +220,7 @@ func newPromptingPassphraseSecretsManagerFromState(state string) (secrets.Manage
 			return nil, phraseErr
 		}
 
-		sm, smerr := NewPassphraseSecretsManager(phrase, state)
+		sm, smerr := GetPassphraseSecretsManager(phrase, state)
 		switch {
 		case interactive && smerr == ErrIncorrectPassphrase:
 			cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
@@ -241,13 +271,13 @@ func NewPromptingPassphraseSecretsManager(info *workspace.ProjectStack,
 	}
 
 	// Otherwise, prompt the user for a new passphrase.
-	salt, sm, err := promptForNewPassphrase(rotateSecretsProvider)
+	state, sm, err := promptForNewPassphrase(rotateSecretsProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	// Store the salt and save it.
-	info.EncryptionSalt = salt
+	info.EncryptionSalt = state
 
 	// Return the passphrase secrets manager.
 	return sm, nil
@@ -292,30 +322,12 @@ func promptForNewPassphrase(rotate bool) (string, secrets.Manager, error) {
 		cmdutil.Diag().Errorf(diag.Message("", "passphrases do not match"))
 	}
 
-	// Produce a new salt.
-	salt := make([]byte, 8)
-	_, err := cryptorand.Read(salt)
-	contract.AssertNoErrorf(err, "could not read from system random")
-
-	// Encrypt a message and store it with the salt so we can test if the password is correct later.
-	crypter := config.NewSymmetricCrypterFromPassphrase(phrase, salt)
-
-	// symmetricCrypter does not use ctx, safe to use context.Background()
-	ignoredCtx := context.Background()
-	msg, err := crypter.EncryptValue(ignoredCtx, "pulumi")
-	contract.AssertNoErrorf(err, "could not encrypt message")
-
-	// Encode the salt as the passphrase secrets manager state.
-	state := fmt.Sprintf("v1:%s:%s", base64.StdEncoding.EncodeToString(salt), msg)
-
-	// Create the secrets manager using the state.
-	sm, err := NewPassphraseSecretsManager(phrase, state)
+	state, sm, err := NewPassphraseSecretsManager(phrase)
 	if err != nil {
 		return "", nil, err
 	}
-
-	// Return both the state and the secrets manager.
-	return state, sm, nil
+	setCachedSecretsManager(state, sm)
+	return state, sm, err
 }
 
 func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool, err error) {
