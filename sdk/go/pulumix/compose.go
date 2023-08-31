@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -58,7 +59,7 @@ type C struct {
 	known       bool
 	secret      bool
 	deps        []internal.Resource
-	outputState *internal.OutputState
+	outputState atomic.Pointer[internal.OutputState]
 
 	fulfilled bool // true if the output has been fulfilled
 }
@@ -83,14 +84,26 @@ func Compose[T any](ctx context.Context, f func(*C) (T, error)) Output[T] {
 	wg := internal.GetOrCreateWorkGroup(ctx)
 	outputState := internal.NewOutputState(wg, typeOf[T]())
 	c := C{
-		ctx:         ctx,
-		known:       true,
-		secret:      false,
-		outputState: outputState,
+		ctx:    ctx,
+		known:  true,
+		secret: false,
 	}
+	c.outputState.Store(outputState)
 
 	go func() {
 		defer func() {
+			// After the function returns, nil out the OutputState
+			// to protect against misuse like storing a pointer
+			// to the C outside f.
+			// e.g.,
+			//
+			//	var c *C
+			//	o := Compose(ctx, func(c2 *C) (O, error) {
+			//		c = *c2
+			//		// ...
+			//	})
+			outputState := c.outputState.Swap(nil)
+
 			// If f kills this goroutine before returning,
 			// it was because of one of two reasons:
 			//
@@ -109,18 +122,6 @@ func Compose[T any](ctx context.Context, f func(*C) (T, error)) Output[T] {
 					"this was likely caused by a panic")
 				internal.RejectOutput(outputState, err)
 			}
-
-			// After the function returns, zero out the C
-			// to protect against misuse like storing a pointer
-			// to the C outside f.
-			// e.g.,
-			//
-			//	var c *C
-			//	o := Compose(ctx, func(c2 *C) (O, error) {
-			//		c = *c2
-			//		// ...
-			//	})
-			c = C{}
 		}()
 
 		v, err := f(&c)
@@ -163,7 +164,8 @@ func Compose[T any](ctx context.Context, f func(*C) (T, error)) Output[T] {
 //   - It can only be called inside a [Compose] call.
 //   - It MUST NOT be called from goroutines spawned by f.
 func CAwait[T any](c *C, o Input[T]) T {
-	contract.Assertf(c.outputState != nil, "CAwait called outside Compose")
+	outputState := c.outputState.Load()
+	contract.Assertf(outputState != nil, "CAwait called outside Compose")
 
 	v, known, secret, deps, err := await(c.ctx, o.ToOutput(c.ctx))
 	c.secret = c.secret || secret
@@ -171,7 +173,7 @@ func CAwait[T any](c *C, o Input[T]) T {
 	c.deps = append(c.deps, deps...)
 	if err != nil || !known {
 		var zero T
-		internal.FulfillOutput(c.outputState, zero, false, c.secret, c.deps, err)
+		internal.FulfillOutput(outputState, zero, false, c.secret, c.deps, err)
 		c.fulfilled = true
 		runtime.Goexit()
 	}
