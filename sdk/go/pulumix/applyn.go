@@ -28,9 +28,9 @@ func ApplyContextErr[A1, B any](
 	i1 Input[A1],
 	fn func(A1) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
+			CAwait[A1](c, i1),
 		)
 	})
 }
@@ -92,10 +92,10 @@ func Apply2ContextErr[A1, A2, B any](
 	i1 Input[A1], i2 Input[A2],
 	fn func(A1, A2) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
 		)
 	})
 }
@@ -157,11 +157,11 @@ func Apply3ContextErr[A1, A2, A3, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3],
 	fn func(A1, A2, A3) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
 		)
 	})
 }
@@ -223,12 +223,12 @@ func Apply4ContextErr[A1, A2, A3, A4, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4],
 	fn func(A1, A2, A3, A4) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
-			ComposeAwait[A4](c, i4),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
+			CAwait[A4](c, i4),
 		)
 	})
 }
@@ -290,13 +290,13 @@ func Apply5ContextErr[A1, A2, A3, A4, A5, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5],
 	fn func(A1, A2, A3, A4, A5) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
-			ComposeAwait[A4](c, i4),
-			ComposeAwait[A5](c, i5),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
+			CAwait[A4](c, i4),
+			CAwait[A5](c, i5),
 		)
 	})
 }
@@ -358,14 +358,14 @@ func Apply6ContextErr[A1, A2, A3, A4, A5, A6, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6],
 	fn func(A1, A2, A3, A4, A5, A6) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
-			ComposeAwait[A4](c, i4),
-			ComposeAwait[A5](c, i5),
-			ComposeAwait[A6](c, i6),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
+			CAwait[A4](c, i4),
+			CAwait[A5](c, i5),
+			CAwait[A6](c, i6),
 		)
 	})
 }
@@ -427,15 +427,15 @@ func Apply7ContextErr[A1, A2, A3, A4, A5, A6, A7, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6], i7 Input[A7],
 	fn func(A1, A2, A3, A4, A5, A6, A7) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
-			ComposeAwait[A4](c, i4),
-			ComposeAwait[A5](c, i5),
-			ComposeAwait[A6](c, i6),
-			ComposeAwait[A7](c, i7),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
+			CAwait[A4](c, i4),
+			CAwait[A5](c, i5),
+			CAwait[A6](c, i6),
+			CAwait[A7](c, i7),
 		)
 	})
 }
@@ -497,16 +497,16 @@ func Apply8ContextErr[A1, A2, A3, A4, A5, A6, A7, A8, B any](
 	i1 Input[A1], i2 Input[A2], i3 Input[A3], i4 Input[A4], i5 Input[A5], i6 Input[A6], i7 Input[A7], i8 Input[A8],
 	fn func(A1, A2, A3, A4, A5, A6, A7, A8) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
-			ComposeAwait[A1](c, i1),
-			ComposeAwait[A2](c, i2),
-			ComposeAwait[A3](c, i3),
-			ComposeAwait[A4](c, i4),
-			ComposeAwait[A5](c, i5),
-			ComposeAwait[A6](c, i6),
-			ComposeAwait[A7](c, i7),
-			ComposeAwait[A8](c, i8),
+			CAwait[A1](c, i1),
+			CAwait[A2](c, i2),
+			CAwait[A3](c, i3),
+			CAwait[A4](c, i4),
+			CAwait[A5](c, i5),
+			CAwait[A6](c, i6),
+			CAwait[A7](c, i7),
+			CAwait[A8](c, i8),
 		)
 	})
 }

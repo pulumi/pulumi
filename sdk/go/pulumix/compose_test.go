@@ -38,11 +38,11 @@ func TestCompose_success(t *testing.T) {
 	bout := pulumix.Val("2")
 	ctx := context.Background()
 
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		a, err := strconv.Atoi(pulumix.ComposeAwait(c, aout))
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
+		a, err := strconv.Atoi(pulumix.CAwait(c, aout))
 		assert.NoError(t, err)
 
-		b, err := strconv.Atoi(pulumix.ComposeAwait(c, bout))
+		b, err := strconv.Atoi(pulumix.CAwait(c, bout))
 		assert.NoError(t, err)
 
 		return a + b, nil
@@ -64,11 +64,11 @@ func TestCompose_returnError(t *testing.T) {
 
 	ctx := context.Background()
 
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		_, err := strconv.Atoi(pulumix.ComposeAwait(c, aout))
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
+		_, err := strconv.Atoi(pulumix.CAwait(c, aout))
 		assert.NoError(t, err)
 
-		_, err = strconv.Atoi(pulumix.ComposeAwait(c, bout))
+		_, err = strconv.Atoi(pulumix.CAwait(c, bout))
 		assert.Error(t, err)
 
 		return 0, err
@@ -90,9 +90,9 @@ func TestCompose_failedChildOperation(t *testing.T) {
 	internal.RejectOutput(bar, giveErr)
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		foo := pulumix.ComposeAwait(c, foo)
-		bar := pulumix.ComposeAwait(c, bar)
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
+		foo := pulumix.CAwait(c, foo)
+		bar := pulumix.CAwait(c, bar)
 		t.Errorf("Should not reach here, got: (%v, %v)", foo, bar)
 		return 0, nil // appease the compiler
 	})
@@ -114,10 +114,10 @@ func TestCompose_secret(t *testing.T) {
 	password := pulumi.ToSecret(pulumi.String("hunter2")).(pulumi.StringOutput)
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (*User, error) {
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (*User, error) {
 		return &User{
-			Username: pulumix.ComposeAwait(c, username),
-			Password: pulumix.ComposeAwait(c, password),
+			Username: pulumix.CAwait(c, username),
+			Password: pulumix.CAwait(c, password),
 		}, nil
 	})
 
@@ -139,9 +139,9 @@ func TestCompose_unknown(t *testing.T) {
 	internal.FulfillOutput(bar, nil, false /* known */, false, nil, nil)
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		fooLen := len(pulumix.ComposeAwait(c, foo))
-		barLen := len(pulumix.ComposeAwait(c, bar))
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
+		fooLen := len(pulumix.CAwait(c, foo))
+		barLen := len(pulumix.CAwait(c, bar))
 		t.Errorf("Should not reach here, got: (%v, %v)", fooLen, barLen)
 		return 0, nil // appease the compiler
 	})
@@ -175,9 +175,9 @@ func TestCompsoe_dependencies(t *testing.T) {
 	internal.FulfillOutput(b, 2, true, false, []internal.Resource{dep2, dep3}, nil)
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
-		a := pulumix.ComposeAwait(c, a)
-		b := pulumix.ComposeAwait(c, b)
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
+		a := pulumix.CAwait(c, a)
+		b := pulumix.CAwait(c, b)
 		return a + b, nil
 	})
 
@@ -196,7 +196,7 @@ func TestCompose_panic(t *testing.T) {
 	if os.Getenv("INSIDE_COMPOSE_TEST") == "1" {
 		// We're inside the subprocess. Run the invalid pulumix.Compose call.
 		ctx := context.Background()
-		o := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
+		o := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
 			panic("great sadness")
 		})
 
@@ -226,7 +226,7 @@ func TestCompose_goexit(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c *pulumix.Composer) (int, error) {
+	result := pulumix.Compose(ctx, func(c *pulumix.C) (int, error) {
 		runtime.Goexit()
 		t.Errorf("Should not reach here")
 		return 0, nil // appease the compiler
@@ -240,10 +240,10 @@ func TestCompose_goexit(t *testing.T) {
 func TestCompose_retainReference(t *testing.T) {
 	t.Parallel()
 
-	var c *pulumix.Composer
+	var c *pulumix.C
 
 	ctx := context.Background()
-	result := pulumix.Compose(ctx, func(c2 *pulumix.Composer) (int, error) {
+	result := pulumix.Compose(ctx, func(c2 *pulumix.C) (int, error) {
 		c = c2
 		return 0, nil
 	})
@@ -253,6 +253,6 @@ func TestCompose_retainReference(t *testing.T) {
 
 	// Awaiting on an output with the illegal composer should panic.
 	assert.Panics(t, func() {
-		pulumix.ComposeAwait(c, pulumix.Val(42))
+		pulumix.CAwait(c, pulumix.Val(42))
 	})
 }

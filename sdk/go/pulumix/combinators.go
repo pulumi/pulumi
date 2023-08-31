@@ -19,9 +19,9 @@ import "context"
 // JoinContext unpacks an Output stored inside another input,
 // returning an output containing the underlying value.
 func JoinContext[A any, I Input[A]](ctx context.Context, inputInputA Input[I]) Output[A] {
-	return Compose[A](ctx, func(c *Composer) (A, error) {
-		inputA := ComposeAwait(c, inputInputA)
-		a := ComposeAwait[A](c, inputA)
+	return Compose[A](ctx, func(c *C) (A, error) {
+		inputA := CAwait(c, inputInputA)
+		a := CAwait[A](c, inputA)
 		return a, nil
 	})
 }

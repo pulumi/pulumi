@@ -44,10 +44,10 @@ func {{ $name }}ContextErr[{{ template "typeParameters" . }}](
 	{{ template "inputParameters" . }}
 	fn func({{ range seq 1 . }} A{{ . }}, {{ end }}) (B, error),
 ) Output[B] {
-	return Compose[B](ctx, func(c *Composer) (B, error) {
+	return Compose[B](ctx, func(c *C) (B, error) {
 		return fn(
 			{{ range seq 1 . -}}
-				ComposeAwait[A{{ . }}](c, i{{ . }}),
+				CAwait[A{{ . }}](c, i{{ . }}),
 			{{ end }}
 		)
 	})
