@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: Support multi-errors built from errors.Join for RunFunc, Exit, and friends.

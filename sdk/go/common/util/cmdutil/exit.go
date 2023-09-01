@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -162,16 +163,34 @@ func exitErrorCodef(code int, format string, args ...interface{}) {
 
 // errorMessage returns a message, possibly cleaning up the text if appropriate.
 func errorMessage(err error) string {
-	if multi, ok := err.(*multierror.Error); ok {
-		wr := multi.WrappedErrors()
-		if len(wr) == 1 {
-			return errorMessage(wr[0])
-		}
-		msg := fmt.Sprintf("%d errors occurred:", len(wr))
-		for i, werr := range wr {
+	contract.Requiref(err != nil, "err", "must not be nil")
+
+	var underlying []error
+	switch multi := err.(type) {
+	case *multierror.Error:
+		underlying = multi.WrappedErrors()
+	case interface{ Unwrap() []error }:
+		// The standard library supported multi-errors (available since Go 1.20)
+		// use this interface.
+		underlying = multi.Unwrap()
+	default:
+		return err.Error()
+	}
+
+	switch len(underlying) {
+	case 0:
+		// This should never happen, but just in case.
+		// Return the original error message.
+		return err.Error()
+
+	case 1:
+		return errorMessage(underlying[0])
+
+	default:
+		msg := fmt.Sprintf("%d errors occurred:", len(underlying))
+		for i, werr := range underlying {
 			msg += fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr))
 		}
 		return msg
 	}
-	return err.Error()
 }
