@@ -37,6 +37,7 @@ func (c *converterServer) ConvertState(ctx context.Context,
 ) (*pulumirpc.ConvertStateResponse, error) {
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
+		Args:         req.Args,
 	})
 	if err != nil {
 		return nil, err

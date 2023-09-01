@@ -490,10 +490,6 @@ func newImportCmd() *cobra.Command {
 				}
 				importFile = f
 			} else if from != "" {
-				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
-					contract.IgnoreError(cmd.Help())
-					return result.Errorf("an inline resource may not be specified in conjunction with a converter")
-				}
 				converter, err := plugin.NewConverter(pCtx, from, nil)
 				if err != nil {
 					return result.FromError(err)
@@ -534,6 +530,7 @@ func newImportCmd() *cobra.Command {
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
 					MapperTarget: grpcServer.Addr(),
+					Args:         args,
 				})
 				if err != nil {
 					return result.FromError(err)
