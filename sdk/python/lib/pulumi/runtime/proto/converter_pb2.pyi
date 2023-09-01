@@ -35,14 +35,21 @@ class ConvertStateRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
+    ARGS_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
+    @property
+    def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+        import from.
+        """
     def __init__(
         self,
         *,
         mapper_target: builtins.str = ...,
+        args: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal["mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["args", b"args", "mapper_target", b"mapper_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 

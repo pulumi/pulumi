@@ -32,6 +32,7 @@ type ResourceImport struct {
 
 type ConvertStateRequest struct {
 	MapperTarget string
+	Args         []string
 }
 
 type ConvertStateResponse struct {

@@ -36,6 +36,9 @@ service Converter {
 message ConvertStateRequest {
     // the gRPC target of the mapper service.
     string mapper_target = 1;
+    // the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
+    // import from.
+    repeated string args = 2;
 }
 
 // A ResourceImport specifies a resource to import.

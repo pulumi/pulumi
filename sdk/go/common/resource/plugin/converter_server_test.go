@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
@@ -35,6 +36,9 @@ func (c *testConverter) Close() error {
 func (c *testConverter) ConvertState(
 	ctx context.Context, req *ConvertStateRequest,
 ) (*ConvertStateResponse, error) {
+	if !reflect.DeepEqual(req.Args, []string{"arg1", "arg2"}) {
+		return nil, fmt.Errorf("unexpected Args: %v", req.Args)
+	}
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
@@ -84,6 +88,7 @@ func TestConverterServer_State(t *testing.T) {
 	server := NewConverterServer(&testConverter{})
 
 	resp, err := server.ConvertState(context.Background(), &pulumirpc.ConvertStateRequest{
+		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
 	})
 
