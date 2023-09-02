@@ -123,8 +123,9 @@ func (b *expressionBinder) bindExpression(syntax hclsyntax.Node) (Expression, hc
 	}
 }
 
-// ctyTypeToType converts a cty.Type to a model Type.
-func ctyTypeToType(t cty.Type, optional bool) Type {
+// ctyTypeToType converts a cty.Type to a model Type. If big is true, the resulting type will be a big integer instead
+// of number.
+func ctyTypeToType(t cty.Type, optional bool, big bool) Type {
 	// TODO(pdg): non-primitive types. We simply don't need these yet.
 	var result Type
 	switch {
@@ -133,27 +134,31 @@ func ctyTypeToType(t cty.Type, optional bool) Type {
 	case t.Equals(cty.Bool):
 		result = BoolType
 	case t.Equals(cty.Number):
-		result = NumberType
+		if big {
+			result = BigIntegerType
+		} else {
+			result = NumberType
+		}
 	case t.Equals(cty.String):
 		result = StringType
 	case t.Equals(cty.DynamicPseudoType):
 		result = DynamicType
 	case t.IsMapType():
-		result = NewMapType(ctyTypeToType(t.ElementType(), false))
+		result = NewMapType(ctyTypeToType(t.ElementType(), false, false))
 	case t.IsListType():
-		result = NewListType(ctyTypeToType(t.ElementType(), false))
+		result = NewListType(ctyTypeToType(t.ElementType(), false, false))
 	case t.IsSetType():
-		result = NewSetType(ctyTypeToType(t.ElementType(), false))
+		result = NewSetType(ctyTypeToType(t.ElementType(), false, false))
 	case t.IsObjectType():
 		properties := map[string]Type{}
 		for key, t := range t.AttributeTypes() {
-			properties[key] = ctyTypeToType(t, false)
+			properties[key] = ctyTypeToType(t, false, false)
 		}
 		result = NewObjectType(properties)
 	case t.IsTupleType():
 		elements := make([]Type, len(t.TupleElementTypes()))
 		for i, t := range t.TupleElementTypes() {
-			elements[i] = ctyTypeToType(t, false)
+			elements[i] = ctyTypeToType(t, false, false)
 		}
 		result = NewTupleType(elements...)
 	default:
@@ -180,7 +185,7 @@ func MakeTraverser(t Type) hcl.TraverseIndex {
 
 // getOperationSignature returns the equivalent StaticFunctionSignature for a given Operation. This signature can be
 // used for typechecking the operation's arguments.
-func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
+func getOperationSignature(op *hclsyntax.Operation, big bool) StaticFunctionSignature {
 	ctyParams := op.Impl.Params()
 
 	sig := StaticFunctionSignature{
@@ -189,16 +194,16 @@ func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	for i, p := range ctyParams {
 		sig.Parameters[i] = Parameter{
 			Name: p.Name,
-			Type: ctyTypeToType(p.Type, p.AllowNull),
+			Type: ctyTypeToType(p.Type, p.AllowNull, big),
 		}
 	}
 	if p := op.Impl.VarParam(); p != nil {
 		sig.VarargsParameter = &Parameter{
 			Name: p.Name,
-			Type: ctyTypeToType(p.Type, p.AllowNull),
+			Type: ctyTypeToType(p.Type, p.AllowNull, big),
 		}
 	}
-	sig.ReturnType = ctyTypeToType(op.Type, false)
+	sig.ReturnType = ctyTypeToType(op.Type, false, big)
 
 	return sig
 }
@@ -777,6 +782,25 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
+
+	// If the operation is just negation, and the operand is a literal we can simplify the expression.
+	if lit, ok := operand.(*LiteralValueExpression); ok && syntax.Op == hclsyntax.OpNegate {
+		switch lit.Value.Type() {
+		case cty.Number:
+			newVal := lit.Value.Negate()
+
+			lit.Tokens = &_syntax.LiteralValueTokens{
+				Parentheses: tokens.Parentheses,
+				Value:       append([]_syntax.Token{tokens.Operator}, lit.Tokens.Value...),
+			}
+			lit.Syntax = &hclsyntax.LiteralValueExpr{
+				SrcRange: syntax.SrcRange,
+				Val:      newVal,
+			}
+			lit.Value = newVal
+			return lit, diagnostics
+		}
+	}
 
 	return expr, diagnostics
 }

@@ -17,8 +17,10 @@ package main
 import (
 	"embed"
 	"math"
+	"math/big"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/cmd/pulumi-test-language/providers"
@@ -54,6 +56,9 @@ type languageTest struct {
 
 	// runs is a list of test runs to execute.
 	runs []testRun
+
+	// allRunsUseSameSource disables the usual behavior of running each test run with a different source by test run index.
+	allRunsUseSameSource bool
 }
 
 // lorem is a long string used for testing large string values.
@@ -803,6 +808,133 @@ var languageTests = map[string]languageTest{
 
 					assertPropertyMapMember(l, outputs, "outputInput", resource.NewStringProperty("Goodbye world"))
 					assertPropertyMapMember(l, outputs, "unit", resource.NewStringProperty("Hello world"))
+				},
+			},
+		},
+	},
+	"l2-resource-long": {
+		allRunsUseSameSource: true,
+		providers:            []plugin.Provider{&providers.LongProvider{}},
+		runs: []testRun{
+			{
+				// Run the test but with "integer" support disabled
+				updateOptions: engine.UpdateOptions{
+					DisableIntegers: true,
+				},
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					requireStackResource(l, err, changes)
+					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:long", provider.Type.String(), "expected long provider")
+
+					check := func(name, value string) {
+						var res *resource.State
+						for _, r := range snap.Resources {
+							if r.URN.Name() == name {
+								res = r
+							}
+						}
+						require.NotNil(l, res, "expected resource %s to be in snapshot", name)
+						assert.Equal(l, "long:index:Resource", res.Type.String(), "expected long resource")
+
+						// The input and output should be a number because the engine doesn't support integers
+						val, err := strconv.ParseFloat(value, 64)
+						assert.NoError(l, err, "expected value to be a float")
+						want := resource.NewPropertyMapFromMap(map[string]any{
+							"value": resource.NewNumberProperty(val),
+						})
+						assert.Equal(l, want, res.Inputs, "expected inputs to be %v", want)
+						assert.Equal(l, want, res.Outputs, "expected outputs to be %v", want)
+					}
+
+					check("small", "256")
+					check("min53", "-9007199254740992")
+					check("max53", "9007199254740992")
+					check("min64", "-9223372036854775808")
+					check("max64", "9223372036854775807")
+					check("uint64", "18446744073709551615")
+					check("huge", "20000000000000000001")
+
+					stack := snap.Resources[0]
+					result, err := strconv.ParseFloat("38446744073709551871", 64)
+					assert.NoError(l, err)
+					huge, err := strconv.ParseFloat("2e+19", 64)
+					assert.NoError(l, err)
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"result":    result,
+						"huge":      huge,
+						"roundtrip": huge,
+					})
+					assert.Equal(l, want, stack.Outputs, "expected stack outputs to be %v", want)
+				},
+			},
+			{
+				// Run the test again but with default options so integers are enabled.
+				assert: func(l *L,
+					projectDirectory string, err error,
+					snap *deploy.Snapshot, changes display.ResourceChanges,
+				) {
+					require.Len(l, snap.Resources, 9, "expected 9 resources in snapshot")
+
+					provider := snap.Resources[1]
+					assert.Equal(l, "pulumi:providers:long", provider.Type.String(), "expected long provider")
+
+					check := func(name, value string) {
+						var res *resource.State
+						for _, r := range snap.Resources {
+							if r.URN.Name() == name {
+								res = r
+							}
+						}
+						require.NotNil(l, res, "expected resource %s to be in snapshot", name)
+						assert.Equal(l, "long:index:Resource", res.Type.String(), "expected %s to be a long resource", name)
+
+						// Output is always an integer
+						val := new(big.Int)
+						val.SetString(value, 10)
+						wantOutput := resource.NewPropertyMapFromMap(map[string]any{
+							"value": val,
+						})
+
+						// Check if the input "value" is a number or integer, either is ok as long as it's the right
+						// value.
+						var wantInput resource.PropertyMap
+						if res.Inputs["value"].IsInteger() {
+							wantInput = wantOutput
+						} else {
+							v, err := strconv.ParseFloat(value, 64)
+							assert.NoError(l, err, "expected value to be a float")
+							wantInput = resource.NewPropertyMapFromMap(map[string]any{
+								"value": v,
+							})
+						}
+						assert.Equal(l, wantInput, res.Inputs, "expected inputs for %s to be %v", name, wantInput)
+						assert.Equal(l, wantOutput, res.Outputs, "expected outputs for %s to be %v", name, wantOutput)
+					}
+
+					check("small", "256")
+					check("min53", "-9007199254740992")
+					check("max53", "9007199254740992")
+					check("min64", "-9223372036854775808")
+					check("max64", "9223372036854775807")
+					check("uint64", "18446744073709551615")
+					check("huge", "20000000000000000001")
+
+					stack := snap.Resources[0]
+					result := new(big.Int)
+					result.SetString("38446744073709551871", 10)
+					huge := new(big.Int)
+					huge.SetString("20000000000000000001", 10)
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"result":    result,
+						"huge":      huge,
+						"roundtrip": huge,
+					})
+					assert.Equal(l, want, stack.Outputs, "expected stack outputs to be %v", want)
 				},
 			},
 		},

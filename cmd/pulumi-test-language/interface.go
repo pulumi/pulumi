@@ -409,13 +409,14 @@ func (eng *languageTestServer) RunLanguageTest(
 		providers[fmt.Sprintf("%s@%s", provider.Pkg(), version)] = provider
 	}
 
-	pctx.Host = &testHost{
+	host := &testHost{
 		host:        pctx.Host,
 		runtime:     languageClient,
 		runtimeName: token.LanguagePluginName,
 		providers:   providers,
 		connections: make(map[plugin.Provider]io.Closer),
 	}
+	pctx.Host = host
 
 	// Generate SDKs for all the packages we need
 	loader := &providerLoader{providers: test.providers}
@@ -431,56 +432,59 @@ func (eng *languageTestServer) RunLanguageTest(
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
 	for i, run := range test.runs {
-		// Create a source directory for the test
-		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
-			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
-		}
-		err = os.MkdirAll(sourceDir, 0o700)
-		if err != nil {
-			return nil, fmt.Errorf("create source dir: %w", err)
-		}
-
-		// Find and copy the tests PCL code to the source dir
-		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
-			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
-		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy source test data: %w", err)
-		}
-		if run.main != "" {
-			sourceDir = filepath.Join(sourceDir, run.main)
-		}
-
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
-		if err != nil {
-			return nil, fmt.Errorf("bind PCL program: %v", err)
-		}
-		if diagnostics.HasErrors() {
-			return nil, fmt.Errorf("bind PCL program: %v", diagnostics)
-		}
-
-		pkgs := program.PackageReferences()
-		// We should be able to get a full def for each package
-		for _, pkg := range pkgs {
-			if pkg.Name() == "pulumi" {
-				// No need to write the pulumi package, it's builtin to core SDKs
-				continue
+		// If all the tests use the same source only run this loop for the first test case
+		if i == 0 || !test.allRunsUseSameSource {
+			// Create a source directory for the test
+			sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
+			if len(test.runs) > 1 && !test.allRunsUseSameSource {
+				sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
 			}
-			def, err := pkg.Definition()
+			err = os.MkdirAll(sourceDir, 0o700)
 			if err != nil {
-				return nil, fmt.Errorf("get package definition: %w", err)
+				return nil, fmt.Errorf("create source dir: %w", err)
 			}
-			exists := false
-			for _, existing := range packages {
-				if existing.Name == def.Name {
-					exists = true
+
+			// Find and copy the tests PCL code to the source dir
+			pclDir := filepath.Join("testdata", req.Test)
+			if len(test.runs) > 1 && !test.allRunsUseSameSource {
+				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
+			}
+			err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
+			if err != nil {
+				return nil, fmt.Errorf("copy source test data: %w", err)
+			}
+			if run.main != "" {
+				sourceDir = filepath.Join(sourceDir, run.main)
+			}
+
+			program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+			if err != nil {
+				return nil, fmt.Errorf("bind PCL program: %v", err)
+			}
+			if diagnostics.HasErrors() {
+				return nil, fmt.Errorf("bind PCL program: %v", diagnostics)
+			}
+
+			pkgs := program.PackageReferences()
+			// We should be able to get a full def for each package
+			for _, pkg := range pkgs {
+				if pkg.Name() == "pulumi" {
+					// No need to write the pulumi package, it's builtin to core SDKs
+					continue
 				}
-			}
-			if !exists {
-				packages = append(packages, def)
+				def, err := pkg.Definition()
+				if err != nil {
+					return nil, fmt.Errorf("get package definition: %w", err)
+				}
+				exists := false
+				for _, existing := range packages {
+					if existing.Name == def.Name {
+						exists = true
+					}
+				}
+				if !exists {
+					packages = append(packages, def)
+				}
 			}
 		}
 	}
@@ -661,83 +665,73 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	var result LResult
 	for i, run := range test.runs {
-		// Create a source directory for the test
+		// Load the source directory for the test, we'll have already created and copied the PCL code into this above.
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.runs) > 1 && !test.allRunsUseSameSource {
 			sourceDir = filepath.Join(sourceDir, strconv.Itoa(i))
-		}
-		err = os.MkdirAll(sourceDir, 0o700)
-		if err != nil {
-			return nil, fmt.Errorf("create source dir: %w", err)
-		}
-
-		// Find and copy the tests PCL code to the source dir
-		pclDir := filepath.Join("testdata", req.Test)
-		if len(test.runs) > 1 {
-			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
-		}
-		err = copyDirectory(languageTestdata, pclDir, sourceDir, nil, nil)
-		if err != nil {
-			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
 
 		// Create a directory for the project
 		projectDir := filepath.Join(token.TemporaryDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
+		if len(test.runs) > 1 && !test.allRunsUseSameSource {
 			projectDir = filepath.Join(projectDir, strconv.Itoa(i))
 		}
-		err = os.MkdirAll(projectDir, 0o755)
-		if err != nil {
-			return nil, fmt.Errorf("create project dir: %w", err)
-		}
 
-		// Generate the project and read in the Pulumi.yaml
-		rootDirectory := sourceDir
-		projectJSON := func() string {
-			if run.main == "" {
-				return fmt.Sprintf(`{"name": "%s"}`, req.Test)
-			}
-			sourceDir = filepath.Join(sourceDir, run.main)
-			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
-		}()
-
-		// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
-		diagnostics, err := languageClient.GenerateProject(
-			sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
-		if err != nil {
-			return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
-		}
-		if diagnostics.HasErrors() {
-			return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
-		}
-
-		// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
-		// them across here.
-		err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
-		if err != nil {
-			return nil, fmt.Errorf("copy testdata: %w", err)
-		}
-
-		snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
-		if len(test.runs) > 1 {
-			snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
-		}
-		projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-		if err != nil {
-			return nil, fmt.Errorf("program snapshot creation: %w", err)
-		}
-		validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
-		if err != nil {
-			return nil, fmt.Errorf("program snapshot validation: %w", err)
-		}
-		if len(validations) > 0 {
-			return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-		}
-		// If we made a snapshot edit we can clean it up now
-		if projectDirSnapshot != projectDir {
-			err = os.RemoveAll(projectDirSnapshot)
+		// If all the tests use the same source only generate and snapshot it once
+		if !test.allRunsUseSameSource || i == 0 {
+			err = os.MkdirAll(projectDir, 0o755)
 			if err != nil {
-				return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				return nil, fmt.Errorf("create project dir: %w", err)
+			}
+
+			// Generate the project and read in the Pulumi.yaml
+			rootDirectory := sourceDir
+			projectJSON := func() string {
+				if run.main == "" {
+					return fmt.Sprintf(`{"name": "%s"}`, req.Test)
+				}
+				sourceDir = filepath.Join(sourceDir, run.main)
+				return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, req.Test, run.main)
+			}()
+
+			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
+			diagnostics, err := languageClient.GenerateProject(
+				sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
+			}
+			if diagnostics.HasErrors() {
+				return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
+			}
+
+			// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
+			// them across here.
+			err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
+			if err != nil {
+				return nil, fmt.Errorf("copy testdata: %w", err)
+			}
+
+			snapshotDir := filepath.Join(token.SnapshotDirectory, "projects", req.Test)
+			if len(test.runs) > 1 && !test.allRunsUseSameSource {
+				snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
+			}
+			projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
+			if err != nil {
+				return nil, fmt.Errorf("program snapshot creation: %w", err)
+			}
+			validations, err := doSnapshot(eng.DisableSnapshotWriting, projectDirSnapshot, snapshotDir)
+			if err != nil {
+				return nil, fmt.Errorf("program snapshot validation: %w", err)
+			}
+			if len(validations) > 0 {
+				return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
+			}
+			// If we made a snapshot edit we can clean it up now
+			if projectDirSnapshot != projectDir {
+				err = os.RemoveAll(projectDirSnapshot)
+				if err != nil {
+					return nil, fmt.Errorf("remove snapshot dir: %w", err)
+				}
 			}
 		}
 
@@ -881,6 +875,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			},
 			Engine: updateOptions,
 		}
+		// If the updateOptions are disabling integers we need to disable them in the host as well
+		host.rejectIntegers = updateOptions.DisableIntegers
 
 		cfg := backend.StackConfiguration{
 			Config:    run.config,

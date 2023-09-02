@@ -53,6 +53,7 @@ const (
 	anyType         primitiveType = 7
 	jsonType        primitiveType = 8
 	anyResourceType primitiveType = 9
+	bigIntegerType  primitiveType = 10
 )
 
 func (t primitiveType) String() string {
@@ -75,6 +76,8 @@ func (t primitiveType) String() string {
 		fallthrough
 	case anyType:
 		return "pulumi:pulumi:Any"
+	case bigIntegerType:
+		return "bigInteger"
 	default:
 		panic("unknown primitive type")
 	}
@@ -108,6 +111,8 @@ var (
 	AnyType Type = anyType
 	// AnyResourceType represents any Pulumi resource - custom or component
 	AnyResourceType Type = anyResourceType
+	// IntegerType represents the set of big integer values.
+	BigIntegerType = bigIntegerType
 )
 
 // An InvalidType represents an invalid type with associated diagnostics.
@@ -1398,6 +1403,11 @@ func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 				Type:  "integer",
 				Plain: !plain,
 			}
+		case BigIntegerType:
+			return TypeSpec{
+				Type:  "bigInteger",
+				Plain: !plain,
+			}
 		case NumberType:
 			return TypeSpec{
 				Type:  "number",
@@ -1498,8 +1508,8 @@ func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
 
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
-	// Type is the primitive or composite type, if any. May be "boolean", "string", "integer", "number", "array", or
-	// "object".
+	// Type is the primitive or composite type, if any. May be "boolean", "string", "integer", "bigInteger", "number",
+	// "array", or "object".
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
 	// types are referenced as "pulumi.json#/Archive", "pulumi.json#/Asset", and "pulumi.json#/Any", respectively.

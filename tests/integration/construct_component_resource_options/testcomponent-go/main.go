@@ -155,6 +155,7 @@ func (p *Provider) Configure(ctx context.Context,
 		SupportsPreview: true,
 		AcceptResources: true,
 		AcceptOutputs:   true,
+		AcceptIntegers:  true,
 	}, nil
 }
 

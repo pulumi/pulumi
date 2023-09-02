@@ -76,6 +76,8 @@ export class ReadResourceRequest extends jspb.Message {
     setVersion(value: string): ReadResourceRequest;
     getAcceptsecrets(): boolean;
     setAcceptsecrets(value: boolean): ReadResourceRequest;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): ReadResourceRequest;
     clearAdditionalsecretoutputsList(): void;
     getAdditionalsecretoutputsList(): Array<string>;
     setAdditionalsecretoutputsList(value: Array<string>): ReadResourceRequest;
@@ -116,6 +118,7 @@ export namespace ReadResourceRequest {
         provider: string,
         version: string,
         acceptsecrets: boolean,
+        acceptIntegers: boolean,
         additionalsecretoutputsList: Array<string>,
         acceptresources: boolean,
         plugindownloadurl: string,
@@ -187,6 +190,8 @@ export class RegisterResourceRequest extends jspb.Message {
     addIgnorechanges(value: string, index?: number): string;
     getAcceptsecrets(): boolean;
     setAcceptsecrets(value: boolean): RegisterResourceRequest;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): RegisterResourceRequest;
     clearAdditionalsecretoutputsList(): void;
     getAdditionalsecretoutputsList(): Array<string>;
     setAdditionalsecretoutputsList(value: Array<string>): RegisterResourceRequest;
@@ -272,6 +277,7 @@ export namespace RegisterResourceRequest {
         version: string,
         ignorechangesList: Array<string>,
         acceptsecrets: boolean,
+        acceptIntegers: boolean,
         additionalsecretoutputsList: Array<string>,
         aliasurnsList: Array<string>,
         importid: string,
@@ -456,6 +462,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     setVersion(value: string): ResourceInvokeRequest;
     getAcceptresources(): boolean;
     setAcceptresources(value: boolean): ResourceInvokeRequest;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): ResourceInvokeRequest;
     getPlugindownloadurl(): string;
     setPlugindownloadurl(value: string): ResourceInvokeRequest;
 
@@ -486,6 +494,7 @@ export namespace ResourceInvokeRequest {
         provider: string,
         version: string,
         acceptresources: boolean,
+        acceptIntegers: boolean,
         plugindownloadurl: string,
 
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
@@ -521,6 +530,8 @@ export class ResourceCallRequest extends jspb.Message {
     setSourceposition(value?: pulumi_source_pb.SourcePosition): ResourceCallRequest;
     getPackageref(): string;
     setPackageref(value: string): ResourceCallRequest;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -545,6 +556,7 @@ export namespace ResourceCallRequest {
         pluginchecksumsMap: Array<[string, Uint8Array | string]>,
         sourceposition?: pulumi_source_pb.SourcePosition.AsObject,
         packageref: string,
+        acceptIntegers: boolean,
     }
 
 

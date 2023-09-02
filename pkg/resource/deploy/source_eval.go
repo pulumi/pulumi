@@ -85,6 +85,8 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
+	// true to disable integer support.
+	DisableIntegers bool
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -739,6 +741,17 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 	return client, nil
 }
 
+// acceptsIntegers returns true if the monitor should accept integer values.
+func (rm *resmon) acceptsIntegers(requestAcceptsIntegers bool) plugin.MarshalOption {
+	if rm.opts.DisableIntegers {
+		return plugin.MarshalOptionReject
+	}
+	if requestAcceptsIntegers {
+		return plugin.MarshalOptionKeep
+	}
+	return plugin.MarshalOptionReplace
+}
+
 // Address returns the address at which the monitor's RPC server may be reached.
 func (rm *resmon) Address() string {
 	return rm.constructInfo.MonitorAddress
@@ -936,6 +949,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "invokeTransforms":
 		hasSupport = true
+	case "integers":
+		hasSupport = !rm.opts.DisableIntegers
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -957,6 +972,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
+			Integers:         rm.acceptsIntegers(true),
 			WorkingDirectory: rm.workingDirectory,
 		})
 	if err != nil {
@@ -1035,6 +1051,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    keepResources,
+		Integers:         rm.acceptsIntegers(req.AcceptIntegers),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1084,6 +1101,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			KeepSecrets:           true,
 			KeepResources:         true,
 			KeepOutputValues:      true,
+			Integers:              rm.acceptsIntegers(true),
 			UpgradeToOutputValues: true,
 			WorkingDirectory:      rm.workingDirectory,
 		})
@@ -1156,6 +1174,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		KeepSecrets:      true,
 		KeepResources:    true,
 		WorkingDirectory: rm.workingDirectory,
+		Integers:         rm.acceptsIntegers(req.AcceptIntegers),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
@@ -1194,6 +1213,7 @@ func (rm *resmon) StreamInvoke(
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
+			Integers:         rm.acceptsIntegers(true),
 			WorkingDirectory: rm.workingDirectory,
 		})
 	if err != nil {
@@ -1298,6 +1318,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
+		Integers:         rm.acceptsIntegers(true),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1343,6 +1364,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		Integers:         rm.acceptsIntegers(req.AcceptIntegers),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1773,6 +1795,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			KeepResources:         true,
 			KeepOutputValues:      true,
 			UpgradeToOutputValues: true,
+			Integers:              rm.acceptsIntegers(true),
 			WorkingDirectory:      rm.workingDirectory,
 		})
 	if err != nil {
@@ -2371,6 +2394,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		Integers:         rm.acceptsIntegers(req.AcceptIntegers),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -2427,6 +2451,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 			ComputeAssetHashes: true,
 			KeepSecrets:        true,
 			KeepResources:      true,
+			Integers:           rm.acceptsIntegers(true),
 			WorkingDirectory:   rm.workingDirectory,
 		})
 	if err != nil {

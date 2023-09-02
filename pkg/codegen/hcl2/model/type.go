@@ -66,6 +66,8 @@ var (
 	NumberType = NewOpaqueType("number")
 	// StringType represents the set of UTF-8 string values.
 	StringType = NewOpaqueType("string")
+	// BigIntegerType represents the set of big integer values.
+	BigIntegerType = NewOpaqueType("bigInteger")
 	// DynamicType represents the set of all values.
 	DynamicType = NewOpaqueType("dynamic")
 )

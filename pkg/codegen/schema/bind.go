@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/big"
 	"net/url"
 	"os"
 	"path"
@@ -470,6 +471,8 @@ func (t *types) bindPrimitiveType(path, name string) (Type, hcl.Diagnostics) {
 	switch name {
 	case "boolean":
 		return BoolType, nil
+	case "bigInteger":
+		return BigIntegerType, nil
 	case "integer":
 		return IntType, nil
 	case "number":
@@ -906,7 +909,7 @@ func (t *types) bindTypeSpec(path string, spec TypeSpec,
 	}
 
 	switch spec.Type {
-	case "boolean", "integer", "number", "string":
+	case "boolean", "integer", "number", "string", "bigInteger":
 		typ, typDiags := t.bindPrimitiveType(path+"/type", spec.Type)
 		diags = diags.Extend(typDiags)
 
@@ -998,6 +1001,22 @@ func bindConstValue(path, kind string, value interface{}, typ Type) (interface{}
 			return 0, typeError("integer")
 		}
 		return int32(v), nil
+	case BigIntegerType:
+		v, ok := value.(int64)
+		if ok {
+			return big.NewInt(v), nil
+		}
+		vi, ok := value.(int)
+		if ok {
+			return big.NewInt(int64(vi)), nil
+		}
+		vs, ok := value.(string)
+		if ok {
+			bi := big.NewInt(0)
+			bi.SetString(vs, 10)
+			return bi, nil
+		}
+		return 0, typeError("bigInteger")
 	case NumberType:
 		v, ok := value.(float64)
 		if !ok {

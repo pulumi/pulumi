@@ -346,6 +346,14 @@ export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
 export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
 /**
+ * {@link specialIntegerSig} is a randomly assigned hash used to identify
+ * integers in maps.
+ *
+ * @see sdk/go/common/resource/properties.go.
+ */
+export const specialIntegerSig = "7eb310220ed6211bd6f147f2a75bfbb6";
+
+/**
  * Serializes properties deeply.  This understands how to wait on any unresolved
  * promises, as appropriate, in addition to translating certain "special" values
  * so that they are ready to go on the wire.
@@ -371,6 +379,20 @@ export async function serializeProperty(
             log.debug(`Serialize property [${ctx}]: primitive=${prop}`);
         }
         return prop;
+    }
+
+    if (typeof prop === "bigint") {
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: bigint=${prop}`);
+        }
+        if (getStore().supportsIntegers) {
+            return {
+                [specialSigKey]: specialIntegerSig,
+                value: prop.toString(),
+            };
+        } else {
+            return Number(prop);
+        }
     }
 
     if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
@@ -423,7 +445,7 @@ export async function serializeProperty(
         // so we must compare to the literal true instead of just doing await prop.isSecret.
         const isSecret = (await prop.isSecret) === true;
         const promiseDeps = new Set<Resource>();
-        const value = await serializeProperty(`${ctx}.id`, prop.promise(), promiseDeps, {
+        const value = await serializeProperty(`${ctx}.value`, prop.promise(), promiseDeps, {
             keepOutputValues: false,
         });
         for (const resource of promiseDeps) {
@@ -475,6 +497,9 @@ export async function serializeProperty(
     }
 
     if (isUnknown(prop)) {
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: unknown`);
+        }
         return unknownValue;
     }
 
@@ -539,6 +564,9 @@ export async function serializeProperty(
     }
 
     if (prop instanceof Array) {
+        if (excessiveDebugOutput) {
+            log.debug(`Serialize property [${ctx}]: array`);
+        }
         const result: any[] = [];
         for (let i = 0; i < prop.length; i++) {
             if (excessiveDebugOutput) {
@@ -551,6 +579,9 @@ export async function serializeProperty(
         return result;
     }
 
+    if (excessiveDebugOutput) {
+        log.debug(`Serialize property [${ctx}]: object`);
+    }
     return await serializeAllKeys(prop, {}, opts);
 
     async function serializeAllKeys(innerProp: any, obj: any, innerOpts?: SerializationOptions) {
@@ -625,6 +656,8 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
         const sig: any = prop[specialSigKey];
         if (sig) {
             switch (sig) {
+                case specialIntegerSig:
+                    return BigInt(prop["value"]);
                 case specialAssetSig:
                     if (prop["path"]) {
                         return new asset.FileAsset(<string>prop["path"]);

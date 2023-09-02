@@ -185,6 +185,8 @@ export class ConfigureRequest extends jspb.Message {
     setSendsOldInputs(value: boolean): ConfigureRequest;
     getSendsOldInputsToDelete(): boolean;
     setSendsOldInputsToDelete(value: boolean): ConfigureRequest;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): ConfigureRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureRequest.AsObject;
@@ -205,6 +207,7 @@ export namespace ConfigureRequest {
         acceptresources: boolean,
         sendsOldInputs: boolean,
         sendsOldInputsToDelete: boolean,
+        acceptIntegers: boolean,
     }
 }
 
@@ -217,6 +220,8 @@ export class ConfigureResponse extends jspb.Message {
     setAcceptresources(value: boolean): ConfigureResponse;
     getAcceptoutputs(): boolean;
     setAcceptoutputs(value: boolean): ConfigureResponse;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): ConfigureResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureResponse.AsObject;
@@ -234,6 +239,7 @@ export namespace ConfigureResponse {
         supportspreview: boolean,
         acceptresources: boolean,
         acceptoutputs: boolean,
+        acceptIntegers: boolean,
     }
 }
 

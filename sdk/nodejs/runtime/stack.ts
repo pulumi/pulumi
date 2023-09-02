@@ -106,7 +106,8 @@ async function massage(key: string | undefined, prop: any, objectStack: any[]): 
         prop === null ||
         typeof prop === "boolean" ||
         typeof prop === "number" ||
-        typeof prop === "string"
+        typeof prop === "string" ||
+        typeof prop === "bigint"
     ) {
         return prop;
     }

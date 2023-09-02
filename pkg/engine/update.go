@@ -157,6 +157,9 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
+	// true if the engine should disable integer support.
+	DisableIntegers bool
+
 	// the plugin host to use for this update
 	Host plugin.Host
 
@@ -491,6 +494,7 @@ func newUpdateSource(ctx context.Context,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
+		DisableIntegers:           opts.DisableIntegers,
 	}), nil
 }
 

@@ -15,6 +15,7 @@
 package deepcopy
 
 import (
+	"math/big"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -66,6 +67,14 @@ func deepCopy(v reflect.Value) reflect.Value {
 	case reflect.Ptr:
 		if v.IsNil() {
 			return reflect.New(typ).Elem()
+		}
+		// Special case *big.Int because we want to deep copy the underlying value, but can't via reflection.
+		if v.Type() == reflect.TypeOf(&big.Int{}) {
+			bi := v.Interface().(*big.Int)
+
+			new := new(big.Int)
+			new.Set(bi)
+			return reflect.ValueOf(new)
 		}
 		elem := deepCopy(v.Elem())
 		if elem.CanAddr() {

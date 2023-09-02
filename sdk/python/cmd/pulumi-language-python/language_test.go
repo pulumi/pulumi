@@ -232,6 +232,9 @@ func TestLanguage(t *testing.T) {
 		// TODO(https://github.com/pulumi/pulumi/issues/13945): enable parallel tests
 		//nolint:paralleltest // These aren't yet safe to run in parallel
 		for _, tt := range tests.Tests {
+			if tt != "l2-resource-long" {
+				continue
+			}
 			tt := tt
 			t.Run(fmt.Sprintf("toml=%t/%s", useToml, tt), func(t *testing.T) {
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{

@@ -227,6 +227,7 @@ func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Out
 func init() {
 	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
 	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*bigInt)(nil))] = struct{}{}
 }
 
 {{range .Builtins}}

@@ -75,6 +75,13 @@ func (t *OpaqueType) conversionFromImpl(
 			// src == NumberType is handled by t == src above
 			contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
 
+			if src == IntType {
+				return SafeConversion, nil
+			}
+			if src == BigIntegerType {
+				return UnsafeConversion, nil
+			}
+
 			cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
 			switch cki {
 			case SafeConversion:
@@ -90,6 +97,19 @@ func (t *OpaqueType) conversionFromImpl(
 			}
 			return NoConversion, nil
 		case t == IntType:
+			if src.Equals(BigIntegerType) {
+				return UnsafeConversion, nil
+			}
+			if checkUnsafe {
+				if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
+					return UnsafeConversion, nil
+				}
+			}
+			return NoConversion, nil
+		case t == BigIntegerType:
+			if src.Equals(IntType) {
+				return SafeConversion, nil
+			}
 			if checkUnsafe {
 				if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
 					return UnsafeConversion, nil

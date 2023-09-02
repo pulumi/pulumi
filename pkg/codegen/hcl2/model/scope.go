@@ -104,7 +104,7 @@ func (c *Constant) Type() Type {
 		if c.ConstantValue.IsNull() {
 			c.typ = NoneType
 		} else {
-			c.typ = ctyTypeToType(c.ConstantValue.Type(), false)
+			c.typ = ctyTypeToType(c.ConstantValue.Type(), false, false)
 		}
 	}
 	return c.typ

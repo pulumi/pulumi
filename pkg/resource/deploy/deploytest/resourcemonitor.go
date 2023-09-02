@@ -40,6 +40,7 @@ type ResourceMonitor struct {
 
 	supportsSecrets            bool
 	supportsResourceReferences bool
+	acceptsIntegers            plugin.MarshalOption
 }
 
 func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error) {
@@ -65,6 +66,15 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 		contract.IgnoreError(conn.Close())
 		return nil, err
 	}
+	supportsIntegers, err := supportsFeature(ctx, resmon, "integers")
+	if err != nil {
+		contract.IgnoreError(conn.Close())
+		return nil, err
+	}
+	acceptsIntegers := plugin.MarshalOptionReplace
+	if supportsIntegers {
+		acceptsIntegers = plugin.MarshalOptionKeep
+	}
 
 	// Fire up a resource monitor client and return.
 	return &ResourceMonitor{
@@ -72,7 +82,16 @@ func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error)
 		resmon:                     resmon,
 		supportsSecrets:            supportsSecrets,
 		supportsResourceReferences: supportsResourceReferences,
+		acceptsIntegers:            acceptsIntegers,
 	}, nil
+}
+
+// This overrides the integer support originally set by querying engine capability. This is useful for testing the
+// engines error paths.
+func (rm *ResourceMonitor) OverrideIntegerSupport(option plugin.MarshalOption) plugin.MarshalOption {
+	was := rm.acceptsIntegers
+	rm.acceptsIntegers = option
+	return was
 }
 
 func supportsFeature(ctx context.Context, resmon pulumirpc.ResourceMonitorClient, id string) (bool, error) {
@@ -148,6 +167,7 @@ type ResourceOptions struct {
 	SourcePosition            string
 	DisableSecrets            bool
 	DisableResourceReferences bool
+	DisableIntegers           bool
 	GrpcRequestHeaders        map[string]string
 
 	Transforms []*pulumirpc.Callback
@@ -165,6 +185,7 @@ func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		Integers:         plugin.MarshalOptionKeep,
 	})
 }
 
@@ -193,6 +214,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
 		KeepOutputValues: opts.Remote,
+		Integers:         rm.acceptsIntegers,
 	})
 	if err != nil {
 		return nil, err
@@ -265,6 +287,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		IgnoreChanges:              opts.IgnoreChanges,
 		AcceptSecrets:              !opts.DisableSecrets,
+		AcceptIntegers:             !opts.DisableIntegers,
 		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
 		AliasURNs:                  aliasStrings,
@@ -326,6 +349,7 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 	// marshal outputs
 	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
 		KeepUnknowns: true,
+		Integers:     rm.acceptsIntegers,
 	})
 	if err != nil {
 		return err

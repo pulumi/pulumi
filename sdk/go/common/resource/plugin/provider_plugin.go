@@ -74,6 +74,7 @@ type provider struct {
 	clientRaw              pulumirpc.ResourceProviderClient // the raw provider client; usually unsafe to use directly.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
 	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
+	disableIntegers        bool                             // true if integers should be disabled for this provider.
 
 	configSource *promise.CompletionSource[pluginConfig] // the source for the provider's configuration.
 }
@@ -83,10 +84,11 @@ type provider struct {
 type pluginConfig struct {
 	known bool // true if all configuration values are known.
 
-	acceptSecrets   bool // true if this plugin accepts strongly-typed secrets.
-	acceptResources bool // true if this plugin accepts strongly-typed resource refs.
-	acceptOutputs   bool // true if this plugin accepts output values.
-	supportsPreview bool // true if this plugin supports previews for Create and Update.
+	acceptSecrets   bool          // true if this plugin accepts strongly-typed secrets.
+	acceptResources bool          // true if this plugin accepts strongly-typed resource refs.
+	acceptOutputs   bool          // true if this plugin accepts output values.
+	acceptIntegers  MarshalOption // keep if this plugin accepts integer values.
+	supportsPreview bool          // true if this plugin supports previews for Create and Update.
 }
 
 // Checks PULUMI_DEBUG_PROVIDERS environment variable for any overrides for the provider identified
@@ -255,7 +257,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
-	disableProviderPreview bool,
+	disableProviderPreview bool, disableIntegers bool,
 ) Provider {
 	return &provider{
 		ctx:                    ctx,
@@ -263,6 +265,7 @@ func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.Re
 		clientRaw:              client,
 		disableProviderPreview: disableProviderPreview,
 		configSource:           &promise.CompletionSource[pluginConfig]{},
+		disableIntegers:        disableIntegers,
 	}
 }
 
@@ -616,6 +619,8 @@ func removeSecrets(v resource.PropertyValue) interface{} {
 		return v.OutputValue()
 	case v.IsSecret():
 		return removeSecrets(v.SecretValue().Element)
+	case v.IsInteger():
+		return v.IntegerValue()
 	default:
 		contract.Assertf(v.IsObject(), "v is not Object '%v' instead", v.TypeString())
 		obj := map[string]interface{}{}
@@ -725,6 +730,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 				known:           false,
 				acceptSecrets:   false,
 				acceptResources: false,
+				acceptIntegers:  MarshalOptionReplace,
 			})
 			return ConfigureResponse{}, nil
 		}
@@ -763,6 +769,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
 			AcceptSecrets:          true,
 			AcceptResources:        true,
+			AcceptIntegers:         !p.disableIntegers,
 			SendsOldInputs:         true,
 			SendsOldInputsToDelete: true,
 			Variables:              config,
@@ -776,12 +783,21 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 			return
 		}
 
+		acceptIntegers := MarshalOptionReplace
+		if resp.GetAcceptIntegers() {
+			acceptIntegers = MarshalOptionKeep
+		}
+		if p.disableIntegers {
+			acceptIntegers = MarshalOptionReject
+		}
+
 		p.configSource.MustFulfill(pluginConfig{
 			known:           true,
 			acceptSecrets:   resp.GetAcceptSecrets(),
 			acceptResources: resp.GetAcceptResources(),
 			supportsPreview: resp.GetSupportsPreview(),
 			acceptOutputs:   resp.GetAcceptOutputs(),
+			acceptIntegers:  acceptIntegers,
 		})
 	}()
 
@@ -811,6 +827,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -820,6 +837,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepUnknowns:  req.AllowUnknowns,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -846,6 +864,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			Integers:       MarshalOptionKeep,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -904,6 +923,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -915,6 +935,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -926,6 +947,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DiffResult{}, err
@@ -1020,6 +1042,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1059,6 +1082,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		Integers:       MarshalOptionKeep,
 	})
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
@@ -1111,6 +1135,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        pcfg.acceptSecrets,
 			KeepResources:      pcfg.acceptResources,
+			Integers:           pcfg.acceptIntegers,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1122,6 +1147,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1164,6 +1190,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		Integers:       MarshalOptionKeep,
 	})
 	if err != nil {
 		return ReadResponse{Status: resourceStatus}, err
@@ -1176,6 +1203,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			Integers:       MarshalOptionKeep,
 		})
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
@@ -1252,6 +1280,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1261,6 +1290,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1270,6 +1300,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:  req.Preview,
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1306,6 +1337,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		Integers:       MarshalOptionKeep,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
@@ -1345,6 +1377,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        pcfg.acceptSecrets,
 		KeepResources:      pcfg.acceptResources,
+		Integers:           pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1435,6 +1468,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: pcfg.acceptOutputs,
+		Integers:         pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1516,6 +1550,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,
+		Integers:         MarshalOptionKeep,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1561,6 +1596,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		Label:         label + ".args",
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -1582,6 +1618,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		RejectUnknowns: true,
 		KeepSecrets:    true,
 		KeepResources:  true,
+		Integers:       MarshalOptionKeep,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -1624,6 +1661,7 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 		Label:         label + ".args",
 		KeepSecrets:   pcfg.acceptSecrets,
 		KeepResources: pcfg.acceptResources,
+		Integers:      pcfg.acceptIntegers,
 	})
 	if err != nil {
 		return StreamInvokeResponse{}, err
@@ -1654,6 +1692,7 @@ func (p *provider) StreamInvoke(ctx context.Context, req StreamInvokeRequest) (S
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
+			Integers:       MarshalOptionKeep,
 		})
 		if err != nil {
 			return StreamInvokeResponse{}, err
@@ -1703,6 +1742,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: pcfg.acceptOutputs,
+		Integers:         MarshalOptionKeep,
 	})
 	if err != nil {
 		return CallResult{}, err

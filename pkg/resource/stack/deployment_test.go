@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -299,8 +300,8 @@ func TestCustomSerialization(t *testing.T) {
 		// Primitive types
 		"nil":     nil,
 		"bool":    true,
-		"int32":   int64(41),
-		"int64":   int64(42),
+		"int32":   int32(math.MaxInt32 - 1),
+		"int64":   int64(math.MaxInt64 - 1),
 		"float32": float32(2.5),
 		"float64": float64(1.5),
 		"string":  "string literal",
@@ -349,8 +350,8 @@ func TestCustomSerialization(t *testing.T) {
 			`"string":{"V":"string literal"}}`,
 			`"float32":{"V":2.5}`,
 			`"float64":{"V":1.5}`,
-			`"int32":{"V":41}`,
-			`"int64":{"V":42}`,
+			`"int32":{"V":2147483646}`,
+			`"int64":{"V":9223372036854775806}`,
 
 			// Data structures
 			`array":{"V":[{"V":"a"},{"V":true},{"V":32}]}`,
@@ -400,8 +401,10 @@ func TestCustomSerialization(t *testing.T) {
 			`"string":"string literal"`,
 			`"float32":2.5`,
 			`"float64":1.5`,
-			`"int32":41`,
-			`"int64":42`,
+			`"int32":2147483646`,
+			// Integers are serialized as strings with a sig key and value, so we can roundtrip them back as ints not
+			// float values even for small numbers that would fit either.
+			`"int64":{"4dabf18193072939515e22adb298388d":"7eb310220ed6211bd6f147f2a75bfbb6","value":"9223372036854775806"}`,
 			`"nil":null`,
 
 			// Data structures

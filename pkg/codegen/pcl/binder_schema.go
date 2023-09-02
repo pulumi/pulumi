@@ -389,6 +389,8 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 			return model.BoolType
 		case schema.IntType:
 			return model.IntType
+		case schema.BigIntegerType:
+			return model.BigIntegerType
 		case schema.NumberType:
 			return model.NumberType
 		case schema.StringType:

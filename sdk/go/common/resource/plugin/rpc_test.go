@@ -16,6 +16,8 @@ package plugin
 
 import (
 	"fmt"
+	"math"
+	"math/big"
 	"runtime"
 	"testing"
 
@@ -236,6 +238,28 @@ func TestAssetReject(t *testing.T) {
 		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
 		assert.EqualError(t, err, "unexpected Asset property value for \"foo\"")
 		assert.Nil(t, archValue)
+	}
+}
+
+func TestIntegerReject(t *testing.T) {
+	t.Parallel()
+
+	// Ensure that integer properties produce errors when Integers = Reject.
+	opts := MarshalOptions{Integers: MarshalOptionReject}
+	pk := resource.PropertyKey("pk")
+	{
+		cprop, err := MarshalPropertyValue(pk,
+			resource.NewIntegerProperty(big.NewInt(1)), opts)
+		assert.EqualError(t, err, "unexpected unknown integer value for \"pk\"")
+		assert.Nil(t, cprop)
+	}
+	{
+		cprop, err := MarshalPropertyValue(pk,
+			resource.NewIntegerProperty(big.NewInt(1)), MarshalOptions{Integers: MarshalOptionKeep})
+		assert.NoError(t, err)
+		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
+		assert.EqualError(t, err, "unexpected integer property value for \"pk\"")
+		assert.Nil(t, cpropU)
 	}
 }
 
@@ -734,6 +758,45 @@ func TestMarshalProperties(t *testing.T) {
 												},
 											},
 										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "integer value (default)",
+			opts: MarshalOptions{},
+			props: resource.PropertyMap{
+				"foo": resource.NewIntegerProperty(big.NewInt(math.MaxInt64)),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_NumberValue{NumberValue: 9.223372036854776e+18},
+					},
+				},
+			},
+		},
+		{
+			name: "integer value (KeepIntegers)",
+			opts: MarshalOptions{Integers: MarshalOptionKeep},
+			props: resource.PropertyMap{
+				"foo": resource.NewIntegerProperty(big.NewInt(math.MaxInt64)),
+			},
+			expected: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_StructValue{
+							StructValue: &structpb.Struct{
+								Fields: map[string]*structpb.Value{
+									resource.SigKey: {
+										Kind: &structpb.Value_StringValue{StringValue: resource.IntegerValueSig},
+									},
+									"value": {
+										Kind: &structpb.Value_StringValue{StringValue: "9223372036854775807"},
 									},
 								},
 							},
@@ -1578,6 +1641,44 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 				},
 			},
 			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty("")))),
+		},
+		{
+			name: "integer (default)",
+			opts: MarshalOptions{},
+			raw: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.IntegerValueSig},
+							},
+							"value": {
+								Kind: &structpb.Value_StringValue{StringValue: "1024"},
+							},
+						},
+					},
+				},
+			},
+			expected: ptr(resource.NewNumberProperty(float64(1024))),
+		},
+		{
+			name: "integer (KeepInteger)",
+			opts: MarshalOptions{Integers: MarshalOptionKeep},
+			raw: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.IntegerValueSig},
+							},
+							"value": {
+								Kind: &structpb.Value_StringValue{StringValue: "1024"},
+							},
+						},
+					},
+				},
+			},
+			expected: ptr(resource.NewIntegerProperty(big.NewInt(1024))),
 		},
 	}
 	for _, tt := range tests {

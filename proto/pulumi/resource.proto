@@ -70,6 +70,7 @@ message ReadResourceRequest {
     string provider = 7;                   // an optional reference to the provider to use for this read.
     string version = 8;                    // the version of the provider to use when servicing this request.
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
+    bool accept_integers = 17;             // when true operations should return integers as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
 
     // We used to declare an alias field here, but nothing ever used it. But to ensure we don't confuse any
@@ -118,6 +119,7 @@ message RegisterResourceRequest {
     string version = 11;                                        // the version of the provider to use when servicing this request.
     repeated string ignoreChanges = 12;                         // a list of property selectors to ignore during updates.
     bool acceptSecrets = 13;                                    // when true operations should return secrets as strongly typed.
+    bool accept_integers = 34;                                  // when true operations should return integers as strongly typed.
     repeated string additionalSecretOutputs = 14;               // a list of output properties that should also be treated as secret, in addition to ones we detect.
     repeated string aliasURNs = 15;                             // a list of additional URNs that should be considered the same.
     string importId = 16;                                       // if set, this resource's state should be imported from the given ID.
@@ -186,6 +188,7 @@ message ResourceInvokeRequest {
     string provider = 3;             // an optional reference to the provider version to use for this invoke.
     string version = 4;              // the version of the provider to use when servicing this request.
     bool acceptResources = 5;        // when true operations should return resource references as strongly typed.
+    bool accept_integers = 10;        // when true operations should return integers as strongly typed.
     string pluginDownloadURL = 6;    // an optional reference to the provider url to use for this invoke.
     map<string, bytes> pluginChecksums = 8; // a map of checksums expected for the provider plugin.
 
@@ -216,6 +219,8 @@ message ResourceCallRequest {
 
     SourcePosition sourcePosition = 15; // the optional source position of the user code that initiated the call.
     string packageRef = 17; // a reference from RegisterProviderRequest.
+
+    bool accept_integers = 18; // when true operations should return integers as strongly typed.
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.

@@ -527,12 +527,20 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	case model.NoneType:
 		g.Fgen(w, "None")
+	case model.BigIntegerType:
+		bf := expr.Value.AsBigFloat()
+		bi, acc := bf.Int(nil)
+		if acc != big.Exact {
+			contract.Failf("expected exact integer value for BigIntegerType")
+		}
+		g.Fgenf(w, "%s", bi.String())
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
-		if i, acc := bf.Int64(); acc == big.Exact {
-			g.Fgenf(w, "%d", i)
+		// If this is an integer value not accurately representable as a float, print it as an int.
+		f, acc := bf.Float64()
+		if bf.IsInt() && acc != big.Exact {
+			g.Fgenf(w, "%s", bf.Text('f', 0))
 		} else {
-			f, _ := bf.Float64()
 			g.Fgenf(w, "%g", f)
 		}
 	case model.StringType:

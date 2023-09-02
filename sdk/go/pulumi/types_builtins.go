@@ -6247,9 +6247,572 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
+var bigIntType = reflect.TypeOf((*BigInt)(nil)).Elem()
+
+// BigIntInput is an input type that accepts BigInt and BigIntOutput values.
+type BigIntInput interface {
+	Input
+
+	ToBigIntOutput() BigIntOutput
+	ToBigIntOutputWithContext(ctx context.Context) BigIntOutput
+}
+
+// ElementType returns the element type of this Input (BigInt).
+func (*bigInt) ElementType() reflect.Type {
+	return bigIntType
+}
+
+func (in *bigInt) ToOutput(ctx context.Context) pulumix.Output[BigInt] {
+	return pulumix.Output[BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in *bigInt) ToBigIntOutput() BigIntOutput {
+	return ToOutput(in).(BigIntOutput)
+}
+
+func (in *bigInt) ToBigIntOutputWithContext(ctx context.Context) BigIntOutput {
+	return ToOutputWithContext(ctx, in).(BigIntOutput)
+}
+
+// BigIntOutput is an Output that returns BigInt values.
+type BigIntOutput struct{ *OutputState }
+
+func (BigIntOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntOutput) ToOutput(ctx context.Context) pulumix.Output[BigInt] {
+	return pulumix.Output[BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (BigInt).
+func (BigIntOutput) ElementType() reflect.Type {
+	return bigIntType
+}
+
+func (o BigIntOutput) ToBigIntOutput() BigIntOutput {
+	return o
+}
+
+func (o BigIntOutput) ToBigIntOutputWithContext(ctx context.Context) BigIntOutput {
+	return o
+}
+
+var bigIntArrayType = reflect.TypeOf((*[]BigInt)(nil)).Elem()
+
+// BigIntArrayInput is an input type that accepts BigIntArray and BigIntArrayOutput values.
+type BigIntArrayInput interface {
+	Input
+
+	ToBigIntArrayOutput() BigIntArrayOutput
+	ToBigIntArrayOutputWithContext(ctx context.Context) BigIntArrayOutput
+}
+
+// BigIntArray is an input type for []BigIntInput values.
+type BigIntArray []BigIntInput
+
+// ElementType returns the element type of this Input ([]BigInt).
+func (BigIntArray) ElementType() reflect.Type {
+	return bigIntArrayType
+}
+
+func (in BigIntArray) ToOutput(ctx context.Context) pulumix.Output[[]BigInt] {
+	return pulumix.Output[[]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntArray) ToBigIntArrayOutput() BigIntArrayOutput {
+	return ToOutput(in).(BigIntArrayOutput)
+}
+
+func (in BigIntArray) ToBigIntArrayOutputWithContext(ctx context.Context) BigIntArrayOutput {
+	return ToOutputWithContext(ctx, in).(BigIntArrayOutput)
+}
+
+// BigIntArrayOutput is an Output that returns []BigInt values.
+type BigIntArrayOutput struct{ *OutputState }
+
+func (BigIntArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]BigInt] {
+	return pulumix.Output[[]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]BigInt).
+func (BigIntArrayOutput) ElementType() reflect.Type {
+	return bigIntArrayType
+}
+
+func (o BigIntArrayOutput) ToBigIntArrayOutput() BigIntArrayOutput {
+	return o
+}
+
+func (o BigIntArrayOutput) ToBigIntArrayOutputWithContext(ctx context.Context) BigIntArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BigIntArrayOutput) Index(i IntInput) BigIntOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) BigInt {
+		arr := vs[0].([]BigInt)
+		idx := vs[1].(int)
+		var ret BigInt
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BigIntOutput)
+}
+
+func ToBigIntArray(in []BigInt) BigIntArray {
+	a := make(BigIntArray, len(in))
+	for i, v := range in {
+		a[i] = (v)
+	}
+	return a
+}
+
+func ToBigIntArrayOutput(in []BigIntOutput) BigIntArrayOutput {
+	a := make(BigIntArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBigIntArrayOutput()
+}
+
+var bigIntMapType = reflect.TypeOf((*map[string]BigInt)(nil)).Elem()
+
+// BigIntMapInput is an input type that accepts BigIntMap and BigIntMapOutput values.
+type BigIntMapInput interface {
+	Input
+
+	ToBigIntMapOutput() BigIntMapOutput
+	ToBigIntMapOutputWithContext(ctx context.Context) BigIntMapOutput
+}
+
+// BigIntMap is an input type for map[string]BigIntInput values.
+type BigIntMap map[string]BigIntInput
+
+// ElementType returns the element type of this Input (map[string]BigInt).
+func (BigIntMap) ElementType() reflect.Type {
+	return bigIntMapType
+}
+
+func (in BigIntMap) ToOutput(ctx context.Context) pulumix.Output[map[string]BigInt] {
+	return pulumix.Output[map[string]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntMap) ToBigIntMapOutput() BigIntMapOutput {
+	return ToOutput(in).(BigIntMapOutput)
+}
+
+func (in BigIntMap) ToBigIntMapOutputWithContext(ctx context.Context) BigIntMapOutput {
+	return ToOutputWithContext(ctx, in).(BigIntMapOutput)
+}
+
+// BigIntMapOutput is an Output that returns map[string]BigInt values.
+type BigIntMapOutput struct{ *OutputState }
+
+func (BigIntMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]BigInt] {
+	return pulumix.Output[map[string]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]BigInt).
+func (BigIntMapOutput) ElementType() reflect.Type {
+	return bigIntMapType
+}
+
+func (o BigIntMapOutput) ToBigIntMapOutput() BigIntMapOutput {
+	return o
+}
+
+func (o BigIntMapOutput) ToBigIntMapOutputWithContext(ctx context.Context) BigIntMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BigIntMapOutput) MapIndex(k StringInput) BigIntOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) BigInt {
+		return vs[0].(map[string]BigInt)[vs[1].(string)]
+	}).(BigIntOutput)
+}
+
+func ToBigIntMap(in map[string]BigInt) BigIntMap {
+	m := make(BigIntMap)
+	for k, v := range in {
+		m[k] = (v)
+	}
+	return m
+}
+
+func ToBigIntMapOutput(in map[string]BigIntOutput) BigIntMapOutput {
+	m := make(BigIntMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBigIntMapOutput()
+}
+
+var bigIntArrayMapType = reflect.TypeOf((*map[string][]BigInt)(nil)).Elem()
+
+// BigIntArrayMapInput is an input type that accepts BigIntArrayMap and BigIntArrayMapOutput values.
+type BigIntArrayMapInput interface {
+	Input
+
+	ToBigIntArrayMapOutput() BigIntArrayMapOutput
+	ToBigIntArrayMapOutputWithContext(ctx context.Context) BigIntArrayMapOutput
+}
+
+// BigIntArrayMap is an input type for map[string]BigIntArrayInput values.
+type BigIntArrayMap map[string]BigIntArrayInput
+
+// ElementType returns the element type of this Input (map[string][]BigInt).
+func (BigIntArrayMap) ElementType() reflect.Type {
+	return bigIntArrayMapType
+}
+
+func (in BigIntArrayMap) ToOutput(ctx context.Context) pulumix.Output[map[string][]BigInt] {
+	return pulumix.Output[map[string][]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntArrayMap) ToBigIntArrayMapOutput() BigIntArrayMapOutput {
+	return ToOutput(in).(BigIntArrayMapOutput)
+}
+
+func (in BigIntArrayMap) ToBigIntArrayMapOutputWithContext(ctx context.Context) BigIntArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(BigIntArrayMapOutput)
+}
+
+// BigIntArrayMapOutput is an Output that returns map[string][]BigInt values.
+type BigIntArrayMapOutput struct{ *OutputState }
+
+func (BigIntArrayMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntArrayMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string][]BigInt] {
+	return pulumix.Output[map[string][]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string][]BigInt).
+func (BigIntArrayMapOutput) ElementType() reflect.Type {
+	return bigIntArrayMapType
+}
+
+func (o BigIntArrayMapOutput) ToBigIntArrayMapOutput() BigIntArrayMapOutput {
+	return o
+}
+
+func (o BigIntArrayMapOutput) ToBigIntArrayMapOutputWithContext(ctx context.Context) BigIntArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BigIntArrayMapOutput) MapIndex(k StringInput) BigIntArrayOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) []BigInt {
+		return vs[0].(map[string][]BigInt)[vs[1].(string)]
+	}).(BigIntArrayOutput)
+}
+
+func ToBigIntArrayMap(in map[string][]BigInt) BigIntArrayMap {
+	m := make(BigIntArrayMap)
+	for k, v := range in {
+		m[k] = ToBigIntArray(v)
+	}
+	return m
+}
+
+func ToBigIntArrayMapOutput(in map[string]BigIntArrayOutput) BigIntArrayMapOutput {
+	m := make(BigIntArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBigIntArrayMapOutput()
+}
+
+var bigIntMapArrayType = reflect.TypeOf((*[]map[string]BigInt)(nil)).Elem()
+
+// BigIntMapArrayInput is an input type that accepts BigIntMapArray and BigIntMapArrayOutput values.
+type BigIntMapArrayInput interface {
+	Input
+
+	ToBigIntMapArrayOutput() BigIntMapArrayOutput
+	ToBigIntMapArrayOutputWithContext(ctx context.Context) BigIntMapArrayOutput
+}
+
+// BigIntMapArray is an input type for []BigIntMapInput values.
+type BigIntMapArray []BigIntMapInput
+
+// ElementType returns the element type of this Input ([]map[string]BigInt).
+func (BigIntMapArray) ElementType() reflect.Type {
+	return bigIntMapArrayType
+}
+
+func (in BigIntMapArray) ToOutput(ctx context.Context) pulumix.Output[[]map[string]BigInt] {
+	return pulumix.Output[[]map[string]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntMapArray) ToBigIntMapArrayOutput() BigIntMapArrayOutput {
+	return ToOutput(in).(BigIntMapArrayOutput)
+}
+
+func (in BigIntMapArray) ToBigIntMapArrayOutputWithContext(ctx context.Context) BigIntMapArrayOutput {
+	return ToOutputWithContext(ctx, in).(BigIntMapArrayOutput)
+}
+
+// BigIntMapArrayOutput is an Output that returns []map[string]BigInt values.
+type BigIntMapArrayOutput struct{ *OutputState }
+
+func (BigIntMapArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntMapArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[]map[string]BigInt] {
+	return pulumix.Output[[]map[string]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([]map[string]BigInt).
+func (BigIntMapArrayOutput) ElementType() reflect.Type {
+	return bigIntMapArrayType
+}
+
+func (o BigIntMapArrayOutput) ToBigIntMapArrayOutput() BigIntMapArrayOutput {
+	return o
+}
+
+func (o BigIntMapArrayOutput) ToBigIntMapArrayOutputWithContext(ctx context.Context) BigIntMapArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BigIntMapArrayOutput) Index(i IntInput) BigIntMapOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) map[string]BigInt {
+		arr := vs[0].([]map[string]BigInt)
+		idx := vs[1].(int)
+		var ret map[string]BigInt
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BigIntMapOutput)
+}
+
+func ToBigIntMapArray(in []map[string]BigInt) BigIntMapArray {
+	a := make(BigIntMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToBigIntMap(v)
+	}
+	return a
+}
+
+func ToBigIntMapArrayOutput(in []BigIntMapOutput) BigIntMapArrayOutput {
+	a := make(BigIntMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBigIntMapArrayOutput()
+}
+
+var bigIntMapMapType = reflect.TypeOf((*map[string]map[string]BigInt)(nil)).Elem()
+
+// BigIntMapMapInput is an input type that accepts BigIntMapMap and BigIntMapMapOutput values.
+type BigIntMapMapInput interface {
+	Input
+
+	ToBigIntMapMapOutput() BigIntMapMapOutput
+	ToBigIntMapMapOutputWithContext(ctx context.Context) BigIntMapMapOutput
+}
+
+// BigIntMapMap is an input type for map[string]BigIntMapInput values.
+type BigIntMapMap map[string]BigIntMapInput
+
+// ElementType returns the element type of this Input (map[string]map[string]BigInt).
+func (BigIntMapMap) ElementType() reflect.Type {
+	return bigIntMapMapType
+}
+
+func (in BigIntMapMap) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]BigInt] {
+	return pulumix.Output[map[string]map[string]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntMapMap) ToBigIntMapMapOutput() BigIntMapMapOutput {
+	return ToOutput(in).(BigIntMapMapOutput)
+}
+
+func (in BigIntMapMap) ToBigIntMapMapOutputWithContext(ctx context.Context) BigIntMapMapOutput {
+	return ToOutputWithContext(ctx, in).(BigIntMapMapOutput)
+}
+
+// BigIntMapMapOutput is an Output that returns map[string]map[string]BigInt values.
+type BigIntMapMapOutput struct{ *OutputState }
+
+func (BigIntMapMapOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntMapMapOutput) ToOutput(ctx context.Context) pulumix.Output[map[string]map[string]BigInt] {
+	return pulumix.Output[map[string]map[string]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output (map[string]map[string]BigInt).
+func (BigIntMapMapOutput) ElementType() reflect.Type {
+	return bigIntMapMapType
+}
+
+func (o BigIntMapMapOutput) ToBigIntMapMapOutput() BigIntMapMapOutput {
+	return o
+}
+
+func (o BigIntMapMapOutput) ToBigIntMapMapOutputWithContext(ctx context.Context) BigIntMapMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o BigIntMapMapOutput) MapIndex(k StringInput) BigIntMapOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) map[string]BigInt {
+		return vs[0].(map[string]map[string]BigInt)[vs[1].(string)]
+	}).(BigIntMapOutput)
+}
+
+func ToBigIntMapMap(in map[string]map[string]BigInt) BigIntMapMap {
+	m := make(BigIntMapMap)
+	for k, v := range in {
+		m[k] = ToBigIntMap(v)
+	}
+	return m
+}
+
+func ToBigIntMapMapOutput(in map[string]BigIntMapOutput) BigIntMapMapOutput {
+	m := make(BigIntMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBigIntMapMapOutput()
+}
+
+var bigIntArrayArrayType = reflect.TypeOf((*[][]BigInt)(nil)).Elem()
+
+// BigIntArrayArrayInput is an input type that accepts BigIntArrayArray and BigIntArrayArrayOutput values.
+type BigIntArrayArrayInput interface {
+	Input
+
+	ToBigIntArrayArrayOutput() BigIntArrayArrayOutput
+	ToBigIntArrayArrayOutputWithContext(ctx context.Context) BigIntArrayArrayOutput
+}
+
+// BigIntArrayArray is an input type for []BigIntArrayInput values.
+type BigIntArrayArray []BigIntArrayInput
+
+// ElementType returns the element type of this Input ([][]BigInt).
+func (BigIntArrayArray) ElementType() reflect.Type {
+	return bigIntArrayArrayType
+}
+
+func (in BigIntArrayArray) ToOutput(ctx context.Context) pulumix.Output[[][]BigInt] {
+	return pulumix.Output[[][]BigInt]{
+		OutputState: internal.GetOutputState(ToOutputWithContext(ctx, in)),
+	}
+}
+
+func (in BigIntArrayArray) ToBigIntArrayArrayOutput() BigIntArrayArrayOutput {
+	return ToOutput(in).(BigIntArrayArrayOutput)
+}
+
+func (in BigIntArrayArray) ToBigIntArrayArrayOutputWithContext(ctx context.Context) BigIntArrayArrayOutput {
+	return ToOutputWithContext(ctx, in).(BigIntArrayArrayOutput)
+}
+
+// BigIntArrayArrayOutput is an Output that returns [][]BigInt values.
+type BigIntArrayArrayOutput struct{ *OutputState }
+
+func (BigIntArrayArrayOutput) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("Outputs can not be marshaled to JSON")
+}
+
+func (o BigIntArrayArrayOutput) ToOutput(ctx context.Context) pulumix.Output[[][]BigInt] {
+	return pulumix.Output[[][]BigInt]{
+		OutputState: o.OutputState,
+	}
+}
+
+// ElementType returns the element type of this Output ([][]BigInt).
+func (BigIntArrayArrayOutput) ElementType() reflect.Type {
+	return bigIntArrayArrayType
+}
+
+func (o BigIntArrayArrayOutput) ToBigIntArrayArrayOutput() BigIntArrayArrayOutput {
+	return o
+}
+
+func (o BigIntArrayArrayOutput) ToBigIntArrayArrayOutputWithContext(ctx context.Context) BigIntArrayArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o BigIntArrayArrayOutput) Index(i IntInput) BigIntArrayOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) []BigInt {
+		arr := vs[0].([][]BigInt)
+		idx := vs[1].(int)
+		var ret []BigInt
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(BigIntArrayOutput)
+}
+
+func ToBigIntArrayArray(in [][]BigInt) BigIntArrayArray {
+	a := make(BigIntArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToBigIntArray(v)
+	}
+	return a
+}
+
+func ToBigIntArrayArrayOutput(in []BigIntArrayOutput) BigIntArrayArrayOutput {
+	a := make(BigIntArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBigIntArrayArrayOutput()
+}
+
 func init() {
 	internal.FullyResolvedTypes[reflect.TypeOf((*asset)(nil))] = struct{}{}
 	internal.FullyResolvedTypes[reflect.TypeOf((*archive)(nil))] = struct{}{}
+	internal.FullyResolvedTypes[reflect.TypeOf((*bigInt)(nil))] = struct{}{}
 }
 
 // AsArchiveOutput asserts that the type of the AnyOutput's underlying interface{} value is
@@ -7204,6 +7767,93 @@ func (a AnyOutput) AsURNArrayArrayOutput() URNArrayArrayOutput {
 	}).(URNArrayArrayOutput)
 }
 
+// AsBigIntOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// BigInt and returns a `BigIntOutput` with that value. AsBigIntOutput panics if the value
+// was not the expected type.
+func (a AnyOutput) AsBigIntOutput() BigIntOutput {
+	return a.ApplyT(func(i interface{}) BigInt {
+		return i.(BigInt)
+	}).(BigIntOutput)
+}
+
+// AsBigIntArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []BigInt or a compatible type and returns a `BigIntArrayOutput` with that value.
+// AsBigIntArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntArrayOutput() BigIntArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]BigInt), nil
+	}).(BigIntArrayOutput)
+}
+
+// AsBigIntMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]BigInt or a compatible type and returns a `BigIntMapOutput` with that value.
+// AsBigIntMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntMapOutput() BigIntMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]BigInt), nil
+	}).(BigIntMapOutput)
+}
+
+// AsBigIntArrayMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string][]BigInt or a compatible type and returns a `BigIntArrayMapOutput` with that value.
+// AsBigIntArrayMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntArrayMapOutput() BigIntArrayMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string][]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string][]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string][]BigInt), nil
+	}).(BigIntArrayMapOutput)
+}
+
+// AsBigIntMapArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// []map[string]BigInt or a compatible type and returns a `BigIntMapArrayOutput` with that value.
+// AsBigIntMapArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntMapArrayOutput() BigIntMapArrayOutput {
+	return a.ApplyT(func(i interface{}) ([]map[string]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[]map[string]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([]map[string]BigInt), nil
+	}).(BigIntMapArrayOutput)
+}
+
+// AsBigIntMapMapOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// map[string]map[string]BigInt or a compatible type and returns a `BigIntMapMapOutput` with that value.
+// AsBigIntMapMapOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntMapMapOutput() BigIntMapMapOutput {
+	return a.ApplyT(func(i interface{}) (map[string]map[string]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*map[string]map[string]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.(map[string]map[string]BigInt), nil
+	}).(BigIntMapMapOutput)
+}
+
+// AsBigIntArrayArrayOutput asserts that the type of the AnyOutput's underlying interface{} value is
+// [][]BigInt or a compatible type and returns a `BigIntArrayArrayOutput` with that value.
+// AsBigIntArrayArrayOutput panics if the value was not the expected type or a compatible type.
+func (a AnyOutput) AsBigIntArrayArrayOutput() BigIntArrayArrayOutput {
+	return a.ApplyT(func(i interface{}) ([][]BigInt, error) {
+		v, err := coerceTypeConversion(i, reflect.TypeOf((*[][]BigInt)(nil)).Elem())
+		if err != nil {
+			return nil, err
+		}
+		return v.([][]BigInt), nil
+	}).(BigIntArrayArrayOutput)
+}
+
 func init() {
 	RegisterInputType(reflect.TypeOf((*ArchiveArrayInput)(nil)).Elem(), ArchiveArray{})
 	RegisterInputType(reflect.TypeOf((*ArchiveMapInput)(nil)).Elem(), ArchiveMap{})
@@ -7278,6 +7928,13 @@ func init() {
 	RegisterInputType(reflect.TypeOf((*URNMapArrayInput)(nil)).Elem(), URNMapArray{})
 	RegisterInputType(reflect.TypeOf((*URNMapMapInput)(nil)).Elem(), URNMapMap{})
 	RegisterInputType(reflect.TypeOf((*URNArrayArrayInput)(nil)).Elem(), URNArrayArray{})
+	RegisterInputType(reflect.TypeOf((*BigIntInput)(nil)).Elem(), NewBigInt(0))
+	RegisterInputType(reflect.TypeOf((*BigIntArrayInput)(nil)).Elem(), BigIntArray{})
+	RegisterInputType(reflect.TypeOf((*BigIntMapInput)(nil)).Elem(), BigIntMap{})
+	RegisterInputType(reflect.TypeOf((*BigIntArrayMapInput)(nil)).Elem(), BigIntArrayMap{})
+	RegisterInputType(reflect.TypeOf((*BigIntMapArrayInput)(nil)).Elem(), BigIntMapArray{})
+	RegisterInputType(reflect.TypeOf((*BigIntMapMapInput)(nil)).Elem(), BigIntMapMap{})
+	RegisterInputType(reflect.TypeOf((*BigIntArrayArrayInput)(nil)).Elem(), BigIntArrayArray{})
 	RegisterOutputType(ArchiveOutput{})
 	RegisterOutputType(ArchiveArrayOutput{})
 	RegisterOutputType(ArchiveMapOutput{})
@@ -7354,4 +8011,11 @@ func init() {
 	RegisterOutputType(URNMapArrayOutput{})
 	RegisterOutputType(URNMapMapOutput{})
 	RegisterOutputType(URNArrayArrayOutput{})
+	RegisterOutputType(BigIntOutput{})
+	RegisterOutputType(BigIntArrayOutput{})
+	RegisterOutputType(BigIntMapOutput{})
+	RegisterOutputType(BigIntArrayMapOutput{})
+	RegisterOutputType(BigIntMapArrayOutput{})
+	RegisterOutputType(BigIntMapMapOutput{})
+	RegisterOutputType(BigIntArrayArrayOutput{})
 }

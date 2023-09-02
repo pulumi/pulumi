@@ -201,6 +201,7 @@ async def prepare_resource(
         translate,
         typ,
         keep_output_values=remote,
+        keep_integer_values=True,
     )
 
     # Wait for our parent to resolve
@@ -544,7 +545,9 @@ def get_resource(
             resolver = await prepare_resource(res, ty, custom, False, props, None, typ)
 
             monitor = settings.get_monitor()
-            inputs = await rpc.serialize_properties({"urn": urn}, {})
+            inputs = await rpc.serialize_properties(
+                {"urn": urn}, {}, keep_integer_values=True
+            )
 
             accept_resources = not (
                 os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper()
@@ -1004,6 +1007,7 @@ def register_resource(
                 pluginDownloadURL=opts.plugin_download_url or "",
                 acceptSecrets=True,
                 acceptResources=accept_resources,
+                accept_integers=True,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_ or "",
                 customTimeouts=custom_timeouts,
@@ -1121,7 +1125,9 @@ def register_resource_outputs(
         urn = await res.urn.future()
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
         # much directly by users who could pass None in (although the type hints say they shouldn't).
-        serialized_props = await rpc.serialize_properties(outputs or {}, {})
+        serialized_props = await rpc.serialize_properties(
+            outputs or {}, {}, keep_integer_values=True
+        )
         log.debug(
             f"register resource outputs prepared: urn={urn}, props={serialized_props}"
         )

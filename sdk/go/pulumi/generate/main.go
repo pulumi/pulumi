@@ -187,6 +187,7 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0", elemExample: "42", RegisterInput: true, defaultValue: "Int(0)"},
 	{Name: "String", Type: "string", Example: "String(\"foo\")", elemExample: "\"foo\"", RegisterInput: true, defaultValue: "String(\"\")"},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")", RegisterInput: true, defaultValue: "URN(\"\")"},
+	{Name: "BigInt", Type: "BigInt", inputType: "*bigInt", Example: "NewBigInt(999)", DefaultConfig: "0", RegisterInput: true, defaultValue: "NewBigInt(0)"},
 })
 
 func unexported(s string) string {
@@ -221,7 +222,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 			name = p.Name
 		}
 		switch name {
-		case "Archive", "Asset", AssetOrArchiveType, "":
+		case "Archive", "Asset", AssetOrArchiveType, "BigInt", "":
 			// do nothing
 		default:
 			builtins = append(builtins, &builtin{

@@ -11,6 +11,8 @@ export class Callback extends jspb.Message {
     setTarget(value: string): Callback;
     getToken(): string;
     setToken(value: string): Callback;
+    getAcceptIntegers(): boolean;
+    setAcceptIntegers(value: boolean): Callback;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): Callback.AsObject;
@@ -26,6 +28,7 @@ export namespace Callback {
     export type AsObject = {
         target: string,
         token: string,
+        acceptIntegers: boolean,
     }
 }
 

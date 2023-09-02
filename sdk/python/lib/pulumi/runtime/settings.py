@@ -319,6 +319,12 @@ async def monitor_supports_output_values() -> bool:
     return await monitor_supports_feature("outputValues")
 
 
+def _sync_monitor_supports_integers() -> bool:
+    if "integers" not in SETTINGS.feature_support:
+        return False
+    return SETTINGS.feature_support["integers"]
+
+
 async def monitor_supports_deleted_with() -> bool:
     return await monitor_supports_feature("deletedWith")
 
@@ -392,4 +398,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("aliasSpecs"),
         monitor_supports_feature("transforms"),
         monitor_supports_feature("invokeTransforms"),
+        monitor_supports_feature("integers"),
     )

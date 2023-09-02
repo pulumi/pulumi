@@ -114,7 +114,8 @@ proto.pulumirpc.Callback.prototype.toObject = function(opt_includeInstance) {
 proto.pulumirpc.Callback.toObject = function(includeInstance, msg) {
   var f, obj = {
     target: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    token: jspb.Message.getFieldWithDefault(msg, 2, "")
+    token: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    acceptIntegers: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -159,6 +160,10 @@ proto.pulumirpc.Callback.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setToken(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptIntegers(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -202,6 +207,13 @@ proto.pulumirpc.Callback.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getAcceptIntegers();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -238,6 +250,24 @@ proto.pulumirpc.Callback.prototype.getToken = function() {
  */
 proto.pulumirpc.Callback.prototype.setToken = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional bool accept_integers = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.Callback.prototype.getAcceptIntegers = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.Callback} returns this
+ */
+proto.pulumirpc.Callback.prototype.setAcceptIntegers = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 

@@ -29,6 +29,8 @@ message Callback {
     string target = 1;
     // the service specific unique token for this callback.
     string token = 2;
+    // when true the callback accepts strongly typed integer values.
+    bool accept_integers = 3;
 }
 
 message CallbackInvokeRequest {

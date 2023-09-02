@@ -16,6 +16,7 @@ package deepcopy
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -83,6 +84,14 @@ func TestDeepCopy(t *testing.T) {
 			assert.EqualValues(t, c, Copy(c))
 		})
 	}
+}
+
+func TestDeepCopyCanCopyBigInt(t *testing.T) {
+	t.Parallel()
+
+	bigInt := big.NewInt(1204)
+	cp := Copy(bigInt).(*big.Int)
+	assert.True(t, bigInt.Cmp(cp) == 0, "expected %v, got %v", bigInt, cp)
 }
 
 func TestDeepCopyDoesntCopyOutputState(t *testing.T) {

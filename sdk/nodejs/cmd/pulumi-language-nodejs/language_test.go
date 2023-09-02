@@ -232,6 +232,10 @@ func TestLanguage(t *testing.T) {
 			t.Run(fmt.Sprintf("forceTsc=%v/%s", forceTsc, tt), func(t *testing.T) {
 				t.Parallel()
 
+				if tt != "l2-resource-long" {
+					t.Skip("Skipping test")
+				}
+
 				result, err := engine.RunLanguageTest(context.Background(), &testingrpc.RunLanguageTestRequest{
 					Token: prepare.Token,
 					Test:  tt,

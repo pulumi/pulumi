@@ -166,6 +166,8 @@ func componentInputElementType(pclType model.Type) string {
 	switch pclType {
 	case model.BoolType:
 		return "pulumi.BoolInput"
+	case model.BigIntegerType:
+		return "pulumi.BigIntInput"
 	case model.IntType:
 		return "pulumi.IntInput"
 	case model.NumberType:
@@ -1127,7 +1129,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 
 	instantiate := func(varName, resourceName string, w io.Writer) {
-		if g.scopeTraversalRoots.Has(varName) || strings.HasPrefix(varName, "__") {
+		if g.scopeTraversalRoots.Has(r.Name()) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
 			assignment := ":="

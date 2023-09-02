@@ -66,7 +66,7 @@ func GetTraverserKey(t hcl.Traverser) (cty.Value, Type) {
 		if t.Key.Type().Equals(typeCapsule) {
 			return cty.DynamicVal, *(t.Key.EncapsulatedValue().(*Type))
 		}
-		return t.Key, ctyTypeToType(t.Key.Type(), false)
+		return t.Key, ctyTypeToType(t.Key.Type(), false, false)
 	default:
 		contract.Failf("unexpected traverser of type %T (%v)", t, t.SourceRange())
 		return cty.DynamicVal, DynamicType
