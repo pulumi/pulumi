@@ -440,9 +440,24 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 	}
 	// Otherwise, read it all in, and create a blob out of that.
 	defer contract.IgnoreClose(r)
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
+	buffer := make([]byte, 1024)
+	data := []byte{}
+	for {
+		// Use io.ReadFull to fill the entire buffer, or return ErrUnexpectedEOF
+		// if fewer than len(buffer) bytes are available.
+		_, err := io.ReadFull(r, buffer)
+		data = append(data, buffer...)
+		if err == io.EOF {
+			// End of file
+			break
+		}
+		if err != nil && err != io.ErrUnexpectedEOF {
+			return nil, err
+		}
+
+		if err == io.ErrUnexpectedEOF {
+			break
+		}
 	}
 	return NewByteBlob(data), nil
 }
